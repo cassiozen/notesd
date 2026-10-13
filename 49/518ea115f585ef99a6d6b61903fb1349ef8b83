@@ -1,0 +1,61 @@
+apps/web/src/auth/auth-context.tsx
+  s_66be3861a6f5cd::t_bad2dd145654cf 29-30,57
+  s_66be3861a6f5cd::t_8b0ffe82e88c1b 1-28,31-56,58-81
+apps/web/src/app.tsx
+  s_66be3861a6f5cd::t_ccf679f0be9fe3 1-71
+apps/web/src/ui/dialog.tsx
+  s_66be3861a6f5cd::t_ccf679f0be9fe3 1-34
+apps/web/src/main.tsx
+  s_66be3861a6f5cd::t_ccf679f0be9fe3 3-5,12
+apps/web/src/api/client.test.ts
+  s_66be3861a6f5cd::t_e5dd6793c14978 1-78
+apps/web/.oxlintrc.json
+  s_66be3861a6f5cd::t_bad2dd145654cf 3-9,20-28,30-32
+apps/web/src/ui/button.tsx
+  s_66be3861a6f5cd::t_b103391fc4f106 1-19
+apps/web/src/api/auth.ts
+  s_66be3861a6f5cd::t_3f2cf21b678805 1-17
+apps/web/src/api/client.ts
+  s_66be3861a6f5cd::t_3f2cf21b678805 1-62,64-77,79-95,97-99
+  s_66be3861a6f5cd::t_bad2dd145654cf 63,78,96
+apps/web/src/router.ts
+  s_66be3861a6f5cd::t_8b0ffe82e88c1b 1-32
+apps/web/src/auth/auth.module.css
+  s_66be3861a6f5cd::t_699a4a980409a1 1-63
+apps/web/src/api/types.ts
+  s_66be3861a6f5cd::t_3f2cf21b678805 1-52
+apps/web/src/ui/field.tsx
+  s_66be3861a6f5cd::t_b103391fc4f106 1-34
+apps/web/src/auth/errors.ts
+  s_66be3861a6f5cd::t_699a4a980409a1 1-10
+apps/web/src/ui/dialog.module.css
+  s_66be3861a6f5cd::t_ccf679f0be9fe3 1-33
+apps/web/src/styles/tokens.css
+  s_66be3861a6f5cd::t_b103391fc4f106 1-30
+apps/web/src/auth/onboarding.tsx
+  s_66be3861a6f5cd::t_e5dd6793c14978 1,33-35,37
+  s_66be3861a6f5cd::t_bad2dd145654cf 26,28-32,36,46,67,108,142,192
+  s_66be3861a6f5cd::t_699a4a980409a1 2-25,27,38-45,47-66,68-107,109-141,143-191,193-206
+apps/web/src/auth/login.tsx
+  s_66be3861a6f5cd::t_699a4a980409a1 1-94
+apps/web/src/ui/ui.module.css
+  s_66be3861a6f5cd::t_b103391fc4f106 1-69
+apps/web/src/styles/base.css
+  s_66be3861a6f5cd::t_b103391fc4f106 1-60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "49518ea115f585ef99a6d6b61903fb1349ef8b83",
+  "prompts": {},
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
