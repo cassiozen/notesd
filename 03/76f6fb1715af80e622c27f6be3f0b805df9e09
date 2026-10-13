@@ -1,0 +1,146 @@
+apps/android/core/src/test/kotlin/notes/core/markdown/MarkdownCompatTest.kt
+  s_96d7ef8051c8f1::t_d429cef44a83a4 3-4,58,86-87,91-95,100-104,106
+  s_96d7ef8051c8f1::t_a563a53290f620 1-2,5-57,59-85,88,96-97,105,107-122
+  s_96d7ef8051c8f1::t_25d6dca847faca 89-90,98-99
+apps/android/.gitignore
+  s_96d7ef8051c8f1::t_671247f9897d2e 1-7
+apps/android/core/src/test/kotlin/notes/core/Fixtures.kt
+  s_96d7ef8051c8f1::t_c5f9e86494d666 1-2,4-9,11-12,14-24
+  s_96d7ef8051c8f1::t_d429cef44a83a4 3,10,13
+apps/android/app/src/main/kotlin/notes/app/NotesApp.kt
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-5
+apps/android/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-6
+apps/android/core/build.gradle.kts
+  s_96d7ef8051c8f1::t_671247f9897d2e 1-24
+apps/android/app/src/main/res/values-night/colors.xml
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-5
+apps/android/app/src/main/res/xml/data_extraction_rules.xml
+  s_96d7ef8051c8f1::t_cbe8b97c913b1b 1-19
+apps/android/core/src/main/kotlin/notes/core/markdown/MarkdownParser.kt
+  s_96d7ef8051c8f1::t_25d6dca847faca 54,59,63,67,74,79,83,146,149,151,153,155,157,159,161,163,166,231-233,323-326,328
+  s_96d7ef8051c8f1::t_b73fd22a3a1f32 1-2,4-16,18-26,28-41,43-49,87,89-106,110-112,126-127,135-136,139-141,143-145,147-148,150,164-165,168-169,176-177,189-190,192-193,199-203,206-208,240-242,253,259,261-269,274-281,284-318,320-322,327,329-353
+  s_96d7ef8051c8f1::t_d429cef44a83a4 3,17,27,42,50-53,55-58,60-62,64-66,68-73,75-78,80-82,84-86,88,109,117,142,172,178,188,198,254-258,260,282-283
+  s_96d7ef8051c8f1::t_fa9a8e711438b8 107-108,113-116,118-125,128-134,137-138,152,154,156,158,167,170-171,173-175,191,209,211-222,226-228,236-239
+  s_96d7ef8051c8f1::t_a758e16e711751 160,162,179-187,194-197,270-273
+  s_96d7ef8051c8f1::t_47152943866686 243-252
+  s_96d7ef8051c8f1::t_806552e35968e8 319
+  s_96d7ef8051c8f1::t_4c70307a47382d 223-225,229-230,234-235
+  s_96d7ef8051c8f1::t_f315eb459519e9 204-205,210
+apps/android/.editorconfig
+  s_96d7ef8051c8f1::t_d429cef44a83a4 6
+  s_96d7ef8051c8f1::t_671247f9897d2e 1-5,7
+apps/android/core/src/main/kotlin/notes/core/text/Uuid7.kt
+  s_96d7ef8051c8f1::t_392b41b726bab3 1-19
+apps/android/core/src/main/kotlin/notes/core/markdown/CommonmarkQuirks.kt
+  s_96d7ef8051c8f1::t_d429cef44a83a4 20,47
+  s_96d7ef8051c8f1::t_a758e16e711751 1-19,21-46,48-62
+apps/android/gradlew
+  s_96d7ef8051c8f1::t_13f2790798d057 1-3,5-22,24-31,33-59,61-248
+  s_96d7ef8051c8f1::t_dbd8c1b62b6d31 4,23,32,60
+apps/android/app/src/main/res/values/themes.xml
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-7
+apps/android/app/src/main/res/xml/backup_rules.xml
+  s_96d7ef8051c8f1::t_110ccab42ac024 1-9
+apps/android/build.gradle.kts
+  s_96d7ef8051c8f1::t_671247f9897d2e 1-10,14
+  s_96d7ef8051c8f1::t_b50297c6e4e111 11,13
+  s_96d7ef8051c8f1::t_e728f13b37f56c 12
+apps/android/gradle/wrapper/gradle-wrapper.properties
+  s_96d7ef8051c8f1::t_13f2790798d057 1-2,4,7-9
+  s_96d7ef8051c8f1::t_dbd8c1b62b6d31 3,5-6
+apps/android/app/proguard-rules.pro
+  s_96d7ef8051c8f1::t_e634a187d186a7 1
+mise.toml
+  s_96d7ef8051c8f1::t_81409277de9239 7
+  s_96d7ef8051c8f1::t_ef36b5b57b4301 12-13,73-85
+  s_96d7ef8051c8f1::t_0add485239d63c 86
+apps/android/core/src/test/kotlin/notes/core/text/PlainTextTest.kt
+  s_96d7ef8051c8f1::t_c5f9e86494d666 1-5,7-35
+  s_96d7ef8051c8f1::t_d429cef44a83a4 6
+apps/android/app/src/main/res/drawable/ic_launcher_foreground.xml
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-10
+apps/android/core/src/main/kotlin/notes/core/markdown/MarkdownSerializer.kt
+  s_96d7ef8051c8f1::t_a758e16e711751 383-385,387-388
+  s_96d7ef8051c8f1::t_64f305905448ae 1-6,9-43,45-46,51-54,56-60,66-69,71-76,78-84,86-97,99-107,113-119,121-139,141-170,172-175,177-184,187-188,190-193,195-214,216,218-241,245-256,262-271,273-281,283,296-300,302-313,336,340,342,344,346-352,354-377,380-382
+  s_96d7ef8051c8f1::t_cc97f5737ec031 7-8,378-379
+  s_96d7ef8051c8f1::t_25d6dca847faca 47-50,55,61-65,70,77,85,242-244,257-261,284-291,293,295,318,322,326,341
+  s_96d7ef8051c8f1::t_57486699d6858d 176,185-186,272,292,294
+  s_96d7ef8051c8f1::t_d429cef44a83a4 44,98,108-112,120,140,171,189,194,282,301,314-317,319-321,323-325,327-335,337-339,343,345,353,386,389
+  s_96d7ef8051c8f1::t_f315eb459519e9 215,217
+apps/android/gradlew.bat
+  s_96d7ef8051c8f1::t_dbd8c1b62b6d31 22,26-54,75-79,81-82,90-94,96-97,104-107,109-112
+  s_96d7ef8051c8f1::t_13f2790798d057 1-21,23-25,55-74,80,83-89,95,98-103,108
+apps/android/core/src/main/kotlin/notes/core/doc/Document.kt
+  s_96d7ef8051c8f1::t_d429cef44a83a4 11,22-23,32-36,42,44,46,48,51,54,56,61,63,66,70-71,81-84
+  s_96d7ef8051c8f1::t_b5ded804ae0f25 1-10,12-21,24-31,37-41,43,45,47,49-50,52-53,55,57-60,62,64-65,67-69,72-80,85-101
+apps/android/app/src/main/res/values/colors.xml
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-5
+apps/android/core/src/main/kotlin/notes/core/text/JsSpace.kt
+  s_96d7ef8051c8f1::t_cc97f5737ec031 1-7,14
+  s_96d7ef8051c8f1::t_93800d8536e7f9 8-13
+apps/android/gradle/libs.versions.toml
+  s_96d7ef8051c8f1::t_dbd8c1b62b6d31 2
+  s_96d7ef8051c8f1::t_671247f9897d2e 1,3,6-43
+  s_96d7ef8051c8f1::t_e728f13b37f56c 4-5,44
+apps/android/app/src/main/AndroidManifest.xml
+  s_96d7ef8051c8f1::t_110ccab42ac024 8
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-6,9-24
+  s_96d7ef8051c8f1::t_cbe8b97c913b1b 7
+apps/android/settings.gradle.kts
+  s_96d7ef8051c8f1::t_671247f9897d2e 1-18
+apps/android/core/src/main/kotlin/notes/core/markdown/Markdown.kt
+  s_96d7ef8051c8f1::t_392b41b726bab3 1-17
+apps/android/app/lint.xml
+  s_96d7ef8051c8f1::t_3eadc04182375f 1-7
+apps/android/app/build.gradle.kts
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-7,9-12,14-21,23-69
+  s_96d7ef8051c8f1::t_dbd8c1b62b6d31 8,13
+  s_96d7ef8051c8f1::t_c51de16cc1701d 22
+apps/android/app/src/main/res/values/strings.xml
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-4
+apps/android/core/src/main/kotlin/notes/core/text/PlainText.kt
+  s_96d7ef8051c8f1::t_25d6dca847faca 247-248
+  s_96d7ef8051c8f1::t_cc97f5737ec031 56
+  s_96d7ef8051c8f1::t_d429cef44a83a4 58,237,252
+  s_96d7ef8051c8f1::t_392b41b726bab3 1-30,32-51,53-55,57,59-145,147-236,238-246,249-251,253-273
+  s_96d7ef8051c8f1::t_885b3593bae1bc 31,52,146
+apps/android/app/src/main/kotlin/notes/app/MainActivity.kt
+  s_96d7ef8051c8f1::t_e634a187d186a7 1-26
+apps/android/gradle.properties
+  s_96d7ef8051c8f1::t_671247f9897d2e 1-6
+apps/android/core/src/test/kotlin/notes/core/markdown/MarkdownPropertyTest.kt
+  s_96d7ef8051c8f1::t_8d335d1934b4cb 20,115
+  s_96d7ef8051c8f1::t_4e7204c948d11a 21-22,103
+  s_96d7ef8051c8f1::t_de5cc50926aaa9 23-25
+  s_96d7ef8051c8f1::t_b19761fb3a741a 51,137
+  s_96d7ef8051c8f1::t_9e91f2b61f8e0d 1-2,6-16,26-34,40-43,52-55,96-97,104-113,116-136,138-139,148-151
+  s_96d7ef8051c8f1::t_25d6dca847faca 45-47,49-50,57,62,66,70,83,87,91
+  s_96d7ef8051c8f1::t_6e84412e3bf0fd 17-19,114
+  s_96d7ef8051c8f1::t_439db4618d120f 35-39
+  s_96d7ef8051c8f1::t_d429cef44a83a4 3-5,44,48,56,58-61,63-65,67-69,71-82,84-86,88-90,92-95,98-102,140-147
+apps/android/core/src/test/kotlin/notes/core/markdown/MarkdownFixtureTest.kt
+  s_96d7ef8051c8f1::t_d429cef44a83a4 5,47
+  s_96d7ef8051c8f1::t_c5f9e86494d666 1-4,6-46,48-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0376f6fb1715af80e622c27f6be3f0b805df9e09",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
