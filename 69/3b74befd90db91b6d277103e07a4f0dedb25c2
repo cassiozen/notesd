@@ -1,0 +1,33 @@
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_96d7ef8051c8f1::t_e4df039e039e44 35-38,46
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_96d7ef8051c8f1::t_0550f10eb89dad 246
+  s_96d7ef8051c8f1::t_9f646660104c82 251
+  s_96d7ef8051c8f1::t_1689ef0b928328 3,6,8,41,49-52,98,105-106,172-173,180-181,247-250
+  s_96d7ef8051c8f1::t_e4df039e039e44 174
+  s_96d7ef8051c8f1::t_ec46b334fde5a3 175-179
+apps/android/app/src/test/kotlin/notes/app/MainActivityTest.kt
+  s_96d7ef8051c8f1::t_58d3df06cc5093 16,49-50,53-54
+  s_96d7ef8051c8f1::t_e4df039e039e44 51-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "693b74befd90db91b6d277103e07a4f0dedb25c2",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
