@@ -1,0 +1,80 @@
+.gitignore
+  h_506d0d833c777f 1-8
+README.md
+  h_506d0d833c777f 1-12
+apps/web/.npmrc
+  h_506d0d833c777f 1-2
+apps/web/package.json
+  h_506d0d833c777f 1-47
+apps/web/tsconfig.json
+  h_506d0d833c777f 1-18
+docs/architecture.md
+  h_506d0d833c777f 1-514
+docs/web-app-plan.md
+  h_506d0d833c777f 1-425
+server/Makefile
+  h_506d0d833c777f 1-18
+server/README.md
+  h_506d0d833c777f 1-159
+server/cmd/notes-server/main.go
+  h_506d0d833c777f 1-249
+server/dev.sh
+  h_506d0d833c777f 1-10
+server/go.mod
+  h_506d0d833c777f 1-24
+server/go.sum
+  h_506d0d833c777f 1-51
+server/internal/api/api.go
+  h_506d0d833c777f 1-319
+server/internal/api/api_test.go
+  h_506d0d833c777f 1-481
+server/internal/api/auth_handlers.go
+  h_506d0d833c777f 1-234
+server/internal/api/notes_handlers.go
+  h_506d0d833c777f 1-175
+server/internal/api/respond.go
+  h_506d0d833c777f 1-117
+server/internal/auth/auth.go
+  h_506d0d833c777f 1-440
+server/internal/auth/limiter.go
+  h_506d0d833c777f 1-71
+server/internal/auth/password.go
+  h_506d0d833c777f 1-108
+server/internal/database/database.go
+  h_506d0d833c777f 1-239
+server/internal/notes/notes.go
+  h_506d0d833c777f 1-580
+server/internal/notes/notes_test.go
+  h_506d0d833c777f 1-460
+server/internal/search/extract.go
+  h_506d0d833c777f 1-332
+server/internal/search/search.go
+  h_506d0d833c777f 1-165
+server/internal/search/search_test.go
+  h_506d0d833c777f 1-152
+server/internal/sync/sync.go
+  h_506d0d833c777f 1-115
+server/internal/sync/sync_test.go
+  h_506d0d833c777f 1-248
+server/internal/web/dist/index.html
+  h_506d0d833c777f 1-18
+server/internal/web/web.go
+  h_506d0d833c777f 1-80
+server/migrations/0001_init.sql
+  h_506d0d833c777f 1-66
+server/migrations/migrations.go
+  h_506d0d833c777f 1-11
+shared/markdown-fixtures/plaintext.json
+  h_506d0d833c777f 1-38
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c175d4585f900966c7afc14dedd381b4fc91cd50",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
