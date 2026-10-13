@@ -1,0 +1,14 @@
+docs/architecture.md
+  h_506d0d833c777f 26,102-105,107-108,110-111,113-114,118-119,124-125,128-132,135-137,212-214,231,260,279,289,305-306,348-349,358-361,363-368,379-381,390-393,415,417,454,506,508-516,519-520
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7a5c3516958988a757ac6cf49d928cc9fa079c2",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
