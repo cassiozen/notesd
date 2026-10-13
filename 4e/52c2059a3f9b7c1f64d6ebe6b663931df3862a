@@ -1,0 +1,45 @@
+apps/web/.oxlintrc.json
+  s_66be3861a6f5cd::t_326a024c13e201 32-42
+apps/web/package.json
+  s_66be3861a6f5cd::t_3a5a92e85974f3 32-34,40
+apps/web/tsconfig.node.json
+  s_66be3861a6f5cd::t_1f5dee0947c7d1 4-5
+  s_66be3861a6f5cd::t_36bfebb9f6cc14 7
+apps/web/test/setup.ts
+  s_66be3861a6f5cd::t_36bfebb9f6cc14 1-12
+apps/web/vite.config.ts
+  s_66be3861a6f5cd::t_36bfebb9f6cc14 26-30
+apps/web/src/api/client.ts
+  s_66be3861a6f5cd::t_b697fbd1809619 69,86-89
+  s_66be3861a6f5cd::t_abbd6613236426 90-91
+apps/web/test/auth.test.tsx
+  s_66be3861a6f5cd::t_1f5dee0947c7d1 1-126,128-138,141,143-169,172-189
+  s_66be3861a6f5cd::t_326a024c13e201 170-171
+  s_66be3861a6f5cd::t_87b8b599dd068f 127,139-140,142
+apps/web/test/server.ts
+  s_66be3861a6f5cd::t_36bfebb9f6cc14 1-117
+apps/web/test/global-setup.ts
+  s_66be3861a6f5cd::t_36bfebb9f6cc14 1-24
+apps/web/src/api/client.test.ts
+  s_66be3861a6f5cd::t_87b8b599dd068f 2,4-5,12,17,19-21
+apps/web/pnpm-lock.yaml
+  s_66be3861a6f5cd::t_cb84f7d6226720 48-56,72-74,86,90-158,388-412,578-580,763-770,777-779,784-786,791-794,798-808,813-815,852-870,950-957,969-971,1000-1002,1014-1017,1064-1067,1073-1075,1080-1083,1092-1095,1118-1132,1147-1150,1243-1258,1264-1270,1273-1327,1457-1481,1667-1668,1777-1780,1785-1788,1791-1794,1797-1801,1804-1814,1817-1818,1840-1874,1934-1937,1960-1961,1992-1995,2006-2011,2094-2095,2101-2102,2105-2106,2130-2133,2149-2162,2192-2193,2209,2227,2233-2248,2250-2253
+docs/web-app-plan.md
+  s_66be3861a6f5cd::t_500b85538799b2 121-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4e52c2059a3f9b7c1f64d6ebe6b663931df3862a",
+  "prompts": {},
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
