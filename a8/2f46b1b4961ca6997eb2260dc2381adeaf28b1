@@ -1,0 +1,108 @@
+apps/android/app/src/test/kotlin/notes/app/notes/ListTimeTest.kt
+  s_96d7ef8051c8f1::t_bf7fae17a527de 11-12,26-33
+  s_96d7ef8051c8f1::t_c6720d29c6ec7e 36
+  s_96d7ef8051c8f1::t_fb76c92fa9db05 1-10,13-25,34-35,37-38
+apps/android/app/src/main/kotlin/notes/app/NotesApp.kt
+  s_96d7ef8051c8f1::t_e9618b1c54aad2 5-13
+apps/android/core/src/test/kotlin/notes/core/db/MigrationsTest.kt
+  s_96d7ef8051c8f1::t_3fb45806463e4a 1-20
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_96d7ef8051c8f1::t_586db37d22860a 53
+  s_96d7ef8051c8f1::t_3df2cfea193075 1-24,27-52,54-70
+  s_96d7ef8051c8f1::t_bf7fae17a527de 25-26
+apps/android/core/src/test/kotlin/notes/core/db/SearchQueryTest.kt
+  s_96d7ef8051c8f1::t_3fb45806463e4a 1-29
+apps/android/core/src/main/kotlin/notes/core/db/Database.kt
+  s_96d7ef8051c8f1::t_bf7fae17a527de 32-33
+  s_96d7ef8051c8f1::t_a48a82d56f751a 1-31,34-140
+apps/android/app/src/test/kotlin/notes/app/notes/HighlightTest.kt
+  s_96d7ef8051c8f1::t_fb76c92fa9db05 1-18
+apps/android/core/src/test/kotlin/notes/core/db/NoteStoreTest.kt
+  s_96d7ef8051c8f1::t_3fb45806463e4a 1-177
+apps/android/core/src/main/kotlin/notes/core/db/NoteStore.kt
+  s_96d7ef8051c8f1::t_bf7fae17a527de 38-40,135-139
+  s_96d7ef8051c8f1::t_71a12a2edda1dd 199-203,261-264
+  s_96d7ef8051c8f1::t_828724f2923868 1-37,41-134,140-198,204-260,265-287
+apps/android/app/src/main/kotlin/notes/app/settings/Appearance.kt
+  s_96d7ef8051c8f1::t_e9618b1c54aad2 1-3,6-8,13-14,20-26,31,33,35-40
+  s_96d7ef8051c8f1::t_a1bc63222f52f9 4,9-12,15-19,27-30,34
+  s_96d7ef8051c8f1::t_8282ed0978c74d 5,32
+apps/android/app/src/main/kotlin/notes/app/notes/ListTime.kt
+  s_96d7ef8051c8f1::t_8282ed0978c74d 1-15,22-23,25-35,43,45-52,61-63
+  s_96d7ef8051c8f1::t_24ab34abbd593e 24,42,44
+  s_96d7ef8051c8f1::t_bf7fae17a527de 16-21,36-41,53-60
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListViewModel.kt
+  s_96d7ef8051c8f1::t_a1bc63222f52f9 1-29,37-49
+  s_96d7ef8051c8f1::t_bf7fae17a527de 30-36
+apps/android/core/build.gradle.kts
+  s_96d7ef8051c8f1::t_73da61ecdf30c2 14-16,20
+apps/android/core/src/main/resources/migrations/0001_init.sql
+  s_96d7ef8051c8f1::t_03306c1f8270ce 1-46
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_96d7ef8051c8f1::t_bf7fae17a527de 56-64,111-113
+  s_96d7ef8051c8f1::t_b92b9655ac1dfe 1-55,65-110,114-143
+apps/android/gradle/libs.versions.toml
+  s_96d7ef8051c8f1::t_73da61ecdf30c2 16-17,25,27,42-45
+  s_96d7ef8051c8f1::t_0bb6acb229ccc2 26
+  s_96d7ef8051c8f1::t_61aa253c9b0659 35-36
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_96d7ef8051c8f1::t_b92b9655ac1dfe 36,122-129,213
+  s_96d7ef8051c8f1::t_bf7fae17a527de 201-206
+  s_96d7ef8051c8f1::t_0550f10eb89dad 1-35,37-121,130-200,207-212,214-240
+apps/android/app/src/main/kotlin/notes/app/MainActivity.kt
+  s_96d7ef8051c8f1::t_b92b9655ac1dfe 7,14,17
+apps/android/core/src/main/kotlin/notes/core/db/Migrations.kt
+  s_96d7ef8051c8f1::t_b823ed8093c1af 1-37
+apps/android/app/build.gradle.kts
+  s_96d7ef8051c8f1::t_5f2dca63e21d43 4,62,103-108
+  s_96d7ef8051c8f1::t_0bb6acb229ccc2 7-18,22,28-31,68-69,118
+  s_96d7ef8051c8f1::t_b2f61c4cc74383 5,19-21,23-27
+  s_96d7ef8051c8f1::t_61aa253c9b0659 110,116-117
+  s_96d7ef8051c8f1::t_fb76c92fa9db05 115
+  s_96d7ef8051c8f1::t_94d3c36576a923 6
+apps/android/app/src/test/kotlin/notes/app/notes/DeletionsTest.kt
+  s_96d7ef8051c8f1::t_fb76c92fa9db05 1-47
+apps/android/app/src/test/kotlin/notes/app/MainActivityTest.kt
+  s_96d7ef8051c8f1::t_bc08d81bf71fd7 47-48,53-54,57,61
+  s_96d7ef8051c8f1::t_bf7fae17a527de 59-60
+  s_96d7ef8051c8f1::t_859ae76b27c391 3-4,13,15,17,41-46,49-52,55-56,58,62
+  s_96d7ef8051c8f1::t_61aa253c9b0659 5-12,16,18-19,23,26-40,63-64,66-69,71-76
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_96d7ef8051c8f1::t_bf7fae17a527de 32-35
+  s_96d7ef8051c8f1::t_b92b9655ac1dfe 1-31,36-60
+apps/android/core/src/main/kotlin/notes/core/db/Search.kt
+  s_96d7ef8051c8f1::t_73d8ed94012d59 1-38
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_96d7ef8051c8f1::t_bf7fae17a527de 78-84,102-105,115-117,159-162,177-179,186-190,211-213,242-247
+  s_96d7ef8051c8f1::t_b7cee4eb213e02 1-77,85-101,106-114,118-158,163-176,180-185,191-210,214-241,248-264
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_96d7ef8051c8f1::t_e9618b1c54aad2 1-18,20-21
+  s_96d7ef8051c8f1::t_fb76c92fa9db05 19
+apps/android/app/src/main/kotlin/notes/app/notes/Deletions.kt
+  s_96d7ef8051c8f1::t_e9618b1c54aad2 1-15,21-51,53-56
+  s_96d7ef8051c8f1::t_bf7fae17a527de 16-20
+  s_96d7ef8051c8f1::t_fb76c92fa9db05 52
+apps/android/app/src/main/kotlin/notes/app/editor/Sample.kt
+  s_96d7ef8051c8f1::t_3df2cfea193075 1-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a82f46b1b4961ca6997eb2260dc2381adeaf28b1",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
