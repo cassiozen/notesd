@@ -1,0 +1,51 @@
+server/internal/web/web_test.go
+  s_66be3861a6f5cd::t_7f63ec80da9838 1-29
+docs/architecture.md
+  s_66be3861a6f5cd::t_f65959e70db432 289-290,303
+docs/web-app-plan.md
+  s_66be3861a6f5cd::t_182c032f9f3843 20,106,116,118-120,143-147,260-261,286-290,293-294,313-315,328-333
+apps/web/package.json
+  s_66be3861a6f5cd::t_9024b96243bdae 41-43
+  s_66be3861a6f5cd::t_0b2f70717b9a22 17-28,31,33-35,37-38
+  s_66be3861a6f5cd::t_47425418bc41e6 12-13,32
+server/README.md
+  s_66be3861a6f5cd::t_f65959e70db432 18,23-25
+  s_66be3861a6f5cd::t_3e991c2944f36b 26
+server/internal/web/placeholder.html
+  s_66be3861a6f5cd::t_e3c120653af874 1-18
+apps/web/tsconfig.json
+  s_66be3861a6f5cd::t_47425418bc41e6 17
+server/internal/web/web.go
+  s_66be3861a6f5cd::t_7f63ec80da9838 7-8,22-24,64,67,71
+server/Makefile
+  s_66be3861a6f5cd::t_7c3889607ff83d 5-8
+apps/web/vite.config.ts
+  s_66be3861a6f5cd::t_47425418bc41e6 6
+  s_66be3861a6f5cd::t_b51623d7c37685 1-5,7-27
+apps/web/tsconfig.node.json
+  s_66be3861a6f5cd::t_47425418bc41e6 1-8
+.gitignore
+  s_66be3861a6f5cd::t_6ebb8812918713 9-10
+apps/web/index.html
+  s_66be3861a6f5cd::t_f84f6308187558 1-12
+apps/web/pnpm-lock.yaml
+  s_66be3861a6f5cd::t_8f63ac257fa79c 1-2236
+apps/web/src/main.tsx
+  s_66be3861a6f5cd::t_fc23f5ff12a0ea 1-8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "78b505ff58dd4816c2e548552584f117dea72db3",
+  "prompts": {},
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
