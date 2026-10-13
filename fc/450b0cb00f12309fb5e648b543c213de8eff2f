@@ -1,0 +1,87 @@
+apps/web/src/ui/sheet.tsx
+  s_66be3861a6f5cd::t_9507c948ec5c67 2-4,8-17,19-20,24-33,35-46
+  s_66be3861a6f5cd::t_df5d81e00a3036 5-7,18,34
+  s_66be3861a6f5cd::t_f7586982c073ce 1,21-23
+apps/web/src/ui/sheet.module.css
+  s_66be3861a6f5cd::t_9507c948ec5c67 1-11,16-25,29-74
+  s_66be3861a6f5cd::t_efed7fbaa09ab3 12-15,26-28
+apps/web/src/app.tsx
+  s_66be3861a6f5cd::t_8edc6eabe58db2 5
+apps/web/src/settings/settings.tsx
+  s_66be3861a6f5cd::t_8edc6eabe58db2 1-41
+apps/web/src/notes/store.tsx
+  s_66be3861a6f5cd::t_4f6b04decec75e 1-110,112-181
+  s_66be3861a6f5cd::t_9507c948ec5c67 111
+apps/web/src/notes/preview.ts
+  s_66be3861a6f5cd::t_4f6b04decec75e 1-20
+apps/web/src/notes/note-sheet.module.css
+  s_66be3861a6f5cd::t_8edc6eabe58db2 1-158
+apps/web/src/notes/shell.tsx
+  s_66be3861a6f5cd::t_85a20d1b62b624 1-82
+apps/web/test/notes.test.tsx
+  s_66be3861a6f5cd::t_ef5f3ab6484af1 1-9,15-18,20-59,63-73,75-98,100-108,110-121,123-130,138-146,154-168,176-196,204-219,227-247,255-268,276-289,297-317,324,326-338,340-352
+  s_66be3861a6f5cd::t_b9cf2bf1a32b05 10-14,19,122,131-137,147-153,169-175,197-203,220-226,248-254,269-275,290-296,318-323,325
+  s_66be3861a6f5cd::t_2981e4a2b3fba5 61-62,74,99
+  s_66be3861a6f5cd::t_df5d81e00a3036 60,109,339
+apps/web/src/api/notes.ts
+  s_66be3861a6f5cd::t_0d06cb0cbf2f2e 1-20
+apps/web/src/notes/relative-time.ts
+  s_66be3861a6f5cd::t_4f6b04decec75e 1-13
+apps/web/src/auth/onboarding.tsx
+  s_66be3861a6f5cd::t_b570958334d3b9 99
+apps/web/src/settings/settings.module.css
+  s_66be3861a6f5cd::t_8edc6eabe58db2 1-81
+apps/web/test/auth.test.tsx
+  s_66be3861a6f5cd::t_828a3c67f25330 30
+  s_66be3861a6f5cd::t_660d82b1e3043d 8-9,139-140
+apps/web/src/notes/empty.tsx
+  s_66be3861a6f5cd::t_85a20d1b62b624 1-27
+apps/web/src/notes/note-grid.tsx
+  s_66be3861a6f5cd::t_85a20d1b62b624 1-95
+apps/web/test/setup.ts
+  s_66be3861a6f5cd::t_660d82b1e3043d 3-22,39-42
+  s_66be3861a6f5cd::t_df5d81e00a3036 32-38
+apps/web/src/auth/auth-context.tsx
+  s_66be3861a6f5cd::t_b570958334d3b9 14-15,19,42,44
+apps/web/src/notes/empty.module.css
+  s_66be3861a6f5cd::t_85a20d1b62b624 1-70
+apps/web/src/notes/note-grid.module.css
+  s_66be3861a6f5cd::t_e2f0dc7f23b1aa 67,72-73,75-79,102,172
+  s_66be3861a6f5cd::t_85a20d1b62b624 1-66,68-71,74,80-101,103-171,173-198
+apps/web/src/notes/shell.module.css
+  s_66be3861a6f5cd::t_85a20d1b62b624 1-100
+apps/web/src/notes/saver.ts
+  s_66be3861a6f5cd::t_80c850f684a99c 170,256,292-293,297,299-300,333-335
+  s_66be3861a6f5cd::t_9507c948ec5c67 57,111,113,118-122
+  s_66be3861a6f5cd::t_b862f7862ad2a6 229-230,233,251,346,351
+  s_66be3861a6f5cd::t_bfa06c657713df 1-56,58-110,112,114-117,123-169,171-228,231-232,234-250,252-255,257-291,294-296,298,301-332,336-345,347-350,352-426
+apps/web/src/notes/note-sheet.tsx
+  s_66be3861a6f5cd::t_8edc6eabe58db2 1-60,62-71,73-102,104-237,239-280,282-304,306-348
+  s_66be3861a6f5cd::t_df5d81e00a3036 72,281,305
+  s_66be3861a6f5cd::t_b862f7862ad2a6 61,103,238
+apps/web/test/server.ts
+  s_66be3861a6f5cd::t_660d82b1e3043d 10-13,37-42,99-103,109,121-124
+apps/web/src/ui/dialog.tsx
+  s_66be3861a6f5cd::t_f7586982c073ce 1,15-17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fc450b0cb00f12309fb5e648b543c213de8eff2f",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
