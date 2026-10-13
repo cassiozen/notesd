@@ -1,0 +1,89 @@
+server/internal/api/api.go
+  s_96d7ef8051c8f1::t_f65d4d6675ce5b 78
+server/internal/search/extract.go
+  s_96d7ef8051c8f1::t_6e38456ca75a8f 239
+  s_96d7ef8051c8f1::t_29c4925487e009 20-34,47,55,58,242
+  s_96d7ef8051c8f1::t_f357243b65281a 172-175,188,197,206,215,237-238,240-241
+  s_96d7ef8051c8f1::t_ab738f6962afeb 243
+apps/android/core/src/test/kotlin/notes/core/Fixtures.kt
+  s_96d7ef8051c8f1::t_3bb633c92766cf 10-14,16,25
+  s_96d7ef8051c8f1::t_cbb93cf731c482 15
+server/internal/search/search.go
+  s_96d7ef8051c8f1::t_40bfa0d8b9fc82 108-109,114,117,119-122,126-149,156,181
+  s_96d7ef8051c8f1::t_4a31228fcbdf27 60-61,72,80,83
+  s_96d7ef8051c8f1::t_e7bb3791abfb99 151-152
+  s_96d7ef8051c8f1::t_e63693ab752f1f 150
+server/internal/search/tags.go
+  s_96d7ef8051c8f1::t_8954d8c19a508b 47
+  s_96d7ef8051c8f1::t_e88acc77d13b6f 18-19,41,43-44
+  s_96d7ef8051c8f1::t_5711e60c026edc 1-3,6-7,10-17,20-40,42,45-46,48-130,203
+  s_96d7ef8051c8f1::t_4a31228fcbdf27 4-5,8-9,131-202
+server/internal/api/respond.go
+  s_96d7ef8051c8f1::t_c1145b4c28067f 13
+  s_96d7ef8051c8f1::t_f65d4d6675ce5b 119-133
+server/internal/api/api_test.go
+  s_96d7ef8051c8f1::t_f2956b1eb1918d 8
+  s_96d7ef8051c8f1::t_e49bb5c30d2ded 483-519
+apps/android/core/src/main/kotlin/notes/core/text/Tags.kt
+  s_96d7ef8051c8f1::t_3bb633c92766cf 1-12,14-64,66-78,85-93,95-100,106-108
+  s_96d7ef8051c8f1::t_cbb93cf731c482 13,65,79-84,94,101-105
+docs/architecture.md
+  s_96d7ef8051c8f1::t_b8950ebe2bc91d 122-124,340-353,360,402,408-409
+server/README.md
+  s_96d7ef8051c8f1::t_6f051099fc1eb2 51
+  s_96d7ef8051c8f1::t_b8950ebe2bc91d 91,97-98,136
+apps/android/core/src/test/kotlin/notes/core/text/TagsTest.kt
+  s_96d7ef8051c8f1::t_3bb633c92766cf 1-31
+server/internal/notes/notes_test.go
+  s_96d7ef8051c8f1::t_78c7c6a3777502 400-402
+  s_96d7ef8051c8f1::t_4122ff4fb7410f 100,276,289,305,459
+  s_96d7ef8051c8f1::t_3923c80c2b5449 5,468-505,508-561
+  s_96d7ef8051c8f1::t_b6ce3b8051a571 506-507
+shared/markdown-fixtures/tags.json
+  s_96d7ef8051c8f1::t_cee672953f0da7 1-12,14-18,20-47,49-51
+  s_96d7ef8051c8f1::t_1358eada7c9ed6 13,19,48
+apps/web/src/notes/tags.ts
+  s_96d7ef8051c8f1::t_f26cf2ff523ae7 1-48,50-58,60-65,67-76,78-83,85-88,91-96,99-113
+  s_96d7ef8051c8f1::t_5d420ecd3f4fa6 49,59,66,77,84,89-90,97-98
+server/internal/notes/notes.go
+  s_96d7ef8051c8f1::t_4a31228fcbdf27 369-372,376-379,390,398,401
+server/migrations/0002_tags.sql
+  s_96d7ef8051c8f1::t_6db549145789bc 1-14
+apps/web/src/notes/plaintext.ts
+  s_96d7ef8051c8f1::t_f26cf2ff523ae7 6-16,25,34,37,139-146,159,168,177,186
+apps/web/src/notes/tags.test.ts
+  s_96d7ef8051c8f1::t_f26cf2ff523ae7 1-7,9-28
+  s_96d7ef8051c8f1::t_5d420ecd3f4fa6 8
+apps/android/core/src/main/kotlin/notes/core/text/PlainText.kt
+  s_96d7ef8051c8f1::t_a18a9d80b9f03d 10-20,29,38,41,142-148,162,171,180,189
+  s_96d7ef8051c8f1::t_cbb93cf731c482 149
+server/internal/search/search_test.go
+  s_96d7ef8051c8f1::t_4122ff4fb7410f 107,115,129,140,148
+  s_96d7ef8051c8f1::t_e88acc77d13b6f 153-202
+server/internal/api/notes_handlers.go
+  s_96d7ef8051c8f1::t_f65d4d6675ce5b 12,19,24-29,160,179-184,191-199
+  s_96d7ef8051c8f1::t_bfbf5fe7b63842 200
+server/cmd/notes-server/main.go
+  s_96d7ef8051c8f1::t_e84d9fceea337d 110-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbc1d1de782b9af81fceb852814da9c3022c7c2b",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
