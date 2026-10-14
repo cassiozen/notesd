@@ -1,0 +1,31 @@
+apps/android/app/src/main/kotlin/notes/app/editor/CursorInView.kt
+  s_96d7ef8051c8f1::t_aa0d03a2f431ee 1-26
+apps/android/app/src/test/kotlin/notes/app/editor/CursorInViewTest.kt
+  s_96d7ef8051c8f1::t_ed1838c718eecd 1-4,6-22,24,26-30,36-56,58-59,61-63,68-76
+  s_96d7ef8051c8f1::t_8c0fc395212a84 5,23,25,57,60
+  s_96d7ef8051c8f1::t_0290f3370b7b76 31-35,64-67
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_96d7ef8051c8f1::t_7e621645897530 85
+  s_96d7ef8051c8f1::t_f6cd356a7dfbc4 276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a7e5034e953d4de341f1e5da465a621cfda5c029",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
