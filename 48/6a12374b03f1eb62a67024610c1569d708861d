@@ -1,0 +1,92 @@
+apps/web/src/notes/saver.ts
+  s_96d7ef8051c8f1::t_a833b898cba3b2 61-62,84,95,165
+  s_96d7ef8051c8f1::t_2268e862ba4d86 161-164,220
+apps/web/src/notes/tags-section.module.css
+  s_96d7ef8051c8f1::t_ff62dd3c3a7b8e 1-127
+apps/web/README.md
+  s_96d7ef8051c8f1::t_1d615737d3144d 69-70,94-108
+  s_96d7ef8051c8f1::t_94b15f9d60544c 109
+apps/web/src/notes/note-list.tsx
+  s_96d7ef8051c8f1::t_9a00b5b35fdb88 8,23-25,42-51,79,136-137
+apps/web/src/editor/editor.module.css
+  s_96d7ef8051c8f1::t_1622506ad5423e 372-417
+apps/web/src/notes/tags.test.ts
+  s_96d7ef8051c8f1::t_26a1164e13b8ab 3,29-50
+apps/web/src/notes/tags-section.tsx
+  s_96d7ef8051c8f1::t_9a00b5b35fdb88 1,79
+  s_96d7ef8051c8f1::t_ff62dd3c3a7b8e 2-78,80-165
+apps/web/src/api/notes.ts
+  s_96d7ef8051c8f1::t_fd7e774ec233a4 2,8-10,15-21,28,31,35
+apps/web/test/tags.test.tsx
+  s_96d7ef8051c8f1::t_12f1c8dab28929 44,47,119,121
+  s_96d7ef8051c8f1::t_d5e2663488fb4b 1-43,45-46,48-118,120,122-123
+apps/web/src/editor/tags.ts
+  s_96d7ef8051c8f1::t_c5c6a471235549 1-85,87,89-92,104-106,108-109,118-120,123-134,136-145,147-234
+  s_96d7ef8051c8f1::t_5cef8e872a46b6 86,93-97,112-113,117,121
+  s_96d7ef8051c8f1::t_7c7d41b1bcc155 88,98-103,107,110,122,135,146
+  s_96d7ef8051c8f1::t_e1544ec78b10a9 111,114-116
+apps/web/src/editor/editor.tsx
+  s_96d7ef8051c8f1::t_7c7d41b1bcc155 19,33-34,54-55,58-60,62-64
+  s_96d7ef8051c8f1::t_25050234038f36 25-26,28,30
+  s_96d7ef8051c8f1::t_5cef8e872a46b6 61
+  s_96d7ef8051c8f1::t_6c09a1628f120b 4,9,18,20-21
+apps/web/src/notes/store.tsx
+  s_96d7ef8051c8f1::t_01248b54bb5dfa 7-16,35-37,43,76,78-80,83-84,90-92,94-95,108,111,115-125,143,146-149,160,165,189-191,370-371
+  s_96d7ef8051c8f1::t_78055c8609d9f4 377-380,390
+  s_96d7ef8051c8f1::t_96e3cca399b0f6 3,33-34,60-62,77,131-136,302-311,323-326,332,353,369
+  s_96d7ef8051c8f1::t_ffd696bcc2667c 144-145,161
+  s_96d7ef8051c8f1::t_17f1d48d7d1a25 126,137
+apps/web/src/notes/search.ts
+  s_96d7ef8051c8f1::t_0d391715dbbb37 34,45
+  s_96d7ef8051c8f1::t_bcd1cc31ce13a6 3,11,16-19,21,23-24,35,37,53,78
+apps/web/src/notes/tag-tree.test.ts
+  s_96d7ef8051c8f1::t_66dff2f0bd09ed 18-19
+  s_96d7ef8051c8f1::t_a05c7221864944 1-17,20-21
+apps/web/src/notes/tag-tree.ts
+  s_96d7ef8051c8f1::t_66dff2f0bd09ed 20-24
+  s_96d7ef8051c8f1::t_a05c7221864944 1-16,18-19,25-27
+  s_96d7ef8051c8f1::t_091247ecf577a3 17
+apps/web/src/ui/icons.tsx
+  s_96d7ef8051c8f1::t_a05c7221864944 57-72
+apps/web/src/notes/note-list.module.css
+  s_96d7ef8051c8f1::t_9a00b5b35fdb88 44-74
+apps/web/package.json
+  s_96d7ef8051c8f1::t_ebf072c97973ce 35
+apps/web/src/notes/note-pane.tsx
+  s_96d7ef8051c8f1::t_6c09a1628f120b 13,147,170-174
+  s_96d7ef8051c8f1::t_7c7d41b1bcc155 169
+  s_96d7ef8051c8f1::t_cd5b79dcabc7a8 175
+apps/web/src/notes/tags.ts
+  s_96d7ef8051c8f1::t_26a1164e13b8ab 114-125
+apps/web/src/api/types.ts
+  s_96d7ef8051c8f1::t_fd7e774ec233a4 22,26-35
+  s_96d7ef8051c8f1::t_4873a9a34278a5 36
+apps/web/src/editor/tags.test.ts
+  s_96d7ef8051c8f1::t_187b9c34cc8e47 6,25-27,30-32
+  s_96d7ef8051c8f1::t_1e195545dfa610 1-5,7-24,28-29,33-76
+  s_96d7ef8051c8f1::t_ca46bddbf7451f 78-79,81
+  s_96d7ef8051c8f1::t_0d778c03d987a8 77,80,82-95
+pnpm-lock.yaml
+  s_96d7ef8051c8f1::t_a3b27a7ff99260 67-69,552-558,1305,1557-1562
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "486a12374b03f1eb62a67024610c1569d708861d",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
