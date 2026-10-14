@@ -1,0 +1,67 @@
+apps/android/app/src/main/res/drawable/ic_share_email.xml
+  s_96d7ef8051c8f1::t_47de0a3dd98d31 1-29
+apps/android/core/src/test/kotlin/notes/core/sync/TestClient.kt
+  s_96d7ef8051c8f1::t_edbd7ab42f44e8 96-98
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_96d7ef8051c8f1::t_47de0a3dd98d31 8,87,125,134-136
+  s_96d7ef8051c8f1::t_23937234f74add 137-138
+apps/android/app/src/main/kotlin/notes/app/notes/EmailDialog.kt
+  s_96d7ef8051c8f1::t_d7408fcf4ad856 1-55,65-107
+  s_96d7ef8051c8f1::t_8693f5e5285b1d 56-64
+apps/android/app/src/main/kotlin/notes/app/EmailSetup.kt
+  s_96d7ef8051c8f1::t_47de0a3dd98d31 1-40
+apps/android/app/src/test/kotlin/notes/app/notes/EmailTest.kt
+  s_96d7ef8051c8f1::t_97cbe74ac52af7 1-87,89-149
+  s_96d7ef8051c8f1::t_cb2224561aca89 88
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_96d7ef8051c8f1::t_e51cb471499d56 95,177-186,266-269
+  s_96d7ef8051c8f1::t_c0b5229652f449 24,26,258-259
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_96d7ef8051c8f1::t_5c64013aaacfe9 105-106
+  s_96d7ef8051c8f1::t_47de0a3dd98d31 27,46-49
+apps/android/core/src/test/kotlin/notes/core/sync/TestServer.kt
+  s_96d7ef8051c8f1::t_edbd7ab42f44e8 17,34-36
+apps/android/core/src/test/kotlin/notes/core/sync/NoteMailerTest.kt
+  s_96d7ef8051c8f1::t_edbd7ab42f44e8 1-105
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_96d7ef8051c8f1::t_8693f5e5285b1d 104,397-401
+  s_96d7ef8051c8f1::t_e51cb471499d56 3,7-10,76-77
+  s_96d7ef8051c8f1::t_d7408fcf4ad856 123-129,145,152-156,291-292,330-334,369-370,375-396,402-409
+apps/android/README.md
+  s_96d7ef8051c8f1::t_527da0b44a19fb 61-67
+apps/android/app/src/main/kotlin/notes/app/MainActivity.kt
+  s_96d7ef8051c8f1::t_47de0a3dd98d31 18-20,30,41-44,49-50
+apps/android/core/src/main/kotlin/notes/core/api/ApiClient.kt
+  s_96d7ef8051c8f1::t_769a05bd151dd0 12,14,90-121,210,212
+apps/android/core/src/main/kotlin/notes/core/api/Api.kt
+  s_96d7ef8051c8f1::t_769a05bd151dd0 65-68
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_96d7ef8051c8f1::t_a62ce226459d9b 10
+  s_96d7ef8051c8f1::t_3c8b181331a270 247-250
+  s_96d7ef8051c8f1::t_8693f5e5285b1d 33,39,49,53,56,68,74-75,78,163-167,230-246,251-342
+  s_96d7ef8051c8f1::t_0298293226bc7d 343-344
+apps/android/core/src/main/kotlin/notes/core/sync/NoteMailer.kt
+  s_96d7ef8051c8f1::t_edbd7ab42f44e8 40,42,44,46,48
+  s_96d7ef8051c8f1::t_769a05bd151dd0 1-39,41,43,45,47,49-70
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8dc8e7897886ea27c63c71ce4671cf063925c12",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
