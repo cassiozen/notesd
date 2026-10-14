@@ -1,0 +1,91 @@
+apps/web/src/notes/tags-panel.tsx
+  s_96d7ef8051c8f1::t_b9b64a77ba8850 12-14,37-39,112-113,115-163,165-171
+  s_96d7ef8051c8f1::t_d41bfe7bfc26b2 3,6
+apps/android/app/src/test/kotlin/notes/app/notes/TagsFlowTest.kt
+  s_96d7ef8051c8f1::t_6451409d6e4b80 115
+  s_96d7ef8051c8f1::t_2b97462e31db5f 43,51-53,56,67-70,74-77,83,95-96,104-110,112-114,116-126
+apps/web/test/helpers.tsx
+  s_96d7ef8051c8f1::t_a1653f3b8070a7 12-17
+apps/android/app/src/test/kotlin/notes/app/AccessibilityTest.kt
+  s_96d7ef8051c8f1::t_6451409d6e4b80 114-115,117,147
+apps/web/src/notes/note-list.module.css
+  s_96d7ef8051c8f1::t_a1c35b0a55ef75 75,79-94,96-101,103-105,108-111,344-346
+apps/web/src/notes/shell.tsx
+  s_96d7ef8051c8f1::t_80eced2b312a35 5,11-12,28-37,39-40,42-45,51-52,54-56,58-66,134-155,161-162,170-171,205
+apps/android/README.md
+  s_96d7ef8051c8f1::t_5406869d765b1a 58
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_96d7ef8051c8f1::t_f3692d302095e0 54-57,77-79,83-84,92-93,95,97-99,101,118,123-145,171-179,181-182
+  s_96d7ef8051c8f1::t_11a5dc2ee39d9b 183-222,226-230,232-236,240-263,265-287,289-291,293
+  s_96d7ef8051c8f1::t_7d1c112746c9bf 25,89
+  s_96d7ef8051c8f1::t_4ee65239b8ef0f 24,94,96,223-225,237-239
+  s_96d7ef8051c8f1::t_f48d7cdd1fbb07 11-14
+  s_96d7ef8051c8f1::t_511ab75a91173f 231
+  s_96d7ef8051c8f1::t_9c546441b111e3 27
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_96d7ef8051c8f1::t_6451409d6e4b80 142-143,146,227,242,247-254
+  s_96d7ef8051c8f1::t_65831c389cdfb0 255
+apps/web/src/ui/media.ts
+  s_96d7ef8051c8f1::t_49a419294b01d8 6-8
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_96d7ef8051c8f1::t_dd5fa681baa796 110
+  s_96d7ef8051c8f1::t_aae7fc10b81671 60,79-85
+apps/web/README.md
+  s_96d7ef8051c8f1::t_5406869d765b1a 69,104-108
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_96d7ef8051c8f1::t_dd5fa681baa796 529-548
+apps/web/src/ui/icons.tsx
+  s_96d7ef8051c8f1::t_49a419294b01d8 76-84
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_96d7ef8051c8f1::t_56ae9c803f87cb 12-13,47,98,100-101,104
+  s_96d7ef8051c8f1::t_6451409d6e4b80 48,99,108-117,119-120,122-123
+  s_96d7ef8051c8f1::t_4ee65239b8ef0f 118,121
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_96d7ef8051c8f1::t_4ee65239b8ef0f 104
+  s_96d7ef8051c8f1::t_24fce4a6407603 95,228,381-384,386,390-393,418,424,438
+  s_96d7ef8051c8f1::t_dd5fa681baa796 142-143,327,353,360-362,371,376
+apps/web/src/notes/store.tsx
+  s_96d7ef8051c8f1::t_5544cccc435261 12-33,98,100,140
+apps/web/test/setup.ts
+  s_96d7ef8051c8f1::t_a1653f3b8070a7 4,12-14,16,18,21,69-70
+apps/android/app/src/main/kotlin/notes/app/notes/TagTree.kt
+  s_96d7ef8051c8f1::t_c7e9e9b4fd3c97 72,109-165,172-226
+  s_96d7ef8051c8f1::t_c2f0ac417d6c73 52-55,57,59-63
+  s_96d7ef8051c8f1::t_4ee65239b8ef0f 6,8,10,13-16,19,22,24,29,32,36,38-39,67,69,166-171
+apps/web/src/notes/note-list.tsx
+  s_96d7ef8051c8f1::t_a1c35b0a55ef75 3,16-21,25-26,43-50,64-68
+  s_96d7ef8051c8f1::t_dcfe99eed0e4e1 52-53
+apps/web/test/tags.test.tsx
+  s_96d7ef8051c8f1::t_733ac26683f911 1,144-147,169-170
+  s_96d7ef8051c8f1::t_e2cd7a11021443 2-3,9,13,31-32,42,61,126-143,148-168,171-191
+apps/android/app/src/test/kotlin/notes/app/ListFilterPrefTest.kt
+  s_96d7ef8051c8f1::t_6451409d6e4b80 1-20
+apps/web/src/notes/tags-panel.module.css
+  s_96d7ef8051c8f1::t_76fc7738c64c8f 16-17,23-52,56-75,77-79,82-86,176-195,197-198,203
+  s_96d7ef8051c8f1::t_e5546098b61b11 1-15
+apps/android/app/src/test/kotlin/notes/app/notes/TagsSidebarTest.kt
+  s_96d7ef8051c8f1::t_6451409d6e4b80 1-68
+apps/web/src/router.ts
+  s_96d7ef8051c8f1::t_49a419294b01d8 3,25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9d4937ff64ba9a8025ce666f5664ea27e8a539ce",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
