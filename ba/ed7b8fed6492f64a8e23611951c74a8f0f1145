@@ -1,0 +1,86 @@
+apps/android/app/src/main/res/values/strings.xml
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 3
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_96d7ef8051c8f1::t_2209d3eb8fa634 102
+apps/android/core/src/test/kotlin/notes/core/sync/TestServer.kt
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 13,18,42
+apps/web/src/auth/login.tsx
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 92
+apps/web/src/ui/brand.tsx
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 7
+apps/android/app/src/main/kotlin/notes/app/account/OnboardingScreen.kt
+  s_96d7ef8051c8f1::t_2209d3eb8fa634 190
+apps/android/app/src/main/kotlin/notes/app/ui/Type.kt
+  s_96d7ef8051c8f1::t_9fa536ed220ad3 60-68
+README.md
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 1
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 25,31-32
+server/internal/database/database.go
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 224
+apps/web/vite.config.ts
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 7
+apps/android/core/src/test/kotlin/notes/core/sync/SyncTest.kt
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 14
+apps/web/README.md
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 1
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 3,16,22,36
+apps/android/README.md
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 3,26,28,36
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 1
+apps/web/src/auth/onboarding.tsx
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 161
+  s_96d7ef8051c8f1::t_2209d3eb8fa634 119
+server/cmd/notesd/main.go
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 1-256
+apps/web/src/settings/settings.tsx
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 188
+scripts/dev-server.sh
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 4-5,9,13
+apps/web/src/ui/brand.module.css
+  s_96d7ef8051c8f1::t_9fa536ed220ad3 16,18-19,30
+apps/android/core/src/main/kotlin/notes/core/api/ApiClient.kt
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 22,185
+apps/android/core/src/test/kotlin/notes/core/api/ApiClientTest.kt
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 93
+docs/architecture.md
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 427,440,451,488,544
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 1,448,461,466-468,471
+server/internal/web/placeholder.html
+  s_96d7ef8051c8f1::t_2209d3eb8fa634 6,14
+mise.toml
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 37,99,102,111
+apps/web/test/global-setup.ts
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 17-18
+apps/web/test/server.ts
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 24,100
+server/README.md
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 1,17,57-64,132
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 33,43
+apps/web/index.html
+  s_96d7ef8051c8f1::t_929ed63c2dbb95 6
+apps/android/core/build.gradle.kts
+  s_96d7ef8051c8f1::t_fad1a65d7bd9f2 27,29-30,32,42
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_96d7ef8051c8f1::t_2209d3eb8fa634 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "baed7b8fed6492f64a8e23611951c74a8f0f1145",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
