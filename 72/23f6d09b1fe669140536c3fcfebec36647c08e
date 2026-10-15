@@ -1,0 +1,35 @@
+server/internal/api/respond.go
+  s_54587dba16d3f3::t_34f10aa11b142c 152-153,157,159-161,163,166-167
+server/internal/api/notes_handlers.go
+  s_54587dba16d3f3::t_34f10aa11b142c 12,163,195,202-207
+server/internal/api/lock_test.go
+  s_54587dba16d3f3::t_059bd67df6bd52 121,125-127
+  s_54587dba16d3f3::t_b0b30b39285aaf 122-124,128-139
+server/internal/search/tags.go
+  s_54587dba16d3f3::t_34f10aa11b142c 10,134-135,139,147-148
+server/internal/notes/notes_test.go
+  s_54587dba16d3f3::t_5ca83c97d133e0 601-606,622-624
+server/README.md
+  s_54587dba16d3f3::t_5ca83c97d133e0 75,82,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7223f6d09b1fe669140536c3fcfebec36647c08e",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_54587dba16d3f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca17483e-8e61-407d-a3d1-adf788cbfdec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
