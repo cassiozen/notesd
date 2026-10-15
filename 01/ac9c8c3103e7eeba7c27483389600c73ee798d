@@ -1,0 +1,21 @@
+apps/web/src/notes/shell.tsx
+  s_54587dba16d3f3::t_8a0b91e3674fd8 104-106
+apps/web/src/router.ts
+  s_54587dba16d3f3::t_8a0b91e3674fd8 18-19,26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01ac9c8c3103e7eeba7c27483389600c73ee798d",
+  "prompts": {},
+  "sessions": {
+    "s_54587dba16d3f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca17483e-8e61-407d-a3d1-adf788cbfdec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
