@@ -1,0 +1,19 @@
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_96d7ef8051c8f1::t_04a487329cfaa1 12
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "af700cbe377ba9a7da9d70b47625870c4e8f9b24",
+  "prompts": {},
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
