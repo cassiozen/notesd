@@ -1,0 +1,49 @@
+apps/web/src/notes/tags-panel.tsx
+  s_54587dba16d3f3::t_87daeee5a96a42 3,10-11,39-40,53,115,119,157-174,178-187
+  s_54587dba16d3f3::t_cd144cfa9a37f9 41,176-177
+apps/web/test/tags.test.tsx
+  s_54587dba16d3f3::t_18700e26b99c61 31,135-136,138,140,160,162,175,188
+  s_54587dba16d3f3::t_afa4736b69ef6c 32-37
+apps/web/src/notes/store.tsx
+  s_54587dba16d3f3::t_a35d739167d0ba 10-11,21,38,61-62,106,163-166,433,454
+apps/web/src/notes/note-list.tsx
+  s_54587dba16d3f3::t_a35d739167d0ba 27,43,63
+  s_54587dba16d3f3::t_87daeee5a96a42 16
+apps/web/src/notes/shell.tsx
+  s_54587dba16d3f3::t_87daeee5a96a42 45,154
+apps/web/src/notes/tags-panel.module.css
+  s_54587dba16d3f3::t_87daeee5a96a42 26,30-36
+  s_54587dba16d3f3::t_cd144cfa9a37f9 195-198
+  s_54587dba16d3f3::t_6e172c5cb85dcd 199
+apps/web/src/api/types.ts
+  s_54587dba16d3f3::t_a35d739167d0ba 36-37
+apps/web/test/locks.test.tsx
+  s_54587dba16d3f3::t_afa4736b69ef6c 61-62
+  s_54587dba16d3f3::t_be1b26d8b47c89 88-104
+  s_54587dba16d3f3::t_61a63a715ba765 105-106
+apps/web/src/notes/note-list.module.css
+  s_54587dba16d3f3::t_cd144cfa9a37f9 90
+apps/web/src/api/notes.ts
+  s_54587dba16d3f3::t_a35d739167d0ba 9,46
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aab12580eafa5c80f2e12f7a1268f81a2de26af8",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_54587dba16d3f3": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca17483e-8e61-407d-a3d1-adf788cbfdec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
