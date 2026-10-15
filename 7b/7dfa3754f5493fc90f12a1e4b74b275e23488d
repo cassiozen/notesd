@@ -1,0 +1,35 @@
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_96d7ef8051c8f1::t_b88e8794d1f685 21-22,142,152,154,170-171
+  s_96d7ef8051c8f1::t_0dbe6e07c21419 37
+  s_96d7ef8051c8f1::t_19e08783c1aff0 3
+  s_96d7ef8051c8f1::t_1cece663d8c462 159
+  s_96d7ef8051c8f1::t_9d2021f14b66a5 70,73-75
+  s_96d7ef8051c8f1::t_350a30608fc958 117
+  s_96d7ef8051c8f1::t_1d6a633a04f8ed 65-69,71-72,76-94
+  s_96d7ef8051c8f1::t_92abedea87ec2d 23,58,95,178-179,187,189,200,203
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_96d7ef8051c8f1::t_f2e8243c841bab 125-128
+apps/android/app/src/main/kotlin/notes/app/NotesApp.kt
+  s_96d7ef8051c8f1::t_7f62c0c6eb8f42 16-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b7dfa3754f5493fc90f12a1e4b74b275e23488d",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
