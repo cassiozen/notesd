@@ -1,0 +1,20 @@
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_96d7ef8051c8f1::t_4e419480c3317f 182
+  s_96d7ef8051c8f1::t_be61ac39435956 67-68,181,196,214,221
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae7e087f6ffdf08212b9e579190c0f81c24a4ffe",
+  "prompts": {},
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
