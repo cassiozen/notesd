@@ -1,0 +1,26 @@
+README.md
+  s_96d7ef8051c8f1::t_b41744fbf804d0 71
+  h_506d0d833c777f 67-70,72
+  s_96d7ef8051c8f1::t_674b8b85a0100c 64-66,73-85
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa7d8349903c66eb3d48be3ed7461f1bcd3441a7",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
