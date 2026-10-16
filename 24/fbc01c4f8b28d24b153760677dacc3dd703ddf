@@ -1,0 +1,14 @@
+README.md
+  h_506d0d833c777f 1,3,4,6-7,8,10,14,17,19,20,21,23,24-25,37-38,39,40-43,44,45-49,50,51-52,60,62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24fbc01c4f8b28d24b153760677dacc3dd703ddf",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
