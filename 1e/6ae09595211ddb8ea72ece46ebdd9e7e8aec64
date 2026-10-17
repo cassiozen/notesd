@@ -1,0 +1,32 @@
+apps/android/app/src/test/kotlin/notes/app/account/OnboardingFlowTest.kt
+  s_fa9b76049bcea9::t_d67ef9d0faa583 77,95,120
+apps/android/app/src/test/kotlin/notes/app/MainActivityTest.kt
+  s_fa9b76049bcea9::t_d67ef9d0faa583 56,60
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_fa9b76049bcea9::t_dbf9fd288f76a7 630-636,642-645
+apps/web/src/notes/empty.module.css
+  s_fa9b76049bcea9::t_690f30030c9717 22,24,27,29-31
+apps/android/app/src/main/kotlin/notes/app/notes/NothingOpen.kt
+  s_fa9b76049bcea9::t_7422b84c71492c 15-16
+  s_fa9b76049bcea9::t_dbf9fd288f76a7 37-43
+apps/web/src/notes/empty.tsx
+  s_fa9b76049bcea9::t_690f30030c9717 15-18
+apps/android/app/src/test/kotlin/notes/app/AccessibilityTest.kt
+  s_fa9b76049bcea9::t_d67ef9d0faa583 128
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1e6ae09595211ddb8ea72ece46ebdd9e7e8aec64",
+  "prompts": {},
+  "sessions": {
+    "s_fa9b76049bcea9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4b07b1f3-ce2c-4dad-be7f-4f86dd9ea023",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
