@@ -31,6 +31,11 @@
   margin-right: auto;
 }
 
+/* Under the top bar, with no header of its own: the first row starts where the list's title does. */
+.barred {
+  padding-top: 8px;
+}
+
 /* The space switcher: its own row under the header, as wide as the rows below it. */
 .space {
   display: flex;
@@ -62,18 +67,6 @@
 
 .tool:hover {
   background: var(--glass-hi);
-}
-
-.docked .tool {
-  width: 28px;
-  height: 28px;
-  border-color: transparent;
-  background: none;
-  color: var(--ink-2);
-}
-
-.docked .tool:hover {
-  background: var(--hover);
 }
 
 .scroll {

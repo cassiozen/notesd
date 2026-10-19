@@ -132,12 +132,15 @@ describe('typing a tag', () => {
 describe('tags sidebar', () => {
   it('hides and comes back, and stays as left', async () => {
     const { user } = await withTags()
-    await user.click(within(panel()).getByRole('button', { name: 'Hide sidebar' }))
+    // The toggle is in the top bar, the sidebar's open or not.
+    const bar = screen.getByRole('banner')
+    await user.click(within(bar).getByRole('button', { name: 'Hide sidebar' }))
     expect(screen.queryByRole('navigation', { name: 'Sidebar' })).toBeNull()
+    expect(localStorage.getItem('notes.sidebar.hidden')).toBe('true')
 
-    await user.click(within(list()).getByRole('button', { name: 'Show sidebar' }))
+    await user.click(within(bar).getByRole('button', { name: 'Show sidebar' }))
     expect(panel()).toBeTruthy()
-    expect(within(list()).queryByRole('button', { name: 'Show sidebar' })).toBeNull()
+    expect(within(bar).getByRole('button', { name: 'Hide sidebar' }).getAttribute('aria-pressed')).toBe('true')
     expect(localStorage.getItem('notes.sidebar.hidden')).toBe('false')
   })
 
@@ -185,12 +188,23 @@ describe('tags screen beside a note', () => {
     mediumLayout()
     const { user } = await withTags()
     await openNote(user, 'Loose')
-    await user.click(within(list()).getByRole('button', { name: 'Sidebar' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Show sidebar' }))
 
     expect(screen.queryByRole('complementary', { name: 'Notes' })).toBeNull()
     expect(noteTitle()).toBe('Loose')
     await user.click(await waitFor(() => tagRow('work')))
     expect(await within(list()).findByRole('heading', { name: /#work/ })).toBeTruthy()
     expect(noteTitle()).toBe('Loose')
+  })
+
+  it('gives way to the list when searching from the top bar', async () => {
+    mediumLayout()
+    const { user } = await withTags()
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Show sidebar' }))
+    await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Notes' })).toBeNull())
+
+    await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'standup')
+    expect(await screen.findByRole('list', { name: 'Search results' })).toBeTruthy()
+    expect(screen.queryByRole('navigation', { name: 'Sidebar' })).toBeNull()
   })
 })
