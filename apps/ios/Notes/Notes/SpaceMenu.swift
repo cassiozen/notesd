@@ -1,22 +1,29 @@
 import NotesCore
 import SwiftUI
 
-/// The switcher between spaces (§7.7): the current space's name, opening a
-/// menu of every space. Only shown once there is more than one.
+/// The switcher between spaces (§7.7): the current space's icon and name,
+/// opening a menu of every space. Only shown once there is more than one.
 struct SpaceMenu: View {
     @Environment(AppGraph.self) private var graph
     var font: Font = .notesHeading
 
     var body: some View {
         let name = graph.spaceName(graph.space)
+        let icon = graph.spaces.first { $0.id == graph.space }?.icon ?? ""
         Menu {
             Picker("Space", selection: Binding(get: { graph.space }, set: { graph.switchSpace($0) })) {
                 ForEach(graph.spaces) { space in
-                    Text(space.name).tag(space.id)
+                    Label {
+                        Text(space.name)
+                    } icon: {
+                        Image(SpaceIcon.named(space.icon).asset)
+                    }
+                    .tag(space.id)
                 }
             }
         } label: {
             HStack(spacing: 6) {
+                SpaceIconImage(icon: icon, size: 26).padding(.trailing, 2)
                 Text(name).font(font).foregroundStyle(Color.ink).lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 13, weight: .semibold))

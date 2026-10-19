@@ -11,6 +11,7 @@ import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
 import { useEmailSettings } from './email-settings'
 import type { NoteSaver } from './saver'
+import { SpaceIcon } from './space-icon'
 import { useSpaces } from './spaces'
 import styles from './share.module.css'
 
@@ -228,7 +229,8 @@ function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () 
         <div className={styles.choices} role="group" aria-labelledby={titleId}>
           {spaces.map((sp) => (
             <Button key={sp.id} size="md" onClick={() => onMove(sp.id)}>
-              {sp.name}
+              <SpaceIcon space={sp} />
+              <span className={styles.choiceName}>{sp.name}</span>
             </Button>
           ))}
         </div>

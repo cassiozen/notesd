@@ -56,6 +56,8 @@ export type SearchScope = { space: string } | { exceptSpace: string }
 export type Space = {
   id: string
   name: string
+  /** A key into the apps' icons (notes/space-icons.ts); '' for the default one. */
+  icon: string
   createdAt: number
   noteCount: number
 }

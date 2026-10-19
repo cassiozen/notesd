@@ -12,19 +12,20 @@ func (s *Server) listSpaces(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"spaces": list})
 }
 
-// PUT /api/v1/spaces/{id}  {"name": "..."}
+// PUT /api/v1/spaces/{id}  {"name": "...", "icon": "..."}
 //
 // Creates or renames the space, answering with it as stored: a name another
-// space has gets a number appended.
+// space has gets a number appended. Without "icon" the icon stays as it is.
 func (s *Server) putSpace(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Name string `json:"name"`
+		Name string  `json:"name"`
+		Icon *string `json:"icon"`
 	}
 	if err := decode(w, r, &req); err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	sp, err := s.spaces.Put(r.Context(), r.PathValue("id"), req.Name)
+	sp, err := s.spaces.Put(r.Context(), r.PathValue("id"), req.Name, req.Icon)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

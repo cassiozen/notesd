@@ -18,12 +18,15 @@ public struct Space: Hashable, Sendable, Identifiable {
     public var id: String
     public var name: String
     public var noteCount: Int
+    /// A key into the app's icons; "" for the default one.
+    public var icon: String = ""
 }
 
 /// A space change waiting to go to the server.
 struct SpaceChange: Sendable {
     var id: String
     var name: String
+    var icon: String
     var delete: Bool
 }
 
@@ -45,30 +48,35 @@ public final class SpaceStore: Sendable {
             try sql.query(
                 """
                 SELECT s.id, s.name,
-                    (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL)
+                    (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon
                 FROM spaces s WHERE s.pending_delete = 0
                 ORDER BY s.id != ?, lower(s.name), s.id
                 """,
                 Spaces.defaultId
-            ) { Space(id: $0.text(0), name: $0.text(1), noteCount: Int($0.int64(2))) }
+            ) { Space(id: $0.text(0), name: $0.text(1), noteCount: Int($0.int64(2)), icon: $0.text(3)) }
         }
     }
 
     /// Creates a space here, to be sent on the next sync. Returns its id.
     @discardableResult
-    public func create(_ name: String) async throws -> String {
+    public func create(_ name: String, icon: String = "") async throws -> String {
         guard let stored = Spaces.normalize(name) else { throw DatabaseError(code: 0, message: "a space needs a name") }
         let id = Uuid7.generate()
         let now = clock()
         try await db.write { sql in
-            try sql.exec("INSERT INTO spaces (id, name, created_at, dirty) VALUES (?, ?, ?, 1)", id, stored, now)
+            try sql.exec(
+                "INSERT INTO spaces (id, name, icon, created_at, dirty) VALUES (?, ?, ?, ?, 1)", id, stored, icon, now)
         }
         return id
     }
 
-    public func rename(_ id: String, to name: String) async throws {
+    /// Renames the space, and changes its icon unless `icon` is nil.
+    public func update(_ id: String, name: String, icon: String? = nil) async throws {
         guard let stored = Spaces.normalize(name) else { throw DatabaseError(code: 0, message: "a space needs a name") }
-        try await db.write { sql in try sql.exec("UPDATE spaces SET name = ?, dirty = 1 WHERE id = ?", stored, id) }
+        try await db.write { sql in
+            try sql.exec(
+                "UPDATE spaces SET name = ?, icon = coalesce(?, icon), dirty = 1 WHERE id = ?", stored, icon, id)
+        }
     }
 
     /// Deletes an empty space; false (and nothing changes) for the default one or one with notes here.
@@ -89,18 +97,19 @@ public final class SpaceStore: Sendable {
     func pending() async throws -> [SpaceChange] {
         try await db.read { sql in
             try sql.query(
-                "SELECT id, name, pending_delete FROM spaces WHERE dirty = 1 OR pending_delete = 1 ORDER BY rowid"
+                "SELECT id, name, icon, pending_delete FROM spaces WHERE dirty = 1 OR pending_delete = 1 ORDER BY rowid"
             ) {
-                SpaceChange(id: $0.text(0), name: $0.text(1), delete: $0.int64(2) == 1)
+                SpaceChange(id: $0.text(0), name: $0.text(1), icon: $0.text(2), delete: $0.int64(3) == 1)
             }
         }
     }
 
-    /// The server stored `change` as `stored` (maybe renamed to settle a clash). Renamed again since: still waiting.
+    /// The server stored `change` as `stored` (maybe renamed to settle a clash). Changed again since: still waiting.
     func sent(_ change: SpaceChange, stored: RemoteSpace) async throws {
         try await db.write { sql in
             try sql.exec(
-                "UPDATE spaces SET name = ?, dirty = 0 WHERE id = ? AND name = ?", stored.name, change.id, change.name)
+                "UPDATE spaces SET name = ?, icon = ?, dirty = 0 WHERE id = ? AND name = ? AND icon = ?",
+                stored.name, stored.icon, change.id, change.name, change.icon)
         }
     }
 
@@ -123,11 +132,12 @@ public final class SpaceStore: Sendable {
             for s in remote {
                 try sql.exec(
                     """
-                    INSERT INTO spaces (id, name, created_at) VALUES (?, ?, ?)
-                    ON CONFLICT (id) DO UPDATE SET name = excluded.name, created_at = excluded.created_at
+                    INSERT INTO spaces (id, name, icon, created_at) VALUES (?, ?, ?, ?)
+                    ON CONFLICT (id) DO UPDATE SET name = excluded.name, icon = excluded.icon,
+                        created_at = excluded.created_at
                     WHERE dirty = 0 AND pending_delete = 0
                     """,
-                    s.id, s.name, s.createdAt)
+                    s.id, s.name, s.icon, s.createdAt)
             }
         }
     }

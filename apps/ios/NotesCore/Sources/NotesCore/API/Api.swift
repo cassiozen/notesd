@@ -192,14 +192,26 @@ public struct MutationResult: Decodable, Sendable, Hashable {
 public struct RemoteSpace: Codable, Sendable, Hashable {
     public var id: String
     public var name: String
+    /// A key into the app's icons; "" for the default one.
+    public var icon: String
     public var createdAt: Int64
     public var noteCount: Int
 
-    public init(id: String, name: String, createdAt: Int64 = 0, noteCount: Int = 0) {
+    public init(id: String, name: String, icon: String = "", createdAt: Int64 = 0, noteCount: Int = 0) {
         self.id = id
         self.name = name
+        self.icon = icon
         self.createdAt = createdAt
         self.noteCount = noteCount
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        name = try c.decode(String.self, forKey: .name)
+        icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? ""
+        createdAt = try c.decode(Int64.self, forKey: .createdAt)
+        noteCount = try c.decode(Int.self, forKey: .noteCount)
     }
 }
 

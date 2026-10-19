@@ -354,10 +354,10 @@ func TestExportBySpace(t *testing.T) {
 		t.Fatalf("one space stays flat: %v %v", folders, err)
 	}
 	sp := spaces.NewStore(db)
-	if _, err := sp.Put(ctx, "work", "Work: Q3"); err != nil {
+	if _, err := sp.Put(ctx, "work", "Work: Q3", nil); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sp.Put(ctx, "img", "Images"); err != nil {
+	if _, err := sp.Put(ctx, "img", "Images", nil); err != nil {
 		t.Fatal(err)
 	}
 	get, put := storedImages(t, db)

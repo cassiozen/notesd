@@ -1,0 +1,82 @@
+.icon {
+  flex: none;
+  display: block;
+  user-select: none;
+}
+
+.picker {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.legend {
+  padding: 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
+/* Scrolls inside the dialog: 50 icons are more than a phone shows at once. */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  gap: 4px;
+  max-height: 196px;
+  overflow-y: auto;
+  padding: 4px;
+  border-radius: 14px;
+  border: 1px solid var(--hair);
+  background: var(--field);
+}
+
+.picker[aria-invalid='true'] .grid {
+  border-color: var(--danger);
+}
+
+.choice {
+  position: relative;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  cursor: pointer;
+}
+
+.choice:hover {
+  background: var(--hover);
+}
+
+.choice:has(.radio:checked) {
+  background: var(--chip);
+  box-shadow: inset 0 0 0 2px var(--tint);
+}
+
+.choice:has(.radio:focus-visible) {
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.choice:has(.radio:checked:focus-visible) {
+  box-shadow:
+    inset 0 0 0 2px var(--tint),
+    0 0 0 3px var(--focus);
+}
+
+.radio {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+  pointer-events: none;
+}
+
+.error {
+  margin: 0;
+  font-size: 13px;
+  color: var(--danger);
+}

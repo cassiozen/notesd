@@ -131,7 +131,7 @@ CREATE TABLE images (id TEXT PRIMARY KEY, content_type TEXT, size INTEGER, data 
 CREATE TABLE note_images (note_seq INTEGER REFERENCES notes(seq), image_id TEXT, PRIMARY KEY (note_seq, image_id));
 
 -- Spaces (§7.7). name_key is the name lowercased, so names are unique ignoring case.
-CREATE TABLE spaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+CREATE TABLE spaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, icon TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
 
 -- Server-wide settings from the apps: the Resend key and sender for emailing notes.
 CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
@@ -215,8 +215,9 @@ CREATE TABLE lock_keys (...);          -- the server's keyring, replaced on ever
 CREATE TABLE spaces (                  -- §7.7; seeded with the default space
     id             TEXT PRIMARY KEY,
     name           TEXT NOT NULL,
+    icon           TEXT NOT NULL DEFAULT '',
     created_at     INTEGER NOT NULL,
-    dirty          INTEGER NOT NULL DEFAULT 0,  -- created or renamed here, not yet sent
+    dirty          INTEGER NOT NULL DEFAULT 0,  -- created or changed here, not yet sent
     pending_delete INTEGER NOT NULL DEFAULT 0   -- deleted here, not yet sent
 );
 ```
@@ -407,6 +408,7 @@ Spaces keep separate contexts, such as Work and Personal, apart: each note is in
 
 - **Default.** Every install has the space `default`, created as "Notes" by the migration. It can be renamed but never deleted. A fixed id lets every device file notes before it first downloads the list. With only this space the apps look as they would without spaces: no switcher and no space actions.
 - **Ids and names.** Clients choose space ids (UUIDv7), so a space can be created offline. Names are trimmed, inner whitespace collapsed, 1–64 characters, unique ignoring case: a name another space has gets " 2", " 3"… appended by the server, which settles two devices creating "Work" offline. Renames are last-writer-wins. Lists show the default space first, then the others by name.
+- **Icons.** Each space has an icon, chosen with its name when it's created and changed with it later. It is a key (`[a-z0-9-]`, up to 64) into a set of full-colour pictures the apps ship (`scripts/space_icons.py` generates each app's copy from the web's SVGs); the server stores it without knowing the set. `''`, the default space's until someone picks one, and any key an app doesn't have show the default icon, so an app can drop an icon but never rename a key. A `PUT` without `icon` keeps the space's icon; the native apps always send it, so a space's name and icon are last-writer-wins together.
 - **The list syncs whole.** Like the keyring, clients download `GET /spaces` on every sync cycle. The native apps keep a local copy: a create or rename marks its row dirty and a delete marks it pending; each cycle sends those (`PUT`/`DELETE /spaces/:id`, both idempotent, so no operation ids) before downloading the list, takes the name the server stored, and replaces every row that isn't waiting to be sent.
 - **Deleting.** Only an empty space can be deleted, never the default (`409 space_not_empty` with its `count`, `409 space_default`). A device whose delete is refused because notes arrived from elsewhere drops the pending delete, and the space comes back with the next list.
 - **Notes.** A note's space is a field like its title (§2.1), plaintext even when the note is locked. A note that names a space that no longer exists (filed offline into a space deleted elsewhere) is stored in the default, and the write's answer says so. Moving a note is an ordinary update. Conflicted and recovered copies keep the local version's space.
@@ -475,7 +477,7 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `GET` | `/api/v1/search` | Search notes; same filters as listing, or `?exceptSpace=`; with `?space=` the first page counts `otherSpaces` |
 | `GET` | `/api/v1/filters` | What the list can filter by: tags in live notes with counts, and the locked notes' count; `?space=` for one space |
 | `GET` | `/api/v1/spaces` | Every space with its note count, the default first (§7.7) |
-| `PUT` `DELETE` | `/api/v1/spaces/:id` | Create or rename a space (answers with the stored name), or delete an empty one |
+| `PUT` `DELETE` | `/api/v1/spaces/:id` | Create, rename or change the icon of a space (answers with the stored name), or delete an empty one |
 | `PUT` | `/api/v1/images/:sha256` | Upload an image (raw body); idempotent, the hash must match (§7.6) |
 | `GET` | `/api/v1/images/:sha256` | Download an image, cached as immutable |
 | `GET` | `/api/v1/locks` | The locked-notes keyring (§10.1) |

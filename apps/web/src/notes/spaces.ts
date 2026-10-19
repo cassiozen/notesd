@@ -56,9 +56,9 @@ export function spaceName(list: Space[] | null, id: string): string {
   return list?.find((s) => s.id === id)?.name ?? 'Notes'
 }
 
-/** Creates a space (a new id) or renames one, keeping the list in step. */
-export async function putSpace(id: string, name: string): Promise<Space> {
-  const stored = await api.put(id, name)
+/** Creates a space (a new id) or renames one, keeping the list in step. Without icon, it stays as it is. */
+export async function putSpace(id: string, name: string, icon?: string): Promise<Space> {
+  const stored = await api.put(id, name, icon)
   await reloadSpaces()
   return stored
 }

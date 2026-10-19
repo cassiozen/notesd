@@ -116,7 +116,7 @@ public final class SyncEngine: Sendable {
                 case let other: return stop(other)
                 }
             } else {
-                switch await api.putSpace(change.id, name: change.name) {
+                switch await api.putSpace(change.id, name: change.name, icon: change.icon) {
                 case .ok(let stored): try await spaces.sent(change, stored: stored)
                 case .rejected(let status, _, _, _) where status < 500: try await spaces.dropped(change)
                 case let other: return stop(other)

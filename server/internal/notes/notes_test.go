@@ -668,7 +668,7 @@ func TestLockingScrubsOldText(t *testing.T) {
 
 func TestMovingBetweenSpaces(t *testing.T) {
 	db, s := setup(t)
-	if _, err := spaces.NewStore(db).Put(ctx, "work", "Work"); err != nil {
+	if _, err := spaces.NewStore(db).Put(ctx, "work", "Work", nil); err != nil {
 		t.Fatal(err)
 	}
 	if r := create(t, s, "a", "Plan", "body"); r.SpaceID != spaces.Default {

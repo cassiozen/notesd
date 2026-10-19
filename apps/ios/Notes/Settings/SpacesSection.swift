@@ -1,29 +1,26 @@
 import NotesCore
 import SwiftUI
 
-/// Spaces (§7.7): create, rename and delete them. The only place to make one,
+/// Spaces (§7.7): create, edit and delete them. The only place to make one,
 /// so people who never need spaces never see them anywhere else.
 struct SpacesSection: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
     @State private var creating = false
-    @State private var renaming: Space?
-    @State private var newName = ""
+    @State private var editing: Space?
 
     var body: some View {
         Section {
             ForEach(graph.spaces) { space in
-                HStack {
+                HStack(spacing: 12) {
+                    SpaceIconImage(icon: space.icon, size: 28)
                     VStack(alignment: .leading, spacing: 2) {
                         Text(space.name).font(.notesRowTitle).foregroundStyle(Color.ink).lineLimit(1)
                         Text(detail(space)).font(.notesSmall).foregroundStyle(Color.ink2)
                     }
                     Spacer()
                     Menu {
-                        Button("Rename", systemImage: "pencil") {
-                            newName = space.name
-                            renaming = space
-                        }
+                        Button("Edit", systemImage: "pencil") { editing = space }
                         if space.id != Spaces.defaultId {
                             Button("Delete", systemImage: "trash", role: .destructive) { delete(space) }
                                 .disabled(space.noteCount > 0)
@@ -37,21 +34,15 @@ struct SpacesSection: View {
             }
             Button("New Space") { creating = true }
                 .sheet(isPresented: $creating) {
-                    NewSpaceSheet(first: graph.spaces.count == 1 ? graph.spaces.first : nil, taken: taken) { id in
+                    SpaceSheet(first: graph.spaces.count == 1 ? graph.spaces.first : nil, taken: taken) { id in
                         creating = false
                         graph.switchSpace(id)
                         // Back to the list, to show the new space.
                         dismiss()
                     }
                 }
-                .alert(
-                    "Rename Space",
-                    isPresented: Binding(get: { renaming != nil }, set: { if !$0 { renaming = nil } }),
-                    presenting: renaming
-                ) { space in
-                    TextField("Name", text: $newName)
-                    Button("Cancel", role: .cancel) {}
-                    Button("Rename") { rename(space) }
+                .sheet(item: $editing) { space in
+                    SpaceSheet(editing: space, taken: taken) { _ in editing = nil }
                 }
         } header: {
             SectionHeader("Spaces")
@@ -75,16 +66,6 @@ struct SpacesSection: View {
         graph.spaces.contains { $0.id != except && $0.name.lowercased() == name.lowercased() }
     }
 
-    private func rename(_ space: Space) {
-        guard let name = Spaces.normalize(newName), name.count <= Spaces.maxName,
-            !taken(name, except: space.id)
-        else { return }
-        Task {
-            try? await graph.engine.spaces.rename(space.id, to: name)
-            graph.scheduler.request()
-        }
-    }
-
     private func delete(_ space: Space) {
         Task {
             if (try? await graph.engine.spaces.delete(space.id)) == true { graph.scheduler.request() }
@@ -92,18 +73,22 @@ struct SpacesSection: View {
     }
 }
 
-/// A new space. The second one also names the first: "Notes" alone was fine,
-/// beside "Work" it reads better as "Personal".
-private struct NewSpaceSheet: View {
+/// A space's name and icon: a new one, or `editing`. The second space also
+/// names the first: "Notes" alone was fine, beside "Work" it reads better as
+/// "Personal".
+private struct SpaceSheet: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
-    let first: Space?
+    var editing: Space?
+    var first: Space?
     let taken: (String, String?) -> Bool
-    let onCreated: (String) -> Void
+    let onDone: (String) -> Void
 
     @State private var name = ""
+    @State private var icon: String?
     @State private var firstName = ""
     @State private var error: String?
+    @State private var iconError: String?
     @State private var busy = false
     @FocusState private var nameFocused: Bool
 
@@ -117,6 +102,13 @@ private struct NewSpaceSheet: View {
                         .onChange(of: name) { error = nil }
                     if let error { Text(error).font(.notesSmall).foregroundStyle(Color.errInk) }
                 }
+                Section {
+                    SpaceIconPicker(selection: $icon)
+                        .onChange(of: icon) { iconError = nil }
+                    if let iconError { Text(iconError).font(.notesSmall).foregroundStyle(Color.errInk) }
+                } header: {
+                    Text("Icon")
+                }
                 if let first {
                     Section {
                         TextField("Rename “\(first.name)” to", text: $firstName)
@@ -129,24 +121,29 @@ private struct NewSpaceSheet: View {
                 }
             }
             .font(.notesBody)
-            .navigationTitle("New Space")
+            .navigationTitle(editing == nil ? "New Space" : "Edit Space")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Create", action: create).disabled(busy)
+                    Button(editing == nil ? "Create" : "Save", action: save).disabled(busy)
                 }
             }
         }
         .onAppear {
+            if let editing {
+                name = editing.name
+                icon = editing.icon.isEmpty ? SpaceIcon.defaultKey : editing.icon
+            } else {
+                nameFocused = true
+            }
             if let first { firstName = first.name == Spaces.defaultName ? "Personal" : first.name }
-            nameFocused = true
         }
     }
 
-    private func create() {
+    private func save() {
         guard let n = Spaces.normalize(name) else {
             error = "Enter a name."
             return
@@ -156,19 +153,29 @@ private struct NewSpaceSheet: View {
             error = "At most \(Spaces.maxName) characters."
             return
         }
-        if taken(n, first?.id) || f?.lowercased() == n.lowercased() {
+        if taken(n, editing?.id ?? first?.id) || f?.lowercased() == n.lowercased() {
             error = "Another space has this name."
+            return
+        }
+        guard let icon else {
+            iconError = "Choose an icon."
             return
         }
         busy = true
         Task {
-            if let first, let f, f != first.name { try? await graph.engine.spaces.rename(first.id, to: f) }
-            guard let id = try? await graph.engine.spaces.create(n) else {
+            if let editing {
+                try? await graph.engine.spaces.update(editing.id, name: n, icon: icon)
+                graph.scheduler.request()
+                onDone(editing.id)
+                return
+            }
+            if let first, let f, f != first.name { try? await graph.engine.spaces.update(first.id, name: f) }
+            guard let id = try? await graph.engine.spaces.create(n, icon: icon) else {
                 busy = false
                 return
             }
             graph.scheduler.request()
-            onCreated(id)
+            onDone(id)
         }
     }
 }

@@ -29,6 +29,7 @@ const MaxNameRunes = 64
 type Space struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
+	Icon      string `json:"icon"`
 	CreatedAt int64  `json:"createdAt"`
 	NoteCount int    `json:"noteCount"`
 }
@@ -50,7 +51,12 @@ type InputError struct{ Field, Message string }
 
 func (e *InputError) Error() string { return e.Field + ": " + e.Message }
 
-var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+var (
+	idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+	// An icon is a key into the apps' set, which the server doesn't know:
+	// apps show their default for one they don't have.
+	iconPattern = regexp.MustCompile(`^[a-z0-9-]{0,64}$`)
+)
 
 // Store persists spaces.
 type Store struct {
@@ -64,7 +70,7 @@ func NewStore(db *database.DB) *Store { return &Store{db: db, now: time.Now} }
 // List returns every space, the default first, then by name.
 func (s *Store) List(ctx context.Context) ([]Space, error) {
 	rows, err := s.db.R.QueryContext(ctx, `
-		SELECT s.id, s.name, s.created_at,
+		SELECT s.id, s.name, s.icon, s.created_at,
 		       (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL)
 		FROM spaces s ORDER BY s.id != ?, s.name_key, s.id`, Default)
 	if err != nil {
@@ -74,7 +80,7 @@ func (s *Store) List(ctx context.Context) ([]Space, error) {
 	out := []Space{}
 	for rows.Next() {
 		var sp Space
-		if err := rows.Scan(&sp.ID, &sp.Name, &sp.CreatedAt, &sp.NoteCount); err != nil {
+		if err := rows.Scan(&sp.ID, &sp.Name, &sp.Icon, &sp.CreatedAt, &sp.NoteCount); err != nil {
 			return nil, err
 		}
 		out = append(out, sp)
@@ -82,12 +88,16 @@ func (s *Store) List(ctx context.Context) ([]Space, error) {
 	return out, rows.Err()
 }
 
-// Put creates the space id or renames it. A name another space has, ignoring
-// case, gets " 2", " 3"… appended, so two devices creating "Work" offline end
-// up with "Work" and "Work 2". It returns the space as stored.
-func (s *Store) Put(ctx context.Context, id, name string) (Space, error) {
+// Put creates the space id or renames it, and sets its icon unless icon is
+// nil (a new space then has none). A name another space has, ignoring case,
+// gets " 2", " 3"… appended, so two devices creating "Work" offline end up
+// with "Work" and "Work 2". It returns the space as stored.
+func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, error) {
 	if !idPattern.MatchString(id) {
 		return Space{}, &InputError{"id", "must be 1-64 characters of [A-Za-z0-9_-]"}
+	}
+	if icon != nil && !iconPattern.MatchString(*icon) {
+		return Space{}, &InputError{"icon", "must be at most 64 characters of [a-z0-9-]"}
 	}
 	name, err := normalizeName(name)
 	if err != nil {
@@ -108,10 +118,11 @@ func (s *Store) Put(ctx context.Context, id, name string) (Space, error) {
 			stored = fmt.Sprintf("%s %d", name, i)
 		}
 		if err := tx.QueryRowContext(ctx, `
-			INSERT INTO spaces (id, name, name_key, created_at) VALUES (?, ?, ?, ?)
-			ON CONFLICT (id) DO UPDATE SET name = excluded.name, name_key = excluded.name_key
-			RETURNING id, name, created_at`,
-			id, stored, Key(stored), s.now().UnixMilli()).Scan(&out.ID, &out.Name, &out.CreatedAt); err != nil {
+			INSERT INTO spaces (id, name, name_key, icon, created_at) VALUES (?1, ?2, ?3, coalesce(?4, ''), ?5)
+			ON CONFLICT (id) DO UPDATE SET name = excluded.name, name_key = excluded.name_key,
+				icon = coalesce(?4, icon)
+			RETURNING id, name, icon, created_at`,
+			id, stored, Key(stored), icon, s.now().UnixMilli()).Scan(&out.ID, &out.Name, &out.Icon, &out.CreatedAt); err != nil {
 			return err
 		}
 		return tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL`,

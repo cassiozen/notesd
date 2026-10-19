@@ -61,9 +61,24 @@ class SpacesSyncTest {
     fun `a rename reaches every device`() = runBlocking<Unit> {
         val a = client()
         val b = client()
-        a.engine.spaces.rename(Spaces.DEFAULT, "Personal")
+        a.engine.spaces.update(Spaces.DEFAULT, "Personal")
         syncAll(a, b)
         assertEquals(listOf("Personal"), b.spaceNames())
+    }
+
+    @Test
+    fun `an icon goes with the space, and a new one replaces it`() = runBlocking<Unit> {
+        val a = client()
+        val b = client()
+        val work = a.engine.spaces.create("Work", icon = "duck")
+        syncAll(a, b)
+        assertEquals("duck", b.engine.spaces.list().single { it.id == work }.icon)
+        assertEquals("", b.engine.spaces.list().single { it.id == Spaces.DEFAULT }.icon)
+
+        b.engine.spaces.update(work, "Office", icon = "castle")
+        syncAll(b, a)
+        val s = a.engine.spaces.list().single { it.id == work }
+        assertEquals("Office" to "castle", s.name to s.icon)
     }
 
     @Test

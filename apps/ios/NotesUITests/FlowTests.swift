@@ -169,8 +169,12 @@ final class FlowTests: XCTestCase {
         let name = app.textFields["Name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
         XCTAssertEqual(app.textFields["Rename “Notes” to"].value as? String, "Personal")
-        screenshot("new space")
         app.typeText("Work")
+        // An icon is required too.
+        app.buttons["Create"].tap()
+        XCTAssertTrue(app.staticTexts["Choose an icon."].waitForExistence(timeout: 5))
+        app.buttons["Diary"].tap()
+        screenshot("new space")
         app.buttons["Create"].tap()
 
         // Straight to the new, empty space.

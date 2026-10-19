@@ -149,8 +149,16 @@ class ApiClient(
         authed({ request("GET", url("api/v1/spaces"), null, it) }) { json.decodeFromString<RemoteSpaces>(it).spaces }
 
     /** Creates or renames a space; the answer has the name as stored (a clash gets a number). */
-    suspend fun putSpace(id: String, name: String): ApiResult<RemoteSpace> = authed({
-        request("PUT", spaceUrl(id), buildJsonObject { put("name", name) }, it)
+    suspend fun putSpace(id: String, name: String, icon: String): ApiResult<RemoteSpace> = authed({
+        request(
+            "PUT",
+            spaceUrl(id),
+            buildJsonObject {
+                put("name", name)
+                put("icon", icon)
+            },
+            it
+        )
     }) { json.decodeFromString(it) }
 
     /** Deletes an empty space: a Conflict (space_not_empty) while it holds notes. */

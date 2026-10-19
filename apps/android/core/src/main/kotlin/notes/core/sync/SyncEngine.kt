@@ -120,7 +120,7 @@ class SyncEngine(
                     else -> return stop(r)
                 }
             } else {
-                when (val r = api.putSpace(change.id, change.name)) {
+                when (val r = api.putSpace(change.id, change.name, change.icon)) {
                     is ApiResult.Ok -> spaces.sent(change, r.value)
                     is ApiResult.Rejected if r.status < 500 -> spaces.dropped(change)
                     else -> return stop(r)

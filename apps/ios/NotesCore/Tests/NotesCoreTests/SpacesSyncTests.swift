@@ -58,6 +58,21 @@ final class SpacesSyncTests {
         #expect(try await names(b) == names(a))
     }
 
+    @Test func anIconGoesWithTheSpaceAndANewOneReplacesIt() async throws {
+        let a = try await client()
+        let b = try await client()
+        let work = try await a.engine.spaces.create("Work", icon: "duck")
+        await syncAll(a, b)
+        #expect(try await b.engine.spaces.list().first { $0.id == work }?.icon == "duck")
+        #expect(try await b.engine.spaces.list().first { $0.id == Spaces.defaultId }?.icon == "")
+
+        try await b.engine.spaces.update(work, name: "Office", icon: "castle")
+        await syncAll(b, a)
+        let s = try await a.engine.spaces.list().first { $0.id == work }
+        #expect(s?.name == "Office")
+        #expect(s?.icon == "castle")
+    }
+
     @Test func aMoveHereAndAnEditThereBothStay() async throws {
         let a = try await client()
         let b = try await client()

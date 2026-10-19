@@ -114,7 +114,13 @@ data class MutationResult(
 
 /** A space as the server stores it (§7.7). */
 @Serializable
-data class RemoteSpace(val id: String, val name: String, val createdAt: Long = 0, val noteCount: Int = 0)
+data class RemoteSpace(
+    val id: String,
+    val name: String,
+    val icon: String = "",
+    val createdAt: Long = 0,
+    val noteCount: Int = 0
+)
 
 @Serializable
 internal data class RemoteSpaces(val spaces: List<RemoteSpace> = emptyList())

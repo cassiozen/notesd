@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import type { Space } from '../api/types'
 import { ChevronIcon } from '../ui/icons'
+import { SpaceIcon } from './space-icon'
 import styles from './space-menu.module.css'
 
 /**
@@ -22,7 +23,8 @@ export function SpaceMenu({
   const [open, setOpen] = useState(false)
   const menuId = useId()
   const anchor = useRef<HTMLSpanElement>(null)
-  const name = spaces.find((s) => s.id === current)?.name ?? 'Notes'
+  const space = spaces.find((s) => s.id === current)
+  const name = space?.name ?? 'Notes'
 
   useEffect(() => {
     if (!open) return
@@ -52,6 +54,7 @@ export function SpaceMenu({
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((v) => !v)}
       >
+        <SpaceIcon space={space ?? { icon: '' }} size={block ? 20 : 22} />
         <span className={styles.name}>{name}</span>
         <span className={styles.chevron}>
           <ChevronIcon />
@@ -71,6 +74,7 @@ export function SpaceMenu({
                 onSwitch(s.id)
               }}
             >
+              <SpaceIcon space={s} />
               <span className={styles.itemName} title={s.name}>
                 {s.name}
               </span>

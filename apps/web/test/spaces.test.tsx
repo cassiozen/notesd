@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Note, Space } from '../src/api/types'
 import { SPACE_RESET_MS } from '../src/notes/shell'
+import duck from '../src/notes/space-icons/duck.svg?url'
 import {
   bodyText,
   createNote,
@@ -75,12 +76,20 @@ describe('creating spaces', () => {
     const dialog = await screen.findByRole('dialog', { name: 'New space' })
     expect((within(dialog).getByLabelText('Rename “Notes” to') as HTMLInputElement).value).toBe('Personal')
     await user.type(within(dialog).getByLabelText('Name'), 'Work')
+    // The icon is required too.
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+    expect(within(dialog).getByRole('alert').textContent).toBe('Choose an icon.')
+    await user.click(within(dialog).getByRole('radio', { name: 'Duck' }))
     await user.click(within(dialog).getByRole('button', { name: 'Create' }))
 
     await waitFor(() => expect(screen.queryByRole('heading', { name: 'Settings' })).toBeNull())
     await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
     expect(await within(list()).findByText('No notes in Work yet.')).toBeTruthy()
-    expect((await spaces(server)).map((s) => s.name)).toEqual(['Personal', 'Work'])
+    expect((await spaces(server)).map((s) => [s.name, s.icon])).toEqual([
+      ['Personal', ''],
+      ['Work', 'duck'],
+    ])
+    expect(switcher().querySelector('img')?.getAttribute('src')).toBe(duck)
 
     // A new note lands in the space shown.
     await user.click(newNoteButton())
@@ -89,6 +98,27 @@ describe('creating spaces', () => {
       const work = (await server.api<{ notes: Note[] }>('GET', '/notes?space=' + (await spaces(server))[1]?.id)).body.notes
       expect(work.map((n) => n.title)).toEqual(['Plan'])
     })
+  })
+
+  it('changes a space’s name and icon', async () => {
+    const { server, user } = await withWork()
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    const card = await screen.findByRole('region', { name: 'Spaces' })
+    await user.click(await within(card).findByRole('button', { name: 'Edit Notes' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
+    // The default space starts with the default icon.
+    expect((within(dialog).getByRole('radio', { name: 'Notepad' }) as HTMLInputElement).checked).toBe(true)
+    await user.clear(within(dialog).getByLabelText('Name'))
+    await user.type(within(dialog).getByLabelText('Name'), 'Home')
+    await user.click(within(dialog).getByRole('radio', { name: 'Castle' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit space' })).toBeNull())
+    expect((await spaces(server)).map((s) => [s.name, s.icon])).toEqual([
+      ['Home', 'castle'],
+      ['Work', ''],
+    ])
   })
 
   it('only deletes an empty space', async () => {

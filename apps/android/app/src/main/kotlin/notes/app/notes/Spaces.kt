@@ -1,13 +1,25 @@
 package notes.app.notes
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -20,12 +32,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import notes.app.ui.Icons
@@ -37,6 +51,60 @@ import notes.core.db.Spaces
 
 /** The space's name, or the default's while the list loads. */
 fun List<Space>.nameOf(id: String): String = firstOrNull { it.id == id }?.name ?: Spaces.DEFAULT_NAME
+
+/** The space's icon key, "" (the default icon) while the list loads. */
+fun List<Space>.iconOf(id: String): String = firstOrNull { it.id == id }?.icon.orEmpty()
+
+private val iconsByKey = SPACE_ICONS.associateBy { it.key }
+
+/** A space's icon: the default one for "" or a key this app doesn't have. Decorative. */
+@Composable
+fun SpaceIconImage(icon: String, size: Dp, modifier: Modifier = Modifier) {
+    val drawable = (iconsByKey[icon] ?: iconsByKey.getValue(DEFAULT_SPACE_ICON)).drawable
+    Image(painterResource(drawable), null, modifier.size(size))
+}
+
+/** Every icon to choose from, [selected] ringed, in a grid that scrolls inside a dialog. */
+@Composable
+fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String? = null) {
+    val t = LocalTokens.current
+    val shape = RoundedCornerShape(14.dp)
+    Column {
+        Text("Icon", style = Type.label, color = t.ink2)
+        Spacer(Modifier.height(6.dp))
+        LazyVerticalGrid(
+            GridCells.Adaptive(48.dp),
+            Modifier
+                .fillMaxWidth()
+                .height(212.dp)
+                .clip(shape)
+                .background(t.field)
+                .border(1.dp, if (error != null) t.danger else t.hair, shape)
+                .selectableGroup(),
+            contentPadding = PaddingValues(4.dp)
+        ) {
+            items(SPACE_ICONS, key = { it.key }) { icon ->
+                val on = icon.key == selected
+                val cell = RoundedCornerShape(10.dp)
+                Box(
+                    Modifier
+                        .height(48.dp)
+                        .clip(cell)
+                        .then(if (on) Modifier.background(t.chip).border(2.dp, t.tint, cell) else Modifier)
+                        .selectable(on, role = Role.RadioButton) { onSelect(icon.key) }
+                        .semantics { contentDescription = icon.name },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(painterResource(icon.drawable), null, Modifier.size(32.dp))
+                }
+            }
+        }
+        if (error != null) {
+            Spacer(Modifier.height(6.dp))
+            Text(error, style = Type.small, color = t.danger)
+        }
+    }
+}
 
 /**
  * The switcher between spaces (§7.7): the current space's name, opening a
@@ -61,6 +129,8 @@ fun SpaceSwitcher(
             .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
+        SpaceIconImage(spaces.iconOf(current), 24.dp)
+        Spacer(Modifier.width(8.dp))
         Text(
             name,
             style = style,
@@ -97,6 +167,8 @@ fun SpacePicker(title: String, spaces: List<Space>, current: String?, onDismiss:
                     .padding(horizontal = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                SpaceIconImage(s.icon, 24.dp)
+                Spacer(Modifier.width(14.dp))
                 Text(
                     s.name,
                     style = Type.body.copy(fontSize = 16.sp),

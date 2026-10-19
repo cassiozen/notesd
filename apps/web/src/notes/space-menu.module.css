@@ -9,7 +9,7 @@
   max-width: 100%;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   margin: 0 0 0 -6px;
   padding: 4px 6px;
   border: 0;
@@ -35,6 +35,7 @@
 /* The chevron points right; turned down, it reads as a menu. */
 .chevron {
   flex: none;
+  margin-left: auto;
   display: grid;
   place-items: center;
   color: var(--ink-3);
@@ -111,8 +112,8 @@
 .block .button {
   flex: 1;
   margin: 0;
-  padding: 8px 10px;
-  justify-content: space-between;
+  padding: 7px 10px 7px 8px;
+  gap: 8px;
   border-radius: 12px;
   background: var(--chip);
   border: 1px solid var(--edge);

@@ -51,6 +51,23 @@ func TestSpaces(t *testing.T) {
 		t.Fatalf("default first, then by name: %q", got)
 	}
 
+	// An icon is set with the name and kept by a PUT without one.
+	if r := c.do("PUT", "/api/v1/spaces/work1", map[string]any{"name": "Work stuff", "icon": "fun-duck"}); r.status != 200 || r.body["icon"] != "fun-duck" {
+		t.Fatalf("set icon: %d %s", r.status, r.raw)
+	}
+	if r := c.do("PUT", "/api/v1/spaces/work1", map[string]any{"name": "Work stuff"}); r.body["icon"] != "fun-duck" {
+		t.Fatalf("a PUT without an icon keeps it: %s", r.raw)
+	}
+	if r := c.do("PUT", "/api/v1/spaces/new1", map[string]any{"name": "Fresh"}); r.body["icon"] != "" {
+		t.Fatalf("a new space without an icon has none: %s", r.raw)
+	}
+	if r := c.do("PUT", "/api/v1/spaces/work1", map[string]any{"name": "Work stuff", "icon": "Bad Icon"}); r.status != 400 {
+		t.Fatalf("bad icon: %d %s", r.status, r.raw)
+	}
+	if r := c.do("DELETE", "/api/v1/spaces/new1", nil); r.status != 204 {
+		t.Fatalf("delete new1: %d %s", r.status, r.raw)
+	}
+
 	for _, bad := range []struct{ id, name string }{
 		{"work1", "  "},
 		{"work1", strings.Repeat("x", 65)},

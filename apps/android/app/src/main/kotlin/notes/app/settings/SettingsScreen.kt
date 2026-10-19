@@ -69,6 +69,9 @@ import notes.app.locks.FingerprintUnlock
 import notes.app.locks.MIN_LOCK_PASSWORD
 import notes.app.locks.UnlockDialog
 import notes.app.locks.message
+import notes.app.notes.DEFAULT_SPACE_ICON
+import notes.app.notes.SpaceIconImage
+import notes.app.notes.SpaceIconPicker
 import notes.app.ui.BackLink
 import notes.app.ui.BrandMark
 import notes.app.ui.ButtonKind
@@ -729,7 +732,7 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
     val t = LocalTokens.current
     val spaces by graph.spaces.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
-    var renaming by remember { mutableStateOf<Space?>(null) }
+    var editing by remember { mutableStateOf<Space?>(null) }
     var creating by remember { mutableStateOf(false) }
 
     Card {
@@ -741,14 +744,16 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
                 ).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                SpaceIconImage(s.icon, 28.dp)
+                Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(s.name, style = Type.rowTitle, color = t.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(notesIn(s), style = Type.rowMeta, color = t.ink2)
                 }
                 NotesButton(
-                    "Rename",
-                    { renaming = s },
-                    Modifier.semantics { contentDescription = "Rename ${s.name}" },
+                    "Edit",
+                    { editing = s },
+                    Modifier.semantics { contentDescription = "Edit ${s.name}" },
                     kind = ButtonKind.Ghost,
                     small = true
                 )
@@ -779,17 +784,18 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
     )
 
-    renaming?.let { space ->
-        SpaceNameDialog(
-            title = "Rename space",
-            action = "Rename",
+    editing?.let { space ->
+        SpaceDialog(
+            title = "Edit space",
+            action = "Save",
             initial = space.name,
+            initialIcon = space.icon.ifEmpty { DEFAULT_SPACE_ICON },
             taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
-            onDismiss = { renaming = null }
-        ) { name, _ ->
-            renaming = null
+            onDismiss = { editing = null }
+        ) { name, icon, _ ->
+            editing = null
             scope.launch {
-                graph.sync.spaces.rename(space.id, name)
+                graph.sync.spaces.update(space.id, name, icon)
                 graph.scheduler.request()
             }
         }
@@ -797,20 +803,21 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
     if (creating) {
         // The second space also names the first: "Notes" alone was fine, beside "Work" it reads better as "Personal".
         val first = spaces.singleOrNull()
-        SpaceNameDialog(
+        SpaceDialog(
             title = "New space",
             action = "Create",
             initial = "",
+            initialIcon = null,
             taken = { name -> spaces.any { it.id != first?.id && it.name.equals(name, ignoreCase = true) } },
             first = first,
             onDismiss = { creating = false }
-        ) { name, firstName ->
+        ) { name, icon, firstName ->
             creating = false
             scope.launch {
                 if (first != null && firstName != null && firstName != first.name) {
-                    graph.sync.spaces.rename(first.id, firstName)
+                    graph.sync.spaces.update(first.id, firstName)
                 }
-                val id = graph.sync.spaces.create(name)
+                val id = graph.sync.spaces.create(name, icon)
                 graph.scheduler.request()
                 onCreated(id)
             }
@@ -818,18 +825,21 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
     }
 }
 
-/** A space's name, and with [first] the name for the space notes are in now. */
+/** A space's name and icon, and with [first] the name for the space notes are in now. */
 @Composable
-private fun SpaceNameDialog(
+private fun SpaceDialog(
     title: String,
     action: String,
     initial: String,
+    initialIcon: String?,
     taken: (String) -> Boolean,
     onDismiss: () -> Unit,
     first: Space? = null,
-    onDone: (name: String, firstName: String?) -> Unit
+    onDone: (name: String, icon: String, firstName: String?) -> Unit
 ) {
     var name by remember { mutableStateOf(initial) }
+    var icon by remember { mutableStateOf(initialIcon) }
+    var iconError by remember { mutableStateOf<String?>(null) }
     var firstName by remember {
         mutableStateOf(
             if (first?.name ==
@@ -848,6 +858,11 @@ private fun SpaceNameDialog(
             name = it
             error = null
         }, "Name", placeholder = "Work", error = error)
+        Spacer(Modifier.height(12.dp))
+        SpaceIconPicker(icon, {
+            icon = it
+            iconError = null
+        }, iconError)
         if (first != null) {
             Spacer(Modifier.height(12.dp))
             NotesField(
@@ -874,7 +889,9 @@ private fun SpaceNameDialog(
                     else -> null
                 }
                 firstError = if (first != null && f == null) "Enter a name." else null
-                if (n != null && error == null && firstError == null) onDone(n, f)
+                iconError = if (icon == null) "Choose an icon." else null
+                val chosen = icon
+                if (n != null && chosen != null && error == null && firstError == null) onDone(n, chosen, f)
             }, Modifier.weight(1f))
         }
     }

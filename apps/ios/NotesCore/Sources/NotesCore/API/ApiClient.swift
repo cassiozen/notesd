@@ -204,11 +204,14 @@ public final class ApiClient: Sendable {
             decode: { try JSONDecoder().decode(Spaces.self, from: $0.data).spaces ?? [] })
     }
 
-    /// Creates or renames a space; the answer has the name as stored (a clash gets a number).
-    public func putSpace(_ id: String, name: String) async -> ApiResult<RemoteSpace> {
-        struct Body: Encodable { var name: String }
+    /// Creates or renames a space and sets its icon; the answer has the name as stored (a clash gets a number).
+    public func putSpace(_ id: String, name: String, icon: String) async -> ApiResult<RemoteSpace> {
+        struct Body: Encodable {
+            var name: String
+            var icon: String
+        }
         return await authed(
-            { self.request("PUT", "api/v1/spaces/\(id)", body: Body(name: name), access: $0) },
+            { self.request("PUT", "api/v1/spaces/\(id)", body: Body(name: name, icon: icon), access: $0) },
             decode: json(RemoteSpace.self))
     }
 
