@@ -42,6 +42,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import notes.app.R
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.Sheet
@@ -52,16 +53,24 @@ import notes.core.db.Spaces
 /** The space's name, or the default's while the list loads. */
 fun List<Space>.nameOf(id: String): String = firstOrNull { it.id == id }?.name ?: Spaces.DEFAULT_NAME
 
-/** The space's icon key, "" (the default icon) while the list loads. */
+/** The space's icon key, "" (the app's icon) while the list loads. */
 fun List<Space>.iconOf(id: String): String = firstOrNull { it.id == id }?.icon.orEmpty()
 
-private val iconsByKey = SPACE_ICONS.associateBy { it.key }
+// The app's own icon leads the picker: "" is the default space's to begin with.
+private val choices = listOf(SpaceIcon("", "App icon", R.drawable.brand_mark)) + SPACE_ICONS
+private val iconsByKey = choices.associateBy { it.key }
 
-/** A space's icon: the default one for "" or a key this app doesn't have. Decorative. */
+/** A space's icon: the app's own for "" or a key this app doesn't have. Decorative. */
 @Composable
 fun SpaceIconImage(icon: String, size: Dp, modifier: Modifier = Modifier) {
-    val drawable = (iconsByKey[icon] ?: iconsByKey.getValue(DEFAULT_SPACE_ICON)).drawable
-    Image(painterResource(drawable), null, modifier.size(size))
+    Picture(iconsByKey[icon] ?: iconsByKey.getValue(""), size, modifier)
+}
+
+@Composable
+private fun Picture(icon: SpaceIcon, size: Dp, modifier: Modifier = Modifier) {
+    // The app's mark fills its square; the other icons leave a margin.
+    val inset = if (icon.key.isEmpty()) size * 0.08f else 0.dp
+    Image(painterResource(icon.drawable), null, modifier.size(size).padding(inset))
 }
 
 /** Every icon to choose from, [selected] ringed, in a grid that scrolls inside a dialog. */
@@ -83,7 +92,7 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
                 .selectableGroup(),
             contentPadding = PaddingValues(4.dp)
         ) {
-            items(SPACE_ICONS, key = { it.key }) { icon ->
+            items(choices, key = { it.key }) { icon ->
                 val on = icon.key == selected
                 val cell = RoundedCornerShape(10.dp)
                 Box(
@@ -95,7 +104,7 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
                         .semantics { contentDescription = icon.name },
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(painterResource(icon.drawable), null, Modifier.size(32.dp))
+                    Picture(icon, 32.dp)
                 }
             }
         }

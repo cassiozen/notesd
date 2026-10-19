@@ -180,11 +180,13 @@ struct NotesListView: View {
         }
     }
 
-    /// The large title, led by the mark; with a filter, a way back to all notes.
+    /// The large title, led by the mark (or with spaces, the switcher and its
+    /// icon); with a filter, a way back to all notes.
     private var header: some View {
         HStack(spacing: 12) {
-            BrandMark(size: 28)
-            if many && graph.listFilter == nil {
+            let switcher = many && graph.listFilter == nil
+            if !switcher { BrandMark(size: 28) }
+            if switcher {
                 SpaceMenu(font: .notesDisplay)
                     .accessibilityAddTraits(.isHeader)
             } else {

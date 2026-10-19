@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -187,11 +188,11 @@ fun TagsPane(
                     ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    BrandMark(if (docked) 22.dp else 26.dp)
+                    // With a switcher, the default space's icon is the app's: no need for it twice.
                     if (spaces.size > 1) {
-                        Spacer(Modifier.width(8.dp))
-                        SpaceSwitcher(spaces, space, onSpace, Modifier.weight(1f), Type.title)
+                        SpaceSwitcher(spaces, space, onSpace, Modifier.weight(1f).offset(x = (-6).dp), Type.title)
                     } else {
+                        BrandMark(if (docked) 22.dp else 26.dp)
                         Spacer(Modifier.weight(1f))
                     }
                     SettingsButton(onSettings)

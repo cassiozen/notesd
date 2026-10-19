@@ -119,7 +119,12 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
   return (
     <nav className={[styles.panel, onHide ? styles.docked : ''].join(' ')} aria-label="Sidebar">
       <div className={styles.header}>
-        <span className={styles.mark} aria-hidden="true" />
+        {/* With a switcher, the default space's icon is the app's: no need for it twice. */}
+        {spaces && spaces.length > 1 ? (
+          <span className={styles.spacer} />
+        ) : (
+          <span className={styles.mark} aria-hidden="true" />
+        )}
         {onHide && (
           <button type="button" className={styles.tool} onClick={onHide} aria-label="Hide sidebar" title="Hide sidebar">
             <SidebarIcon />

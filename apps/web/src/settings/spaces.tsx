@@ -3,7 +3,6 @@ import { ApiError } from '../api/client'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
-import { DEFAULT_SPACE_ICON } from '../notes/space-icons'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -127,11 +126,11 @@ function NewSpaceDialog({ first, onClose, onCreated }: { first: Space | undefine
     e.preventDefault()
     const found = {
       ...(!name.trim() && { name: 'Name the new space.' }),
-      ...(!icon && { icon: 'Choose an icon.' }),
+      ...(icon === null && { icon: 'Choose an icon.' }),
       ...(first && !firstName.trim() && { first: 'Name the space your notes are in now.' }),
     }
     setErrors(found)
-    if (Object.keys(found).length > 0 || !icon) return
+    if (Object.keys(found).length > 0 || icon === null) return
     setBusy(true)
     try {
       if (first && firstName.trim() !== first.name) await putSpace(first.id, firstName.trim())
@@ -194,7 +193,7 @@ function NewSpaceDialog({ first, onClose, onCreated }: { first: Space | undefine
 function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const titleId = useId()
   const [name, setName] = useState(space.name)
-  const [icon, setIcon] = useState(space.icon || DEFAULT_SPACE_ICON)
+  const [icon, setIcon] = useState(space.icon)
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
 

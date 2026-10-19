@@ -86,7 +86,7 @@ Failed logins are limited to 10 per 15 minutes per client address.
 | PUT | `/settings/email` | `{apiKey?, from}`; `apiKey` (starts with `re_`) may be omitted to keep the saved one. Not checked against Resend: send-only keys can't call anything but sending, so a bad key shows on the first send |
 | DELETE | `/settings/email` | forget the key and sender |
 | GET | `/filters?space=` | `{tags: [{key, name, count}], locked}`: `tags` sorted by key, parents of nested tags included, `count` is distinct notes including nested tags; `locked` counts live locked notes. With `space`, only that space's notes count |
-| GET | `/spaces` | `{spaces: [{id, name, icon, createdAt, noteCount}]}`: the default space (`default`) first, then by name. `icon` is a key into the apps' icon set, `''` for the default icon |
+| GET | `/spaces` | `{spaces: [{id, name, icon, createdAt, noteCount}]}`: the default space (`default`) first, then by name. `icon` is a key into the apps' icon set, `''` for the app's own icon |
 | PUT | `/spaces/{id}` | `{name, icon?}` → the space as stored. Creates the space or renames it; `id` is 1–64 characters `[A-Za-z0-9_-]`. The name is trimmed with inner whitespace collapsed, 1–64 characters; one another space has (ignoring case) gets ` 2`, ` 3`… appended. `icon` is 0–64 characters `[a-z0-9-]`; without it the icon stays as it is (`''` for a new space) |
 | DELETE | `/spaces/{id}` | → 204, also when already gone. `409 space_not_empty` with `count` while it holds live notes; `409 space_default` for the default |
 | GET | `/locks` | `{keys: [{id, kind, credentialId?, salt, iterations, wrapped, createdAt}]}`: the locked-notes keyring, password entry first |

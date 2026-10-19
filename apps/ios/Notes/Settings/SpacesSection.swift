@@ -135,7 +135,7 @@ private struct SpaceSheet: View {
         .onAppear {
             if let editing {
                 name = editing.name
-                icon = editing.icon.isEmpty ? SpaceIcon.defaultKey : editing.icon
+                icon = editing.icon
             } else {
                 nameFocused = true
             }

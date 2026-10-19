@@ -69,7 +69,6 @@ import notes.app.locks.FingerprintUnlock
 import notes.app.locks.MIN_LOCK_PASSWORD
 import notes.app.locks.UnlockDialog
 import notes.app.locks.message
-import notes.app.notes.DEFAULT_SPACE_ICON
 import notes.app.notes.SpaceIconImage
 import notes.app.notes.SpaceIconPicker
 import notes.app.ui.BackLink
@@ -789,7 +788,7 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
             title = "Edit space",
             action = "Save",
             initial = space.name,
-            initialIcon = space.icon.ifEmpty { DEFAULT_SPACE_ICON },
+            initialIcon = space.icon,
             taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
             onDismiss = { editing = null }
         ) { name, icon, _ ->

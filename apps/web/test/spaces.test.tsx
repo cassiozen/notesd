@@ -107,8 +107,8 @@ describe('creating spaces', () => {
     await user.click(await within(card).findByRole('button', { name: 'Edit Notes' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
-    // The default space starts with the default icon.
-    expect((within(dialog).getByRole('radio', { name: 'Notepad' }) as HTMLInputElement).checked).toBe(true)
+    // The default space starts with the app's icon.
+    expect((within(dialog).getByRole('radio', { name: 'App icon' }) as HTMLInputElement).checked).toBe(true)
     await user.clear(within(dialog).getByLabelText('Name'))
     await user.type(within(dialog).getByLabelText('Name'), 'Home')
     await user.click(within(dialog).getByRole('radio', { name: 'Castle' }))

@@ -486,11 +486,13 @@ private fun Header(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (mark) {
+        val switcher = scope == null && spaces.size > 1
+        // With a switcher, the default space's icon is the app's: no need for it twice.
+        if (mark && !switcher) {
             BrandMark(26.dp)
             Spacer(Modifier.width(12.dp))
         }
-        if (scope == null && spaces.size > 1) {
+        if (switcher) {
             Box(Modifier.weight(1f, fill = false).semantics { heading() }) {
                 SpaceSwitcher(spaces, space, onSpace, style = Type.display)
             }

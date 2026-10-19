@@ -4,13 +4,13 @@ package notes.app.notes
 import androidx.annotation.DrawableRes
 import notes.app.R
 
-/** A space's icon (§7.7): its key, stored with the space, what it's called, and its picture. */
+/**
+ * A space's icon (§7.7): its key, stored with the space, what it's called, and
+ * its picture. The key "" (and any this app doesn't have) is the app's own icon.
+ */
 data class SpaceIcon(val key: String, val name: String, @DrawableRes val drawable: Int)
 
-/** Shown for the default space and any icon this app doesn't have. */
-const val DEFAULT_SPACE_ICON = "notepad"
-
-/** In the picker's order. */
+/** In the picker's order, after the app's icon. */
 val SPACE_ICONS = listOf(
     SpaceIcon("notepad", "Notepad", R.drawable.space_icon_notepad),
     SpaceIcon("journal", "Journal", R.drawable.space_icon_journal),

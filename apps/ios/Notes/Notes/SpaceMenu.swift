@@ -16,7 +16,7 @@ struct SpaceMenu: View {
                     Label {
                         Text(space.name)
                     } icon: {
-                        Image(SpaceIcon.named(space.icon).asset)
+                        SpaceIcon.named(space.icon).image
                     }
                     .tag(space.id)
                 }

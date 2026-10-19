@@ -68,8 +68,8 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
           </button>
         )}
         <div className={styles.titleRow}>
-          {/* Beside the docked sidebar, its header carries the mark. */}
-          {tags !== null && <span className={styles.mark} aria-hidden="true" />}
+          {/* Beside the docked sidebar, its header carries the mark; with a switcher, its icon does. */}
+          {tags !== null && !switcher && <span className={styles.mark} aria-hidden="true" />}
           {scope ? (
             <h1 className={[styles.heading, styles.scoped].join(' ')}>
               <span className={styles.scope}>{scope}</span>

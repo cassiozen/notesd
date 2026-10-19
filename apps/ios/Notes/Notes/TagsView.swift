@@ -17,10 +17,11 @@ struct TagsView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    BrandMark(size: 26)
+                    // With a switcher, the default space's icon is the app's: no need for it twice.
                     if graph.spaces.count > 1 {
                         SpaceMenu(font: .notesTitle)
-                            .padding(.leading, 6)
+                    } else {
+                        BrandMark(size: 26)
                     }
                     Spacer()
                     Button(action: openSettings) {
