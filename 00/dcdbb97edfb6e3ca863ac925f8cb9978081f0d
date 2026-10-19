@@ -1,0 +1,21 @@
+docs/hosting.md
+  s_37fc20dc4428b9::t_aebaa6f94185dd 88,91-97,100-102,106-108,121,123-126,199,201,238
+docs/operations.md
+  s_37fc20dc4428b9::t_aebaa6f94185dd 56-57,63-64,67-68,71-77,86,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "00dcdbb97edfb6e3ca863ac925f8cb9978081f0d",
+  "prompts": {},
+  "sessions": {
+    "s_37fc20dc4428b9": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a83a5041-23e5-48ab-82b6-7e89eb91aa52",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
