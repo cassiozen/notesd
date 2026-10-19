@@ -27,6 +27,14 @@
   background: url('../ui/mark.png') center / contain no-repeat;
 }
 
+/* The space switcher takes the room between the mark and the tools. */
+.space {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  font: 600 14px/1.2 var(--font-sans);
+}
+
 /* Lines up with the rows' labels, past the expander column. */
 .section {
   margin: 6px 10px 4px 26px;

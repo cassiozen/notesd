@@ -221,3 +221,20 @@
   align-items: center;
   gap: 8px;
 }
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.dialogTitle {
+  margin: 0;
+  font: 400 30px/1.1 var(--font-serif);
+}
+
+.dialogActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
 import { Backdrop } from '../ui/backdrop'
@@ -8,6 +8,7 @@ import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
 import type { NoteSaver } from './saver'
+import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
 import { NotesProvider, useNotes, type ListFilter } from './store'
 import { TagsPanel } from './tags-panel'
 import styles from './shell.module.css'
@@ -27,6 +28,9 @@ const NOTICE_MS = 5000
 
 const SIDEBAR_KEY = 'notes.sidebar.hidden'
 
+/** Back after this long away, the app starts over in the default space (§7.7). */
+export const SPACE_RESET_MS = 30 * 60_000
+
 export function loadSidebarHidden(): boolean {
   try {
     return localStorage.getItem(SIDEBAR_KEY) === 'true'
@@ -42,7 +46,9 @@ function ShellView({ username }: { username: string }) {
   // Wide: the tags sit in a sidebar. Narrower, they're a screen of their own (/tags) in the list's place.
   const wide = useMediaQuery(WIDE)
   const [sidebarHidden, setSidebarHidden] = useState(loadSidebarHidden)
-  const { items, status, newDraft, remove, undoRemove, removed, tags, lockedCount, filter, setFilter } = useNotes()
+  const { items, status, newDraft, remove, undoRemove, removed, tags, lockedCount, filter, setFilter, space, setSpace, move } =
+    useNotes()
+  const spaces = useSpaces()
   // A note the server doesn't have yet: open, but not in the URL until it's saved.
   const [draft, setDraft] = useState<NoteSaver | null>(null)
   const [query, setQuery] = useState('')
@@ -94,6 +100,46 @@ function ShellView({ username }: { username: string }) {
     [draft],
   )
 
+  /** Shows another space: its list from the top, without the note that was open. */
+  const switchSpace = useCallback(
+    (id: string) => {
+      setDraft(null)
+      setSpace(id)
+      navigate('/')
+    },
+    [setSpace],
+  )
+
+  // The space shown was deleted (in Settings, or on another device): back to the default.
+  const shown = useRef(space)
+  const open = useRef(selectedId !== null)
+  useEffect(() => {
+    shown.current = space
+    open.current = selectedId !== null
+  })
+  useEffect(
+    () =>
+      onSpacesChange((list) => {
+        if (!list.some((s) => s.id === shown.current)) switchSpace(DEFAULT_SPACE)
+      }),
+    [switchSpace],
+  )
+
+  // Away for a while with no note open: start over in the default space.
+  useEffect(() => {
+    let hiddenAt = document.visibilityState === 'hidden' ? Date.now() : null
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now()
+        return
+      }
+      if (hiddenAt !== null && Date.now() - hiddenAt > SPACE_RESET_MS && !open.current) setSpace(DEFAULT_SPACE)
+      hiddenAt = null
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => document.removeEventListener('visibilitychange', onVisibility)
+  }, [setSpace])
+
   const startNote = () => {
     setQuery('')
     setDraft(newDraft())
@@ -128,6 +174,12 @@ function ShellView({ username }: { username: string }) {
     })
   }
 
+  const moveNote = (saver: NoteSaver, spaceId: string) => {
+    leave(saver.id)
+    move(saver, spaceId)
+    setNotice({ id: saver.id, text: `Moved to ${spaceName(spaces, spaceId)}`, undo: false })
+  }
+
   const undo = (id: string) => {
     undoRemove(id)
     select(id)
@@ -153,7 +205,17 @@ function ShellView({ username }: { username: string }) {
   const showList = !tagsScreen && (!mobile || selectedId === null)
   const showPane = !mobile || (!tagsScreen && selectedId !== null)
   const tagsPanel = (onHide?: () => void) => (
-    <TagsPanel tags={tags} lockedCount={lockedCount} filter={filter} onFilter={showFilter} onSettings={() => navigate('/settings')} onHide={onHide} />
+    <TagsPanel
+      tags={tags}
+      lockedCount={lockedCount}
+      filter={filter}
+      onFilter={showFilter}
+      onSettings={() => navigate('/settings')}
+      spaces={spaces}
+      space={space}
+      onSpace={switchSpace}
+      onHide={onHide}
+    />
   )
 
   return (
@@ -168,6 +230,11 @@ function ShellView({ username }: { username: string }) {
             query={query}
             onQuery={setQuery}
             onSelect={select}
+            onSelectElsewhere={(id, spaceId) => {
+              setSpace(spaceId)
+              select(id)
+            }}
+            onSpace={switchSpace}
             onNew={startNote}
             tags={!wide ? 'back' : sidebarHidden ? 'show' : null}
             onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
@@ -189,6 +256,7 @@ function ShellView({ username }: { username: string }) {
               onCreated={created}
               onOpenDraft={setDraft}
               onDelete={deleteNote}
+              onMove={moveNote}
               onGone={(id) => {
                 leave(id)
                 removed(id)
@@ -204,6 +272,7 @@ function ShellView({ username }: { username: string }) {
       {route.name === 'settings' && (
         <SettingsSheet
           username={username}
+          onSpaceCreated={switchSpace}
           onClose={() => navigate(settingsFrom === '/settings' ? listPath : settingsFrom)}
         />
       )}

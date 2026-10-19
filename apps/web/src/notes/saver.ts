@@ -6,6 +6,7 @@ import { imageIds } from '../images/ref'
 import { LockedError, decryptBody, encryptBody, isLocked } from '../locks/crypto'
 import { lockSession } from '../locks/session'
 import type { SaveState } from '../ui/status-pill'
+import { DEFAULT_SPACE } from './spaces'
 
 export type Fields = { title: string; content: string }
 
@@ -35,6 +36,8 @@ export type Snapshot = {
   imageError: string | null
   /** Images are being uploaded or re-encrypted for a lock change. */
   imagesBusy: boolean
+  /** The space the note is (to be) in. */
+  spaceId: string
 }
 
 type Pending = {
@@ -46,6 +49,7 @@ type Pending = {
   /** A locked note's images, which the server can't read from the ciphertext (§7.6). */
   imageIds?: string[]
   locked: boolean
+  spaceId: string
   create: boolean
   baseRevision: number
 }
@@ -66,7 +70,7 @@ export async function openNote(note: Note): Promise<Opened> {
 
 type Hooks = {
   /** A save landed: update the grid. */
-  saved?: (id: string, fields: Fields, result: MutationResult, locked: boolean) => void
+  saved?: (id: string, fields: Fields, result: MutationResult, locked: boolean, spaceId: string) => void
   /** A new note was created by resolving a conflict. */
   copied?: (saver: NoteSaver) => void
 }
@@ -103,6 +107,9 @@ export class NoteSaver {
   /** Whether the body is encrypted, here and as the server last acknowledged it. */
   private locked: boolean
   private baseLocked: boolean
+  /** The note's space, here and as the server last acknowledged it (§7.7). */
+  private space: string
+  private baseSpace: string
   /** The stored envelope and the text it holds: unchanged text is sent as the same envelope, never re-encrypted. */
   private sealed: { plain: string; envelope: string } | null
   /** The editor's current values; read lazily so serialization happens per save, not per keystroke. */
@@ -141,6 +148,7 @@ export class NoteSaver {
       locked?: boolean
       /** The locked body as stored, when the note came from the server. */
       envelope?: string | null
+      spaceId?: string
     },
     private hooks: Hooks = {},
   ) {
@@ -153,6 +161,8 @@ export class NoteSaver {
     this.base = this.created ? canonicalFields(init.fields) : { title: '', content: '' }
     this.locked = init.locked ?? false
     this.baseLocked = this.created && this.locked
+    this.space = init.spaceId ?? DEFAULT_SPACE
+    this.baseSpace = this.space
     this.sealed = init.envelope ? { plain: this.base.content, envelope: init.envelope } : null
     const fields = { ...init.fields }
     this.blank = init.blank ?? { title: '', content: '' }
@@ -258,6 +268,20 @@ export class NoteSaver {
   dismissImageError() {
     this.imageError = null
     this.set(this.state)
+  }
+
+  /** The space the note is (to be) in. */
+  spaceId(): string {
+    return this.space
+  }
+
+  /** Moves the note to another space: saved like an edit. */
+  moveTo(spaceId: string) {
+    if (this.space === spaceId) return
+    this.space = spaceId
+    this.dirty = true
+    this.set(this.state === 'saved' ? 'unsaved' : this.state)
+    void this.flush()
   }
 
   /** Locks or unlocks the note: saved like an edit, encrypted with the session key. */
@@ -370,7 +394,8 @@ export class NoteSaver {
       this.created &&
       fields.title === this.base.title &&
       fields.content === this.base.content &&
-      this.locked === this.baseLocked
+      this.locked === this.baseLocked &&
+      this.space === this.baseSpace
     )
   }
 
@@ -384,6 +409,7 @@ export class NoteSaver {
       fields,
       wire: fields,
       locked: false,
+      spaceId: this.space,
       create: !this.created,
       baseRevision: this.revision,
     }
@@ -409,6 +435,7 @@ export class NoteSaver {
       wire: { title: fields.title, content: envelope },
       imageIds: imageIds(fields.content),
       locked: true,
+      spaceId: this.space,
       create: !this.created,
       baseRevision: this.revision,
     }
@@ -421,6 +448,7 @@ export class NoteSaver {
             operationId: p.operationId,
             id: this.id,
             ...p.wire,
+            spaceId: p.spaceId,
             ...(p.imageIds && { imageIds: p.imageIds }),
             ...(this.conflictOf !== undefined && { conflictOf: this.conflictOf }),
           },
@@ -432,6 +460,7 @@ export class NoteSaver {
             operationId: p.operationId,
             baseRevision: p.baseRevision,
             ...p.wire,
+            spaceId: p.spaceId,
             ...(p.imageIds && { imageIds: p.imageIds }),
           },
           keepalive,
@@ -467,9 +496,13 @@ export class NoteSaver {
       this.base = p.fields
       this.baseLocked = p.locked
       this.sealed = p.locked ? { plain: p.fields.content, envelope: p.wire.content } : null
+      // A space deleted elsewhere: the server filed the note in the default instead.
+      const space = result.spaceId ?? p.spaceId
+      if (this.space === p.spaceId) this.space = space
+      this.baseSpace = space
       this.updatedAt = result.updatedAt
       this.problem = null
-      this.hooks.saved?.(this.id, p.fields, result, p.locked)
+      this.hooks.saved?.(this.id, p.fields, result, p.locked, space)
       if (!this.dirty) {
         this.set('saved')
         return
@@ -558,6 +591,8 @@ export class NoteSaver {
     }
     // Locking is part of the body: a side that changed it wins, like a field.
     const locked = this.locked === this.baseLocked ? remote.locked : this.locked
+    // So is the space, except that the server's wins when both moved it.
+    const space = this.space === this.baseSpace || current.spaceId !== this.baseSpace ? current.spaceId : this.space
     if (title === null || content === null) {
       this.problem = { kind: 'conflict', current: remote }
       this.set('conflict')
@@ -565,6 +600,7 @@ export class NoteSaver {
     }
     this.adopt(remote)
     this.locked = locked
+    this.space = space
     const merged = { title, content }
     if (merged.title !== local.title || merged.content !== local.content) this.pushRemote(merged)
     this.dirty = true
@@ -578,6 +614,8 @@ export class NoteSaver {
     this.base = canonicalFields(current)
     this.baseLocked = remote.locked
     this.locked = remote.locked
+    this.baseSpace = current.spaceId
+    this.space = current.spaceId
     this.sealed = remote.envelope ? { plain: this.base.content, envelope: remote.envelope } : null
     this.updatedAt = current.updatedAt
     this.created = true
@@ -626,8 +664,9 @@ export class NoteSaver {
         id: crypto.randomUUID(),
         fields: { title: `${local.title.trim() || 'Untitled'}${suffix}`, content: local.content },
         ...(conflictOf !== undefined && { conflictOf }),
-        // A copy of a locked note stays locked.
+        // A copy of a locked note stays locked, in the same space.
         locked: this.locked,
+        spaceId: this.space,
       },
       this.hooks,
     )
@@ -691,6 +730,7 @@ export class NoteSaver {
       locked: this.locked,
       imageError: this.imageError,
       imagesBusy: this.imagesBusy > 0,
+      spaceId: this.space,
     }
   }
 }

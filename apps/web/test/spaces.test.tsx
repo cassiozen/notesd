@@ -1,0 +1,226 @@
+import { screen, waitFor, within } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import type { Note, Space } from '../src/api/types'
+import { SPACE_RESET_MS } from '../src/notes/shell'
+import {
+  bodyText,
+  createNote,
+  list,
+  newNoteButton,
+  noteTitle,
+  op,
+  openNote,
+  phoneLayout,
+  saved,
+  signedIn,
+  typeAtEnd,
+  typeInTitle,
+} from './helpers'
+import type { TestServer } from './server'
+
+async function noteIn(server: TestServer, spaceId: string, title: string, content = '') {
+  const id = crypto.randomUUID()
+  const res = await server.api('POST', '/notes', { operationId: op(), id, title, content, spaceId })
+  expect(res.status).toBe(201)
+  return id
+}
+
+/** Notes in the default space and in Work. */
+async function withWork() {
+  return signedIn({
+    seed: async (s) => {
+      await s.api('PUT', '/spaces/work', { name: 'Work' })
+      await createNote(s, 'Groceries', 'Milk and garden seeds #home\n')
+      await noteIn(s, 'work', 'Standup', 'Garden project status #clients\n')
+      await noteIn(s, 'work', 'Budget', 'Numbers #clients\n')
+    },
+  })
+}
+
+const panel = () => screen.getByRole('navigation', { name: 'Sidebar' })
+const rowTitles = () =>
+  within(list())
+    .queryAllByRole('link')
+    .map((a) => a.querySelector('span')?.textContent)
+const switcher = () => within(panel()).getByRole('button', { name: /^Space: / })
+
+async function switchTo(user: Awaited<ReturnType<typeof signedIn>>['user'], name: string) {
+  await user.click(await waitFor(() => switcher()))
+  await user.click(screen.getByRole('menuitemradio', { name }))
+}
+
+async function spaces(server: TestServer) {
+  return (await server.api<{ spaces: Space[] }>('GET', '/spaces')).body.spaces
+}
+
+describe('one space', () => {
+  it('looks like there are no spaces', async () => {
+    const { user } = await signedIn({ seed: (s) => createNote(s, 'Only', 'text\n').then(() => undefined) })
+    expect(within(panel()).queryByRole('button', { name: /^Space: / })).toBeNull()
+    expect(within(list()).getByRole('heading', { name: 'Notes' })).toBeTruthy()
+    expect(screen.getByRole('searchbox', { name: 'Search notes' }).getAttribute('placeholder')).toBe('Search all notes')
+
+    await user.click(await screen.findByRole('button', { name: 'More' }))
+    expect(screen.queryByRole('menuitem', { name: 'Move to space…' })).toBeNull()
+  })
+})
+
+describe('creating spaces', () => {
+  it('names both spaces the first time, then switches to the new one', async () => {
+    const { server, user } = await signedIn({ seed: (s) => createNote(s, 'Old', 'text\n').then(() => undefined) })
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    const card = await screen.findByRole('region', { name: 'Spaces' })
+    await user.click(within(card).getByRole('button', { name: 'New space' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'New space' })
+    expect((within(dialog).getByLabelText('Rename “Notes” to') as HTMLInputElement).value).toBe('Personal')
+    await user.type(within(dialog).getByLabelText('Name'), 'Work')
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => expect(screen.queryByRole('heading', { name: 'Settings' })).toBeNull())
+    await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
+    expect(await within(list()).findByText('No notes in Work yet.')).toBeTruthy()
+    expect((await spaces(server)).map((s) => s.name)).toEqual(['Personal', 'Work'])
+
+    // A new note lands in the space shown.
+    await user.click(newNoteButton())
+    await typeInTitle(user, 'Plan')
+    await waitFor(async () => {
+      const work = (await server.api<{ notes: Note[] }>('GET', '/notes?space=' + (await spaces(server))[1]?.id)).body.notes
+      expect(work.map((n) => n.title)).toEqual(['Plan'])
+    })
+  })
+
+  it('only deletes an empty space', async () => {
+    const { server, user } = await withWork()
+    await server.api('PUT', '/spaces/empty', { name: 'Empty' })
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    const card = await screen.findByRole('region', { name: 'Spaces' })
+    await waitFor(() => within(card).getByRole('button', { name: 'Delete Empty' }))
+
+    expect(within(card).getByRole('button', { name: 'Delete Work' }).hasAttribute('disabled')).toBe(true)
+    expect(within(card).queryByRole('button', { name: 'Delete Notes' })).toBeNull()
+    await user.click(within(card).getByRole('button', { name: 'Delete Empty' }))
+    await waitFor(() => expect(within(card).queryByText('Empty')).toBeNull())
+    expect((await spaces(server)).map((s) => s.id)).toEqual(['default', 'work'])
+  })
+})
+
+describe('switching spaces', () => {
+  it('shows only the space’s notes and tags', async () => {
+    const { user } = await withWork()
+    await waitFor(() => expect(rowTitles()).toEqual(['Groceries']))
+    await waitFor(() => expect(within(panel()).getByRole('button', { name: /^#home,/ })).toBeTruthy())
+
+    await switchTo(user, 'Work')
+    await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
+    await waitFor(() => expect(within(panel()).getByRole('button', { name: /^#clients, 2 notes/ })).toBeTruthy())
+    expect(within(panel()).queryByRole('button', { name: /^#home,/ })).toBeNull()
+    expect(screen.getByRole('searchbox', { name: 'Search notes' }).getAttribute('placeholder')).toBe('Search in Work')
+  })
+
+  it('moves a note to another space', async () => {
+    const { server, user } = await withWork()
+    await openNote(user, 'Groceries')
+    await user.click(await screen.findByRole('button', { name: 'More' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Move to space…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Move to space' })
+    await user.click(within(dialog).getByRole('button', { name: 'Work' }))
+
+    expect(await screen.findByText('Moved to Work')).toBeTruthy()
+    await waitFor(() => expect(rowTitles()).toEqual([]))
+    await waitFor(async () => {
+      const work = (await server.api<{ notes: Note[] }>('GET', '/notes?space=work')).body.notes
+      expect(work.map((n) => n.title).toSorted()).toEqual(['Budget', 'Groceries', 'Standup'])
+    })
+  })
+
+  it('keeps a move made on another device while typing here', async () => {
+    const { server, user } = await withWork()
+    await openNote(user, 'Groceries')
+    await waitFor(() => expect(bodyText()).toBe('Milk and garden seeds #home'))
+    const [groceries] = (await server.api<{ notes: Note[] }>('GET', '/notes?space=default')).body.notes
+    if (!groceries) throw new Error('no note')
+    const moved = await server.api('PUT', `/notes/${groceries.id}`, {
+      operationId: op(),
+      baseRevision: groceries.revision,
+      title: groceries.title,
+      content: 'Milk and garden seeds #home\n',
+      spaceId: 'work',
+    })
+    expect(moved.status).toBe(200)
+
+    await typeAtEnd(user, ' and bread')
+    await saved()
+    await waitFor(async () => {
+      const note = (await server.api<Note>('GET', `/notes/${groceries.id}`)).body
+      expect(note).toMatchObject({ spaceId: 'work', content: 'Milk and garden seeds #home and bread\n' })
+    })
+    // It went to Work: this space's list lets it go.
+    await waitFor(() => expect(rowTitles()).toEqual([]))
+  })
+
+  it('finds notes in other spaces and switches to theirs', async () => {
+    const { user } = await withWork()
+    await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'garden')
+    const results = await screen.findByRole('list', { name: 'Search results' })
+    await waitFor(() => expect(within(results).getAllByRole('link')).toHaveLength(1))
+
+    await user.click(await screen.findByRole('button', { name: '1 more in Work' }))
+    const other = await screen.findByRole('list', { name: 'Results in other spaces' })
+    await user.click(within(other).getByRole('link', { name: /^Standup/ }))
+
+    await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
+    await waitFor(() => expect(noteTitle()).toBe('Standup'))
+  })
+})
+
+/** The tab hidden, then shown again ms later. */
+function away(ms: number) {
+  let state: DocumentVisibilityState = 'visible'
+  Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
+  const now = Date.now()
+  state = 'hidden'
+  document.dispatchEvent(new Event('visibilitychange'))
+  vi.spyOn(Date, 'now').mockReturnValue(now + ms)
+  state = 'visible'
+  document.dispatchEvent(new Event('visibilitychange'))
+}
+
+const heading = () => within(list()).getByRole('heading', { level: 1 })
+
+describe('going back to the default space', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    // @ts-expect-error -- back to the document's own getter
+    delete document.visibilityState
+  })
+
+  it('happens after a long time away with no note open', async () => {
+    phoneLayout()
+    const { user } = await withWork()
+    await user.click(await waitFor(() => within(heading()).getByRole('button', { name: /^Space: / })))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Work' }))
+    await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
+
+    away(SPACE_RESET_MS - 60_000)
+    expect(within(heading()).getByRole('button').getAttribute('aria-label')).toBe('Space: Work')
+
+    away(SPACE_RESET_MS + 60_000)
+    await waitFor(() => expect(rowTitles()).toEqual(['Groceries']))
+    expect(within(heading()).getByRole('button').getAttribute('aria-label')).toBe('Space: Notes')
+  })
+
+  it('waits while a note is open', async () => {
+    phoneLayout()
+    const { user } = await withWork()
+    await user.click(await waitFor(() => within(heading()).getByRole('button', { name: /^Space: / })))
+    await user.click(screen.getByRole('menuitemradio', { name: 'Work' }))
+    await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
+    await openNote(user, 'Budget')
+
+    away(SPACE_RESET_MS + 60_000)
+    await user.click(screen.getByRole('button', { name: /Work$/ }))
+    await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
+  })
+})

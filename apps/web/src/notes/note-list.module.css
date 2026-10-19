@@ -240,6 +240,16 @@
   font-weight: 500;
 }
 
+.rowSpace {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--tint);
+}
+
 .rowPreview {
   flex: 1;
   min-width: 0;

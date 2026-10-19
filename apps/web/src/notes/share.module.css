@@ -109,3 +109,9 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+.choices {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}

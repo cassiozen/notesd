@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { notes as api } from '../api/notes'
+import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -10,6 +11,7 @@ import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
 import { useEmailSettings } from './email-settings'
 import type { NoteSaver } from './saver'
+import { useSpaces } from './spaces'
 import styles from './share.module.css'
 
 /** The note as one Markdown file: the title as a heading, then the body. */
@@ -24,13 +26,25 @@ function exportMarkdown(saver: NoteSaver): string {
  * action to their share sheet, hence a menu. With [onDelete] it's the desktop's
  * one "More" menu and ends with Delete; phones keep Delete as its own button.
  * Lock note / Remove lock sit there too; a locked note can't be emailed, since
- * the server only has its ciphertext.
+ * the server only has its ciphertext. With more than one space, Move to space.
  */
-export function NoteMenu({ saver, mobile, onDelete }: { saver: NoteSaver; mobile: boolean; onDelete?: () => void }) {
+export function NoteMenu({
+  saver,
+  mobile,
+  onDelete,
+  onMove,
+}: {
+  saver: NoteSaver
+  mobile: boolean
+  onDelete?: () => void
+  onMove: (spaceId: string) => void
+}) {
   const name = onDelete ? 'More' : 'Share'
   const email = useEmailSettings()
+  const spaces = useSpaces()
   const [open, setOpen] = useState(false)
   const [emailing, setEmailing] = useState(false)
+  const [moving, setMoving] = useState(false)
   const [copied, setCopied] = useState(false)
   const [locking, setLocking] = useState<'setup' | 'unlock' | null>(null)
   const { locked } = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
@@ -137,6 +151,19 @@ export function NoteMenu({ saver, mobile, onDelete }: { saver: NoteSaver; mobile
           >
             {locked ? 'Remove lock' : 'Lock note'}
           </button>
+          {spaces && spaces.length > 1 && (
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.item}
+              onClick={() => {
+                setOpen(false)
+                setMoving(true)
+              }}
+            >
+              Move to space…
+            </button>
+          )}
           {onDelete && (
             <>
               <div role="separator" className={styles.separator} />
@@ -176,7 +203,42 @@ export function NoteMenu({ saver, mobile, onDelete }: { saver: NoteSaver; mobile
       {emailing && email?.configured && (
         <EmailDialog saver={saver} from={email.from} onClose={() => setEmailing(false)} />
       )}
+      {moving && spaces && (
+        <MoveDialog
+          spaces={spaces.filter((sp) => sp.id !== saver.spaceId())}
+          onClose={() => setMoving(false)}
+          onMove={(id) => {
+            setMoving(false)
+            onMove(id)
+          }}
+        />
+      )}
     </span>
+  )
+}
+
+function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () => void; onMove: (id: string) => void }) {
+  const titleId = useId()
+  return (
+    <Dialog labelledBy={titleId} onClose={onClose}>
+      <div className={styles.stack}>
+        <h2 id={titleId} className={styles.title}>
+          Move to space
+        </h2>
+        <div className={styles.choices} role="group" aria-labelledby={titleId}>
+          {spaces.map((sp) => (
+            <Button key={sp.id} size="md" onClick={() => onMove(sp.id)}>
+              {sp.name}
+            </Button>
+          ))}
+        </div>
+        <div className={styles.actions}>
+          <Button size="md" onClick={onClose}>
+            Cancel
+          </Button>
+        </div>
+      </div>
+    </Dialog>
   )
 }
 

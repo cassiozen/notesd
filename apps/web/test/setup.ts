@@ -1,6 +1,7 @@
 import { cleanup } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { resetEmailSettings } from '../src/notes/email-settings'
+import { resetSpaces } from '../src/notes/spaces'
 import { kdfCost } from '../src/locks/crypto'
 import { lockTiming } from '../src/locks/session'
 import { timing } from '../src/notes/saver'
@@ -78,6 +79,7 @@ afterEach(() => {
 afterEach(() => {
   cleanup()
   resetEmailSettings()
+  resetSpaces()
   globalThis.layout = 'wide'
   localStorage.clear()
   window.history.replaceState(null, '', '/')

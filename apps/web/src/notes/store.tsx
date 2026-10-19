@@ -5,6 +5,7 @@ import { useAuth } from '../auth/auth-context'
 import { lockSession, useLockStatus } from '../locks/session'
 import { preview as previewOf } from './plaintext'
 import { NoteSaver, timing, type Fields } from './saver'
+import { DEFAULT_SPACE, reloadSpaces } from './spaces'
 import { hasTag, tags, tagText } from './tags'
 
 /** What the list shows: every note, one tag (by key, with its nested tags), notes without tags, or locked notes. */
@@ -12,10 +13,16 @@ export type ListFilter = { tag: string; name: string } | { untagged: true } | { 
 
 const FILTER_KEY = 'notes.filter'
 
-/** The list last shown in this browser, so the app reopens on it. Storage may be missing or throw. */
+/**
+ * The list last shown in this browser, so the app reopens on it. Storage may
+ * be missing or throw. The app opens in the default space (§7.7), so a filter
+ * picked in another one isn't brought back.
+ */
 function savedFilter(): ListFilter {
   try {
-    const f = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as ListFilter
+    const saved = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as { space?: string; filter?: ListFilter } | null
+    if (saved?.space !== DEFAULT_SPACE) return null
+    const f = saved.filter
     if (f && 'tag' in f && typeof f.tag === 'string' && typeof f.name === 'string') return { tag: f.tag, name: f.name }
     if (f && 'untagged' in f && f.untagged === true) return { untagged: true }
     if (f && 'locked' in f && f.locked === true) return { locked: true }
@@ -25,9 +32,9 @@ function savedFilter(): ListFilter {
   return null
 }
 
-function saveFilter(filter: ListFilter) {
+function saveFilter(space: string, filter: ListFilter) {
   try {
-    localStorage.setItem(FILTER_KEY, JSON.stringify(filter))
+    localStorage.setItem(FILTER_KEY, JSON.stringify({ space, filter }))
   } catch {
     // Not remembered; nothing else depends on it.
   }
@@ -56,7 +63,11 @@ type ListState = {
 export type DeleteOutcome = 'deleted' | 'undone' | 'changed' | 'failed'
 
 type NotesContextValue = Omit<ListState, 'hidden'> & {
-  /** Every tag in live notes, refreshed after saves. */
+  /** The space the list, tags and search show (§7.7); this tab's own, never synced. */
+  space: string
+  /** Shows another space, from All notes. */
+  setSpace: (space: string) => void
+  /** Every tag in the space's live notes, refreshed after saves. */
   tags: TagCount[]
   /** Live locked notes, refreshed with the tags. */
   lockedCount: number
@@ -75,6 +86,8 @@ type NotesContextValue = Omit<ListState, 'hidden'> & {
   removed: (id: string) => void
   /** Live title and preview while typing, before the save lands. */
   touch: (id: string, summary: { title: string; preview: string }) => void
+  /** Moves a note to another space: it leaves this space's list now. */
+  move: (saver: NoteSaver, spaceId: string) => void
   /** Hides the note now and deletes it once the undo window passes. */
   remove: (id: string) => Promise<DeleteOutcome>
   undoRemove: (id: string) => void
@@ -102,6 +115,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     version: 0,
   })
   const [filter, setFilterState] = useState<ListFilter>(savedFilter)
+  const [space, setSpaceState] = useState(DEFAULT_SPACE)
+  const spaceRef = useRef(DEFAULT_SPACE)
   const [tagList, setTagList] = useState<TagCount[]>([])
   const [lockedCount, setLockedCount] = useState(0)
   const filterRef = useRef<ListFilter>(filter)
@@ -120,7 +135,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     if (loading.current === gen) return
     loading.current = gen
     try {
-      const page = await api.list(filterRef.current, reset ? undefined : cursor.current)
+      const page = await api.list(filterRef.current, spaceRef.current, reset ? undefined : cursor.current)
       if (gen !== generation.current) return
       cursor.current = page.nextCursor
       loadedAt.current = Date.now()
@@ -144,7 +159,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const setFilter = useCallback(
     (next: ListFilter) => {
       filterRef.current = next
-      saveFilter(next)
+      saveFilter(spaceRef.current, next)
       generation.current++
       cursor.current = ''
       setFilterState(next)
@@ -158,9 +173,13 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     void fetchPage(true)
   }, [fetchPage])
 
+  /** Bumped per space change: filters fetched for an earlier space are dropped. */
+  const filtersFor = useRef(0)
   const fetchFilters = useCallback((signal?: AbortSignal) => {
-    api.filters(signal).then(
+    const asked = filtersFor.current
+    api.filters(spaceRef.current, signal).then(
       ({ tags: all, locked }) => {
+        if (asked !== filtersFor.current) return
         setTagList(all)
         setLockedCount(locked)
       },
@@ -168,15 +187,35 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     )
   }, [])
 
+  const setSpace = useCallback(
+    (next: string) => {
+      if (next === spaceRef.current) return
+      spaceRef.current = next
+      setSpaceState(next)
+      filtersFor.current++
+      setTagList([])
+      setLockedCount(0)
+      setFilter(null)
+      fetchFilters()
+    },
+    [setFilter, fetchFilters],
+  )
+
   const hooks = useMemo(
     () => ({
-      saved: (id: string, fields: Fields, r: { updatedAt: number; revision: number; status: string }, locked: boolean) =>
+      saved: (
+        id: string,
+        fields: Fields,
+        r: { updatedAt: number; revision: number; status: string },
+        locked: boolean,
+        spaceId: string,
+      ) =>
         setList((prev) => {
           const old = prev.items.find((n) => n.id === id)
           const hidden = prev.hidden.includes(id)
           const slice = filterRef.current
-          if (!matches(slice, fields, locked)) {
-            // No longer in this slice (a tag removed): it leaves the list.
+          if (spaceId !== spaceRef.current || !matches(slice, fields, locked)) {
+            // No longer in this slice (a tag removed, moved to another space): it leaves the list.
             const items = prev.items.filter((n) => n.id !== id)
             return { ...prev, items, total: prev.total - (hidden ? 0 : counted(old)), version: prev.version + 1 }
           }
@@ -190,6 +229,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             revision: r.revision,
             updatedAt: r.updatedAt,
             createdAt: old?.createdAt ?? r.updatedAt,
+            spaceId,
           }
           // Filtered, a note can join the slice by gaining the tag, not just by being created.
           const joined = slice ? !counted(old) : r.status === 'created'
@@ -222,10 +262,11 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const newDraft = useCallback(() => {
     const f = filterRef.current
     const fields = { title: '', content: f && 'tag' in f ? tagText(f.name) : '' }
-    const s = new NoteSaver({ id: crypto.randomUUID(), fields, blank: fields }, hooks)
+    const spaceId = spaceRef.current
+    const s = new NoteSaver({ id: crypto.randomUUID(), fields, blank: fields, spaceId }, hooks)
     savers.current.set(s.id, s)
     const now = Date.now()
-    const row: ListItem = { id: s.id, title: '', preview: '', locked: false, revision: 0, createdAt: now, updatedAt: now }
+    const row: ListItem = { id: s.id, title: '', preview: '', locked: false, revision: 0, createdAt: now, updatedAt: now, spaceId }
     setList((prev) => ({ ...prev, items: [row, ...prev.items] }))
     return s
   }, [hooks])
@@ -259,6 +300,21 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     },
     [removed],
   )
+
+  const move = useCallback<NotesContextValue['move']>((saver, spaceId) => {
+    saver.moveTo(spaceId)
+    if (spaceId === spaceRef.current) return
+    setList((prev) => {
+      const item = prev.items.find((n) => n.id === saver.id)
+      const hidden = prev.hidden.includes(saver.id)
+      return {
+        ...prev,
+        items: prev.items.filter((n) => n.id !== saver.id),
+        total: prev.total - (hidden ? 0 : counted(item)),
+        version: prev.version + 1,
+      }
+    })
+  }, [])
 
   const touch = useCallback<NotesContextValue['touch']>((id, { title, preview }) => {
     setList((prev) => {
@@ -383,6 +439,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       if (Date.now() - loadedAt.current > STALE_MS) {
         void fetchPage(true)
         fetchFilters()
+        void reloadSpaces()
       }
       // Every time, not only when the list is stale: a reset elsewhere must lock this
       // tab before anything new is locked with the forgotten key. It's one small request.
@@ -392,6 +449,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       for (const s of all()) s.resume()
       void fetchPage(true)
       fetchFilters()
+      void reloadSpaces()
       void lockSession.load(true).catch(() => undefined)
     }
     const onHidden = () => {
@@ -429,6 +487,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const value = useMemo<NotesContextValue>(
     () => ({
       items: visible,
+      space,
+      setSpace,
       tags: tagList,
       lockedCount,
       filter,
@@ -448,10 +508,11 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       release,
       removed,
       touch,
+      move,
       remove,
       undoRemove,
     }),
-    [visible, tagList, lockedCount, filter, setFilter, status, hasMore, total, version, fetchPage, fetchFilters, saverFor, existingSaver, newDraft, release, removed, touch, remove, undoRemove],
+    [visible, space, setSpace, tagList, lockedCount, filter, setFilter, status, hasMore, total, version, fetchPage, fetchFilters, saverFor, existingSaver, newDraft, release, removed, touch, move, remove, undoRemove],
   )
   return <NotesContext value={value}>{children}</NotesContext>
 }

@@ -1,0 +1,102 @@
+.anchor {
+  position: relative;
+  min-width: 0;
+  display: inline-flex;
+}
+
+.button {
+  min-width: 0;
+  max-width: 100%;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0 0 0 -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:hover,
+.button[aria-expanded='true'] {
+  background: var(--hover);
+}
+
+.name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The chevron points right; turned down, it reads as a menu. */
+.chevron {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--ink-3);
+  transform: rotate(90deg);
+}
+
+.menu {
+  position: absolute;
+  z-index: 10;
+  top: calc(100% + 6px);
+  left: -6px;
+  min-width: 200px;
+  max-width: 280px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 16px;
+  background: var(--glass-hi);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--edge);
+  box-shadow:
+    var(--inset),
+    0 24px 50px -16px rgb(0 0 0 / 0.35);
+  animation: pop-in 0.3s var(--spring);
+}
+
+.item {
+  min-height: 38px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: 400 14px/1.2 var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--hover);
+}
+
+.itemName {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.check {
+  flex: none;
+  color: var(--tint);
+}
+
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}

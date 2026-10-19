@@ -16,9 +16,19 @@ import { Kicker } from '../ui/kicker'
 import { Sheet } from '../ui/sheet'
 import { Surface } from '../ui/surface'
 import { LockedNotesCard } from './locked-notes'
+import { SpacesCard } from './spaces'
 import styles from './settings.module.css'
 
-export function SettingsSheet({ username, onClose }: { username: string; onClose: () => void }) {
+export function SettingsSheet({
+  username,
+  onClose,
+  onSpaceCreated,
+}: {
+  username: string
+  onClose: () => void
+  /** A new space: the app switches to it, and Settings closes. */
+  onSpaceCreated: (id: string) => void
+}) {
   const { signOut } = useAuth()
   // Bumped after a password change, which signs out every other session.
   const [sessionsVersion, setSessionsVersion] = useState(0)
@@ -52,6 +62,8 @@ export function SettingsSheet({ username, onClose }: { username: string; onClose
           </Button>
         </Surface>
       </div>
+
+      <SpacesCard onCreated={onSpaceCreated} />
 
       <LockedNotesCard username={username} />
 

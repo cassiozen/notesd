@@ -17,6 +17,7 @@ import { StatusPill } from '../ui/status-pill'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type NoteSaver } from './saver'
 import { NoteMenu } from './share'
+import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import { tagKey } from './tags'
 import styles from './note-pane.module.css'
@@ -34,6 +35,8 @@ type Props = {
   /** Open another not-yet-saved note (a recovered copy). */
   onOpenDraft: (saver: NoteSaver) => void
   onDelete: (saver: NoteSaver) => void
+  /** Move the note to another space (§7.7). */
+  onMove: (saver: NoteSaver, spaceId: string) => void
   /** The note is gone for good (deleted elsewhere, discarded). */
   onGone: (id: string) => void
 }
@@ -50,8 +53,8 @@ type Load =
   | { kind: 'locked'; title: string; draft?: NoteSaver; keyFailed: boolean }
   | { kind: 'ready'; saver: NoteSaver }
 
-export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDraft, onDelete, onGone }: Props) {
-  const { existingSaver, saverFor, release, removed } = useNotes()
+export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDraft, onDelete, onMove, onGone }: Props) {
+  const { existingSaver, saverFor, release, removed, space, setSpace } = useNotes()
   const lockStatus = useLockStatus()
   const [load, setLoad] = useState<Load>(() => {
     const ready = draft ?? (id ? existingSaver(id) : undefined)
@@ -114,7 +117,10 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
           updatedAt: note.updatedAt,
           locked,
           envelope,
+          spaceId: note.spaceId,
         })
+        // Opened from a link into another space: the list follows it there.
+        if (note.spaceId !== space) setSpace(note.spaceId)
         setLoad({ kind: 'ready', saver })
       },
       (err: unknown) => {
@@ -129,7 +135,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
     return () => {
       cancelled = true
     }
-  }, [id, load.kind, saverFor, removed])
+  }, [id, load.kind, saverFor, removed, space, setSpace])
 
   const saver = load.kind === 'ready' ? load.saver : null
   // Leaving the note: save what's left, then let the store forget it.
@@ -149,6 +155,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
           onNew={onNew}
           onCreated={onCreated}
           onDelete={() => onDelete(saver)}
+          onMove={(spaceId) => onMove(saver, spaceId)}
           onGone={() => onGone(saver.id)}
           onOpenDraft={onOpenDraft}
         />
@@ -208,13 +215,16 @@ function summary(saver: NoteSaver, doc: Parameters<typeof noteSummary>[0]) {
   return saver.isLocked() ? { ...s, preview: '' } : s
 }
 
+/** Back to the list, named after its space once there are several. */
 function BackButton({ onClick }: { onClick: () => void }) {
+  const { space } = useNotes()
+  const spaces = useSpaces()
   return (
     <button type="button" className={styles.back} onClick={onClick}>
       <span className={styles.chevron} aria-hidden="true">
         ‹
       </span>
-      Notes
+      {spaces && spaces.length > 1 ? spaceName(spaces, space) : 'Notes'}
     </button>
   )
 }
@@ -227,6 +237,7 @@ type EditorProps = {
   onNew: () => void
   onCreated: (id: string) => void
   onDelete: () => void
+  onMove: (spaceId: string) => void
   onGone: () => void
   onOpenDraft: (saver: NoteSaver) => void
 }
@@ -236,7 +247,7 @@ const APP_TITLE = 'notesd'
 /** How often the list row follows the typing. */
 const TOUCH_MS = 150
 
-function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete, onGone, onOpenDraft }: EditorProps) {
+function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete, onMove, onGone, onOpenDraft }: EditorProps) {
   const snap = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
   const { touch, tags, setFilter } = useNotes()
   const [initial] = useState(() => saver.fields())
@@ -397,7 +408,11 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
             <LockIcon size={mobile ? 19 : 16} />
           </button>
         )}
-        {mobile ? <NoteMenu saver={saver} mobile /> : <NoteMenu saver={saver} mobile={false} onDelete={onDelete} />}
+        {mobile ? (
+          <NoteMenu saver={saver} mobile onMove={onMove} />
+        ) : (
+          <NoteMenu saver={saver} mobile={false} onDelete={onDelete} onMove={onMove} />
+        )}
         {mobile && <DeleteButton onClick={onDelete} />}
       </div>
 
