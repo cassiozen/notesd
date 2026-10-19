@@ -96,10 +96,10 @@ public final class SyncEngine: Sendable {
     /// moved out of them have gone (§7.7).
     private func cycle(_ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?) async throws -> Stop?
     {
-        if let stop = try await pushSpaces(api, deletes: true, final: false) { return stop }
-        if let stop = try await pushSpaces(api, deletes: false) { return stop }
+        if let stop = try await pushSpaces(api, deletes: true, final: false, &rejection) { return stop }
+        if let stop = try await pushSpaces(api, deletes: false, &rejection) { return stop }
         if let stop = try await push(api, &events, &rejection) { return stop }
-        if let stop = try await pushSpaces(api, deletes: true) { return stop }
+        if let stop = try await pushSpaces(api, deletes: true, &rejection) { return stop }
         if let stop = try await pull(api, &events) { return stop }
         if let stop = try await fetchSpaces(api) { return stop }
         if let stop = try await keyring(api) { return stop }
@@ -108,21 +108,30 @@ public final class SyncEngine: Sendable {
 
     /// Sends the spaces created or renamed here, or (`deletes`) the ones deleted here. Not
     /// `final`, a delete refused for holding notes stays pending: notes moved out of it here
-    /// may not have gone yet.
-    private func pushSpaces(_ api: ApiClient, deletes: Bool, final: Bool = true) async throws -> Stop? {
+    /// may not have gone yet. One refused for good is dropped, and `rejection` says why.
+    private func pushSpaces(
+        _ api: ApiClient, deletes: Bool, final: Bool = true, _ rejection: inout String?
+    ) async throws -> Stop? {
         for change in try await spaces.pending() where change.delete == deletes {
             if change.delete {
                 switch await api.deleteSpace(change.id) {
                 case .ok: try await spaces.deleted(change)
                 // Notes reached it from another device (or it's the default): it stays.
-                case .conflict: if final { try await spaces.dropped(change) }
-                case .rejected(let status, _, _, _) where status < 500: try await spaces.dropped(change)
+                case .conflict:
+                    guard final else { continue }
+                    try await spaces.dropped(change)
+                    rejection = "“\(change.name)” wasn’t deleted: notes reached it from another device."
+                case .rejected(let status, let error, let message, _) where status < 500:
+                    try await spaces.dropped(change)
+                    rejection = "“\(change.name)” wasn’t deleted: \(message.isEmpty ? error : message)"
                 case let other: return stop(other)
                 }
             } else {
                 switch await api.putSpace(change.id, name: change.name, icon: change.icon) {
                 case .ok(let stored): try await spaces.sent(change, stored: stored)
-                case .rejected(let status, _, _, _) where status < 500: try await spaces.dropped(change)
+                case .rejected(let status, let error, let message, _) where status < 500:
+                    try await spaces.dropped(change)
+                    rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? error : message)"
                 case let other: return stop(other)
                 }
             }
@@ -180,7 +189,7 @@ public final class SyncEngine: Sendable {
             if let stop = try await uploadImages(api) { return stop }
             // Likewise a space made since the cycle began: the server files a note naming an
             // unknown space in the default.
-            if let stop = try await pushSpaces(api, deletes: false) { return stop }
+            if let stop = try await pushSpaces(api, deletes: false, &rejection) { return stop }
             switch await send(api, op) {
             case .ok(let result):
                 try await store.sent(op, result)

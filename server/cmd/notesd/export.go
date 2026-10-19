@@ -17,6 +17,7 @@ import (
 	"unicode/utf8"
 
 	"golang.org/x/term"
+	"golang.org/x/text/unicode/norm"
 
 	"notes/server/internal/database"
 	"notes/server/internal/images"
@@ -73,14 +74,14 @@ func spaceFolders(ctx context.Context, db *database.DB) (map[string]string, erro
 	if err != nil || len(list) < 2 {
 		return nil, err
 	}
-	taken := map[string]bool{strings.ToLower(imagesDir): true}
+	taken := map[string]bool{nameKey(imagesDir): true}
 	folders := map[string]string{}
 	for _, sp := range list {
 		name := fileName(sp.Name)
-		for i := 2; taken[strings.ToLower(name)]; i++ {
+		for i := 2; taken[nameKey(name)]; i++ {
 			name = fmt.Sprintf("%s (%d)", fileName(sp.Name), i)
 		}
-		taken[strings.ToLower(name)] = true
+		taken[nameKey(name)] = true
 		folders[sp.ID] = name
 	}
 	return folders, nil
@@ -282,12 +283,13 @@ func markdown(title, content string) string {
 
 // fileName turns a title into a name safe on Linux, macOS and Windows, without the extension.
 func fileName(title string) string {
+	// Composed, as macOS and Windows compare names: "é" typed either way is one file.
 	s := strings.Map(func(r rune) rune {
 		if unicode.IsControl(r) || strings.ContainsRune(`/\:*?"<>|`, r) {
 			return ' '
 		}
 		return r
-	}, title)
+	}, norm.NFC.String(title))
 	s = strings.Join(strings.Fields(s), " ")
 	if len(s) > maxFileNameBytes {
 		s = s[:maxFileNameBytes]
@@ -301,14 +303,32 @@ func fileName(title string) string {
 	if s == "" {
 		return "Untitled"
 	}
+	// Windows refuses its device names, with any extension: "CON", "con.md".
+	if stem, _, _ := strings.Cut(s, "."); reservedNames[strings.ToUpper(strings.TrimRight(stem, " "))] {
+		s = "_" + s
+	}
 	return s
 }
 
+// reservedNames are Windows device names, unusable as a file or folder name.
+var reservedNames = func() map[string]bool {
+	m := map[string]bool{"CON": true, "PRN": true, "AUX": true, "NUL": true}
+	for i := 1; i <= 9; i++ {
+		m[fmt.Sprintf("COM%d", i)] = true
+		m[fmt.Sprintf("LPT%d", i)] = true
+	}
+	return m
+}()
+
+// nameKey is how filesystems compare names: macOS and Windows ignore case,
+// and macOS composed and decomposed forms.
+func nameKey(name string) string { return strings.ToLower(norm.NFC.String(name)) }
+
 func uniqueName(base string, taken map[string]bool) string {
 	name := base + ".md"
-	for i := 2; taken[strings.ToLower(name)]; i++ {
+	for i := 2; taken[nameKey(name)]; i++ {
 		name = fmt.Sprintf("%s (%d).md", base, i)
 	}
-	taken[strings.ToLower(name)] = true
+	taken[nameKey(name)] = true
 	return name
 }

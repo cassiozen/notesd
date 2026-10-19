@@ -31,11 +31,10 @@ export function SpacesCard({ onCreated }: { onCreated: (id: string) => void }) {
     try {
       await deleteSpace(id)
     } catch (err) {
-      setError(
-        err instanceof ApiError && err.code === 'space_not_empty'
-          ? 'Notes arrived in that space from another device. Move or delete them first.'
-          : genericMessage(err),
-      )
+      const notEmpty = err instanceof ApiError && err.code === 'space_not_empty'
+      setError(notEmpty ? 'Notes arrived in that space from another device. Move or delete them first.' : genericMessage(err))
+      // Its row then shows those notes, and Delete turns off.
+      if (notEmpty) void reloadSpaces()
     } finally {
       setDeleting(null)
     }

@@ -112,10 +112,10 @@ def tidy(svg: str) -> str:
     by_id = {el.get("id"): el for el in root.iter() if el.tag in GRADIENTS}
     for el in root.iter():
         el.attrib.pop("data-name", None)
-        ref = el.attrib.pop(XLINK, None)
-        if el.tag not in GRADIENTS or not ref:
+        # Only a gradient's reference is resolved; any other (<use>, <image>) stays.
+        if el.tag not in GRADIENTS or XLINK not in el.attrib:
             continue
-        src = by_id[ref.lstrip("#")]
+        src = by_id[el.attrib.pop(XLINK).lstrip("#")]
         for name in INHERITED:
             if name not in el.attrib and name in src.attrib:
                 el.set(name, src.get(name))
@@ -125,12 +125,13 @@ def tidy(svg: str) -> str:
 
 
 def import_downloads(src: Path):
+    # Every icon read and tidied before the old ones go: a bad download leaves them as they were.
+    tidied = {key: tidy((src / f"icons8-{file}.svg").read_text()) for key, _, file in ICONS}
     if SVGS.exists():
         shutil.rmtree(SVGS)
     SVGS.mkdir(parents=True)
-    for key, _, file in ICONS:
-        svg = (src / f"icons8-{file}.svg").read_text()
-        (SVGS / f"{key}.svg").write_text(tidy(svg))
+    for key, svg in tidied.items():
+        (SVGS / f"{key}.svg").write_text(svg)
 
 
 def web():

@@ -147,18 +147,21 @@ private struct SpaceSheet: View {
         }
         busy = true
         Task {
-            if let editing {
-                try? await graph.engine.spaces.update(editing.id, name: n, icon: icon)
+            do {
+                let id: String
+                if let editing {
+                    try await graph.engine.spaces.update(editing.id, name: n, icon: icon)
+                    id = editing.id
+                } else {
+                    id = try await graph.engine.spaces.create(n, icon: icon)
+                }
                 graph.scheduler.request()
-                onDone(editing.id)
-                return
-            }
-            guard let id = try? await graph.engine.spaces.create(n, icon: icon) else {
+                onDone(id)
+            } catch {
+                // The sheet stays, with what was typed, to try again.
+                self.error = "The space couldn’t be saved on this iPhone. Try again."
                 busy = false
-                return
             }
-            graph.scheduler.request()
-            onDone(id)
         }
     }
 }

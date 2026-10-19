@@ -275,6 +275,15 @@ export class NoteSaver {
     return this.space
   }
 
+  /**
+   * Whether a move would be saved: not while a conflict, a delete elsewhere or a refusal
+   * holds every save until the user acts, nor for a new note with nothing in it.
+   */
+  canMove(): boolean {
+    const k = this.problem?.kind
+    return k !== 'conflict' && k !== 'deleted' && k !== 'rejected' && !this.isBlankDraft()
+  }
+
   /** Moves the note to another space: saved like an edit. */
   moveTo(spaceId: string) {
     if (this.space === spaceId) return
@@ -502,7 +511,8 @@ export class NoteSaver {
       this.baseSpace = space
       this.updatedAt = result.updatedAt
       this.problem = null
-      this.hooks.saved?.(this.id, p.fields, result, p.locked, space)
+      // Moved since this save went: the move's own save reports the note, in its new space.
+      if (this.space === space) this.hooks.saved?.(this.id, p.fields, result, p.locked, space)
       if (!this.dirty) {
         this.set('saved')
         return

@@ -67,6 +67,9 @@ class SyncEngine(
     val spaces = SpaceStore(db, clock)
     private val lock = Mutex()
 
+    /** Why a space change this cycle was refused for good, for [SyncStore.finished]. */
+    private var rejection: String? = null
+
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.NotConnected)
     val status: StateFlow<SyncStatus> = _status
 
@@ -81,8 +84,10 @@ class SyncEngine(
             return@withLock SyncOutcome.NotConnected
         }
         _status.value = SyncStatus.Syncing
+        rejection = null
         val failure = cycle(client)
-        store.finished(failure?.message)
+        // A dropped change isn't retried, so the cycle still counts as done, but the reason is kept.
+        store.finished(failure?.message ?: rejection)
         val outcome = failure?.outcome ?: SyncOutcome.Done
         _status.value = when (outcome) {
             SyncOutcome.Done -> SyncStatus.Synced(store.state().lastSyncAt ?: 0)
@@ -119,16 +124,27 @@ class SyncEngine(
                     is ApiResult.Ok -> spaces.deleted(change)
 
                     // Notes reached it from another device (or it's the default): it stays.
-                    is ApiResult.Conflict -> if (final) spaces.dropped(change)
+                    is ApiResult.Conflict -> if (final) {
+                        spaces.dropped(change)
+                        rejection = "“${change.name}” wasn’t deleted: notes reached it from another device."
+                    }
 
-                    is ApiResult.Rejected if r.status < 500 -> spaces.dropped(change)
+                    is ApiResult.Rejected if r.status < 500 -> {
+                        spaces.dropped(change)
+                        rejection = "“${change.name}” wasn’t deleted: ${r.message.ifEmpty { r.error }}"
+                    }
 
                     else -> return stop(r)
                 }
             } else {
                 when (val r = api.putSpace(change.id, change.name, change.icon)) {
                     is ApiResult.Ok -> spaces.sent(change, r.value)
-                    is ApiResult.Rejected if r.status < 500 -> spaces.dropped(change)
+
+                    is ApiResult.Rejected if r.status < 500 -> {
+                        spaces.dropped(change)
+                        rejection = "The space “${change.name}” wasn’t saved: ${r.message.ifEmpty { r.error }}"
+                    }
+
                     else -> return stop(r)
                 }
             }

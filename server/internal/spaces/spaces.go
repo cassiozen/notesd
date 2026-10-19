@@ -115,7 +115,7 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 			if !taken {
 				break
 			}
-			stored = fmt.Sprintf("%s %d", name, i)
+			stored = withNumber(name, i)
 		}
 		if err := tx.QueryRowContext(ctx, `
 			INSERT INTO spaces (id, name, name_key, icon, created_at) VALUES (?1, ?2, ?3, coalesce(?4, ''), ?5)
@@ -159,6 +159,16 @@ func Resolve(ctx context.Context, tx *sql.Tx, id string) (string, error) {
 		return Default, err
 	}
 	return id, nil
+}
+
+// withNumber is name with " n" appended, shortened first if the result would
+// pass MaxNameRunes.
+func withNumber(name string, n int) string {
+	suffix := fmt.Sprintf(" %d", n)
+	if room := MaxNameRunes - utf8.RuneCountInString(suffix); utf8.RuneCountInString(name) > room {
+		name = strings.TrimRight(string([]rune(name)[:room]), " ")
+	}
+	return name + suffix
 }
 
 // Key identifies a name ignoring case.

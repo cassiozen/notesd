@@ -170,6 +170,9 @@ final class SpacesSyncTests {
         #expect(await b.sync() == .done)
         #expect(try await a.engine.spaces.delete(work))
         #expect(try await names(a) == ["Notes"])
+        #expect(await a.sync() == .done)
+        // The person who deleted it hears why it's back.
+        #expect(try await a.engine.store.state().lastError?.contains("“Work” wasn’t deleted") == true)
         await syncAll(a)
         #expect(try await names(a) == ["Notes", "Work"])
         #expect(try await spaceOf(a, "n") == work)

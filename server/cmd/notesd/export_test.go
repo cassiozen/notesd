@@ -234,6 +234,14 @@ func TestExportLockedImages(t *testing.T) {
 	}
 }
 
+func TestUniqueNameIgnoresCaseAndComposition(t *testing.T) {
+	taken := map[string]bool{}
+	first, second := uniqueName("Café", taken), uniqueName("CAFE\u0301", taken)
+	if first != "Café.md" || second != "CAFE\u0301 (2).md" {
+		t.Fatalf("got %q then %q; the second is the same file on macOS", first, second)
+	}
+}
+
 func TestFileName(t *testing.T) {
 	for title, want := range map[string]string{
 		"Plain":                       "Plain",
@@ -245,6 +253,10 @@ func TestFileName(t *testing.T) {
 		`<all>|"bad"*chars?`:          "all bad chars",
 		strings.Repeat("é", 60):       strings.Repeat("é", 50),
 		strings.Repeat("x", 99) + "é": strings.Repeat("x", 99),
+		"CON":                         "_CON",
+		"lpt1.notes":                  "_lpt1.notes",
+		"Console":                     "Console",
+		"Cafe\u0301":                  "Café",
 	} {
 		if got := fileName(title); got != want {
 			t.Errorf("fileName(%q) = %q, want %q", title, got, want)

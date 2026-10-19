@@ -18,9 +18,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -163,31 +165,39 @@ fun SpaceSwitcher(
 /** A sheet listing [spaces] to pick one, [current] checked. */
 @Composable
 fun SpacePicker(title: String, spaces: List<Space>, current: String?, onDismiss: () -> Unit, onPick: (String) -> Unit) {
-    val t = LocalTokens.current
     Sheet(onDismiss = onDismiss, title = title) {
-        for (s in spaces) {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .clickable(role = Role.RadioButton) { onPick(s.id) }
-                    .semantics { selected = s.id == current }
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                SpaceIconImage(s.icon, 24.dp)
-                Spacer(Modifier.width(14.dp))
-                Text(
-                    s.name,
-                    style = Type.body.copy(fontSize = 16.sp),
-                    color = t.ink,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    modifier = Modifier.weight(1f)
-                )
-                if (s.id == current) Icon(Icons.Check, null, Modifier.size(20.dp), tint = t.tint)
-            }
+        // Scrolls once there are more spaces than the sheet's height shows.
+        Column(Modifier.verticalScroll(rememberScrollState())) {
+            SpaceRows(spaces, current, onPick)
+        }
+    }
+}
+
+@Composable
+private fun SpaceRows(spaces: List<Space>, current: String?, onPick: (String) -> Unit) {
+    val t = LocalTokens.current
+    for (s in spaces) {
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .heightIn(min = 56.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(role = Role.RadioButton) { onPick(s.id) }
+                .semantics { selected = s.id == current }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            SpaceIconImage(s.icon, 24.dp)
+            Spacer(Modifier.width(14.dp))
+            Text(
+                s.name,
+                style = Type.body.copy(fontSize = 16.sp),
+                color = t.ink,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            if (s.id == current) Icon(Icons.Check, null, Modifier.size(20.dp), tint = t.tint)
         }
     }
 }

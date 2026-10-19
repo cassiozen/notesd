@@ -87,7 +87,7 @@ Failed logins are limited to 10 per 15 minutes per client address.
 | DELETE | `/settings/email` | forget the key and sender |
 | GET | `/filters?space=` | `{tags: [{key, name, count}], locked}`: `tags` sorted by key, parents of nested tags included, `count` is distinct notes including nested tags; `locked` counts live locked notes. With `space`, only that space's notes count |
 | GET | `/spaces` | `{spaces: [{id, name, icon, createdAt, noteCount}]}`: the default space (`default`) first, then by name. `icon` is a key into the apps' icon set, `''` for the app's own icon |
-| PUT | `/spaces/{id}` | `{name, icon?}` → the space as stored. Creates the space or renames it; `id` is 1–64 characters `[A-Za-z0-9_-]`. The name is trimmed with inner whitespace collapsed, 1–64 characters; one another space has (ignoring case) gets ` 2`, ` 3`… appended. `icon` is 0–64 characters `[a-z0-9-]`; without it the icon stays as it is (`''` for a new space) |
+| PUT | `/spaces/{id}` | `{name, icon?}` → the space as stored. Creates the space or renames it; `id` is 1–64 characters `[A-Za-z0-9_-]`. The name is trimmed with inner whitespace collapsed, 1–64 characters; a name another space already has (ignoring case) gets ` 2`, ` 3`… appended, shortened to fit if need be. `icon` is 0–64 characters `[a-z0-9-]`; without it the icon stays as it is (`''` for a new space) |
 | DELETE | `/spaces/{id}` | → 204, also when already gone. `409 space_not_empty` with `count` while it holds live notes; `409 space_default` for the default |
 | GET | `/locks` | `{keys: [{id, kind, credentialId?, salt, iterations, wrapped, createdAt}]}`: the locked-notes keyring, password entry first |
 | PUT | `/locks/keys/{id}` | `{kind, credentialId?, salt, iterations, wrapped, verifier}`. `id` is `password` or `recovery` for those kinds; a `passkey` takes any other id of 1–64 characters `[A-Za-z0-9_-]` (`400` otherwise). `salt`, `wrapped`, `credentialId` and `verifier` are unpadded base64url. The first entry must be the password, and its `verifier` is stored (hashed); every later write must send the same verifier (`403 bad_verifier`). `409 no_lock_password` for a recovery or passkey entry first |
@@ -102,7 +102,8 @@ Failed logins are limited to 10 per 15 minutes per client address.
 **Mutations** answer `{id, status, revision, changeSeq, updatedAt, deletedAt?, spaceId?}`
 where `status` is `created`, `updated`, `unchanged` (identical content and space, no new
 revision), `deleted` or `already_deleted`. Creates and updates carry the note's
-`spaceId`: the one sent, or `default` if that space no longer exists. Conflicts are `409` with the
+`spaceId`: the one sent, `default` if that space no longer exists, or, for an update that
+sent none, the space the note was already in. Conflicts are `409` with the
 server's latest note in `current`:
 
 - `revision_conflict`: `baseRevision` is stale (also for stale deletions, so a

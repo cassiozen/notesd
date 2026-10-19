@@ -152,7 +152,7 @@ export function NoteMenu({
           >
             {locked ? 'Remove lock' : 'Lock note'}
           </button>
-          {spaces && spaces.length > 1 && (
+          {spaces && spaces.length > 1 && saver.canMove() && (
             <button
               type="button"
               role="menuitem"

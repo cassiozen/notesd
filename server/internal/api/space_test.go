@@ -36,6 +36,15 @@ func TestSpaces(t *testing.T) {
 	if r := c.do("PUT", "/api/v1/spaces/work2", map[string]any{"name": "WORK STUFF"}); r.status != 200 || r.body["name"] != "WORK STUFF 2" {
 		t.Fatalf("clashing name: %d %s", r.status, r.raw)
 	}
+	// A full-length name that clashes is shortened to fit its number.
+	long := strings.Repeat("x", 64)
+	c.do("PUT", "/api/v1/spaces/long1", map[string]any{"name": long})
+	if r := c.do("PUT", "/api/v1/spaces/long2", map[string]any{"name": long}); r.status != 200 || r.body["name"] != strings.Repeat("x", 62)+" 2" {
+		t.Fatalf("long clash: %d %s", r.status, r.raw)
+	}
+	for _, id := range []string{"long1", "long2"} {
+		c.do("DELETE", "/api/v1/spaces/"+id, nil)
+	}
 	// Retrying the same request doesn't clash with itself.
 	if r := c.do("PUT", "/api/v1/spaces/work1", map[string]any{"name": "Work stuff"}); r.body["name"] != "Work stuff" {
 		t.Fatalf("retry: %s", r.raw)

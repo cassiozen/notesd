@@ -122,6 +122,20 @@ describe('creating spaces', () => {
     ])
   })
 
+  it('shows the notes that stopped a delete', async () => {
+    const { server, user } = await withWork()
+    await server.api('PUT', '/spaces/empty', { name: 'Empty' })
+    await user.click(screen.getByRole('button', { name: 'Settings' }))
+    const card = await screen.findByRole('region', { name: 'Spaces' })
+    const remove = await waitFor(() => within(card).getByRole('button', { name: 'Delete Empty' }))
+    // Another device files a note there meanwhile.
+    await noteIn(server, 'empty', 'Late', 'x\n')
+    await user.click(remove)
+
+    expect((await within(card).findByRole('alert')).textContent).toMatch(/another device/)
+    await waitFor(() => expect(within(card).getByRole('button', { name: 'Delete Empty' }).hasAttribute('disabled')).toBe(true))
+  })
+
   it('only deletes an empty space', async () => {
     const { server, user } = await withWork()
     await server.api('PUT', '/spaces/empty', { name: 'Empty' })
@@ -150,6 +164,24 @@ describe('switching spaces', () => {
     expect(screen.getByRole('searchbox', { name: 'Search notes' }).getAttribute('placeholder')).toBe('Search in Work')
   })
 
+  it('works from the keyboard, focus back on the switcher after', async () => {
+    const { user } = await withWork()
+    const button = await waitFor(() => switcher())
+    button.focus()
+    await user.keyboard('{ArrowDown}')
+    // Focus goes to the space shown, then the arrows move through the others.
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Notes' }))
+    await user.keyboard('{ArrowDown}')
+    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Work' }))
+    await user.keyboard('{Escape}')
+    expect(screen.queryByRole('menu', { name: 'Spaces' })).toBeNull()
+    expect(document.activeElement).toBe(switcher())
+
+    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
+    expect(document.activeElement).toBe(switcher())
+  })
+
   it('moves a note to another space', async () => {
     const { server, user } = await withWork()
     await openNote(user, 'Groceries')
@@ -164,6 +196,14 @@ describe('switching spaces', () => {
       const work = (await server.api<{ notes: Note[] }>('GET', '/notes?space=work')).body.notes
       expect(work.map((n) => n.title).toSorted()).toEqual(['Budget', 'Groceries', 'Standup'])
     })
+  })
+
+  it('offers no move for a new note with nothing in it', async () => {
+    const { user } = await withWork()
+    await waitFor(() => switcher())
+    await user.click(newNoteButton())
+    await user.click(await screen.findByRole('button', { name: 'More' }))
+    expect(screen.queryByRole('menuitem', { name: 'Move to space…' })).toBeNull()
   })
 
   it('keeps a move made on another device while typing here', async () => {

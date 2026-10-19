@@ -185,6 +185,9 @@ class SpacesSyncTest {
         assertEquals(SyncOutcome.Done, b.sync())
         assertTrue(a.engine.spaces.delete(work))
         assertEquals(listOf("Notes"), a.spaceNames())
+        assertEquals(SyncOutcome.Done, a.sync())
+        // Why it's back is kept for the person who deleted it.
+        assertTrue(a.engine.store.state().lastError.orEmpty().contains("“Work” wasn’t deleted"))
         syncAll(a)
         assertEquals(listOf("Notes", "Work"), a.spaceNames())
         assertEquals(work, a.spaceOf("n"))

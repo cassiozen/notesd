@@ -9,7 +9,17 @@ export const DEFAULT_SPACE = 'default'
 // page load and refetched when the notes are (focus, Settings changes).
 let current: Space[] | null = null
 let loading: Promise<void> | null = null
+// Each fetch's number: only the latest started may set the list, so a slow
+// one from before a create can't put back the list without it.
+let fetches = 0
 const listeners = new Set<() => void>()
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
 
 function set(next: Space[]) {
   current = next
@@ -18,10 +28,13 @@ function set(next: Space[]) {
 
 /** Fetches the list again; failures keep what was there. */
 export function reloadSpaces(): Promise<void> {
+  const n = ++fetches
   loading = api.list().then(
-    ({ spaces }) => set(spaces),
+    ({ spaces }) => {
+      if (n === fetches) set(spaces)
+    },
     () => {
-      loading = null
+      if (n === fetches) loading = null
     },
   )
   return loading
@@ -29,13 +42,7 @@ export function reloadSpaces(): Promise<void> {
 
 /** The spaces, default first, or null until they've loaded. */
 export function useSpaces(): Space[] | null {
-  const value = useSyncExternalStore(
-    (l) => {
-      listeners.add(l)
-      return () => listeners.delete(l)
-    },
-    () => current,
-  )
+  const value = useSyncExternalStore(subscribe, () => current)
   useEffect(() => {
     if (!loading) void reloadSpaces()
   }, [])
@@ -72,4 +79,5 @@ export async function deleteSpace(id: string): Promise<void> {
 export function resetSpaces() {
   current = null
   loading = null
+  fetches = 0
 }
