@@ -1,0 +1,15 @@
+docs/hosting.md
+  h_506d0d833c777f 5,86,88,107,114,116,125,128-131,133
+  h_506d0d833c777f 6,90-100,102-105,109-112,118-120,123,135-138,140-141
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "14b2c3493640ae05c63c95168bbd7f43164c00e5",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
