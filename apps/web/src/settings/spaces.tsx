@@ -97,7 +97,6 @@ export function SpacesCard({ onCreated }: { onCreated: (id: string) => void }) {
       </ul>
       {editing === 'new' && spaces && (
         <NewSpaceDialog
-          first={spaces.length === 1 ? spaces[0] : undefined}
           onClose={() => setEditing(null)}
           onCreated={(id) => {
             setEditing(null)
@@ -110,16 +109,12 @@ export function SpacesCard({ onCreated }: { onCreated: (id: string) => void }) {
   )
 }
 
-/**
- * A new space, with a name and an icon. The second one also names the first: "Notes" alone was fine,
- * beside "Work" it reads better as "Personal".
- */
-function NewSpaceDialog({ first, onClose, onCreated }: { first: Space | undefined; onClose: () => void; onCreated: (id: string) => void }) {
+/** A new space, with a name and an icon. */
+function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const titleId = useId()
   const [name, setName] = useState('')
   const [icon, setIcon] = useState<string | null>(null)
-  const [firstName, setFirstName] = useState(first?.name === 'Notes' ? 'Personal' : (first?.name ?? ''))
-  const [errors, setErrors] = useState<{ name?: string; icon?: string; first?: string; form?: string }>({})
+  const [errors, setErrors] = useState<{ name?: string; icon?: string; form?: string }>({})
   const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
@@ -127,13 +122,11 @@ function NewSpaceDialog({ first, onClose, onCreated }: { first: Space | undefine
     const found = {
       ...(!name.trim() && { name: 'Name the new space.' }),
       ...(icon === null && { icon: 'Choose an icon.' }),
-      ...(first && !firstName.trim() && { first: 'Name the space your notes are in now.' }),
     }
     setErrors(found)
     if (Object.keys(found).length > 0 || icon === null) return
     setBusy(true)
     try {
-      if (first && firstName.trim() !== first.name) await putSpace(first.id, firstName.trim())
       const id = crypto.randomUUID()
       await putSpace(id, name.trim(), icon)
       onCreated(id)
@@ -160,17 +153,6 @@ function NewSpaceDialog({ first, onClose, onCreated }: { first: Space | undefine
           autoFocus
         />
         <SpaceIconPicker value={icon} onChange={setIcon} error={errors.icon} />
-        {first && (
-          <Field
-            label={`Rename “${first.name}” to`}
-            autoComplete="off"
-            maxLength={64}
-            value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
-            error={errors.first}
-            hint="The space your notes are in now."
-          />
-        )}
         {errors.form && (
           <p role="alert" className={styles.error}>
             {errors.form}

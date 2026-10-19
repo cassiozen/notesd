@@ -168,7 +168,8 @@ final class FlowTests: XCTestCase {
         newSpace.tap()
         let name = app.textFields["Name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.textFields["Rename “Notes” to"].value as? String, "Personal")
+        // Notes keeps its name: nothing here renames it.
+        XCTAssertFalse(app.textFields["Rename “Notes” to"].exists)
         app.typeText("Work")
         // An icon is required too.
         app.buttons["Create"].tap()
@@ -192,13 +193,13 @@ final class FlowTests: XCTestCase {
         let shown = app.buttons.matching(identifier: "Space: Work").allElementsBoundByIndex.first { $0.isHittable }
         // Its name, as a finger would: the row around it is wider than the menu.
         try XCTUnwrap(shown).staticTexts["Work"].tap()
-        let personal = app.buttons["Personal"]
-        XCTAssertTrue(personal.waitForExistence(timeout: 5))
+        let notes = app.buttons["Notes"]
+        XCTAssertTrue(notes.waitForExistence(timeout: 5))
         screenshot("space menu")
-        personal.tap()
+        notes.tap()
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Standup"].exists)
-        XCTAssertTrue(app.buttons["Space: Personal"].exists)
+        XCTAssertTrue(app.buttons["Space: Notes"].exists)
     }
 
     func testALongNoteScrolls() throws {

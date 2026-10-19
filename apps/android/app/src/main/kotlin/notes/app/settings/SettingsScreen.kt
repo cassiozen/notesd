@@ -791,7 +791,7 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
             initialIcon = space.icon,
             taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
             onDismiss = { editing = null }
-        ) { name, icon, _ ->
+        ) { name, icon ->
             editing = null
             scope.launch {
                 graph.sync.spaces.update(space.id, name, icon)
@@ -800,22 +800,16 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
         }
     }
     if (creating) {
-        // The second space also names the first: "Notes" alone was fine, beside "Work" it reads better as "Personal".
-        val first = spaces.singleOrNull()
         SpaceDialog(
             title = "New space",
             action = "Create",
             initial = "",
             initialIcon = null,
-            taken = { name -> spaces.any { it.id != first?.id && it.name.equals(name, ignoreCase = true) } },
-            first = first,
+            taken = { name -> spaces.any { it.name.equals(name, ignoreCase = true) } },
             onDismiss = { creating = false }
-        ) { name, icon, firstName ->
+        ) { name, icon ->
             creating = false
             scope.launch {
-                if (first != null && firstName != null && firstName != first.name) {
-                    graph.sync.spaces.update(first.id, firstName)
-                }
                 val id = graph.sync.spaces.create(name, icon)
                 graph.scheduler.request()
                 onCreated(id)
@@ -824,7 +818,7 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
     }
 }
 
-/** A space's name and icon, and with [first] the name for the space notes are in now. */
+/** A space's name and icon. */
 @Composable
 private fun SpaceDialog(
     title: String,
@@ -833,25 +827,12 @@ private fun SpaceDialog(
     initialIcon: String?,
     taken: (String) -> Boolean,
     onDismiss: () -> Unit,
-    first: Space? = null,
-    onDone: (name: String, icon: String, firstName: String?) -> Unit
+    onDone: (name: String, icon: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initial) }
     var icon by remember { mutableStateOf(initialIcon) }
     var iconError by remember { mutableStateOf<String?>(null) }
-    var firstName by remember {
-        mutableStateOf(
-            if (first?.name ==
-                Spaces.DEFAULT_NAME
-            ) {
-                "Personal"
-            } else {
-                first?.name.orEmpty()
-            }
-        )
-    }
     var error by remember { mutableStateOf<String?>(null) }
-    var firstError by remember { mutableStateOf<String?>(null) }
     NotesDialog(onDismiss, title) {
         NotesField(name, {
             name = it
@@ -862,35 +843,20 @@ private fun SpaceDialog(
             icon = it
             iconError = null
         }, iconError)
-        if (first != null) {
-            Spacer(Modifier.height(12.dp))
-            NotesField(
-                firstName,
-                {
-                    firstName = it
-                    firstError = null
-                },
-                "Rename “${first.name}” to",
-                error = firstError,
-                hint = "The space your notes are in now."
-            )
-        }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
             NotesButton(action, {
                 val n = Spaces.normalize(name)
-                val f = first?.let { Spaces.normalize(firstName) }
                 error = when {
                     n == null -> "Enter a name."
                     n.length > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
-                    taken(n) || (f != null && f.equals(n, ignoreCase = true)) -> "Another space has this name."
+                    taken(n) -> "Another space has this name."
                     else -> null
                 }
-                firstError = if (first != null && f == null) "Enter a name." else null
                 iconError = if (icon == null) "Choose an icon." else null
                 val chosen = icon
-                if (n != null && chosen != null && error == null && firstError == null) onDone(n, chosen, f)
+                if (n != null && chosen != null && error == null) onDone(n, chosen)
             }, Modifier.weight(1f))
         }
     }

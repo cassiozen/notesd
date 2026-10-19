@@ -67,14 +67,15 @@ describe('one space', () => {
 })
 
 describe('creating spaces', () => {
-  it('names both spaces the first time, then switches to the new one', async () => {
+  it('names the new space, then switches to it', async () => {
     const { server, user } = await signedIn({ seed: (s) => createNote(s, 'Old', 'text\n').then(() => undefined) })
     await user.click(screen.getByRole('button', { name: 'Settings' }))
     const card = await screen.findByRole('region', { name: 'Spaces' })
     await user.click(within(card).getByRole('button', { name: 'New space' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'New space' })
-    expect((within(dialog).getByLabelText('Rename “Notes” to') as HTMLInputElement).value).toBe('Personal')
+    // Notes keeps its name: nothing here renames it.
+    expect(within(dialog).queryByLabelText(/^Rename/)).toBeNull()
     await user.type(within(dialog).getByLabelText('Name'), 'Work')
     // The icon is required too.
     await user.click(within(dialog).getByRole('button', { name: 'Create' }))
@@ -86,7 +87,7 @@ describe('creating spaces', () => {
     await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
     expect(await within(list()).findByText('No notes in Work yet.')).toBeTruthy()
     expect((await spaces(server)).map((s) => [s.name, s.icon])).toEqual([
-      ['Personal', ''],
+      ['Notes', ''],
       ['Work', 'duck'],
     ])
     expect(switcher().querySelector('img')?.getAttribute('src')).toBe(duck)

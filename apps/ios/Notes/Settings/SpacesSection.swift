@@ -34,7 +34,7 @@ struct SpacesSection: View {
             }
             Button("New Space") { creating = true }
                 .sheet(isPresented: $creating) {
-                    SpaceSheet(first: graph.spaces.count == 1 ? graph.spaces.first : nil, taken: taken) { id in
+                    SpaceSheet(taken: taken) { id in
                         creating = false
                         graph.switchSpace(id)
                         // Back to the list, to show the new space.
@@ -73,20 +73,16 @@ struct SpacesSection: View {
     }
 }
 
-/// A space's name and icon: a new one, or `editing`. The second space also
-/// names the first: "Notes" alone was fine, beside "Work" it reads better as
-/// "Personal".
+/// A space's name and icon: a new one, or `editing`.
 private struct SpaceSheet: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
     var editing: Space?
-    var first: Space?
     let taken: (String, String?) -> Bool
     let onDone: (String) -> Void
 
     @State private var name = ""
     @State private var icon: String?
-    @State private var firstName = ""
     @State private var error: String?
     @State private var iconError: String?
     @State private var busy = false
@@ -109,16 +105,6 @@ private struct SpaceSheet: View {
                 } header: {
                     Text("Icon")
                 }
-                if let first {
-                    Section {
-                        TextField("Rename “\(first.name)” to", text: $firstName)
-                            .accessibilityLabel("Rename “\(first.name)” to")
-                    } header: {
-                        Text("Rename “\(first.name)” to")
-                    } footer: {
-                        Text("The space your notes are in now.").font(.notesSmall)
-                    }
-                }
             }
             .font(.notesBody)
             .navigationTitle(editing == nil ? "New Space" : "Edit Space")
@@ -139,7 +125,6 @@ private struct SpaceSheet: View {
             } else {
                 nameFocused = true
             }
-            if let first { firstName = first.name == Spaces.defaultName ? "Personal" : first.name }
         }
     }
 
@@ -148,12 +133,11 @@ private struct SpaceSheet: View {
             error = "Enter a name."
             return
         }
-        let f = first.flatMap { _ in Spaces.normalize(firstName) }
         if n.count > Spaces.maxName {
             error = "At most \(Spaces.maxName) characters."
             return
         }
-        if taken(n, editing?.id ?? first?.id) || f?.lowercased() == n.lowercased() {
+        if taken(n, editing?.id) {
             error = "Another space has this name."
             return
         }
@@ -169,7 +153,6 @@ private struct SpaceSheet: View {
                 onDone(editing.id)
                 return
             }
-            if let first, let f, f != first.name { try? await graph.engine.spaces.update(first.id, name: f) }
             guard let id = try? await graph.engine.spaces.create(n, icon: icon) else {
                 busy = false
                 return
