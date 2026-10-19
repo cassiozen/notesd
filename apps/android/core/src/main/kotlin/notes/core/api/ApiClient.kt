@@ -144,6 +144,18 @@ class ApiClient(
         request("DELETE", url("api/v1/locks"), buildJsonObject { put("accountPassword", accountPassword) }, it)
     }) { }
 
+    /** Every space (§7.7), the default first. */
+    suspend fun spaces(): ApiResult<List<RemoteSpace>> =
+        authed({ request("GET", url("api/v1/spaces"), null, it) }) { json.decodeFromString<RemoteSpaces>(it).spaces }
+
+    /** Creates or renames a space; the answer has the name as stored (a clash gets a number). */
+    suspend fun putSpace(id: String, name: String): ApiResult<RemoteSpace> = authed({
+        request("PUT", spaceUrl(id), buildJsonObject { put("name", name) }, it)
+    }) { json.decodeFromString(it) }
+
+    /** Deletes an empty space: a Conflict (space_not_empty) while it holds notes. */
+    suspend fun deleteSpace(id: String): ApiResult<Unit> = authed({ request("DELETE", spaceUrl(id), null, it) }) { }
+
     /** Uploads an image (§7.6); [id] is the SHA-256 of [bytes], so a retry stores nothing new. */
     suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> = authed({ access ->
         Request.Builder()
@@ -272,6 +284,8 @@ class ApiClient(
     private fun noteUrl(id: String) = url("api/v1/notes").newBuilder().addPathSegment(id).build()
 
     private fun imageUrl(id: String) = url("api/v1/images").newBuilder().addPathSegment(id).build()
+
+    private fun spaceUrl(id: String) = url("api/v1/spaces").newBuilder().addPathSegment(id).build()
 
     companion object {
         /** A 2xx answer that isn't the expected JSON: something other than notesd is at this address. */

@@ -78,11 +78,14 @@ import notes.app.ui.Kicker
 import notes.app.ui.LocalReduceMotion
 import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
+import notes.app.ui.NotesDialog
 import notes.app.ui.NotesField
 import notes.app.ui.Type
 import notes.app.ui.pressScale
 import notes.core.api.ApiResult
 import notes.core.crypto.LockSession
+import notes.core.db.Space
+import notes.core.db.Spaces
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 private sealed interface Confirm {
@@ -98,7 +101,9 @@ fun SettingsScreen(
     backLabel: String?,
     onBack: () -> Unit,
     onConnect: () -> Unit,
-    onSignIn: () -> Unit
+    onSignIn: () -> Unit,
+    /** A new space: the app switches to it (§7.7). */
+    onSpaceCreated: (String) -> Unit = {}
 ) {
     val t = LocalTokens.current
     val theme by graph.appearance.theme.collectAsStateWithLifecycle()
@@ -171,6 +176,9 @@ fun SettingsScreen(
                     Section("Email")
                     EmailCard(graph)
                 }
+
+                Section("Spaces")
+                SpacesCard(graph, onSpaceCreated)
 
                 val lockState by graph.locks.state.collectAsStateWithLifecycle()
                 if (account is Account.SignedIn || lockState != LockSession.State.None) {
@@ -701,6 +709,173 @@ private fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, o
                     )
                 }
             }
+        }
+    }
+}
+
+private fun notesIn(space: Space) = "${space.noteCount} ${if (space.noteCount == 1) "note" else "notes"}" +
+    when {
+        space.id == Spaces.DEFAULT -> " · Can be renamed, not deleted"
+        space.noteCount > 0 -> " · Move or delete its notes to delete it"
+        else -> ""
+    }
+
+/**
+ * Spaces (§7.7): create, rename and delete them. The only place to make one,
+ * so people who never need spaces never see them anywhere else.
+ */
+@Composable
+private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
+    val t = LocalTokens.current
+    val spaces by graph.spaces.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    var renaming by remember { mutableStateOf<Space?>(null) }
+    var creating by remember { mutableStateOf(false) }
+
+    Card {
+        for ((i, s) in spaces.withIndex()) {
+            if (i > 0) Divider()
+            Row(
+                Modifier.fillMaxWidth().heightIn(
+                    min = 64.dp
+                ).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(s.name, style = Type.rowTitle, color = t.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(notesIn(s), style = Type.rowMeta, color = t.ink2)
+                }
+                NotesButton(
+                    "Rename",
+                    { renaming = s },
+                    Modifier.semantics { contentDescription = "Rename ${s.name}" },
+                    kind = ButtonKind.Ghost,
+                    small = true
+                )
+                if (s.id != Spaces.DEFAULT) {
+                    NotesButton(
+                        "Delete",
+                        {
+                            scope.launch {
+                                if (graph.sync.spaces.delete(s.id)) graph.scheduler.request()
+                            }
+                        },
+                        Modifier.semantics { contentDescription = "Delete ${s.name}" },
+                        kind = ButtonKind.DangerText,
+                        enabled = s.noteCount == 0,
+                        small = true
+                    )
+                }
+            }
+        }
+        Divider()
+        Action("New space", t.link, enabled = spaces.isNotEmpty()) { creating = true }
+    }
+    Text(
+        "Keep separate contexts, like Work and Personal, apart. Each space has its own notes and tags, " +
+            "and new notes go to the one you're in.",
+        style = Type.small,
+        color = t.ink3,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
+    )
+
+    renaming?.let { space ->
+        SpaceNameDialog(
+            title = "Rename space",
+            action = "Rename",
+            initial = space.name,
+            taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
+            onDismiss = { renaming = null }
+        ) { name, _ ->
+            renaming = null
+            scope.launch {
+                graph.sync.spaces.rename(space.id, name)
+                graph.scheduler.request()
+            }
+        }
+    }
+    if (creating) {
+        // The second space also names the first: "Notes" alone was fine, beside "Work" it reads better as "Personal".
+        val first = spaces.singleOrNull()
+        SpaceNameDialog(
+            title = "New space",
+            action = "Create",
+            initial = "",
+            taken = { name -> spaces.any { it.id != first?.id && it.name.equals(name, ignoreCase = true) } },
+            first = first,
+            onDismiss = { creating = false }
+        ) { name, firstName ->
+            creating = false
+            scope.launch {
+                if (first != null && firstName != null && firstName != first.name) {
+                    graph.sync.spaces.rename(first.id, firstName)
+                }
+                val id = graph.sync.spaces.create(name)
+                graph.scheduler.request()
+                onCreated(id)
+            }
+        }
+    }
+}
+
+/** A space's name, and with [first] the name for the space notes are in now. */
+@Composable
+private fun SpaceNameDialog(
+    title: String,
+    action: String,
+    initial: String,
+    taken: (String) -> Boolean,
+    onDismiss: () -> Unit,
+    first: Space? = null,
+    onDone: (name: String, firstName: String?) -> Unit
+) {
+    var name by remember { mutableStateOf(initial) }
+    var firstName by remember {
+        mutableStateOf(
+            if (first?.name ==
+                Spaces.DEFAULT_NAME
+            ) {
+                "Personal"
+            } else {
+                first?.name.orEmpty()
+            }
+        )
+    }
+    var error by remember { mutableStateOf<String?>(null) }
+    var firstError by remember { mutableStateOf<String?>(null) }
+    NotesDialog(onDismiss, title) {
+        NotesField(name, {
+            name = it
+            error = null
+        }, "Name", placeholder = "Work", error = error)
+        if (first != null) {
+            Spacer(Modifier.height(12.dp))
+            NotesField(
+                firstName,
+                {
+                    firstName = it
+                    firstError = null
+                },
+                "Rename “${first.name}” to",
+                error = firstError,
+                hint = "The space your notes are in now."
+            )
+        }
+        Spacer(Modifier.height(20.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
+            NotesButton(action, {
+                val n = Spaces.normalize(name)
+                val f = first?.let { Spaces.normalize(firstName) }
+                error = when {
+                    n == null -> "Enter a name."
+                    n.length > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
+                    taken(n) || (f != null && f.equals(n, ignoreCase = true)) -> "Another space has this name."
+                    else -> null
+                }
+                firstError = if (first != null && f == null) "Enter a name." else null
+                if (n != null && error == null && firstError == null) onDone(n, f)
+            }, Modifier.weight(1f))
         }
     }
 }

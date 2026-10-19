@@ -94,7 +94,9 @@ data class RemoteNote(
     val deletedAt: Long? = null,
     val conflictOf: String? = null,
     /** A locked note's images as the server records them (§7.6); absent for a plain note. */
-    val imageIds: List<String>? = null
+    val imageIds: List<String>? = null,
+    /** The space the note is in (§7.7). */
+    val spaceId: String = "default"
 )
 
 /** The answer to a create, update or delete. */
@@ -105,8 +107,17 @@ data class MutationResult(
     val revision: Long,
     val changeSeq: Long,
     val updatedAt: Long,
-    val deletedAt: Long? = null
+    val deletedAt: Long? = null,
+    /** Creates and updates: the space the note is in now, the default if the one sent is gone (§7.7). */
+    val spaceId: String? = null
 )
+
+/** A space as the server stores it (§7.7). */
+@Serializable
+data class RemoteSpace(val id: String, val name: String, val createdAt: Long = 0, val noteCount: Int = 0)
+
+@Serializable
+internal data class RemoteSpaces(val spaces: List<RemoteSpace> = emptyList())
 
 /** One page of the change feed: latest state per note, ascending changeSeq. */
 @Serializable

@@ -18,7 +18,8 @@ internal object Migrations {
             "0004_lock_keys.sql",
             "0005_reindex_locked.sql",
             "0006_pending_images.sql",
-            "0007_locked_images.sql"
+            "0007_locked_images.sql",
+            "0008_spaces.sql"
         )
 
     fun apply(conn: SQLiteConnection) {

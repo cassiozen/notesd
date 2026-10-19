@@ -16,6 +16,7 @@ open class NotesApp : Application() {
     protected open fun startSync() {
         graph.scheduler.start()
         graph.watchKeyring()
+        graph.watchSpaces()
     }
 
     /** Tests swap in a graph without the Android Keystore, which Robolectric lacks. */

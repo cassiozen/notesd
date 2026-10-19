@@ -18,6 +18,7 @@ import notes.core.db.NoteFilter
 import notes.core.db.NoteStore
 import notes.core.db.NoteSummary
 import notes.core.db.SearchHit
+import notes.core.db.SpaceScope
 import notes.core.db.SyncEvent
 import notes.core.sync.SyncEngine
 import notes.core.sync.SyncStatus
@@ -27,7 +28,9 @@ data class ListState(
     val query: String = "",
     val filter: NoteFilter? = null,
     val notes: List<NoteSummary> = emptyList(),
-    val hits: List<SearchHit> = emptyList()
+    val hits: List<SearchHit> = emptyList(),
+    /** Searching: the matches in every other space (§7.7), listed once asked for. */
+    val elsewhere: List<SearchHit> = emptyList()
 )
 
 /** Notes that are only on this phone because sync can't get through; [error] when the server refused. */
@@ -53,6 +56,7 @@ class NotesListViewModel(
     val deletions: Deletions,
     private val engine: SyncEngine,
     private val filter: MutableStateFlow<NoteFilter?>,
+    private val space: StateFlow<String>,
     private val requestSync: () -> Unit
 ) : ViewModel() {
     val events: SharedFlow<SyncEvent> get() = engine.events
@@ -65,6 +69,8 @@ class NotesListViewModel(
 
     private val query = MutableStateFlow("")
 
+    private class Query(val q: String, val filter: NoteFilter?, val space: String, val pending: Set<String>)
+
     // Re-queried on every write: local and cheap at this scale. Notes waiting out the undo window are hidden.
     val state: StateFlow<ListState> =
         combine(
@@ -73,13 +79,22 @@ class NotesListViewModel(
             },
             query,
             filter,
+            space,
             deletions.pending
-        ) { _, q, f, pending -> Triple(q, f, pending.toSet()) }
-            .mapLatest { (q, f, pending) ->
-                if (q.isBlank()) {
-                    ListState(true, q, f, notes = store.list(f).filter { it.id !in pending })
+        ) { _, q, f, s, pending -> Query(q, f, s, pending.toSet()) }
+            .mapLatest { r ->
+                if (r.q.isBlank()) {
+                    ListState(true, r.q, r.filter, notes = store.list(r.filter, r.space).filter { it.id !in r.pending })
                 } else {
-                    ListState(true, q, f, hits = store.search(q, f).filter { it.id !in pending })
+                    ListState(
+                        true,
+                        r.q,
+                        r.filter,
+                        hits = store.search(r.q, r.filter, scope = SpaceScope.In(r.space)).filter {
+                            it.id !in r.pending
+                        },
+                        elsewhere = store.search(r.q, scope = SpaceScope.Except(r.space)).filter { it.id !in r.pending }
+                    )
                 }
             }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), ListState())

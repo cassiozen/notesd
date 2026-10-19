@@ -19,6 +19,7 @@ import notes.core.api.RemoteNote
 import notes.core.db.Database
 import notes.core.db.LockKeyStore
 import notes.core.db.Operation
+import notes.core.db.SpaceStore
 import notes.core.db.SyncEvent
 import notes.core.db.SyncStore
 import notes.core.images.ImageStore
@@ -42,7 +43,9 @@ sealed interface SyncStatus {
 
 /**
  * One sync cycle: push the outbox, pull the feed, then push again whatever
- * the pull queued (conflicted and recovered copies). One cycle at a time;
+ * the pull queued (conflicted and recovered copies). Spaces made or renamed
+ * here go before the notes, so the server knows the space a note names;
+ * deleted ones after, once the notes moved out of them have (§7.7). One cycle at a time;
  * calling [sync] while one runs waits for it and runs another. Decisions use
  * the server's revisions and cursor only, never the device clock.
  */
@@ -58,6 +61,9 @@ class SyncEngine(
 
     /** The locked-notes keyring as last synced, for unlocking offline (§10.1). */
     val lockKeys = LockKeyStore(db)
+
+    /** The spaces, with this device's changes waiting to go (§7.7). */
+    val spaces = SpaceStore(db, clock)
     private val lock = Mutex()
 
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.NotConnected)
@@ -90,10 +96,48 @@ class SyncEngine(
     private class Stop(val outcome: SyncOutcome, val message: String?)
 
     private suspend fun cycle(api: ApiClient): Stop? {
+        pushSpaces(api, deletes = false)?.let { return it }
         push(api)?.let { return it }
+        pushSpaces(api, deletes = true)?.let { return it }
         pull(api)?.let { return it }
+        fetchSpaces(api)?.let { return it }
         keyring(api)?.let { return it }
         return if (store.nextOperation() != null) push(api) else null
+    }
+
+    /** Sends the spaces created or renamed here, or ([deletes]) the ones deleted here. */
+    private suspend fun pushSpaces(api: ApiClient, deletes: Boolean): Stop? {
+        for (change in spaces.pending().filter { it.delete == deletes }) {
+            if (change.delete) {
+                when (val r = api.deleteSpace(change.id)) {
+                    is ApiResult.Ok -> spaces.deleted(change)
+
+                    // Notes reached it from another device (or it's the default): it stays.
+                    is ApiResult.Conflict -> spaces.dropped(change)
+
+                    is ApiResult.Rejected if r.status < 500 -> spaces.dropped(change)
+
+                    else -> return stop(r)
+                }
+            } else {
+                when (val r = api.putSpace(change.id, change.name)) {
+                    is ApiResult.Ok -> spaces.sent(change, r.value)
+                    is ApiResult.Rejected if r.status < 500 -> spaces.dropped(change)
+                    else -> return stop(r)
+                }
+            }
+        }
+        return null
+    }
+
+    /** The list is small and has no change feed: fetched whole every cycle, like the keyring. */
+    private suspend fun fetchSpaces(api: ApiClient): Stop? = when (val r = api.spaces()) {
+        is ApiResult.Ok -> {
+            spaces.replace(r.value)
+            null
+        }
+
+        else -> stop(r)
     }
 
     /**
@@ -166,6 +210,7 @@ class SyncEngine(
                 op.createdAt?.let { put("createdAt", it) }
                 op.updatedAt?.let { put("updatedAt", it) }
                 op.conflictOf?.let { put("conflictOf", it) }
+                op.spaceId?.let { put("spaceId", it) }
                 op.imageIds?.let { ids -> put("imageIds", JsonArray(ids.map { JsonPrimitive(it) })) }
             }
         )
@@ -178,6 +223,7 @@ class SyncEngine(
                 put("title", op.title)
                 put("content", op.content)
                 op.updatedAt?.let { put("updatedAt", it) }
+                op.spaceId?.let { put("spaceId", it) }
                 op.imageIds?.let { ids -> put("imageIds", JsonArray(ids.map { JsonPrimitive(it) })) }
             }
         )

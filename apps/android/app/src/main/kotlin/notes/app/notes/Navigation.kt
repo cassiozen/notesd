@@ -109,6 +109,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
     val backStack = rememberNavBackStack(*start)
     val view = LocalView.current
     val account by graph.accounts.account.collectAsStateWithLifecycle()
+    val spaces by graph.spaces.collectAsStateWithLifecycle()
+    val space by graph.space.collectAsStateWithLifecycle()
     val reduce = LocalReduceMotion.current
 
     val directive = calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth(currentWindowAdaptiveInfo())
@@ -152,6 +154,17 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
         // Tags over the list (two panes): back to the list beneath them.
         if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else backStack += NotesKey
     }
+
+    /** Shows another space (§7.7): its list, without the note that was open beside it. */
+    fun switchSpace(id: String) {
+        graph.switchSpace(id)
+        backStack.removeAll { it is EditorKey }
+        show(null)
+    }
+
+    // A note open: coming back after a while doesn't move the list to the default space from under it.
+    val editorOpen by remember { derivedStateOf { backStack.any { it is EditorKey } } }
+    LaunchedEffect(editorOpen) { graph.editorOpen = editorOpen }
 
     // Narrower than the sidebar, the tags always sit under the list: back from the list reaches them,
     // including after they were shown on top of it and closed.
@@ -212,12 +225,17 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
             Row(Modifier.fillMaxSize()) {
                 if (wide && backStack.lastOrNull() !is OnboardingKey) {
                     TagsPane(
-                        vm = viewModel(key = "tags:sidebar") { TagsViewModel(graph.store, graph.listFilter) },
+                        vm = viewModel(key = "tags:sidebar") {
+                            TagsViewModel(graph.store, graph.listFilter, graph.space)
+                        },
                         state = graph.tagTree,
                         docked = true,
                         onShow = ::show,
                         onSettings = { if (backStack.lastOrNull() != SettingsKey) backStack += SettingsKey },
-                        modifier = Modifier.width(280.dp)
+                        modifier = Modifier.width(280.dp),
+                        spaces = spaces,
+                        space = space,
+                        onSpace = ::switchSpace
                     )
                 }
                 Box(Modifier.weight(1f)) {
@@ -254,11 +272,14 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                 })
                             ) {
                                 TagsPane(
-                                    vm = viewModel { TagsViewModel(graph.store, graph.listFilter) },
+                                    vm = viewModel { TagsViewModel(graph.store, graph.listFilter, graph.space) },
                                     state = graph.tagTree,
                                     docked = false,
                                     onShow = ::show,
-                                    onSettings = { backStack += SettingsKey }
+                                    onSettings = { backStack += SettingsKey },
+                                    spaces = spaces,
+                                    space = space,
+                                    onSpace = ::switchSpace
                                 )
                             }
                             entry<NotesKey>(
@@ -273,6 +294,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             graph.deletions,
                                             graph.sync,
                                             graph.listFilter,
+                                            graph.space,
                                             graph.scheduler::request
                                         )
                                     },
@@ -282,7 +304,14 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onSignIn = { backStack += OnboardingKey(signInAgain = true) },
                                     onOpen = { open(it) },
                                     onNew = ::new,
-                                    onTags = if (wide) null else ({ tags() })
+                                    onTags = if (wide) null else ({ tags() }),
+                                    spaces = spaces,
+                                    space = space,
+                                    onSpace = ::switchSpace,
+                                    onOpenElsewhere = { id, s ->
+                                        graph.switchSpace(s)
+                                        open(id)
+                                    }
                                 )
                             }
                             entry<EditorKey>(metadata = ListDetailSceneStrategy.detailPane()) { key ->
@@ -296,7 +325,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             graph.scope,
                                             graph.locks,
                                             key.startTag,
-                                            graph.images
+                                            graph.images,
+                                            graph.space.value
                                         )
                                     },
                                     locks = graph.locks,
@@ -313,6 +343,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         pop()
                                     },
                                     onOpen = { backStack += EditorKey(it) },
+                                    spaces = spaces,
+                                    onMoved = { pop() },
                                     onOpenTag = { name ->
                                         graph.listFilter.value = NoteFilter.Tag(tagKey(name), name)
                                         // One pane: the list is a screen away.
@@ -328,7 +360,11 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     backLabel = if (from == TagsKey) null else "Notes",
                                     onBack = { pop() },
                                     onConnect = { backStack += OnboardingKey() },
-                                    onSignIn = { backStack += OnboardingKey(signInAgain = true) }
+                                    onSignIn = { backStack += OnboardingKey(signInAgain = true) },
+                                    onSpaceCreated = { id ->
+                                        graph.switchSpace(id)
+                                        home()
+                                    }
                                 )
                             }
                             entry<OnboardingKey> { key ->

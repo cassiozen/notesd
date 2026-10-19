@@ -40,6 +40,7 @@ class Operation internal constructor(
     val updatedAt get() = payload.updatedAt
     val conflictOf get() = payload.conflictOf
     val imageIds get() = payload.imageIds
+    val spaceId get() = payload.spaceId
 }
 
 /**
@@ -139,17 +140,28 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
                 if (!more) markTombstone(sql, note.id, note.deletedAt ?: result.updatedAt, result.updatedAt)
                 return@write
             }
-            if (!more && note.deletedAt == null && note.title == op.title && note.content == op.content) {
+            // The space the server filed it in: the default instead, if the one sent was deleted elsewhere (§7.7).
+            val stored = result.spaceId ?: op.spaceId ?: note.spaceId
+            val space = if (note.spaceId == (op.spaceId ?: note.spaceId)) stored else note.spaceId
+            if (space != note.spaceId) sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", space, note.id)
+            if (!more && note.deletedAt == null && note.title == op.title && note.content == op.content &&
+                space == stored
+            ) {
                 sql.exec(
-                    "UPDATE notes SET dirty = 0, base_title = NULL, base_content = NULL, base_deleted_at = NULL WHERE id = ?",
+                    """
+                    UPDATE notes SET dirty = 0, base_title = NULL, base_content = NULL, base_deleted_at = NULL,
+                        base_space_id = NULL
+                    WHERE id = ?
+                    """,
                     note.id
                 )
             } else {
                 // Edited while the request was out: still dirty, and the server now has what was sent.
                 sql.exec(
-                    "UPDATE notes SET base_title = ?, base_content = ?, base_deleted_at = NULL WHERE id = ?",
+                    "UPDATE notes SET base_title = ?, base_content = ?, base_deleted_at = NULL, base_space_id = ? WHERE id = ?",
                     op.title,
                     op.content,
+                    stored,
                     note.id
                 )
             }
@@ -217,7 +229,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
             sql.exec(
                 """
                 UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1,
-                    base_title = NULL, base_content = NULL, base_deleted_at = NULL
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
                 WHERE id = ?
                 """,
                 note.id
@@ -225,7 +237,14 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
             sql.enqueue(
                 note.id,
                 CREATE,
-                Payload(note.title, note.content, note.createdAt, note.updatedAt, note.conflictOf),
+                Payload(
+                    note.title,
+                    note.content,
+                    note.createdAt,
+                    note.updatedAt,
+                    note.conflictOf,
+                    spaceId = note.spaceId
+                ),
                 now
             )
         }
@@ -258,7 +277,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
                     events +=
                         SyncEvent.ConflictedCopy(
                             local.id,
-                            sql.insertCopy(title, local.content, local.id, clock()),
+                            sql.insertCopy(title, local.content, local.id, local.spaceId, clock()),
                             title
                         )
                 }
@@ -291,7 +310,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
 
             remote.deletedAt != null -> {
                 val title = copyTitle(local.title, RECOVERED)
-                val copy = sql.insertCopy(title, local.content, null, clock())
+                val copy = sql.insertCopy(title, local.content, null, local.spaceId, clock())
                 faultAfterCopy?.invoke()
                 dropOps(sql, local.id)
                 tombstone(sql, remote)
@@ -316,18 +335,21 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
         }
         val baseTitle = local.baseTitle ?: sentCreate?.title
         val baseContent = local.baseContent ?: sentCreate?.content
+        val baseSpace = local.baseSpaceId ?: sentCreate?.spaceId
         val title = Merge.field(baseTitle, local.title, remote.title, Merge.sameText)
         val content = Merge.field(baseContent, local.content, remote.content, Merge.sameMarkdown)
+        // Moved differently on both sides: the server's space wins; a move holds no text to keep (§6.1).
+        val space = Merge.field(baseSpace, local.spaceId, remote.spaceId, Merge.sameText) ?: remote.spaceId
         if (title == null || content == null) {
             val copyTitle = copyTitle(local.title, CONFLICTED)
-            val copy = sql.insertCopy(copyTitle, local.content, local.id, clock())
+            val copy = sql.insertCopy(copyTitle, local.content, local.id, local.spaceId, clock())
             faultAfterCopy?.invoke()
             dropOps(sql, local.id)
             overwrite(sql, local, remote)
             events += SyncEvent.ConflictedCopy(local.id, copy, copyTitle)
             return
         }
-        if (title == remote.title && Merge.sameMarkdown(content, remote.content)) {
+        if (title == remote.title && Merge.sameMarkdown(content, remote.content) && space == remote.spaceId) {
             // Nothing of ours left to send.
             dropOps(sql, local.id)
             overwrite(sql, local, remote)
@@ -335,27 +357,32 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
         }
         sql.exec(
             """
-            UPDATE notes SET title = ?, content = ?, updated_at = ?, conflict_of = ?, server_revision = ?,
-                server_change_seq = ?, dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL
+            UPDATE notes SET title = ?, content = ?, space_id = ?, updated_at = ?, conflict_of = ?, server_revision = ?,
+                server_change_seq = ?, dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL,
+                base_space_id = ?
             WHERE id = ?
             """,
             title,
             content,
+            space,
             maxOf(local.updatedAt, remote.updatedAt),
             remote.conflictOf,
             remote.revision,
             remote.changeSeq,
             remote.title,
             remote.content,
+            remote.spaceId,
             local.id
         )
         sql.index(local.id, title, content)
-        sql.queueText(local.id, title, content, clock())
+        sql.queueText(local.id, title, content, space, clock())
     }
 
     private fun sameState(local: Note, remote: RemoteNote): Boolean = when {
         local.deletedAt != null || remote.deletedAt != null -> (local.deletedAt != null) == (remote.deletedAt != null)
-        else -> local.title == remote.title && Merge.sameMarkdown(local.content, remote.content)
+
+        else -> local.title == remote.title && Merge.sameMarkdown(local.content, remote.content) &&
+            local.spaceId == remote.spaceId
     }
 
     private fun adoptRevision(sql: Sql, remote: RemoteNote) {
@@ -388,7 +415,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
             remote.deletedAt != null -> {
                 // Can't happen for one note's history; still, keep the text rather than guess.
                 val title = copyTitle(local.title, RECOVERED)
-                val copy = sql.insertCopy(title, local.content, null, clock())
+                val copy = sql.insertCopy(title, local.content, null, local.spaceId, clock())
                 dropOps(sql, local.id)
                 tombstone(sql, remote)
                 events += SyncEvent.RecoveredCopy(copy, title)
@@ -396,12 +423,17 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
 
             else -> {
                 sql.exec(
-                    "UPDATE notes SET dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL WHERE id = ?",
+                    """
+                    UPDATE notes SET dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL,
+                        base_space_id = ?
+                    WHERE id = ?
+                    """,
                     remote.title,
                     remote.content,
+                    remote.spaceId,
                     local.id
                 )
-                sql.queueText(local.id, local.title, local.content, clock())
+                sql.queueText(local.id, local.title, local.content, local.spaceId, clock())
             }
         }
     }
@@ -412,8 +444,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
             sql.exec(
                 """
                 INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, server_revision,
-                    server_change_seq, dirty)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    server_change_seq, space_id, dirty)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                 """,
                 remote.id,
                 remote.title,
@@ -422,14 +454,15 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
                 remote.updatedAt,
                 remote.conflictOf,
                 remote.revision,
-                remote.changeSeq
+                remote.changeSeq,
+                remote.spaceId
             )
         } else {
             sql.exec(
                 """
                 UPDATE notes SET title = ?, content = ?, created_at = ?, updated_at = ?, deleted_at = NULL,
-                    conflict_of = ?, server_revision = ?, server_change_seq = ?, dirty = 0,
-                    base_title = NULL, base_content = NULL, base_deleted_at = NULL
+                    conflict_of = ?, server_revision = ?, server_change_seq = ?, space_id = ?, dirty = 0,
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
                 WHERE id = ?
                 """,
                 remote.title,
@@ -439,6 +472,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
                 remote.conflictOf,
                 remote.revision,
                 remote.changeSeq,
+                remote.spaceId,
                 remote.id
             )
         }
@@ -461,7 +495,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
         sql.exec(
             """
             UPDATE notes SET title = '', content = '', deleted_at = ?, updated_at = ?, dirty = 0,
-                base_title = NULL, base_content = NULL, base_deleted_at = NULL
+                base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
             WHERE id = ?
             """,
             deletedAt,

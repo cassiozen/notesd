@@ -57,6 +57,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
@@ -68,6 +69,8 @@ import notes.app.ui.Type
 import notes.app.ui.pressScale
 import notes.core.db.NoteFilter
 import notes.core.db.NoteStore
+import notes.core.db.Space
+import notes.core.db.Spaces
 import notes.core.db.TagCount
 
 /** Which parent tags are expanded, kept in [prefs]. */
@@ -109,14 +112,16 @@ private fun visibleRows(nodes: List<TagNode>, expanded: Set<String>, depth: Int 
 
 /** Every tag, for the tags screen and sidebar; the list's filter is shared with the notes list. */
 @OptIn(ExperimentalCoroutinesApi::class)
-class TagsViewModel(store: NoteStore, private val filter: MutableStateFlow<NoteFilter?>) : ViewModel() {
+class TagsViewModel(store: NoteStore, private val filter: MutableStateFlow<NoteFilter?>, space: StateFlow<String>) :
+    ViewModel() {
+    /** The space's tags (§7.7). */
     val tags: StateFlow<List<TagCount>> =
-        store.changes.onStart { emit(Unit) }.mapLatest { store.tags() }
+        combine(store.changes.onStart { emit(Unit) }, space) { _, s -> s }.mapLatest { store.tags(it) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Hides the Locked row while there are none. */
     val lockedCount: StateFlow<Int> =
-        store.changes.onStart { emit(Unit) }.mapLatest { store.lockedCount() }
+        combine(store.changes.onStart { emit(Unit) }, space) { _, s -> s }.mapLatest { store.lockedCount(it) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val selected: StateFlow<NoteFilter?> = filter
@@ -138,7 +143,11 @@ fun TagsPane(
     docked: Boolean,
     onShow: (NoteFilter?) -> Unit,
     onSettings: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    /** Every space, and the one shown: the header switches between them once there are two (§7.7). */
+    spaces: List<Space> = emptyList(),
+    space: String = Spaces.DEFAULT,
+    onSpace: (String) -> Unit = {}
 ) {
     val t = LocalTokens.current
     val tags by vm.tags.collectAsStateWithLifecycle()
@@ -179,7 +188,12 @@ fun TagsPane(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     BrandMark(if (docked) 22.dp else 26.dp)
-                    Spacer(Modifier.weight(1f))
+                    if (spaces.size > 1) {
+                        Spacer(Modifier.width(8.dp))
+                        SpaceSwitcher(spaces, space, onSpace, Modifier.weight(1f), Type.title)
+                    } else {
+                        Spacer(Modifier.weight(1f))
+                    }
                     SettingsButton(onSettings)
                 }
             }

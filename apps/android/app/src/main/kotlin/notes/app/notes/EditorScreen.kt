@@ -115,6 +115,7 @@ import notes.app.ui.hairline
 import notes.app.ui.pressScale
 import notes.app.ui.windowInsetsController
 import notes.core.crypto.LockSession
+import notes.core.db.Space
 import notes.core.doc.Document
 import notes.core.markdown.Markdown
 import notes.core.sync.EmailOutcome
@@ -144,7 +145,11 @@ fun EditorScreen(
     sendEmail: suspend (List<String>) -> EmailOutcome = { EmailOutcome.NotSynced },
     fingerprint: FingerprintUnlock? = null,
     /** Pictures for the note's image runs; null shows placeholders and hides Add picture. */
-    images: ImageSource? = null
+    images: ImageSource? = null,
+    /** Every space (§7.7); with two or more the menu can move the note. */
+    spaces: List<Space> = emptyList(),
+    /** The note went to another space: leave it. */
+    onMoved: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val t = LocalTokens.current
@@ -175,6 +180,7 @@ fun EditorScreen(
     var linkTap by remember { mutableStateOf<LinkTap?>(null) }
     var linkDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var menu by remember { mutableStateOf(false) }
+    var moving by remember { mutableStateOf(false) }
     var emailing by remember { mutableStateOf(false) }
 
     fun save() {
@@ -417,6 +423,13 @@ fun EditorScreen(
                     setLocked(!locked)
                 })
             }
+            if (spaces.size > 1) {
+                SheetItem(Icons.OpenExternal, "Move to space…", {
+                    menu = false
+                    save()
+                    moving = true
+                })
+            }
             // A blank new note has nothing to delete: leaving discards it.
             if (status != SaveStatus.Blank) {
                 SheetItem(Icons.Trash, "Delete note", {
@@ -425,6 +438,21 @@ fun EditorScreen(
                     onDelete()
                 }, danger = true)
             }
+        }
+    }
+
+    if (moving) {
+        SpacePicker(
+            "Move to space",
+            spaces.filter {
+                it.id != vm.spaceId()
+            },
+            null,
+            onDismiss = { moving = false }
+        ) { id ->
+            moving = false
+            vm.move(id)
+            onMoved(id)
         }
     }
 

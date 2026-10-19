@@ -283,6 +283,10 @@ class NoteStoreTest {
         val conn = androidx.sqlite.driver.bundled.BundledSQLiteDriver().open(File(dir, "notes.db").path)
         conn.prepare("UPDATE notes_fts SET body_text = 'notesd locked v1 ciphertext'").use { it.step() }
         conn.prepare("PRAGMA user_version = 4").use { it.step() }
+        // Without what later migrations add, which they can't add twice.
+        conn.prepare("ALTER TABLE notes DROP COLUMN space_id").use { it.step() }
+        conn.prepare("ALTER TABLE notes DROP COLUMN base_space_id").use { it.step() }
+        conn.prepare("DROP TABLE spaces").use { it.step() }
         conn.close()
 
         val reopened = Database(File(dir, "notes.db").path)
