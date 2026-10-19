@@ -9,7 +9,7 @@ import (
 	notesync "notes/server/internal/sync"
 )
 
-// GET /api/v1/notes?limit=50&cursor=...&tag=...|untagged=true|locked=true
+// GET /api/v1/notes?limit=50&cursor=...&tag=...|untagged=true|locked=true&space=...
 func (s *Server) listNotes(w http.ResponseWriter, r *http.Request) {
 	limit, err := queryInt(r, "limit", notes.DefaultListSize)
 	if err != nil {
@@ -51,7 +51,7 @@ func (s *Server) getNote(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/notes
 //
 //	{"operationId": "...", "id": "...", "title": "...", "content": "...",
-//	 "createdAt": 0, "updatedAt": 0, "conflictOf": "..."}
+//	 "createdAt": 0, "updatedAt": 0, "conflictOf": "...", "spaceId": "..."}
 func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 	var in notes.CreateInput
 	if err := decode(w, r, &in); err != nil {
@@ -64,9 +64,11 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 
 // PUT /api/v1/notes/{id}
 //
-//	{"operationId": "...", "baseRevision": 5, "title": "...", "content": "...", "updatedAt": 0, "imageIds": [...]}
+//	{"operationId": "...", "baseRevision": 5, "title": "...", "content": "...", "updatedAt": 0,
+//	 "spaceId": "...", "imageIds": [...]}
 //
 // Title and content are both required: a PUT replaces the whole document.
+// spaceId moves the note; absent keeps its space.
 // imageIds lists a locked note's images (§7.6); a plain note's are read from its content.
 func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -75,6 +77,7 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		Title        *string  `json:"title"`
 		Content      *string  `json:"content"`
 		UpdatedAt    *int64   `json:"updatedAt"`
+		SpaceID      *string  `json:"spaceId"`
 		ImageIDs     []string `json:"imageIds"`
 	}
 	if err := decode(w, r, &req); err != nil {
@@ -92,6 +95,7 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		Title:        *req.Title,
 		Content:      *req.Content,
 		UpdatedAt:    req.UpdatedAt,
+		SpaceID:      req.SpaceID,
 		ImageIDs:     req.ImageIDs,
 	})
 	s.writeMutation(w, r, res, err)
@@ -160,7 +164,10 @@ func (s *Server) sync(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, page)
 }
 
-// GET /api/v1/search?q=...&limit=30&offset=0&tag=...|untagged=true|locked=true
+// GET /api/v1/search?q=...&limit=30&offset=0&tag=...|untagged=true|locked=true&space=...|exceptSpace=...
+//
+// With space, the first page also counts the matches in every other space
+// (otherSpaces), for the "N more in other spaces" row.
 func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query().Get("q")
 	if len(q) > 500 {
@@ -189,18 +196,33 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"results": results})
+	body := map[string]any{"results": results}
+	if filter.Space != "" && offset == 0 {
+		other, err := search.Count(r.Context(), s.db, q, search.Filter{ExceptSpace: filter.Space})
+		if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		body["otherSpaces"] = other
+	}
+	writeJSON(w, http.StatusOK, body)
 }
 
-// GET /api/v1/filters — what the list can be narrowed to: every tag, and how
-// many notes are locked (none hides the Locked view).
+// GET /api/v1/filters?space=... — what the list can be narrowed to: every
+// tag, and how many notes are locked (none hides the Locked view), in one
+// space or in all of them.
 func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) {
-	tags, err := search.ListTags(r.Context(), s.db)
+	filter, err := queryFilter(r)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	locked, err := s.notes.Count(r.Context(), search.Filter{Locked: true})
+	tags, err := search.ListTags(r.Context(), s.db, filter.Space)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	locked, err := s.notes.Count(r.Context(), search.Filter{Locked: true, Space: filter.Space})
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

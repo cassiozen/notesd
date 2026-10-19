@@ -237,8 +237,12 @@ func export(ctx context.Context, db *database.DB, o options) error {
 			}
 		}
 	}
+	folders, err := spaceFolders(ctx, db)
+	if err != nil {
+		return err
+	}
 	store := images.NewStore(db)
-	res, err := writeExport(o.out, all, key, func(id string) (string, []byte, error) {
+	res, err := writeExport(o.out, all, folders, key, func(id string) (string, []byte, error) {
 		img, data, err := store.Get(ctx, id)
 		return img.ContentType, data, err
 	})

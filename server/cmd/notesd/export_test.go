@@ -23,6 +23,7 @@ import (
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
 	"notes/server/internal/notes"
+	"notes/server/internal/spaces"
 )
 
 var ctx = context.Background()
@@ -65,7 +66,7 @@ func TestExportNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := writeExport(dir, all, nil, noImages)
+	res, err := writeExport(dir, all, nil, nil, noImages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +98,7 @@ func TestExportNotes(t *testing.T) {
 		t.Errorf("mtime = %v", info.ModTime())
 	}
 
-	if _, err := writeExport(dir, all, nil, noImages); err == nil || !strings.Contains(err.Error(), "not empty") {
+	if _, err := writeExport(dir, all, nil, nil, noImages); err == nil || !strings.Contains(err.Error(), "not empty") {
 		t.Fatalf("second export into the same dir: %v", err)
 	}
 }
@@ -145,7 +146,7 @@ func TestExportImages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res, err := writeExport(dir, all, nil, get)
+	res, err := writeExport(dir, all, nil, nil, get)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,12 +212,12 @@ func TestExportLockedImages(t *testing.T) {
 
 	// Without the key the note is skipped, and so are its images.
 	dir := filepath.Join(t.TempDir(), "out")
-	if res, err := writeExport(dir, all, nil, get); err != nil || res != (exported{Locked: 1}) {
+	if res, err := writeExport(dir, all, nil, nil, get); err != nil || res != (exported{Locked: 1}) {
 		t.Fatalf("no key: %+v, %v", res, err)
 	}
 
 	dir = filepath.Join(t.TempDir(), "out")
-	res, err := writeExport(dir, all, key, get)
+	res, err := writeExport(dir, all, nil, key, get)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -334,7 +335,7 @@ func TestExportLockedNotes(t *testing.T) {
 	}
 
 	dir := filepath.Join(t.TempDir(), "out")
-	res, err := writeExport(dir, all, key, noImages)
+	res, err := writeExport(dir, all, nil, key, noImages)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -344,5 +345,56 @@ func TestExportLockedNotes(t *testing.T) {
 	got, _ := os.ReadFile(filepath.Join(dir, "Bank.md"))
 	if want := "# Bank\n\n" + f.Envelopes[1].Plaintext; f.Envelopes[1].Name != "markdown" || string(got) != want {
 		t.Fatalf("Bank.md = %q, want %q", got, want)
+	}
+}
+
+func TestExportBySpace(t *testing.T) {
+	db, create := newDB(t)
+	if folders, err := spaceFolders(ctx, db); err != nil || folders != nil {
+		t.Fatalf("one space stays flat: %v %v", folders, err)
+	}
+	sp := spaces.NewStore(db)
+	if _, err := sp.Put(ctx, "work", "Work: Q3"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := sp.Put(ctx, "img", "Images"); err != nil {
+		t.Fatal(err)
+	}
+	get, put := storedImages(t, db)
+	_, ref := put("image/png", png)
+	create("a", "Home", "![]("+ref+")\n")
+	s := notes.NewStore(db)
+	work := "work"
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op-b", ID: "b", Title: "Plan", Content: "![](" + ref + ")\n", SpaceID: &work}); err != nil {
+		t.Fatal(err)
+	}
+
+	folders, err := spaceFolders(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// "Images" would share the images folder, ignoring case.
+	if folders["default"] != "Notes" || folders["work"] != "Work Q3" || folders["img"] != "Images (2)" {
+		t.Fatalf("folders = %v", folders)
+	}
+	all, err := liveNotes(ctx, db)
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := filepath.Join(t.TempDir(), "out")
+	if _, err := writeExport(dir, all, folders, nil, get); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]string{
+		"Notes/Home.md":   "# Home\n\n![](../images/",
+		"Work Q3/Plan.md": "# Plan\n\n![](../images/",
+	} {
+		got, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(path)))
+		if err != nil || !strings.HasPrefix(string(got), want) {
+			t.Errorf("%s = %q (%v)", path, got, err)
+		}
+	}
+	if entries, _ := os.ReadDir(filepath.Join(dir, "images")); len(entries) != 1 {
+		t.Errorf("images: %d files", len(entries))
 	}
 }

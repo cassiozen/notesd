@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strconv"
 
 	"notes/server/internal/auth"
@@ -14,6 +15,7 @@ import (
 	"notes/server/internal/mail"
 	"notes/server/internal/notes"
 	"notes/server/internal/search"
+	"notes/server/internal/spaces"
 	notesync "notes/server/internal/sync"
 )
 
@@ -30,6 +32,8 @@ type errorBody struct {
 	Current *notes.Note `json:"current,omitempty"`
 	// Generation is the server's sync generation on generation mismatches.
 	Generation string `json:"generation,omitempty"`
+	// Count is how many notes a space still holds, on space_not_empty.
+	Count *int `json:"count,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -76,6 +80,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	var lerr *locks.InputError
 	var send *mail.SendError
 	var terr *images.TypeError
+	var serr *spaces.InputError
+	var full *spaces.NotEmptyError
 	switch {
 	case errors.As(err, &verr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: verr.Message, Field: verr.Field})
@@ -85,6 +91,12 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: merr.Message, Field: merr.Field})
 	case errors.As(err, &lerr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: lerr.Message, Field: lerr.Field})
+	case errors.As(err, &serr):
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: serr.Message, Field: serr.Field})
+	case errors.As(err, &full):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "space_not_empty", Message: full.Error(), Count: &full.Count})
+	case errors.Is(err, spaces.ErrDefault):
+		writeError(w, http.StatusConflict, "space_default", err.Error())
 	case errors.Is(err, locks.ErrBadVerifier):
 		writeError(w, http.StatusForbidden, "bad_verifier", "unlock locked notes first; the keyring may have been reset elsewhere")
 	case errors.Is(err, locks.ErrNoPassword):
@@ -148,21 +160,33 @@ func queryInt(r *http.Request, name string, def int64) (int64, error) {
 }
 
 // queryFilter reads one of ?tag= (a tag name, with or without #),
-// ?untagged=true or ?locked=true.
+// ?untagged=true or ?locked=true, and with it ?space= or ?exceptSpace=
+// (a space id).
 func queryFilter(r *http.Request) (search.Filter, error) {
 	q := r.URL.Query()
 	untagged := q.Get("untagged") == "true"
 	locked := q.Get("locked") == "true"
 	tag := q.Get("tag")
+	space, except := q.Get("space"), q.Get("exceptSpace")
+	if space != "" && except != "" {
+		return search.Filter{}, &notes.ValidationError{Field: "exceptSpace", Message: "exceptSpace can't be combined with space"}
+	}
+	if (space != "" || except != "") && !idPattern.MatchString(space+except) {
+		return search.Filter{}, &notes.ValidationError{Field: "space", Message: "must be a space id"}
+	}
 	if untagged && locked {
 		return search.Filter{}, &notes.ValidationError{Field: "locked", Message: "locked can't be combined with untagged"}
 	}
+	f := search.Filter{Untagged: untagged, Locked: locked, Space: space, ExceptSpace: except}
 	if tag == "" {
-		return search.Filter{Untagged: untagged, Locked: locked}, nil
+		return f, nil
 	}
 	key := search.TagKey(tag)
 	if key == "" || untagged || locked {
 		return search.Filter{}, &notes.ValidationError{Field: "tag", Message: "tag must be a tag name, without untagged or locked"}
 	}
-	return search.Filter{Tag: key}, nil
+	f.Tag = key
+	return f, nil
 }
+
+var idPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)

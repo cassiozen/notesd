@@ -22,6 +22,7 @@ import (
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
 	"notes/server/internal/notes"
+	"notes/server/internal/spaces"
 )
 
 const (
@@ -65,10 +66,31 @@ func liveNotes(ctx context.Context, db *database.DB) ([]notes.Note, error) {
 	return all, nil
 }
 
-// writeExport writes each note to dir as Markdown, one file each. Locked
-// notes are decrypted with key, or skipped without one. The images notes
-// show are written to dir/images, and their references pointed there.
-func writeExport(dir string, all []notes.Note, key []byte, get getImage) (exported, error) {
+// spaceFolders names a folder for each space (§7.7), or is nil when there is
+// only one space and the export stays flat.
+func spaceFolders(ctx context.Context, db *database.DB) (map[string]string, error) {
+	list, err := spaces.NewStore(db).List(ctx)
+	if err != nil || len(list) < 2 {
+		return nil, err
+	}
+	taken := map[string]bool{strings.ToLower(imagesDir): true}
+	folders := map[string]string{}
+	for _, sp := range list {
+		name := fileName(sp.Name)
+		for i := 2; taken[strings.ToLower(name)]; i++ {
+			name = fmt.Sprintf("%s (%d)", fileName(sp.Name), i)
+		}
+		taken[strings.ToLower(name)] = true
+		folders[sp.ID] = name
+	}
+	return folders, nil
+}
+
+// writeExport writes each note to dir as Markdown, one file each, inside its
+// space's folder when folders names them. Locked notes are decrypted with
+// key, or skipped without one. The images notes show are written to
+// dir/images, and their references pointed there.
+func writeExport(dir string, all []notes.Note, folders map[string]string, key []byte, get getImage) (exported, error) {
 	var res exported
 	if err := checkExportDir(dir); err != nil {
 		return res, err
@@ -76,8 +98,8 @@ func writeExport(dir string, all []notes.Note, key []byte, get getImage) (export
 	if err := os.MkdirAll(dir, 0o700); err != nil {
 		return res, err
 	}
-	// Keyed case-insensitively: macOS and Windows filesystems are.
-	taken := map[string]bool{}
+	// Per folder, keyed case-insensitively: macOS and Windows filesystems are.
+	taken := map[string]map[string]bool{}
 	// Image id → its path in the export, or "" if it couldn't be written.
 	written := map[string]string{}
 	for _, n := range all {
@@ -94,11 +116,22 @@ func writeExport(dir string, all []notes.Note, key []byte, get getImage) (export
 			}
 			content = plain
 		}
-		content, err := exportImages(dir, content, key, get, written, &res)
+		folder := folders[n.SpaceID]
+		up := ""
+		if folder != "" {
+			up = "../"
+			if err := os.MkdirAll(filepath.Join(dir, folder), 0o700); err != nil {
+				return res, err
+			}
+		}
+		content, err := exportImages(dir, up, content, key, get, written, &res)
 		if err != nil {
 			return res, err
 		}
-		path := filepath.Join(dir, uniqueName(fileName(n.Title), taken))
+		if taken[folder] == nil {
+			taken[folder] = map[string]bool{}
+		}
+		path := filepath.Join(dir, folder, uniqueName(fileName(n.Title), taken[folder]))
 		if err := os.WriteFile(path, []byte(markdown(n.Title, content)), 0o600); err != nil {
 			return res, err
 		}
@@ -115,10 +148,10 @@ func writeExport(dir string, all []notes.Note, key []byte, get getImage) (export
 var appImageRef = regexp.MustCompile(`\]\(notesd:image/([0-9a-f]{64})\?w=[1-9]\d{0,5}&h=[1-9]\d{0,5}\)`)
 
 // exportImages writes the app images content shows to dir/images (once
-// each, tracked in written) and points their references at the files. A
-// locked image is decrypted with key; one that can't be had or opened keeps
-// its reference.
-func exportImages(dir, content string, key []byte, get getImage, written map[string]string, res *exported) (string, error) {
+// each, tracked in written) and points their references at the files, from
+// a note up levels below dir ("" or "../"). A locked image is decrypted
+// with key; one that can't be had or opened keeps its reference.
+func exportImages(dir, up, content string, key []byte, get getImage, written map[string]string, res *exported) (string, error) {
 	// Only real images: the same text inside code is left alone.
 	shown := map[string]bool{}
 	for _, id := range images.Refs(content) {
@@ -147,7 +180,7 @@ func exportImages(dir, content string, key []byte, get getImage, written map[str
 		if !shown[id] || written[id] == "" {
 			return ref
 		}
-		return "](" + written[id] + ")"
+		return "](" + up + written[id] + ")"
 	}), nil
 }
 

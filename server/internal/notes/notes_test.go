@@ -18,6 +18,7 @@ import (
 	"notes/server/internal/locks"
 	"notes/server/internal/notes"
 	"notes/server/internal/search"
+	"notes/server/internal/spaces"
 )
 
 func setup(t *testing.T) (*database.DB, *notes.Store) {
@@ -472,7 +473,7 @@ func TestFailedMutationRollsBack(t *testing.T) {
 
 func tagNames(t *testing.T, db *database.DB) map[string]int {
 	t.Helper()
-	tags, err := search.ListTags(ctx, db)
+	tags, err := search.ListTags(ctx, db, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -662,5 +663,51 @@ func TestLockingScrubsOldText(t *testing.T) {
 		if bytes.Contains(b, []byte(secret)) {
 			t.Errorf("%s still holds the text from before locking", filepath.Base(f))
 		}
+	}
+}
+
+func TestMovingBetweenSpaces(t *testing.T) {
+	db, s := setup(t)
+	if _, err := spaces.NewStore(db).Put(ctx, "work", "Work"); err != nil {
+		t.Fatal(err)
+	}
+	if r := create(t, s, "a", "Plan", "body"); r.SpaceID != spaces.Default {
+		t.Fatalf("no space named: %q", r.SpaceID)
+	}
+	work := "work"
+
+	// The same title and content in another space is a change, not "unchanged".
+	in := notes.UpdateInput{OperationID: "move", ID: "a", BaseRevision: 1, Title: "Plan", Content: "body", SpaceID: &work}
+	r, err := s.Update(ctx, in)
+	if err != nil || r.Status != notes.StatusUpdated || r.Revision != 2 || r.SpaceID != "work" {
+		t.Fatalf("move: %+v %v", r, err)
+	}
+	if again, err := s.Update(ctx, in); err != nil || !again.Replayed || again.SpaceID != "work" {
+		t.Fatalf("replay: %+v %v", again, err)
+	}
+	// Without a space the note stays where it is.
+	r, err = s.Update(ctx, notes.UpdateInput{OperationID: "edit", ID: "a", BaseRevision: 2, Title: "Plan", Content: "more"})
+	if err != nil || r.SpaceID != "work" {
+		t.Fatalf("edit: %+v %v", r, err)
+	}
+	if n, _ := s.Get(ctx, "a"); n.SpaceID != "work" {
+		t.Fatalf("stored space: %q", n.SpaceID)
+	}
+	// Moving into the space it is already in changes nothing.
+	r, err = s.Update(ctx, notes.UpdateInput{OperationID: "stay", ID: "a", BaseRevision: 3, Title: "Plan", Content: "more", SpaceID: &work})
+	if err != nil || r.Status != notes.StatusUnchanged {
+		t.Fatalf("stay: %+v %v", r, err)
+	}
+	items, _, err := s.List(ctx, search.Filter{Space: "work"}, 10, "")
+	if err != nil || len(items) != 1 || items[0].SpaceID != "work" {
+		t.Fatalf("list in work: %+v %v", items, err)
+	}
+	if n, _ := s.Count(ctx, search.Filter{Space: spaces.Default}); n != 0 {
+		t.Fatalf("default still counts %d", n)
+	}
+
+	bad := "no.pe"
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "bad", ID: "b", SpaceID: &bad}); err == nil {
+		t.Fatal("invalid space id accepted")
 	}
 }

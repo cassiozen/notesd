@@ -34,6 +34,7 @@ import (
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
 	"notes/server/internal/search"
+	"notes/server/internal/spaces"
 )
 
 // Limits on client input.
@@ -68,6 +69,8 @@ type Note struct {
 	UpdatedAt  int64   `json:"updatedAt"`
 	DeletedAt  *int64  `json:"deletedAt"`
 	ConflictOf *string `json:"conflictOf,omitempty"`
+	// The space the note is in (§7.7).
+	SpaceID string `json:"spaceId"`
 	// A locked note's images as its clients last listed them (§7.6), so a
 	// device that can't read the body still knows them, for a copy it
 	// makes of it. Absent for a plain note, whose content shows them.
@@ -102,7 +105,7 @@ func FillImageIDs(ctx context.Context, q queryer, n *Note) error {
 }
 
 // Columns is the SELECT list matching ScanNote.
-const Columns = `id, title, content, revision, change_seq, created_at, updated_at, deleted_at, conflict_of`
+const Columns = `id, title, content, revision, change_seq, created_at, updated_at, deleted_at, conflict_of, space_id`
 
 // ScanNote reads a row selected with Columns.
 func ScanNote(row interface{ Scan(...any) error }) (Note, error) {
@@ -110,7 +113,7 @@ func ScanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var deleted sql.NullInt64
 	var conflictOf sql.NullString
 	err := row.Scan(&n.ID, &n.Title, &n.Content, &n.Revision, &n.ChangeSeq,
-		&n.CreatedAt, &n.UpdatedAt, &deleted, &conflictOf)
+		&n.CreatedAt, &n.UpdatedAt, &deleted, &conflictOf, &n.SpaceID)
 	if deleted.Valid {
 		n.DeletedAt = &deleted.Int64
 	}
@@ -138,6 +141,9 @@ type Result struct {
 	ChangeSeq int64  `json:"changeSeq"`
 	UpdatedAt int64  `json:"updatedAt"`
 	DeletedAt *int64 `json:"deletedAt,omitempty"`
+	// The space a created or updated note is in: the one it named, or the
+	// default if that space is gone (§7.7).
+	SpaceID string `json:"spaceId,omitempty"`
 	// HTTPStatus is the status code of the original response, so replays
 	// answer identically.
 	HTTPStatus int `json:"-"`
@@ -200,6 +206,8 @@ type CreateInput struct {
 	CreatedAt   *int64  `json:"createdAt,omitempty"`
 	UpdatedAt   *int64  `json:"updatedAt,omitempty"`
 	ConflictOf  *string `json:"conflictOf,omitempty"`
+	// The space to file the note in; absent is the default space.
+	SpaceID *string `json:"spaceId,omitempty"`
 	// The images a locked note shows, which the server can't read from its
 	// ciphertext (§7.6). Ignored for a plain note. Not omitempty: the
 	// request hash must tell absent (nil) from none ([]).
@@ -215,6 +223,8 @@ type UpdateInput struct {
 	Title        string `json:"title"`
 	Content      string `json:"content"`
 	UpdatedAt    *int64 `json:"updatedAt,omitempty"`
+	// The space to move the note to; absent keeps its space.
+	SpaceID *string `json:"spaceId,omitempty"`
 	// As CreateInput.ImageIDs; nil (absent) keeps the images recorded, for
 	// a client that sends a locked body it can't read, such as a merge's.
 	ImageIDs []string `json:"imageIds"`
@@ -247,6 +257,9 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 	if err := validateImageIDs(in.ImageIDs); err != nil {
 		return Result{}, err
 	}
+	if err := validateSpace(in.SpaceID); err != nil {
+		return Result{}, err
+	}
 	now := s.now().UnixMilli()
 	created := s.clientTime(in.CreatedAt, now)
 	updated := s.clientTime(in.UpdatedAt, now)
@@ -260,14 +273,18 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		} else if !errors.Is(err, ErrNotFound) {
 			return Result{}, err
 		}
+		space, err := resolveSpace(ctx, tx, in.SpaceID, spaces.Default)
+		if err != nil {
+			return Result{}, err
+		}
 		seq, err := nextChangeSeq(ctx, tx)
 		if err != nil {
 			return Result{}, err
 		}
 		res, err := tx.ExecContext(ctx, `
-			INSERT INTO notes (id, title, content, revision, change_seq, created_at, updated_at, conflict_of)
-			VALUES (?, ?, ?, 1, ?, ?, ?, ?)`,
-			in.ID, in.Title, in.Content, seq, created, updated, in.ConflictOf)
+			INSERT INTO notes (id, title, content, revision, change_seq, created_at, updated_at, conflict_of, space_id)
+			VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)`,
+			in.ID, in.Title, in.Content, seq, created, updated, in.ConflictOf, space)
 		if err != nil {
 			return Result{}, err
 		}
@@ -282,7 +299,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 			return Result{}, err
 		}
 		return Result{ID: in.ID, Status: StatusCreated, Revision: 1, ChangeSeq: seq,
-			UpdatedAt: updated, HTTPStatus: 201}, nil
+			UpdatedAt: updated, SpaceID: space, HTTPStatus: 201}, nil
 	})
 }
 
@@ -303,6 +320,9 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	if err := validateImageIDs(in.ImageIDs); err != nil {
 		return Result{}, err
 	}
+	if err := validateSpace(in.SpaceID); err != nil {
+		return Result{}, err
+	}
 	now := s.now().UnixMilli()
 	updated := s.clientTime(in.UpdatedAt, now)
 
@@ -318,7 +338,11 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		if cur.Revision != in.BaseRevision {
 			return Result{}, &ConflictError{Code: CodeRevisionConflict, Current: cur.Note}
 		}
-		if cur.Title == in.Title && cur.Content == in.Content {
+		space, err := resolveSpace(ctx, tx, in.SpaceID, cur.SpaceID)
+		if err != nil {
+			return Result{}, err
+		}
+		if cur.Title == in.Title && cur.Content == in.Content && cur.SpaceID == space {
 			// The same body may come with its images listed (again): record them.
 			if locks.IsLocked(in.Content) && in.ImageIDs != nil {
 				if err := images.SetRefs(ctx, tx, cur.rowid, in.ImageIDs, now); err != nil {
@@ -326,7 +350,7 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 				}
 			}
 			return Result{ID: cur.ID, Status: StatusUnchanged, Revision: cur.Revision,
-				ChangeSeq: cur.ChangeSeq, UpdatedAt: cur.UpdatedAt, HTTPStatus: 200}, nil
+				ChangeSeq: cur.ChangeSeq, UpdatedAt: cur.UpdatedAt, SpaceID: space, HTTPStatus: 200}, nil
 		}
 		if updated < cur.CreatedAt {
 			updated = cur.CreatedAt
@@ -337,9 +361,9 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		}
 		rev := cur.Revision + 1
 		if _, err := tx.ExecContext(ctx, `
-			UPDATE notes SET title = ?, content = ?, revision = ?, change_seq = ?, updated_at = ?
+			UPDATE notes SET title = ?, content = ?, revision = ?, change_seq = ?, updated_at = ?, space_id = ?
 			WHERE seq = ?`,
-			in.Title, in.Content, rev, seq, updated, cur.rowid); err != nil {
+			in.Title, in.Content, rev, seq, updated, space, cur.rowid); err != nil {
 			return Result{}, err
 		}
 		if err := search.IndexNote(ctx, tx, cur.rowid, in.Title, in.Content); err != nil {
@@ -352,7 +376,7 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		}
 		locking = locks.IsLocked(in.Content) && !locks.IsLocked(cur.Content)
 		return Result{ID: cur.ID, Status: StatusUpdated, Revision: rev, ChangeSeq: seq,
-			UpdatedAt: updated, HTTPStatus: 200}, nil
+			UpdatedAt: updated, SpaceID: space, HTTPStatus: 200}, nil
 	})
 	if err == nil && locking {
 		// The plain text is zeroed in the database (secure_delete) but its old
@@ -442,7 +466,8 @@ type ListItem struct {
 	CreatedAt int64  `json:"createdAt"`
 	UpdatedAt int64  `json:"updatedAt"`
 	// Locked notes have an encrypted body and so an empty preview (§10.1).
-	Locked bool `json:"locked"`
+	Locked  bool   `json:"locked"`
+	SpaceID string `json:"spaceId"`
 }
 
 // Count is the number of live (not deleted) notes matching filter.
@@ -469,7 +494,7 @@ func (s *Store) List(ctx context.Context, filter search.Filter, limit int, curso
 	cond, args := filter.SQL()
 	rows, err := s.db.R.QueryContext(ctx, `
 		SELECT n.id, n.title, n.revision, n.created_at, n.updated_at,
-		       substr(COALESCE(f.body_text, ''), 1, ?), substr(n.content, 1, ?) = ?
+		       substr(COALESCE(f.body_text, ''), 1, ?), substr(n.content, 1, ?) = ?, n.space_id
 		FROM notes n
 		LEFT JOIN notes_fts f ON f.rowid = n.seq
 		WHERE n.deleted_at IS NULL
@@ -485,7 +510,7 @@ func (s *Store) List(ctx context.Context, filter search.Filter, limit int, curso
 	items = []ListItem{}
 	for rows.Next() {
 		var it ListItem
-		if err := rows.Scan(&it.ID, &it.Title, &it.Revision, &it.CreatedAt, &it.UpdatedAt, &it.Preview, &it.Locked); err != nil {
+		if err := rows.Scan(&it.ID, &it.Title, &it.Revision, &it.CreatedAt, &it.UpdatedAt, &it.Preview, &it.Locked, &it.SpaceID); err != nil {
 			return nil, "", err
 		}
 		it.Preview = preview(it.Preview, utf8.RuneCountInString(it.Preview) == previewFetch)
@@ -515,7 +540,7 @@ func loadForUpdate(ctx context.Context, tx *sql.Tx, id string) (storedNote, erro
 	var conflictOf sql.NullString
 	err := tx.QueryRowContext(ctx, `SELECT seq, `+Columns+` FROM notes WHERE id = ?`, id).Scan(
 		&sn.rowid, &sn.ID, &sn.Title, &sn.Content, &sn.Revision, &sn.ChangeSeq,
-		&sn.CreatedAt, &sn.UpdatedAt, &deleted, &conflictOf)
+		&sn.CreatedAt, &sn.UpdatedAt, &deleted, &conflictOf, &sn.SpaceID)
 	if errors.Is(err, sql.ErrNoRows) {
 		return sn, ErrNotFound
 	}
@@ -630,6 +655,23 @@ func (s *Store) clientTime(t *int64, now int64) int64 {
 		return now
 	}
 	return *t
+}
+
+// validateSpace checks a space id the client named, if any.
+func validateSpace(id *string) error {
+	if id == nil {
+		return nil
+	}
+	return validateID("spaceId", *id)
+}
+
+// resolveSpace is the space a note goes to: the one the client named if it
+// still exists (a deleted one means the default), or else def.
+func resolveSpace(ctx context.Context, tx *sql.Tx, id *string, def string) (string, error) {
+	if id == nil {
+		return def, nil
+	}
+	return spaces.Resolve(ctx, tx, *id)
 }
 
 func validateOp(op string) error {

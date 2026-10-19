@@ -37,7 +37,8 @@ type Result struct {
 	Excerpt   string `json:"excerpt"`
 	UpdatedAt int64  `json:"updatedAt"`
 	// Locked notes match on their title only (§10.1).
-	Locked bool `json:"locked"`
+	Locked  bool   `json:"locked"`
+	SpaceID string `json:"spaceId"`
 }
 
 // BuildQuery turns free-form user input into an FTS5 MATCH expression. Each
@@ -77,7 +78,7 @@ func Search(ctx context.Context, db *database.DB, input string, filter Filter, l
 	cond, args := filter.SQL()
 	rows, err := db.R.QueryContext(ctx, `
 		SELECT n.id, n.title, n.updated_at,
-		       snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?
+		       snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?, n.space_id
 		FROM notes_fts
 		JOIN notes n ON n.seq = notes_fts.rowid
 		WHERE notes_fts MATCH ?
@@ -95,13 +96,30 @@ func Search(ctx context.Context, db *database.DB, input string, filter Filter, l
 	for rows.Next() {
 		var r Result
 		var excerpt sql.NullString
-		if err := rows.Scan(&r.ID, &r.Title, &r.UpdatedAt, &excerpt, &r.Locked); err != nil {
+		if err := rows.Scan(&r.ID, &r.Title, &r.UpdatedAt, &excerpt, &r.Locked, &r.SpaceID); err != nil {
 			return nil, err
 		}
 		r.Excerpt = renderExcerpt(excerpt.String)
 		results = append(results, r)
 	}
 	return results, rows.Err()
+}
+
+// Count is how many live notes matching filter a search finds.
+func Count(ctx context.Context, db *database.DB, input string, filter Filter) (n int, err error) {
+	match := BuildQuery(input)
+	if match == "" {
+		return 0, nil
+	}
+	cond, args := filter.SQL()
+	err = db.R.QueryRowContext(ctx, `
+		SELECT count(*)
+		FROM notes_fts
+		JOIN notes n ON n.seq = notes_fts.rowid
+		WHERE notes_fts MATCH ?
+		  AND n.deleted_at IS NULL
+		  AND `+cond, append([]any{match}, args...)...).Scan(&n)
+	return n, err
 }
 
 func renderExcerpt(s string) string {

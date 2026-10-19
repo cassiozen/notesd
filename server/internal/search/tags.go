@@ -132,15 +132,29 @@ func numeric(name string) bool {
 }
 
 // Filter narrows a listing or search to one tag, with its nested tags, to
-// notes without tags, or to locked notes. The zero value matches every note.
+// notes without tags, or to locked notes; and to one space, or to every
+// space but one (§7.7). The zero value matches every note.
 type Filter struct {
-	Tag      string // a key, see TagKey
-	Untagged bool
-	Locked   bool
+	Tag         string // a key, see TagKey
+	Untagged    bool
+	Locked      bool
+	Space       string
+	ExceptSpace string
 }
 
 // SQL is a condition on the notes row aliased n, with its arguments.
 func (f Filter) SQL() (string, []any) {
+	cond, args := f.kind()
+	switch {
+	case f.Space != "":
+		return `n.space_id = ? AND ` + cond, append([]any{f.Space}, args...)
+	case f.ExceptSpace != "":
+		return `n.space_id != ? AND ` + cond, append([]any{f.ExceptSpace}, args...)
+	}
+	return cond, args
+}
+
+func (f Filter) kind() (string, []any) {
 	switch {
 	case f.Untagged:
 		return `NOT EXISTS (SELECT 1 FROM note_tags t WHERE t.note_seq = n.seq)`, nil
@@ -164,15 +178,15 @@ type TagCount struct {
 	Count int    `json:"count"`
 }
 
-// ListTags returns every tag in live notes, sorted by key. A tag's name is
-// its spelling in the most recently updated note.
-func ListTags(ctx context.Context, db *database.DB) ([]TagCount, error) {
+// ListTags returns every tag in live notes, in one space unless space is "",
+// sorted by key. A tag's name is its spelling in the most recently updated note.
+func ListTags(ctx context.Context, db *database.DB, space string) ([]TagCount, error) {
 	rows, err := db.R.QueryContext(ctx, `
 		SELECT t.key, t.name, t.note_seq
 		FROM note_tags t
 		JOIN notes n ON n.seq = t.note_seq
-		WHERE n.deleted_at IS NULL
-		ORDER BY n.updated_at DESC, n.id DESC`)
+		WHERE n.deleted_at IS NULL AND (? = '' OR n.space_id = ?)
+		ORDER BY n.updated_at DESC, n.id DESC`, space, space)
 	if err != nil {
 		return nil, err
 	}

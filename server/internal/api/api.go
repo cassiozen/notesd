@@ -22,6 +22,7 @@ import (
 	"notes/server/internal/locks"
 	"notes/server/internal/mail"
 	"notes/server/internal/notes"
+	"notes/server/internal/spaces"
 	"notes/server/internal/web"
 )
 
@@ -40,6 +41,7 @@ type Server struct {
 	notes   *notes.Store
 	locks   *locks.Store
 	images  *images.Store
+	spaces  *spaces.Store
 	auth    *auth.Service
 	limiter *auth.Limiter
 	mailer  *mail.Client
@@ -50,7 +52,7 @@ type Server struct {
 // New wires a Server.
 func New(db *database.DB, store *notes.Store, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
 	return &Server{
-		db: db, notes: store, locks: locks.NewStore(db), images: images.NewStore(db), auth: authSvc, log: log, cfg: cfg,
+		db: db, notes: store, locks: locks.NewStore(db), images: images.NewStore(db), spaces: spaces.NewStore(db), auth: authSvc, log: log, cfg: cfg,
 		limiter: auth.NewLimiter(10, 15*time.Minute),
 		mailer:  mail.NewClient(cfg.ResendURL),
 	}
@@ -91,6 +93,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/v1/locks", s.authed(s.resetLocks))
 	mux.Handle("PUT /api/v1/locks/keys/{id}", s.authed(s.putLockKey))
 	mux.Handle("DELETE /api/v1/locks/keys/{id}", s.authed(s.deleteLockKey))
+
+	mux.Handle("GET /api/v1/spaces", s.authed(s.listSpaces))
+	mux.Handle("PUT /api/v1/spaces/{id}", s.authed(s.putSpace))
+	mux.Handle("DELETE /api/v1/spaces/{id}", s.authed(s.deleteSpace))
 
 	mux.Handle("PUT /api/v1/images/{id}", s.authed(s.putImage))
 	mux.Handle("GET /api/v1/images/{id}", s.authed(s.getImage))
