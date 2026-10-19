@@ -58,6 +58,18 @@ class SpacesSyncTest {
     }
 
     @Test
+    fun `a name deleted here and used again keeps it`() = runBlocking<Unit> {
+        val a = client()
+        val work = a.engine.spaces.create("Work")
+        syncAll(a)
+        assertTrue(a.engine.spaces.delete(work))
+        val again = a.engine.spaces.create("Work")
+        syncAll(a)
+        assertEquals(listOf("Notes", "Work"), a.spaceNames())
+        assertEquals(again, a.engine.spaces.list().last().id)
+    }
+
+    @Test
     fun `a rename reaches every device`() = runBlocking<Unit> {
         val a = client()
         val b = client()
@@ -79,6 +91,35 @@ class SpacesSyncTest {
         syncAll(b, a)
         val s = a.engine.spaces.list().single { it.id == work }
         assertEquals("Office" to "castle", s.name to s.icon)
+    }
+
+    @Test
+    fun `after a restore, a note only moved on the server is taken without a copy`() = runBlocking<Unit> {
+        val a = client()
+        val b = client()
+        a.save("n", "Plan", "x\n")
+        syncAll(a, b)
+        server.stop()
+        val backup = server.snapshot()
+        server.restart()
+        // a's cursor runs ahead of the backup, so after the restore its next sync is a full one.
+        for (v in 1..3) {
+            a.save("other", "Other", "$v\n")
+            assertEquals(SyncOutcome.Done, a.sync())
+        }
+        server.stop()
+        server.restore(backup)
+        server.restart()
+        backup.deleteRecursively()
+
+        val work = b.engine.spaces.create("Work")
+        syncAll(b)
+        assertTrue(b.notes.move("n", work))
+        syncAll(b)
+        syncAll(a)
+        assertEquals(work, a.spaceOf("n"))
+        assertEquals(setOf("Plan", "Other"), a.live().map { it.title }.toSet())
+        assertEquals(2, a.live().size)
     }
 
     @Test

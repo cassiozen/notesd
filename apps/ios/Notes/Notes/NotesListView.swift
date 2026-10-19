@@ -20,6 +20,8 @@ struct NotesListView: View {
     @State private var hits: [SearchHit]?
     /// Searching: the matches in every other space (§7.7), listed once asked for.
     @State private var elsewhere: [SearchHit] = []
+    /// How many match in the other spaces: `elsewhere` stops at a page.
+    @State private var elsewhereCount = 0
     @State private var elsewhereShownFor: String?
     @State private var query = ""
     @State private var pendingDeletes: [String: Task<Void, Never>] = [:]
@@ -53,8 +55,12 @@ struct NotesListView: View {
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                     .plainRow()
             }
-            if let hits {
-                if hits.isEmpty && elsewhere.isEmpty {
+            if let all = hits {
+                // Notes waiting out the undo window are hidden, as in the list.
+                let hits = all.filter { pendingDeletes[$0.id] == nil }
+                let others = elsewhere.filter { pendingDeletes[$0.id] == nil }
+                let othersCount = elsewhereCount - (elsewhere.count - others.count)
+                if hits.isEmpty && othersCount <= 0 {
                     EmptyList(
                         kicker: "Search", title: "No matches",
                         text: "Nothing in your notes matches “\(query.trimmed)”.")
@@ -68,10 +74,10 @@ struct NotesListView: View {
                             locked: hit.locked)
                     }
                 }
-                if !elsewhere.isEmpty {
+                if othersCount > 0 {
                     if elsewhereShownFor == query.trimmed {
                         GroupLabel("Other spaces")
-                        ForEach(elsewhere) { hit in
+                        ForEach(others) { hit in
                             row(id: hit.id, locked: hit.locked, open: { openElsewhere(hit) }) {
                                 NoteRow(
                                     title: hit.title, time: listTime(hit.updatedAt),
@@ -81,7 +87,7 @@ struct NotesListView: View {
                             }
                         }
                     } else {
-                        Button("\(elsewhere.count) more in \(otherSpaces)") {
+                        Button("\(othersCount) more in \(otherSpaces)") {
                             elsewhereShownFor = query.trimmed
                         }
                         .font(.notesButton)
@@ -264,7 +270,7 @@ struct NotesListView: View {
             Button("Delete", systemImage: "trash", role: .destructive) { delete(id) }
         }
         .contextMenu {
-            Button("Open", systemImage: "doc.text") { open(id) }
+            Button("Open", systemImage: "doc.text") { if let custom { custom() } else { open(id) } }
             Button("Delete Note", systemImage: "trash", role: .destructive) { delete(id) }
         }
         .accessibilityAction(named: "Delete note") { delete(id) }
@@ -370,6 +376,7 @@ struct NotesListView: View {
         if query.trimmed.isEmpty {
             hits = nil
             elsewhere = []
+            elsewhereCount = 0
             return
         }
         try? await Task.sleep(for: .milliseconds(120))
@@ -381,6 +388,7 @@ struct NotesListView: View {
     private func runSearch() async {
         hits = (try? await graph.store.search(query, filter: graph.listFilter, scope: .only(graph.space))) ?? []
         elsewhere = (try? await graph.store.search(query, scope: .except(graph.space))) ?? []
+        elsewhereCount = (try? await graph.store.countElsewhere(query, space: graph.space)) ?? elsewhere.count
     }
 
     /// A match in another space: the list moves there, then the note opens.

@@ -157,6 +157,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
 
     /** Shows another space (§7.7): its list, without the note that was open beside it. */
     fun switchSpace(id: String) {
+        // The one shown: nothing to reset.
+        if (id == graph.space.value) return
         graph.switchSpace(id)
         backStack.removeAll { it is EditorKey }
         show(null)

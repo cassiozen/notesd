@@ -211,10 +211,11 @@ final class EditorModel {
     }
 
     /// Moves the note to another space after the saves started so far; a new note not stored yet is created there.
-    func move(to target: String) async {
+    /// False when nothing moved: the note was never stored, or was deleted meanwhile.
+    func move(to target: String) async -> Bool {
         spaceId = target
         await flushed()
-        _ = try? await store.move(id, to: target)
+        return (try? await store.move(id, to: target)) == true
     }
 
     /// Waits for the saves started so far; they run in order, so the last one is enough.
@@ -278,6 +279,7 @@ final class EditorModel {
         }
         saveProblem = nil
         self.title = note.title
+        spaceId = note.spaceId
         if locked && note.content == content { sealed = (plain, content) }
         if !superseded.isEmpty && LockedNotes.isLocked(note.content) == locked {
             // Saved the new way: a plain copy of a locked note's picture mustn't stay behind, nor upload.
@@ -314,6 +316,8 @@ final class EditorModel {
             return
         }
         title = note.title
+        // Sync may have moved it to another space.
+        spaceId = note.spaceId
         if let before = known, !(before.title == note.title && before.content == note.content) {
             known = (note.title, note.content)
             locked = note.locked

@@ -11,6 +11,14 @@ object Spaces {
 
     /** A name as the server stores it: trimmed, inner whitespace collapsed; null when nothing is left. */
     fun normalize(name: String): String? = name.trim().split(Regex("\\s+")).joinToString(" ").takeIf { it.isNotEmpty() }
+
+    /** [name] as the server will store it; throws for one it would refuse, which would otherwise be lost at sync. */
+    internal fun checked(name: String): String {
+        val stored = requireNotNull(normalize(name)) { "A space needs a name" }
+        require(stored.codePointCount(0, stored.length) <= MAX_NAME) { "At most $MAX_NAME characters" }
+        require(stored.none { Character.isISOControl(it) }) { "No control characters" }
+        return stored
+    }
 }
 
 /**
@@ -43,7 +51,7 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = Syste
 
     /** Creates a space here, to be sent on the next sync. Returns its id. */
     suspend fun create(name: String, icon: String = ""): String {
-        val stored = requireNotNull(Spaces.normalize(name)) { "A space needs a name" }
+        val stored = Spaces.checked(name)
         val id = Uuid7.generate()
         db.write { sql ->
             sql.exec(
@@ -59,7 +67,7 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = Syste
 
     /** Renames the space, and changes its icon unless [icon] is null. */
     suspend fun update(id: String, name: String, icon: String? = null) {
-        val stored = requireNotNull(Spaces.normalize(name)) { "A space needs a name" }
+        val stored = Spaces.checked(name)
         db.write { sql ->
             sql.exec("UPDATE spaces SET name = ?, icon = coalesce(?, icon), dirty = 1 WHERE id = ?", stored, icon, id)
         }
@@ -71,12 +79,6 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = Syste
         if (sql.long("SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL", id) > 0) return@write false
         sql.exec("UPDATE spaces SET pending_delete = 1 WHERE id = ?", id)
         true
-    }
-
-    /** Whether [name] is taken by another space, ignoring case, as the server compares. */
-    suspend fun nameTaken(name: String, except: String? = null): Boolean {
-        val key = Spaces.normalize(name)?.lowercase() ?: return false
-        return list().any { it.id != except && it.name.lowercase() == key }
     }
 
     // --- for the sync engine ----------------------------------------------------
@@ -101,9 +103,23 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = Syste
         }
     }
 
-    /** The server refused [change] for good (an invalid name): the list it sends next decides. */
+    /**
+     * The server refused [change] for good (an invalid name, a space that isn't empty): the list it sends next
+     * decides. Changed again since it went: the new version is still waiting.
+     */
     internal suspend fun dropped(change: SpaceChange) {
-        db.write { sql -> sql.exec("UPDATE spaces SET dirty = 0, pending_delete = 0 WHERE id = ?", change.id) }
+        db.write { sql ->
+            if (change.delete) {
+                sql.exec("UPDATE spaces SET pending_delete = 0 WHERE id = ?", change.id)
+            } else {
+                sql.exec(
+                    "UPDATE spaces SET dirty = 0 WHERE id = ? AND name = ? AND icon = ?",
+                    change.id,
+                    change.name,
+                    change.icon
+                )
+            }
+        }
     }
 
     /** Deleted on the server. */

@@ -11,6 +11,19 @@ public enum Spaces {
         let words = name.split(whereSeparator: { $0.isWhitespace })
         return words.isEmpty ? nil : words.joined(separator: " ")
     }
+
+    /// `name` as the server will store it; throws for one it would refuse, which would
+    /// otherwise be lost at sync.
+    static func checked(_ name: String) throws -> String {
+        guard let stored = normalize(name) else { throw DatabaseError(code: 0, message: "a space needs a name") }
+        if stored.unicodeScalars.count > maxName {
+            throw DatabaseError(code: 0, message: "at most \(maxName) characters")
+        }
+        if stored.unicodeScalars.contains(where: { $0.properties.generalCategory == .control }) {
+            throw DatabaseError(code: 0, message: "no control characters")
+        }
+        return stored
+    }
 }
 
 /// A space as this device has it, with how many live notes are in it here.
@@ -60,7 +73,7 @@ public final class SpaceStore: Sendable {
     /// Creates a space here, to be sent on the next sync. Returns its id.
     @discardableResult
     public func create(_ name: String, icon: String = "") async throws -> String {
-        guard let stored = Spaces.normalize(name) else { throw DatabaseError(code: 0, message: "a space needs a name") }
+        let stored = try Spaces.checked(name)
         let id = Uuid7.generate()
         let now = clock()
         try await db.write { sql in
@@ -72,7 +85,7 @@ public final class SpaceStore: Sendable {
 
     /// Renames the space, and changes its icon unless `icon` is nil.
     public func update(_ id: String, name: String, icon: String? = nil) async throws {
-        guard let stored = Spaces.normalize(name) else { throw DatabaseError(code: 0, message: "a space needs a name") }
+        let stored = try Spaces.checked(name)
         try await db.write { sql in
             try sql.exec(
                 "UPDATE spaces SET name = ?, icon = coalesce(?, icon), dirty = 1 WHERE id = ?", stored, icon, id)
@@ -113,10 +126,17 @@ public final class SpaceStore: Sendable {
         }
     }
 
-    /// The server refused `change` for good (an invalid name): the list it sends next decides.
+    /// The server refused `change` for good (an invalid name, a space that isn't empty): the
+    /// list it sends next decides. Changed again since it went: the new version is still waiting.
     func dropped(_ change: SpaceChange) async throws {
         try await db.write { sql in
-            try sql.exec("UPDATE spaces SET dirty = 0, pending_delete = 0 WHERE id = ?", change.id)
+            if change.delete {
+                try sql.exec("UPDATE spaces SET pending_delete = 0 WHERE id = ?", change.id)
+            } else {
+                try sql.exec(
+                    "UPDATE spaces SET dirty = 0 WHERE id = ? AND name = ? AND icon = ?", change.id, change.name,
+                    change.icon)
+            }
         }
     }
 

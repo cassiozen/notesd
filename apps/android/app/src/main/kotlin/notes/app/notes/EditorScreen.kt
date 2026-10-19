@@ -423,7 +423,8 @@ fun EditorScreen(
                     setLocked(!locked)
                 })
             }
-            if (spaces.size > 1) {
+            // Nor anything to move: a new note goes to the space it was written in.
+            if (spaces.size > 1 && status != SaveStatus.Blank) {
                 SheetItem(Icons.OpenExternal, "Move to space…", {
                     menu = false
                     save()

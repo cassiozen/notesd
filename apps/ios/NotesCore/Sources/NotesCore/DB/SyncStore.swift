@@ -247,7 +247,11 @@ public final class SyncStore: Sendable {
         let known = local.serverRevision
         if fullSync, let known {
             // After a restore, revisions from before it aren't comparable with the server's: text decides.
-            if !local.dirty && sameState(local, remote) { return try adoptRevision(sql, remote) }
+            if !local.dirty && sameState(local, remote) {
+                // Only the space differs: a move holds no text, so no copy. Take the server's, unless it lost ours.
+                if local.spaceId == remote.spaceId { return try adoptRevision(sql, remote) }
+                if remote.revision >= known { return try overwrite(sql, local, remote) }
+            }
             if remote.revision < known { return try serverLost(sql, local, remote, &events) }
             if !local.dirty {
                 // Changed on the server since the restore, and this device holds a version it may have lost.
@@ -338,12 +342,12 @@ public final class SyncStore: Sendable {
         try sql.queueText(local.id, title: title, content: content, spaceId: space, now: clock())
     }
 
+    /// The same text (or both deleted); the space may still differ.
     private func sameState(_ local: Note, _ remote: RemoteNote) -> Bool {
         if local.deletedAt != nil || remote.deletedAt != nil {
             return (local.deletedAt != nil) == (remote.deletedAt != nil)
         }
         return local.title.same(as: remote.title) && Merge.sameMarkdown(local.content, remote.content)
-            && local.spaceId == remote.spaceId
     }
 
     private func adoptRevision(_ sql: Sql, _ remote: RemoteNote) throws {

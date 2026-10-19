@@ -92,9 +92,11 @@ public final class SyncEngine: Sendable {
     }
 
     /// Spaces made or renamed here go before the notes, so the server knows the space a note
-    /// names; deleted ones after, once the notes moved out of them have (§7.7).
+    /// names. Deleted ones are tried first, to free their names, and again after the notes
+    /// moved out of them have gone (§7.7).
     private func cycle(_ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?) async throws -> Stop?
     {
+        if let stop = try await pushSpaces(api, deletes: true, final: false) { return stop }
         if let stop = try await pushSpaces(api, deletes: false) { return stop }
         if let stop = try await push(api, &events, &rejection) { return stop }
         if let stop = try await pushSpaces(api, deletes: true) { return stop }
@@ -104,14 +106,16 @@ public final class SyncEngine: Sendable {
         return try await store.nextOperation() != nil ? try await push(api, &events, &rejection) : nil
     }
 
-    /// Sends the spaces created or renamed here, or (`deletes`) the ones deleted here.
-    private func pushSpaces(_ api: ApiClient, deletes: Bool) async throws -> Stop? {
+    /// Sends the spaces created or renamed here, or (`deletes`) the ones deleted here. Not
+    /// `final`, a delete refused for holding notes stays pending: notes moved out of it here
+    /// may not have gone yet.
+    private func pushSpaces(_ api: ApiClient, deletes: Bool, final: Bool = true) async throws -> Stop? {
         for change in try await spaces.pending() where change.delete == deletes {
             if change.delete {
                 switch await api.deleteSpace(change.id) {
                 case .ok: try await spaces.deleted(change)
                 // Notes reached it from another device (or it's the default): it stays.
-                case .conflict: try await spaces.dropped(change)
+                case .conflict: if final { try await spaces.dropped(change) }
                 case .rejected(let status, _, _, _) where status < 500: try await spaces.dropped(change)
                 case let other: return stop(other)
                 }
@@ -174,6 +178,9 @@ public final class SyncEngine: Sendable {
             // before the note showing it is saved, so this sends every image the
             // operation can show, including ones added while an earlier one was in flight.
             if let stop = try await uploadImages(api) { return stop }
+            // Likewise a space made since the cycle began: the server files a note naming an
+            // unknown space in the default.
+            if let stop = try await pushSpaces(api, deletes: false) { return stop }
             switch await send(api, op) {
             case .ok(let result):
                 try await store.sent(op, result)

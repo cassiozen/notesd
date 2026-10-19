@@ -191,6 +191,13 @@ describe('switching spaces', () => {
     await waitFor(() => expect(rowTitles()).toEqual([]))
   })
 
+  it('says it’s this space that has no matches when others do', async () => {
+    const { user } = await withWork()
+    await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'status')
+    expect(await screen.findByText('Nothing in Notes matches “status”.')).toBeTruthy()
+    expect(await screen.findByRole('button', { name: '1 more in Work' })).toBeTruthy()
+  })
+
   it('finds notes in other spaces and switches to theirs', async () => {
     const { user } = await withWork()
     await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'garden')

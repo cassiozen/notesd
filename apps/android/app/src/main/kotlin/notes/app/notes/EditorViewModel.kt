@@ -344,6 +344,7 @@ class EditorViewModel(
         }
         val stored = note.title to note.content
         _title.value = note.title
+        noteSpace = note.spaceId
         if (_locked.value && note.content == content) sealed = plain to content
         if (stored != (title to content) && edit == edits) {
             // Merged with a sync change: the editor shows the result.
@@ -370,6 +371,8 @@ class EditorViewModel(
         val stored = note.title to note.content
         val before = known
         _title.value = note.title
+        // Sync may have moved it to another space.
+        noteSpace = note.spaceId
         if (before != null && stored != before) {
             known = stored
             _locked.value = LockedNotes.isLocked(note.content)

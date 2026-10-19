@@ -128,7 +128,7 @@ struct NoteScreen: View {
                             Button("Lock note", systemImage: "lock") { setLocked(true) }
                         }
                     }
-                    if graph.spaces.count > 1 {
+                    if graph.spaces.count > 1 && model.status != .blank {
                         Menu("Move to Space", systemImage: "arrow.right.square") {
                             ForEach(graph.spaces.filter { $0.id != model.spaceId }) { space in
                                 Button(space.name) { move(to: space.id) }
@@ -266,7 +266,7 @@ struct NoteScreen: View {
     private func move(to space: String) {
         saveNow()
         Task {
-            await model.move(to: space)
+            guard await model.move(to: space) else { return }
             graph.notice = "Moved to \(graph.spaceName(space))"
             dismiss()
         }

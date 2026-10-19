@@ -103,11 +103,13 @@ function ShellView({ username }: { username: string }) {
   /** Shows another space: its list from the top, without the note that was open. */
   const switchSpace = useCallback(
     (id: string) => {
+      // The one shown: nothing to reset, and the open note stays.
+      if (id === space) return
       setDraft(null)
       setSpace(id)
       navigate('/')
     },
-    [setSpace],
+    [space, setSpace],
   )
 
   // The space shown was deleted (in Settings, or on another device): back to the default.

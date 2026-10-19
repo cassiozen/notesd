@@ -58,6 +58,44 @@ final class SpacesSyncTests {
         #expect(try await names(b) == names(a))
     }
 
+    @Test func aNameDeletedHereAndUsedAgainKeepsIt() async throws {
+        let a = try await client()
+        let work = try await a.engine.spaces.create("Work")
+        await syncAll(a)
+        #expect(try await a.engine.spaces.delete(work))
+        let again = try await a.engine.spaces.create("Work")
+        await syncAll(a)
+        #expect(try await names(a) == ["Notes", "Work"])
+        #expect(try await a.engine.spaces.list().last?.id == again)
+    }
+
+    @Test func afterARestoreANoteOnlyMovedOnTheServerIsTakenWithoutACopy() async throws {
+        let a = try await client()
+        let b = try await client()
+        try await a.save("n", "Plan", "x\n")
+        await syncAll(a, b)
+        server.stop()
+        let backup = try server.snapshot()
+        try await server.restart()
+        // a's cursor runs ahead of the backup, so after the restore its next sync is a full one.
+        for v in 1...3 {
+            try await a.save("other", "Other", "\(v)\n")
+            #expect(await a.sync() == .done)
+        }
+        server.stop()
+        try server.restore(backup)
+        try await server.restart()
+        try? FileManager.default.removeItem(at: backup)
+
+        let work = try await b.engine.spaces.create("Work")
+        await syncAll(b)
+        #expect(try await b.notes.move("n", to: work))
+        await syncAll(b)
+        await syncAll(a)
+        #expect(try await spaceOf(a, "n") == work)
+        #expect(try await a.live().map(\.title).sorted() == ["Other", "Plan"])
+    }
+
     @Test func anIconGoesWithTheSpaceAndANewOneReplacesIt() async throws {
         let a = try await client()
         let b = try await client()

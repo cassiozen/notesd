@@ -30,7 +30,9 @@ data class ListState(
     val notes: List<NoteSummary> = emptyList(),
     val hits: List<SearchHit> = emptyList(),
     /** Searching: the matches in every other space (§7.7), listed once asked for. */
-    val elsewhere: List<SearchHit> = emptyList()
+    val elsewhere: List<SearchHit> = emptyList(),
+    /** How many there are: [elsewhere] stops at a page. */
+    val elsewhereCount: Int = 0
 )
 
 /** Notes that are only on this phone because sync can't get through; [error] when the server refused. */
@@ -86,6 +88,8 @@ class NotesListViewModel(
                 if (r.q.isBlank()) {
                     ListState(true, r.q, r.filter, notes = store.list(r.filter, r.space).filter { it.id !in r.pending })
                 } else {
+                    val elsewhere = store.search(r.q, scope = SpaceScope.Except(r.space))
+                    val shown = elsewhere.filter { it.id !in r.pending }
                     ListState(
                         true,
                         r.q,
@@ -93,7 +97,8 @@ class NotesListViewModel(
                         hits = store.search(r.q, r.filter, scope = SpaceScope.In(r.space)).filter {
                             it.id !in r.pending
                         },
-                        elsewhere = store.search(r.q, scope = SpaceScope.Except(r.space)).filter { it.id !in r.pending }
+                        elsewhere = shown,
+                        elsewhereCount = store.countElsewhere(r.q, r.space) - (elsewhere.size - shown.size)
                     )
                 }
             }

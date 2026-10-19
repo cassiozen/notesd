@@ -268,7 +268,11 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
         val known = local.serverRevision
         if (fullSync && known != null) {
             // After a restore, revisions from before it aren't comparable with the server's: text decides.
-            if (!local.dirty && sameState(local, remote)) return adoptRevision(sql, remote)
+            if (!local.dirty && sameState(local, remote)) {
+                // Only the space differs: a move holds no text, so no copy. Take the server's, unless it lost ours.
+                if (local.spaceId == remote.spaceId) return adoptRevision(sql, remote)
+                if (remote.revision >= known) return overwrite(sql, local, remote)
+            }
             if (remote.revision < known) return serverLost(sql, local, remote, events)
             if (!local.dirty) {
                 // Changed on the server since the restore, and this device holds a version it may have lost.
@@ -378,11 +382,10 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
         sql.queueText(local.id, title, content, space, clock())
     }
 
+    /** The same text (or both deleted); the space may still differ. */
     private fun sameState(local: Note, remote: RemoteNote): Boolean = when {
         local.deletedAt != null || remote.deletedAt != null -> (local.deletedAt != null) == (remote.deletedAt != null)
-
-        else -> local.title == remote.title && Merge.sameMarkdown(local.content, remote.content) &&
-            local.spaceId == remote.spaceId
+        else -> local.title == remote.title && Merge.sameMarkdown(local.content, remote.content)
     }
 
     private fun adoptRevision(sql: Sql, remote: RemoteNote) {

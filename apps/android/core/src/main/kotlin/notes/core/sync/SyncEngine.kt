@@ -45,7 +45,8 @@ sealed interface SyncStatus {
  * One sync cycle: push the outbox, pull the feed, then push again whatever
  * the pull queued (conflicted and recovered copies). Spaces made or renamed
  * here go before the notes, so the server knows the space a note names;
- * deleted ones after, once the notes moved out of them have (§7.7). One cycle at a time;
+ * deleted ones are tried first, to free their names, and again after the
+ * notes moved out of them have gone (§7.7). One cycle at a time;
  * calling [sync] while one runs waits for it and runs another. Decisions use
  * the server's revisions and cursor only, never the device clock.
  */
@@ -96,6 +97,8 @@ class SyncEngine(
     private class Stop(val outcome: SyncOutcome, val message: String?)
 
     private suspend fun cycle(api: ApiClient): Stop? {
+        // Deletes first too, so a name deleted and reused here is free; one refused waits for the notes.
+        pushSpaces(api, deletes = true, final = false)?.let { return it }
         pushSpaces(api, deletes = false)?.let { return it }
         push(api)?.let { return it }
         pushSpaces(api, deletes = true)?.let { return it }
@@ -105,15 +108,18 @@ class SyncEngine(
         return if (store.nextOperation() != null) push(api) else null
     }
 
-    /** Sends the spaces created or renamed here, or ([deletes]) the ones deleted here. */
-    private suspend fun pushSpaces(api: ApiClient, deletes: Boolean): Stop? {
+    /**
+     * Sends the spaces created or renamed here, or ([deletes]) the ones deleted here. Not [final], a delete
+     * refused for holding notes stays pending: notes moved out of it here may not have gone yet.
+     */
+    private suspend fun pushSpaces(api: ApiClient, deletes: Boolean, final: Boolean = true): Stop? {
         for (change in spaces.pending().filter { it.delete == deletes }) {
             if (change.delete) {
                 when (val r = api.deleteSpace(change.id)) {
                     is ApiResult.Ok -> spaces.deleted(change)
 
                     // Notes reached it from another device (or it's the default): it stays.
-                    is ApiResult.Conflict -> spaces.dropped(change)
+                    is ApiResult.Conflict -> if (final) spaces.dropped(change)
 
                     is ApiResult.Rejected if r.status < 500 -> spaces.dropped(change)
 
@@ -177,6 +183,9 @@ class SyncEngine(
             // before the note showing it is saved, so this sends every image the
             // operation can show, including ones added while an earlier one was in flight.
             uploadImages(api)?.let { return it }
+            // Likewise a space made since the cycle began: the server files a note naming an
+            // unknown space in the default.
+            pushSpaces(api, deletes = false)?.let { return it }
             val result = send(api, op)
             when (result) {
                 is ApiResult.Ok -> store.sent(op, result.value)

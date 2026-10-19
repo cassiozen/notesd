@@ -147,7 +147,10 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               <Message title="Search didn’t work.">Check your connection and try again.</Message>
             )}
             {search.status === 'ready' && n === 0 && (
-              <Message title="No results">Nothing matches “{query.trim()}”.</Message>
+              <Message title="No results">
+                {/* Matches elsewhere follow: this space is the one with none. */}
+                {search.otherSpaces > 0 ? `Nothing in ${name} matches` : 'Nothing matches'} “{query.trim()}”.
+              </Message>
             )}
             {n > 0 && (
               <Section label="Top results" listLabel="Search results">
@@ -189,6 +192,9 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               </Section>
             )}
             {showOther && other.hasMore && <LoadMore onVisible={other.loadMore} />}
+            {showOther && other.status === 'error' && (
+              <Message title="Couldn’t search the other spaces.">Check your connection and try again.</Message>
+            )}
           </>
         ) : (
           <>

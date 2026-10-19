@@ -15,7 +15,7 @@ offline and syncs your notes whenever a connection is available.</p>
 
 - **Organize with tags.** Add tags like `#work` and `#reading` anyewhere in your note. The sidebar lists all your tags, so you can browse by topic. Tags can be nested with `/` (`#home/garden`).
 
-- **Spaces.** Keep separate contexts, like Work and Personal, apart. Each space has its own icon, notes and tags, and new notes go to the space you're in. Until you create a second space in Settings, you won't see them at all.
+- **Spaces.** Keep separate contexts, like Work and Personal, apart. Each space has its own icon, notes and tags, and new notes go to the space you're in. Until you create a second space in Settings, the space switcher stays hidden and Notesd looks as it would without spaces.
 
 - **Locked notes.** You can secure notes with end-to-end encryption (AES-256-GCM). The server only stores ciphertext. Unlock with a password, a passkey (web) or biometrics (Android and iOS).  
   <img width="368" height="259" alt="Image" src="https://github.com/user-attachments/assets/607ed533-451f-42ed-90d6-e1cfe162deae" />  

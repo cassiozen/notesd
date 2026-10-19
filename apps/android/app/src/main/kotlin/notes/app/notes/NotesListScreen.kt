@@ -128,6 +128,9 @@ import notes.core.db.Spaces
 import notes.core.db.SyncEvent
 import notes.core.sync.SyncStatus
 
+/** The note a row's more-menu is open for; [elsewhere] is its space when it's a match from another. */
+private data class SheetFor(val id: String, val title: String, val elsewhere: String? = null)
+
 /**
  * The notes list. [selected] is the note open beside it in two-pane layouts.
  * [beside]: a note pane sits to the right, so the list draws the line between them.
@@ -159,7 +162,7 @@ fun NotesListScreen(
     val pending by vm.deletions.pending.collectAsStateWithLifecycle()
     val notSynced by vm.notSynced.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
-    var sheetFor by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var sheetFor by remember { mutableStateOf<SheetFor?>(null) }
     var syncSheet by remember { mutableStateOf(false) }
     val toasts = remember { SnackbarHostState() }
     val haze = rememberHazeState()
@@ -287,7 +290,7 @@ fun NotesListScreen(
                             )
                         }
 
-                        searching && state.hits.isEmpty() && state.elsewhere.isEmpty() -> item(key = "noMatch") {
+                        searching && state.hits.isEmpty() && state.elsewhereCount == 0 -> item(key = "noMatch") {
                             Empty(
                                 kicker = "Search",
                                 title = "No matches",
@@ -316,17 +319,17 @@ fun NotesListScreen(
                                     locked = hit.locked,
                                     selected = hit.id == selected,
                                     onOpen = { onOpen(hit.id) },
-                                    onMore = { sheetFor = hit.id to hit.title },
+                                    onMore = { sheetFor = SheetFor(hit.id, hit.title) },
                                     onDelete = { vm.deletions.request(hit.id) },
                                     modifier = Modifier.animateItem()
                                 )
                             }
                             val others = state.elsewhere
-                            if (others.isNotEmpty() && elsewhereFor != state.query) {
+                            if (state.elsewhereCount > 0 && elsewhereFor != state.query) {
                                 item(key = "elsewhere") {
                                     val where = spaces.filter { it.id != space }.singleOrNull()?.name ?: "other spaces"
                                     NotesButton(
-                                        "${others.size} more in $where",
+                                        "${state.elsewhereCount} more in $where",
                                         { elsewhereFor = state.query },
                                         Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                                         kind = ButtonKind.Chip,
@@ -353,7 +356,7 @@ fun NotesListScreen(
                                         locked = hit.locked,
                                         selected = hit.id == selected,
                                         onOpen = { onOpenElsewhere(hit.id, hit.spaceId) },
-                                        onMore = { sheetFor = hit.id to hit.title },
+                                        onMore = { sheetFor = SheetFor(hit.id, hit.title, hit.spaceId) },
                                         onDelete = { vm.deletions.request(hit.id) },
                                         modifier = Modifier.animateItem()
                                     )
@@ -375,7 +378,7 @@ fun NotesListScreen(
                                     locked = note.locked,
                                     selected = note.id == selected,
                                     onOpen = { onOpen(note.id) },
-                                    onMore = { sheetFor = note.id to note.title },
+                                    onMore = { sheetFor = SheetFor(note.id, note.title) },
                                     onDelete = { vm.deletions.request(note.id) },
                                     modifier = Modifier.animateItem()
                                 )
@@ -393,11 +396,12 @@ fun NotesListScreen(
         }
     }
 
-    sheetFor?.let { (id, title) ->
+    sheetFor?.let { (id, title, elsewhere) ->
         Sheet(onDismiss = { sheetFor = null }, title = title.trim().ifEmpty { "New note" }) {
             SheetItem(Icons.Edit, "Open", {
                 sheetFor = null
-                onOpen(id)
+                // A match from another space opens in its space, as tapping the row does.
+                if (elsewhere != null) onOpenElsewhere(id, elsewhere) else onOpen(id)
             })
             SheetItem(Icons.Trash, "Delete note", {
                 sheetFor = null
