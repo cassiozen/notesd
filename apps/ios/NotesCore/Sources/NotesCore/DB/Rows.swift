@@ -20,12 +20,16 @@ public struct Note: Hashable, Sendable {
     /// The last synced version, kept while `dirty`: what a merge compares both sides against.
     public var baseTitle: String?
     public var baseContent: String?
+    /// The space the note is in (§7.7), and the synced one while `dirty`.
+    public var spaceId: String = Spaces.defaultId
+    public var baseSpaceId: String?
 
     public var locked: Bool { LockedNotes.isLocked(content) }
 }
 
 let noteColumns =
-    "id, title, content, created_at, updated_at, deleted_at, conflict_of, server_revision, dirty, base_title, base_content"
+    "id, title, content, created_at, updated_at, deleted_at, conflict_of, server_revision, dirty, base_title, base_content, "
+    + "space_id, base_space_id"
 
 func noteRow(_ r: Row) -> Note {
     Note(
@@ -39,7 +43,9 @@ func noteRow(_ r: Row) -> Note {
         serverRevision: r.int64OrNil(7),
         dirty: r.int64(8) == 1,
         baseTitle: r.textOrNil(9),
-        baseContent: r.textOrNil(10)
+        baseContent: r.textOrNil(10),
+        spaceId: r.text(11),
+        baseSpaceId: r.textOrNil(12)
     )
 }
 
@@ -95,10 +101,12 @@ struct Payload: Codable, Hashable, Sendable {
     var conflictOf: String?
     /// A locked body's images (§7.6), when this device knows them; nil leaves the server's record as it is.
     var imageIds: [String]?
+    /// The note's space (§7.7); nil (operations queued before spaces) keeps the server's.
+    var spaceId: String?
 
     init(
         title: String = "", content: String = "", createdAt: Int64? = nil, updatedAt: Int64? = nil,
-        conflictOf: String? = nil, imageIds: [String]? = nil
+        conflictOf: String? = nil, imageIds: [String]? = nil, spaceId: String? = nil
     ) {
         self.title = title
         self.content = content
@@ -106,6 +114,7 @@ struct Payload: Codable, Hashable, Sendable {
         self.updatedAt = updatedAt
         self.conflictOf = conflictOf
         self.imageIds = imageIds
+        self.spaceId = spaceId
     }
 
     init(from decoder: any Decoder) throws {
@@ -116,6 +125,7 @@ struct Payload: Codable, Hashable, Sendable {
         updatedAt = try c.decodeIfPresent(Int64.self, forKey: .updatedAt)
         conflictOf = try c.decodeIfPresent(String.self, forKey: .conflictOf)
         imageIds = try c.decodeIfPresent([String].self, forKey: .imageIds)
+        spaceId = try c.decodeIfPresent(String.self, forKey: .spaceId)
     }
 
     var json: String { String(decoding: try! jsonEncoder.encode(self), as: UTF8.self) }
@@ -149,37 +159,43 @@ extension Sql {
         ) { ($0.text(0), $0.text(1), try Payload.decode($0.text(2))) }
     }
 
-    /// Makes sure the server will receive `title`/`content` for `noteId`: rewrites the
+    /// Makes sure the server will receive `title`/`content` in `spaceId` for `noteId`: rewrites the
     /// unsent create or update, or queues a new update (a sent payload is never changed).
-    func queueText(_ noteId: String, title: String, content: String, now: Int64) throws {
+    func queueText(_ noteId: String, title: String, content: String, spaceId: String, now: Int64) throws {
         if let pending = try unsentOp(noteId), pending.type != deleteOp {
             var payload = pending.payload
             payload.title = title
             payload.content = content
             payload.updatedAt = now
             payload.imageIds = try lockedImageIds(content)
+            payload.spaceId = spaceId
             try exec(
                 "UPDATE sync_outbox SET payload_json = ? WHERE operation_id = ?", payload.json, pending.operationId)
         } else {
             try enqueue(
-                noteId, type: updateOp, payload: Payload(title: title, content: content, updatedAt: now), now: now)
+                noteId, type: updateOp,
+                payload: Payload(title: title, content: content, updatedAt: now, spaceId: spaceId), now: now)
         }
     }
 
-    /// A new note holding `title`/`content`, queued for upload. Conflicted and
+    /// A new note holding `title`/`content` in `spaceId`, queued for upload. Conflicted and
     /// recovered copies are made this way, so no text is ever dropped.
     @discardableResult
-    func insertCopy(title: String, content: String, conflictOf: String?, now: Int64, imageIds: [String]? = nil)
-        throws -> String
-    {
+    func insertCopy(
+        title: String, content: String, conflictOf: String?, spaceId: String, now: Int64, imageIds: [String]? = nil
+    ) throws -> String {
         let id = Uuid7.generate()
         try rememberImages(id, content: content, imageIds: imageIds ?? lockedImageIds(content))
         try exec(
-            "INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, dirty) VALUES (?, ?, ?, ?, ?, ?, 1)",
-            id, title, content, now, now, conflictOf
+            """
+            INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            """,
+            id, title, content, now, now, conflictOf, spaceId
         )
         try index(id, title: title, content: content)
-        let payload = Payload(title: title, content: content, createdAt: now, updatedAt: now, conflictOf: conflictOf)
+        let payload = Payload(
+            title: title, content: content, createdAt: now, updatedAt: now, conflictOf: conflictOf, spaceId: spaceId)
         try enqueue(id, type: createOp, payload: payload, now: now)
         return id
     }

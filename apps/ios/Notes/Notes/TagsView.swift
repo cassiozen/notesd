@@ -18,6 +18,10 @@ struct TagsView: View {
             LazyVStack(alignment: .leading, spacing: 2) {
                 HStack {
                     BrandMark(size: 26)
+                    if graph.spaces.count > 1 {
+                        SpaceMenu(font: .notesTitle)
+                            .padding(.leading, 6)
+                    }
                     Spacer()
                     Button(action: openSettings) {
                         Image(systemName: "gearshape")
@@ -70,16 +74,17 @@ struct TagsView: View {
         }
         .scrollIndicators(.hidden)
         .background { Backdrop() }
-        .task {
+        .task(id: graph.space) {
             let changes = graph.store.changes()
             await reload()
             for await _ in changes { await reload() }
         }
     }
 
+    /// The space's tags (§7.7).
     private func reload() async {
-        let next = (try? await graph.store.tags()) ?? tags
-        let locked = (try? await graph.store.lockedCount()) ?? 0
+        let next = (try? await graph.store.tags(space: graph.space)) ?? tags
+        let locked = (try? await graph.store.lockedCount(space: graph.space)) ?? 0
         withAnimation(.snappy) {
             tags = next
             lockedCount = locked

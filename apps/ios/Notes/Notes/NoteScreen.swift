@@ -27,14 +27,15 @@ struct NoteScreen: View {
 
     init(
         store: NoteStore, images: ImageStore? = nil, locks: LockSession? = nil, id: String, startTag: String?,
-        isNew: Bool, initial: Note? = nil, path: Binding<[Route]>
+        isNew: Bool, initial: Note? = nil, spaceId: String = Spaces.defaultId, path: Binding<[Route]>
     ) {
         self.id = id
         self.isNew = isNew
         _path = path
         _model = State(
             initialValue: EditorModel(
-                store: store, images: images, locks: locks, id: id, startTag: startTag, initial: initial, fresh: isNew))
+                store: store, images: images, locks: locks, id: id, startTag: startTag, initial: initial, fresh: isNew,
+                spaceId: spaceId))
     }
 
     var body: some View {
@@ -125,6 +126,13 @@ struct NoteScreen: View {
                             Button("Remove lock", systemImage: "lock.open") { setLocked(false) }
                         } else {
                             Button("Lock note", systemImage: "lock") { setLocked(true) }
+                        }
+                    }
+                    if graph.spaces.count > 1 {
+                        Menu("Move to Space", systemImage: "arrow.right.square") {
+                            ForEach(graph.spaces.filter { $0.id != model.spaceId }) { space in
+                                Button(space.name) { move(to: space.id) }
+                            }
                         }
                     }
                     Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
@@ -252,6 +260,16 @@ struct NoteScreen: View {
 
     private var linkSheetShown: Binding<Bool> {
         Binding(get: { controller.linkSheet != nil }, set: { if !$0 { controller.linkSheet = nil } })
+    }
+
+    /// Moves the note to another space (§7.7) and leaves it: it's no longer in the list behind.
+    private func move(to space: String) {
+        saveNow()
+        Task {
+            await model.move(to: space)
+            graph.notice = "Moved to \(graph.spaceName(space))"
+            dismiss()
+        }
     }
 
     private func saveNow() {

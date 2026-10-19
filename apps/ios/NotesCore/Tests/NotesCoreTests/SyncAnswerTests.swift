@@ -6,6 +6,9 @@ import Testing
 
 private let jsonHeaders = ["Content-Type": "application/json"]
 private let noKeys = (200, #"{"keys":[]}"#, jsonHeaders)
+private let defaultSpace = (
+    200, #"{"spaces":[{"id":"default","name":"Notes","createdAt":0,"noteCount":0}]}"#, jsonHeaders
+)
 private let emptyPage = (200, #"{"changes":[],"nextCursor":0,"hasMore":false,"generation":"g"}"#, jsonHeaders)
 
 private func page(_ changes: String, cursor: Int64) -> (Int, String, [String: String]) {
@@ -27,7 +30,8 @@ struct SyncAnswerTests {
         creds.current = Tokens(access: "a", accessExpiresAt: Int64.max, refresh: "r")
     }
 
-    /// An engine whose server answers sync from `pages` in order, note writes with `mutation`, and the keyring empty.
+    /// An engine whose server answers sync from `pages` in order, note writes with `mutation`, the keyring empty
+    /// and the spaces only the default.
     private func engine(
         pages: [(Int, String, [String: String])] = [], mutation: (Int, String, [String: String])? = nil
     ) -> SyncEngine {
@@ -36,6 +40,7 @@ struct SyncAnswerTests {
             switch request.path {
             case "/api/v1/sync": pages.withLock { $0.isEmpty ? emptyPage : $0.removeFirst() }
             case "/api/v1/locks": noKeys
+            case "/api/v1/spaces": defaultSpace
             default: mutation ?? (500, "", [:])
             }
         }

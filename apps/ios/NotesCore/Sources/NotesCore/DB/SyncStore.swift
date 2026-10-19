@@ -30,6 +30,7 @@ public struct Operation: Hashable, Sendable {
 
     public var title: String { payload.title }
     public var content: String { payload.content }
+    public var spaceId: String? { payload.spaceId }
 }
 
 private let operationColumns = "operation_id, note_id, operation_type, base_revision, payload_json, sent"
@@ -130,15 +131,25 @@ public final class SyncStore: Sendable {
                 }
                 return
             }
-            if !more && note.deletedAt == nil && note.title.same(as: op.title) && note.content.same(as: op.content) {
+            // The space the server filed it in: the default instead, if the one sent was deleted elsewhere (§7.7).
+            let stored = result.spaceId ?? op.spaceId ?? note.spaceId
+            let space = note.spaceId == (op.spaceId ?? note.spaceId) ? stored : note.spaceId
+            if space != note.spaceId { try sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", space, note.id) }
+            if !more && note.deletedAt == nil && note.title.same(as: op.title) && note.content.same(as: op.content)
+                && space == stored
+            {
                 try sql.exec(
-                    "UPDATE notes SET dirty = 0, base_title = NULL, base_content = NULL, base_deleted_at = NULL WHERE id = ?",
+                    """
+                    UPDATE notes SET dirty = 0, base_title = NULL, base_content = NULL, base_deleted_at = NULL,
+                        base_space_id = NULL
+                    WHERE id = ?
+                    """,
                     note.id)
             } else {
                 // Edited while the request was out: still dirty, and the server now has what was sent.
                 try sql.exec(
-                    "UPDATE notes SET base_title = ?, base_content = ?, base_deleted_at = NULL WHERE id = ?",
-                    op.title, op.content, note.id)
+                    "UPDATE notes SET base_title = ?, base_content = ?, base_deleted_at = NULL, base_space_id = ? WHERE id = ?",
+                    op.title, op.content, stored, note.id)
             }
         }
     }
@@ -207,13 +218,13 @@ public final class SyncStore: Sendable {
             try sql.exec(
                 """
                 UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1,
-                    base_title = NULL, base_content = NULL, base_deleted_at = NULL
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
                 WHERE id = ?
                 """,
                 note.id)
             let payload = Payload(
                 title: note.title, content: note.content, createdAt: note.createdAt, updatedAt: note.updatedAt,
-                conflictOf: note.conflictOf)
+                conflictOf: note.conflictOf, spaceId: note.spaceId)
             try sql.enqueue(note.id, type: createOp, payload: payload, now: now)
         }
         try sql.exec("UPDATE sync_state SET full_sync = 0 WHERE id = 1")
@@ -243,7 +254,8 @@ public final class SyncStore: Sendable {
                 if local.deletedAt == nil {
                     let title = copyTitle(local.title, conflictedSuffix)
                     let copy = try sql.insertCopy(
-                        title: title, content: local.content, conflictOf: local.id, now: clock())
+                        title: title, content: local.content, conflictOf: local.id, spaceId: local.spaceId, now: clock()
+                    )
                     events.append(.conflictedCopy(noteId: local.id, copyId: copy, title: title))
                 }
                 if remote.deletedAt != nil { try tombstone(sql, remote) } else { try overwrite(sql, local, remote) }
@@ -266,7 +278,8 @@ public final class SyncStore: Sendable {
             }
         } else if remote.deletedAt != nil {
             let title = copyTitle(local.title, recoveredSuffix)
-            let copy = try sql.insertCopy(title: title, content: local.content, conflictOf: nil, now: clock())
+            let copy = try sql.insertCopy(
+                title: title, content: local.content, conflictOf: nil, spaceId: local.spaceId, now: clock())
             try faultAfterCopy?()
             try dropOps(sql, local.id)
             try tombstone(sql, remote)
@@ -288,19 +301,25 @@ public final class SyncStore: Sendable {
         }
         let baseTitle = local.baseTitle ?? sentCreate?.title
         let baseContent = local.baseContent ?? sentCreate?.content
+        let baseSpace = local.baseSpaceId ?? sentCreate?.spaceId
         let title = Merge.field(base: baseTitle, mine: local.title, theirs: remote.title, same: Merge.sameText)
         let content = Merge.field(
             base: baseContent, mine: local.content, theirs: remote.content, same: Merge.sameMarkdown)
+        // Moved differently on both sides: the server's space wins; a move holds no text to keep (§6.1).
+        let space =
+            Merge.field(base: baseSpace, mine: local.spaceId, theirs: remote.spaceId, same: Merge.sameText)
+            ?? remote.spaceId
         guard let title, let content else {
             let copyTitle = copyTitle(local.title, conflictedSuffix)
-            let copy = try sql.insertCopy(title: copyTitle, content: local.content, conflictOf: local.id, now: clock())
+            let copy = try sql.insertCopy(
+                title: copyTitle, content: local.content, conflictOf: local.id, spaceId: local.spaceId, now: clock())
             try faultAfterCopy?()
             try dropOps(sql, local.id)
             try overwrite(sql, local, remote)
             events.append(.conflictedCopy(noteId: local.id, copyId: copy, title: copyTitle))
             return
         }
-        if title.same(as: remote.title) && Merge.sameMarkdown(content, remote.content) {
+        if title.same(as: remote.title) && Merge.sameMarkdown(content, remote.content) && space == remote.spaceId {
             // Nothing of ours left to send.
             try dropOps(sql, local.id)
             try overwrite(sql, local, remote)
@@ -308,14 +327,15 @@ public final class SyncStore: Sendable {
         }
         try sql.exec(
             """
-            UPDATE notes SET title = ?, content = ?, updated_at = ?, conflict_of = ?, server_revision = ?,
-                server_change_seq = ?, dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL
+            UPDATE notes SET title = ?, content = ?, space_id = ?, updated_at = ?, conflict_of = ?, server_revision = ?,
+                server_change_seq = ?, dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL,
+                base_space_id = ?
             WHERE id = ?
             """,
-            title, content, max(local.updatedAt, remote.updatedAt), remote.conflictOf, remote.revision,
-            remote.changeSeq, remote.title, remote.content, local.id)
+            title, content, space, max(local.updatedAt, remote.updatedAt), remote.conflictOf, remote.revision,
+            remote.changeSeq, remote.title, remote.content, remote.spaceId, local.id)
         try sql.index(local.id, title: title, content: content)
-        try sql.queueText(local.id, title: title, content: content, now: clock())
+        try sql.queueText(local.id, title: title, content: content, spaceId: space, now: clock())
     }
 
     private func sameState(_ local: Note, _ remote: RemoteNote) -> Bool {
@@ -323,6 +343,7 @@ public final class SyncStore: Sendable {
             return (local.deletedAt != nil) == (remote.deletedAt != nil)
         }
         return local.title.same(as: remote.title) && Merge.sameMarkdown(local.content, remote.content)
+            && local.spaceId == remote.spaceId
     }
 
     private func adoptRevision(_ sql: Sql, _ remote: RemoteNote) throws {
@@ -345,15 +366,20 @@ public final class SyncStore: Sendable {
         } else if remote.deletedAt != nil {
             // Can't happen for one note's history; still, keep the text rather than guess.
             let title = copyTitle(local.title, recoveredSuffix)
-            let copy = try sql.insertCopy(title: title, content: local.content, conflictOf: nil, now: clock())
+            let copy = try sql.insertCopy(
+                title: title, content: local.content, conflictOf: nil, spaceId: local.spaceId, now: clock())
             try dropOps(sql, local.id)
             try tombstone(sql, remote)
             events.append(.recoveredCopy(copyId: copy, title: title))
         } else {
             try sql.exec(
-                "UPDATE notes SET dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL WHERE id = ?",
-                remote.title, remote.content, local.id)
-            try sql.queueText(local.id, title: local.title, content: local.content, now: clock())
+                """
+                UPDATE notes SET dirty = 1, base_title = ?, base_content = ?, base_deleted_at = NULL, base_space_id = ?
+                WHERE id = ?
+                """,
+                remote.title, remote.content, remote.spaceId, local.id)
+            try sql.queueText(
+                local.id, title: local.title, content: local.content, spaceId: local.spaceId, now: clock())
         }
     }
 
@@ -363,21 +389,21 @@ public final class SyncStore: Sendable {
             try sql.exec(
                 """
                 INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, server_revision,
-                    server_change_seq, dirty)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    server_change_seq, space_id, dirty)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
                 """,
                 remote.id, remote.title, remote.content, remote.createdAt, remote.updatedAt, remote.conflictOf,
-                remote.revision, remote.changeSeq)
+                remote.revision, remote.changeSeq, remote.spaceId)
         } else {
             try sql.exec(
                 """
                 UPDATE notes SET title = ?, content = ?, created_at = ?, updated_at = ?, deleted_at = NULL,
-                    conflict_of = ?, server_revision = ?, server_change_seq = ?, dirty = 0,
-                    base_title = NULL, base_content = NULL, base_deleted_at = NULL
+                    conflict_of = ?, server_revision = ?, server_change_seq = ?, space_id = ?, dirty = 0,
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
                 WHERE id = ?
                 """,
                 remote.title, remote.content, remote.createdAt, remote.updatedAt, remote.conflictOf, remote.revision,
-                remote.changeSeq, remote.id)
+                remote.changeSeq, remote.spaceId, remote.id)
         }
         try sql.index(remote.id, title: remote.title, content: remote.content)
     }
@@ -394,7 +420,7 @@ public final class SyncStore: Sendable {
         try sql.exec(
             """
             UPDATE notes SET title = '', content = '', deleted_at = ?, updated_at = ?, dirty = 0,
-                base_title = NULL, base_content = NULL, base_deleted_at = NULL
+                base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
             WHERE id = ?
             """,
             deletedAt, updatedAt, id)

@@ -81,18 +81,21 @@ final class EditorModel {
     private let blankContent: String
     /// Deleted from this screen: nothing more is stored, or a late save would bring the note back.
     private var deleted = false
+    /// The note's space (§7.7): where a new note is created, or where it is once read or moved.
+    private(set) var spaceId: String
     @ObservationIgnored private var unhook: (@Sendable () -> Void)?
 
     /// `initial`: the note as already read, so the screen opens with its text;
     /// `fresh`: a new note, which shows at once without looking in the store.
     init(
         store: NoteStore, images: ImageStore? = nil, locks: LockSession? = nil, id: String, startTag: String? = nil,
-        initial: Note? = nil, fresh: Bool = false
+        initial: Note? = nil, fresh: Bool = false, spaceId: String = Spaces.defaultId
     ) {
         self.store = store
         self.images = images
         self.locks = locks
         self.id = id
+        self.spaceId = spaceId
         blankContent = startTag.map { tagText($0) + "\n" } ?? ""
         lockState = locks?.state.value ?? .none
         if let initial {
@@ -144,6 +147,7 @@ final class EditorModel {
         known = note.map { ($0.title, $0.content) }
         locked = note?.locked ?? false
         title = note?.title ?? ""
+        if let note { spaceId = note.spaceId }
         if let note {
             document = parse(note)
             show(note)
@@ -206,6 +210,13 @@ final class EditorModel {
         }
     }
 
+    /// Moves the note to another space after the saves started so far; a new note not stored yet is created there.
+    func move(to target: String) async {
+        spaceId = target
+        await flushed()
+        _ = try? await store.move(id, to: target)
+    }
+
     /// Waits for the saves started so far; they run in order, so the last one is enough.
     func flushed() async {
         await lastSave?.value
@@ -241,7 +252,8 @@ final class EditorModel {
         let imageIds = LockedNotes.isLocked(content) ? ImageRef.ids(plain) : nil
         let note: Note?
         do {
-            note = try await store.save(id, title: title, content: content, basedOn: basedOn, imageIds: imageIds)
+            note = try await store.save(
+                id, title: title, content: content, basedOn: basedOn, imageIds: imageIds, spaceId: spaceId)
         } catch {
             failed(edit, "Your latest changes couldn’t be saved on this iPhone. They’ll be tried again.")
             return
@@ -250,7 +262,7 @@ final class EditorModel {
             if let basedOn, !(basedOn.title == title && basedOn.content == content) {
                 // Deleted elsewhere while typed into here: keep the typing.
                 do {
-                    try await store.recover(title: title, content: content, imageIds: imageIds)
+                    try await store.recover(title: title, content: content, imageIds: imageIds, spaceId: spaceId)
                 } catch {
                     failed(
                         edit,

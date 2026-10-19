@@ -28,9 +28,12 @@ struct NotesApp: App {
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
-            case .active: graph.scheduler.enteredForeground()
+            case .active:
+                graph.scheduler.enteredForeground()
+                graph.enteredForeground()
             case .background:
                 graph.scheduler.enteredBackground()
+                graph.enteredBackground()
                 // Locked notes lock when the app leaves the screen (§10.1), after saving what's typed.
                 let locks = graph.locks
                 Task { await locks.lock() }
@@ -78,7 +81,7 @@ struct RootView: View {
                             NoteScreen(
                                 store: graph.store, images: graph.images, locks: graph.locks, id: id,
                                 startTag: startTag, isNew: isNew, initial: graph.opening(id),
-                                path: $path
+                                spaceId: graph.space, path: $path
                             )
                             .id(id)
                         case .settings: SettingsView()
@@ -93,7 +96,10 @@ struct RootView: View {
         }
         .environment(drawer)
         // A note opened from elsewhere (a conflicted copy's banner) closes the sidebar under it.
-        .onChange(of: path) { if !path.isEmpty && drawer.isOpen { drawer.close() } }
+        .onChange(of: path) {
+            if !path.isEmpty && drawer.isOpen { drawer.close() }
+            graph.editorOpen = path.contains { if case .note = $0 { true } else { false } }
+        }
         .background(Color.notesBg)
         .task { graph.scheduler.start() }
         // Asked here, not on the screen the password was typed on: that goes as soon as notes unlock.

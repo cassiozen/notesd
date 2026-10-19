@@ -48,6 +48,7 @@ struct SettingsView: View {
             if case .signedIn = graph.account {
                 EmailSection()
             }
+            SpacesSection()
             Section {
                 Picker("Theme", selection: $graph.appearance) {
                     ForEach(Appearance.allCases) { Text($0.label).tag($0) }

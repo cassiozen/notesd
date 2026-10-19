@@ -9,6 +9,28 @@ public struct NoteSummary: Hashable, Sendable, Identifiable {
     public var locked: Bool
 }
 
+/// Narrows a query to one space (§7.7), or to every space but one; nil leaves it open.
+public enum SpaceScope: Hashable, Sendable {
+    case only(String)
+    case except(String)
+
+    fileprivate var sql: (String, [(any SQLValue)?]) {
+        switch self {
+        case .only(let id): ("n.space_id = ?", [id])
+        case .except(let id): ("n.space_id != ?", [id])
+        }
+    }
+}
+
+extension SpaceScope? {
+    fileprivate var sql: (String, [(any SQLValue)?]) { self?.sql ?? ("1", []) }
+}
+
+/// Both conditions, ANDed.
+private func and(_ a: (String, [(any SQLValue)?]), _ b: (String, [(any SQLValue)?])) -> (String, [(any SQLValue)?]) {
+    ("(\(a.0)) AND (\(b.0))", a.1 + b.1)
+}
+
 /// Narrows the list and search; nil shows every note.
 public enum NoteFilter: Hashable, Sendable, Codable {
     /// Notes with the tag `key` or one nested under it. `name` is how to show it.
@@ -57,6 +79,7 @@ public struct SearchHit: Hashable, Sendable, Identifiable {
     public var excerpt: String
     public var updatedAt: Int64
     public var locked: Bool
+    public var spaceId: String = Spaces.defaultId
 }
 
 public struct OutboxEntry: Hashable, Sendable {
@@ -98,10 +121,10 @@ public final class NoteStore: Sendable {
         try await db.read { try $0.note(id) }
     }
 
-    /// Live notes matching `filter`, most recently edited first.
-    public func list(_ filter: NoteFilter? = nil) async throws -> [NoteSummary] {
+    /// Live notes matching `filter` in `space` (nil: every space), most recently edited first.
+    public func list(_ filter: NoteFilter? = nil, space: String? = nil) async throws -> [NoteSummary] {
         try await db.read { sql in
-            let (cond, args) = filter.sql
+            let (cond, args) = and(filter.sql, space.map { SpaceScope.only($0) }.sql)
             let all: [(any SQLValue)?] = [LockedNotes.prefix.count, LockedNotes.prefix] + args
             return try sql.queryArray(
                 """
@@ -119,10 +142,10 @@ public final class NoteStore: Sendable {
         }
     }
 
-    /// Live locked notes.
-    public func lockedCount() async throws -> Int {
+    /// Live locked notes, in `space` or everywhere.
+    public func lockedCount(space: String? = nil) async throws -> Int {
         try await db.read { sql in
-            let (cond, args) = NoteFilter.locked.sql
+            let (cond, args) = and(NoteFilter.locked.sql, space.map { SpaceScope.only($0) }.sql)
             return try sql.queryArray("SELECT count(*) FROM notes n WHERE n.deleted_at IS NULL AND \(cond)", args) {
                 Int($0.int64(0))
             }.first ?? 0
@@ -130,17 +153,20 @@ public final class NoteStore: Sendable {
     }
 
     /// Ranked as on the server: title matches weigh 10×, then the most recently edited.
-    public func search(_ input: String, filter: NoteFilter? = nil, limit: Int = 50) async throws -> [SearchHit] {
+    public func search(_ input: String, filter: NoteFilter? = nil, limit: Int = 50, scope: SpaceScope? = nil)
+        async throws -> [SearchHit]
+    {
         let match = Search.buildQuery(input)
         if match.isEmpty { return [] }
         return try await db.read { sql in
-            let (cond, args) = filter.sql
+            let (cond, args) = and(filter.sql, scope.sql)
             let all: [(any SQLValue)?] =
                 [Search.markOpen, Search.markClose, LockedNotes.prefix.count, LockedNotes.prefix, match] + args
                 + [Search.titleWeight, Search.contentWeight, limit]
             return try sql.queryArray(
                 """
-                SELECT n.id, n.title, n.updated_at, snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?
+                SELECT n.id, n.title, n.updated_at, snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?,
+                    n.space_id
                 FROM notes_fts JOIN notes n ON n.seq = notes_fts.rowid
                 WHERE notes_fts MATCH ? AND n.deleted_at IS NULL AND \(cond)
                 ORDER BY bm25(notes_fts, ?, ?), n.updated_at DESC
@@ -150,22 +176,24 @@ public final class NoteStore: Sendable {
             ) {
                 SearchHit(
                     id: $0.text(0), title: $0.text(1), excerpt: $0.textOrNil(3) ?? "", updatedAt: $0.int64(2),
-                    locked: $0.int64(4) == 1)
+                    locked: $0.int64(4) == 1, spaceId: $0.text(5))
             }
         }
     }
 
-    /// Every tag in live notes, sorted by key, parents of nested tags included.
+    /// Every tag in live notes in `space` (nil: every space), sorted by key, parents of nested tags included.
     /// A tag is named as in the most recently edited note using it (as on the server).
-    public func tags() async throws -> [TagCount] {
+    public func tags(space: String? = nil) async throws -> [TagCount] {
         try await db.read { sql in
             var names: [String: String] = [:]
             var notes: [String: Set<Int64>] = [:]
-            let rows = try sql.query(
+            let (cond, args) = space.map { SpaceScope.only($0) }.sql
+            let rows = try sql.queryArray(
                 """
                 SELECT t.key, t.name, t.note_seq FROM note_tags t JOIN notes n ON n.seq = t.note_seq
-                WHERE n.deleted_at IS NULL ORDER BY n.updated_at DESC, n.id DESC
-                """
+                WHERE n.deleted_at IS NULL AND \(cond) ORDER BY n.updated_at DESC, n.id DESC
+                """,
+                args
             ) { ($0.text(0), $0.text(1), $0.int64(2)) }
             for (key, name, seq) in rows {
                 let keys = key.split(separator: "/", omittingEmptySubsequences: false)
@@ -192,17 +220,19 @@ public final class NoteStore: Sendable {
     ///
     /// Returns the stored note, or nil when nothing was stored (blank draft,
     /// deleted note).
+    ///
+    /// A new note is created in `spaceId`; an existing one stays where it is (`move` moves it).
     @discardableResult
     public func save(
         _ id: String, title: String, content: String, basedOn: (title: String, content: String)? = nil,
-        imageIds: [String]? = nil
+        imageIds: [String]? = nil, spaceId: String = Spaces.defaultId
     ) async throws -> Note? {
         let clock = clock
         let saved = try await db.write { sql -> Note? in
             try sql.rememberImages(id, content: content, imageIds: imageIds)
             guard let current = try sql.note(id) else {
                 if isBlank(title) && isBlank(content) { return nil }
-                return try Self.create(sql, id, title, content, clock())
+                return try Self.create(sql, id, title, content, spaceId, clock())
             }
             if current.deletedAt != nil { return nil }
             if let basedOn, !(current.title.same(as: basedOn.title) && current.content.same(as: basedOn.content)) {
@@ -215,37 +245,68 @@ public final class NoteStore: Sendable {
         return saved
     }
 
-    private static func create(_ sql: Sql, _ id: String, _ title: String, _ content: String, _ now: Int64) throws
-        -> Note
-    {
+    private static func create(
+        _ sql: Sql, _ id: String, _ title: String, _ content: String, _ spaceId: String, _ now: Int64
+    ) throws -> Note {
         try sql.exec(
-            "INSERT INTO notes (id, title, content, created_at, updated_at, dirty) VALUES (?, ?, ?, ?, ?, 1)",
-            id, title, content, now, now
+            "INSERT INTO notes (id, title, content, created_at, updated_at, space_id, dirty) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            id, title, content, now, now, spaceId
         )
         try sql.index(id, title: title, content: content)
-        let payload = Payload(title: title, content: content, createdAt: now, updatedAt: now)
+        let payload = Payload(title: title, content: content, createdAt: now, updatedAt: now, spaceId: spaceId)
         try sql.enqueue(id, type: createOp, payload: payload, now: now)
         return try sql.note(id)!
     }
 
-    private static func update(_ sql: Sql, _ current: Note, _ title: String, _ content: String, _ clock: Int64)
-        throws -> Note
-    {
+    private static func update(
+        _ sql: Sql, _ current: Note, _ title: String, _ content: String, _ clock: Int64, spaceId: String? = nil
+    ) throws -> Note {
         let now = max(clock, current.updatedAt)
+        let space = spaceId ?? current.spaceId
         // Right-hand sides see the row before the update: base_* capture the synced text when a clean note first changes.
         try sql.exec(
             """
-            UPDATE notes SET title = ?, content = ?, updated_at = ?, dirty = 1,
+            UPDATE notes SET title = ?, content = ?, space_id = ?, updated_at = ?, dirty = 1,
                 base_title = CASE WHEN dirty = 0 THEN title ELSE base_title END,
                 base_content = CASE WHEN dirty = 0 THEN content ELSE base_content END,
-                base_deleted_at = CASE WHEN dirty = 0 THEN deleted_at ELSE base_deleted_at END
+                base_deleted_at = CASE WHEN dirty = 0 THEN deleted_at ELSE base_deleted_at END,
+                base_space_id = CASE WHEN dirty = 0 THEN space_id ELSE base_space_id END
             WHERE id = ?
             """,
-            title, content, now, current.id
+            title, content, space, now, current.id
         )
         try sql.index(current.id, title: title, content: content)
-        try sql.queueText(current.id, title: title, content: content, now: now)
+        try sql.queueText(current.id, title: title, content: content, spaceId: space, now: now)
         return try sql.note(current.id)!
+    }
+
+    /// Moves a note to another space (§7.7), saved like an edit. False if there's no such live note.
+    @discardableResult
+    public func move(_ id: String, to spaceId: String) async throws -> Bool {
+        let clock = clock
+        let moved = try await db.write { sql -> Bool in
+            guard let current = try sql.note(id), current.deletedAt == nil else { return false }
+            if current.spaceId == spaceId { return true }
+            _ = try Self.update(sql, current, current.title, current.content, clock(), spaceId: spaceId)
+            return true
+        }
+        if moved { localEditFeed.send(()) }
+        return moved
+    }
+
+    /// How many live notes outside `space` a search finds: the "more in other spaces" row (§7.7).
+    public func countElsewhere(_ input: String, space: String) async throws -> Int {
+        let match = Search.buildQuery(input)
+        if match.isEmpty { return 0 }
+        return try await db.read { sql in
+            Int(
+                try sql.int64(
+                    """
+                    SELECT count(*) FROM notes_fts JOIN notes n ON n.seq = notes_fts.rowid
+                    WHERE notes_fts MATCH ? AND n.deleted_at IS NULL AND n.space_id != ?
+                    """,
+                    match, space))
+        }
     }
 
     private static func mergeWithSync(
@@ -258,7 +319,7 @@ public final class NoteStore: Sendable {
         if mergedTitle == nil || mergedContent == nil {
             try sql.insertCopy(
                 title: copyTitle(current.title, conflictedSuffix), content: current.content, conflictOf: current.id,
-                now: clock())
+                spaceId: current.spaceId, now: clock())
         }
         let t = mergedTitle ?? title
         let c = mergedContent ?? content
@@ -267,14 +328,16 @@ public final class NoteStore: Sendable {
     }
 
     /// Keeps text whose note was deleted elsewhere while it was being edited:
-    /// a new "(Recovered copy)" note, as sync makes for edits it finds. Returns its id.
+    /// a new "(Recovered copy)" note in `spaceId`, as sync makes for edits it finds. Returns its id.
     @discardableResult
-    public func recover(title: String, content: String, imageIds: [String]? = nil) async throws -> String {
+    public func recover(
+        title: String, content: String, imageIds: [String]? = nil, spaceId: String = Spaces.defaultId
+    ) async throws -> String {
         let clock = clock
         let id = try await db.write {
             try $0.insertCopy(
-                title: copyTitle(title, recoveredSuffix), content: content, conflictOf: nil, now: clock(),
-                imageIds: imageIds)
+                title: copyTitle(title, recoveredSuffix), content: content, conflictOf: nil, spaceId: spaceId,
+                now: clock(), imageIds: imageIds)
         }
         localEditFeed.send(())
         return id
@@ -301,7 +364,8 @@ public final class NoteStore: Sendable {
                 UPDATE notes SET deleted_at = ?, dirty = 1,
                     base_title = CASE WHEN dirty = 0 THEN title ELSE base_title END,
                     base_content = CASE WHEN dirty = 0 THEN content ELSE base_content END,
-                    base_deleted_at = CASE WHEN dirty = 0 THEN deleted_at ELSE base_deleted_at END
+                    base_deleted_at = CASE WHEN dirty = 0 THEN deleted_at ELSE base_deleted_at END,
+                    base_space_id = CASE WHEN dirty = 0 THEN space_id ELSE base_space_id END
                 WHERE id = ?
                 """,
                 clock(), id
@@ -326,6 +390,9 @@ public final class NoteStore: Sendable {
             try sql.exec("DELETE FROM locked_images")
             try sql.exec("DELETE FROM pending_images")
             try sql.exec("DELETE FROM lock_keys")
+            try sql.exec("DELETE FROM spaces")
+            try sql.exec(
+                "INSERT INTO spaces (id, name, created_at) VALUES (?, ?, 0)", Spaces.defaultId, Spaces.defaultName)
             try sql.exec(
                 """
                 UPDATE sync_state SET cursor = 0, generation = NULL, last_sync_at = NULL, last_error = NULL,

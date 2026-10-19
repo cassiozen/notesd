@@ -121,11 +121,13 @@ public struct RemoteNote: Codable, Sendable, Hashable {
     public var conflictOf: String?
     /// A locked note's images as the server records them (§7.6); absent for a plain note.
     public var imageIds: [String]?
+    /// The space the note is in (§7.7).
+    public var spaceId: String
 
     public init(
         id: String, title: String = "", content: String = "", revision: Int64, changeSeq: Int64 = 0,
         createdAt: Int64 = 0, updatedAt: Int64 = 0, deletedAt: Int64? = nil, conflictOf: String? = nil,
-        imageIds: [String]? = nil
+        imageIds: [String]? = nil, spaceId: String = Spaces.defaultId
     ) {
         self.id = id
         self.title = title
@@ -137,6 +139,7 @@ public struct RemoteNote: Codable, Sendable, Hashable {
         self.deletedAt = deletedAt
         self.conflictOf = conflictOf
         self.imageIds = imageIds
+        self.spaceId = spaceId
     }
 
     public init(from decoder: any Decoder) throws {
@@ -152,10 +155,11 @@ public struct RemoteNote: Codable, Sendable, Hashable {
         deletedAt = try c.decodeIfPresent(Int64.self, forKey: .deletedAt)
         conflictOf = try c.decodeIfPresent(String.self, forKey: .conflictOf)
         imageIds = try c.decodeIfPresent([String].self, forKey: .imageIds)
+        spaceId = try c.decodeIfPresent(String.self, forKey: .spaceId) ?? Spaces.defaultId
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, content, revision, changeSeq, createdAt, updatedAt, deletedAt, conflictOf, imageIds
+        case id, title, content, revision, changeSeq, createdAt, updatedAt, deletedAt, conflictOf, imageIds, spaceId
     }
 }
 
@@ -167,14 +171,35 @@ public struct MutationResult: Decodable, Sendable, Hashable {
     public var changeSeq: Int64
     public var updatedAt: Int64
     public var deletedAt: Int64?
+    /// Creates and updates: the space the note is in now, the default if the one sent is gone (§7.7).
+    public var spaceId: String?
 
-    public init(id: String, status: String, revision: Int64, changeSeq: Int64, updatedAt: Int64, deletedAt: Int64?) {
+    public init(
+        id: String, status: String, revision: Int64, changeSeq: Int64, updatedAt: Int64, deletedAt: Int64?,
+        spaceId: String? = nil
+    ) {
         self.id = id
         self.status = status
         self.revision = revision
         self.changeSeq = changeSeq
         self.updatedAt = updatedAt
         self.deletedAt = deletedAt
+        self.spaceId = spaceId
+    }
+}
+
+/// A space as the server stores it (§7.7).
+public struct RemoteSpace: Codable, Sendable, Hashable {
+    public var id: String
+    public var name: String
+    public var createdAt: Int64
+    public var noteCount: Int
+
+    public init(id: String, name: String, createdAt: Int64 = 0, noteCount: Int = 0) {
+        self.id = id
+        self.name = name
+        self.createdAt = createdAt
+        self.noteCount = noteCount
     }
 }
 

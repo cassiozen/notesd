@@ -26,6 +26,8 @@ public final class SyncEngine: Sendable {
     public let store: SyncStore
     /// The locked-notes keyring as last synced, for unlocking offline (§10.1).
     public let lockKeys: LockKeyStore
+    /// The spaces, with this device's changes waiting to go (§7.7).
+    public let spaces: SpaceStore
     private let api: @Sendable () async -> ApiClient?
     private let images: ImageStore?
     private let pageSize: Int
@@ -40,6 +42,7 @@ public final class SyncEngine: Sendable {
     ) {
         store = SyncStore(db: db, clock: clock)
         lockKeys = LockKeyStore(db: db)
+        spaces = SpaceStore(db: db, clock: clock)
         self.api = api
         self.images = images
         self.pageSize = pageSize
@@ -88,12 +91,50 @@ public final class SyncEngine: Sendable {
         var message: String?
     }
 
+    /// Spaces made or renamed here go before the notes, so the server knows the space a note
+    /// names; deleted ones after, once the notes moved out of them have (§7.7).
     private func cycle(_ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?) async throws -> Stop?
     {
+        if let stop = try await pushSpaces(api, deletes: false) { return stop }
         if let stop = try await push(api, &events, &rejection) { return stop }
+        if let stop = try await pushSpaces(api, deletes: true) { return stop }
         if let stop = try await pull(api, &events) { return stop }
+        if let stop = try await fetchSpaces(api) { return stop }
         if let stop = try await keyring(api) { return stop }
         return try await store.nextOperation() != nil ? try await push(api, &events, &rejection) : nil
+    }
+
+    /// Sends the spaces created or renamed here, or (`deletes`) the ones deleted here.
+    private func pushSpaces(_ api: ApiClient, deletes: Bool) async throws -> Stop? {
+        for change in try await spaces.pending() where change.delete == deletes {
+            if change.delete {
+                switch await api.deleteSpace(change.id) {
+                case .ok: try await spaces.deleted(change)
+                // Notes reached it from another device (or it's the default): it stays.
+                case .conflict: try await spaces.dropped(change)
+                case .rejected(let status, _, _, _) where status < 500: try await spaces.dropped(change)
+                case let other: return stop(other)
+                }
+            } else {
+                switch await api.putSpace(change.id, name: change.name) {
+                case .ok(let stored): try await spaces.sent(change, stored: stored)
+                case .rejected(let status, _, _, _) where status < 500: try await spaces.dropped(change)
+                case let other: return stop(other)
+                }
+            }
+        }
+        return nil
+    }
+
+    /// The list is small and has no change feed: fetched whole every cycle, like the keyring.
+    private func fetchSpaces(_ api: ApiClient) async throws -> Stop? {
+        switch await api.spaces() {
+        case .ok(let list):
+            try await spaces.replace(list)
+            return nil
+        case let other:
+            return stop(other)
+        }
     }
 
     /// The keyring is tiny and has no change feed: fetched whole every cycle.
@@ -165,13 +206,14 @@ public final class SyncEngine: Sendable {
             return await api.createNote(
                 NoteRequest(
                     operationId: op.operationId, id: op.noteId, title: p.title, content: p.content,
-                    createdAt: p.createdAt, updatedAt: p.updatedAt, conflictOf: p.conflictOf, imageIds: p.imageIds))
+                    createdAt: p.createdAt, updatedAt: p.updatedAt, conflictOf: p.conflictOf, spaceId: p.spaceId,
+                    imageIds: p.imageIds))
         case updateOp:
             return await api.updateNote(
                 op.noteId,
                 NoteRequest(
                     operationId: op.operationId, baseRevision: op.baseRevision, title: p.title, content: p.content,
-                    updatedAt: p.updatedAt, imageIds: p.imageIds))
+                    updatedAt: p.updatedAt, spaceId: p.spaceId, imageIds: p.imageIds))
         default:
             return await api.deleteNote(
                 op.noteId, NoteRequest(operationId: op.operationId, baseRevision: op.baseRevision))

@@ -151,6 +151,52 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(local.firstMatch.exists)
     }
 
+    /// Spaces (§7.7) work offline: hidden with one, made in Settings, switched from the list's title.
+    func testSpaces() throws {
+        app.launch()
+        XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
+        app.buttons["New note"].tap()
+        app.typeText("Groceries\nMilk")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Space: Notes"].exists)
+
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let newSpace = app.buttons["New Space"]
+        for _ in 0..<6 where !newSpace.isHittable { app.swipeUp() }
+        newSpace.tap()
+        let name = app.textFields["Name"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textFields["Rename “Notes” to"].value as? String, "Personal")
+        screenshot("new space")
+        app.typeText("Work")
+        app.buttons["Create"].tap()
+
+        // Straight to the new, empty space.
+        let switcher = app.buttons["Space: Work"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["No notes in Work yet"].waitForExistence(timeout: 5))
+        app.buttons["New note"].tap()
+        app.typeText("Standup\nStatus")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["Standup"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Groceries"].exists)
+        try audit("a second space")
+
+        // The sidebar, closed, has a switcher too: the list's is the one on screen.
+        let shown = app.buttons.matching(identifier: "Space: Work").allElementsBoundByIndex.first { $0.isHittable }
+        // Its name, as a finger would: the row around it is wider than the menu.
+        try XCTUnwrap(shown).staticTexts["Work"].tap()
+        let personal = app.buttons["Personal"]
+        XCTAssertTrue(personal.waitForExistence(timeout: 5))
+        screenshot("space menu")
+        personal.tap()
+        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["Standup"].exists)
+        XCTAssertTrue(app.buttons["Space: Personal"].exists)
+    }
+
     func testALongNoteScrolls() throws {
         app.launch()
         XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))

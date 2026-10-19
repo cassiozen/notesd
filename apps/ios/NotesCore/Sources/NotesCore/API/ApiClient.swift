@@ -38,12 +38,13 @@ public struct NoteRequest: Encodable, Sendable, Hashable {
     public var createdAt: Int64?
     public var updatedAt: Int64?
     public var conflictOf: String?
+    public var spaceId: String?
     public var imageIds: [String]?
 
     public init(
         operationId: String, id: String? = nil, baseRevision: Int64? = nil, title: String? = nil,
         content: String? = nil, createdAt: Int64? = nil, updatedAt: Int64? = nil, conflictOf: String? = nil,
-        imageIds: [String]? = nil
+        spaceId: String? = nil, imageIds: [String]? = nil
     ) {
         self.operationId = operationId
         self.id = id
@@ -53,6 +54,7 @@ public struct NoteRequest: Encodable, Sendable, Hashable {
         self.createdAt = createdAt
         self.updatedAt = updatedAt
         self.conflictOf = conflictOf
+        self.spaceId = spaceId
         self.imageIds = imageIds
     }
 }
@@ -190,6 +192,29 @@ public final class ApiClient: Sendable {
         return await authed(
             { self.request("GET", "api/v1/locks", access: $0) },
             decode: { try JSONDecoder().decode(Keys.self, from: $0.data).keys ?? [] })
+    }
+
+    // MARK: spaces
+
+    /// Every space (§7.7), the default first.
+    public func spaces() async -> ApiResult<[RemoteSpace]> {
+        struct Spaces: Decodable { var spaces: [RemoteSpace]? }
+        return await authed(
+            { self.request("GET", "api/v1/spaces", access: $0) },
+            decode: { try JSONDecoder().decode(Spaces.self, from: $0.data).spaces ?? [] })
+    }
+
+    /// Creates or renames a space; the answer has the name as stored (a clash gets a number).
+    public func putSpace(_ id: String, name: String) async -> ApiResult<RemoteSpace> {
+        struct Body: Encodable { var name: String }
+        return await authed(
+            { self.request("PUT", "api/v1/spaces/\(id)", body: Body(name: name), access: $0) },
+            decode: json(RemoteSpace.self))
+    }
+
+    /// Deletes an empty space: a conflict (space_not_empty) while it holds notes.
+    public func deleteSpace(_ id: String) async -> ApiResult<Void> {
+        await authed({ self.request("DELETE", "api/v1/spaces/\(id)", access: $0) }, decode: { _ in () })
     }
 
     /// Creates or replaces a keyring entry; `verifier` proves this device holds the key (the first password entry sets it).

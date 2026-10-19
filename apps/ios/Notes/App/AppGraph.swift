@@ -25,9 +25,43 @@ final class AppGraph {
     private(set) var syncStatus: SyncStatus = .notConnected
     private(set) var lockState: LockSession.State = .none
 
-    /// What the list shows. Kept so the app reopens on it.
+    /// What the list shows. Kept so the app reopens on it, unless it was chosen in another space:
+    /// the app opens in the default one (§7.7).
     var listFilter: NoteFilter? {
-        didSet { Self.defaults.set(try? JSONEncoder().encode(listFilter), forKey: "listFilter") }
+        didSet {
+            Self.defaults.set(try? JSONEncoder().encode(listFilter), forKey: "listFilter")
+            Self.defaults.set(space, forKey: "listFilterSpace")
+        }
+    }
+
+    /// Every space (§7.7), the default first, kept current with every write.
+    private(set) var spaces: [Space] = []
+
+    /// The space the list, tags and search show: this iPhone's own, never synced, the default at a cold start.
+    private(set) var space = Spaces.defaultId
+
+    /// A note is open: coming back after a while doesn't move the list from under it.
+    @ObservationIgnored var editorOpen = false
+    @ObservationIgnored private var backgroundSince: Date?
+
+    /// Back after this long away with no note open, the list starts over in the default space.
+    static let spaceReset: TimeInterval = 30 * 60
+
+    /// Shows another space, from All notes.
+    func switchSpace(_ id: String) {
+        guard space != id else { return }
+        space = id
+        listFilter = nil
+    }
+
+    func enteredBackground() {
+        backgroundSince = Date()
+    }
+
+    func enteredForeground() {
+        guard let since = backgroundSince else { return }
+        backgroundSince = nil
+        if Date().timeIntervalSince(since) > Self.spaceReset && !editorOpen { switchSpace(Spaces.defaultId) }
     }
 
     var appearance: Appearance {
@@ -63,7 +97,7 @@ final class AppGraph {
         if Self.uiTesting {
             accounts.clear()
             for key in [
-                "listFilter", "appearance", "openTags", BiometricUnlock.bound,
+                "listFilter", "listFilterSpace", "appearance", "openTags", BiometricUnlock.bound,
                 BiometricUnlock.declined,
             ] {
                 Self.defaults.removeObject(forKey: key)
@@ -93,9 +127,18 @@ final class AppGraph {
         email = EmailSetup(api: { [accounts] in accounts.client() })
         account = accounts.account.value
         appearance = Appearance(rawValue: Self.defaults.string(forKey: "appearance") ?? "") ?? .system
+        let savedIn = Self.defaults.string(forKey: "listFilterSpace") ?? Spaces.defaultId
         listFilter =
-            Self.defaults.data(forKey: "listFilter").flatMap { try? JSONDecoder().decode(NoteFilter?.self, from: $0) }
-            ?? nil
+            savedIn == Spaces.defaultId
+            ? Self.defaults.data(forKey: "listFilter").flatMap { try? JSONDecoder().decode(NoteFilter?.self, from: $0) }
+                ?? nil
+            : nil
+        Task { [weak self, store, engine] in
+            // Subscribed before the first read, so a change landing in between isn't missed.
+            let changes = store.changes()
+            await self?.reloadSpaces(engine)
+            for await _ in changes { await self?.reloadSpaces(engine) }
+        }
         Task { [weak self, accounts] in
             for await account in accounts.account.stream() { self?.account = account }
         }
@@ -117,6 +160,18 @@ final class AppGraph {
         Task { [weak self, engine] in
             for await event in engine.events() { self?.notice = Self.describe(event) }
         }
+    }
+
+    private func reloadSpaces(_ engine: SyncEngine) async {
+        guard let list = try? await engine.spaces.list() else { return }
+        spaces = list
+        // The space shown was deleted, here or on another device: back to the default.
+        if !list.isEmpty && !list.contains(where: { $0.id == space }) { switchSpace(Spaces.defaultId) }
+    }
+
+    /// The space's name, or the default's while the list loads.
+    func spaceName(_ id: String) -> String {
+        spaces.first { $0.id == id }?.name ?? Spaces.defaultName
     }
 
     /// The database lives in Application Support, readable after the first unlock so background sync can open it.
@@ -177,6 +232,7 @@ final class AppGraph {
         await locks.forget()
         biometrics.disable()
         listFilter = nil
+        switchSpace(Spaces.defaultId)
     }
 
     private static func describe(_ event: SyncEvent) -> String {
