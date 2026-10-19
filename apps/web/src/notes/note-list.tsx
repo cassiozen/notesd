@@ -41,6 +41,10 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   const searching = q !== ''
   const n = search.results.length
   const name = spaceName(spaces, space)
+  // Without the docked sidebar the switcher comes here. Beside New note there's no room for a name,
+  // so it takes a row of its own, as in the sidebar; a phone has the whole title row for it.
+  const switcher = many && spaces !== null && tags !== null && !scope
+  const switcherRow = switcher && !mobile
   // With two spaces, the other one by name.
   const others = spaces?.filter((s) => s.id !== space) ?? []
   const elsewhere = others.length === 1 && others[0] ? others[0].name : 'other spaces'
@@ -73,10 +77,20 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                 ×
               </button>
             </h1>
+          ) : switcherRow ? (
+            <span className={styles.grow} />
           ) : (
-            <h1 className={styles.heading}>
+            <h1 className={many ? [styles.heading, styles.scoped].join(' ') : styles.heading}>
               {/* Beside the docked sidebar, it carries the switcher; here the space's name is enough. */}
-              {many && spaces && tags !== null ? <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} /> : many ? name : 'Notes'}
+              {switcher && spaces ? (
+                <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} />
+              ) : many ? (
+                <span className={styles.scope} title={name}>
+                  {name}
+                </span>
+              ) : (
+                'Notes'
+              )}
             </h1>
           )}
           {tags === 'show' && (
@@ -91,6 +105,11 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
             </Button>
           )}
         </div>
+        {switcherRow && spaces && (
+          <h1 className={styles.spaceRow}>
+            <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} block />
+          </h1>
+        )}
         <div className={styles.search}>
           <span className={styles.searchIcon}>
             <SearchIcon />

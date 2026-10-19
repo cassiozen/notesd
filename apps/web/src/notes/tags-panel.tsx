@@ -13,7 +13,7 @@ type Props = {
   filter: ListFilter
   onFilter: (filter: ListFilter) => void
   onSettings: () => void
-  /** Every space, and the one shown: the header switches between them once there are two. */
+  /** Every space, and the one shown: a row under the header switches between them once there are two. */
   spaces: Space[] | null
   space: string
   onSpace: (id: string) => void
@@ -120,11 +120,6 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
     <nav className={[styles.panel, onHide ? styles.docked : ''].join(' ')} aria-label="Sidebar">
       <div className={styles.header}>
         <span className={styles.mark} aria-hidden="true" />
-        {spaces && spaces.length > 1 && (
-          <span className={styles.space}>
-            <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} />
-          </span>
-        )}
         {onHide && (
           <button type="button" className={styles.tool} onClick={onHide} aria-label="Hide sidebar" title="Hide sidebar">
             <SidebarIcon />
@@ -134,6 +129,12 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
           <SettingsIcon size={onHide ? 16 : 17} />
         </button>
       </div>
+      {/* A row of its own: beside the mark and the tools there's no room for a name. */}
+      {spaces && spaces.length > 1 && (
+        <div className={styles.space}>
+          <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} block />
+        </div>
+      )}
       <div className={styles.scroll} onKeyDown={onKeyDown}>
         <ul className={styles.list} aria-label="Show">
           <li>

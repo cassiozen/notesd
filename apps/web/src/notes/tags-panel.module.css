@@ -27,11 +27,10 @@
   background: url('../ui/mark.png') center / contain no-repeat;
 }
 
-/* The space switcher takes the room between the mark and the tools. */
+/* The space switcher: its own row under the header, as wide as the rows below it. */
 .space {
-  flex: 1;
-  min-width: 0;
   display: flex;
+  padding: 0 8px 8px 4px;
   font: 600 14px/1.2 var(--font-sans);
 }
 

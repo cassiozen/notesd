@@ -7,7 +7,18 @@ import styles from './space-menu.module.css'
  * The switcher between spaces (§7.7): the current space's name, opening a
  * menu of every space. Only shown once there is more than one.
  */
-export function SpaceMenu({ spaces, current, onSwitch }: { spaces: Space[]; current: string; onSwitch: (id: string) => void }) {
+export function SpaceMenu({
+  spaces,
+  current,
+  onSwitch,
+  block = false,
+}: {
+  spaces: Space[]
+  current: string
+  onSwitch: (id: string) => void
+  /** Fill the row, the menu as wide as it: in the sidebar, which clips anything wider. */
+  block?: boolean
+}) {
   const [open, setOpen] = useState(false)
   const menuId = useId()
   const anchor = useRef<HTMLSpanElement>(null)
@@ -30,11 +41,12 @@ export function SpaceMenu({ spaces, current, onSwitch }: { spaces: Space[]; curr
   }, [open])
 
   return (
-    <span ref={anchor} className={styles.anchor}>
+    <span ref={anchor} className={[styles.anchor, block ? styles.block : ''].join(' ')}>
       <button
         type="button"
         className={styles.button}
         aria-label={`Space: ${name}`}
+        title={name}
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
@@ -59,7 +71,9 @@ export function SpaceMenu({ spaces, current, onSwitch }: { spaces: Space[]; curr
                 onSwitch(s.id)
               }}
             >
-              <span className={styles.itemName}>{s.name}</span>
+              <span className={styles.itemName} title={s.name}>
+                {s.name}
+              </span>
               {s.id === current && (
                 <span className={styles.check} aria-hidden="true">
                   ✓

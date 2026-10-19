@@ -100,3 +100,32 @@
     transform: translateY(-4px) scale(0.98);
   }
 }
+
+/* Filling its row: the button spans it, the chevron at the end, and the menu
+   matches its width so the sidebar's edge never cuts it off. */
+.block {
+  flex: 1;
+  display: flex;
+}
+
+.block .button {
+  flex: 1;
+  margin: 0;
+  padding: 8px 10px;
+  justify-content: space-between;
+  border-radius: 12px;
+  background: var(--chip);
+  border: 1px solid var(--edge);
+}
+
+.block .button:hover,
+.block .button[aria-expanded='true'] {
+  background: var(--glass-hi);
+}
+
+.block .menu {
+  left: 0;
+  right: 0;
+  min-width: 0;
+  max-width: none;
+}
