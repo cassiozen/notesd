@@ -1,0 +1,19 @@
+apps/android/app/src/main/kotlin/notes/app/editor/Images.kt
+  s_e7c7c1ca999489::t_400770f7b39b11 12,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d385467318febd9f476678addd07d417e8459cd8",
+  "prompts": {},
+  "sessions": {
+    "s_e7c7c1ca999489": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a10f69ab-b068-4476-9267-9411ed543d42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
