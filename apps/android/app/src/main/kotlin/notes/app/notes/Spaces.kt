@@ -128,7 +128,8 @@ fun SpaceSwitcher(
     onSwitch: (String) -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
-    style: TextStyle = Type.title
+    style: TextStyle = Type.title,
+    iconSize: Dp = 24.dp
 ) {
     val t = LocalTokens.current
     var open by remember { mutableStateOf(false) }
@@ -141,8 +142,8 @@ fun SpaceSwitcher(
             .padding(horizontal = 6.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        SpaceIconImage(spaces.iconOf(current), 24.dp)
-        Spacer(Modifier.width(8.dp))
+        SpaceIconImage(spaces.iconOf(current), iconSize)
+        Spacer(Modifier.width(10.dp))
         Text(
             name,
             style = style,

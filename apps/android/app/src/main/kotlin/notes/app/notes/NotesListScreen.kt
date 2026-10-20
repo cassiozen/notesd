@@ -105,7 +105,6 @@ import notes.app.ui.BackLink
 import notes.app.ui.Backdrop
 import notes.app.ui.Banner
 import notes.app.ui.BannerKind
-import notes.app.ui.BrandMark
 import notes.app.ui.ButtonKind
 import notes.app.ui.IconAction
 import notes.app.ui.Icons
@@ -244,10 +243,9 @@ fun NotesListScreen(
                         Header(
                             notSynced?.pending,
                             scope,
-                            mark = onTags != null,
+                            icon = spaces.iconOf(space),
                             onClear = { vm.filter(null) },
-                            onNotSynced = { syncSheet = true },
-                            many = many
+                            onNotSynced = { syncSheet = true }
                         )
                     }
                     // Nothing to search before the first note.
@@ -467,28 +465,18 @@ private fun TopBar(collapsed: Boolean, title: String, onTags: (() -> Unit)?, mod
 
 /**
  * The large title: what the list shows, All Notes or the filter, with a way back to all notes.
- * [mark]: the brand mark leads the title, unless the tags sidebar beside the list already shows it,
- * or there are [many] spaces, whose switcher in the sidebar shows the space's icon instead.
+ * [icon]: the space's, leading the title, so the space shows even with the sidebar away.
  * [notSynced]: notes stuck on this phone; a quiet icon at the end, and nothing when sync is fine.
  */
 @Composable
-private fun Header(
-    notSynced: Int?,
-    scope: String?,
-    mark: Boolean,
-    onClear: () -> Unit,
-    onNotSynced: () -> Unit,
-    many: Boolean = false
-) {
+private fun Header(notSynced: Int?, scope: String?, icon: String, onClear: () -> Unit, onNotSynced: () -> Unit) {
     val t = LocalTokens.current
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        if (mark && !many) {
-            BrandMark(26.dp)
-            Spacer(Modifier.width(12.dp))
-        }
+        SpaceIconImage(icon, 28.dp)
+        Spacer(Modifier.width(12.dp))
         Text(
             scope ?: "All Notes",
             style = Type.display,

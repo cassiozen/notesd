@@ -50,6 +50,7 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.edit
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -183,7 +184,7 @@ fun TagsPane(
                     Modifier.fillMaxWidth().padding(
                         start = 20.dp,
                         end = 8.dp,
-                        top = if (docked) 12.dp else 56.dp,
+                        top = 12.dp,
                         bottom = 12.dp
                     ),
                     verticalAlignment = Alignment.CenterVertically
@@ -195,7 +196,8 @@ fun TagsPane(
                             space,
                             onSpace,
                             onNewSpace,
-                            style = Type.title
+                            style = Type.title.copy(fontSize = 26.sp, lineHeight = 30.sp),
+                            iconSize = 30.dp
                         )
                     }
                     SettingsButton(onSettings)
