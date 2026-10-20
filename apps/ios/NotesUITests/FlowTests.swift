@@ -191,8 +191,9 @@ final class FlowTests: XCTestCase {
 
         // The sidebar, closed, has a switcher too: the list's is the one on screen.
         let shown = app.buttons.matching(identifier: "Space: Work").allElementsBoundByIndex.first { $0.isHittable }
-        // Its name, as a finger would: the row around it is wider than the menu.
-        try XCTUnwrap(shown).staticTexts["Work"].tap()
+        // Its name, as a finger would: the row around it is wider than the menu. By coordinate:
+        // some simulators hit-test the text to its button and call the text itself not hittable.
+        try XCTUnwrap(shown).staticTexts["Work"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         let notes = app.buttons["Notes"]
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
         screenshot("space menu")
