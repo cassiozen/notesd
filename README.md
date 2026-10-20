@@ -3,7 +3,7 @@
 <h2 align="center">notesd</h1>
 <h3 align="center">Self-hosted notes</h1>
 
-<p align="center">Single-binary, lightweight server (you can drop onto a Raspberry Pi or a cheap VPS).</p> 
+<p align="center">Single-binary, lightweight server (you can drop onto a Raspberry Pi or a cheap VPS).</p>
 <p align="center">Native mobile apps that works fully
 offline and syncs your notes whenever a connection is available.</p>
 
@@ -15,7 +15,7 @@ offline and syncs your notes whenever a connection is available.</p>
 
 - **Organize with tags.** Add tags like `#work` and `#reading` anyewhere in your note. The sidebar lists all your tags, so you can browse by topic. Tags can be nested with `/` (`#home/garden`).
 
-- **Spaces.** Keep separate contexts, like Work and Personal, apart. Each space has its own icon, notes and tags, and new notes go to the space you're in. Create one from the space's name atop the sidebar, or in Settings.
+- **Spaces.** Create new spaces to keep separate contexts apart.
 
 - **Locked notes.** You can secure notes with end-to-end encryption (AES-256-GCM). The server only stores ciphertext. Unlock with a password, a passkey (web) or biometrics (Android and iOS).  
   <img width="368" height="259" alt="Image" src="https://github.com/user-attachments/assets/607ed533-451f-42ed-90d6-e1cfe162deae" />  
@@ -49,7 +49,6 @@ notesd export --out ~/notes-export
 Locked notes are left out unless you add `--include-locked`. The command only reads the
 database, so it's safe to run while the server is up.
 
-
 ## Security
 
 Regular notes are stored unencrypted. Use disk encryption if that
@@ -70,7 +69,6 @@ matters to you, and HTTPS for anything reachable from the internet.
 
 The full threat model is in
 [docs/architecture.md §10.1](docs/architecture.md#101-locked-notes).
-
 
 ## How it's built
 
