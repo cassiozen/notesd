@@ -302,10 +302,10 @@ function ShellView({ username }: { username: string }) {
   return (
     <>
       <Backdrop />
-      {mobile ? (
-        columns
-      ) : (
-        <div className={styles.frame}>
+      {/* One frame at every width, the columns always its second child: crossing the phone
+          breakpoint mustn't remount the list and the editor (focus, caret, scroll). */}
+      <div className={styles.frame}>
+        {!mobile && (
           <TopBar
             sidebarOpen={sidebarOpen}
             onSidebar={toggleSidebar}
@@ -319,9 +319,9 @@ function ShellView({ username }: { username: string }) {
             onNew={startNote}
             onSettings={() => navigate('/settings')}
           />
-          {columns}
-        </div>
-      )}
+        )}
+        {columns}
+      </div>
 
       {notice && <Toast text={notice.text} onUndo={notice.undo ? () => undo(notice.id) : undefined} />}
 

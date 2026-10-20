@@ -1,8 +1,9 @@
-/* Search centred over the whole window, the controls in the corners. */
+/* Search centred over the whole window, the controls in the corners. Narrow, the corners
+   keep their controls whole and the search gives way (it may then sit off centre). */
 .bar {
   flex: none;
   display: grid;
-  grid-template-columns: 1fr minmax(0, 560px) 1fr;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, 560px) minmax(max-content, 1fr);
   align-items: center;
   gap: 16px;
   height: 56px;
@@ -14,7 +15,6 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  min-width: 0;
 }
 
 .end {

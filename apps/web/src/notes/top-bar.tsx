@@ -26,7 +26,6 @@ export function TopBar({
   onNew: () => void
   onSettings: () => void
 }) {
-  const sidebar = sidebarOpen ? 'Hide sidebar' : 'Show sidebar'
   return (
     <header className={styles.bar}>
       <div className={styles.start}>
@@ -34,9 +33,10 @@ export function TopBar({
           type="button"
           className={styles.tool}
           onClick={onSidebar}
-          aria-label={sidebar}
+          // A toggle: the name stays, aria-pressed says which way it is; the tooltip names the action.
+          aria-label="Sidebar"
           aria-pressed={sidebarOpen}
-          title={sidebar}
+          title={sidebarOpen ? 'Hide sidebar' : 'Show sidebar'}
         >
           <SidebarIcon />
         </button>

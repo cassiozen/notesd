@@ -134,13 +134,16 @@ describe('tags sidebar', () => {
     const { user } = await withTags()
     // The toggle is in the top bar, the sidebar's open or not.
     const bar = screen.getByRole('banner')
-    await user.click(within(bar).getByRole('button', { name: 'Hide sidebar' }))
+    const toggle = within(bar).getByRole('button', { name: 'Sidebar' })
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
+    await user.click(toggle)
     expect(screen.queryByRole('navigation', { name: 'Sidebar' })).toBeNull()
     expect(localStorage.getItem('notes.sidebar.hidden')).toBe('true')
 
-    await user.click(within(bar).getByRole('button', { name: 'Show sidebar' }))
+    expect(toggle.getAttribute('aria-pressed')).toBe('false')
+    await user.click(toggle)
     expect(panel()).toBeTruthy()
-    expect(within(bar).getByRole('button', { name: 'Hide sidebar' }).getAttribute('aria-pressed')).toBe('true')
+    expect(toggle.getAttribute('aria-pressed')).toBe('true')
     expect(localStorage.getItem('notes.sidebar.hidden')).toBe('false')
   })
 
@@ -188,7 +191,7 @@ describe('tags screen beside a note', () => {
     mediumLayout()
     const { user } = await withTags()
     await openNote(user, 'Loose')
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Show sidebar' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Sidebar' }))
 
     expect(screen.queryByRole('complementary', { name: 'Notes' })).toBeNull()
     expect(noteTitle()).toBe('Loose')
@@ -200,7 +203,7 @@ describe('tags screen beside a note', () => {
   it('gives way to the list when searching from the top bar', async () => {
     mediumLayout()
     const { user } = await withTags()
-    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Show sidebar' }))
+    await user.click(within(screen.getByRole('banner')).getByRole('button', { name: 'Sidebar' }))
     await waitFor(() => expect(screen.queryByRole('complementary', { name: 'Notes' })).toBeNull())
 
     await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'standup')
