@@ -270,7 +270,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = System
             // After a restore, revisions from before it aren't comparable with the server's: text decides.
             if (!local.dirty && sameState(local, remote)) {
                 // Only the space differs: a move holds no text, so no copy. Take the server's, unless it lost ours.
-                if (local.spaceId == remote.spaceId) return adoptRevision(sql, remote)
+                // Both deleted, the space doesn't matter: overwriting would bring the note back.
+                if (local.spaceId == remote.spaceId || remote.deletedAt != null) return adoptRevision(sql, remote)
                 if (remote.revision >= known) return overwrite(sql, local, remote)
             }
             if (remote.revision < known) return serverLost(sql, local, remote, events)

@@ -70,6 +70,27 @@ class SpacesSyncTest {
     }
 
     @Test
+    fun `a name deleted here while its notes move out is kept by the space made in its place`() = runBlocking<Unit> {
+        val a = client()
+        val b = client()
+        val old = a.engine.spaces.create("Work")
+        a.notes.save("n", "Plan", "x\n", spaceId = old)
+        syncAll(a, b)
+
+        // Offline: the note out, the space deleted, a new one by the same name with a note in it.
+        assertTrue(a.notes.move("n", Spaces.DEFAULT))
+        assertTrue(a.engine.spaces.delete(old))
+        val again = a.engine.spaces.create("Work")
+        a.notes.save("m", "Standup", "y\n", spaceId = again)
+        syncAll(a, b)
+
+        assertEquals(listOf("Notes", "Work"), a.spaceNames())
+        assertEquals(a.spaceNames(), b.spaceNames())
+        assertEquals(again, b.spaceOf("m"))
+        assertEquals(Spaces.DEFAULT, b.spaceOf("n"))
+    }
+
+    @Test
     fun `a rename reaches every device`() = runBlocking<Unit> {
         val a = client()
         val b = client()
@@ -91,6 +112,37 @@ class SpacesSyncTest {
         syncAll(b, a)
         val s = a.engine.spaces.list().single { it.id == work }
         assertEquals("Office" to "castle", s.name to s.icon)
+    }
+
+    @Test
+    fun `after a restore, a note deleted on both sides in different spaces stays deleted`() = runBlocking<Unit> {
+        val a = client()
+        val b = client()
+        a.save("n", "Plan", "x\n")
+        syncAll(a, b)
+        server.stop()
+        val backup = server.snapshot()
+        server.restart()
+        // Deleted on a, its cursor run ahead of the backup: after the restore its next sync is a full one.
+        a.notes.delete("n")
+        for (v in 1..3) {
+            a.save("other", "Other", "$v\n")
+            assertEquals(SyncOutcome.Done, a.sync())
+        }
+        server.stop()
+        server.restore(backup)
+        server.restart()
+        backup.deleteRecursively()
+
+        // Deleted again on b, after moving it: the server's tombstone is in another space.
+        val work = b.engine.spaces.create("Work")
+        syncAll(b)
+        assertTrue(b.notes.move("n", work))
+        syncAll(b)
+        b.notes.delete("n")
+        syncAll(b)
+        syncAll(a)
+        assertEquals(listOf("Other"), a.live().map { it.title })
     }
 
     @Test

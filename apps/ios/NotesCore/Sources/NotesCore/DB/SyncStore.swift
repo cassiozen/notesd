@@ -249,7 +249,8 @@ public final class SyncStore: Sendable {
             // After a restore, revisions from before it aren't comparable with the server's: text decides.
             if !local.dirty && sameState(local, remote) {
                 // Only the space differs: a move holds no text, so no copy. Take the server's, unless it lost ours.
-                if local.spaceId == remote.spaceId { return try adoptRevision(sql, remote) }
+                // Both deleted, the space doesn't matter: overwriting would bring the note back.
+                if local.spaceId == remote.spaceId || remote.deletedAt != nil { return try adoptRevision(sql, remote) }
                 if remote.revision >= known { return try overwrite(sql, local, remote) }
             }
             if remote.revision < known { return try serverLost(sql, local, remote, &events) }

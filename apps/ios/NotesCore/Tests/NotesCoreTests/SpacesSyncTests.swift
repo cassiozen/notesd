@@ -69,6 +69,56 @@ final class SpacesSyncTests {
         #expect(try await a.engine.spaces.list().last?.id == again)
     }
 
+    @Test func aNameDeletedHereWhileItsNotesMoveOutIsKeptByTheSpaceMadeInItsPlace() async throws {
+        let a = try await client()
+        let b = try await client()
+        let old = try await a.engine.spaces.create("Work")
+        try await a.notes.save("n", title: "Plan", content: "x\n", spaceId: old)
+        await syncAll(a, b)
+
+        // Offline: the note out, the space deleted, a new one by the same name with a note in it.
+        #expect(try await a.notes.move("n", to: Spaces.defaultId))
+        #expect(try await a.engine.spaces.delete(old))
+        let again = try await a.engine.spaces.create("Work")
+        try await a.notes.save("m", title: "Standup", content: "y\n", spaceId: again)
+        await syncAll(a, b)
+
+        #expect(try await names(a) == ["Notes", "Work"])
+        #expect(try await names(b) == ["Notes", "Work"])
+        #expect(try await spaceOf(b, "m") == again)
+        #expect(try await spaceOf(b, "n") == Spaces.defaultId)
+    }
+
+    @Test func afterARestoreANoteDeletedOnBothSidesInDifferentSpacesStaysDeleted() async throws {
+        let a = try await client()
+        let b = try await client()
+        try await a.save("n", "Plan", "x\n")
+        await syncAll(a, b)
+        server.stop()
+        let backup = try server.snapshot()
+        try await server.restart()
+        // Deleted on a, its cursor run ahead of the backup: after the restore its next sync is a full one.
+        try await a.notes.delete("n")
+        for v in 1...3 {
+            try await a.save("other", "Other", "\(v)\n")
+            #expect(await a.sync() == .done)
+        }
+        server.stop()
+        try server.restore(backup)
+        try await server.restart()
+        try? FileManager.default.removeItem(at: backup)
+
+        // Deleted again on b, after moving it: the server's tombstone is in another space.
+        let work = try await b.engine.spaces.create("Work")
+        await syncAll(b)
+        #expect(try await b.notes.move("n", to: work))
+        await syncAll(b)
+        try await b.notes.delete("n")
+        await syncAll(b)
+        await syncAll(a)
+        #expect(try await a.live().map(\.title) == ["Other"])
+    }
+
     @Test func afterARestoreANoteOnlyMovedOnTheServerIsTakenWithoutACopy() async throws {
         let a = try await client()
         let b = try await client()

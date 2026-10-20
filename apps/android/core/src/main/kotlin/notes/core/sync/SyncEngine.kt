@@ -70,6 +70,12 @@ class SyncEngine(
     /** Why a space change this cycle was refused for good, for [SyncStore.finished]. */
     private var rejection: String? = null
 
+    /**
+     * Spaces sent this cycle under a name a space deleted here still holds on the server: stored
+     * there with a number for now, and sent again, to take the name, once the delete has gone.
+     */
+    private val parked = mutableSetOf<String>()
+
     private val _status = MutableStateFlow<SyncStatus>(SyncStatus.NotConnected)
     val status: StateFlow<SyncStatus> = _status
 
@@ -85,6 +91,7 @@ class SyncEngine(
         }
         _status.value = SyncStatus.Syncing
         rejection = null
+        parked.clear()
         val failure = cycle(client)
         // A dropped change isn't retried, so the cycle still counts as done, but the reason is kept.
         store.finished(failure?.message ?: rejection)
@@ -107,6 +114,11 @@ class SyncEngine(
         pushSpaces(api, deletes = false)?.let { return it }
         push(api)?.let { return it }
         pushSpaces(api, deletes = true)?.let { return it }
+        // The names those deletes freed, for the spaces made here meanwhile.
+        if (parked.isNotEmpty()) {
+            parked.clear()
+            pushSpaces(api, deletes = false)?.let { return it }
+        }
         pull(api)?.let { return it }
         fetchSpaces(api)?.let { return it }
         keyring(api)?.let { return it }
@@ -118,7 +130,8 @@ class SyncEngine(
      * refused for holding notes stays pending: notes moved out of it here may not have gone yet.
      */
     private suspend fun pushSpaces(api: ApiClient, deletes: Boolean, final: Boolean = true): Stop? {
-        for (change in spaces.pending().filter { it.delete == deletes }) {
+        val pending = spaces.pending()
+        for (change in pending.filter { it.delete == deletes }) {
             if (change.delete) {
                 when (val r = api.deleteSpace(change.id)) {
                     is ApiResult.Ok -> spaces.deleted(change)
@@ -137,8 +150,12 @@ class SyncEngine(
                     else -> return stop(r)
                 }
             } else {
+                // Deleted here, its name not yet free on the server (notes moved out of it go later):
+                // sent now so notes can name it, but kept waiting to take the name after the delete.
+                val held = pending.any { it.delete && it.name.equals(change.name, ignoreCase = true) }
+                if (held && change.id in parked) continue
                 when (val r = api.putSpace(change.id, change.name, change.icon)) {
-                    is ApiResult.Ok -> spaces.sent(change, r.value)
+                    is ApiResult.Ok -> if (held) parked += change.id else spaces.sent(change, r.value)
 
                     is ApiResult.Rejected if r.status < 500 -> {
                         spaces.dropped(change)

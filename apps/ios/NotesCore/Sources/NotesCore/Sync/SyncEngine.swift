@@ -96,23 +96,32 @@ public final class SyncEngine: Sendable {
     /// moved out of them have gone (§7.7).
     private func cycle(_ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?) async throws -> Stop?
     {
-        if let stop = try await pushSpaces(api, deletes: true, final: false, &rejection) { return stop }
-        if let stop = try await pushSpaces(api, deletes: false, &rejection) { return stop }
-        if let stop = try await push(api, &events, &rejection) { return stop }
-        if let stop = try await pushSpaces(api, deletes: true, &rejection) { return stop }
+        // Spaces sent under a name a space deleted here still holds on the server: stored there
+        // with a number for now, and sent again, to take the name, once the delete has gone.
+        var parked = Set<String>()
+        if let stop = try await pushSpaces(api, deletes: true, final: false, &rejection, &parked) { return stop }
+        if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
+        if let stop = try await push(api, &events, &rejection, &parked) { return stop }
+        if let stop = try await pushSpaces(api, deletes: true, &rejection, &parked) { return stop }
+        // The names those deletes freed, for the spaces made here meanwhile.
+        if !parked.isEmpty {
+            parked.removeAll()
+            if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
+        }
         if let stop = try await pull(api, &events) { return stop }
         if let stop = try await fetchSpaces(api) { return stop }
         if let stop = try await keyring(api) { return stop }
-        return try await store.nextOperation() != nil ? try await push(api, &events, &rejection) : nil
+        return try await store.nextOperation() != nil ? try await push(api, &events, &rejection, &parked) : nil
     }
 
     /// Sends the spaces created or renamed here, or (`deletes`) the ones deleted here. Not
     /// `final`, a delete refused for holding notes stays pending: notes moved out of it here
     /// may not have gone yet. One refused for good is dropped, and `rejection` says why.
     private func pushSpaces(
-        _ api: ApiClient, deletes: Bool, final: Bool = true, _ rejection: inout String?
+        _ api: ApiClient, deletes: Bool, final: Bool = true, _ rejection: inout String?, _ parked: inout Set<String>
     ) async throws -> Stop? {
-        for change in try await spaces.pending() where change.delete == deletes {
+        let pending = try await spaces.pending()
+        for change in pending where change.delete == deletes {
             if change.delete {
                 switch await api.deleteSpace(change.id) {
                 case .ok: try await spaces.deleted(change)
@@ -127,8 +136,13 @@ public final class SyncEngine: Sendable {
                 case let other: return stop(other)
                 }
             } else {
+                // Deleted here, its name not yet free on the server (notes moved out of it go later):
+                // sent now so notes can name it, but kept waiting to take the name after the delete.
+                let held = pending.contains { $0.delete && $0.name.lowercased() == change.name.lowercased() }
+                if held && parked.contains(change.id) { continue }
                 switch await api.putSpace(change.id, name: change.name, icon: change.icon) {
-                case .ok(let stored): try await spaces.sent(change, stored: stored)
+                case .ok(let stored):
+                    if held { parked.insert(change.id) } else { try await spaces.sent(change, stored: stored) }
                 case .rejected(let status, let error, let message, _) where status < 500:
                     try await spaces.dropped(change)
                     rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? error : message)"
@@ -175,9 +189,9 @@ public final class SyncEngine: Sendable {
         }
     }
 
-    private func push(_ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?) async throws
-        -> Stop?
-    {
+    private func push(
+        _ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?, _ parked: inout Set<String>
+    ) async throws -> Stop? {
         // Every waiting image goes, whether or not a note operation follows.
         if let stop = try await uploadImages(api) { return stop }
         while true {
@@ -189,7 +203,7 @@ public final class SyncEngine: Sendable {
             if let stop = try await uploadImages(api) { return stop }
             // Likewise a space made since the cycle began: the server files a note naming an
             // unknown space in the default.
-            if let stop = try await pushSpaces(api, deletes: false, &rejection) { return stop }
+            if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
             switch await send(api, op) {
             case .ok(let result):
                 try await store.sent(op, result)

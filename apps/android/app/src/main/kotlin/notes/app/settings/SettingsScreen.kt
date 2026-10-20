@@ -865,7 +865,7 @@ private fun SpaceDialog(
                 val n = Spaces.normalize(name)
                 error = when {
                     n == null -> "Enter a name."
-                    n.length > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
+                    n.codePointCount(0, n.length) > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
                     taken(n) -> "Another space has this name."
                     else -> null
                 }

@@ -128,7 +128,8 @@ struct SpaceSheet: View {
             error = "Enter a name."
             return
         }
-        if n.count > Spaces.maxName {
+        // Counted as the server counts: by Unicode scalar.
+        if n.unicodeScalars.count > Spaces.maxName {
             error = "At most \(Spaces.maxName) characters."
             return
         }
