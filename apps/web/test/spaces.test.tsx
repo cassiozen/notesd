@@ -57,8 +57,13 @@ async function spaces(server: TestServer) {
 describe('one space', () => {
   it('looks like there are no spaces', async () => {
     const { user } = await signedIn({ seed: (s) => createNote(s, 'Only', 'text\n').then(() => undefined) })
-    expect(within(panel()).queryByRole('button', { name: /^Space: / })).toBeNull()
-    expect(within(list()).getByRole('heading', { name: 'Notes' })).toBeTruthy()
+    // The space is named all the same, and its menu offers only a new one.
+    await user.click(await waitFor(() => switcher()))
+    expect(switcher().getAttribute('aria-label')).toBe('Space: Notes')
+    expect(screen.getAllByRole('menuitemradio').map((i) => i.textContent)).toEqual(['Notes✓'])
+    expect(screen.getByRole('menuitem', { name: 'New space…' })).toBeTruthy()
+    await user.keyboard('{Escape}')
+    expect(within(list()).getByRole('heading', { name: 'All Notes' })).toBeTruthy()
     expect(screen.getByRole('searchbox', { name: 'Search notes' }).getAttribute('placeholder')).toBe('Search all notes')
 
     await user.click(await screen.findByRole('button', { name: 'More' }))
@@ -67,6 +72,21 @@ describe('one space', () => {
 })
 
 describe('creating spaces', () => {
+  it('starts from the switcher too', async () => {
+    const { server, user } = await signedIn({ seed: (s) => createNote(s, 'Old', 'text\n').then(() => undefined) })
+    await user.click(await waitFor(() => switcher()))
+    await user.click(screen.getByRole('menuitem', { name: 'New space…' }))
+
+    const dialog = await screen.findByRole('dialog', { name: 'New space' })
+    await user.type(within(dialog).getByLabelText('Name'), 'Work')
+    await user.click(within(dialog).getByRole('radio', { name: 'Duck' }))
+    await user.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
+    expect(await within(list()).findByText('No notes in Work yet.')).toBeTruthy()
+    expect((await spaces(server)).map((s) => s.name)).toEqual(['Notes', 'Work'])
+  })
+
   it('names the new space, then switches to it', async () => {
     const { server, user } = await signedIn({ seed: (s) => createNote(s, 'Old', 'text\n').then(() => undefined) })
     await user.click(screen.getByRole('button', { name: 'Settings' }))
@@ -265,8 +285,6 @@ function away(ms: number) {
   document.dispatchEvent(new Event('visibilitychange'))
 }
 
-const heading = () => within(list()).getByRole('heading', { level: 1 })
-
 describe('going back to the default space', () => {
   afterEach(() => {
     vi.restoreAllMocks()
@@ -275,30 +293,33 @@ describe('going back to the default space', () => {
   })
 
   it('happens after a long time away with no note open', async () => {
+    // On a phone: wider, a note is always open beside the list.
     phoneLayout()
     const { user } = await withWork()
-    await user.click(await waitFor(() => within(heading()).getByRole('button', { name: /^Space: / })))
-    await user.click(screen.getByRole('menuitemradio', { name: 'Work' }))
+    const sidebar = async () => user.click(await waitFor(() => within(list()).getByRole('button', { name: 'Sidebar' })))
+    await sidebar()
+    await switchTo(user, 'Work')
     await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
 
     away(SPACE_RESET_MS - 60_000)
-    expect(within(heading()).getByRole('button').getAttribute('aria-label')).toBe('Space: Work')
+    await new Promise((r) => setTimeout(r, 50))
+    expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup'])
 
     away(SPACE_RESET_MS + 60_000)
     await waitFor(() => expect(rowTitles()).toEqual(['Groceries']))
-    expect(within(heading()).getByRole('button').getAttribute('aria-label')).toBe('Space: Notes')
+    await sidebar()
+    expect(switcher().getAttribute('aria-label')).toBe('Space: Notes')
   })
 
   it('waits while a note is open', async () => {
-    phoneLayout()
     const { user } = await withWork()
-    await user.click(await waitFor(() => within(heading()).getByRole('button', { name: /^Space: / })))
-    await user.click(screen.getByRole('menuitemradio', { name: 'Work' }))
+    await switchTo(user, 'Work')
     await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
     await openNote(user, 'Budget')
 
     away(SPACE_RESET_MS + 60_000)
-    await user.click(screen.getByRole('button', { name: /Work$/ }))
-    await waitFor(() => expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup']))
+    await new Promise((r) => setTimeout(r, 50))
+    expect(switcher().getAttribute('aria-label')).toBe('Space: Work')
+    expect(rowTitles().toSorted()).toEqual(['Budget', 'Standup'])
   })
 })

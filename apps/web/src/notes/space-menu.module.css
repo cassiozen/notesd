@@ -35,10 +35,10 @@
   text-overflow: ellipsis;
 }
 
-/* The chevron points right; turned down, it reads as a menu. */
+/* The chevron points right; turned down, it reads as a menu. Small and quiet: until hovered,
+   the switcher reads as a title rather than a field. */
 .chevron {
   flex: none;
-  margin-left: auto;
   display: grid;
   place-items: center;
   color: var(--ink-3);
@@ -51,7 +51,8 @@
   top: calc(100% + 6px);
   left: 0;
   min-width: 200px;
-  max-width: 280px;
+  /* No wider than the sidebar (a size container), whose edge would cut it off. */
+  max-width: min(280px, calc(100cqi - 16px));
   padding: 6px;
   display: flex;
   flex-direction: column;
@@ -93,6 +94,21 @@
   text-overflow: ellipsis;
 }
 
+.separator {
+  height: 1px;
+  margin: 5px 8px;
+  background: var(--edge);
+}
+
+/* In the icons' column. */
+.plus {
+  flex: none;
+  width: 20px;
+  display: grid;
+  place-items: center;
+  color: var(--ink-2);
+}
+
 .check {
   flex: none;
   color: var(--tint);
@@ -103,34 +119,4 @@
     opacity: 0;
     transform: translateY(-4px) scale(0.98);
   }
-}
-
-/* Filling its row: the button spans it, the chevron at the end, and the menu
-   matches its width so the sidebar's edge never cuts it off. */
-.block {
-  flex: 1;
-  display: flex;
-  margin-left: 0;
-}
-
-.block .button {
-  flex: 1;
-  margin: 0;
-  padding: 7px 10px 7px 8px;
-  gap: 8px;
-  border-radius: 12px;
-  background: var(--chip);
-  border: 1px solid var(--edge);
-}
-
-.block .button:hover,
-.block .button[aria-expanded='true'] {
-  background: var(--glass-hi);
-}
-
-.block .menu {
-  left: 0;
-  right: 0;
-  min-width: 0;
-  max-width: none;
 }

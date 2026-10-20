@@ -6,6 +6,8 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* The space menu keeps within it. */
+  container-type: inline-size;
 }
 
 .docked {
@@ -19,23 +21,14 @@
   padding: 14px 12px 10px 14px;
 }
 
-.mark {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  margin-right: auto;
-  background: url('../ui/mark.png') center / contain no-repeat;
-}
-
-.spacer {
-  margin-right: auto;
-}
-
-/* The space switcher: its own row under the header, as wide as the rows below it. */
-.space {
+/* The space, as the list's title is set: the switcher looks like a heading until hovered. */
+.title {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  padding: 0 8px 8px 4px;
-  font: 600 14px/1.2 var(--font-sans);
+  margin: 0;
+  font: 400 21px/1 var(--font-serif);
+  letter-spacing: -0.01em;
 }
 
 /* Lines up with the rows' labels, past the expander column. */
@@ -187,6 +180,11 @@
 
   .header {
     padding: calc(20px + env(safe-area-inset-top)) 16px 12px;
+  }
+
+  /* As large as the list's title on a phone. */
+  .title {
+    font-size: 30px;
   }
 
   .tool {

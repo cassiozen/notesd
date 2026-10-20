@@ -20,17 +20,6 @@
   gap: 8px;
 }
 
-.grow {
-  flex: 1;
-}
-
-/* The space switcher on a row of its own, as in the sidebar. */
-.spaceRow {
-  display: flex;
-  margin: 0;
-  font: 600 14px/1.2 var(--font-sans);
-}
-
 .mark {
   flex: none;
   width: 20px;

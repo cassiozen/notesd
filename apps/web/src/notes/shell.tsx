@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
+import { NewSpaceDialog } from '../settings/spaces'
 import { Backdrop } from '../ui/backdrop'
 import { PHONE, WIDE, useMediaQuery } from '../ui/media'
 import { Toast } from '../ui/toast'
@@ -53,6 +54,8 @@ function ShellView({ username }: { username: string }) {
   const [draft, setDraft] = useState<NoteSaver | null>(null)
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState<Notice | null>(null)
+  // New space…, from the sidebar's switcher.
+  const [newSpace, setNewSpace] = useState(false)
 
   // Settings and the tags screen open over the app; the note behind them stays open.
   const over = route.name === 'settings' || route.name === 'tags'
@@ -216,6 +219,7 @@ function ShellView({ username }: { username: string }) {
       spaces={spaces}
       space={space}
       onSpace={switchSpace}
+      onNewSpace={() => setNewSpace(true)}
       onHide={onHide}
     />
   )
@@ -236,7 +240,6 @@ function ShellView({ username }: { username: string }) {
               setSpace(spaceId)
               select(id)
             }}
-            onSpace={switchSpace}
             onNew={startNote}
             tags={!wide ? 'back' : sidebarHidden ? 'show' : null}
             onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
@@ -276,6 +279,16 @@ function ShellView({ username }: { username: string }) {
           username={username}
           onSpaceCreated={switchSpace}
           onClose={() => navigate(settingsFrom === '/settings' ? listPath : settingsFrom)}
+        />
+      )}
+
+      {newSpace && (
+        <NewSpaceDialog
+          onClose={() => setNewSpace(false)}
+          onCreated={(id) => {
+            setNewSpace(false)
+            switchSpace(id)
+          }}
         />
       )}
     </>

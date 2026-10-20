@@ -4,7 +4,6 @@ import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime } from './list-time'
 import { useSearch } from './search'
-import { SpaceMenu } from './space-menu'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import styles from './note-list.module.css'
@@ -16,7 +15,6 @@ type Props = {
   onSelect: (id: string) => void
   /** A search result from another space: switch to it, then open the note. */
   onSelectElsewhere: (id: string, spaceId: string) => void
-  onSpace: (id: string) => void
   onNew: () => void
   /**
    * The way to the sidebar: a back link when it's a screen of its own, a
@@ -27,7 +25,7 @@ type Props = {
   mobile: boolean
 }
 
-export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onSpace, onNew, tags, onTags, mobile }: Props) {
+export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onNew, tags, onTags, mobile }: Props) {
   const { items, status, hasMore, total, loadMore, refresh, version, filter, setFilter, space } = useNotes()
   const spaces = useSpaces()
   const many = (spaces?.length ?? 0) > 1
@@ -41,10 +39,6 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   const searching = q !== ''
   const n = search.results.length
   const name = spaceName(spaces, space)
-  // Without the docked sidebar the switcher comes here. Beside New note there's no room for a name,
-  // so it takes a row of its own, as in the sidebar; a phone has the whole title row for it.
-  const switcher = many && spaces !== null && tags !== null && !scope
-  const switcherRow = switcher && !mobile
   // With two spaces, the other one by name.
   const others = spaces?.filter((s) => s.id !== space) ?? []
   const elsewhere = others.length === 1 && others[0] ? others[0].name : 'other spaces'
@@ -68,31 +62,19 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
           </button>
         )}
         <div className={styles.titleRow}>
-          {/* Beside the docked sidebar, its header carries the mark; with a switcher, its icon does. */}
-          {tags !== null && !switcher && <span className={styles.mark} aria-hidden="true" />}
-          {scope ? (
-            <h1 className={[styles.heading, styles.scoped].join(' ')}>
-              <span className={styles.scope}>{scope}</span>
+          {/* Without the sidebar beside it, the app's mark; with a switcher, the space's icon is it. */}
+          {tags !== null && !many && <span className={styles.mark} aria-hidden="true" />}
+          {/* What the list shows: All Notes, or the filter, which × clears. */}
+          <h1 className={[styles.heading, styles.scoped].join(' ')}>
+            <span className={styles.scope} title={scope ?? undefined}>
+              {scope ?? 'All Notes'}
+            </span>
+            {scope && (
               <button type="button" className={styles.clearScope} onClick={() => setFilter(null)} aria-label="Show all notes">
                 ×
               </button>
-            </h1>
-          ) : switcherRow ? (
-            <span className={styles.grow} />
-          ) : (
-            <h1 className={many ? [styles.heading, styles.scoped].join(' ') : styles.heading}>
-              {/* Beside the docked sidebar, it carries the switcher; here the space's name is enough. */}
-              {switcher && spaces ? (
-                <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} />
-              ) : many ? (
-                <span className={styles.scope} title={name}>
-                  {name}
-                </span>
-              ) : (
-                'Notes'
-              )}
-            </h1>
-          )}
+            )}
+          </h1>
           {tags === 'show' && (
             <button type="button" className={styles.showTags} onClick={onTags} aria-label="Show sidebar" title="Show sidebar">
               <SidebarIcon />
@@ -105,11 +87,6 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
             </Button>
           )}
         </div>
-        {switcherRow && spaces && (
-          <h1 className={styles.spaceRow}>
-            <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} block />
-          </h1>
-        )}
         <div className={styles.search}>
           <span className={styles.searchIcon}>
             <SearchIcon />

@@ -1,24 +1,23 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Space } from '../api/types'
-import { ChevronIcon } from '../ui/icons'
+import { ChevronIcon, PlusIcon } from '../ui/icons'
 import { SpaceIcon } from './space-icon'
 import styles from './space-menu.module.css'
 
 /**
- * The switcher between spaces (§7.7): the current space's name, opening a
- * menu of every space. Only shown once there is more than one.
+ * The switcher between spaces (§7.7): the current space's icon and name,
+ * opening a menu of every space and, last, New space….
  */
 export function SpaceMenu({
   spaces,
   current,
   onSwitch,
-  block = false,
+  onCreate,
 }: {
   spaces: Space[]
   current: string
   onSwitch: (id: string) => void
-  /** Fill the row, the menu as wide as it: in the sidebar, which clips anything wider. */
-  block?: boolean
+  onCreate: () => void
 }) {
   const [open, setOpen] = useState(false)
   const menuId = useId()
@@ -38,6 +37,7 @@ export function SpaceMenu({
   }, [open])
 
   // Opened, focus goes to the space shown (as a menu's keyboard users expect), else the first.
+  // New space… comes after the spaces, at items.current[spaces.length].
   useEffect(() => {
     if (!open) return
     items.current[Math.max(0, spaces.findIndex((s) => s.id === current))]?.focus()
@@ -67,7 +67,7 @@ export function SpaceMenu({
   }
 
   return (
-    <span ref={anchor} className={[styles.anchor, block ? styles.block : ''].join(' ')}>
+    <span ref={anchor} className={styles.anchor}>
       <button
         ref={trigger}
         type="button"
@@ -85,7 +85,7 @@ export function SpaceMenu({
           } else if (e.key === 'Escape' && open) close()
         }}
       >
-        <SpaceIcon space={space ?? { icon: '' }} size={block ? 20 : 22} />
+        <SpaceIcon space={space ?? { icon: '' }} size={24} />
         <span className={styles.name}>{name}</span>
         <span className={styles.chevron}>
           <ChevronIcon />
@@ -120,6 +120,25 @@ export function SpaceMenu({
               )}
             </button>
           ))}
+          <div role="separator" className={styles.separator} />
+          <button
+            ref={(el) => {
+              items.current[spaces.length] = el
+            }}
+            type="button"
+            role="menuitem"
+            tabIndex={-1}
+            className={styles.item}
+            onClick={() => {
+              close()
+              onCreate()
+            }}
+          >
+            <span className={styles.plus} aria-hidden="true">
+              <PlusIcon />
+            </span>
+            <span className={styles.itemName}>New space…</span>
+          </button>
         </div>
       )}
     </span>

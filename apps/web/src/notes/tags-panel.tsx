@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent } from
 import type { Space, TagCount } from '../api/types'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { SpaceMenu } from './space-menu'
+import { DEFAULT_SPACE } from './spaces'
 import type { ListFilter } from './store'
 import { buildTree, type TagNode } from './tag-tree'
 import styles from './tags-panel.module.css'
@@ -13,15 +14,18 @@ type Props = {
   filter: ListFilter
   onFilter: (filter: ListFilter) => void
   onSettings: () => void
-  /** Every space, and the one shown: a row under the header switches between them once there are two. */
+  /** Every space, and the one shown: the header switches between them, and makes new ones. */
   spaces: Space[] | null
   space: string
   onSpace: (id: string) => void
+  onNewSpace: () => void
   /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
   onHide?: () => void
 }
 
 const EXPANDED_KEY = 'notes.tags.expanded'
+
+const DEFAULT: Space = { id: DEFAULT_SPACE, name: 'Notes', icon: '', createdAt: 0, noteCount: 0 }
 
 // Per-browser conveniences: storage can be missing or throw (private windows).
 function load<T>(key: string, fallback: T): T {
@@ -42,7 +46,7 @@ function save(key: string, value: unknown) {
 }
 
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
-export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onHide }: Props) {
+export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onHide }: Props) {
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
@@ -119,12 +123,10 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
   return (
     <nav className={[styles.panel, onHide ? styles.docked : ''].join(' ')} aria-label="Sidebar">
       <div className={styles.header}>
-        {/* With a switcher, the default space's icon is the app's: no need for it twice. */}
-        {spaces && spaces.length > 1 ? (
-          <span className={styles.spacer} />
-        ) : (
-          <span className={styles.mark} aria-hidden="true" />
-        )}
+        {/* Before the list loads, the default space: the switcher keeps its place. */}
+        <h1 className={styles.title}>
+          <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} />
+        </h1>
         {onHide && (
           <button type="button" className={styles.tool} onClick={onHide} aria-label="Hide sidebar" title="Hide sidebar">
             <SidebarIcon />
@@ -134,12 +136,6 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
           <SettingsIcon size={onHide ? 16 : 17} />
         </button>
       </div>
-      {/* A row of its own: beside the mark and the tools there's no room for a name. */}
-      {spaces && spaces.length > 1 && (
-        <div className={styles.space}>
-          <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} block />
-        </div>
-      )}
       <div className={styles.scroll} onKeyDown={onKeyDown}>
         <ul className={styles.list} aria-label="Show">
           <li>

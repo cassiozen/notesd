@@ -13,10 +13,7 @@ import styles from './settings.module.css'
 
 const notes = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`
 
-/**
- * Spaces (§7.7): create, edit and delete them. The only place to make one,
- * so people who never need spaces never see them anywhere else.
- */
+/** Spaces (§7.7): create, edit and delete them. The sidebar's switcher can make one too. */
 export function SpacesCard({ onCreated }: { onCreated: (id: string) => void }) {
   const spaces = useSpaces()
   const [editing, setEditing] = useState<Space | 'new' | null>(null)
@@ -109,7 +106,7 @@ export function SpacesCard({ onCreated }: { onCreated: (id: string) => void }) {
 }
 
 /** A new space, with a name and an icon. */
-function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
+export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; onCreated: (id: string) => void }) {
   const titleId = useId()
   const [name, setName] = useState('')
   const [icon, setIcon] = useState<string | null>(null)
