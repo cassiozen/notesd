@@ -62,7 +62,7 @@ export function SpaceIconPicker({
               aria-label={icon.name}
               className={styles.radio}
             />
-            <Picture icon={icon.key} size={28} />
+            <Picture icon={icon.key} size={36} />
           </label>
         ))}
       </div>

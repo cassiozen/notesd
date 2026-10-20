@@ -84,10 +84,10 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
         Text("Icon", style = Type.label, color = t.ink2)
         Spacer(Modifier.height(6.dp))
         LazyVerticalGrid(
-            GridCells.Adaptive(48.dp),
+            GridCells.Adaptive(58.dp),
             Modifier
                 .fillMaxWidth()
-                .height(212.dp)
+                .height(256.dp)
                 .clip(shape)
                 .background(t.field)
                 .border(1.dp, if (error != null) t.danger else t.hair, shape)
@@ -99,14 +99,14 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
                 val cell = RoundedCornerShape(10.dp)
                 Box(
                     Modifier
-                        .height(48.dp)
+                        .height(58.dp)
                         .clip(cell)
                         .then(if (on) Modifier.background(t.chip).border(2.dp, t.tint, cell) else Modifier)
                         .selectable(on, role = Role.RadioButton) { onSelect(icon.key) }
                         .semantics { contentDescription = icon.name },
                     contentAlignment = Alignment.Center
                 ) {
-                    Picture(icon, 32.dp)
+                    Picture(icon, 40.dp)
                 }
             }
         }

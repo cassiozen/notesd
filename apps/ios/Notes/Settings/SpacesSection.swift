@@ -93,9 +93,10 @@ struct SpaceSheet: View {
                     if let error { Text(error).font(.notesSmall).foregroundStyle(Color.errInk) }
                 }
                 Section {
+                    // Above the grid, which runs past the screen's bottom: there it would go unseen.
+                    if let iconError { Text(iconError).font(.notesSmall).foregroundStyle(Color.errInk) }
                     SpaceIconPicker(selection: $icon)
                         .onChange(of: icon) { iconError = nil }
-                    if let iconError { Text(iconError).font(.notesSmall).foregroundStyle(Color.errInk) }
                 } header: {
                     Text("Icon")
                 }

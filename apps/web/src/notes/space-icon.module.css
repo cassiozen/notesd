@@ -22,12 +22,13 @@
   color: var(--ink-2);
 }
 
-/* Scrolls inside the dialog: 50 icons are more than a phone shows at once. */
+/* Scrolls inside the dialog: 50 icons are more than a phone shows at once. Half a row peeks
+   out at the bottom, so it reads as more to scroll to. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(44px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(54px, 1fr));
   gap: 4px;
-  max-height: 196px;
+  max-height: 264px;
   overflow-y: auto;
   padding: 4px;
   border-radius: 14px;
@@ -41,7 +42,7 @@
 
 .choice {
   position: relative;
-  height: 44px;
+  height: 54px;
   display: grid;
   place-items: center;
   border-radius: 10px;

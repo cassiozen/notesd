@@ -35,7 +35,7 @@ struct SpaceIconImage: View {
 struct SpaceIconPicker: View {
     @Binding var selection: String?
 
-    private let columns = [GridItem(.adaptive(minimum: 44), spacing: 4)]
+    private let columns = [GridItem(.adaptive(minimum: 54), spacing: 4)]
 
     var body: some View {
         LazyVGrid(columns: columns, spacing: 4) {
@@ -48,8 +48,8 @@ struct SpaceIconPicker: View {
                         .resizable()
                         .interpolation(.high)
                         .scaledToFit()
-                        .frame(width: 30, height: 30)
-                        .frame(maxWidth: .infinity, minHeight: 44)
+                        .frame(width: 38, height: 38)
+                        .frame(maxWidth: .infinity, minHeight: 54)
                         .background(on ? Color.chip : .clear, in: .rect(cornerRadius: 10))
                         .overlay {
                             if on { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.notesTint, lineWidth: 2) }
