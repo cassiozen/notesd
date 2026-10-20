@@ -47,6 +47,9 @@ class SpacesFlowTest {
     }
 
     @Test
+    // At the class's size, Robolectric's non-touch mode focuses the dialog's name field on open and its
+    // window never stops laying out; devices are fine. The default size doesn't trip it.
+    @Config(qualifiers = "w320dp-h470dp")
     fun `with one space the sidebar still names it, and its sheet makes another`() {
         runBlocking { graph.store.save("a", "Groceries", "Milk\n") }
         launch("Groceries")
