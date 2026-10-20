@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -98,11 +99,17 @@ class AppGraph(
         }
     )
 
-    /** Every space (§7.7), the default first, kept current with every write. */
-    val spaces: StateFlow<List<Space>> = store.changes.onStart { emit(Unit) }.map { sync.spaces.list() }
-        .stateIn(scope, SharingStarted.Eagerly, emptyList())
-
     private val _space = MutableStateFlow(Spaces.DEFAULT)
+
+    /**
+     * Every space (§7.7), the default first, kept current with every write while the UI watches.
+     * The space shown was deleted, here or on another device: back to the default. Checked only as a
+     * fresh list arrives, so a stale one can't undo a switch to a space made since.
+     * Lazy: opening the database with the graph breaks Robolectric tests run in another sandbox.
+     */
+    val spaces: StateFlow<List<Space>> = store.changes.onStart { emit(Unit) }.map { sync.spaces.list() }
+        .onEach { list -> if (list.none { it.id == _space.value }) switchSpace(Spaces.DEFAULT) }
+        .stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
 
     /** The space the list, tags and search show: this phone's own, never synced, the default at a cold start. */
     val space: StateFlow<String> = _space
@@ -180,11 +187,6 @@ class AppGraph(
                     putString(LIST_FILTER_SPACE, s)
                 }
             }
-        }
-        // The space shown was deleted, here or on another device: back to the default.
-        scope.launch {
-            combine(spaces, _space) { list, s -> list.isNotEmpty() && list.none { it.id == s } }
-                .collect { gone -> if (gone) switchSpace(Spaces.DEFAULT) }
         }
         // Fetched when a note or Settings opens; another account's settings must not linger.
         scope.launch { accounts.account.collect { if (it !is Account.SignedIn) email.forget() } }

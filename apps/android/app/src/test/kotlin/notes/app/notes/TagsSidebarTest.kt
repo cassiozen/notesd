@@ -61,7 +61,7 @@ class TagsSidebarTest {
     fun `settings from the sidebar goes back to the notes`() {
         compose.onNodeWithContentDescription("Settings").performClick()
         compose.waitUntilExactlyOneExists(hasText("Appearance", ignoreCase = true))
-        compose.onNodeWithText("Notes").assertExists()
+        compose.onNode(hasContentDescription("Back") and hasText("Notes")).assertExists()
         compose.onNodeWithContentDescription("Back").performClick()
         compose.waitUntilDoesNotExist(hasText("Appearance", ignoreCase = true))
     }

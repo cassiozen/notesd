@@ -15,6 +15,7 @@ import kotlinx.coroutines.runBlocking
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.runOffMain
 import notes.core.db.Spaces
 import org.junit.After
 import org.junit.Rule
@@ -81,8 +82,9 @@ class SpacesFlowTest {
         }
         launch("Groceries")
         graph.switchSpace(work)
-        compose.waitUntil { graph.space.value == work }
-        runBlocking { graph.sync.spaces.delete(work) }
-        compose.waitUntil { graph.space.value == Spaces.DEFAULT }
+        compose.waitUntilDoesNotExist(hasText("Groceries"))
+        compose.runOffMain { graph.sync.spaces.delete(work) }
+        compose.waitUntilExactlyOneExists(hasText("Groceries"))
+        assertEquals(Spaces.DEFAULT, graph.space.value)
     }
 }
