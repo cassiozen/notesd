@@ -1,0 +1,26 @@
+apps/android/app/src/test/kotlin/notes/app/notes/SpacesFlowTest.kt
+  s_e7c7c1ca999489::t_77fbf32cfa115d 85-88
+  s_e7c7c1ca999489::t_5daea89d40bbb0 18
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_e7c7c1ca999489::t_77fbf32cfa115d 110-111
+  s_e7c7c1ca999489::t_650ef69f2fe2c4 19,104-109,112
+  s_e7c7c1ca999489::t_c30f1d75e2b8f9 113
+apps/android/app/src/test/kotlin/notes/app/notes/TagsSidebarTest.kt
+  s_e7c7c1ca999489::t_650ef69f2fe2c4 64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d0146c13e9a5cddccb879addc695cd0a3b844420",
+  "prompts": {},
+  "sessions": {
+    "s_e7c7c1ca999489": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a10f69ab-b068-4476-9267-9411ed543d42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
