@@ -5,14 +5,12 @@ import { Backdrop } from '../ui/backdrop'
 import { PHONE, WIDE, useMediaQuery } from '../ui/media'
 import { Toast } from '../ui/toast'
 import { EmptyPane } from './empty'
-import { NoteList, searchPlaceholder } from './note-list'
+import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
 import type { NoteSaver } from './saver'
-import { useSearch } from './search'
 import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
 import { NotesProvider, useNotes, type ListFilter } from './store'
 import { TagsPanel } from './tags-panel'
-import { TopBar } from './top-bar'
 import styles from './shell.module.css'
 
 export function Shell({ username }: { username: string }) {
@@ -48,28 +46,12 @@ function ShellView({ username }: { username: string }) {
   // Wide: the tags sit in a sidebar. Narrower, they're a screen of their own (/tags) in the list's place.
   const wide = useMediaQuery(WIDE)
   const [sidebarHidden, setSidebarHidden] = useState(loadSidebarHidden)
-  const {
-    items,
-    status,
-    newDraft,
-    remove,
-    undoRemove,
-    removed,
-    tags,
-    lockedCount,
-    filter,
-    setFilter,
-    space,
-    setSpace,
-    move,
-    version,
-  } = useNotes()
+  const { items, status, newDraft, remove, undoRemove, removed, tags, lockedCount, filter, setFilter, space, setSpace, move } =
+    useNotes()
   const spaces = useSpaces()
   // A note the server doesn't have yet: open, but not in the URL until it's saved.
   const [draft, setDraft] = useState<NoteSaver | null>(null)
   const [query, setQuery] = useState('')
-  // Searched here, not in the list: the top bar's Enter opens the first result.
-  const search = useSearch(query, filter, { space }, version)
   const [notice, setNotice] = useState<Notice | null>(null)
 
   // Settings and the tags screen open over the app; the note behind them stays open.
@@ -224,103 +206,67 @@ function ShellView({ username }: { username: string }) {
   const sidebar = wide && !sidebarHidden
   const showList = !tagsScreen && (!mobile || selectedId === null)
   const showPane = !mobile || (!tagsScreen && selectedId !== null)
-  const tagsPanel = (docked: boolean) => (
+  const tagsPanel = (onHide?: () => void) => (
     <TagsPanel
       tags={tags}
       lockedCount={lockedCount}
       filter={filter}
       onFilter={showFilter}
-      // Wider than a phone, Settings is in the top bar.
-      onSettings={mobile ? () => navigate('/settings') : undefined}
+      onSettings={() => navigate('/settings')}
       spaces={spaces}
       space={space}
       onSpace={switchSpace}
-      docked={docked}
+      onHide={onHide}
     />
-  )
-
-  // The top bar's toggle: the docked sidebar when wide, else the tags screen in the list's place.
-  const sidebarOpen = wide ? !sidebarHidden : tagsScreen
-  const toggleSidebar = () => {
-    if (wide) hideSidebar(!sidebarHidden)
-    else navigate(tagsScreen ? listPath : '/tags')
-  }
-  const onQuery = (q: string) => {
-    setQuery(q)
-    // The results show in the list: bring it back from under the tags screen.
-    if (q && tagsScreen) navigate(listPath)
-  }
-
-  const columns = (
-    <div className={[styles.app, mobile ? '' : styles.underBar].join(' ')}>
-      {sidebar && tagsPanel(true)}
-      {tagsScreen && tagsPanel(false)}
-      {showList && (
-        <NoteList
-          selectedId={selectedId}
-          query={query}
-          onQuery={onQuery}
-          search={search}
-          onSelect={select}
-          onSelectElsewhere={(id, spaceId) => {
-            setSpace(spaceId)
-            select(id)
-          }}
-          onSpace={switchSpace}
-          onNew={startNote}
-          onTags={() => navigate('/tags')}
-          mobile={mobile}
-        />
-      )}
-      {showPane &&
-        (selectedId ? (
-          <NotePane
-            key={selectedId}
-            id={draft ? undefined : selectedId}
-            draft={draft ?? undefined}
-            mobile={mobile}
-            onBack={() => {
-              setDraft(null)
-              navigate('/')
-            }}
-            onNew={startNote}
-            onCreated={created}
-            onOpenDraft={setDraft}
-            onDelete={deleteNote}
-            onMove={moveNote}
-            onGone={(id) => {
-              leave(id)
-              removed(id)
-            }}
-          />
-        ) : (
-          <EmptyPane hasNotes={items.length > 0} onNew={startNote} />
-        ))}
-    </div>
   )
 
   return (
     <>
       <Backdrop />
-      {/* One frame at every width, the columns always its second child: crossing the phone
-          breakpoint mustn't remount the list and the editor (focus, caret, scroll). */}
-      <div className={styles.frame}>
-        {!mobile && (
-          <TopBar
-            sidebarOpen={sidebarOpen}
-            onSidebar={toggleSidebar}
+      <div className={styles.app}>
+        {sidebar && tagsPanel(() => hideSidebar(true))}
+        {tagsScreen && tagsPanel()}
+        {showList && (
+          <NoteList
+            selectedId={selectedId}
             query={query}
-            onQuery={onQuery}
-            placeholder={searchPlaceholder(filter, spaces, space)}
-            onOpenFirst={() => {
-              const top = search.results[0]
-              if (top) select(top.id)
+            onQuery={setQuery}
+            onSelect={select}
+            onSelectElsewhere={(id, spaceId) => {
+              setSpace(spaceId)
+              select(id)
             }}
+            onSpace={switchSpace}
             onNew={startNote}
-            onSettings={() => navigate('/settings')}
+            tags={!wide ? 'back' : sidebarHidden ? 'show' : null}
+            onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
+            mobile={mobile}
           />
         )}
-        {columns}
+        {showPane &&
+          (selectedId ? (
+            <NotePane
+              key={selectedId}
+              id={draft ? undefined : selectedId}
+              draft={draft ?? undefined}
+              mobile={mobile}
+              onBack={() => {
+                setDraft(null)
+                navigate('/')
+              }}
+              onNew={startNote}
+              onCreated={created}
+              onOpenDraft={setDraft}
+              onDelete={deleteNote}
+              onMove={moveNote}
+              onGone={(id) => {
+                leave(id)
+                removed(id)
+              }}
+            />
+          ) : (
+            <EmptyPane hasNotes={items.length > 0} onNew={startNote} />
+          ))}
       </div>
 
       {notice && <Toast text={notice.text} onUndo={notice.undo ? () => undo(notice.id) : undefined} />}

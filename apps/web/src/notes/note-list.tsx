@@ -1,61 +1,50 @@
 import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } from 'react'
-import type { SearchResult, Space } from '../api/types'
+import type { SearchResult } from '../api/types'
 import { Button } from '../ui/button'
-import { LockIcon, PlusIcon, SearchIcon } from '../ui/icons'
+import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime } from './list-time'
 import { useSearch } from './search'
 import { SpaceMenu } from './space-menu'
 import { spaceName, useSpaces } from './spaces'
-import { useNotes, type ListFilter } from './store'
+import { useNotes } from './store'
 import styles from './note-list.module.css'
 
 type Props = {
   selectedId: string | null
   query: string
   onQuery: (q: string) => void
-  /** The current space's matches for query: searched by the shell, whose top bar opens the first. */
-  search: Search
   onSelect: (id: string) => void
   /** A search result from another space: switch to it, then open the note. */
   onSelectElsewhere: (id: string, spaceId: string) => void
   onSpace: (id: string) => void
   onNew: () => void
-  /** On a phone: back to the sidebar, a screen of its own there. */
-  onTags: () => void
   /**
-   * A phone: the list carries its own search, the switcher and New note. Wider, they're in the
-   * top bar and the sidebar, and the list has only its title.
+   * The way to the sidebar: a back link when it's a screen of its own, a
+   * button when the docked sidebar is hidden, nothing when it's showing.
    */
+  tags: 'back' | 'show' | null
+  onTags: () => void
   mobile: boolean
 }
 
-export type Search = ReturnType<typeof useSearch>
-
-/** What the search field says it searches: the tag or other filter, else the space. */
-export function searchPlaceholder(filter: ListFilter, spaces: Space[] | null, space: string): string {
-  if (filter) return `Search in ${filterName(filter)}`
-  return (spaces?.length ?? 0) > 1 ? `Search in ${spaceName(spaces, space)}` : 'Search all notes'
-}
-
-function filterName(filter: NonNullable<ListFilter>): string {
-  return 'tag' in filter ? `#${filter.name}` : 'locked' in filter ? 'Locked' : 'Untagged'
-}
-
-export function NoteList({ selectedId, query, onQuery, search, onSelect, onSelectElsewhere, onSpace, onNew, onTags, mobile }: Props) {
+export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onSpace, onNew, tags, onTags, mobile }: Props) {
   const { items, status, hasMore, total, loadMore, refresh, version, filter, setFilter, space } = useNotes()
   const spaces = useSpaces()
   const many = (spaces?.length ?? 0) > 1
+  const search = useSearch(query, filter, { space }, version)
   // The other spaces' matches, listed once asked for, for these words in this space.
   const q = query.trim()
   const [otherFor, setOtherFor] = useState<string | null>(null)
   const showOther = q !== '' && otherFor === `${space}\u0000${q}`
   const other = useSearch(query, null, { exceptSpace: space }, version, showOther)
-  const scope = filter ? filterName(filter) : null
+  const scope = !filter ? null : 'tag' in filter ? `#${filter.name}` : 'locked' in filter ? 'Locked' : 'Untagged'
   const searching = q !== ''
   const n = search.results.length
   const name = spaceName(spaces, space)
-  // A phone's title is the switcher; wider, it sits in the sidebar only.
-  const switcher = mobile && many && spaces !== null && !scope
+  // Without the docked sidebar the switcher comes here. Beside New note there's no room for a name,
+  // so it takes a row of its own, as in the sidebar; a phone has the whole title row for it.
+  const switcher = many && spaces !== null && tags !== null && !scope
+  const switcherRow = switcher && !mobile
   // With two spaces, the other one by name.
   const others = spaces?.filter((s) => s.id !== space) ?? []
   const elsewhere = others.length === 1 && others[0] ? others[0].name : 'other spaces'
@@ -71,7 +60,7 @@ export function NoteList({ selectedId, query, onQuery, search, onSelect, onSelec
   return (
     <aside className={styles.list} aria-label="Notes">
       <div className={styles.header}>
-        {mobile && (
+        {tags === 'back' && (
           <button type="button" className={styles.back} onClick={onTags} aria-label="Sidebar" title="Sidebar">
             <span className={styles.chevron} aria-hidden="true">
               ‹
@@ -79,8 +68,8 @@ export function NoteList({ selectedId, query, onQuery, search, onSelect, onSelec
           </button>
         )}
         <div className={styles.titleRow}>
-          {/* With a switcher, its icon is the mark. */}
-          {mobile && !switcher && <span className={styles.mark} aria-hidden="true" />}
+          {/* Beside the docked sidebar, its header carries the mark; with a switcher, its icon does. */}
+          {tags !== null && !switcher && <span className={styles.mark} aria-hidden="true" />}
           {scope ? (
             <h1 className={[styles.heading, styles.scoped].join(' ')}>
               <span className={styles.scope}>{scope}</span>
@@ -88,8 +77,11 @@ export function NoteList({ selectedId, query, onQuery, search, onSelect, onSelec
                 ×
               </button>
             </h1>
+          ) : switcherRow ? (
+            <span className={styles.grow} />
           ) : (
             <h1 className={many ? [styles.heading, styles.scoped].join(' ') : styles.heading}>
+              {/* Beside the docked sidebar, it carries the switcher; here the space's name is enough. */}
               {switcher && spaces ? (
                 <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} />
               ) : many ? (
@@ -101,37 +93,51 @@ export function NoteList({ selectedId, query, onQuery, search, onSelect, onSelec
               )}
             </h1>
           )}
+          {tags === 'show' && (
+            <button type="button" className={styles.showTags} onClick={onTags} aria-label="Show sidebar" title="Show sidebar">
+              <SidebarIcon />
+            </button>
+          )}
+          {!mobile && (
+            <Button variant="accent" size="sm" className={styles.newNote} onClick={onNew}>
+              <PlusIcon />
+              New note
+            </Button>
+          )}
         </div>
-        {mobile && (
-          <div className={styles.search}>
-            <span className={styles.searchIcon}>
-              <SearchIcon />
-            </span>
-            <label htmlFor="search" className="visually-hidden">
-              Search notes
-            </label>
-            <input
-              id="search"
-              type="search"
-              className={styles.searchInput}
-              placeholder={searchPlaceholder(filter, spaces, space)}
-              spellCheck={false}
-              autoComplete="off"
-              value={query}
-              onChange={(e) => onQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Escape') onQuery('')
-                const first = search.results[0]
-                if (e.key === 'Enter' && first) onSelect(first.id)
-              }}
-            />
-            {query && (
-              <button type="button" className={styles.clear} onClick={() => onQuery('')} aria-label="Clear search">
-                ×
-              </button>
-            )}
-          </div>
+        {switcherRow && spaces && (
+          <h1 className={styles.spaceRow}>
+            <SpaceMenu spaces={spaces} current={space} onSwitch={onSpace} block />
+          </h1>
         )}
+        <div className={styles.search}>
+          <span className={styles.searchIcon}>
+            <SearchIcon />
+          </span>
+          <label htmlFor="search" className="visually-hidden">
+            Search notes
+          </label>
+          <input
+            id="search"
+            type="search"
+            className={styles.searchInput}
+            placeholder={scope ? `Search in ${scope}` : many ? `Search in ${name}` : 'Search all notes'}
+            spellCheck={false}
+            autoComplete="off"
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') onQuery('')
+              const first = search.results[0]
+              if (e.key === 'Enter' && first) onSelect(first.id)
+            }}
+          />
+          {query && (
+            <button type="button" className={styles.clear} onClick={() => onQuery('')} aria-label="Clear search">
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       <div className={styles.scroll}>

@@ -1,6 +1,6 @@
 import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
 import type { Space, TagCount } from '../api/types'
-import { ChevronIcon, HashIcon, LockIcon, SettingsIcon } from '../ui/icons'
+import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { SpaceMenu } from './space-menu'
 import type { ListFilter } from './store'
 import { buildTree, type TagNode } from './tag-tree'
@@ -12,14 +12,13 @@ type Props = {
   lockedCount: number
   filter: ListFilter
   onFilter: (filter: ListFilter) => void
-  /** On a phone, the panel's own header: the mark and Settings. Wider, they're in the top bar. */
-  onSettings?: () => void
+  onSettings: () => void
   /** Every space, and the one shown: a row under the header switches between them once there are two. */
   spaces: Space[] | null
   space: string
   onSpace: (id: string) => void
-  /** Docked beside the list (wide screens), and narrower; otherwise it's a screen of its own. */
-  docked?: boolean
+  /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
+  onHide?: () => void
 }
 
 const EXPANDED_KEY = 'notes.tags.expanded'
@@ -43,7 +42,7 @@ function save(key: string, value: unknown) {
 }
 
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
-export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, docked }: Props) {
+export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onHide }: Props) {
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
@@ -118,20 +117,23 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
   }
 
   return (
-    <nav className={[styles.panel, docked ? styles.docked : '', onSettings ? '' : styles.barred].join(' ')} aria-label="Sidebar">
-      {onSettings && (
-        <div className={styles.header}>
-          {/* With a switcher, the default space's icon is the app's: no need for it twice. */}
-          {spaces && spaces.length > 1 ? (
-            <span className={styles.spacer} />
-          ) : (
-            <span className={styles.mark} aria-hidden="true" />
-          )}
-          <button type="button" className={styles.tool} onClick={onSettings} aria-label="Settings" title="Settings">
-            <SettingsIcon size={17} />
+    <nav className={[styles.panel, onHide ? styles.docked : ''].join(' ')} aria-label="Sidebar">
+      <div className={styles.header}>
+        {/* With a switcher, the default space's icon is the app's: no need for it twice. */}
+        {spaces && spaces.length > 1 ? (
+          <span className={styles.spacer} />
+        ) : (
+          <span className={styles.mark} aria-hidden="true" />
+        )}
+        {onHide && (
+          <button type="button" className={styles.tool} onClick={onHide} aria-label="Hide sidebar" title="Hide sidebar">
+            <SidebarIcon />
           </button>
-        </div>
-      )}
+        )}
+        <button type="button" className={styles.tool} onClick={onSettings} aria-label="Settings" title="Settings">
+          <SettingsIcon size={onHide ? 16 : 17} />
+        </button>
+      </div>
       {/* A row of its own: beside the mark and the tools there's no room for a name. */}
       {spaces && spaces.length > 1 && (
         <div className={styles.space}>
