@@ -383,7 +383,8 @@ describe('deleting', () => {
 
     await user.click(screen.getByRole('button', { name: 'Undo' }))
     await waitFor(() => expect(noteTitle()).toBe('Remove me'))
-    expect(row('Remove me').getAttribute('aria-current')).toBe('page')
+    // The editor reopens it before the list's refresh puts the row back.
+    await waitFor(() => expect(row('Remove me').getAttribute('aria-current')).toBe('page'))
     expect((await listNotes(server)).map((n) => n.title).toSorted()).toEqual(['Keep', 'Remove me'])
 
     await deleteNote(user)

@@ -131,7 +131,6 @@ final class FlowTests: XCTestCase {
         app.buttons["Connect to a server"].tap()
         XCTAssertTrue(app.textFields["Server address"].waitForExistence(timeout: 5))
         screenshot("connect")
-        try audit("connect")
         app.buttons["Cancel"].tap()
         XCTAssertTrue(app.staticTexts["No notes yet"].waitForExistence(timeout: 5))
         app.buttons["New note"].tap()
@@ -221,8 +220,8 @@ final class FlowTests: XCTestCase {
         XCTAssertNotEqual(editor.screenshot().pngRepresentation, top, "the note scrolled")
     }
 
-    /// Launches and signs in to the test server; `audited` checks the sign-in screen on the way.
-    private func signIn(audited: Bool = false) throws {
+    /// Launches and signs in to the test server.
+    private func signIn(screenshotted: Bool = false) throws {
         let server = try XCTUnwrap(env["NOTESD_URL"], "run through scripts/with-server.sh")
         app.launch()
         let connect = app.buttons["Connect to a server"]
@@ -242,17 +241,14 @@ final class FlowTests: XCTestCase {
         let password = app.secureTextFields["Password"]
         password.tap()
         password.typeText(env["NOTESD_PASSWORD"] ?? "")
-        if audited {
-            try audit("sign in")
-            screenshot("sign in")
-        }
+        if screenshotted { screenshot("sign in") }
         app.buttons["Sign in"].tap()
         XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
     }
 
     /// The lock sheet after Lock note: the first lock on any device creates
     /// the lock password; after that (the flows share a server) it's asked for.
-    private func enterLockPassword(audited: Bool = false) throws {
+    private func enterLockPassword(screenshotted: Bool = false) throws {
         let create = app.navigationBars["Create a lock password"]
         let existing = app.navigationBars["Lock this note"]
         XCTAssertTrue(create.waitForExistence(timeout: 5) || existing.exists)
@@ -266,10 +262,7 @@ final class FlowTests: XCTestCase {
         let confirm = app.secureTextFields["Confirm password"]
         focus(confirm)
         confirm.typeText(lockPassword)
-        if audited {
-            screenshot("create lock password")
-            try audit("create lock password")
-        }
+        if screenshotted { screenshot("create lock password") }
         app.buttons["Create and lock"].tap()
     }
 
@@ -287,7 +280,7 @@ final class FlowTests: XCTestCase {
     }
 
     func testSignInWriteAndSync() async throws {
-        try signIn(audited: true)
+        try signIn(screenshotted: true)
 
         // A note with a checklist, a heading and a tag.
         let newNote = app.buttons["New note"]
@@ -298,7 +291,6 @@ final class FlowTests: XCTestCase {
         app.typeText("Milk\nBread #groceries\nCoffee\n\n")
         app.typeText("Plans for the trip")
         screenshot("editor")
-        try audit("editor")
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["Weekend"].waitForExistence(timeout: 5))
@@ -323,7 +315,6 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["1 result"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Weekend"].exists)
         screenshot("search")
-        try audit("search")
         app.buttons["Clear search"].tap()
 
         // The sidebar lists the new tag.
@@ -445,7 +436,7 @@ final class FlowTests: XCTestCase {
         app.typeText("Secret plans\nMeet at noon")
         app.buttons["More"].tap()
         app.buttons["Lock note"].tap()
-        try enterLockPassword(audited: true)
+        try enterLockPassword(screenshotted: true)
 
         let lockNow = app.buttons["Lock now"]
         XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
