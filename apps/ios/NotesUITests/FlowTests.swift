@@ -257,14 +257,14 @@ final class FlowTests: XCTestCase {
         let existing = app.navigationBars["Lock this note"]
         XCTAssertTrue(create.waitForExistence(timeout: 5) || existing.exists)
         let password = app.secureTextFields["Lock password"]
-        password.tap()
+        focus(password)
         password.typeText(lockPassword)
         if existing.exists {
             app.buttons["Lock"].tap()
             return
         }
         let confirm = app.secureTextFields["Confirm password"]
-        confirm.tap()
+        focus(confirm)
         confirm.typeText(lockPassword)
         if audited {
             screenshot("create lock password")
@@ -274,6 +274,17 @@ final class FlowTests: XCTestCase {
     }
 
     private let lockPassword = "lock pass 123"
+
+    /// Taps a field until it has the keyboard: a tap while its sheet is still
+    /// settling can land without focusing it.
+    private func focus(_ field: XCUIElement) {
+        for _ in 0..<5 {
+            field.tap()
+            if field.value(forKey: "hasKeyboardFocus") as? Bool == true { return }
+            usleep(500_000)
+        }
+        XCTFail("\(field) never took the keyboard")
+    }
 
     func testSignInWriteAndSync() async throws {
         try signIn(audited: true)
