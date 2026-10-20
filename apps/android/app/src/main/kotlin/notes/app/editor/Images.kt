@@ -9,6 +9,7 @@ import android.text.Spannable
 import android.text.Spanned
 import android.text.style.ReplacementSpan
 import android.text.style.TtsSpan
+import androidx.core.graphics.withClip
 import kotlin.math.roundToInt
 import notes.core.images.ImageRef
 
@@ -99,10 +100,7 @@ class ImageSpan(val source: String, val ref: ImageRef, private val host: ImageHo
         }
         clip.reset()
         clip.addRoundRect(rect, radius, radius, Path.Direction.CW)
-        canvas.save()
-        canvas.clipPath(clip)
-        canvas.drawBitmap(bitmap, null, rect, bitmapPaint)
-        canvas.restore()
+        canvas.withClip(clip) { drawBitmap(bitmap, null, rect, bitmapPaint) }
     }
 
     private companion object {

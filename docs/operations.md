@@ -1,7 +1,8 @@
 # Running notesd
 
 Everything notesd stores is in its data directory (`/var/lib/notesd` in
-[hosting.md](hosting.md)):
+[hosting.md](hosting.md), or the `notesd-data` volume with
+[Docker](#docker)):
 
 ```text
 notes.db       notes, account, sessions and settings
@@ -45,3 +46,44 @@ notesd logs to stderr, so systemd captures it: `journalctl -u notesd`.
 Every API request is logged in one line (query strings are left out, so
 search terms aren't). `--log-format json` produces JSON for log collectors,
 and `--log-level debug` adds detail.
+
+## Docker
+
+With the [Docker setup](hosting.md#with-docker), the data directory is the
+`notesd-data` volume, and the commands above run inside the container:
+
+```bash
+docker exec notesd notesd check
+docker logs -f notesd
+```
+
+To export your notes to a folder on the host:
+
+```bash
+docker exec notesd notesd export --out /tmp/export
+docker cp notesd:/tmp/export ./notes-export
+```
+
+To upgrade to the latest release, pull the image, then replace the container
+with the same `docker run` command you started it with:
+
+```bash
+docker pull ghcr.io/cassiozen/notesd:latest
+docker rm -f notesd
+docker run -d --name notesd --restart unless-stopped \
+  -p 127.0.0.1:8080:8080 \
+  -v notesd-data:/data \
+  -e NOTESD_PUBLIC_URL=https://notes.example.com \
+  ghcr.io/cassiozen/notesd:latest
+```
+
+To stay on one release line, use its tag instead of `latest`, e.g.
+`ghcr.io/cassiozen/notesd:0.2`.
+
+To back up, stop the server and copy the volume to a file:
+
+```bash
+docker stop notesd
+docker run --rm -v notesd-data:/data -v "$PWD":/backup busybox tar czf /backup/notesd-backup.tgz -C /data .
+docker start notesd
+```

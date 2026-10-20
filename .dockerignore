@@ -1,0 +1,3 @@
+# Only the release binaries go into the image.
+*
+!server/bin/notesd-linux-*

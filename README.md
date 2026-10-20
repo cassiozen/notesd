@@ -26,10 +26,10 @@ offline and syncs your notes whenever a connection is available.</p>
 
 ## Get started
 
-1. **Host the server.** Download the single binary for your machine. See [docs/hosting.md](docs/hosting.md).
+1. **Host the server.** Run it with Docker (`ghcr.io/cassiozen/notesd`) or download the single binary for your machine. See [docs/hosting.md](docs/hosting.md).
 2. **Create your account.** Open the server in a browser and create your
    account. Do this before exposing it to the internet; see
-   [docs/hosting.md](docs/hosting.md#3-create-your-account).
+   [docs/hosting.md](docs/hosting.md#2-create-your-account).
 3. **Install the Android app.** Download the APK from
    [Releases](https://github.com/cassiozen/notesd/releases) and connect it to
    your server. See [docs/android.md](docs/android.md).
@@ -100,7 +100,7 @@ A few things that may be interesting if you're reading the code:
 
 | Guide | For |
 | --- | --- |
-| [Hosting](docs/hosting.md) | Installing and configuring the server, HTTPS, systemd |
+| [Hosting](docs/hosting.md) | Installing the server with Docker or as a binary with systemd, HTTPS, configuration |
 | [Android](docs/android.md) | Installing the app, connecting, how sync works |
 | [iPhone](docs/ios.md) | Building and installing the iPhone app, connecting |
 | [Operations](docs/operations.md) | Upgrades, maintenance, monitoring |

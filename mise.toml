@@ -170,6 +170,11 @@ for target in linux/amd64 linux/arm64 darwin/arm64; do
 done
 """
 
+[tasks.docker]
+description = "Docker image notesd:dev for this machine's architecture, from the release binaries"
+depends = ["release"]
+run = "docker build -t notesd:dev ."
+
 [tasks.clean]
 dir = "server"
 run = "rm -rf bin"
