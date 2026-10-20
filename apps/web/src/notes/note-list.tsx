@@ -63,8 +63,8 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
           </button>
         )}
         <div className={styles.titleRow}>
-          {/* The space's icon, so the space shows with the sidebar away. */}
-          <SpaceIcon space={spaces?.find((s) => s.id === space) ?? { icon: '' }} size={mobile ? 28 : 22} />
+          {/* The space's icon, so the space shows with the sidebar away; beside it, the sidebar's shows it. */}
+          {tags !== null && <SpaceIcon space={spaces?.find((s) => s.id === space) ?? { icon: '' }} size={mobile ? 28 : 22} />}
           {/* What the list shows: All Notes, or the filter, which × clears. */}
           <h1 className={[styles.heading, styles.scoped].join(' ')}>
             <span className={styles.scope} title={scope ?? undefined}>
