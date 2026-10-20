@@ -12,17 +12,15 @@ struct TagsView: View {
     @State private var tags: [TagCount] = []
     @State private var lockedCount = 0
     @State private var open: Set<String> = Self.savedOpen
+    @State private var creating = false
 
     var body: some View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    // With a switcher, the default space's icon is the app's: no need for it twice.
-                    if graph.spaces.count > 1 {
-                        SpaceMenu(font: .notesTitle)
-                    } else {
-                        BrandMark(size: 26)
-                    }
+                    // The space, always: its menu makes new ones too.
+                    SpaceMenu(font: .notesTitle) { creating = true }
+                        .accessibilityAddTraits(.isHeader)
                     Spacer()
                     Button(action: openSettings) {
                         Image(systemName: "gearshape")
@@ -75,6 +73,14 @@ struct TagsView: View {
         }
         .scrollIndicators(.hidden)
         .background { Backdrop() }
+        .sheet(isPresented: $creating) {
+            SpaceSheet { id in
+                creating = false
+                graph.switchSpace(id)
+                // To the new space's list, empty and ready for a note.
+                drawer.close()
+            }
+        }
         .task(id: graph.space) {
             let changes = graph.store.changes()
             await reload()

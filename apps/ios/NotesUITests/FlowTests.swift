@@ -151,7 +151,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(local.firstMatch.exists)
     }
 
-    /// Spaces (§7.7) work offline: hidden with one, made in Settings, switched from the list's title.
+    /// Spaces (§7.7) work offline: the sidebar always names the space, and its menu makes new ones.
     func testSpaces() throws {
         app.launch()
         XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
@@ -159,17 +159,19 @@ final class FlowTests: XCTestCase {
         app.typeText("Groceries\nMilk")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Space: Notes"].exists)
+        // The list is titled by what it shows.
+        XCTAssertTrue(app.staticTexts["All Notes"].exists)
 
         app.buttons["Tags"].tap()
-        app.buttons["Settings"].tap()
-        let newSpace = app.buttons["New Space"]
-        for _ in 0..<6 where !newSpace.isHittable { app.swipeUp() }
+        let notesSwitcher = app.buttons["Space: Notes"]
+        XCTAssertTrue(notesSwitcher.waitForExistence(timeout: 5))
+        notesSwitcher.tap()
+        let newSpace = app.buttons["New Space…"]
+        XCTAssertTrue(newSpace.waitForExistence(timeout: 5))
+        screenshot("space menu, one space")
         newSpace.tap()
         let name = app.textFields["Name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
-        // Notes keeps its name: nothing here renames it.
-        XCTAssertFalse(app.textFields["Rename “Notes” to"].exists)
         app.typeText("Work")
         // An icon is required too.
         app.buttons["Create"].tap()
@@ -179,9 +181,7 @@ final class FlowTests: XCTestCase {
         app.buttons["Create"].tap()
 
         // Straight to the new, empty space.
-        let switcher = app.buttons["Space: Work"]
-        XCTAssertTrue(switcher.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.staticTexts["No notes in Work yet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No notes in Work yet"].waitForExistence(timeout: 10))
         app.buttons["New note"].tap()
         app.typeText("Standup\nStatus")
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -189,11 +189,10 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Groceries"].exists)
         try audit("a second space")
 
-        // The sidebar, closed, has a switcher too: the list's is the one on screen.
-        let shown = app.buttons.matching(identifier: "Space: Work").allElementsBoundByIndex.first { $0.isHittable }
-        // Its name, as a finger would: the row around it is wider than the menu. By coordinate:
-        // some simulators hit-test the text to its button and call the text itself not hittable.
-        try XCTUnwrap(shown).staticTexts["Work"].coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["Tags"].tap()
+        let switcher = app.buttons["Space: Work"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        switcher.tap()
         let notes = app.buttons["Notes"]
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
         screenshot("space menu")

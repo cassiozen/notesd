@@ -156,9 +156,9 @@ struct NotesListView: View {
         }
     }
 
-    private var title: String { scope ?? (many ? spaceName : "Notes") }
+    private var title: String { scope ?? "All Notes" }
 
-    /// More than one space (§7.7): the title switches between them.
+    /// More than one space (§7.7): the sidebar's switcher shows its icon, so no mark here.
     private var many: Bool { graph.spaces.count > 1 }
 
     private var spaceName: String { graph.spaceName(graph.space) }
@@ -186,22 +186,16 @@ struct NotesListView: View {
         }
     }
 
-    /// The large title, led by the mark (or with spaces, the switcher and its
-    /// icon); with a filter, a way back to all notes.
+    /// The large title, the filter shown, led by the mark (with spaces, the
+    /// sidebar's switcher has the icon); with a filter, a way back to all notes.
     private var header: some View {
         HStack(spacing: 12) {
-            let switcher = many && graph.listFilter == nil
-            if !switcher { BrandMark(size: 28) }
-            if switcher {
-                SpaceMenu(font: .notesDisplay)
-                    .accessibilityAddTraits(.isHeader)
-            } else {
-                Text(title)
-                    .font(.notesDisplay)
-                    .foregroundStyle(Color.ink)
-                    .lineLimit(1)
-                    .accessibilityAddTraits(.isHeader)
-            }
+            if !many { BrandMark(size: 28) }
+            Text(title)
+                .font(.notesDisplay)
+                .foregroundStyle(Color.ink)
+                .lineLimit(1)
+                .accessibilityAddTraits(.isHeader)
             if graph.listFilter != nil {
                 Button {
                     withAnimation(.snappy) { graph.listFilter = nil }

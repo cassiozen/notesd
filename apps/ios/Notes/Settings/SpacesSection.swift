@@ -1,8 +1,7 @@
 import NotesCore
 import SwiftUI
 
-/// Spaces (§7.7): create, edit and delete them. The only place to make one,
-/// so people who never need spaces never see them anywhere else.
+/// Spaces (§7.7): create, edit and delete them. The sidebar's switcher can make one too.
 struct SpacesSection: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
@@ -34,7 +33,7 @@ struct SpacesSection: View {
             }
             Button("New Space") { creating = true }
                 .sheet(isPresented: $creating) {
-                    SpaceSheet(taken: taken) { id in
+                    SpaceSheet { id in
                         creating = false
                         graph.switchSpace(id)
                         // Back to the list, to show the new space.
@@ -42,7 +41,7 @@ struct SpacesSection: View {
                     }
                 }
                 .sheet(item: $editing) { space in
-                    SpaceSheet(editing: space, taken: taken) { _ in editing = nil }
+                    SpaceSheet(editing: space) { _ in editing = nil }
                 }
         } header: {
             SectionHeader("Spaces")
@@ -62,10 +61,6 @@ struct SpacesSection: View {
         return count
     }
 
-    private func taken(_ name: String, except: String?) -> Bool {
-        graph.spaces.contains { $0.id != except && $0.name.lowercased() == name.lowercased() }
-    }
-
     private func delete(_ space: Space) {
         Task {
             if (try? await graph.engine.spaces.delete(space.id)) == true { graph.scheduler.request() }
@@ -74,11 +69,10 @@ struct SpacesSection: View {
 }
 
 /// A space's name and icon: a new one, or `editing`.
-private struct SpaceSheet: View {
+struct SpaceSheet: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
     var editing: Space?
-    let taken: (String, String?) -> Bool
     let onDone: (String) -> Void
 
     @State private var name = ""
@@ -137,7 +131,7 @@ private struct SpaceSheet: View {
             error = "At most \(Spaces.maxName) characters."
             return
         }
-        if taken(n, editing?.id) {
+        if graph.spaces.contains(where: { $0.id != editing?.id && $0.name.lowercased() == n.lowercased() }) {
             error = "Another space has this name."
             return
         }

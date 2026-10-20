@@ -2,10 +2,11 @@ import NotesCore
 import SwiftUI
 
 /// The switcher between spaces (§7.7): the current space's icon and name,
-/// opening a menu of every space. Only shown once there is more than one.
+/// opening a menu of every space and, last, New Space….
 struct SpaceMenu: View {
     @Environment(AppGraph.self) private var graph
     var font: Font = .notesHeading
+    let onCreate: () -> Void
 
     var body: some View {
         let name = graph.spaceName(graph.space)
@@ -21,6 +22,8 @@ struct SpaceMenu: View {
                     .tag(space.id)
                 }
             }
+            Divider()
+            Button("New Space…", systemImage: "plus", action: onCreate)
         } label: {
             HStack(spacing: 6) {
                 SpaceIconImage(icon: icon, size: 26).padding(.trailing, 2)
