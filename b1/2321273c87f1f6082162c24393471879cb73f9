@@ -1,0 +1,39 @@
+docs/hosting.md
+  s_d940ef902fbdb7::t_339053600a6c56 5,7,24,28-30,45,55,62,91,93,95-99,101,103-104,106,108,110,112-114,116,118,120-121,124,126,128,136-140,159,161,164-165,168,170,172-175,177,179,182-187,190-193,197,206,208
+  s_d940ef902fbdb7::t_f91a9c3dfc1cd3 15,18-19
+  s_d940ef902fbdb7::t_74711d3eca3128 3,26,64-65,68-89
+  h_506d0d833c777f 22,66-67
+  s_d940ef902fbdb7::t_be567195c7aabe 32-38
+  s_d940ef902fbdb7::t_8bdacffae61153 27
+  s_d940ef902fbdb7::t_384bf428653bd7 90
+README.md
+  s_d940ef902fbdb7::t_339053600a6c56 32
+docs/operations.md
+  s_d940ef902fbdb7::t_5936ffebb1ebdc 68,74
+  s_d940ef902fbdb7::t_74711d3eca3128 52
+docs/android.md
+  s_d940ef902fbdb7::t_339053600a6c56 35
+docs/ios.md
+  s_d940ef902fbdb7::t_339053600a6c56 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b12321273c87f1f6082162c24393471879cb73f9",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_d940ef902fbdb7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec24df97-848a-4f60-8a7f-bb43624b30ec",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
