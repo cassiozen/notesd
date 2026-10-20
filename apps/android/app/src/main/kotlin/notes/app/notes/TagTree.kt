@@ -189,17 +189,17 @@ fun TagsPane(
                     ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // The space, always. Before the list loads, the default: the switcher keeps its place.
-                    Box(Modifier.weight(1f).offset(x = (-6).dp).semantics { heading() }) {
-                        SpaceSwitcher(
-                            spaces.ifEmpty { listOf(Space(Spaces.DEFAULT, "Notes", 0)) },
-                            space,
-                            onSpace,
-                            onNewSpace,
-                            style = Type.title.copy(fontSize = 26.sp, lineHeight = 30.sp),
-                            iconSize = 30.dp
-                        )
-                    }
+                    // The space, always, the whole row before Settings opening its sheet. Before the
+                    // list loads, the default: the switcher keeps its place.
+                    SpaceSwitcher(
+                        spaces.ifEmpty { listOf(Space(Spaces.DEFAULT, "Notes", 0)) },
+                        space,
+                        onSpace,
+                        onNewSpace,
+                        Modifier.weight(1f).offset(x = (-6).dp).semantics { heading() },
+                        style = Type.title.copy(fontSize = 26.sp, lineHeight = 30.sp),
+                        iconSize = 30.dp
+                    )
                     SettingsButton(onSettings)
                 }
             }

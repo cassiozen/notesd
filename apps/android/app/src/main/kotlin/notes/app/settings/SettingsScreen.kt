@@ -61,6 +61,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.fragment.app.FragmentActivity
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
 import notes.app.BuildConfig
@@ -804,11 +805,13 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
     }
 }
 
-/** A new space's name and icon; [onCreated] once it's saved on this device, to sync. */
+/** A new space's name and icon; [onCreated] once it's saved on this device, to sync, and listed. */
 @Composable
 fun NewSpaceDialog(graph: AppGraph, onDismiss: () -> Unit, onCreated: (String) -> Unit) {
     val spaces by graph.spaces.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    // One create per dialog: a second tap mustn't make a twin before the list shows the first.
+    var saving by remember { mutableStateOf(false) }
     SpaceDialog(
         title = "New space",
         action = "Create",
@@ -817,9 +820,14 @@ fun NewSpaceDialog(graph: AppGraph, onDismiss: () -> Unit, onCreated: (String) -
         taken = { name -> spaces.any { it.name.equals(name, ignoreCase = true) } },
         onDismiss = onDismiss
     ) { name, icon ->
+        if (saving) return@SpaceDialog
+        saving = true
         scope.launch {
             val id = graph.sync.spaces.create(name, icon)
             graph.scheduler.request()
+            // Shown once the list has it: switched to sooner, a list read before the insert would
+            // look as if it were deleted and send the switch back to the default.
+            graph.spaces.first { list -> list.any { it.id == id } }
             onCreated(id)
         }
     }

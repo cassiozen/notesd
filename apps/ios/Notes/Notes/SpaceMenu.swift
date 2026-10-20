@@ -7,13 +7,21 @@ struct SpaceMenu: View {
     @Environment(AppGraph.self) private var graph
     var font: Font = .notesHeading
     var iconSize: CGFloat = 26
+    /// After switching: the sidebar closes, onto the space's list.
+    var onSwitched: () -> Void = {}
     let onCreate: () -> Void
 
     var body: some View {
         let name = graph.spaceName(graph.space)
         let icon = graph.spaces.first { $0.id == graph.space }?.icon ?? ""
+        let selection = Binding(
+            get: { graph.space },
+            set: { id in
+                graph.switchSpace(id)
+                onSwitched()
+            })
         Menu {
-            Picker("Space", selection: Binding(get: { graph.space }, set: { graph.switchSpace($0) })) {
+            Picker("Space", selection: selection) {
                 ForEach(graph.spaces) { space in
                     Label {
                         Text(space.name)

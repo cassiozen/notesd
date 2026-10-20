@@ -197,9 +197,12 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
         screenshot("space menu")
         notes.tap()
+        // The sidebar closes onto the space's list.
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Groceries"].isHittable)
         XCTAssertFalse(app.staticTexts["Standup"].exists)
-        XCTAssertTrue(app.buttons["Space: Notes"].exists)
+        app.buttons["Tags"].tap()
+        XCTAssertTrue(app.buttons["Space: Notes"].waitForExistence(timeout: 5))
     }
 
     func testALongNoteScrolls() throws {

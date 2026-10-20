@@ -5,7 +5,7 @@ import { App } from '../src/app'
 import { createOwner, startServer } from './server'
 
 async function signedInAs(username: string) {
-  expect(await screen.findByRole('heading', { name: 'Notes', level: 1 })).toBeTruthy()
+  expect(await screen.findByRole('heading', { name: 'All Notes', level: 1 })).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Settings' }))
   expect(await screen.findByText(`Signed in as ${username}`)).toBeTruthy()
   await userEvent.click(screen.getByRole('button', { name: 'Done' }))
