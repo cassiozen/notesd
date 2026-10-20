@@ -19,8 +19,10 @@ struct TagsView: View {
             LazyVStack(alignment: .leading, spacing: 2) {
                 HStack {
                     // The space, always: its menu makes new ones too.
-                    SpaceMenu(font: .notesTitle) { creating = true }
-                        .accessibilityAddTraits(.isHeader)
+                    SpaceMenu(font: .custom("InstrumentSerif-Regular", size: 27, relativeTo: .title), iconSize: 31) {
+                        creating = true
+                    }
+                    .accessibilityAddTraits(.isHeader)
                     Spacer()
                     Button(action: openSettings) {
                         Image(systemName: "gearshape")

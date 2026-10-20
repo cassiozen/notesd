@@ -158,7 +158,7 @@ struct NotesListView: View {
 
     private var title: String { scope ?? "All Notes" }
 
-    /// More than one space (§7.7): the sidebar's switcher shows its icon, so no mark here.
+    /// More than one space (§7.7): search names the space, and finds notes in the others.
     private var many: Bool { graph.spaces.count > 1 }
 
     private var spaceName: String { graph.spaceName(graph.space) }
@@ -186,11 +186,11 @@ struct NotesListView: View {
         }
     }
 
-    /// The large title, the filter shown, led by the mark (with spaces, the
-    /// sidebar's switcher has the icon); with a filter, a way back to all notes.
+    /// The large title, the filter shown, led by the space's icon so the space
+    /// shows with the sidebar away; with a filter, a way back to all notes.
     private var header: some View {
         HStack(spacing: 12) {
-            if !many { BrandMark(size: 28) }
+            SpaceIconImage(icon: graph.spaces.first { $0.id == graph.space }?.icon ?? "", size: 30)
             Text(title)
                 .font(.notesDisplay)
                 .foregroundStyle(Color.ink)

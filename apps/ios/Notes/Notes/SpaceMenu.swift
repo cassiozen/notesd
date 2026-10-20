@@ -6,6 +6,7 @@ import SwiftUI
 struct SpaceMenu: View {
     @Environment(AppGraph.self) private var graph
     var font: Font = .notesHeading
+    var iconSize: CGFloat = 26
     let onCreate: () -> Void
 
     var body: some View {
@@ -26,7 +27,7 @@ struct SpaceMenu: View {
             Button("New Space…", systemImage: "plus", action: onCreate)
         } label: {
             HStack(spacing: 6) {
-                SpaceIconImage(icon: icon, size: 26).padding(.trailing, 2)
+                SpaceIconImage(icon: icon, size: iconSize).padding(.trailing, 2)
                 Text(name).font(font).foregroundStyle(Color.ink).lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 13, weight: .semibold))

@@ -4,6 +4,7 @@ import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime } from './list-time'
 import { useSearch } from './search'
+import { SpaceIcon } from './space-icon'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import styles from './note-list.module.css'
@@ -62,8 +63,8 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
           </button>
         )}
         <div className={styles.titleRow}>
-          {/* Without the sidebar beside it, the app's mark; with a switcher, the space's icon is it. */}
-          {tags !== null && !many && <span className={styles.mark} aria-hidden="true" />}
+          {/* The space's icon, so the space shows with the sidebar away. */}
+          <SpaceIcon space={spaces?.find((s) => s.id === space) ?? { icon: '' }} size={mobile ? 28 : 22} />
           {/* What the list shows: All Notes, or the filter, which × clears. */}
           <h1 className={[styles.heading, styles.scoped].join(' ')}>
             <span className={styles.scope} title={scope ?? undefined}>

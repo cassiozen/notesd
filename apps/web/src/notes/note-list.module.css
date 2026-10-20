@@ -20,13 +20,6 @@
   gap: 8px;
 }
 
-.mark {
-  flex: none;
-  width: 20px;
-  height: 20px;
-  background: url('../ui/mark.png') center / contain no-repeat;
-}
-
 .heading {
   flex: 1;
   margin: 0;
