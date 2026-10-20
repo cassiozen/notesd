@@ -1,7 +1,6 @@
 package notes.core.db
 
 import kotlinx.coroutines.channels.BufferOverflow
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import notes.core.crypto.LockedNotes
@@ -98,7 +97,7 @@ data class SearchHit(
  */
 class NoteStore(private val db: Database, private val clock: () -> Long = System::currentTimeMillis) {
     /** Every committed write, local or from sync. */
-    val changes: Flow<Unit> get() = db.changes
+    val changes: SharedFlow<Unit> get() = db.changes
 
     private val _localEdits =
         MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)

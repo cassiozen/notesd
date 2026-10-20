@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
@@ -96,7 +96,7 @@ class EditorViewModel(
 
     /** Every tag, for completing one being typed. */
     val tags: StateFlow<List<TagCount>> =
-        store.changes.onStart { emit(Unit) }.mapLatest { store.tags() }
+        store.changes.onSubscription { emit(Unit) }.mapLatest { store.tags() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _gone = MutableStateFlow(false)

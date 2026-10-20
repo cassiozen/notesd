@@ -61,7 +61,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
 import notes.app.ui.Backdrop
 import notes.app.ui.Icons
@@ -117,12 +117,12 @@ class TagsViewModel(store: NoteStore, private val filter: MutableStateFlow<NoteF
     ViewModel() {
     /** The space's tags (§7.7). */
     val tags: StateFlow<List<TagCount>> =
-        combine(store.changes.onStart { emit(Unit) }, space) { _, s -> s }.mapLatest { store.tags(it) }
+        combine(store.changes.onSubscription { emit(Unit) }, space) { _, s -> s }.mapLatest { store.tags(it) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     /** Hides the Locked row while there are none. */
     val lockedCount: StateFlow<Int> =
-        combine(store.changes.onStart { emit(Unit) }, space) { _, s -> s }.mapLatest { store.lockedCount(it) }
+        combine(store.changes.onSubscription { emit(Unit) }, space) { _, s -> s }.mapLatest { store.lockedCount(it) }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
 
     val selected: StateFlow<NoteFilter?> = filter

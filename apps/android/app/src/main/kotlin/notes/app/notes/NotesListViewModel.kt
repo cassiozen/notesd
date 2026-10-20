@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.mapLatest
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
 import notes.core.db.NoteFilter
 import notes.core.db.NoteStore
@@ -64,7 +64,7 @@ class NotesListViewModel(
     val events: SharedFlow<SyncEvent> get() = engine.events
 
     val notSynced: StateFlow<NotSynced?> =
-        notSynced(engine.status, store.changes.onStart { emit(Unit) }.mapLatest { store.pendingNotes() })
+        notSynced(engine.status, store.changes.onSubscription { emit(Unit) }.mapLatest { store.pendingNotes() })
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     fun syncNow() = requestSync()
@@ -76,9 +76,7 @@ class NotesListViewModel(
     // Re-queried on every write: local and cheap at this scale. Notes waiting out the undo window are hidden.
     val state: StateFlow<ListState> =
         combine(
-            store.changes.onStart {
-                emit(Unit)
-            },
+            store.changes.onSubscription { emit(Unit) },
             query,
             filter,
             space,

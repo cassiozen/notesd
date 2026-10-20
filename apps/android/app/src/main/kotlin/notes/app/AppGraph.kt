@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -107,7 +107,7 @@ class AppGraph(
      * fresh list arrives, so a stale one can't undo a switch to a space made since.
      * Lazy: opening the database with the graph breaks Robolectric tests run in another sandbox.
      */
-    val spaces: StateFlow<List<Space>> = store.changes.onStart { emit(Unit) }.map { sync.spaces.list() }
+    val spaces: StateFlow<List<Space>> = store.changes.onSubscription { emit(Unit) }.map { sync.spaces.list() }
         .onEach { list -> if (list.none { it.id == _space.value }) switchSpace(Spaces.DEFAULT) }
         .stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
 
