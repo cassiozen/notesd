@@ -93,8 +93,9 @@ class SyncEngine(
         rejection = null
         parked.clear()
         val failure = cycle(client)
-        // A dropped change isn't retried, so the cycle still counts as done, but the reason is kept.
-        store.finished(failure?.message ?: rejection)
+        // A dropped change isn't retried, so the cycle still counts as done, but the reason is kept,
+        // beside the failure's own when the cycle failed too: the next cycle won't say it again.
+        store.finished(listOfNotNull(rejection, failure?.message).joinToString(" ").ifEmpty { null })
         val outcome = failure?.outcome ?: SyncOutcome.Done
         _status.value = when (outcome) {
             SyncOutcome.Done -> SyncStatus.Synced(store.state().lastSyncAt ?: 0)

@@ -67,8 +67,10 @@ public final class SyncEngine: Sendable {
             } catch {
                 stop = Stop(outcome: .failed, message: "This device's notes couldn't be updated (\(error)).")
             }
-            // A dropped operation isn't retried, so the cycle still counts as done, but the user must hear why.
-            try? await self.store.finished(error: stop?.message ?? rejection)
+            // A dropped operation isn't retried, so the cycle still counts as done, but the user must hear why,
+            // beside the failure's own when the cycle failed too: the next cycle won't say it again.
+            let reasons = [rejection, stop?.message].compactMap { $0 }
+            try? await self.store.finished(error: reasons.isEmpty ? nil : reasons.joined(separator: " "))
             let outcome = stop?.outcome ?? .done
             switch outcome {
             case .done: self.status.set(.synced(at: (try? await self.store.state().lastSyncAt) ?? 0))
