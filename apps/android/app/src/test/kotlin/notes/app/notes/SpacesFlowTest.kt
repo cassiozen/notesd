@@ -47,10 +47,17 @@ class SpacesFlowTest {
     }
 
     @Test
-    fun `with one space there is no switcher`() {
+    fun `with one space the sidebar still names it, and its sheet makes another`() {
         runBlocking { graph.store.save("a", "Groceries", "Milk\n") }
         launch("Groceries")
-        compose.onNode(hasContentDescription("Space: Notes")).assertDoesNotExist()
+        // The list is titled by what it shows.
+        compose.onNodeWithText("All Notes").assertExists()
+        compose.onNodeWithContentDescription("Sidebar").performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
+        compose.onNodeWithContentDescription("Space: Notes").performClick()
+        compose.waitUntilExactlyOneExists(hasText("New space"))
+        compose.onNodeWithText("New space").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Create"))
     }
 
     @Test
@@ -64,6 +71,9 @@ class SpacesFlowTest {
         launch("Groceries")
         compose.onNodeWithText("Standup").assertDoesNotExist()
 
+        // The switcher is in the sidebar; choosing a space goes back to its list.
+        compose.onNodeWithContentDescription("Sidebar").performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
         compose.onNodeWithContentDescription("Space: Notes").performClick()
         compose.onNodeWithText("Work").performClick()
         compose.waitUntilExactlyOneExists(hasText("Standup"))

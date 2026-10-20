@@ -63,7 +63,6 @@ import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import notes.app.ui.Backdrop
-import notes.app.ui.BrandMark
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.Type
@@ -145,10 +144,11 @@ fun TagsPane(
     onShow: (NoteFilter?) -> Unit,
     onSettings: () -> Unit,
     modifier: Modifier = Modifier,
-    /** Every space, and the one shown: the header switches between them once there are two (§7.7). */
+    /** Every space, and the one shown: the header switches between them and makes new ones (§7.7). */
     spaces: List<Space> = emptyList(),
     space: String = Spaces.DEFAULT,
-    onSpace: (String) -> Unit = {}
+    onSpace: (String) -> Unit = {},
+    onNewSpace: () -> Unit = {}
 ) {
     val t = LocalTokens.current
     val tags by vm.tags.collectAsStateWithLifecycle()
@@ -188,12 +188,15 @@ fun TagsPane(
                     ),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    // With a switcher, the default space's icon is the app's: no need for it twice.
-                    if (spaces.size > 1) {
-                        SpaceSwitcher(spaces, space, onSpace, Modifier.weight(1f).offset(x = (-6).dp), Type.title)
-                    } else {
-                        BrandMark(if (docked) 22.dp else 26.dp)
-                        Spacer(Modifier.weight(1f))
+                    // The space, always. Before the list loads, the default: the switcher keeps its place.
+                    Box(Modifier.weight(1f).offset(x = (-6).dp).semantics { heading() }) {
+                        SpaceSwitcher(
+                            spaces.ifEmpty { listOf(Space(Spaces.DEFAULT, "Notes", 0)) },
+                            space,
+                            onSpace,
+                            onNewSpace,
+                            style = Type.title
+                        )
                     }
                     SettingsButton(onSettings)
                 }

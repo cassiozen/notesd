@@ -722,10 +722,7 @@ private fun notesIn(space: Space) = "${space.noteCount} ${if (space.noteCount ==
         else -> ""
     }
 
-/**
- * Spaces (§7.7): create, rename and delete them. The only place to make one,
- * so people who never need spaces never see them anywhere else.
- */
+/** Spaces (§7.7): create, rename and delete them. The sidebar's switcher can make one too. */
 @Composable
 private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
     val t = LocalTokens.current
@@ -800,20 +797,30 @@ private fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
         }
     }
     if (creating) {
-        SpaceDialog(
-            title = "New space",
-            action = "Create",
-            initial = "",
-            initialIcon = null,
-            taken = { name -> spaces.any { it.name.equals(name, ignoreCase = true) } },
-            onDismiss = { creating = false }
-        ) { name, icon ->
+        NewSpaceDialog(graph, onDismiss = { creating = false }) { id ->
             creating = false
-            scope.launch {
-                val id = graph.sync.spaces.create(name, icon)
-                graph.scheduler.request()
-                onCreated(id)
-            }
+            onCreated(id)
+        }
+    }
+}
+
+/** A new space's name and icon; [onCreated] once it's saved on this device, to sync. */
+@Composable
+fun NewSpaceDialog(graph: AppGraph, onDismiss: () -> Unit, onCreated: (String) -> Unit) {
+    val spaces by graph.spaces.collectAsStateWithLifecycle()
+    val scope = rememberCoroutineScope()
+    SpaceDialog(
+        title = "New space",
+        action = "Create",
+        initial = "",
+        initialIcon = null,
+        taken = { name -> spaces.any { it.name.equals(name, ignoreCase = true) } },
+        onDismiss = onDismiss
+    ) { name, icon ->
+        scope.launch {
+            val id = graph.sync.spaces.create(name, icon)
+            graph.scheduler.request()
+            onCreated(id)
         }
     }
 }

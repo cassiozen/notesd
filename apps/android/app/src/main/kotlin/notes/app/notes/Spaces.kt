@@ -118,14 +118,15 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
 }
 
 /**
- * The switcher between spaces (§7.7): the current space's name, opening a
- * sheet of every space. Only shown once there is more than one.
+ * The switcher between spaces (§7.7): the current space's icon and name,
+ * opening a sheet of every space and, last, New space.
  */
 @Composable
 fun SpaceSwitcher(
     spaces: List<Space>,
     current: String,
     onSwitch: (String) -> Unit,
+    onCreate: () -> Unit,
     modifier: Modifier = Modifier,
     style: TextStyle = Type.title
 ) {
@@ -155,20 +156,57 @@ fun SpaceSwitcher(
         Icon(Icons.Chevron, null, Modifier.size(14.dp).rotate(90f), tint = t.ink3)
     }
     if (open) {
-        SpacePicker("Spaces", spaces, current, onDismiss = { open = false }) { id ->
+        SpacePicker(
+            "Spaces",
+            spaces,
+            current,
+            onDismiss = { open = false },
+            onCreate = {
+                open = false
+                onCreate()
+            }
+        ) { id ->
             open = false
             onSwitch(id)
         }
     }
 }
 
-/** A sheet listing [spaces] to pick one, [current] checked. */
+/** A sheet listing [spaces] to pick one, [current] checked; with [onCreate], New space last. */
 @Composable
-fun SpacePicker(title: String, spaces: List<Space>, current: String?, onDismiss: () -> Unit, onPick: (String) -> Unit) {
+fun SpacePicker(
+    title: String,
+    spaces: List<Space>,
+    current: String?,
+    onDismiss: () -> Unit,
+    onCreate: (() -> Unit)? = null,
+    onPick: (String) -> Unit
+) {
+    val t = LocalTokens.current
     Sheet(onDismiss = onDismiss, title = title) {
         // Scrolls once there are more spaces than the sheet's height shows.
         Column(Modifier.verticalScroll(rememberScrollState())) {
             SpaceRows(spaces, current, onPick)
+            if (onCreate != null) {
+                Box(
+                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).height(1.dp).background(t.edge)
+                )
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable(role = Role.Button, onClick = onCreate)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Plus, null, Modifier.size(18.dp), tint = t.ink2)
+                    }
+                    Spacer(Modifier.width(14.dp))
+                    Text("New space", style = Type.body.copy(fontSize = 16.sp), color = t.ink)
+                }
+            }
         }
     }
 }

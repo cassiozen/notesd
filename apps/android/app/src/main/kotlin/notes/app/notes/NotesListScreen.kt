@@ -146,10 +146,9 @@ fun NotesListScreen(
     onNew: () -> Unit,
     /** To the tags screen; null when the tags sit in a sidebar beside the list. */
     onTags: (() -> Unit)?,
-    /** Every space, and the one shown (§7.7); with two or more the title switches between them. */
+    /** Every space, and the one shown (§7.7): search names the space, and finds notes in the others. */
     spaces: List<Space> = emptyList(),
     space: String = Spaces.DEFAULT,
-    onSpace: (String) -> Unit = {},
     /** A search result from another space: switch to its space, then open it. */
     onOpenElsewhere: (id: String, space: String) -> Unit = { id, _ -> onOpen(id) }
 ) {
@@ -248,9 +247,7 @@ fun NotesListScreen(
                             mark = onTags != null,
                             onClear = { vm.filter(null) },
                             onNotSynced = { syncSheet = true },
-                            spaces = spaces,
-                            space = space,
-                            onSpace = onSpace
+                            many = many
                         )
                     }
                     // Nothing to search before the first note.
@@ -388,7 +385,7 @@ fun NotesListScreen(
                 }
             }
 
-            TopBar(collapsed, scope ?: if (many) spaceName else "Notes", onTags, Modifier.align(Alignment.TopCenter))
+            TopBar(collapsed, scope ?: "All Notes", onTags, Modifier.align(Alignment.TopCenter))
             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth()) {
                 ToastHost(toasts, Modifier.align(Alignment.CenterHorizontally))
                 Footer(state.notes.size, searching, onNew)
@@ -469,8 +466,9 @@ private fun TopBar(collapsed: Boolean, title: String, onTags: (() -> Unit)?, mod
 }
 
 /**
- * The large title (the selected tag, if any, with a way back to all notes).
- * [mark]: the brand mark leads the title, unless the tags sidebar beside the list already shows it.
+ * The large title: what the list shows, All Notes or the filter, with a way back to all notes.
+ * [mark]: the brand mark leads the title, unless the tags sidebar beside the list already shows it,
+ * or there are [many] spaces, whose switcher in the sidebar shows the space's icon instead.
  * [notSynced]: notes stuck on this phone; a quiet icon at the end, and nothing when sync is fine.
  */
 @Composable
@@ -480,36 +478,25 @@ private fun Header(
     mark: Boolean,
     onClear: () -> Unit,
     onNotSynced: () -> Unit,
-    /** With two or more spaces, the title is the switcher between them (§7.7). */
-    spaces: List<Space> = emptyList(),
-    space: String = Spaces.DEFAULT,
-    onSpace: (String) -> Unit = {}
+    many: Boolean = false
 ) {
     val t = LocalTokens.current
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, bottom = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        val switcher = scope == null && spaces.size > 1
-        // With a switcher, the default space's icon is the app's: no need for it twice.
-        if (mark && !switcher) {
+        if (mark && !many) {
             BrandMark(26.dp)
             Spacer(Modifier.width(12.dp))
         }
-        if (switcher) {
-            Box(Modifier.weight(1f, fill = false).semantics { heading() }) {
-                SpaceSwitcher(spaces, space, onSpace, style = Type.display)
-            }
-        } else {
-            Text(
-                scope ?: "Notes",
-                style = Type.display,
-                color = t.ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false).semantics { heading() }
-            )
-        }
+        Text(
+            scope ?: "All Notes",
+            style = Type.display,
+            color = t.ink,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false).semantics { heading() }
+        )
         if (scope != null) {
             Box(
                 Modifier

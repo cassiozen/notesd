@@ -47,6 +47,7 @@ import notes.app.AppGraph
 import notes.app.account.Account
 import notes.app.account.OnboardingScreen
 import notes.app.account.OnboardingViewModel
+import notes.app.settings.NewSpaceDialog
 import notes.app.settings.SettingsScreen
 import notes.app.ui.KeyboardBar
 import notes.app.ui.KeyboardBarSlot
@@ -220,6 +221,15 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
     }
     val email by graph.email.settings.collectAsStateWithLifecycle()
 
+    // New space, from the sidebar's switcher: made, then shown.
+    var creatingSpace by remember { mutableStateOf(false) }
+    if (creatingSpace) {
+        NewSpaceDialog(graph, onDismiss = { creatingSpace = false }) { id ->
+            creatingSpace = false
+            switchSpace(id)
+        }
+    }
+
     val ms = if (reduce) 0 else MOTION_MS
     val keyboardBar = remember { KeyboardBar() }
     CompositionLocalProvider(LocalKeyboardBar provides keyboardBar) {
@@ -237,7 +247,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                         modifier = Modifier.width(280.dp),
                         spaces = spaces,
                         space = space,
-                        onSpace = ::switchSpace
+                        onSpace = ::switchSpace,
+                        onNewSpace = { creatingSpace = true }
                     )
                 }
                 Box(Modifier.weight(1f)) {
@@ -281,7 +292,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onSettings = { backStack += SettingsKey },
                                     spaces = spaces,
                                     space = space,
-                                    onSpace = ::switchSpace
+                                    onSpace = ::switchSpace,
+                                    onNewSpace = { creatingSpace = true }
                                 )
                             }
                             entry<NotesKey>(
@@ -309,7 +321,6 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onTags = if (wide) null else ({ tags() }),
                                     spaces = spaces,
                                     space = space,
-                                    onSpace = ::switchSpace,
                                     onOpenElsewhere = { id, s ->
                                         graph.switchSpace(s)
                                         open(id)
