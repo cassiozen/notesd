@@ -1,0 +1,14 @@
+README.md
+  h_506d0d833c777f 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b8bb358ec892d2a88a01902b42a13cc1b75a37a8",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
