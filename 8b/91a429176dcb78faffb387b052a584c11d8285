@@ -1,0 +1,20 @@
+apps/android/app/src/main/kotlin/notes/app/editor/Spans.kt
+  s_e7c7c1ca999489::t_37031d4ce9e134 19,253,260-261
+  s_e7c7c1ca999489::t_347734a86886f3 254-259,262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8b91a429176dcb78faffb387b052a584c11d8285",
+  "prompts": {},
+  "sessions": {
+    "s_e7c7c1ca999489": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a10f69ab-b068-4476-9267-9411ed543d42",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
