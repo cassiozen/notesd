@@ -41,6 +41,10 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
     var onLinkEdit: ((_ text: String, _ href: String?) -> Void)?
     /// A picture was pasted: its bytes, for the note to store and insert.
     var onPasteImage: ((Data) -> Void)?
+    /// How far the view is from the window's left and right edges, for the bar above the keyboard
+    /// (which spans the window) to sit under the note, not the list beside it.
+    var onMargins: ((_ leading: CGFloat, _ trailing: CGFloat) -> Void)?
+    private var margins: (leading: CGFloat, trailing: CGFloat)?
 
     private var style = EditorStyle()
     private var normalizing = false
@@ -86,6 +90,26 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
 
     @available(*, unavailable)
     required init?(coder: NSCoder) { fatalError("not coded") }
+
+    /// The widest the text runs: on a wide pane (an unfolded iPhone Duo, landscape) it's centred, not stretched.
+    static let measure: CGFloat = 680
+
+    override func layoutSubviews() {
+        let side = max(20, ((bounds.width - Self.measure) / 2).rounded())
+        if textContainerInset.left != side {
+            textContainerInset.left = side
+            textContainerInset.right = side
+        }
+        super.layoutSubviews()
+        if let window {
+            let frame = convert(bounds, to: window)
+            let now = (leading: frame.minX.rounded(), trailing: (window.bounds.width - frame.maxX).rounded())
+            if margins.map({ $0 != now }) ?? true {
+                margins = now
+                onMargins?(now.leading, now.trailing)
+            }
+        }
+    }
 
     // MARK: content
 

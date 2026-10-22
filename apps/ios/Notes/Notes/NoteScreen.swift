@@ -8,8 +8,7 @@ import SwiftUI
 struct NoteScreen: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.dismiss) private var dismiss
-    @Binding var path: [Route]
+    @Environment(Navigator.self) private var nav
 
     let id: String
     let isNew: Bool
@@ -20,18 +19,17 @@ struct NoteScreen: View {
     @State private var picked: PhotosPickerItem?
     /// Lock note was chosen, and the session needs a password created or entered first.
     @State private var lockSheet: LockPrompt?
-    /// The lock password was typed in the sheet: once it's gone, Face ID unlock is offered.
+    /// The lock password was typed in the sheet: once it's gone, biometric unlock is offered.
     @State private var typedPassword = false
-    /// Locked with this screen's Lock now: the placeholder doesn't ask for Face ID straight back.
+    /// Locked with this screen's Lock now: the placeholder doesn't ask for biometrics straight back.
     @State private var lockedHere = false
 
     init(
         store: NoteStore, images: ImageStore? = nil, locks: LockSession? = nil, id: String, startTag: String?,
-        isNew: Bool, initial: Note? = nil, spaceId: String = Spaces.defaultId, path: Binding<[Route]>
+        isNew: Bool, initial: Note? = nil, spaceId: String = Spaces.defaultId
     ) {
         self.id = id
         self.isNew = isNew
-        _path = path
         _model = State(
             initialValue: EditorModel(
                 store: store, images: images, locks: locks, id: id, startTag: startTag, initial: initial, fresh: isNew,
@@ -42,7 +40,7 @@ struct NoteScreen: View {
         VStack(spacing: 0) {
             if let original = model.original {
                 Button {
-                    path.append(.note(id: original.id))
+                    nav.push(.note(id: original.id))
                 } label: {
                     HStack {
                         Text("Conflicted copy of “\(original.title.isEmpty ? "Untitled" : original.title)”")
@@ -145,7 +143,7 @@ struct NoteScreen: View {
             Button("Delete", role: .destructive) {
                 Task {
                     await model.delete()
-                    dismiss()
+                    nav.close(note: id)
                 }
             }
         }
@@ -268,7 +266,7 @@ struct NoteScreen: View {
         Task {
             guard await model.move(to: space) else { return }
             graph.notice = "Moved to \(graph.spaceName(space))"
-            dismiss()
+            nav.close(note: id)
         }
     }
 

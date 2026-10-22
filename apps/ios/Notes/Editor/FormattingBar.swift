@@ -52,8 +52,14 @@ struct FormattingBar: View {
         .animation(.easeOut(duration: 0.15), value: state.selecting)
         .frame(height: 48)
         .padding(.horizontal, 6)
+        // No wider than the text on a wide pane.
+        .frame(maxWidth: NoteTextView.measure)
         .glassEffect(.regular, in: .capsule)
         .padding(.horizontal, 8)
+        .frame(maxWidth: .infinity)
+        // Under the note: beside the list (an unfolded iPhone Duo) the window's other side is the list's.
+        .padding(.leading, controller.barLeading)
+        .padding(.trailing, controller.barTrailing)
         .padding(.bottom, 4)
     }
 

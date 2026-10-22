@@ -5,7 +5,10 @@ search and tags all work offline, and the app syncs with your notesd server
 whenever it can. It runs on iOS 26 or later.
 
 It does what the web and Android apps do, except that there's no iPad
-layout.
+layout. On an iPhone Duo it uses both displays: folded, it's the phone
+layout; unfolded, the list and the open note sit side by side, split at the
+fold while it's partly folded. Folding or unfolding keeps the note you're
+writing open.
 
 ## Install
 

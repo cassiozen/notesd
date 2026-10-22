@@ -86,7 +86,7 @@ Every client reaches the server over HTTPS/JSON; the Go binary also serves the w
 | Platform | Stack |
 | --- | --- |
 | Backend | Go, `net/http`, SQLite (WAL) + FTS5, JSON over HTTPS, structured logging, web assets via `embed`, systemd or equivalent |
-| iOS | Swift, SwiftUI, `UITextView`/TextKit editor via `UIViewRepresentable`, SQLite + FTS5, URLSession, iOS background tasks |
+| iOS | Swift, SwiftUI with a `NavigationSplitView` (list and note side by side on a wide window, such as an unfolded iPhone Duo, split at its fold), `UITextView`/TextKit editor via `UIViewRepresentable`, SQLite + FTS5, URLSession, iOS background tasks |
 | Android | Kotlin, Jetpack Compose with Navigation 3 (list and note side by side from 600dp, split around a foldable's hinge), `EditText`/`Spannable` editor via `AndroidView`, bundled SQLite + FTS5 (`androidx.sqlite`), OkHttp, WorkManager |
 | Web | TypeScript, React, Tiptap/ProseMirror, Vite, lightweight CSS; Node.js only for building |
 

@@ -66,41 +66,54 @@ struct NotesApp: App {
 /// The notes, with the tags in a sidebar that slides in from the left. There's
 /// no first-run onboarding on iOS: the app works offline until it's connected
 /// to a server (from the empty list, the list's footer or Settings).
+///
+/// One split view for every width: narrow (an iPhone, the Duo folded or in
+/// Split View) it's a stack, the open note over the list; wide (the Duo
+/// unfolded) the note sits beside the list, split at the fold while it's
+/// partly folded. Folding or unfolding keeps the same screens, so a note being
+/// typed in stays open with its cursor.
 struct RootView: View {
     @Environment(AppGraph.self) private var graph
-    @State private var path: [Route] = []
+    @Environment(\.horizontalSizeClass) private var sizeClass
+    @State private var nav = Navigator()
     @State private var drawer = Drawer()
+    /// Partly folded: where the fold is, for the list to end there.
+    @State private var fold: CGFloat?
 
     var body: some View {
-        DrawerContainer(drawer: drawer, swipeToOpen: path.isEmpty) {
-            NavigationStack(path: $path) {
-                NotesListView(path: $path)
-                    .navigationDestination(for: Route.self) { route in
-                        switch route {
-                        case .note(let id, let startTag, let isNew):
-                            NoteScreen(
-                                store: graph.store, images: graph.images, locks: graph.locks, id: id,
-                                startTag: startTag, isNew: isNew, initial: graph.opening(id),
-                                spaceId: graph.space, path: $path
-                            )
-                            .id(id)
-                        case .settings: SettingsView()
-                        case .settingsSection(let section): SettingsSectionView(section: section, path: $path)
-                        }
-                    }
+        DrawerContainer(drawer: drawer, swipeToOpen: nav.wide || !nav.showsDetail) {
+            NavigationSplitView(columnVisibility: .constant(.all), preferredCompactColumn: compactColumn) {
+                NotesListView()
+                    .navigationSplitViewColumnWidth(min: fold ?? 300, ideal: fold ?? 360, max: fold ?? 420)
+                    // The list stays beside the note: no button to hide it.
+                    .toolbar(removing: .sidebarToggle)
+            } detail: {
+                NavigationStack(path: detailPath) {
+                    detailRoot.navigationDestination(for: Route.self) { destination($0) }
+                }
+                // Under the keyboard's bar, where the note's own background stops, the column shows.
+                .background(Color.notesBg.ignoresSafeArea())
+            }
+            .navigationSplitViewStyle(.balanced)
+            .onGeometryChange(for: CGFloat?.self) { proxy in
+                Self.fold(in: proxy)
+            } action: {
+                fold = $0
             }
         } side: {
             TagsView {
                 drawer.close()
-                path.append(.settings)
+                nav.openSettings()
             }
         }
+        .environment(nav)
         .environment(drawer)
         // A note opened from elsewhere (a conflicted copy's banner) closes the sidebar under it.
-        .onChange(of: path) {
-            if !path.isEmpty && drawer.isOpen { drawer.close() }
-            graph.editorOpen = path.contains { if case .note = $0 { true } else { false } }
+        .onChange(of: nav.path) {
+            if nav.showsDetail && !nav.wide && drawer.isOpen { drawer.close() }
+            graph.editorOpen = nav.openNote != nil
         }
+        .onChange(of: sizeClass, initial: true) { nav.wide = sizeClass == .regular }
         .background(Color.notesBg)
         .task { graph.scheduler.start() }
         // Asked here, not on the screen the password was typed on: that goes as soon as notes unlock.
@@ -114,5 +127,50 @@ struct RootView: View {
         } message: {
             Text("Open locked notes with \(graph.biometry.name) instead of the lock password on this iPhone.")
         }
+    }
+
+    /// Narrow, going back from the detail empties it once it has slid away.
+    private var compactColumn: Binding<NavigationSplitViewColumn> {
+        Binding(
+            get: { nav.compactColumn },
+            set: { column in
+                nav.compactColumn = column
+                if column != .detail { nav.cleared() }
+            })
+    }
+
+    /// The screens pushed over the detail's first one.
+    private var detailPath: Binding<[Route]> {
+        Binding(
+            get: { Array(nav.path.dropFirst()) },
+            set: { nav.path = Array(nav.path.prefix(1)) + $0 })
+    }
+
+    @ViewBuilder private var detailRoot: some View {
+        if let first = nav.path.first {
+            destination(first)
+        } else {
+            NothingOpen { nav.open(Uuid7.generate(), isNew: true) }
+        }
+    }
+
+    @ViewBuilder private func destination(_ route: Route) -> some View {
+        switch route {
+        case .note(let id, let startTag, let isNew):
+            NoteScreen(
+                store: graph.store, images: graph.images, locks: graph.locks, id: id,
+                startTag: startTag, isNew: isNew, initial: graph.opening(id), spaceId: graph.space
+            )
+            .id(id)
+        case .settings: SettingsView()
+        case .settingsSection(let section): SettingsSectionView(section: section)
+        }
+    }
+
+    /// The fold's left edge while the Duo is partly folded (a vertical fold, active); nil otherwise.
+    nonisolated private static func fold(in proxy: GeometryProxy) -> CGFloat? {
+        guard #available(iOS 27.1, *) else { return nil }
+        let fold = proxy.reservedRegions(kind: .division).first { $0.isActive && $0.frame.height > $0.frame.width }
+        return fold.map { $0.frame.minX }
     }
 }

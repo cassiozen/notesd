@@ -212,6 +212,30 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Space: Notes"].waitForExistence(timeout: 5))
     }
 
+    /// Wide (an unfolded iPhone Duo), a note opens beside the list, and another one takes its place.
+    func testNotesOpenBesideTheListWhenWide() throws {
+        app.launch()
+        XCTAssertTrue(app.staticTexts["No notes yet"].waitForExistence(timeout: 5))
+        guard app.staticTexts["Pick a note, or start one."].exists else {
+            throw XCTSkip("A narrow window: notes open over the list")
+        }
+        writeNewNote("First note\nBeside the list.")
+        XCTAssertTrue(app.staticTexts["First note"].waitForExistence(timeout: 5), "the list shows it beside the note")
+        writeNewNote("Second note\nIn its place.")
+        XCTAssertTrue(app.staticTexts["Second note"].waitForExistence(timeout: 5))
+        XCTAssertEqual(app.textViews.count, 1, "one note open at a time")
+        let heading = app.buttons["Heading 1"]
+        XCTAssertTrue(heading.waitForExistence(timeout: 5))
+        XCTAssertGreaterThanOrEqual(
+            heading.frame.minX, app.textViews.firstMatch.frame.minX,
+            "the formatting bar is under the note, not the list")
+        app.staticTexts["First note"].tap()
+        let first = app.textViews.matching(NSPredicate(format: "value CONTAINS %@", "Beside the list."))
+        XCTAssertTrue(first.firstMatch.waitForExistence(timeout: 5), "the first note took the second's place")
+        XCTAssertEqual(app.textViews.count, 1)
+        screenshot("wide")
+    }
+
     func testALongNoteScrolls() throws {
         app.launch()
         XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
