@@ -133,4 +133,32 @@ class OnboardingFlowTest {
         compose.waitUntilExactlyOneExists(hasText("Kept"))
         compose.waitUntil { graph.accounts.account.value is Account.SignedIn }
     }
+
+    @Test
+    fun `signed out, someone else can't sign in and take this phone's notes`() {
+        runBlocking {
+            graph.accounts.signedIn(
+                server.url("/").toString(),
+                SignIn(Session("s", "device", "P", 1, 1), "me", "a", 0, "r", 0)
+            )
+            graph.accounts.revoked()
+            graph.store.save("n", "Kept", "")
+        }
+        // The username field is fixed, so this is the server answering with another account than the one typed.
+        server.enqueue(
+            json(
+                200,
+                """{"session":{"id":"s","kind":"device","name":"P","createdAt":1,"lastUsedAt":1},"username":"kid",""" +
+                    """"accessToken":"a","accessExpiresAt":${System.currentTimeMillis() + 3_600_000},"refreshToken":"r"}"""
+            )
+        )
+        launch()
+        compose.waitUntilExactlyOneExists(hasText("Kept"))
+        button("Sign in").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Sign in again"))
+        compose.onNodeWithText("Password").performTextInput("pw")
+        button("Sign in").performClick()
+        compose.waitUntilExactlyOneExists(hasText("This phone has me's notes", substring = true))
+        assertEquals(Account.SignedOut(server.url("/").toString(), "me"), graph.accounts.account.value)
+    }
 }

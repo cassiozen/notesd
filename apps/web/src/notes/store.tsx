@@ -16,12 +16,17 @@ const FILTER_KEY = 'notes.filter'
 /**
  * The list last shown in this browser, so the app reopens on it. Storage may
  * be missing or throw. The app opens in the default space (§7.7), so a filter
- * picked in another one isn't brought back.
+ * picked in another one isn't brought back; nor is someone else's, which
+ * would name one of their tags.
  */
-function savedFilter(): ListFilter {
+function savedFilter(username: string): ListFilter {
   try {
-    const saved = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as { space?: string; filter?: ListFilter } | null
-    if (saved?.space !== DEFAULT_SPACE) return null
+    const saved = JSON.parse(localStorage.getItem(FILTER_KEY) ?? 'null') as {
+      username?: string
+      space?: string
+      filter?: ListFilter
+    } | null
+    if (saved?.space !== DEFAULT_SPACE || saved.username?.toLowerCase() !== username.toLowerCase()) return null
     const f = saved.filter
     if (f && 'tag' in f && typeof f.tag === 'string' && typeof f.name === 'string') return { tag: f.tag, name: f.name }
     if (f && 'untagged' in f && f.untagged === true) return { untagged: true }
@@ -32,9 +37,9 @@ function savedFilter(): ListFilter {
   return null
 }
 
-function saveFilter(space: string, filter: ListFilter) {
+function saveFilter(username: string, space: string, filter: ListFilter) {
   try {
-    localStorage.setItem(FILTER_KEY, JSON.stringify({ space, filter }))
+    localStorage.setItem(FILTER_KEY, JSON.stringify({ username, space, filter }))
   } catch {
     // Not remembered; nothing else depends on it.
   }
@@ -114,7 +119,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     hidden: [],
     version: 0,
   })
-  const [filter, setFilterState] = useState<ListFilter>(savedFilter)
+  const { state: auth } = useAuth()
+  const username = 'username' in auth ? auth.username : ''
+  const [filter, setFilterState] = useState<ListFilter>(() => savedFilter(username))
   const [space, setSpaceState] = useState(DEFAULT_SPACE)
   const spaceRef = useRef(DEFAULT_SPACE)
   const [tagList, setTagList] = useState<TagCount[]>([])
@@ -128,7 +135,6 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const loading = useRef<number | null>(null)
   const savers = useRef(new Map<string, NoteSaver>())
   const deletes = useRef(new Map<string, PendingDelete>())
-  const { state: auth } = useAuth()
 
   const fetchPage = useCallback(async (reset: boolean) => {
     const gen = generation.current
@@ -159,14 +165,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const setFilter = useCallback(
     (next: ListFilter) => {
       filterRef.current = next
-      saveFilter(spaceRef.current, next)
+      saveFilter(username, spaceRef.current, next)
       generation.current++
       cursor.current = ''
       setFilterState(next)
       setList((prev) => ({ ...prev, items: [], status: 'loading', hasMore: false, total: 0 }))
       void fetchPage(true)
     },
-    [fetchPage],
+    [fetchPage, username],
   )
 
   useEffect(() => {

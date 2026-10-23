@@ -34,9 +34,19 @@ type DB struct {
 	Path string
 }
 
-// Open opens (creating if needed) the database at path, configures it and
-// applies pending migrations.
+// Open opens (creating if needed) a user's notes database at path,
+// configures it and applies pending migrations.
 func Open(ctx context.Context, path string) (*DB, error) {
+	return open(ctx, path, migrations.Notes)
+}
+
+// OpenSystem opens (creating if needed) the system database at path:
+// users, sessions and server-wide settings.
+func OpenSystem(ctx context.Context, path string) (*DB, error) {
+	return open(ctx, path, migrations.System)
+}
+
+func open(ctx context.Context, path string, schema fs.FS) (*DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
@@ -50,7 +60,7 @@ func Open(ctx context.Context, path string) (*DB, error) {
 	w.SetConnMaxLifetime(0)
 	w.SetConnMaxIdleTime(0)
 
-	if err := migrate(ctx, w); err != nil {
+	if err := migrate(ctx, w, schema); err != nil {
 		w.Close()
 		return nil, err
 	}
@@ -190,8 +200,8 @@ type migration struct {
 	sql     string
 }
 
-func loadMigrations() ([]migration, error) {
-	entries, err := fs.ReadDir(migrations.FS, ".")
+func loadMigrations(schema fs.FS) ([]migration, error) {
+	entries, err := fs.ReadDir(schema, ".")
 	if err != nil {
 		return nil, err
 	}
@@ -206,7 +216,7 @@ func loadMigrations() ([]migration, error) {
 		if !ok || err != nil || v <= 0 {
 			return nil, fmt.Errorf("migration %q: name must start with a positive number and '_'", name)
 		}
-		body, err := fs.ReadFile(migrations.FS, name)
+		body, err := fs.ReadFile(schema, name)
 		if err != nil {
 			return nil, err
 		}
@@ -221,17 +231,17 @@ func loadMigrations() ([]migration, error) {
 	return out, nil
 }
 
-// LatestVersion is the schema version this binary migrates to.
+// LatestVersion is the notes schema version this binary migrates to.
 func LatestVersion() int {
-	ms, err := loadMigrations()
+	ms, err := loadMigrations(migrations.Notes)
 	if err != nil || len(ms) == 0 {
 		return 0
 	}
 	return ms[len(ms)-1].version
 }
 
-func migrate(ctx context.Context, w *sql.DB) error {
-	ms, err := loadMigrations()
+func migrate(ctx context.Context, w *sql.DB, schema fs.FS) error {
+	ms, err := loadMigrations(schema)
 	if err != nil {
 		return err
 	}

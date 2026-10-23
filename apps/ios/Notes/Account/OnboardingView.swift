@@ -80,7 +80,7 @@ struct OnboardingView: View {
     private var lede: String {
         switch model.step {
         case .server: "Your notes live on this iPhone and sync with your notesd server whenever it can reach it."
-        case .account: "\(model.server) has no account yet. Yours will be the only one on it."
+        case .account: "\(model.server) has no account yet. Yours will be the first."
         case .signIn: "To \(model.server)."
         }
     }
@@ -106,6 +106,7 @@ struct OnboardingView: View {
         case .account:
             LabeledField(label: "Username", error: model.fieldErrors[.username]) {
                 TextField("Username", text: $model.username).textContentType(.username)
+                    .disabled(model.lockedUsername != nil)
             }
             LabeledField(label: "Password", error: model.fieldErrors[.password]) {
                 SecureField("At least 8 characters", text: $model.password).textContentType(.newPassword)
@@ -115,7 +116,9 @@ struct OnboardingView: View {
             }
         case .signIn:
             LabeledField(label: "Username", error: model.fieldErrors[.username]) {
+                // These notes are this person's; someone else removes all data first.
                 TextField("Username", text: $model.username).textContentType(.username)
+                    .disabled(model.lockedUsername != nil)
             }
             LabeledField(label: "Password", error: model.fieldErrors[.password]) {
                 SecureField("Password", text: $model.password).textContentType(.password).onSubmit(submit)

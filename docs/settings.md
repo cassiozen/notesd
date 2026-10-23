@@ -61,11 +61,16 @@ the list is its own screen and a category opens on top of it with a back button.
 | Unlock with Face ID / Touch ID / fingerprint | Security | **device** | – | ✓ | ✓ |
 | Signed-in devices (list, sign one out) | Security | account | ✓ | – | – |
 | Spaces: list, new, edit, delete | Spaces | account | ✓ | ✓ | ✓ |
-| Email via Resend (API key, From) | Integrations | account | ✓ | ✓ | ✓ |
+| Email via Resend (API key, From) | Integrations | **server** | ✓ | ✓ | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Sync status, last synced, last error, Sync now | Sync & data | device | – | ✓ | – |
 | Remove all data from this device | Sync & data | device | – | ✓ | ✓ |
 | App version | About | device | – | ✓ | ✓ |
+
+**server** means one value for every account on the server. Everyone signed in sees it and uses
+it, but only an admin can change it: the server refuses anyone else (403 `admin_only`), and
+`GET /api/v1/settings/email` says whether this account may (`editable`). The apps don't hide the
+edit controls for other users yet; they show the server's refusal.
 
 The rules for when a category or row is visible don't change from before the split:
 

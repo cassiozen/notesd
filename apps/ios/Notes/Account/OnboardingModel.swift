@@ -4,6 +4,9 @@ import Observation
 
 /// Server address → new account (when the server has none yet) or sign in. With `lockedServer` it's
 /// "sign in again": straight to sign-in on the server these notes belong to. A port of Android's OnboardingViewModel.
+///
+/// Signed out, only the person whose notes these are can sign in: anyone else's first sync would take this iPhone's
+/// notes into their account. Someone else removes all data first.
 @MainActor
 @Observable
 final class OnboardingModel {
@@ -22,6 +25,8 @@ final class OnboardingModel {
     private(set) var done = false
 
     let lockedServer: String?
+    /// Whose notes this iPhone holds while signed out; nobody else may sign in.
+    let lockedUsername: String?
     private let accounts: AccountStore
     private let deviceName: String
     private var url: URL?
@@ -31,7 +36,12 @@ final class OnboardingModel {
         self.accounts = accounts
         self.deviceName = deviceName
         self.lockedServer = lockedServer
-        self.username = username
+        if case .signedOut(_, let owner) = accounts.account.value {
+            lockedUsername = owner
+        } else {
+            lockedUsername = nil
+        }
+        self.username = lockedUsername ?? username
         server = lockedServer ?? ""
         step = lockedServer == nil ? .server : .signIn
         url = lockedServer.flatMap(URL.init(string:))
@@ -92,6 +102,8 @@ final class OnboardingModel {
                 errors[.confirm] = "The passwords don’t match."
             }
             if !errors.isEmpty { return self.fail(errors) }
+            // Before setup: an account made under another name would be left on the server, unused.
+            if !self.isLockedUser(self.username) { return self.fail(message: self.otherUserMessage) }
             guard let url = self.url else { return }
             let api = ApiClient(baseURL: url)
             // The fields stay bound while setup runs; login must use what setup did.
@@ -127,6 +139,7 @@ final class OnboardingModel {
             if self.username.trimmed.isEmpty || self.password.isEmpty {
                 return self.fail(message: "Enter your username and password.")
             }
+            if !self.isLockedUser(self.username) { return self.fail(message: self.otherUserMessage) }
             guard let url = self.url else { return }
             let result = await ApiClient(baseURL: url)
                 .login(username: self.username.trimmed, password: self.password, deviceName: self.deviceName)
@@ -147,10 +160,23 @@ final class OnboardingModel {
 
     private func finish(_ signIn: SignIn) {
         guard !Task.isCancelled, let url else { return }
+        // The server's spelling of the username, in case it compares names differently than this iPhone.
+        if !isLockedUser(signIn.username) { return fail(message: otherUserMessage) }
         accounts.signedIn(server: url.absoluteString, signIn)
         password = ""
         confirm = ""
         done = true
+    }
+
+    /// Usernames compare as the server compares them: trimmed, ignoring case.
+    private func isLockedUser(_ username: String) -> Bool {
+        guard let lockedUsername else { return true }
+        return username.trimmed.lowercased() == lockedUsername.trimmed.lowercased()
+    }
+
+    private var otherUserMessage: String {
+        "This iPhone has \(lockedUsername ?? "")’s notes. To sign in as someone else, remove all data from this "
+            + "iPhone in Settings first."
     }
 
     private func run(_ block: @escaping @MainActor () async -> Void) {

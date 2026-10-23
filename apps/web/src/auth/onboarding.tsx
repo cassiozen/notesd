@@ -111,7 +111,7 @@ export function Onboarding() {
           <h1 ref={heading} tabIndex={-1}>
             Choose how you’ll sign in
           </h1>
-          <p className={styles.lede}>This is the only account on this server.</p>
+          <p className={styles.lede}>This is the first account on this server.</p>
           <div ref={accountRef} className={styles.fields}>
             <Field
               label="Username"

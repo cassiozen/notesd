@@ -4,8 +4,9 @@ set -e
 data="${NOTESD_DATA_DIR:-data}"
 go build -o bin/notesd-dev ./cmd/notesd
 
-# Fresh data dir: create a known owner so dev skips onboarding.
-if [ ! -f "$data/notes.db" ]; then
+# No account yet (a fresh data dir, or one never set up): create a known
+# owner so dev skips onboarding. list-users also moves an older notes.db.
+if [ -z "$(bin/notesd-dev list-users --data-dir "$data")" ]; then
   NOTESD_PASSWORD=devpassword bin/notesd-dev create-owner --username dev --data-dir "$data"
   echo "dev owner: dev / devpassword"
 fi

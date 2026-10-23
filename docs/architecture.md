@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-A self-hosted note-taking system: one Go executable backed by SQLite serves an online-only React web client and syncs with offline-first native iOS and Android apps. V1 targets a single owner with multiple devices.
+A self-hosted note-taking system: one Go executable backed by SQLite serves an online-only React web client and syncs with offline-first native iOS and Android apps. V1 targets a few accounts, such as a family's, each with multiple devices.
 
 | Area | Decision |
 | --- | --- |
@@ -62,7 +62,7 @@ The web app offers full note management, editing and search, but needs a live se
 | Web offline mode | Would add a browser replica and a second sync engine |
 | Full version history, automatic Markdown merge | Not needed to preserve conflicts; formatting-aware merging is complex |
 | File attachments | Need their own storage and sync design; images are the exception (§7.6) |
-| Multi-user collaboration, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
+| Sharing or collaborating on notes between accounts, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
 | PostgreSQL, Redis, external search, job workers, Kubernetes | Unnecessary at this scale |
 
 ## 3. Architecture
@@ -133,9 +133,6 @@ CREATE TABLE note_images (note_seq INTEGER REFERENCES notes(seq), image_id TEXT,
 -- Spaces (§7.7). name_key is the name lowercased, so names are unique ignoring case.
 CREATE TABLE spaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT NULL UNIQUE, icon TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
 
--- Server-wide settings from the apps: the Resend key and sender for emailing notes.
-CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-
 -- Locked notes' keyring (§10.1): the key wrapped under each secret, and the verifier's hash.
 CREATE TABLE lock_keys (id TEXT PRIMARY KEY, kind TEXT, credential_id TEXT, salt TEXT, iterations INTEGER,
                         wrapped TEXT, created_at INTEGER);
@@ -148,13 +145,22 @@ CREATE TABLE applied_operations (
     applied_at    INTEGER NOT NULL
 );
 
--- Single owner account and its sessions (§10); only token hashes are stored.
-CREATE TABLE users (id INTEGER PRIMARY KEY CHECK (id = 1), username TEXT, password_hash TEXT, created_at INTEGER, updated_at INTEGER);
-CREATE TABLE sessions (id TEXT PRIMARY KEY, kind TEXT, name TEXT, access_hash TEXT UNIQUE, access_expires_at INTEGER,
-                       refresh_hash TEXT UNIQUE, refresh_expires_at INTEGER, csrf_token TEXT, created_at INTEGER, last_used_at INTEGER);
 ```
 
-`notes` has an explicit `INTEGER PRIMARY KEY` rather than relying on the implicit rowid, because `VACUUM` can renumber implicit rowids and silently desynchronize the search index. Migrations are numbered SQL files applied at startup and tracked in `PRAGMA user_version`. The full schema is `server/migrations/`.
+The tables above are one account's: each account has its own database, `users/<id>.db`, with all of them. Accounts, their sessions and the server-wide settings are in `system.db` (§10):
+
+```sql
+-- AUTOINCREMENT: a removed account's id, and so its notes file, is never handed to a new one.
+CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, username_key TEXT UNIQUE, password_hash TEXT,
+                    is_admin INTEGER, created_at INTEGER, updated_at INTEGER);
+-- Only token hashes are stored.
+CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind TEXT, name TEXT,
+                       access_hash TEXT UNIQUE, access_expires_at INTEGER, refresh_hash TEXT UNIQUE, refresh_expires_at INTEGER,
+                       csrf_token TEXT, created_at INTEGER, last_used_at INTEGER);
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);  -- email (Resend) key and sender
+```
+
+`notes` has an explicit `INTEGER PRIMARY KEY` rather than relying on the implicit rowid, because `VACUUM` can renumber implicit rowids and silently desynchronize the search index. Migrations are numbered SQL files applied at startup and tracked in `PRAGMA user_version`. The full schema is `server/migrations/` (system.db's in `server/migrations/system/`).
 
 Every mutation, including deletion, increments the note's revision and `current_seq`, updates the search index and records its operation in a single transaction. All writes go through one connection with `BEGIN IMMEDIATE`, so concurrent requests queue in the server instead of failing with `SQLITE_BUSY`; reads use a separate pool and never block on writes. A transactional counter keeps sync cursors aligned with commit order.
 
@@ -498,10 +504,15 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 
 ## 10. Security
 
-V1 is a single-user installation: one owner account, signed in from multiple devices, with no sharing, authorization rules or multi-tenant isolation.
+An installation holds a few accounts, such as a family's, each signed in from multiple devices. There is no sharing between them and no roles beyond admin.
+
+- **Isolation:** each account's notes, search index, sync state, spaces, locked-notes keyring and images are in its own SQLite file, `users/<id>.db`. A request's session picks the file, and handlers only ever see that one, so a missing check can't expose another account's data. Ids, image hashes and sync generations are per file. Backup, export and removal are per file too.
+- **Accounts:** the first is created at first run (below). The rest are added on the server with `notesd add-user`; there is no sign-up and no email, so a forgotten password is reset by the host with `notesd reset-password --username`. `remove-user` deletes the account and its sessions and leaves its notes file for the host to export or delete.
+- **Admins:** the first account is an admin; `add-user --admin` makes others. Only admins change server-wide settings (the email integration), which every account uses. The server enforces it (403 `admin_only`).
+- **Devices:** a signed-out device keeps its notes, and its first sync under another account would upload them there (a different sync generation means full reconciliation, §11.4). So the apps let only the same account sign in again; switching accounts means removing all data first.
 
 - **Credentials:** username and password, hashed with Argon2id (parameters encoded in the hash so they can be raised later); never stored in plaintext. Password changes are supported and sign out every other session. Failed logins are rate-limited (10 per 15 minutes per client address).
-- **First run:** while no owner exists, `POST /auth/setup` creates one for whoever calls it first, with no token, and every client's onboarding goes straight to creating the account. After that the endpoint returns `already_set_up`. The server logs a warning with its address until the owner exists. The cost: a server reachable from the network before its owner exists can be claimed by a stranger. The default listen address is loopback, so a fresh install isn't reachable, and the hosting guide says to create the account before exposing it. To skip the open window entirely, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at startup (ignored once one exists), or `notesd create-owner` creates it from the shell. A claimed server holds no one else's data, and deleting the data directory starts over. That's why tokenless setup is acceptable here (the same trade-off Coolify and Jellyfin make).
+- **First run:** while no account exists, `POST /auth/setup` creates one for whoever calls it first, with no token, and every client's onboarding goes straight to creating the account. After that the endpoint returns `already_set_up`. The server logs a warning with its address until the owner exists. The cost: a server reachable from the network before its owner exists can be claimed by a stranger. The default listen address is loopback, so a fresh install isn't reachable, and the hosting guide says to create the account before exposing it. To skip the open window entirely, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at startup (ignored once one exists), or `notesd create-owner` creates it from the shell. A claimed server holds no one else's data, and deleting the data directory starts over. That's why tokenless setup is acceptable here (the same trade-off Coolify and Jellyfin make).
 - **Web sessions:** an HttpOnly, SameSite=Lax cookie (`Secure` and `__Host-` prefixed when `--public-url` is https) with a 30-day sliding expiry, plus a CSRF token the web app keeps only in memory and sends as `X-CSRF-Token` on every mutation; cross-origin `Origin` headers are rejected.
 - **Mobile sessions:** a one-hour access token and a 180-day sliding refresh token, sent as bearer tokens and kept in the iOS Keychain or Android Keystore-backed storage. Refresh tokens are not rotated, so a refresh whose response is lost can be retried; revocation deletes the session. Only token hashes are stored server-side. Session expiry affects sync only, never access to local notes.
 - **Transport:** HTTPS for any remote access; TLS may terminate at any common reverse proxy. Private-network and VPN-only installations are supported.
@@ -554,16 +565,17 @@ Production needs one executable, a writable data directory and an open HTTP port
 ```text
 notesd
 data/
-    notes.db
-    notes.db-wal   # runtime file, may not exist
-    notes.db-shm   # runtime file, may not exist
+    system.db    # accounts, sessions, server-wide settings
+    users/1.db     # one notes database per account
+    *.db-wal       # runtime files, may not exist
+    *.db-shm
 ```
 
 ```bash
 ./notesd --data-dir /var/lib/notesd --listen 127.0.0.1:8080
 ```
 
-Configuration is flags and environment variables (`NOTESD_DATA_DIR`, `NOTESD_LISTEN`, `NOTESD_PUBLIC_URL`, `NOTESD_LOG_LEVEL`, `NOTESD_LOG_FORMAT`, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` for first-run owner creation, and `NOTESD_RESEND_URL` for tests); a config file is not planned unless the option count grows. Subcommands: `create-owner`, `reset-password`, `reindex` (rebuild the search index), `check` (integrity check), `gc-images` (delete images no note has shown for 30 days), `export`, `version`; `backup` is still to be built (§11.4). Targets: Linux x86-64 and ARM64 (including Raspberry Pi 5), small VPS installs and home servers. Docker images are optional.
+Configuration is flags and environment variables (`NOTESD_DATA_DIR`, `NOTESD_LISTEN`, `NOTESD_PUBLIC_URL`, `NOTESD_LOG_LEVEL`, `NOTESD_LOG_FORMAT`, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` for first-run owner creation, and `NOTESD_RESEND_URL` for tests); a config file is not planned unless the option count grows. Subcommands: `create-owner`, `add-user`, `list-users`, `remove-user`, `reset-password`, `reindex` (rebuild the search index), `check` (integrity check), `gc-images` (delete images no note has shown for 30 days), `export`, `version`; `backup` is still to be built (§11.4). Targets: Linux x86-64 and ARM64 (including Raspberry Pi 5), small VPS installs and home servers. Docker images are optional.
 
 WAL mode is enabled with a busy timeout for brief write contention. The development toolchain and build tasks are defined in the root `mise.toml` (`mise run build` produces the binary with the web app embedded). Installation, HTTPS and systemd are covered for users in `docs/hosting.md`; releases (server binaries and the signed APK) in `docs/releasing.md`.
 

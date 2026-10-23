@@ -19,7 +19,7 @@ import (
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
-	"notes/server/internal/notes"
+	"notes/server/internal/userdata"
 )
 
 const (
@@ -28,10 +28,10 @@ const (
 )
 
 type env struct {
-	t    *testing.T
-	srv  *httptest.Server
-	auth *auth.Service
-	db   *database.DB
+	t     *testing.T
+	srv   *httptest.Server
+	auth  *auth.Service
+	users *userdata.Registry
 }
 
 func newEnv(t *testing.T) *env {
@@ -42,16 +42,29 @@ func newEnv(t *testing.T) *env {
 func newEnvWith(t *testing.T, cfg api.Config) *env {
 	t.Helper()
 	ctx := context.Background()
-	db, err := database.Open(ctx, filepath.Join(t.TempDir(), "notes.db"))
+	dir := t.TempDir()
+	system, err := database.OpenSystem(ctx, filepath.Join(dir, "system.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { db.Close() })
-	a := auth.NewService(db)
+	t.Cleanup(func() { system.Close() })
+	users := userdata.NewRegistry(dir)
+	t.Cleanup(func() { users.Close() })
+	a := auth.NewService(system)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(api.New(db, notes.NewStore(db), a, log, cfg).Handler())
+	srv := httptest.NewServer(api.New(system, users, a, log, cfg).Handler())
 	t.Cleanup(srv.Close)
-	return &env{t: t, srv: srv, auth: a, db: db}
+	return &env{t: t, srv: srv, auth: a, users: users}
+}
+
+// userDB is a user's notes database; the owner is user 1.
+func (e *env) userDB(id int64) *database.DB {
+	e.t.Helper()
+	d, err := e.users.Open(context.Background(), id)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return d.DB
 }
 
 // client is an HTTP client with an optional cookie jar, bearer token and

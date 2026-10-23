@@ -10,18 +10,21 @@ import (
 	"notes/server/internal/mail"
 )
 
-// GET /api/v1/settings/email — the key itself is never returned.
+// GET /api/v1/settings/email — the key itself is never returned. The
+// settings are server-wide: every user sends with them, and editable says
+// whether this one (an admin) may change them.
 func (s *Server) emailSettings(w http.ResponseWriter, r *http.Request) {
-	st, err := mail.Load(r.Context(), s.db)
+	editable := sessionFrom(r.Context()).IsAdmin
+	st, err := mail.Load(r.Context(), s.system)
 	if errors.Is(err, mail.ErrNotConfigured) {
-		writeJSON(w, http.StatusOK, map[string]any{"configured": false, "from": "", "keyHint": ""})
+		writeJSON(w, http.StatusOK, map[string]any{"configured": false, "from": "", "keyHint": "", "editable": editable})
 		return
 	}
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"configured": true, "from": st.From, "keyHint": st.KeyHint()})
+	writeJSON(w, http.StatusOK, map[string]any{"configured": true, "from": st.From, "keyHint": st.KeyHint(), "editable": editable})
 }
 
 // PUT /api/v1/settings/email  {"apiKey": "re_…", "from": "Name <a@b.c>"}
@@ -36,7 +39,7 @@ func (s *Server) saveEmailSettings(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	if err := mail.Save(r.Context(), s.db, req.APIKey, req.From); err != nil {
+	if err := mail.Save(r.Context(), s.system, req.APIKey, req.From); err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
@@ -45,7 +48,7 @@ func (s *Server) saveEmailSettings(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/v1/settings/email
 func (s *Server) deleteEmailSettings(w http.ResponseWriter, r *http.Request) {
-	if err := mail.Clear(r.Context(), s.db); err != nil {
+	if err := mail.Clear(r.Context(), s.system); err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
@@ -58,6 +61,7 @@ func (s *Server) deleteEmailSettings(w http.ResponseWriter, r *http.Request) {
 // server's differs, the client must sync first, so the email matches what
 // the sender saw.
 func (s *Server) emailNote(w http.ResponseWriter, r *http.Request) {
+	u := userFrom(r.Context())
 	var req struct {
 		To       []string `json:"to"`
 		Revision int64    `json:"revision"`
@@ -71,12 +75,12 @@ func (s *Server) emailNote(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	st, err := mail.Load(r.Context(), s.db)
+	st, err := mail.Load(r.Context(), s.system)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	n, err := s.notes.Get(r.Context(), r.PathValue("id"))
+	n, err := u.Notes.Get(r.Context(), r.PathValue("id"))
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -138,12 +142,13 @@ func attachmentBudget(htmlLen, textLen int) int {
 // doesn't fit; their alt text stands in. Sizes are checked before any
 // image's bytes are read.
 func (s *Server) emailImages(r *http.Request, ids []string, budget int) ([]mail.Attachment, error) {
+	u := userFrom(r.Context())
 	var out []mail.Attachment
 	for _, id := range ids {
 		if budget < minImageForMail {
 			break
 		}
-		info, err := s.images.Info(r.Context(), id)
+		info, err := u.Images.Info(r.Context(), id)
 		if errors.Is(err, images.ErrNotFound) {
 			continue
 		}
@@ -153,7 +158,7 @@ func (s *Server) emailImages(r *http.Request, ids []string, budget int) ([]mail.
 		if info.ContentType == images.Locked || info.Size > int64(budget) {
 			continue
 		}
-		img, data, err := s.images.Get(r.Context(), id)
+		img, data, err := u.Images.Get(r.Context(), id)
 		if errors.Is(err, images.ErrNotFound) {
 			continue
 		}

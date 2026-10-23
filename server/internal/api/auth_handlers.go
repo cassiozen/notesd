@@ -13,6 +13,7 @@ import (
 type sessionResponse struct {
 	Session          auth.Session `json:"session"`
 	Username         string       `json:"username"`
+	IsAdmin          bool         `json:"isAdmin"`
 	CSRFToken        string       `json:"csrfToken,omitempty"`
 	AccessToken      string       `json:"accessToken,omitempty"`
 	AccessExpiresAt  int64        `json:"accessExpiresAt,omitempty"`
@@ -20,10 +21,10 @@ type sessionResponse struct {
 	RefreshExpiresAt int64        `json:"refreshExpiresAt,omitempty"`
 }
 
-// GET /api/v1/auth/status — lets the web app decide between the setup and
-// login screens.
+// GET /api/v1/auth/status — lets the apps decide between the setup and
+// login screens. Later accounts are added from the command line.
 func (s *Server) authStatus(w http.ResponseWriter, r *http.Request) {
-	has, err := s.auth.HasOwner(r.Context())
+	has, err := s.auth.HasUsers(r.Context())
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -31,7 +32,7 @@ func (s *Server) authStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]bool{"setupRequired": !has})
 }
 
-// POST /api/v1/auth/setup — first-run owner creation. Open to whoever
+// POST /api/v1/auth/setup — first-run creation of the first account, an admin. Open to whoever
 // arrives first while no owner exists, then closed for good (§10).
 func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 	var req struct {
@@ -89,10 +90,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	s.limiter.Reset(key)
 
-	resp := sessionResponse{Session: creds.Session, Username: req.Username}
-	if u, err := s.auth.Username(r.Context()); err == nil {
-		resp.Username = u
-	}
+	resp := sessionResponse{Session: creds.Session, Username: creds.Session.Username, IsAdmin: creds.Session.IsAdmin}
 	if creds.Session.Kind == auth.KindWeb {
 		s.setSessionCookie(w, creds.AccessToken, time.UnixMilli(creds.AccessExpiresAt))
 		resp.CSRFToken = creds.CSRFToken
@@ -121,6 +119,8 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, sessionResponse{
 		Session:          creds.Session,
+		Username:         creds.Session.Username,
+		IsAdmin:          creds.Session.IsAdmin,
 		AccessToken:      creds.AccessToken,
 		AccessExpiresAt:  creds.AccessExpiresAt,
 		RefreshToken:     creds.RefreshToken,
@@ -131,7 +131,7 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/auth/logout
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	if err := s.auth.Logout(r.Context(), sess.ID); err != nil && !errors.Is(err, auth.ErrNotFound) {
+	if err := s.auth.Logout(r.Context(), sess.UserID, sess.ID); err != nil && !errors.Is(err, auth.ErrNotFound) {
 		s.writeErr(w, r, err)
 		return
 	}
@@ -145,12 +145,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 // returns the CSRF token, which the web app keeps only in memory.
 func (s *Server) currentSession(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	u, err := s.auth.Username(r.Context())
-	if err != nil {
-		s.writeErr(w, r, err)
-		return
-	}
-	writeJSON(w, http.StatusOK, sessionResponse{Session: sess, Username: u, CSRFToken: sess.CSRFToken})
+	writeJSON(w, http.StatusOK, sessionResponse{Session: sess, Username: sess.Username, IsAdmin: sess.IsAdmin, CSRFToken: sess.CSRFToken})
 }
 
 // POST /api/v1/auth/password {"currentPassword": "...", "newPassword": "..."}
@@ -169,20 +164,20 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	sess := sessionFrom(r.Context())
-	if err := s.auth.ChangePassword(r.Context(), req.CurrentPassword, req.NewPassword, sess.ID); err != nil {
+	if err := s.auth.ChangePassword(r.Context(), sess.UserID, req.CurrentPassword, req.NewPassword, sess.ID); err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			s.limiter.Fail(key)
 		}
 		s.writeErr(w, r, err)
 		return
 	}
-	s.log.Info("password changed; other sessions revoked")
+	s.log.Info("password changed; other sessions revoked", "username", sess.Username)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // GET /api/v1/auth/sessions
 func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
-	list, err := s.auth.Sessions(r.Context())
+	list, err := s.auth.Sessions(r.Context(), sessionFrom(r.Context()).UserID)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -192,7 +187,7 @@ func (s *Server) listSessions(w http.ResponseWriter, r *http.Request) {
 
 // DELETE /api/v1/auth/sessions/{id}
 func (s *Server) revokeSession(w http.ResponseWriter, r *http.Request) {
-	if err := s.auth.Revoke(r.Context(), r.PathValue("id")); err != nil {
+	if err := s.auth.Revoke(r.Context(), sessionFrom(r.Context()).UserID, r.PathValue("id")); err != nil {
 		s.writeErr(w, r, err)
 		return
 	}

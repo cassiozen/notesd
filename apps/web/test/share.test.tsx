@@ -35,6 +35,7 @@ describe('email settings', () => {
       configured: true,
       from: 'Me <notes@example.com>',
       keyHint: '6789',
+      editable: true,
     })
 
     await user.click(within(card).getByRole('button', { name: 'Remove' }))

@@ -359,6 +359,33 @@ final class FlowTests: XCTestCase {
         try audit("settings server", [.sufficientElementDescription, .hitRegion])
     }
 
+    /// Signed out, the notes stay, so only their owner may sign in again: anyone else's first sync would take them.
+    func testSignInAgainKeepsTheUsername() throws {
+        try signIn()
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
+        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        account.firstMatch.tap()
+        let signOut = app.buttons["Sign out"]
+        XCTAssertTrue(signOut.waitForExistence(timeout: 5))
+        let row = signOut.frame
+        signOut.tap()
+        // The dialog has a Sign out too: the one that isn't the row.
+        XCTAssertTrue(app.staticTexts["Sign out of this server?"].waitForExistence(timeout: 5))
+        let confirm = app.buttons.matching(NSPredicate(format: "label == %@", "Sign out")).allElementsBoundByIndex
+            .first { $0.frame != row }
+        try XCTUnwrap(confirm, app.debugDescription).tap()
+
+        let again = app.buttons["Sign in again"]
+        XCTAssertTrue(again.waitForExistence(timeout: 10))
+        again.tap()
+        let username = app.textFields["Username"]
+        XCTAssertTrue(username.waitForExistence(timeout: 5))
+        XCTAssertEqual(username.value as? String, env["NOTESD_USERNAME"] ?? "owner")
+        XCTAssertFalse(username.isEnabled, "the username is fixed while this iPhone holds its notes")
+    }
+
     func testAPictureFromAnotherDeviceShows() async throws {
         try await notesWithAPicture()
         try signIn()

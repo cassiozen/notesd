@@ -88,6 +88,32 @@ NOTESD_OWNER_USERNAME=me
 NOTESD_OWNER_PASSWORD=…
 ```
 
+This first account is an admin: it can set up [emailing notes](settings.md) for everyone.
+
+## Adding people
+
+notesd can hold a few accounts, such as for family or friends. Each has its own notes, spaces, locked notes and pictures, which no other account can see. Accounts are added on the server, not from the apps:
+
+```bash
+sudo -u notesd notesd add-user --username sam --data-dir /var/lib/notesd
+# with Docker
+docker exec -it notesd notesd add-user --username sam
+```
+
+It asks for the new account's password (or reads `NOTESD_PASSWORD`). Add `--admin` to let them change server-wide settings too. They can then sign in from the web app or a phone.
+
+notesd doesn't send password-reset emails. If someone forgets their password, set a new one for them. That signs them out everywhere:
+
+```bash
+sudo -u notesd notesd reset-password --username sam --data-dir /var/lib/notesd
+# with Docker
+docker exec -it notesd notesd reset-password --username sam
+```
+
+`list-users` and `remove-user` are in [operations.md](operations.md#maintenance-commands).
+
+A phone that's signed out keeps its notes, so only the same account can sign in on it again. To hand a phone to someone else, remove all data from it in Settings first.
+
 ## Limiting who can reach notesd
 
 The quick start accepts connections on every network the machine is connected to. That's fine at home, but not on a server with a public IP.

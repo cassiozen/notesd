@@ -35,6 +35,9 @@ enum class Field { Server, Username, Password, Confirm }
 /**
  * Server address → new account (when the server has none yet) or sign in. With [lockedServer] it's "sign in again": straight to sign-in on
  * the server these notes belong to.
+ *
+ * Signed out, only the person whose notes these are can sign in: anyone else's first sync would take this phone's notes into their
+ * account. Someone else removes all data first.
  */
 class OnboardingViewModel(
     private val accounts: AccountStore,
@@ -44,11 +47,14 @@ class OnboardingViewModel(
     username: String = "",
     private val clock: () -> Long = System::currentTimeMillis
 ) : ViewModel() {
+    /** Whose notes this phone holds while signed out; nobody else may sign in. */
+    val lockedUsername: String? = (accounts.account.value as? Account.SignedOut)?.username
+
     var state by mutableStateOf(
         OnboardingState(
             step = if (lockedServer != null) Step.SignIn else Step.Server,
             server = lockedServer.orEmpty(),
-            username = username
+            username = lockedUsername ?: username
         )
     )
         private set
@@ -106,6 +112,8 @@ class OnboardingViewModel(
             }
         }
         if (errors.isNotEmpty()) return@run fail(*errors.toList().toTypedArray())
+        // Before setup: an account made under another name would be left on the server, unused.
+        if (!isLockedUser(s.username)) return@run fail(message = otherUserMessage())
         val api = clientFor(url!!)
         when (val r = api.setup(s.username.trim(), s.password)) {
             is ApiResult.Ok -> Unit
@@ -136,6 +144,7 @@ class OnboardingViewModel(
     fun submitSignIn() = run {
         val s = state
         if (s.username.isBlank() || s.password.isEmpty()) return@run fail(message = "Enter your username and password.")
+        if (!isLockedUser(s.username)) return@run fail(message = otherUserMessage())
         when (val r = clientFor(url!!).login(s.username.trim(), s.password, deviceName)) {
             is ApiResult.Ok -> finish(r.value)
 
@@ -151,9 +160,18 @@ class OnboardingViewModel(
     }
 
     private suspend fun finish(signIn: SignIn) {
+        // The server's spelling of the username, in case it compares names differently than this phone.
+        if (!isLockedUser(signIn.username)) return fail(message = otherUserMessage())
         accounts.signedIn(url.toString(), signIn)
         state = state.copy(done = true, password = "", confirm = "")
     }
+
+    /** Usernames compare as the server compares them: trimmed, ignoring case. */
+    private fun isLockedUser(username: String) =
+        lockedUsername == null || username.trim().equals(lockedUsername.trim(), ignoreCase = true)
+
+    private fun otherUserMessage() =
+        "This phone has $lockedUsername's notes. To sign in as someone else, remove all data from this device in Settings first."
 
     private fun run(block: suspend () -> Unit) {
         if (state.busy) return

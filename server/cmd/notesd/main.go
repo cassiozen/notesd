@@ -1,18 +1,29 @@
 // Command notesd is the self-hosted notes backend: the JSON API, the
 // sync endpoint, full-text search and the embedded web app, in one process
-// backed by one SQLite database.
+// backed by SQLite: system.db for accounts, sessions and server-wide
+// settings, and one users/<id>.db per user for their notes.
 //
 // Usage:
 //
 //	notesd [serve] [flags]          run the server (default)
 //	notesd create-owner --username NAME
-//	notesd reset-password
-//	notesd reindex                  rebuild the search index
-//	notesd check                    run an integrity check
-//	notesd gc-images [--dry-run]    delete images no note has shown for 30 days
-//	notesd export --out DIR [--include-locked]
-//	                                write every note to DIR as Markdown
+//	                                create the first account, an admin
+//	notesd add-user --username NAME [--admin]
+//	notesd list-users
+//	notesd remove-user --username NAME
+//	                                delete an account; its notes stay on disk
+//	notesd reset-password [--username NAME]
+//	notesd reindex [--username NAME]
+//	                                rebuild the search index
+//	notesd check [--username NAME]  run an integrity check
+//	notesd gc-images [--username NAME] [--dry-run]
+//	                                delete images no note has shown for 30 days
+//	notesd export [--username NAME] --out DIR [--include-locked]
+//	                                write a user's notes to DIR as Markdown
 //	notesd version
+//
+// Commands that take --username act on every user without it, except
+// reset-password and export, which need it once there is more than one.
 //
 // Flags may also be set through environment variables: NOTESD_DATA_DIR,
 // NOTESD_LISTEN, NOTESD_PUBLIC_URL, NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT,
@@ -46,8 +57,8 @@ import (
 	"notes/server/internal/database"
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
-	"notes/server/internal/notes"
 	"notes/server/internal/search"
+	"notes/server/internal/userdata"
 )
 
 // version is set at build time: -ldflags "-X main.version=v1.2.3".
@@ -68,6 +79,7 @@ type options struct {
 	logFormat string
 	resendURL string
 	username  string
+	admin     bool
 	out       string
 	locked    bool
 	dryRun    bool
@@ -81,7 +93,8 @@ func run(args []string) error {
 
 	var o options
 	fs := flag.NewFlagSet("notesd "+cmd, flag.ContinueOnError)
-	fs.StringVar(&o.dataDir, "data-dir", env("NOTESD_DATA_DIR", "./data"), "directory holding notes.db")
+	fs.StringVar(&o.dataDir, "data-dir", env("NOTESD_DATA_DIR", "./data"), "directory holding system.db and users/")
+	usernameFlag := func(usage string) { fs.StringVar(&o.username, "username", "", usage) }
 	switch cmd {
 	case "serve":
 		fs.StringVar(&o.listen, "listen", env("NOTESD_LISTEN", "127.0.0.1:8080"), "address to listen on")
@@ -89,22 +102,31 @@ func run(args []string) error {
 		fs.StringVar(&o.logLevel, "log-level", env("NOTESD_LOG_LEVEL", "info"), "debug, info, warn or error")
 		fs.StringVar(&o.logFormat, "log-format", env("NOTESD_LOG_FORMAT", "text"), "text or json")
 		fs.StringVar(&o.resendURL, "resend-url", env("NOTESD_RESEND_URL", ""), "Resend API base URL for emailing notes (default https://api.resend.com)")
-	case "create-owner":
-		fs.StringVar(&o.username, "username", "", "owner username")
+	case "create-owner", "remove-user":
+		usernameFlag("username")
+	case "add-user":
+		usernameFlag("username")
+		fs.BoolVar(&o.admin, "admin", false, "let this user change server-wide settings, such as email")
+	case "reset-password":
+		usernameFlag("whose password to reset (needed once there is more than one user)")
 	case "export":
+		usernameFlag("whose notes to export (needed once there is more than one user)")
 		fs.StringVar(&o.out, "out", "", "directory to write the Markdown files to (new or empty)")
 		fs.BoolVar(&o.locked, "include-locked", false, "decrypt locked notes with the lock password and export them as plain text")
 	case "gc-images":
+		usernameFlag("only this user (default every user)")
 		fs.BoolVar(&o.dryRun, "dry-run", false, "only report what would be deleted")
-	case "reset-password", "reindex", "check":
+	case "reindex", "check":
+		usernameFlag("only this user (default every user)")
+	case "list-users":
 	case "version":
 		fmt.Println("notesd", version)
 		return nil
 	case "help", "-h", "--help":
-		fmt.Fprintln(os.Stderr, "commands: serve, create-owner, reset-password, reindex, check, gc-images, export, version")
+		fmt.Fprintln(os.Stderr, "commands: "+commands)
 		return nil
 	default:
-		return fmt.Errorf("unknown command %q (commands: serve, create-owner, reset-password, reindex, check, gc-images, export, version)", cmd)
+		return fmt.Errorf("unknown command %q (commands: %s)", cmd, commands)
 	}
 	if err := fs.Parse(args); err != nil {
 		if errors.Is(err, flag.ErrHelp) {
@@ -115,97 +137,211 @@ func run(args []string) error {
 	if cmd == "export" && o.out == "" {
 		return errors.New("--out is required")
 	}
+	if (cmd == "create-owner" || cmd == "add-user" || cmd == "remove-user") && o.username == "" {
+		return errors.New("--username is required")
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	dbPath := filepath.Join(o.dataDir, "notes.db")
-	db, err := database.Open(ctx, dbPath)
+	systemPath := filepath.Join(o.dataDir, "system.db")
+	system, err := database.OpenSystem(ctx, systemPath)
 	if err != nil {
-		return fmt.Errorf("open database %s: %w", dbPath, err)
+		return fmt.Errorf("open database %s: %w", systemPath, err)
 	}
-	defer db.Close()
-
-	// check and export must leave the database untouched.
-	if cmd != "check" && cmd != "export" {
-		if _, err := search.RebuildIfNeeded(ctx, db); err != nil {
-			return fmt.Errorf("rebuild search index: %w", err)
-		}
+	defer system.Close()
+	if err := userdata.Upgrade(ctx, o.dataDir, system); err != nil {
+		return fmt.Errorf("upgrade data directory: %w", err)
 	}
+	authSvc := auth.NewService(system)
 
 	switch cmd {
 	case "serve":
-		return serve(ctx, db, o)
+		users := userdata.NewRegistry(o.dataDir)
+		defer users.Close()
+		return serve(ctx, system, users, authSvc, o)
 	case "create-owner":
-		if o.username == "" {
-			return errors.New("--username is required")
-		}
 		pw, err := readPassword()
 		if err != nil {
 			return err
 		}
-		if err := auth.NewService(db).CreateOwner(ctx, o.username, pw); err != nil {
+		if err := authSvc.CreateOwner(ctx, o.username, pw); err != nil {
 			return err
 		}
 		fmt.Println("owner account created")
-	case "reset-password":
+	case "add-user":
 		pw, err := readPassword()
 		if err != nil {
 			return err
 		}
-		if err := auth.NewService(db).ResetPassword(ctx, pw); err != nil {
-			return err
-		}
-		fmt.Println("password updated; all sessions signed out")
-	case "reindex":
-		n, err := search.Rebuild(ctx, db)
+		u, err := authSvc.AddUser(ctx, o.username, pw, o.admin)
 		if err != nil {
 			return err
 		}
-		fmt.Printf("search index rebuilt (%d notes)\n", n)
-	case "check":
-		problems, err := db.IntegrityCheck(ctx)
+		role := "user"
+		if u.IsAdmin {
+			role = "admin"
+		}
+		fmt.Printf("%s %s created; they can sign in now\n", role, u.Username)
+	case "list-users":
+		list, err := authSvc.ListUsers(ctx)
 		if err != nil {
 			return err
 		}
-		if len(problems) > 0 {
-			for _, p := range problems {
-				fmt.Fprintln(os.Stderr, p)
+		for _, u := range list {
+			role := ""
+			if u.IsAdmin {
+				role = "admin"
 			}
-			return fmt.Errorf("integrity check found %d problem(s); restore from a backup — the database has not been modified", len(problems))
+			fmt.Printf("%-24s %-6s created %s\n", u.Username, role, time.UnixMilli(u.CreatedAt).Format(time.DateOnly))
 		}
-		bad, err := images.NewStore(db).Check(ctx)
+	case "remove-user":
+		u, err := authSvc.RemoveUser(ctx, o.username)
 		if err != nil {
 			return err
 		}
-		if len(bad) > 0 {
-			for _, id := range bad {
-				fmt.Fprintln(os.Stderr, "image "+id+": bytes don't match its hash")
-			}
-			return fmt.Errorf("%d image(s) are damaged; restore from a backup — the database has not been modified", len(bad))
-		}
-		// Not damage: a copy from a long-offline device can show an image
-		// already deleted, or a client never uploaded one.
-		missing, err := images.NewStore(db).Missing(ctx)
+		// export finds accounts by name, so it can't reach this one any more.
+		fmt.Printf("%s removed and signed out. Their notes are still in %s; delete it once you have a copy (export before remove-user, or back up the file).\n",
+			u.Username, userdata.Path(o.dataDir, u.ID))
+	case "reset-password":
+		u, err := oneUser(ctx, authSvc, o.username)
 		if err != nil {
 			return err
 		}
-		for _, id := range missing {
-			fmt.Fprintln(os.Stderr, "warning: image "+id+" is shown by a note but not stored")
-		}
-		fmt.Println("ok")
-	case "gc-images":
-		n, size, err := images.NewStore(db).Collect(ctx, time.Now().Add(-images.Grace), o.dryRun)
+		pw, err := readPassword()
 		if err != nil {
 			return err
 		}
-		verb := "deleted"
-		if o.dryRun {
-			verb = "would delete"
+		if err := authSvc.ResetPassword(ctx, u.Username, pw); err != nil {
+			return err
 		}
-		fmt.Printf("%s %d images (%s) that no note has shown for 30 days\n", verb, n, humanBytes(size))
+		fmt.Printf("password of %s updated; all their sessions signed out\n", u.Username)
 	case "export":
-		return export(ctx, db, o)
+		u, err := oneUser(ctx, authSvc, o.username)
+		if err != nil {
+			return err
+		}
+		return withUserDB(ctx, o.dataDir, u, func(db *database.DB) error { return export(ctx, db, o) })
+	case "reindex", "check", "gc-images":
+		if cmd == "check" {
+			if err := checkDB(ctx, system, nil); err != nil {
+				return fmt.Errorf("%s: %w", systemPath, err)
+			}
+		}
+		list, err := someUsers(ctx, authSvc, o.username)
+		if err != nil {
+			return err
+		}
+		for _, u := range list {
+			err := withUserDB(ctx, o.dataDir, u, func(db *database.DB) error {
+				switch cmd {
+				case "reindex":
+					n, err := search.Rebuild(ctx, db)
+					if err != nil {
+						return err
+					}
+					fmt.Printf("%s: search index rebuilt (%d notes)\n", u.Username, n)
+				case "check":
+					if err := checkDB(ctx, db, images.NewStore(db)); err != nil {
+						return err
+					}
+					fmt.Printf("%s: ok\n", u.Username)
+				case "gc-images":
+					n, size, err := images.NewStore(db).Collect(ctx, time.Now().Add(-images.Grace), o.dryRun)
+					if err != nil {
+						return err
+					}
+					verb := "deleted"
+					if o.dryRun {
+						verb = "would delete"
+					}
+					fmt.Printf("%s: %s %d images (%s) that no note has shown for 30 days\n", u.Username, verb, n, humanBytes(size))
+				}
+				return nil
+			})
+			if err != nil {
+				return fmt.Errorf("%s: %w", u.Username, err)
+			}
+		}
+	}
+	return nil
+}
+
+const commands = "serve, create-owner, add-user, list-users, remove-user, reset-password, reindex, check, gc-images, export, version"
+
+// someUsers is the named user, or every user.
+func someUsers(ctx context.Context, a *auth.Service, username string) ([]auth.User, error) {
+	if username == "" {
+		return a.ListUsers(ctx)
+	}
+	u, err := a.UserByName(ctx, username)
+	return []auth.User{u}, err
+}
+
+// oneUser is the named user, or the only one.
+func oneUser(ctx context.Context, a *auth.Service, username string) (auth.User, error) {
+	if username != "" {
+		return a.UserByName(ctx, username)
+	}
+	list, err := a.ListUsers(ctx)
+	switch {
+	case err != nil:
+		return auth.User{}, err
+	case len(list) == 0:
+		return auth.User{}, errors.New("there are no accounts yet")
+	case len(list) > 1:
+		return auth.User{}, fmt.Errorf("--username is required: there are %d accounts (see notesd list-users)", len(list))
+	}
+	return list[0], nil
+}
+
+// withUserDB opens a user's notes database for a command. Unlike the
+// server, it doesn't rebuild derived data first: check and export must
+// leave the database as they found it.
+func withUserDB(ctx context.Context, dataDir string, u auth.User, fn func(*database.DB) error) error {
+	path := userdata.Path(dataDir, u.ID)
+	db, err := database.Open(ctx, path)
+	if err != nil {
+		return fmt.Errorf("open database %s: %w", path, err)
+	}
+	defer db.Close()
+	return fn(db)
+}
+
+// checkDB runs SQLite's integrity check and, for a notes database, checks
+// its images.
+func checkDB(ctx context.Context, db *database.DB, store *images.Store) error {
+	problems, err := db.IntegrityCheck(ctx)
+	if err != nil {
+		return err
+	}
+	if len(problems) > 0 {
+		for _, p := range problems {
+			fmt.Fprintln(os.Stderr, p)
+		}
+		return fmt.Errorf("integrity check found %d problem(s); restore from a backup — the database has not been modified", len(problems))
+	}
+	if store == nil {
+		return nil
+	}
+	bad, err := store.Check(ctx)
+	if err != nil {
+		return err
+	}
+	if len(bad) > 0 {
+		for _, id := range bad {
+			fmt.Fprintln(os.Stderr, "image "+id+": bytes don't match its hash")
+		}
+		return fmt.Errorf("%d image(s) are damaged; restore from a backup — the database has not been modified", len(bad))
+	}
+	// Not damage: a copy from a long-offline device can show an image
+	// already deleted, or a client never uploaded one.
+	missing, err := store.Missing(ctx)
+	if err != nil {
+		return err
+	}
+	for _, id := range missing {
+		fmt.Fprintln(os.Stderr, "warning: image "+id+" is shown by a note but not stored")
 	}
 	return nil
 }
@@ -262,7 +398,7 @@ func export(ctx context.Context, db *database.DB, o options) error {
 	return nil
 }
 
-func serve(ctx context.Context, db *database.DB, o options) error {
+func serve(ctx context.Context, system *database.DB, users *userdata.Registry, authSvc *auth.Service, o options) error {
 	log, err := newLogger(o.logLevel, o.logFormat)
 	if err != nil {
 		return err
@@ -277,13 +413,22 @@ func serve(ctx context.Context, db *database.DB, o options) error {
 		}
 	}
 
-	authSvc := auth.NewService(db)
 	hasOwner, err := ownerFromEnv(ctx, authSvc, log)
 	if err != nil {
 		return err
 	}
+	// Opened now, so a migration that fails shows at startup, not at sign-in.
+	list, err := authSvc.ListUsers(ctx)
+	if err != nil {
+		return err
+	}
+	for _, u := range list {
+		if _, err := users.Open(ctx, u.ID); err != nil {
+			return fmt.Errorf("%s: %w", u.Username, err)
+		}
+	}
 	srv := &http.Server{
-		Handler:           api.New(db, notes.NewStore(db), authSvc, log, api.Config{PublicURL: public, ResendURL: o.resendURL}).Handler(),
+		Handler:           api.New(system, users, authSvc, log, api.Config{PublicURL: public, ResendURL: o.resendURL}).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -302,11 +447,11 @@ func serve(ctx context.Context, db *database.DB, o options) error {
 			"url", appURL(public, ln.Addr()))
 	}
 	log.Info("notesd started", "version", version, "listen", ln.Addr().String(),
-		"database", db.Path, "schema_version", database.LatestVersion())
+		"data_dir", o.dataDir, "users", len(list), "schema_version", database.LatestVersion())
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
-	go collectImages(ctx, images.NewStore(db), log)
+	go collectImages(ctx, authSvc, users, log)
 
 	select {
 	case err := <-errc:
@@ -330,7 +475,7 @@ func serve(ctx context.Context, db *database.DB, o options) error {
 // setup open. Once an owner exists they are ignored: changing them later
 // changes nothing (reset-password does). It reports whether an owner exists.
 func ownerFromEnv(ctx context.Context, a *auth.Service, log *slog.Logger) (bool, error) {
-	has, err := a.HasOwner(ctx)
+	has, err := a.HasUsers(ctx)
 	if err != nil || has {
 		return has, err
 	}
@@ -400,8 +545,9 @@ const (
 	collectEvery = 6 * time.Hour
 )
 
-// collectImages deletes images no note has shown for images.Grace until ctx ends (§7.6).
-func collectImages(ctx context.Context, store *images.Store, log *slog.Logger) {
+// collectImages deletes images no note has shown for images.Grace, from
+// every user's database, until ctx ends (§7.6).
+func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registry, log *slog.Logger) {
 	t := time.NewTimer(collectFirst)
 	defer t.Stop()
 	for {
@@ -410,12 +556,23 @@ func collectImages(ctx context.Context, store *images.Store, log *slog.Logger) {
 			return
 		case <-t.C:
 		}
-		n, size, err := store.Collect(ctx, time.Now().Add(-images.Grace), false)
-		switch {
-		case err != nil && ctx.Err() == nil:
+		list, err := a.ListUsers(ctx)
+		if err != nil && ctx.Err() == nil {
 			log.Error("delete unused images", "err", err)
-		case n > 0:
-			log.Info("deleted unused images", "count", n, "bytes", size)
+		}
+		for _, u := range list {
+			d, err := users.Open(ctx, u.ID)
+			if err != nil {
+				log.Error("delete unused images", "username", u.Username, "err", err)
+				continue
+			}
+			n, size, err := d.Images.Collect(ctx, time.Now().Add(-images.Grace), false)
+			switch {
+			case err != nil && ctx.Err() == nil:
+				log.Error("delete unused images", "username", u.Username, "err", err)
+			case n > 0:
+				log.Info("deleted unused images", "username", u.Username, "count", n, "bytes", size)
+			}
 		}
 		t.Reset(collectEvery)
 	}

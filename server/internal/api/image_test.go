@@ -220,7 +220,7 @@ func TestLockedNoteImageIDs(t *testing.T) {
 	a, b := strings.Repeat("a", 64), strings.Repeat("b", 64)
 	shows := func() []string {
 		t.Helper()
-		rows, err := e.db.R.Query(`SELECT image_id FROM note_images ORDER BY image_id`)
+		rows, err := e.userDB(1).R.Query(`SELECT image_id FROM note_images ORDER BY image_id`)
 		if err != nil {
 			t.Fatal(err)
 		}

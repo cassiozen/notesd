@@ -2,7 +2,9 @@
 
 The backend from [docs/architecture.md](../docs/architecture.md): one Go binary
 serving the JSON API, the sync feed, full-text search and the embedded web
-app ([apps/web](../apps/web/README.md)), backed by one SQLite database.
+app ([apps/web](../apps/web/README.md)), backed by SQLite: a system database
+for accounts, sessions and server-wide settings, and one database per account
+for its notes.
 
 This README is the developer and API reference. To install and run notesd,
 see [docs/hosting.md](../docs/hosting.md) and
@@ -32,19 +34,25 @@ exist). A binary built without the web app still works; web pages show a
 
 ## Commands and configuration
 
-The commands (`serve`, the default, plus `create-owner`, `reset-password`,
-`reindex`, `check`, `gc-images`, `export` and `version`) and every user-facing flag are documented
+The commands (`serve`, the default, plus `create-owner`, `add-user`,
+`list-users`, `remove-user`, `reset-password`, `reindex`, `check`,
+`gc-images`, `export` and `version`) and every user-facing flag are documented
 in [docs/hosting.md](../docs/hosting.md#configuration) and
 [docs/operations.md](../docs/operations.md#maintenance-commands). Notes for
 working on them:
 
-- `reindex` also runs automatically at startup when a migration asks for it.
+- The data directory holds `system.db` (accounts, sessions, server-wide
+  settings) and one notes database per account, `users/<id>.db`
+  (`internal/userdata`). Every command first moves a single-user `notes.db`
+  into that layout (`userdata.Upgrade`).
+- `reindex` also runs automatically when a user's database is first opened,
+  if a migration asks for it.
 - Passwords for CLI commands come from `NOTESD_PASSWORD` or the first line
   of stdin.
 - `--resend-url` / `NOTESD_RESEND_URL` (default `https://api.resend.com`)
   exists so tests can point email at a fake.
-- First-run setup has no token: `POST /api/v1/auth/setup` creates the owner
-  for whoever calls it first, then answers `already_set_up` (architecture
+- First-run setup has no token: `POST /api/v1/auth/setup` creates the first
+  account, an admin, for whoever calls it first, then answers `already_set_up` (architecture
   §10). While there's no owner, `serve` logs a warning with the app's `url`
   (`--public-url` when set, otherwise the listen address).
   `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at
@@ -66,13 +74,13 @@ Failed logins are limited to 10 per 15 minutes per client address.
 | Method | Path | Notes |
 | --- | --- | --- |
 | GET | `/auth/status` | `{"setupRequired": bool}` |
-| POST | `/auth/setup` | `{username, password}`; only while no owner exists |
+| POST | `/auth/setup` | `{username, password}`; only while no account exists. Later accounts come from `notesd add-user` |
 | POST | `/auth/login` | `{username, password, client, deviceName}` |
 | POST | `/auth/refresh` | `{refreshToken}` → new `accessToken` |
 | POST | `/auth/logout` | |
-| GET | `/auth/session` | current session, username, and `csrfToken` for browsers |
+| GET | `/auth/session` | current session, `username`, `isAdmin`, and `csrfToken` for browsers |
 | POST | `/auth/password` | `{currentPassword, newPassword}`; signs out other sessions |
-| GET | `/auth/sessions` | signed-in browsers and devices |
+| GET | `/auth/sessions` | this account's signed-in browsers and devices |
 | DELETE | `/auth/sessions/{id}` | revoke one |
 | GET | `/notes?limit=&cursor=&tag=&untagged=&locked=&space=` | live notes, newest first, with `preview` (plain text, one line per block, ≤160 chars), `locked` and `spaceId`; `nextCursor` is opaque; `total` counts the matching live notes. `tag` (with or without `#`) keeps notes with that tag or one nested under it; `untagged=true` keeps notes without tags; `locked=true` keeps locked notes; at most one of the three. `space` (a space id) keeps the notes in that space, and combines with any of them |
 | POST | `/notes` | `{operationId, id, title, content, createdAt?, updatedAt?, conflictOf?, spaceId?, imageIds?}` → 201. `imageIds` lists a locked note's images (up to 1000); a plain note's are read from its content. `spaceId` absent is the default space |
@@ -82,9 +90,9 @@ Failed logins are limited to 10 per 15 minutes per client address.
 | POST | `/notes/{id}/email` | `{to: [address, …], revision}` → `{id}` (Resend's). Sends the stored note: HTML rendered from the Markdown plus the Markdown as plain text, subject = title. `revision` must be the server's current one (`409 stale_revision` otherwise: sync first). Up to 10 recipients. `409 email_not_configured` without settings; `502 email_failed` with Resend's `message` when Resend refuses (unverified domain, bad key); `409 note_locked` for a locked note |
 | GET | `/sync?since=&limit=&generation=` | `{changes, nextCursor, hasMore, generation}` |
 | GET | `/search?q=&limit=&offset=&tag=&untagged=&locked=&space=&exceptSpace=` | `{results: [{id, title, excerpt, updatedAt, locked, spaceId}], otherSpaces?}`; filters as for `/notes`, or `exceptSpace` for every space but one. With `space`, the first page (`offset=0`) also has `otherSpaces`: the matches in every other space |
-| GET | `/settings/email` | `{configured, from, keyHint}`; the key itself is never returned, `keyHint` is its last 4 characters |
-| PUT | `/settings/email` | `{apiKey?, from}`; `apiKey` (starts with `re_`) may be omitted to keep the saved one. Not checked against Resend: send-only keys can't call anything but sending, so a bad key shows on the first send |
-| DELETE | `/settings/email` | forget the key and sender |
+| GET | `/settings/email` | `{configured, from, keyHint, editable}`; server-wide, so every account sends with it. The key itself is never returned, `keyHint` is its last 4 characters; `editable` is whether this account is an admin |
+| PUT | `/settings/email` | admins only (else 403 `admin_only`). `{apiKey?, from}`; `apiKey` (starts with `re_`) may be omitted to keep the saved one. Not checked against Resend: send-only keys can't call anything but sending, so a bad key shows on the first send |
+| DELETE | `/settings/email` | admins only; forget the key and sender |
 | GET | `/filters?space=` | `{tags: [{key, name, count}], locked}`: `tags` sorted by key, parents of nested tags included, `count` is distinct notes including nested tags; `locked` counts live locked notes. With `space`, only that space's notes count |
 | GET | `/spaces` | `{spaces: [{id, name, icon, createdAt, noteCount}]}`: the default space (`default`) first, then by name. `icon` is a key into the apps' icon set, `''` for the app's own icon |
 | PUT | `/spaces/{id}` | `{name, icon?}` → the space as stored. Creates the space or renames it; `id` is 1–64 characters `[A-Za-z0-9_-]`. The name is trimmed with inner whitespace collapsed, 1–64 characters; a name another space already has (ignoring case) gets ` 2`, ` 3`… appended, shortened to fit if need be. `icon` is 0–64 characters `[a-z0-9-]`; without it the icon stays as it is (`''` for a new space) |
@@ -160,10 +168,11 @@ internal/locks     locked-note envelopes, keyring
 internal/spaces    the list of spaces
 internal/images    image blobs: validation, storage, references, collection, integrity check
 internal/mail      email settings, note Markdown → HTML email, Resend client
-internal/auth      Argon2id, owner account, sessions, login rate limiting
+internal/auth      Argon2id, accounts, sessions, login rate limiting
+internal/userdata  each account's notes database and stores; the upgrade from one notes.db
 internal/api       routing, auth/CSRF middleware, handlers, gzip, logging
 internal/web       embedded web app (apps/web builds into internal/web/dist)
-migrations         numbered SQL files, tracked with PRAGMA user_version
+migrations         numbered SQL files, tracked with PRAGMA user_version (system/ for system.db)
 ```
 
 ## Implementation notes and deviations from the spec

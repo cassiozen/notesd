@@ -15,6 +15,7 @@ import (
 // Content-addressed, so a retry after a lost response stores nothing new
 // and answers 200 instead of 201.
 func (s *Server) putImage(w http.ResponseWriter, r *http.Request) {
+	u := userFrom(r.Context())
 	ct, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || !images.Types[ct] {
 		writeError(w, http.StatusUnsupportedMediaType, "unsupported_image", "images must be JPEG, PNG, WebP or GIF")
@@ -34,7 +35,7 @@ func (s *Server) putImage(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	img, created, err := s.images.Put(r.Context(), r.PathValue("id"), ct, data)
+	img, created, err := u.Images.Put(r.Context(), r.PathValue("id"), ct, data)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -52,11 +53,12 @@ func (s *Server) putImage(w http.ResponseWriter, r *http.Request) {
 // downloads would be, inert: no sniffing, and a sandbox in case one is ever
 // opened as a page.
 func (s *Server) getImage(w http.ResponseWriter, r *http.Request) {
+	u := userFrom(r.Context())
 	id := r.PathValue("id")
 	etag := `"` + id + `"`
 	if r.Header.Get("If-None-Match") == etag {
 		// Only for an image that's still stored: a deleted one is a 404 (§7.6).
-		if _, err := s.images.Info(r.Context(), id); err != nil {
+		if _, err := u.Images.Info(r.Context(), id); err != nil {
 			s.writeErr(w, r, err)
 			return
 		}
@@ -65,7 +67,7 @@ func (s *Server) getImage(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	img, data, err := s.images.Get(r.Context(), id)
+	img, data, err := u.Images.Get(r.Context(), id)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

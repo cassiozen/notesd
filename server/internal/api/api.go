@@ -18,11 +18,8 @@ import (
 
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
-	"notes/server/internal/images"
-	"notes/server/internal/locks"
 	"notes/server/internal/mail"
-	"notes/server/internal/notes"
-	"notes/server/internal/spaces"
+	"notes/server/internal/userdata"
 	"notes/server/internal/web"
 )
 
@@ -37,11 +34,8 @@ type Config struct {
 
 // Server serves the API and web app.
 type Server struct {
-	db      *database.DB
-	notes   *notes.Store
-	locks   *locks.Store
-	images  *images.Store
-	spaces  *spaces.Store
+	system  *database.DB // users, sessions and server-wide settings
+	users   *userdata.Registry
 	auth    *auth.Service
 	limiter *auth.Limiter
 	mailer  *mail.Client
@@ -49,10 +43,10 @@ type Server struct {
 	cfg     Config
 }
 
-// New wires a Server.
-func New(db *database.DB, store *notes.Store, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
+// New returns a server over the system database and users' notes databases.
+func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
 	return &Server{
-		db: db, notes: store, locks: locks.NewStore(db), images: images.NewStore(db), spaces: spaces.NewStore(db), auth: authSvc, log: log, cfg: cfg,
+		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
 		limiter: auth.NewLimiter(10, 15*time.Minute),
 		mailer:  mail.NewClient(cfg.ResendURL),
 	}
@@ -86,8 +80,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/notes/{id}/email", s.authed(s.emailNote))
 
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
-	mux.Handle("PUT /api/v1/settings/email", s.authed(s.saveEmailSettings))
-	mux.Handle("DELETE /api/v1/settings/email", s.authed(s.deleteEmailSettings))
+	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))
+	mux.Handle("DELETE /api/v1/settings/email", s.authed(adminOnly(s.deleteEmailSettings)))
 
 	mux.Handle("GET /api/v1/locks", s.authed(s.listLockKeys))
 	mux.Handle("DELETE /api/v1/locks", s.authed(s.resetLocks))
@@ -122,7 +116,7 @@ func (s *Server) healthz(w http.ResponseWriter, r *http.Request) {
 func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
 	defer cancel()
-	if err := s.db.Ping(ctx); err != nil {
+	if err := s.system.Ping(ctx); err != nil {
 		s.log.Warn("readiness check failed", "error", err)
 		writeJSON(w, http.StatusServiceUnavailable, map[string]string{"status": "unavailable"})
 		return
@@ -134,14 +128,24 @@ func (s *Server) readyz(w http.ResponseWriter, r *http.Request) {
 
 type ctxKey int
 
-const sessionKey ctxKey = 0
+const (
+	sessionKey ctxKey = iota
+	userKey
+)
 
 func sessionFrom(ctx context.Context) auth.Session {
 	sess, _ := ctx.Value(sessionKey).(auth.Session)
 	return sess
 }
 
-// authed requires a valid session. Devices authenticate with
+// userFrom is the signed-in user's notes database. Every handler behind
+// authed reads and writes that user's data through it, and nothing else.
+func userFrom(ctx context.Context) *userdata.Data {
+	d, _ := ctx.Value(userKey).(*userdata.Data)
+	return d
+}
+
+// authed requires a valid session, and opens the session's user's data. Devices authenticate with
 // "Authorization: Bearer <access token>". Browsers use the session cookie
 // and must send X-CSRF-Token on every non-GET request; a cross-origin
 // Origin header is rejected as well.
@@ -173,8 +177,26 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 			s.writeErr(w, r, err)
 			return
 		}
-		h(w, r.WithContext(context.WithValue(r.Context(), sessionKey, sess)))
+		data, err := s.users.Open(r.Context(), sess.UserID)
+		if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		ctx := context.WithValue(context.WithValue(r.Context(), sessionKey, sess), userKey, data)
+		h(w, r.WithContext(ctx))
 	})
+}
+
+// adminOnly limits a handler behind authed to admins: server-wide settings
+// apply to every user.
+func adminOnly(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if !sessionFrom(r.Context()).IsAdmin {
+			writeError(w, http.StatusForbidden, "admin_only", "only an admin can change this setting")
+			return
+		}
+		h(w, r)
+	}
 }
 
 func bearerToken(r *http.Request) (string, bool) {
