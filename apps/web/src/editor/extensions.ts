@@ -11,6 +11,7 @@ import { Paragraph } from '@tiptap/extension-paragraph'
 import { Strike } from '@tiptap/extension-strike'
 import { Text } from '@tiptap/extension-text'
 import { Placeholder, UndoRedo } from '@tiptap/extensions'
+import { buildFence, editFence, fenceOpener, rawBlockView } from './fence'
 
 const linkProtocols = /^(https?:|mailto:)/i
 
@@ -41,6 +42,33 @@ export const RawBlock = Node.create({
       { 'data-raw': '', contenteditable: 'false', title: 'Not editable here; kept exactly as written' },
       node.attrs.source as string,
     ]
+  },
+  // A code fence shows its code, not its fence lines, highlighted by language,
+  // and opens a code box on click. renderHTML above still gives copy/paste the exact source.
+  addNodeView() {
+    return ({ node, view, getPos }) => rawBlockView(node, view, getPos)
+  },
+  // A paragraph holding only ``` (or ```go) turns into a code fence on Enter
+  // and opens its code box, the way code blocks start in other editors.
+  addKeyboardShortcuts() {
+    return {
+      Enter: ({ editor }) => {
+        const { state, view } = editor
+        const { $from, empty } = state.selection
+        if (!empty || $from.parent.type.name !== 'paragraph' || $from.parentOffset !== $from.parent.content.size) return false
+        const opener = fenceOpener($from.parent.textContent)
+        if (!opener) return false
+        const start = $from.before()
+        const block = this.type.create({ source: buildFence(opener.lang, '') })
+        const tr = state.tr.replaceWith(start, $from.after(), block)
+        // Something to type into after the block when it ends the note.
+        const paragraph = state.schema.nodes.paragraph
+        if (paragraph && !tr.doc.nodeAt(start + block.nodeSize)) tr.insert(start + block.nodeSize, paragraph.create())
+        view.dispatch(tr)
+        editFence(view, start)
+        return true
+      },
+    }
   },
 })
 

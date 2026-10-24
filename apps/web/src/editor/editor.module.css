@@ -341,6 +341,108 @@
   cursor: default;
 }
 
+/* A code fence: dark like other code in the app, fence lines hidden. */
+.prose pre[data-fence] {
+  border: 0;
+  background: var(--code);
+  color: var(--code-ink);
+  white-space: pre;
+  overflow-x: auto;
+  tab-size: 4;
+}
+
+.prose pre[data-fence] span[data-lang] {
+  display: block;
+  margin-bottom: 4px;
+  font: 500 11px/1.4 var(--font-sans);
+  letter-spacing: 0.02em;
+  color: var(--code-dim);
+}
+
+.prose pre[data-fence] code {
+  font: inherit;
+}
+
+.prose pre[data-fence]:not([data-editing]) {
+  cursor: text;
+}
+
+/* The code box: the language on top, the code under it, both on the dark block. */
+.prose pre[data-editing] input,
+.prose pre[data-editing] textarea {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: inherit;
+  resize: none;
+  overflow: hidden;
+  tab-size: 4;
+}
+
+.prose pre[data-editing] input {
+  margin-bottom: 4px;
+  font: 500 11px/1.4 var(--font-sans);
+  letter-spacing: 0.02em;
+  color: var(--code-dim);
+}
+
+.prose pre[data-editing] textarea {
+  font: inherit;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+.prose pre[data-editing] {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* highlight.js classes. The block is dark in both themes, so one palette. */
+.prose pre[data-fence] :global(.hljs-comment),
+.prose pre[data-fence] :global(.hljs-quote) {
+  color: var(--code-dim);
+  font-style: italic;
+}
+
+.prose pre[data-fence] :global(.hljs-keyword),
+.prose pre[data-fence] :global(.hljs-selector-tag),
+.prose pre[data-fence] :global(.hljs-built_in),
+.prose pre[data-fence] :global(.hljs-type) {
+  color: oklch(0.78 0.12 300);
+}
+
+.prose pre[data-fence] :global(.hljs-string),
+.prose pre[data-fence] :global(.hljs-regexp),
+.prose pre[data-fence] :global(.hljs-addition) {
+  color: oklch(0.8 0.12 145);
+}
+
+.prose pre[data-fence] :global(.hljs-number),
+.prose pre[data-fence] :global(.hljs-literal),
+.prose pre[data-fence] :global(.hljs-symbol) {
+  color: oklch(0.8 0.13 60);
+}
+
+.prose pre[data-fence] :global(.hljs-title),
+.prose pre[data-fence] :global(.hljs-section),
+.prose pre[data-fence] :global(.hljs-attr),
+.prose pre[data-fence] :global(.hljs-attribute) {
+  color: oklch(0.8 0.1 230);
+}
+
+.prose pre[data-fence] :global(.hljs-meta),
+.prose pre[data-fence] :global(.hljs-variable),
+.prose pre[data-fence] :global(.hljs-template-variable) {
+  color: oklch(0.8 0.1 20);
+}
+
+.prose pre[data-fence] :global(.hljs-deletion) {
+  color: oklch(0.72 0.15 27);
+}
+
 .prose code[data-raw] {
   padding: 1px 5px;
   border-radius: 6px;

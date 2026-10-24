@@ -1,0 +1,15 @@
+{
+  "description": "A raw block's source → how a code fence is shown (architecture §7.1). Display only: the block still saves its source unchanged. `fence` is null when the block isn't a fence; otherwise `lang` is the first word of the info string and `code` is the content without the fence lines, with up to the opening fence's indent removed from each line.",
+  "cases": [
+    {"name": "backticks with a language", "source": "```go\nfmt.Println(1)\n```", "fence": {"lang": "go", "code": "fmt.Println(1)"}},
+    {"name": "tildes, no language", "source": "~~~\na\nb\n~~~", "fence": {"lang": "", "code": "a\nb"}},
+    {"name": "only the first word of the info string", "source": "```js title=\"x\"\n1\n```", "fence": {"lang": "js", "code": "1"}},
+    {"name": "unclosed, runs to the end", "source": "```py\nx = 1", "fence": {"lang": "py", "code": "x = 1"}},
+    {"name": "a shorter run is code, not the close", "source": "````\n```\n````", "fence": {"lang": "", "code": "```"}},
+    {"name": "indented fence strips that indent", "source": "  ```\n  a\n    b\n  ```", "fence": {"lang": "", "code": "a\n  b"}},
+    {"name": "empty", "source": "```\n```", "fence": {"lang": "", "code": ""}},
+    {"name": "indented code is not a fence", "source": "    code", "fence": null},
+    {"name": "a rule is not a fence", "source": "***", "fence": null},
+    {"name": "a table is not a fence", "source": "| a |\n| - |", "fence": null}
+  ]
+}

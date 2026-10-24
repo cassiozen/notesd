@@ -33,6 +33,7 @@
     "@tiptap/pm": "^3.31.4",
     "@tiptap/react": "^3.31.4",
     "@tiptap/suggestion": "^3.31.4",
+    "highlight.js": "11.11.1",
     "markdown-it": "^14.3.2",
     "prosemirror-markdown": "^1.13.8",
     "react": "^19.3.0",
