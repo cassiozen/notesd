@@ -148,3 +148,54 @@ describe('canonical form', () => {
     expect(screen.queryByText(/Changed on another device/)).toBeNull()
   })
 })
+
+/** Pastes into the editor at the selection, with a clipboard holding these types. */
+function paste(data: Record<string, string>) {
+  const event = new Event('paste', { bubbles: true, cancelable: true })
+  Object.defineProperty(event, 'clipboardData', {
+    value: { files: [], getData: (type: string) => data[type] ?? '', types: Object.keys(data) },
+  })
+  body().dispatchEvent(event)
+}
+
+describe('pasting', () => {
+  it('reads pasted text as Markdown', async () => {
+    const { server, id } = await openNote('Paste', 'Intro\n\nLine\n')
+    selectInBody('Line')
+    paste({ 'text/plain': '# Heading\n\n- one\n- two\n\nSome **bold** text' })
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('Intro\n\n# Heading\n\n- one\n- two\n\nSome **bold** text\n'))
+    expect(body().querySelector('h1:not([data-title])')?.textContent).toBe('Heading')
+  })
+
+  it('pastes inline Markdown inside a line', async () => {
+    const { server, id } = await openNote('Inline', 'Buy milk\n')
+    selectInBody('milk')
+    paste({ 'text/plain': '*fresh* milk' })
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('Buy *fresh* milk\n'))
+  })
+
+  it('takes the title from Markdown pasted into the title line', async () => {
+    const { server, id } = await openNote('Old', 'Body\n')
+    selectInBody('Old')
+    paste({ 'text/plain': '# Groceries\n\n- [ ] Milk' })
+    await waitFor(async () => expect((await getNote(server, id)).title).toBe('Groceries'))
+    expect((await getNote(server, id)).content).toBe('- [ ] Milk\n\nBody\n')
+  })
+
+  it('reads Markdown copied from a code editor, which comes with unformatted HTML', async () => {
+    const { server, id } = await openNote('Code', 'Line\n')
+    selectInBody('Line')
+    paste({
+      'text/plain': '## Plan\n\n1. Write',
+      'text/html': '<div style="color: #ccc"><div><span>## Plan</span></div><br><div><span>1. Write</span></div></div>',
+    })
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('## Plan\n\n1. Write\n'))
+  })
+
+  it('keeps formatted HTML as the browser copied it', async () => {
+    const { server, id } = await openNote('Web', 'Line\n')
+    selectInBody('Line')
+    paste({ 'text/plain': 'Title\n\nText', 'text/html': '<h2>Title</h2><p>Text with <strong>bold</strong></p>' })
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('## Title\n\nText with **bold**\n'))
+  })
+})

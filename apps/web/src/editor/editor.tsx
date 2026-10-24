@@ -1,4 +1,5 @@
 import type { Editor } from '@tiptap/core'
+import type { Slice } from '@tiptap/pm/model'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import type { TagCount } from '../api/types'
@@ -6,7 +7,7 @@ import type { Fields } from '../notes/saver'
 import { ImageView } from '../images/view'
 import { ChecklistIcon, ImageIcon, IndentIcon, LinkIcon, OutdentIcon } from '../ui/icons'
 import { editorExtensions, isAllowedLink } from './extensions'
-import { noteContent } from './note-doc'
+import { noteContent, pastedSlice } from './note-doc'
 import { Tags } from './tags'
 import styles from './editor.module.css'
 
@@ -23,6 +24,15 @@ type Options = {
   /** Pictures pasted or dropped in, at a document position. */
   onImages: (files: File[], pos: number) => void
 }
+
+/**
+ * HTML with no formatting in it: what code editors and terminals put next to
+ * the text they copy (coloured spans). Their text is the thing to paste.
+ */
+const unformatted = (html: string) => !/<(h[1-6]|ul|ol|li|blockquote|b|strong|i|em|s|del|a|table|img|pre|code)\b/i.test(html)
+
+/** Markdown syntax that the dialect turns into formatting. */
+const markdownish = /^\s{0,3}(#{1,6}\s|[-*+]\s|\d+[.)]\s|>)|\*\*\S|~~\S|\]\(/m
 
 const imageFiles = (list: FileList | null | undefined) => Array.from(list ?? []).filter((f) => f.type.startsWith('image/'))
 
@@ -55,7 +65,18 @@ export function useNoteEditor(options: Options): Editor {
         }
         return false
       },
+      // Plain text pastes as Markdown; Shift (paste as plain text) keeps it as typed.
+      clipboardTextParser: (text, $context, plain, view) =>
+        plain ? (null as unknown as Slice) : pastedSlice(text, view.state.schema, $context.parent.type.name === 'title'),
       handlePaste: (view, event) => {
+        const html = event.clipboardData?.getData('text/html')
+        const text = event.clipboardData?.getData('text/plain')
+        if (html && text && unformatted(html) && markdownish.test(text)) {
+          event.preventDefault()
+          const slice = pastedSlice(text, view.state.schema, view.state.selection.$from.parent.type.name === 'title')
+          view.dispatch(view.state.tr.replaceSelection(slice).scrollIntoView().setMeta('paste', true).setMeta('uiEvent', 'paste'))
+          return true
+        }
         const files = imageFiles(event.clipboardData?.files)
         // Text with pictures (a document, a file copied in the file manager)
         // pastes as text: the file there is often just a rendering of it.

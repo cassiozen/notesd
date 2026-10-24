@@ -1,5 +1,5 @@
 import type { JSONContent } from '@tiptap/core'
-import type { Node as PMNode } from '@tiptap/pm/model'
+import { Fragment, Slice, type Node as PMNode, type Schema } from '@tiptap/pm/model'
 import { plainText, previewOf } from '../notes/plaintext'
 import type { Fields } from '../notes/saver'
 import { parse, serialize } from './markdown'
@@ -12,6 +12,22 @@ export function noteContent({ title, content }: Fields): JSONContent {
     type: 'doc',
     content: [{ type: 'title', ...(line && { content: [{ type: 'text', text: line }] }) }, ...(parse(content).toJSON().content ?? [])],
   }
+}
+
+/**
+ * Pasted plain text, read as Markdown: "# Heading" pastes as a heading, not
+ * as text whose "#" a save would escape. Pasted into the title, the first
+ * line's text becomes the title and the rest follows in the body.
+ */
+export function pastedSlice(markdown: string, schema: Schema, inTitle: boolean): Slice {
+  const nodes = (parse(markdown).toJSON().content ?? []).map((json: JSONContent) => schema.nodeFromJSON(json))
+  if (inTitle) {
+    const first = nodes[0]
+    const lead = first?.isTextblock ? nodes.shift() : undefined
+    const text = lead?.textBetween(0, lead.content.size, ' ', (leaf) => (leaf.isText ? '' : String(leaf.attrs.source ?? ' '))) ?? ''
+    nodes.unshift(schema.node('title', null, text ? schema.text(text) : null))
+  }
+  return Slice.maxOpen(Fragment.fromArray(nodes))
 }
 
 /** The note's fields from the editor document. Serializes: call per save, not per keystroke. */
