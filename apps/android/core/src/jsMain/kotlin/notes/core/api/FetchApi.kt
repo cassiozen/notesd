@@ -1,7 +1,7 @@
 package notes.core.api
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.await
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -63,44 +63,17 @@ class FetchApi(private val csrfToken: () -> String?) : SyncApi {
         if (method != "GET") csrfToken()?.let { headers["X-CSRF-Token"] = it }
         val init =
             RequestInit(method = method, headers = headers, body = body, credentials = RequestCredentials.SAME_ORIGIN)
-        val res = try {
+        val (res, text) = try {
             // globalThis, not window: the engine may run in a worker.
-            fetch("/api/v1$path", init).await()
+            val r = fetch("/api/v1$path", init).await()
+            r to r.text().await()
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Throwable) {
             return ApiResult.Unreachable(e)
         }
-        val text = try {
-            res.text().await()
-        } catch (e: Throwable) {
-            return ApiResult.Unreachable(e)
-        }
-        val code = res.status.toInt()
-        if (code in 200..299) {
-            return try {
-                ApiResult.Ok(decode(text))
-            } catch (_: SerializationException) {
-                unexpected(code)
-            } catch (_: IllegalArgumentException) {
-                unexpected(code)
-            }
-        }
-        val error = try {
-            json.decodeFromString<ErrorBody>(text)
-        } catch (_: SerializationException) {
-            ErrorBody()
-        } catch (_: IllegalArgumentException) {
-            ErrorBody()
-        }
-        return when {
-            code == 401 && error.error == "unauthenticated" -> ApiResult.Unauthenticated
-            code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
-            code == 429 -> ApiResult.RateLimited(res.headers.get("Retry-After")?.trim()?.toLongOrNull() ?: 60)
-            else -> ApiResult.Rejected(code, error.error.ifEmpty { "http_$code" }, error.message, error.field)
-        }
+        return apiResult(res.status.toInt(), res.headers.get("Retry-After"), { text }) { decode(text) }
     }
-
-    private fun unexpected(code: Int) =
-        ApiResult.Rejected(code, "unexpected_response", "The server's answer wasn't understood.", null)
 
     private fun fetch(url: String, init: RequestInit): kotlin.js.Promise<org.w3c.fetch.Response> =
         js("globalThis").fetch(url, init).unsafeCast<kotlin.js.Promise<org.w3c.fetch.Response>>()

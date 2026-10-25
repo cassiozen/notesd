@@ -53,8 +53,8 @@ export class Scheduler {
       }
       if (this.stopped) return
       if (outcome === 'Offline' || outcome === 'Failed') {
-        const backoff = Math.min(syncTiming.firstRetryMs * 2 ** failures++, syncTiming.maxRetryMs)
-        wait = backoff + Math.random() * (backoff / 2)
+        const backoff = syncTiming.firstRetryMs * 2 ** failures++
+        wait = Math.min(backoff + Math.random() * (backoff / 2), syncTiming.maxRetryMs)
       } else {
         failures = 0
         wait = outcome === 'SignedOut' ? Infinity : syncTiming.intervalMs

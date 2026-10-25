@@ -1,7 +1,14 @@
-import { LocalLockKey, openEngine, type EngineNotice, type EngineStatus, type NotesEngine } from '@notes/core'
+import {
+  LocalLockKey,
+  openEngine,
+  type EngineNotice,
+  type EngineStatus,
+  type LocalNote as EngineNote,
+  type NotesEngine,
+} from '@notes/core'
 import type { LockKey, NoteFilter } from '../api/types'
 import { canonical } from '../editor/markdown'
-import type { EngineApi, EngineEvent, SyncNotice, SyncOutcome, SyncStatus } from './protocol'
+import type { EngineApi, EngineEvent, LocalNote, SyncNotice, SyncOutcome, SyncStatus } from './protocol'
 import { Scheduler } from './scheduler'
 
 /** A user's database on sqlite-wasm: an oo1 DB and the capi it came with. */
@@ -14,11 +21,13 @@ type Open = { user: string; engine: NotesEngine; scheduler: Scheduler; unsubscri
  * in-process in tests. [emit] gets every event, for every tab.
  */
 export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent) => void): EngineApi & { close(): void } {
-  let current: Promise<Open> | null = null
+  // Opens chain, one at a time: two switching users at once would each stop the old engine, and one new one leak.
+  let current: Promise<Open | null> = Promise.resolve(null)
 
   async function engine() {
-    if (!current) throw new Error('The notes engine is not open')
-    return (await current).engine
+    const o = await current
+    if (!o) throw new Error('The notes engine is not open')
+    return o.engine
   }
 
   async function start(user: string, csrfToken: string): Promise<Open> {
@@ -35,29 +44,31 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     return { user, engine: e, scheduler, unsubscribe }
   }
 
-  async function stop(open: Promise<Open>) {
-    const o = await open.catch(() => null)
-    if (!o) return
+  function stop(o: Open) {
     o.scheduler.stop()
     for (const u of o.unsubscribe) u()
     o.engine.close()
   }
 
-  const host: EngineApi & { close(): void } = {
+  return {
     async open(user, csrfToken) {
-      const before = current && (await current.catch(() => null))
-      if (before?.user === user) {
-        before.engine.setCsrfToken(csrfToken)
-        // Usually a new sign-in after the session ended: sync was waiting for it.
-        before.scheduler.request()
-        return
-      }
-      if (current) await stop(current)
-      current = start(user, csrfToken)
+      current = current
+        .catch(() => null)
+        .then((before) => {
+          if (before?.user === user) {
+            before.engine.setCsrfToken(csrfToken)
+            // Usually a new sign-in after the session ended: sync was waiting for it.
+            before.scheduler.request()
+            return before
+          }
+          if (before) stop(before)
+          return start(user, csrfToken)
+        })
       await current
     },
     async requestSync() {
-      if (current) (await current).scheduler.request()
+      const o = await current
+      o?.scheduler.request()
     },
     async sync() {
       return (await (await engine()).sync()) as SyncOutcome
@@ -67,19 +78,7 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     },
     async get(id) {
       const n = await (await engine()).get(id)
-      return n
-        ? {
-            id: n.id,
-            title: n.title,
-            content: n.content,
-            createdAt: n.createdAt,
-            updatedAt: n.updatedAt,
-            conflictOf: n.conflictOf ?? null,
-            revision: n.revision ?? null,
-            dirty: n.dirty,
-            spaceId: n.spaceId,
-          }
-        : null
+      return n ? localNote(n) : null
     },
     async list(filter, space) {
       const rows = await (await engine()).list(...filterArgs(filter), space)
@@ -110,7 +109,7 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     async save({ id, title, content, basedOn, imageIds, spaceId }) {
       const e = await engine()
       const saved = await e.save(id, title, content, basedOn?.title, basedOn?.content, imageIds, spaceId)
-      return saved ? host.get(saved.id) : null
+      return saved ? localNote(saved) : null
     },
     async move(id, spaceId) {
       return (await engine()).move(id, spaceId)
@@ -118,8 +117,8 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     async delete(id) {
       await (await engine()).delete(id)
     },
-    async recover(title, content, imageIds, spaceId) {
-      return (await engine()).recover(title, content, imageIds, spaceId)
+    async recover(id, title, content, imageIds, spaceId) {
+      return (await engine()).recover(id, title, content, imageIds, spaceId)
     },
     async pendingNotes() {
       return (await engine()).pendingNotes()
@@ -159,11 +158,24 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
       await (await engine()).wipe()
     },
     close() {
-      if (current) void stop(current)
-      current = null
+      void current.then((o) => o && stop(o), () => {})
+      current = Promise.resolve(null)
     },
   }
-  return host
+}
+
+function localNote(n: EngineNote): LocalNote {
+  return {
+    id: n.id,
+    title: n.title,
+    content: n.content,
+    createdAt: n.createdAt,
+    updatedAt: n.updatedAt,
+    conflictOf: n.conflictOf ?? null,
+    revision: n.revision ?? null,
+    dirty: n.dirty,
+    spaceId: n.spaceId,
+  }
 }
 
 function filterArgs(filter: NoteFilter): [string | null, string | null] {

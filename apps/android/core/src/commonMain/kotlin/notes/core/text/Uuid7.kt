@@ -13,3 +13,8 @@ object Uuid7 {
         return Uuid.fromByteArray(bytes).toString()
     }
 }
+
+private val SERVER_ID = Regex("[A-Za-z0-9_-]{1,64}")
+
+/** An id the server accepts for a note or space; another is refused at sync, and what it names lost. */
+internal fun isServerId(id: String): Boolean = SERVER_ID.matches(id)

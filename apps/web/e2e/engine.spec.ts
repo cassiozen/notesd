@@ -72,18 +72,22 @@ const onServer = (page: Page, id: string) =>
 const engineLocks = (page: Page) =>
   page.evaluate(async () => (await navigator.locks.query()).held?.filter((l) => l.name === 'notesd-engine').length)
 
-test('notes stay on this device across a reload, and reach the server by themselves', async ({ page }) => {
+test('notes stay on this device across a reload, and reach the server by themselves', async ({ page, context }) => {
+  // Uploads fail until the end, so only this device can have the note.
+  const uploads = '**/api/v1/notes**'
+  await context.route(uploads, (route) => (route.request().method() === 'GET' ? route.continue() : route.abort()))
   await connect(page, { signIn: true })
   await synced(page)
   const id = crypto.randomUUID()
   await page.evaluate((note) => window.engine.call('save', { id: note, title: 'Kept', content: 'here\n', spaceId: 'default' }), id)
-  // Sync waits for edits to settle, so the server doesn't have it yet.
-  expect(await onServer(page, id)).toBe(404)
 
   await page.reload()
   await connect(page)
 
   expect(await titles(page)).toContain('Kept')
+  expect(await onServer(page, id)).toBe(404)
+  await context.unroute(uploads)
+  await page.evaluate(() => window.engine.call('requestSync'))
   await expect.poll(() => onServer(page, id), { timeout: 15_000 }).toBe(200)
 })
 
@@ -132,7 +136,8 @@ test('when the tab running the engine closes, the next takes over and no call is
   const saved = await b.evaluate(async () => (await Promise.all(window.saves)).filter((n) => n !== null).length)
   expect(saved).toBe(30)
   expect((await titles(b)).filter((t) => t.startsWith(run))).toHaveLength(30)
-  expect(await engineLocks(b)).toBe(1)
+  // A may have answered every save before closing, B not holding the lock yet.
+  await expect.poll(() => engineLocks(b)).toBe(1)
   await b.evaluate(() => window.engine.call('sync'))
   for (const id of ids) expect(await onServer(b, id)).toBe(200)
 })

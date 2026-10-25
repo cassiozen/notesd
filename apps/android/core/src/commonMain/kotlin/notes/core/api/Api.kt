@@ -1,6 +1,7 @@
 package notes.core.api
 
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 
 /** The outcome of one request. Transport failures are values too: callers decide what offline means. */
@@ -61,6 +62,35 @@ internal data class ErrorBody(
     val field: String? = null,
     val current: JsonObject? = null
 )
+
+/** A 2xx answer that isn't the expected JSON: something other than notesd is at this address. */
+const val UNEXPECTED_RESPONSE = "unexpected_response"
+
+private const val DEFAULT_RETRY_AFTER_S = 60L
+private val errorJson = Json { ignoreUnknownKeys = true }
+
+/** An HTTP answer as a result. [errorText] is read for errors only: a success may be an image. */
+internal fun <T> apiResult(code: Int, retryAfter: String?, errorText: () -> String, decode: () -> T): ApiResult<T> {
+    // SerializationException is an IllegalArgumentException.
+    if (code in 200..299) {
+        return try {
+            ApiResult.Ok(decode())
+        } catch (_: IllegalArgumentException) {
+            ApiResult.Rejected(code, UNEXPECTED_RESPONSE, "The server's answer wasn't understood.", null)
+        }
+    }
+    val error = try {
+        errorJson.decodeFromString<ErrorBody>(errorText())
+    } catch (_: IllegalArgumentException) {
+        ErrorBody()
+    }
+    return when {
+        code == 401 && error.error == "unauthenticated" -> ApiResult.Unauthenticated
+        code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
+        code == 429 -> ApiResult.RateLimited(retryAfter?.trim()?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_S)
+        else -> ApiResult.Rejected(code, error.error.ifEmpty { "http_$code" }, error.message, error.field)
+    }
+}
 
 /** The server's Resend settings for emailing notes. The key never comes back; [keyHint] is its last 4 characters. */
 @Serializable

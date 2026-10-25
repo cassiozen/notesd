@@ -4,6 +4,8 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import notes.core.crypto.LockedEnvelope
+import notes.core.text.Uuid7
+import notes.core.text.isServerId
 import notes.core.text.nowMillis
 import notes.core.text.previewOf
 
@@ -363,15 +365,22 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
     /**
      * Keeps text whose note was deleted elsewhere while it was being edited:
      * a new "(Recovered copy)" note in [spaceId], as sync makes for edits it finds. Returns its id.
+     * Recovering as [id] again changes nothing, so a caller unsure whether it went through can resend.
      */
     suspend fun recover(
         title: String,
         content: String,
         imageIds: List<String>? = null,
-        spaceId: String = Spaces.DEFAULT
+        spaceId: String = Spaces.DEFAULT,
+        id: String = Uuid7.generate()
     ): String {
-        val id = db.write { it.insertCopy(copyTitle(title, RECOVERED), content, null, spaceId, clock(), imageIds) }
-        _localEdits.tryEmit(Unit)
+        require(isServerId(id)) { "A note id is 1-64 characters of [A-Za-z0-9_-]" }
+        val made = db.write { sql ->
+            if (sql.note(id) != null) return@write false
+            sql.insertCopy(copyTitle(title, RECOVERED), content, null, spaceId, clock(), imageIds, id)
+            true
+        }
+        if (made) _localEdits.tryEmit(Unit)
         return id
     }
 

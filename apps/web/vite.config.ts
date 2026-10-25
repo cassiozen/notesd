@@ -62,7 +62,7 @@ export default defineConfig({
         extends: true,
         test: {
           name: 'app',
-          include: ['src/**/*.test.ts', 'test/**/*.test.{ts,tsx}'],
+          include: ['{src,test}/**/*.test.{ts,tsx}'],
           exclude: ['test/engine/**'],
           environment: 'jsdom',
           setupFiles: ['test/setup.ts'],

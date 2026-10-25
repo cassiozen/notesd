@@ -144,6 +144,7 @@ class NotesEngine internal constructor(private val db: Database) {
         imageIds: Array<String>?,
         spaceId: String
     ): Promise<LocalNote?> = scope.promise {
+        require((basedOnTitle == null) == (basedOnContent == null)) { "basedOnTitle and basedOnContent go together" }
         val basedOn = if (basedOnTitle != null && basedOnContent != null) basedOnTitle to basedOnContent else null
         notes.save(id, title, content, basedOn, imageIds?.toList(), spaceId)?.export()
     }
@@ -152,9 +153,14 @@ class NotesEngine internal constructor(private val db: Database) {
 
     fun delete(id: String): Promise<Unit> = scope.promise { notes.delete(id) }
 
-    /** Keeps text whose note was deleted elsewhere as a new note. Resolves with its id. */
-    fun recover(title: String, content: String, imageIds: Array<String>?, spaceId: String): Promise<String> =
-        scope.promise { notes.recover(title, content, imageIds?.toList(), spaceId) }
+    /** Keeps text whose note was deleted elsewhere as a new note [id]; again with the same [id] does nothing. */
+    fun recover(
+        id: String,
+        title: String,
+        content: String,
+        imageIds: Array<String>?,
+        spaceId: String
+    ): Promise<String> = scope.promise { notes.recover(title, content, imageIds?.toList(), spaceId, id) }
 
     fun pendingNotes(): Promise<Int> = scope.promise { notes.pendingNotes() }
 

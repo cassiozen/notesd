@@ -4,6 +4,7 @@ import notes.core.api.RemoteSpace
 import notes.core.text.Uuid7
 import notes.core.text.codePointLength
 import notes.core.text.isIsoControl
+import notes.core.text.isServerId
 import notes.core.text.nowMillis
 
 object Spaces {
@@ -21,6 +22,11 @@ object Spaces {
         require(stored.codePointLength() <= MAX_NAME) { "At most $MAX_NAME characters" }
         require(stored.none { isIsoControl(it) }) { "No control characters" }
         return stored
+    }
+
+    internal fun checkedId(id: String): String {
+        require(isServerId(id)) { "A space id is 1-64 characters of [A-Za-z0-9_-]" }
+        return id
     }
 }
 
@@ -58,6 +64,7 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
      */
     suspend fun create(name: String, icon: String = "", id: String = Uuid7.generate()): String {
         val stored = Spaces.checked(name)
+        Spaces.checkedId(id)
         db.write { sql ->
             sql.exec(
                 "INSERT INTO spaces (id, name, icon, created_at, dirty) VALUES (?, ?, ?, ?, 1) ON CONFLICT (id) DO NOTHING",

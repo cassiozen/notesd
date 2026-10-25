@@ -154,9 +154,9 @@ internal suspend fun Sql.insertCopy(
     conflictOf: String?,
     spaceId: String,
     now: Long,
-    imageIds: List<String>? = null
+    imageIds: List<String>? = null,
+    id: String = Uuid7.generate()
 ): String {
-    val id = Uuid7.generate()
     rememberImages(id, content, imageIds ?: lockedImageIds(content))
     exec(
         """

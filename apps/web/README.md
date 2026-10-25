@@ -35,6 +35,8 @@ pnpm test         # Vitest
 pnpm e2e          # Playwright: Chromium, Firefox and WebKit (--project=chromium for one)
 ```
 
+`mise run check` runs `e2e` in Chromium only.
+
 `typecheck`, `test`, `e2e`, `dev` and `build` first build the sync engine
 with Gradle (`pnpm core`), so they need the JDK from `mise.toml`.
 
@@ -195,8 +197,8 @@ engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
   Lock starts the worker; the others send their calls over a
   BroadcastChannel. When it closes, the next tab to get the lock starts a
   new worker, and unanswered calls are sent to it again. That's safe
-  because the engine's writes are idempotent, except `recover`, which fails
-  with `EngineRestarted` instead.
+  because every call is idempotent (ids for new notes and spaces come from the
+  caller), and the new owner runs a call it already has only once.
 - **Calls** (`src/offline/protocol.ts`) are coarse (list, search, save,
   sync…), so no SQL statement crosses a thread.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s

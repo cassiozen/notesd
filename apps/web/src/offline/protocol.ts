@@ -66,10 +66,11 @@ export type EngineApi = {
   save(note: SaveNote): Promise<LocalNote | null>
   move(id: string, spaceId: string): Promise<boolean>
   delete(id: string): Promise<void>
-  /** Keeps text whose note was deleted elsewhere, as a new note. Resolves with its id. */
-  recover(title: string, content: string, imageIds: string[] | null, spaceId: string): Promise<string>
+  /** Keeps text whose note was deleted elsewhere, as the new note [id]. Again with the same id does nothing. */
+  recover(id: string, title: string, content: string, imageIds: string[] | null, spaceId: string): Promise<string>
   pendingNotes(): Promise<number>
   spaces(): Promise<LocalSpace[]>
+  /** Again with the same id does nothing. */
   createSpace(id: string, name: string, icon: string): Promise<void>
   /** Icon undefined keeps the current one. */
   updateSpace(id: string, name: string, icon?: string): Promise<void>
@@ -80,13 +81,8 @@ export type EngineApi = {
   wipe(): Promise<void>
 }
 
+/** Every call is safe to run twice: a tab resends the unanswered ones when the engine moves to another tab. */
 export type Method = keyof EngineApi
-
-/**
- * Not resent when the tab running the engine closes mid-call: it may have
- * run already, and running it twice makes a second note.
- */
-export const ONCE: ReadonlySet<Method> = new Set(['recover'])
 
 export type EngineEvent =
   | { type: 'status'; status: SyncStatus }
@@ -105,13 +101,5 @@ export class EngineError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'EngineError'
-  }
-}
-
-/** The tab running the engine closed while this call was out, and it can't safely be resent. */
-export class EngineRestarted extends Error {
-  constructor() {
-    super('The notes engine restarted; try again')
-    this.name = 'EngineRestarted'
   }
 }

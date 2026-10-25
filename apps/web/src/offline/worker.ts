@@ -35,6 +35,8 @@ const host = engineHost(
     await pool.reserveMinimumCapacity(pool.getFileCount() + 4)
     const db = new pool.OpfsSAHPoolDb(`/${encodeURIComponent(user)}.sqlite3`)
     // WAL without shared memory needs exclusive locking; only this worker opens the file anyway.
+    // NORMAL, as on Android: a closed tab or crashed browser loses nothing; only an OS crash or power cut can
+    // undo the last commits. FULL would flush on every save.
     db.exec('PRAGMA locking_mode = EXCLUSIVE; PRAGMA journal_mode = WAL; PRAGMA synchronous = NORMAL')
     return { db, capi: sqlite3.capi }
   },

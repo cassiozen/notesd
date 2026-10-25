@@ -112,6 +112,14 @@ describe('engine', () => {
     expect(await engine.call('deleteSpace', space)).toBe(false)
   })
 
+  test('recovering again with the same id makes no second note', async () => {
+    const { engine } = await engineSignedIn()
+    const id = crypto.randomUUID()
+    await engine.call('recover', id, 'Plan', 'Monday\n', null, 'default')
+    await engine.call('recover', id, 'Plan', 'Monday\n', null, 'default')
+    expect((await engine.call('list', null, null)).map((n) => n.title)).toEqual(['Plan (Recovered copy)'])
+  })
+
   test('a call the engine refuses rejects with its message', async () => {
     const { engine } = await engineSignedIn()
     await expect(engine.call('createSpace', crypto.randomUUID(), '  ', '')).rejects.toThrow('A space needs a name')
