@@ -18,9 +18,17 @@ export type LocalNote = {
   spaceId: string
 }
 
-export type LocalListItem = { id: string; title: string; preview: string; updatedAt: number; locked: boolean }
-
-export type LocalSpace = Omit<Space, 'createdAt'>
+export type LocalListItem = {
+  id: string
+  title: string
+  preview: string
+  createdAt: number
+  updatedAt: number
+  locked: boolean
+  /** Null until the server has the note. */
+  revision: number | null
+  spaceId: string
+}
 
 export type SyncOutcome = 'Done' | 'NotConnected' | 'Offline' | 'SignedOut' | 'Failed'
 
@@ -59,7 +67,7 @@ export type EngineApi = {
   /** Space null: every space. */
   list(filter: NoteFilter, space: string | null): Promise<LocalListItem[]>
   lockedCount(space: string | null): Promise<number>
-  search(query: string, filter: NoteFilter, scope: SearchScope | null, limit: number): Promise<SearchResult[]>
+  search(query: string, filter: NoteFilter, scope: SearchScope | null, offset: number, limit: number): Promise<SearchResult[]>
   countElsewhere(query: string, space: string): Promise<number>
   tags(space: string | null): Promise<TagCount[]>
   /** Null when nothing was stored: a blank new note, or one deleted meanwhile. */
@@ -69,7 +77,7 @@ export type EngineApi = {
   /** Keeps text whose note was deleted elsewhere, as the new note [id]. Again with the same id does nothing. */
   recover(id: string, title: string, content: string, imageIds: string[] | null, spaceId: string): Promise<string>
   pendingNotes(): Promise<number>
-  spaces(): Promise<LocalSpace[]>
+  spaces(): Promise<Space[]>
   /** Again with the same id does nothing. */
   createSpace(id: string, name: string, icon: string): Promise<void>
   /** Icon undefined keeps the current one. */

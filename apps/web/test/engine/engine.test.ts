@@ -14,13 +14,24 @@ describe('engine', () => {
     const saved = await engine.call('save', note(id, 'Shopping', 'Buy milk\n'))
     expect(saved).toMatchObject({ id, title: 'Shopping', dirty: true, revision: null })
     expect(await engine.call('pendingNotes')).toBe(1)
+    expect(saved?.createdAt).toEqual(expect.any(Number))
     expect(await engine.call('list', null, null)).toEqual([
-      { id, title: 'Shopping', preview: 'Buy milk', updatedAt: saved?.updatedAt, locked: false },
+      {
+        id,
+        title: 'Shopping',
+        preview: 'Buy milk',
+        createdAt: saved?.createdAt,
+        updatedAt: saved?.updatedAt,
+        locked: false,
+        revision: null,
+        spaceId: 'default',
+      },
     ])
 
     expect(await engine.call('sync')).toBe('Done')
     expect((await server.api<Note>('GET', `/notes/${id}`)).body).toMatchObject({ title: 'Shopping', content: 'Buy milk\n' })
     expect(await engine.call('get', id)).toMatchObject({ dirty: false, revision: 1 })
+    expect(await engine.call('list', null, null)).toMatchObject([{ id, revision: 1 }])
     expect(await engine.call('pendingNotes')).toBe(0)
   })
 
@@ -38,7 +49,7 @@ describe('engine', () => {
     ])
     expect((await engine.call('list', { tag: 'garden' }, 'default')).map((n) => n.id)).toEqual([id])
     expect(await engine.call('list', { untagged: true }, null)).toEqual([])
-    const [hit] = await engine.call('search', 'basil', null, { space: 'default' }, 30)
+    const [hit] = await engine.call('search', 'basil', null, { space: 'default' }, 0, 30)
     // HTML, as the server's search answers.
     expect(hit?.excerpt).toContain('&lt;<mark>basil</mark>&gt;')
     expect(await engine.call('countElsewhere', 'basil', 'default')).toBe(0)

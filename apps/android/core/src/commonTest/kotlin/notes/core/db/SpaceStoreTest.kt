@@ -10,7 +10,7 @@ class SpaceStoreTest {
         val spaces = SpaceStore(db) { now }
         spaces.create("Work", "briefcase", id = "s1")
         spaces.create("Home", "house", id = "s1")
-        assertEquals(listOf(Space("s1", "Work", 0, "briefcase")), spaces.list().drop(1))
+        assertEquals(listOf(Space("s1", "Work", 0, "briefcase", createdAt = now)), spaces.list().drop(1))
     }
 
     @Test

@@ -82,15 +82,24 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     },
     async list(filter, space) {
       const rows = await (await engine()).list(...filterArgs(filter), space)
-      return rows.map((r) => ({ id: r.id, title: r.title, preview: r.preview, updatedAt: r.updatedAt, locked: r.locked }))
+      return rows.map((r) => ({
+        id: r.id,
+        title: r.title,
+        preview: r.preview,
+        createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
+        locked: r.locked,
+        revision: r.revision ?? null,
+        spaceId: r.spaceId,
+      }))
     },
     async lockedCount(space) {
       return (await engine()).lockedCount(space)
     },
-    async search(query, filter, scope, limit) {
+    async search(query, filter, scope, offset, limit) {
       const space = scope && 'space' in scope ? scope.space : null
       const exceptSpace = scope && 'exceptSpace' in scope ? scope.exceptSpace : null
-      const hits = await (await engine()).search(query, ...filterArgs(filter), space, exceptSpace, limit)
+      const hits = await (await engine()).search(query, ...filterArgs(filter), space, exceptSpace, offset, limit)
       return hits.map((h) => ({
         id: h.id,
         title: h.title,
@@ -124,7 +133,13 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
       return (await engine()).pendingNotes()
     },
     async spaces() {
-      return (await (await engine()).spaces()).map((s) => ({ id: s.id, name: s.name, icon: s.icon, noteCount: s.noteCount }))
+      return (await (await engine()).spaces()).map((s) => ({
+        id: s.id,
+        name: s.name,
+        icon: s.icon,
+        createdAt: s.createdAt,
+        noteCount: s.noteCount,
+      }))
     },
     async createSpace(id, name, icon) {
       await (await engine()).createSpace(id, name, icon)

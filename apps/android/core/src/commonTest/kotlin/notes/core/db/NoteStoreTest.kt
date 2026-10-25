@@ -56,6 +56,7 @@ class NoteStoreTest {
         assertNull(a.serverRevision)
         assertEquals(listOf("b", "a"), store.list().map { it.id })
         assertEquals("Milk\nBread", store.list()[1].preview)
+        assertEquals(NoteSummary("a", "Groceries", "Milk\nBread", 1_000, createdAt = 1_000), store.list()[1])
     }
 
     @Test
@@ -121,6 +122,7 @@ class NoteStoreTest {
         store.save("other", "Unrelated", "Nothing here\n")
         assertEquals(listOf("title", "body"), store.search("cafe").map { it.id })
         assertEquals(listOf("title", "body"), store.search("caf").map { it.id })
+        assertEquals(listOf("body"), store.search("cafe", limit = 1, offset = 1).map { it.id })
         assertEquals(listOf("body"), store.search("café main").map { it.id })
         val hit = store.search("main").single()
         assertEquals("Visit the café on ${Search.MARK_OPEN}Main${Search.MARK_CLOSE}", hit.excerpt)

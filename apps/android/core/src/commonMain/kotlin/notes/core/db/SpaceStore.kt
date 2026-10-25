@@ -34,7 +34,7 @@ object Spaces {
  * A space as this device has it, with how many live notes are in it here.
  * [icon] is a key into the app's set; "" for the default one.
  */
-data class Space(val id: String, val name: String, val noteCount: Int, val icon: String = "")
+data class Space(val id: String, val name: String, val noteCount: Int, val icon: String = "", val createdAt: Long = 0)
 
 /** A space change waiting to go to the server. */
 class SpaceChange internal constructor(val id: String, val name: String, val icon: String, val delete: Boolean)
@@ -50,12 +50,12 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
         sql.query(
             """
             SELECT s.id, s.name,
-                (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon
+                (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.created_at
             FROM spaces s WHERE s.pending_delete = 0
             ORDER BY s.id != ?, lower(s.name), s.id
             """,
             Spaces.DEFAULT
-        ) { Space(it.getText(0), it.getText(1), it.getLong(2).toInt(), it.getText(3)) }
+        ) { Space(it.getText(0), it.getText(1), it.getLong(2).toInt(), it.getText(3), it.getLong(4)) }
     }
 
     /**

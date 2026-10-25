@@ -33,7 +33,11 @@ data class NoteSummary(
     val title: String,
     val preview: String,
     val updatedAt: Long,
-    val locked: Boolean = false
+    val locked: Boolean = false,
+    val createdAt: Long = 0,
+    /** Null until the server has the note. */
+    val revision: Long? = null,
+    val spaceId: String = Spaces.DEFAULT
 )
 
 /** Narrows the list and search; null shows every note. */
@@ -115,7 +119,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         val (cond, args) = filter.sql() and space?.let { SpaceScope.In(it) }.sql()
         sql.query(
             """
-            SELECT n.id, n.title, n.updated_at, f.body_text, substr(n.content, 1, ?) = ?
+            SELECT n.id, n.title, n.updated_at, f.body_text, substr(n.content, 1, ?) = ?,
+                n.created_at, n.server_revision, n.space_id
             FROM notes n LEFT JOIN notes_fts f ON f.rowid = n.seq
             WHERE n.deleted_at IS NULL AND $cond
             ORDER BY n.updated_at DESC, n.id DESC
@@ -129,7 +134,10 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 it.getText(1),
                 previewOf(it.textOrNull(3).orEmpty()),
                 it.getLong(2),
-                it.getLong(4) == 1L
+                it.getLong(4) == 1L,
+                it.getLong(5),
+                it.longOrNull(6),
+                it.getText(7)
             )
         }
     }
@@ -147,7 +155,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         input: String,
         filter: NoteFilter? = null,
         limit: Int = 50,
-        scope: SpaceScope? = null
+        scope: SpaceScope? = null,
+        offset: Int = 0
     ): List<SearchHit> {
         val match = Search.buildQuery(input)
         if (match.isEmpty()) return emptyList()
@@ -159,8 +168,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                     n.space_id
                 FROM notes_fts JOIN notes n ON n.seq = notes_fts.rowid
                 WHERE notes_fts MATCH ? AND n.deleted_at IS NULL AND $cond
-                ORDER BY bm25(notes_fts, ?, ?), n.updated_at DESC
-                LIMIT ?
+                ORDER BY bm25(notes_fts, ?, ?), n.updated_at DESC, n.id DESC
+                LIMIT ? OFFSET ?
                 """,
                 Search.MARK_OPEN,
                 Search.MARK_CLOSE,
@@ -170,7 +179,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 *args.toTypedArray(),
                 Search.TITLE_WEIGHT,
                 Search.CONTENT_WEIGHT,
-                limit
+                limit,
+                offset
             ) {
                 SearchHit(
                     it.getText(0),

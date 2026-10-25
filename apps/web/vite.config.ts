@@ -8,6 +8,7 @@ import { defineConfig } from 'vitest/config'
 const outDir = resolve(import.meta.dirname, '../../server/internal/web/dist')
 // The sync engine, from Kotlin (apps/android/core); `pnpm core` builds it.
 const core = resolve(import.meta.dirname, '../android/core/build/dist/js/productionLibrary/notes-android-core.mjs')
+const sqliteNode = resolve(import.meta.dirname, 'node_modules/@sqlite.org/sqlite-wasm/dist/node.mjs')
 const server = process.env.NOTESD_SERVER ?? 'http://127.0.0.1:8080'
 
 export default defineConfig({
@@ -67,8 +68,9 @@ export default defineConfig({
           environment: 'jsdom',
           setupFiles: ['test/setup.ts'],
         },
+        // The Node build in jsdom too, for tests on the engine: the browser one fetches its .wasm.
+        resolve: { alias: { '@sqlite.org/sqlite-wasm': sqliteNode } },
       },
-      // Node, not jsdom: sqlite-wasm loads its .wasm from disk only there.
       { extends: true, test: { name: 'engine', include: ['test/engine/**/*.test.ts'], environment: 'node' } },
     ],
   },

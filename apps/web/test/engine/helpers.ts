@@ -7,7 +7,8 @@ import { syncTiming } from '../../src/offline/scheduler'
 import type { Engine } from '../../src/offline/tab'
 import { createOwner, startServer, type TestServer } from '../server'
 
-const sqlite = sqlite3InitModule()
+// On first use: most app tests never start an engine.
+let sqlite: ReturnType<typeof sqlite3InitModule> | undefined
 const defaults = { ...syncTiming }
 
 /**
@@ -19,7 +20,7 @@ export function inProcessEngine(user: string, csrfToken: string): Engine & { eve
   const events: EngineEvent[] = []
   const host = engineHost(
     async () => {
-      const s = await sqlite
+      const s = await (sqlite ??= sqlite3InitModule())
       return { db: new s.oo1.DB(':memory:'), capi: s.capi }
     },
     (event) => {
