@@ -1,0 +1,34 @@
+apps/android/core/src/commonMain/kotlin/notes/core/text/CodePoints.kt
+  s_d22cab8726b588::t_518edc99012f3b 24-25,29,32,35-43
+apps/android/core/src/jvmMain/kotlin/notes/core/db/JvmConnections.kt
+  s_d22cab8726b588::t_74d6de2fe5042c 26-27
+  s_d22cab8726b588::t_518edc99012f3b 23,28-37
+apps/android/core/src/commonMain/kotlin/notes/core/db/Database.kt
+  s_d22cab8726b588::t_518edc99012f3b 88-95
+apps/android/README.md
+  s_d22cab8726b588::t_518edc99012f3b 21
+apps/android/core/src/commonTest/kotlin/notes/core/db/SearchQueryTest.kt
+  s_d22cab8726b588::t_518edc99012f3b 20-22
+docs/architecture.md
+  s_d22cab8726b588::t_518edc99012f3b 178
+apps/android/core/src/commonTest/kotlin/notes/core/db/TestDatabase.kt
+  s_d22cab8726b588::t_518edc99012f3b 11-15
+apps/android/core/src/jsMain/kotlin/notes/core/db/DirectConnections.kt
+  s_d22cab8726b588::t_74d6de2fe5042c 20-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "29628335ade2f2b324d8a44f87bcb93de024fc4c",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
