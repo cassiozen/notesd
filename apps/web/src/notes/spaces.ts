@@ -1,6 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
-import { spaces as api } from '../api/spaces'
 import type { Space } from '../api/types'
+import { notesSource } from './source'
 
 /** Every install has this space (architecture §7.7); it can be renamed, never deleted. */
 export const DEFAULT_SPACE = 'default'
@@ -29,8 +29,8 @@ function set(next: Space[]) {
 /** Fetches the list again; failures keep what was there. */
 export function reloadSpaces(): Promise<void> {
   const n = ++fetches
-  loading = api.list().then(
-    ({ spaces }) => {
+  loading = notesSource().spaces.list().then(
+    (spaces) => {
       if (n === fetches) set(spaces)
     },
     () => {
@@ -65,13 +65,13 @@ export function spaceName(list: Space[] | null, id: string): string {
 
 /** Creates a space (a new id) or renames one, keeping the list in step. Without icon, it stays as it is. */
 export async function putSpace(id: string, name: string, icon?: string): Promise<Space> {
-  const stored = await api.put(id, name, icon)
+  const stored = await notesSource().spaces.put(id, name, icon)
   await reloadSpaces()
   return stored
 }
 
 export async function deleteSpace(id: string): Promise<void> {
-  await api.remove(id)
+  await notesSource().spaces.remove(id)
   await reloadSpaces()
 }
 

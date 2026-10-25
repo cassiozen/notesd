@@ -83,7 +83,8 @@ matters.
 src/
   api/        fetch wrapper (CSRF token, typed errors, offline detection), endpoints
   auth/       auth gate state, onboarding, sign in
-  notes/      split view: tags panel, list, editor pane, store, saver, search, tag extractor
+  notes/      split view: tags panel, list, editor pane, store, saver, search, tag extractor;
+              source.ts is where they read and write (online-source.ts: the server)
   editor/     Tiptap setup, Markdown ⇄ document, toolbar and text styles, tag styling and suggestions
   settings/   appearance, password, signed-in devices, sign out
   ui/         design-system primitives

@@ -8,7 +8,7 @@ import { Toast } from '../ui/toast'
 import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
-import type { NoteSaver } from './saver'
+import type { Saver } from './source'
 import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
 import { NotesProvider, useNotes, type ListFilter } from './store'
 import { TagsPanel } from './tags-panel'
@@ -51,7 +51,7 @@ function ShellView({ username }: { username: string }) {
     useNotes()
   const spaces = useSpaces()
   // A note the server doesn't have yet: open, but not in the URL until it's saved.
-  const [draft, setDraft] = useState<NoteSaver | null>(null)
+  const [draft, setDraft] = useState<Saver | null>(null)
   const [query, setQuery] = useState('')
   const [notice, setNotice] = useState<Notice | null>(null)
   // New space…, from the sidebar's switcher.
@@ -166,7 +166,7 @@ function ShellView({ username }: { username: string }) {
     navigate(next ? `/notes/${next.id}` : '/')
   }
 
-  const deleteNote = (saver: NoteSaver) => {
+  const deleteNote = (saver: Saver) => {
     const id = saver.id
     leave(id)
     // An untouched new note just disappears (the pane releases it).
@@ -179,7 +179,7 @@ function ShellView({ username }: { username: string }) {
     })
   }
 
-  const moveNote = (saver: NoteSaver, spaceId: string) => {
+  const moveNote = (saver: Saver, spaceId: string) => {
     leave(saver.id)
     move(saver, spaceId)
     setNotice({ id: saver.id, text: `Moved to ${spaceName(spaces, spaceId)}`, undo: false })

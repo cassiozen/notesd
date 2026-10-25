@@ -10,13 +10,13 @@ import { MoreIcon, ShareIcon } from '../ui/icons'
 import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
 import { useEmailSettings } from './email-settings'
-import type { NoteSaver } from './saver'
+import type { Saver } from './source'
 import { SpaceIcon } from './space-icon'
 import { useSpaces } from './spaces'
 import styles from './share.module.css'
 
 /** The note as one Markdown file: the title as a heading, then the body. */
-function exportMarkdown(saver: NoteSaver): string {
+function exportMarkdown(saver: Saver): string {
   const { title, content } = saver.fields()
   return title.trim() ? `# ${title.trim()}\n\n${content}` : content
 }
@@ -35,7 +35,7 @@ export function NoteMenu({
   onDelete,
   onMove,
 }: {
-  saver: NoteSaver
+  saver: Saver
   mobile: boolean
   onDelete?: () => void
   onMove: (spaceId: string) => void
@@ -244,7 +244,7 @@ function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () 
   )
 }
 
-function EmailDialog({ saver, from, onClose }: { saver: NoteSaver; from: string; onClose: () => void }) {
+function EmailDialog({ saver, from, onClose }: { saver: Saver; from: string; onClose: () => void }) {
   const [to, setTo] = useState('')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)

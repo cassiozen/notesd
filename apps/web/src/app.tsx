@@ -3,12 +3,17 @@ import { AuthLayout } from './auth/auth-layout'
 import { Login, LoginForm } from './auth/login'
 import { Onboarding } from './auth/onboarding'
 import { hadSession } from './auth/session-hint'
+import { onlineSource } from './notes/online-source'
 import { Shell } from './notes/shell'
+import { setNotesSource } from './notes/source'
 import { ShellSkeleton } from './notes/shell-skeleton'
 import { Button } from './ui/button'
 import { Dialog } from './ui/dialog'
 import { Kicker } from './ui/kicker'
 import styles from './auth/auth.module.css'
+
+// Every session reads and writes on the server.
+setNotesSource(onlineSource)
 
 export function App() {
   return (

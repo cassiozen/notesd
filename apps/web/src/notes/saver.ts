@@ -6,6 +6,7 @@ import { imageIds } from '../images/ref'
 import { LockedError, decryptBody, encryptBody, isLocked } from '../locks/crypto'
 import { lockSession } from '../locks/session'
 import type { SaveState } from '../ui/status-pill'
+import type { Saver, SaverHooks, SaverInit } from './source'
 import { DEFAULT_SPACE } from './spaces'
 
 export type Fields = { title: string; content: string }
@@ -68,13 +69,6 @@ export async function openNote(note: Note): Promise<Opened> {
   return { note: { ...note, content: await decryptBody(key, note.content) }, locked: true, envelope: note.content }
 }
 
-type Hooks = {
-  /** A save landed: update the grid. */
-  saved?: (id: string, fields: Fields, result: MutationResult, locked: boolean, spaceId: string) => void
-  /** A new note was created by resolving a conflict. */
-  copied?: (saver: NoteSaver) => void
-}
-
 /**
  * The editor saves canonical Markdown, so the server's text is compared in
  * that form too: "* a" stored elsewhere isn't a local change to "- a".
@@ -95,7 +89,7 @@ const KEEPALIVE_LIMIT = 60_000
  * request in flight, and edits made meanwhile go out afterwards against the
  * revision it returned.
  */
-export class NoteSaver {
+export class NoteSaver implements Saver {
   readonly id: string
   private conflictOf: string | undefined
   private revision: number
@@ -137,20 +131,8 @@ export class NoteSaver {
   private snapshot: Snapshot
 
   constructor(
-    init: {
-      id: string
-      /** Plain text: a locked note's body already decrypted. */
-      fields: Fields
-      revision?: number
-      updatedAt?: number
-      conflictOf?: string
-      blank?: Fields
-      locked?: boolean
-      /** The locked body as stored, when the note came from the server. */
-      envelope?: string | null
-      spaceId?: string
-    },
-    private hooks: Hooks = {},
+    init: SaverInit,
+    private hooks: SaverHooks = {},
   ) {
     this.id = init.id
     this.conflictOf = init.conflictOf

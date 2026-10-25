@@ -1,7 +1,6 @@
 import type { Editor } from '@tiptap/core'
 import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
-import { notes as api } from '../api/notes'
 import { ChecklistTool, ImageTool, IndentTools, LinkForm, LinkTool, MarkTools, NoteContent, TextStyles, Tool, replaceNote, useNoteEditor } from '../editor/editor'
 import { noteFields, noteSummary, titleOf } from '../editor/note-doc'
 import { ImageError } from '../images/prepare'
@@ -15,7 +14,8 @@ import { lockSession, useLockStatus } from '../locks/session'
 import { UnlockForm } from '../locks/unlock'
 import { StatusPill } from '../ui/status-pill'
 import { offlineNotice, useStatusShown } from './save-status'
-import { openNote, type NoteSaver } from './saver'
+import { openNote } from './saver'
+import { notesSource, type Saver } from './source'
 import { NoteMenu } from './share'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
@@ -26,17 +26,17 @@ type Props = {
   /** An existing note, loaded by id… */
   id?: string | undefined
   /** …or a new one the server doesn't have yet. */
-  draft?: NoteSaver | undefined
+  draft?: Saver | undefined
   mobile: boolean
   onBack: () => void
   onNew: () => void
   /** The draft reached the server; it can go in the URL now. */
   onCreated: (id: string) => void
   /** Open another not-yet-saved note (a recovered copy). */
-  onOpenDraft: (saver: NoteSaver) => void
-  onDelete: (saver: NoteSaver) => void
+  onOpenDraft: (saver: Saver) => void
+  onDelete: (saver: Saver) => void
   /** Move the note to another space (§7.7). */
-  onMove: (saver: NoteSaver, spaceId: string) => void
+  onMove: (saver: Saver, spaceId: string) => void
   /** The note is gone for good (deleted elsewhere, discarded). */
   onGone: (id: string) => void
 }
@@ -50,8 +50,8 @@ type Load =
    * [draft]: a new note, not on the server yet, kept until unlocked.
    * [keyFailed]: the key in memory didn't open it (the keyring was reset since).
    */
-  | { kind: 'locked'; title: string; draft?: NoteSaver; keyFailed: boolean }
-  | { kind: 'ready'; saver: NoteSaver }
+  | { kind: 'locked'; title: string; draft?: Saver; keyFailed: boolean }
+  | { kind: 'ready'; saver: Saver }
 
 export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDraft, onDelete, onMove, onGone }: Props) {
   const { existingSaver, saverFor, release, removed, space, setSpace } = useNotes()
@@ -94,7 +94,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   useEffect(() => {
     if (load.kind !== 'loading' || !id) return
     let cancelled = false
-    api.get(id).then(
+    notesSource().get(id).then(
       async (stored) => {
         let opened
         try {
@@ -205,12 +205,12 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   )
 }
 
-function lockedDraft(saver: NoteSaver): Load {
+function lockedDraft(saver: Saver): Load {
   return { kind: 'locked', title: saver.fields().title, draft: saver, keyFailed: false }
 }
 
 /** The list row's title and preview; a locked note's body stays out of the list. */
-function summary(saver: NoteSaver, doc: Parameters<typeof noteSummary>[0]) {
+function summary(saver: Saver, doc: Parameters<typeof noteSummary>[0]) {
   const s = noteSummary(doc)
   return saver.isLocked() ? { ...s, preview: '' } : s
 }
@@ -230,7 +230,7 @@ function BackButton({ onClick }: { onClick: () => void }) {
 }
 
 type EditorProps = {
-  saver: NoteSaver
+  saver: Saver
   isDraft: boolean
   mobile: boolean
   onBack: () => void
@@ -239,7 +239,7 @@ type EditorProps = {
   onDelete: () => void
   onMove: (spaceId: string) => void
   onGone: () => void
-  onOpenDraft: (saver: NoteSaver) => void
+  onOpenDraft: (saver: Saver) => void
 }
 
 const APP_TITLE = 'notesd'
