@@ -6,6 +6,8 @@ import { transformWithOxc } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 const outDir = resolve(import.meta.dirname, '../../server/internal/web/dist')
+// The sync engine, from Kotlin (apps/android/core); `pnpm core` builds it.
+const core = resolve(import.meta.dirname, '../android/core/build/dist/js/productionLibrary/notes-android-core.mjs')
 const server = process.env.NOTESD_SERVER ?? 'http://127.0.0.1:8080'
 
 export default defineConfig({
@@ -40,6 +42,10 @@ export default defineConfig({
       },
     },
   ],
+  resolve: { alias: { '@notes/core': core } },
+  // Pre-bundling moves sqlite-wasm away from the .wasm it loads relative to itself.
+  optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
+  worker: { format: 'es' },
   build: { outDir, emptyOutDir: true },
   server: {
     // changeOrigin must stay false (the string shorthand turns it on): the
@@ -50,8 +56,20 @@ export default defineConfig({
     ),
   },
   test: {
-    environment: 'jsdom',
     globalSetup: ['test/global-setup.ts'],
-    setupFiles: ['test/setup.ts'],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: 'app',
+          include: ['src/**/*.test.ts', 'test/**/*.test.{ts,tsx}'],
+          exclude: ['test/engine/**'],
+          environment: 'jsdom',
+          setupFiles: ['test/setup.ts'],
+        },
+      },
+      // Node, not jsdom: sqlite-wasm loads its .wasm from disk only there.
+      { extends: true, test: { name: 'engine', include: ['test/engine/**/*.test.ts'], environment: 'node' } },
+    ],
   },
 })

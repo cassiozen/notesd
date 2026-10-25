@@ -1,4 +1,5 @@
 import java.time.Duration
+import org.jetbrains.kotlin.gradle.dsl.JsSourceMapEmbedMode
 
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
@@ -95,7 +96,11 @@ kotlin {
         binaries.library()
         generateTypeScriptDefinitions()
         useEsModules()
-        compilerOptions { target.set("es2015") }
+        compilerOptions {
+            target.set("es2015")
+            // Vite and the browser's devtools read the Kotlin from the maps; the .kt files aren't served.
+            sourceMapEmbedSources.set(JsSourceMapEmbedMode.SOURCE_MAP_SOURCE_CONTENT_ALWAYS)
+        }
     }
 
     compilerOptions {

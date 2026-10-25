@@ -19,3 +19,7 @@ xcuserdata/
 /apps/ios/NotesCore/.build/
 /apps/ios/NotesCore/.swiftpm/
 /apps/ios/build/
+
+# Playwright (apps/web/e2e)
+/apps/web/test-results/
+/apps/web/playwright-report/

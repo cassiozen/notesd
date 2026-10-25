@@ -4,5 +4,5 @@
     "lib": ["es2023", "dom", "dom.iterable"],
     "types": ["node", "vite/client"]
   },
-  "include": ["vite.config.ts", "test"]
+  "include": ["vite.config.ts", "playwright.config.ts", "test", "e2e"]
 }

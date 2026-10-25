@@ -52,13 +52,15 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
         ) { Space(it.getText(0), it.getText(1), it.getLong(2).toInt(), it.getText(3)) }
     }
 
-    /** Creates a space here, to be sent on the next sync. Returns its id. */
-    suspend fun create(name: String, icon: String = ""): String {
+    /**
+     * Creates a space here, to be sent on the next sync. Returns its id. Creating [id] again
+     * changes nothing, so a caller that can't tell whether a create went through can resend it.
+     */
+    suspend fun create(name: String, icon: String = "", id: String = Uuid7.generate()): String {
         val stored = Spaces.checked(name)
-        val id = Uuid7.generate()
         db.write { sql ->
             sql.exec(
-                "INSERT INTO spaces (id, name, icon, created_at, dirty) VALUES (?, ?, ?, ?, 1)",
+                "INSERT INTO spaces (id, name, icon, created_at, dirty) VALUES (?, ?, ?, ?, 1) ON CONFLICT (id) DO NOTHING",
                 id,
                 stored,
                 icon,

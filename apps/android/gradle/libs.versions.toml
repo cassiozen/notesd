@@ -15,7 +15,7 @@ core-ktx = "1.19.1"
 lifecycle = "2.11.0"
 robolectric = "4.17"
 sqlite = "2.7.1"
-# The SQLite core's JS code runs on.
+# The SQLite core's JS tests run on; keep it the web app's (apps/web/package.json).
 sqlite-wasm = "3.53.4-build2"
 okhttp = "5.5.0"
 work = "2.12.0"

@@ -6,7 +6,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
-import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import notes.core.db.NoteFilter
 import notes.core.db.SyncEvent
@@ -155,7 +154,7 @@ class SyncTest {
         b.save("n", "T", "from b\n")
         assertEquals(SyncOutcome.Done, a.sync())
         b.engine.store.faultAfterCopy = { throw IllegalStateException("process killed") }
-        assertTrue(runCatching { b.sync() }.isFailure)
+        assertEquals(SyncOutcome.Failed, b.sync())
         assertEquals(setOf(NoteView("n", "T", "from b\n", null)), b.live())
         assertEquals(true, b.note("n")!!.dirty)
         b.restart()

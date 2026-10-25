@@ -22,6 +22,8 @@ jobs:
           # Gradle's dependencies, plugins and wrapper; without them setup can take 20 min on a slow day.
           # basic: the MIT actions/cache wrapper; the default provider is a paid preview for private repos.
           cache-provider: basic
+      # The e2e tests' browser, with the system libraries it needs.
+      - run: mise run install && cd apps/web && mise exec -- pnpm exec playwright install --with-deps chromium
       - run: mise run check
       - run: mise run test:android
 

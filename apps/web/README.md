@@ -10,7 +10,8 @@ see [docs/web.md](../../docs/web.md).
 ## Dev loop
 
 From the repo root, `mise run dev` starts the API server (rebuilt on Go
-changes) and Vite at http://localhost:5173. See
+changes), Vite at http://localhost:5173, and Gradle rebuilding the sync
+engine (below) when its Kotlin changes. See
 [docs/development.md](../../docs/development.md).
 
 Vite proxies `/api`, `/healthz` and `/readyz` to `http://127.0.0.1:8080`.
@@ -31,7 +32,11 @@ address it logs.
 pnpm lint         # oxlint, warnings are errors
 pnpm typecheck    # app, and config/test files (tsconfig.node.json)
 pnpm test         # Vitest
+pnpm e2e          # Playwright: Chromium, Firefox and WebKit (--project=chromium for one)
 ```
+
+`typecheck`, `test`, `e2e`, `dev` and `build` first build the sync engine
+with Gradle (`pnpm core`), so they need the JDK from `mise.toml`.
 
 Most tests are integration tests: they render the whole `<App/>` in jsdom
 against a real notesd. The suite builds the server once per run
@@ -40,6 +45,15 @@ with an empty data directory. Conflicts are tested the real way, by editing
 the same note through the API as a second client. A few things jsdom can't
 do (moving focus inside ProseMirror, Backspace at a block boundary, layout)
 are checked by hand in a browser.
+
+`test/engine/` runs the sync engine in Node (the `engine` Vitest project), on
+an in-memory sqlite-wasm database, against a real notesd. `e2e/` runs it in
+real browsers, where it needs OPFS, workers and Web Locks: one engine for
+several tabs, a reload, the tab running it closing. Those tests use
+persistent profiles, because WebKit has no OPFS in an ephemeral one (nor
+Safari in a private window). Playwright's Firefox didn't start on macOS 27
+when this was written; run that project in the Linux image
+(`mcr.microsoft.com/playwright`).
 
 ## Build and embedding
 
@@ -72,7 +86,9 @@ src/
   settings/   appearance, password, signed-in devices, sign out
   ui/         design-system primitives
   styles/     tokens (light and dark), base styles, fonts
+  offline/    the sync engine's worker and the tabs' side of it (below)
 test/         integration tests and the test server harness
+e2e/          Playwright tests
 ```
 
 ## Editing
@@ -164,6 +180,29 @@ of React, so saves outlive the editor.
 New notes exist only in the browser until their first save with content, and
 go into the URL only once the server has them. Leaving a new note nobody
 typed into drops it without a request.
+
+## Sync engine (in progress)
+
+The web app is becoming offline-first like the phone apps, on the same sync
+engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
+`@notes/core`. Nothing on screen uses it yet.
+
+- **One worker per origin** (`src/offline/worker.ts`) owns the database:
+  sqlite-wasm on OPFS through its SAH-pool VFS, one file per user, in WAL
+  mode. OPFS's synchronous handles exist only in dedicated workers and are
+  exclusive, so a single worker can hold them.
+- **Tabs** (`src/offline/tab.ts`): the one holding the `notesd-engine` Web
+  Lock starts the worker; the others send their calls over a
+  BroadcastChannel. When it closes, the next tab to get the lock starts a
+  new worker, and unanswered calls are sent to it again. That's safe
+  because the engine's writes are idempotent, except `recover`, which fails
+  with `EngineRestarted` instead.
+- **Calls** (`src/offline/protocol.ts`) are coarse (list, search, save,
+  sync…), so no SQL statement crosses a thread.
+- **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
+  after an edit, when a tab comes back or goes online, and every minute.
+  Failures back off from 2 s to 5 min. Signed out, it waits for the next
+  sign-in's token.
 
 ## Not built yet
 
