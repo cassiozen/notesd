@@ -101,13 +101,17 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
             textContainerInset.right = side
         }
         super.layoutSubviews()
-        if let window {
-            let frame = convert(bounds, to: window)
-            let now = (leading: frame.minX.rounded(), trailing: (window.bounds.width - frame.maxX).rounded())
-            if margins.map({ $0 != now }) ?? true {
-                margins = now
-                onMargins?(now.leading, now.trailing)
-            }
+        reportMargins()
+    }
+
+    /// After layout, and when the view moves without resizing (the sidebar pushing the note aside).
+    func reportMargins() {
+        guard let window else { return }
+        let frame = convert(bounds, to: window)
+        let now = (leading: frame.minX.rounded(), trailing: (window.bounds.width - frame.maxX).rounded())
+        if margins.map({ $0 != now }) ?? true {
+            margins = now
+            onMargins?(now.leading, now.trailing)
         }
     }
 

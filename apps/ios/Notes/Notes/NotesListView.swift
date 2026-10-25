@@ -262,6 +262,7 @@ struct NotesListView: View {
             Button("Delete Note", systemImage: "trash", role: .destructive) { delete(id) }
         }
         .accessibilityAction(named: "Delete note") { delete(id) }
+        .accessibilityAddTraits(nav.wide && nav.openNote == id ? .isSelected : [])
     }
 
     /// The count, and what's wrong with sync when something is; the compose button at the end.

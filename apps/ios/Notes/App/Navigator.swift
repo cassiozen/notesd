@@ -34,7 +34,8 @@ final class Navigator {
 
     /// From the list: the note replaces what was beside it rather than stacking.
     func open(_ id: String, startTag: String? = nil, isNew: Bool = false) {
-        if !isNew && openNote == id && path.count == 1 { return }
+        // Narrow, mid-dismissal it's still set but on its way out: opening it again keeps it.
+        if !isNew && openNote == id && path.count == 1 && showsDetail { return }
         path = [.note(id: id, startTag: startTag, isNew: isNew)]
     }
 

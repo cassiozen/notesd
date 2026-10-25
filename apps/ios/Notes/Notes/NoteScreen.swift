@@ -79,6 +79,12 @@ struct NoteScreen: View {
             } else if model.document != nil {
                 EditorView(model: model, controller: controller, tags: model.tags, autofocus: isNew)
                     .ignoresSafeArea(.container, edges: .bottom)
+                    // Moved, not resized (the sidebar's offset), the text view doesn't lay out: the bar follows it here.
+                    .onGeometryChange(for: CGRect.self) {
+                        $0.frame(in: .global)
+                    } action: { _ in
+                        DispatchQueue.main.async { controller.view?.reportMargins() }
+                    }
             } else {
                 Spacer()
             }

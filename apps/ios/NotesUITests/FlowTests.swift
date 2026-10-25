@@ -216,7 +216,7 @@ final class FlowTests: XCTestCase {
     func testNotesOpenBesideTheListWhenWide() throws {
         app.launch()
         XCTAssertTrue(app.staticTexts["No notes yet"].waitForExistence(timeout: 5))
-        guard app.staticTexts["Pick a note, or start one."].exists else {
+        guard app.staticTexts["Pick a note, or start one."].waitForExistence(timeout: 2) else {
             throw XCTSkip("A narrow window: notes open over the list")
         }
         writeNewNote("First note\nBeside the list.")

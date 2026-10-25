@@ -6,8 +6,8 @@ whenever it can. It runs on iOS 26 or later.
 
 It does what the web and Android apps do, except that there's no iPad
 layout. On an iPhone Duo it uses both displays: folded, it's the phone
-layout; unfolded, the list and the open note sit side by side, split at the
-fold while it's partly folded. Folding or unfolding keeps the note you're
+layout; unfolded, the list and the open note sit side by side (split at the
+fold while it's partly folded, on iOS 27.1 or later). Folding or unfolding keeps the note you're
 writing open.
 
 ## Install
