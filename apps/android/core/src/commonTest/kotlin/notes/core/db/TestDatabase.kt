@@ -8,8 +8,11 @@ expect suspend fun openTestDatabase(): TestDatabase
 
 class TestDatabase(val db: Database, private val cleanUp: () -> Unit) {
     fun close() {
-        db.close()
-        cleanUp()
+        try {
+            db.close()
+        } finally {
+            cleanUp()
+        }
     }
 }
 

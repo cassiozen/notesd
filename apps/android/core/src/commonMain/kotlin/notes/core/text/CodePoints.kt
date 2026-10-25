@@ -21,17 +21,26 @@ internal fun String.codePointBeforeIndex(i: Int): Int {
 }
 
 internal fun String.codePointArray(): IntArray {
-    val out = ArrayList<Int>(length)
+    val out = IntArray(length)
+    var n = 0
     var i = 0
     while (i < length) {
         val cp = codePointAtIndex(i)
-        out += cp
+        out[n++] = cp
         i += charCount(cp)
     }
-    return out.toIntArray()
+    return out.copyOf(n)
 }
 
-internal fun String.codePointLength(): Int = codePointArray().size
+internal fun String.codePointLength(): Int {
+    var n = 0
+    var i = 0
+    while (i < length) {
+        i += charCount(codePointAtIndex(i))
+        n++
+    }
+    return n
+}
 
 /** The char index [count] code points into the string. */
 internal fun String.offsetOfCodePoint(count: Int): Int {

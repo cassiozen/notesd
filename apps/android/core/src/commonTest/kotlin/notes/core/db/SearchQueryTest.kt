@@ -17,6 +17,9 @@ class SearchQueryTest {
             "title:secret -x ^y *" to "\"title\"* \"secret\"* \"x\"* \"y\"*",
             "café naïve" to "\"café\"* \"naïve\"*",
             "日本語" to "\"日本語\"*",
+            // Outside the BMP: a letter (a surrogate pair) stays in its word, an emoji splits.
+            "𝐀bc def" to "\"𝐀bc\"* \"def\"*",
+            "a😀b" to "\"a\"* \"b\"*",
             "--- ***" to ""
         )
         for ((input, want) in cases) assertEquals(want, Search.buildQuery(input), input)

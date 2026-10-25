@@ -17,7 +17,14 @@ private class DirectConnections(private val db: dynamic, private val capi: dynam
 
     override suspend fun <T> run(block: suspend () -> T): T = block()
 
-    override suspend fun openWriter(): SQLiteConnection = DirectConnection(db, capi)
+    private var opened = false
+
+    // Closing the connection closes [db], which only its opener can open again.
+    override suspend fun openWriter(): SQLiteConnection {
+        check(!opened) { "This database was closed; open it again for a new Database" }
+        opened = true
+        return DirectConnection(db, capi)
+    }
 
     override suspend fun openReader(): SQLiteConnection = error("One connection in the browser")
 }

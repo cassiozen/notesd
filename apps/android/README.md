@@ -18,7 +18,7 @@ Run from the repository root:
 | --- | --- |
 | `mise run build:android` | Debug APK in `app/build/outputs/apk/debug` |
 | `mise run release:android` | Release APK in `server/bin`, signed when `NOTESD_KEYSTORE` is set |
-| `mise run test:android` | All JVM and Robolectric tests, including sync against a real server |
+| `mise run test:android` | All JVM and Robolectric tests, including sync against a real server, and core's shared tests on JS |
 | `mise run lint:android` | ktlint and Android lint (warnings fail the build) |
 | `mise run screenshots:android` | Renders every screen to `app/build/screenshots` (light, dark, 200% text, two-pane, foldable) |
 

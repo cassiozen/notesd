@@ -15,8 +15,8 @@ import kotlinx.coroutines.withContext
 
 /**
  * Where a [Database]'s connections come from. The JVM opens a WAL writer and a
- * read-only reader on its own thread pool; the browser has one connection to a
- * worker (OPFS has no WAL), so reads queue behind writes there.
+ * read-only reader on its own thread pool; the browser has one connection, held
+ * exclusively by the worker that owns the file, so reads queue behind writes there.
  */
 interface Connections {
     /** False: reads share the writer and its lock. */
@@ -29,8 +29,6 @@ interface Connections {
     suspend fun openWriter(): SQLiteConnection
 
     suspend fun openReader(): SQLiteConnection
-
-    fun close(conn: SQLiteConnection) = conn.close()
 }
 
 /**
@@ -85,8 +83,14 @@ class Database(private val connections: Connections) : AutoCloseable {
 
     private suspend fun writerConnection(): SQLiteConnection = writer ?: run {
         val conn = connections.openWriter()
-        Migrations.apply(conn)
-        rebuildIfAsked(conn)
+        try {
+            Migrations.apply(conn)
+            rebuildIfAsked(conn)
+        } catch (e: Throwable) {
+            // Not kept, so the next call opens another: this one would be left open.
+            conn.close()
+            throw e
+        }
         writer = conn
         conn
     }
@@ -118,8 +122,8 @@ class Database(private val connections: Connections) : AutoCloseable {
     }
 
     override fun close() {
-        reader?.let(connections::close)
-        writer?.let(connections::close)
+        reader?.close()
+        writer?.close()
         reader = null
         writer = null
     }

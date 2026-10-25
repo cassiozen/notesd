@@ -20,16 +20,21 @@ private class JvmConnections(private val path: String, private val io: Coroutine
 
     override suspend fun openWriter(): SQLiteConnection {
         val conn = driver.open(path, SQLITE_OPEN_READWRITE or SQLITE_OPEN_CREATE)
-        conn.execSQL("PRAGMA journal_mode = WAL")
-        conn.execSQL("PRAGMA synchronous = NORMAL")
-        conn.execSQL("PRAGMA busy_timeout = 5000")
-        return conn
+        return conn.configured("PRAGMA journal_mode = WAL", "PRAGMA synchronous = NORMAL", "PRAGMA busy_timeout = 5000")
     }
 
-    override suspend fun openReader(): SQLiteConnection {
-        val conn = driver.open(path, SQLITE_OPEN_READONLY)
-        conn.execSQL("PRAGMA busy_timeout = 5000")
-        return conn
+    override suspend fun openReader(): SQLiteConnection =
+        driver.open(path, SQLITE_OPEN_READONLY).configured("PRAGMA busy_timeout = 5000")
+
+    // Database opens another on failure; this one mustn't stay open.
+    private fun SQLiteConnection.configured(vararg pragmas: String): SQLiteConnection {
+        try {
+            for (p in pragmas) execSQL(p)
+        } catch (e: Throwable) {
+            close()
+            throw e
+        }
+        return this
     }
 
     private companion object {
