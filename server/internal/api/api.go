@@ -32,25 +32,32 @@ type Config struct {
 	ResendURL string
 	// Version is the server's build version, shown to signed-in clients.
 	Version string
+	// UpdateRequest is the file an admin's update request leaves for the
+	// notesd-update service; empty when the server can't update itself.
+	UpdateRequest string
+	// ReleasesURL overrides where the newest release is looked up (tests).
+	ReleasesURL string
 }
 
 // Server serves the API and web app.
 type Server struct {
-	system  *database.DB // users, sessions and server-wide settings
-	users   *userdata.Registry
-	auth    *auth.Service
-	limiter *auth.Limiter
-	mailer  *mail.Client
-	log     *slog.Logger
-	cfg     Config
+	system   *database.DB // users, sessions and server-wide settings
+	users    *userdata.Registry
+	auth     *auth.Service
+	limiter  *auth.Limiter
+	mailer   *mail.Client
+	log      *slog.Logger
+	cfg      Config
+	releases *releases
 }
 
 // New returns a server over the system database and users' notes databases.
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
 	return &Server{
 		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
-		limiter: auth.NewLimiter(10, 15*time.Minute),
-		mailer:  mail.NewClient(cfg.ResendURL),
+		limiter:  auth.NewLimiter(10, 15*time.Minute),
+		mailer:   mail.NewClient(cfg.ResendURL),
+		releases: newReleases(cfg.ReleasesURL),
 	}
 }
 
@@ -80,6 +87,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PUT /api/v1/notes/{id}", s.authed(s.updateNote))
 	mux.Handle("DELETE /api/v1/notes/{id}", s.authed(s.deleteNote))
 	mux.Handle("POST /api/v1/notes/{id}/email", s.authed(s.emailNote))
+
+	mux.Handle("GET /api/v1/update", s.authed(s.updateStatus))
+	mux.Handle("POST /api/v1/update", s.authed(adminOnly(s.requestUpdate)))
 
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
 	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))

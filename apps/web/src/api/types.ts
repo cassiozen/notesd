@@ -101,6 +101,17 @@ export type ErrorBody = {
 /** The server's Resend settings for emailing notes; the key itself is never sent back. */
 export type EmailSettings = { configured: boolean; from: string; keyHint: string }
 
+/** GET /update. latest, newer and requested only when the server can update itself. */
+export type UpdateStatus = {
+  current: string
+  enabled: boolean
+  /** Only admins can start an update. */
+  editable: boolean
+  latest?: string
+  newer?: boolean
+  requested?: boolean
+}
+
 /** One wrapped copy of the locked-notes key (§10.1). The server can't open it. */
 export type LockKey = {
   id: string

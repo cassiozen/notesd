@@ -79,6 +79,7 @@ jobs:
         run: |
           cd server/bin
           rm -f notesd-dev
+          cp ../../scripts/notesd-update . # for Updating from Settings (docs/operations.md)
           sha256sum notesd-* > SHA256SUMS
           prerelease=""
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac

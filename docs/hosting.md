@@ -229,6 +229,7 @@ Set options with flags or environment variables. With Docker, use environment va
 | `--public-url` | `NOTESD_PUBLIC_URL` | Unset | External URL; HTTPS enables `Secure` cookies |
 | `--log-level` | `NOTESD_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `--log-format` | `NOTESD_LOG_FORMAT` | `text` | `text` or `json` |
+| `--self-update` | `NOTESD_SELF_UPDATE` | `false` | `true` lets admins update from Settings. systemd installs only, and it also needs the `notesd-update` units ([setup](operations.md#updating-from-settings)); not for Docker |
 | | `NOTESD_OWNER_USERNAME`, `NOTESD_OWNER_PASSWORD` | Unset | Create the account at startup ([details](#create-your-account)) |
 
 On machines with little memory, `GOMEMLIMIT=64MiB` makes notesd use less memory.

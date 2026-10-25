@@ -54,6 +54,7 @@ the list is its own screen and a category opens on top of it with a back button.
 | Server address (the web uses the address it's served from) | Server | device | ✓ | ✓ | ✓ |
 | Signed-in username | Server | account | ✓ | ✓ | ✓ |
 | Server version, with a link to releases | Server | – | ✓ | – | – |
+| Update to the newest release (admins; needs `NOTESD_SELF_UPDATE`) | Server | – | ✓ | – | – |
 | Connect to a server / Sign in again | Server | – | – | ✓ | ✓ |
 | Sign out | Server | – | ✓ | ✓ | ✓ |
 | Change password (+ `notesd reset-password` hint) | Server | account | ✓ | – | – |

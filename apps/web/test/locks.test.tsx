@@ -102,7 +102,8 @@ describe('locked notes', () => {
 
     expect(await within(list()).findByRole('heading', { name: /Locked/ })).toBeTruthy()
     await waitFor(() => expect(within(list()).queryByRole('link', { name: /^Groceries/ })).toBeNull())
-    expect(within(list()).getByRole('link', { name: /^Bank/ }).getAttribute('href')).toBe(`/notes/${id}`)
+    // find, not get: the list can be empty between Groceries leaving and the Locked results arriving.
+    expect((await within(list()).findByRole('link', { name: /^Bank/ })).getAttribute('href')).toBe(`/notes/${id}`)
   })
 
   it('locks again on request; opens with the lock password; edits stay encrypted', async () => {

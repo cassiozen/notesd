@@ -72,17 +72,18 @@ func main() {
 }
 
 type options struct {
-	dataDir   string
-	listen    string
-	publicURL string
-	logLevel  string
-	logFormat string
-	resendURL string
-	username  string
-	admin     bool
-	out       string
-	locked    bool
-	dryRun    bool
+	dataDir    string
+	listen     string
+	publicURL  string
+	logLevel   string
+	logFormat  string
+	resendURL  string
+	username   string
+	admin      bool
+	out        string
+	locked     bool
+	dryRun     bool
+	selfUpdate bool
 }
 
 func run(args []string) error {
@@ -102,6 +103,7 @@ func run(args []string) error {
 		fs.StringVar(&o.logLevel, "log-level", env("NOTESD_LOG_LEVEL", "info"), "debug, info, warn or error")
 		fs.StringVar(&o.logFormat, "log-format", env("NOTESD_LOG_FORMAT", "text"), "text or json")
 		fs.StringVar(&o.resendURL, "resend-url", env("NOTESD_RESEND_URL", ""), "Resend API base URL for emailing notes (default https://api.resend.com)")
+		fs.BoolVar(&o.selfUpdate, "self-update", env("NOTESD_SELF_UPDATE", "") == "true", "let admins update from Settings; needs the notesd-update service (docs/operations.md)")
 	case "create-owner", "remove-user":
 		usernameFlag("username")
 	case "add-user":
@@ -427,8 +429,12 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			return fmt.Errorf("%s: %w", u.Username, err)
 		}
 	}
+	cfg := api.Config{PublicURL: public, ResendURL: o.resendURL, Version: version}
+	if o.selfUpdate {
+		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
+	}
 	srv := &http.Server{
-		Handler:           api.New(system, users, authSvc, log, api.Config{PublicURL: public, ResendURL: o.resendURL, Version: version}).Handler(),
+		Handler:           api.New(system, users, authSvc, log, cfg).Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,

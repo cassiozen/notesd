@@ -1,0 +1,80 @@
+#!/bin/bash
+# Installs the newest notesd release when the web app asks (docs/operations.md, "Updating from
+# Settings"). Run as root by notesd-update.service:
+#
+#   notesd-update DATA_DIR [BINARY]
+#
+# notesd only leaves DATA_DIR/update-request; everything below is decided here: the release
+# comes from GitHub, is checked against its SHA256SUMS, and is never older than what runs.
+# The data directory and old binary are backed up to /var/backups/notesd first, and put back
+# if the new version doesn't start.
+set -euo pipefail
+
+data=${1:?usage: notesd-update DATA_DIR [BINARY]}
+bin=${2:-/usr/local/bin/notesd}
+repo=cassiozen/notesd
+service=notesd
+backups=/var/backups/notesd
+
+# First, so the .path unit doesn't start this again however it ends.
+rm -f "$data/update-request"
+
+case "$(uname -m)" in
+  x86_64) arch=amd64 ;;
+  aarch64 | arm64) arch=arm64 ;;
+  *) echo "unsupported architecture $(uname -m)" >&2; exit 1 ;;
+esac
+asset=notesd-linux-$arch
+
+latest=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+  | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+current=$("$bin" version | awk '{print $2}')
+if ! [[ $latest =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  echo "unexpected latest release '$latest'" >&2
+  exit 1
+fi
+if [ "$latest" = "$current" ] || [ "$(printf '%s\n' "$latest" "$current" | sort -V | tail -1)" != "$latest" ]; then
+  echo "notesd $current is up to date (latest release $latest)"
+  exit 0
+fi
+
+tmp=$(mktemp -d)
+trap 'rm -rf "$tmp"' EXIT
+url=https://github.com/$repo/releases/download/$latest
+curl -fsSL -o "$tmp/$asset" "$url/$asset"
+curl -fsSL -o "$tmp/SHA256SUMS" "$url/SHA256SUMS"
+(cd "$tmp" && grep " $asset\$" SHA256SUMS | sha256sum -c --quiet -)
+chmod 755 "$tmp/$asset"
+"$tmp/$asset" version
+
+echo "updating notesd $current → $latest"
+install -d -m 700 "$backups"
+backup=$backups/notesd-$current-$(date +%Y%m%d-%H%M%S)
+systemctl stop "$service"
+# Until the new binary is in place, a failure (a full disk, say) leaves the old one running again.
+trap 'rm -f "$backup.tgz" "$backup.bin"; systemctl start "$service"' ERR
+cp -a "$bin" "$backup.bin"
+tar czf "$backup.tgz" -C "$data" .
+trap 'install -m 755 "$backup.bin" "$bin"; systemctl start "$service"' ERR
+install -m 755 "$tmp/$asset" "$bin"
+trap - ERR
+# A failed start is checked below, so it's rolled back rather than ending the script here.
+systemctl start "$service" || true
+
+# Type=simple units report started at once; give it time to open (and upgrade) the database.
+sleep 10
+if systemctl is-active --quiet "$service"; then
+  echo "notesd $latest is running; backup in $backup.tgz"
+  # Each backup is a whole data directory: keep the newest three.
+  find "$backups" -name 'notesd-*.tgz' -printf '%T@ %p\n' | sort -rn | tail -n +4 | cut -d' ' -f2- |
+    while read -r old; do rm -f "$old" "${old%.tgz}.bin"; done
+  exit 0
+fi
+
+echo "notesd $latest didn't start; restoring $current" >&2
+systemctl stop "$service" || true
+install -m 755 "$backup.bin" "$bin"
+find "$data" -mindepth 1 -delete
+tar xzf "$backup.tgz" -C "$data"
+systemctl start "$service"
+exit 1
