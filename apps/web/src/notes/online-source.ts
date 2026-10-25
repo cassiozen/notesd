@@ -7,12 +7,15 @@ import type { NotesSource } from './source'
 const STALE_MS = 30_000
 
 let loadedAt = 0
+let lists = 0
 
 /** Everything on the server, as it is right now; nothing kept on this device. */
 export const onlineSource: NotesSource = {
   async list(filter, space, cursor) {
+    const n = ++lists
     const page = await notes.list(filter, space, cursor)
-    loadedAt = Date.now()
+    // A page from before a newer list call is dropped by the caller: it doesn't make the list fresh.
+    if (n === lists) loadedAt = Date.now()
     return page
   },
   get: (id) => notes.get(id),
@@ -37,6 +40,8 @@ export const onlineSource: NotesSource = {
     window.addEventListener('focus', onFocus)
     window.addEventListener('online', listener)
     return () => {
+      // The notes unmount (signed out): the next account's list hasn't loaded.
+      loadedAt = 0
       window.removeEventListener('focus', onFocus)
       window.removeEventListener('online', listener)
     }
