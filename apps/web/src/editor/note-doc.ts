@@ -24,8 +24,8 @@ export function pastedSlice(markdown: string, schema: Schema, inTitle: boolean):
   if (inTitle) {
     const first = nodes[0]
     const lead = first?.isTextblock ? nodes.shift() : undefined
-    const text = lead?.textBetween(0, lead.content.size, ' ', (leaf) => (leaf.isText ? '' : String(leaf.attrs.source ?? ' '))) ?? ''
-    nodes.unshift(schema.node('title', null, text ? schema.text(text) : null))
+    const text = lead?.textBetween(0, lead.content.size, ' ', (leaf: PMNode) => (leaf.isText ? '' : String(leaf.attrs.source ?? ' '))) ?? ''
+    nodes.unshift(schema.node('title', null, text ? schema.text(text) : undefined))
   }
   return Slice.maxOpen(Fragment.fromArray(nodes))
 }
