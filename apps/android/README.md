@@ -35,16 +35,20 @@ On first run, onboarding asks for the server, then either creates the account (a
 
 ## How the tests run
 
-- `:core` tests are plain JVM: the Markdown codec against `shared/markdown-fixtures`, the store, the API client against a mock server, and sync.
-- Sync tests use the real server. Gradle builds `server/` with Go once (`buildNotesd`); each test starts it on a free port with a temporary data directory, reads the address from its log, creates the owner account, and drives two or more clients through every scenario in the architecture doc's §12.1. `RandomSyncTest` replays random edit, delete, offline and retry sequences; run more seeds with `./gradlew :core:test -Pnotes.seeds=1,2,3`.
+- `:core` tests run on the JVM: the Markdown codec against `shared/markdown-fixtures`, the store, the API client against a mock server, and sync. The ones in `commonTest` (store, search, migrations, plain text, tags) also run on JS under Node, on sqlite-wasm in memory: `./gradlew :core:allTests` runs both.
+- Sync tests use the real server. Gradle builds `server/` with Go once (`buildNotesd`); each test starts it on a free port with a temporary data directory, reads the address from its log, creates the owner account, and drives two or more clients through every scenario in the architecture doc's §12.1. `RandomSyncTest` replays random edit, delete, offline and retry sequences; run more seeds with `./gradlew :core:jvmTest -Pnotes.seeds=1,2,3`.
 - `:app` tests run on Robolectric: the editor's spans and behaviours, the screens (onboarding, list, editor, sync changes arriving in an open note), and an accessibility audit that checks every control on every screen has a label and a 48dp target.
 
 ## Layout
 
 ```text
 apps/android/
-├── core/   plain Kotlin, no Android: document model, Markdown codec, database and search,
-│           API client, sync engine
+├── core/   Kotlin Multiplatform, no Android
+│   ├── commonMain/  database and search, sync engine, API types, plain text and tags,
+│   │                migrations (SQL, compiled into the code by generateMigrations)
+│   ├── jvmMain/     what the app uses besides: document model, Markdown codec, API client,
+│   │                locked-notes crypto, images, the bundled SQLite driver
+│   └── jsMain/      the web app's side: SQLite through sqlite-wasm, called directly
 └── app/    the Android app
     ├── editor/    the EditText-based editor: spans, normaliser, formatting bar
     ├── notes/     list, editor screen, navigation (one pane, or two from 600dp)

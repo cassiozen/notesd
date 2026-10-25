@@ -71,9 +71,9 @@ depends = ["install"]
 run = "pnpm test"
 
 [tasks."test:android"]
-description = "Android unit tests (JVM and Robolectric); emulator tests stay manual"
+description = "Android unit tests (JVM and Robolectric), and core's shared tests on JS; emulator tests stay manual"
 dir = "apps/android"
-run = "./gradlew :core:test :app:testDebugUnitTest"
+run = "./gradlew :core:allTests :app:testDebugUnitTest"
 
 [tasks."lint:android"]
 dir = "apps/android"
