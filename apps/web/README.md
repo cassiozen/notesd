@@ -189,8 +189,9 @@ typed into drops it without a request.
 
 The web app is becoming offline-first like the phone apps, on the same sync
 engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
-`@notes/core`. Nothing chooses it yet: `localSource` (the screens on the
-engine) is only used by tests.
+`@notes/core`. Nothing turns it on yet: `src/offline/device.ts` picks the
+engine for a user only when this browser keeps their notes (`keepOnDevice`),
+and no screen sets that.
 
 - **One worker per origin** (`src/offline/worker.ts`) owns the database:
   sqlite-wasm on OPFS through its SAH-pool VFS, one file per user, in WAL
@@ -224,6 +225,15 @@ engine) is only used by tests.
   uploads it before any note that shows it; others download on first view
   and stay. Shown from blob: URLs, so locking a note offline can encrypt its
   pictures whenever they're on the device.
+- **Boot**: the service worker serves the app shell, and the engine's files
+  once this browser has loaded them (a new build fetches its own on install
+  where they were kept, so nobody else downloads them); if the server can't be
+  reached, the screens open on this device's copy, provided it has synced at
+  least once (an empty one would look like every note gone). The server is
+  tried again every 30 s and when the browser goes online; its answer
+  decides the session. A sync that finds the session gone pauses and asks
+  to sign in again, edits kept. Storage is asked to persist; a full device
+  says so on the save that couldn't be stored.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
   after an edit, when a tab comes back or goes online, and every minute.
   Failures back off from 2 s to 5 min. Signed out, it waits for the next

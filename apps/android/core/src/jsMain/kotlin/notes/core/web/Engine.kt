@@ -110,6 +110,12 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
 
     fun status(): EngineStatus = engine.status.value.export()
 
+    /** When a sync last finished, kept across restarts; null until one has brought notes from the server. */
+    fun lastSyncAt(): Promise<Double?> = scope.promise {
+        // Every cycle stamps the time, one that found the server out of reach too.
+        engine.store.state().takeIf { it.generation != null }?.lastSyncAt?.toDouble()
+    }
+
     fun get(id: String): Promise<LocalNote?> = scope.promise {
         notes.get(id)?.takeIf { it.deletedAt == null }?.export()
     }

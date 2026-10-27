@@ -80,6 +80,9 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     async status() {
       return status((await engine()).status())
     },
+    async lastSyncAt() {
+      return (await (await engine()).lastSyncAt()) ?? null
+    },
     async get(id) {
       const n = await (await engine()).get(id)
       return n ? localNote(n) : null

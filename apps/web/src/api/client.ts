@@ -37,10 +37,15 @@ export function setCsrfToken(token: string | null) {
 type Listener = () => void
 const unauthenticatedListeners = new Set<Listener>()
 
-/** Called whenever a request fails because the session is gone. */
+/** Called whenever a request fails because the session is gone, or sync finds it gone. */
 export function onUnauthenticated(listener: Listener): () => void {
   unauthenticatedListeners.add(listener)
   return () => unauthenticatedListeners.delete(listener)
+}
+
+/** The session is gone, found by something other than a request here (sync). */
+export function sessionGone() {
+  for (const listener of unauthenticatedListeners) listener()
 }
 
 type Options = { signal?: AbortSignal; keepalive?: boolean }
@@ -98,9 +103,7 @@ async function send(
 
   const error = new ApiError(res.status, await errorBody(res), parseRetryAfter(res))
   // invalid_credentials is also a 401 but means "wrong password", not "signed out".
-  if (error.code === 'unauthenticated') {
-    for (const listener of unauthenticatedListeners) listener()
-  }
+  if (error.code === 'unauthenticated') sessionGone()
   throw error
 }
 

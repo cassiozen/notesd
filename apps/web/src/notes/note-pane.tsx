@@ -395,12 +395,14 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
 
   const problem = snap.problem
   const statusShown = useStatusShown(snap)
+  const refusal =
+    problem?.kind === 'rejected' && problem.onDevice ? 'This device couldn’t store this save' : 'The server didn’t accept this save'
   // A 401 or a refusal also reads "Couldn't save"; the tooltip says which.
   const statusDetail =
     snap.state !== 'failed'
       ? undefined
       : problem?.kind === 'rejected'
-        ? 'The server didn’t accept this save'
+        ? refusal
         : problem?.kind === 'unlock'
           ? 'Unlock locked notes to save'
           : problem === null
@@ -472,7 +474,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
             </Button>
           }
         >
-          The server didn’t accept this save: {problem.message}
+          {refusal}: {problem.message}
         </Notice>
       )}
       {problem?.kind === 'conflict' && (

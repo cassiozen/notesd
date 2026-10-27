@@ -26,6 +26,8 @@ type Wire =
   | { type: 'call'; call: Call }
   /** A tab started the engine: calls sent before then went nowhere, or to a tab that's gone. */
   | { type: 'leader' }
+  /** The engine's worker didn't start: no call will be answered. */
+  | { type: 'failed'; message: string }
 
 type Pending = { call: Call; resolve: (value: unknown) => void; reject: (err: Error) => void }
 
@@ -42,6 +44,7 @@ export function connectEngine(user: string, csrfToken: string): Engine {
   const channel = new BroadcastChannel(NAME)
   let worker: Worker | null = null
   let closed = false
+  let failed: string | null = null
   let release: (() => void) | undefined
   const abort = new AbortController()
 
@@ -77,8 +80,15 @@ export function connectEngine(user: string, csrfToken: string): Engine {
     worker?.postMessage(call)
   }
 
+  const fail = (message: string) => {
+    failed = message
+    for (const p of pending.values()) p.reject(new EngineError(message))
+    pending.clear()
+  }
+
   function request(method: Method, args: unknown[]): Promise<unknown> {
     if (closed) return Promise.reject(new Error('The notes engine is closed'))
+    if (failed) return Promise.reject(new EngineError(failed))
     const c: Call = { from: tab, id: ++seq, method, args }
     return new Promise((resolve, reject) => {
       pending.set(c.id, { call: c, resolve, reject })
@@ -87,6 +97,8 @@ export function connectEngine(user: string, csrfToken: string): Engine {
   }
 
   const lead = () => {
+    // Another tab's worker failed; this one may not.
+    failed = null
     const earlier = [...pending.values()]
     worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'notesd engine' })
     worker.addEventListener('message', ({ data }: MessageEvent<WorkerMessage>) => {
@@ -95,9 +107,10 @@ export function connectEngine(user: string, csrfToken: string): Engine {
       else channel.postMessage(data satisfies Wire)
     })
     worker.addEventListener('error', (e) => {
-      // Only this tab's calls can be failed here; the others' wait for a tab that can start one.
-      for (const p of pending.values()) p.reject(new EngineError(e.message || 'The notes engine failed to start'))
-      pending.clear()
+      const message = e.message || 'The notes engine failed to start'
+      fail(message)
+      // The lock stays held here, so no other tab would start one: they'd wait forever.
+      channel.postMessage({ type: 'failed', message } satisfies Wire)
     })
     // Before anything else reaches the new worker. The tab's own first open may still be waiting: a second would sync twice.
     if (earlier[0]?.call.method !== 'open') void request('open', [user, token]).catch(() => {})
@@ -108,7 +121,10 @@ export function connectEngine(user: string, csrfToken: string): Engine {
   channel.addEventListener('message', ({ data }: MessageEvent<Wire>) => {
     switch (data.type) {
       case 'call':
-        if (worker) forward(data.call)
+        if (failed && worker) {
+          const { from: to, id } = data.call
+          channel.postMessage({ type: 'reply', to, id, error: failed } satisfies Wire)
+        } else if (worker) forward(data.call)
         break
       case 'reply':
         if (data.to === tab) deliver(data)
@@ -119,6 +135,9 @@ export function connectEngine(user: string, csrfToken: string): Engine {
         break
       case 'leader':
         resend([...pending.values()])
+        break
+      case 'failed':
+        fail(data.message)
         break
     }
   })
@@ -134,9 +153,7 @@ export function connectEngine(user: string, csrfToken: string): Engine {
     })
     .catch((err: unknown) => {
       // Aborted by close() while waiting; otherwise the worker couldn't be made, and nothing will answer.
-      if (closed) return
-      for (const p of pending.values()) p.reject(new EngineError(err instanceof Error ? err.message : String(err)))
-      pending.clear()
+      if (!closed) fail(err instanceof Error ? err.message : String(err))
     })
 
   const online = () => void request('requestSync', []).catch(() => {})
