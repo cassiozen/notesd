@@ -1,10 +1,10 @@
 import { ApiError } from '../api/client'
-import { notes, SEARCH_PAGE } from '../api/notes'
+import { SEARCH_PAGE } from '../api/notes'
 import type { ListItem, Note } from '../api/types'
-import type { LocalListItem, LocalNote } from '../offline/protocol'
+import type { LocalListItem, LocalNote, SyncStatus } from '../offline/protocol'
 import type { Engine } from '../offline/tab'
-import { NoteSaver } from './saver'
-import type { NotesSource } from './source'
+import { LocalSaver } from './local-saver'
+import type { NotesSource, Unsynced } from './source'
 
 const LIST_PAGE = 50
 
@@ -27,8 +27,8 @@ export function localSource(engine: Engine): NotesSource {
     },
     async get(id) {
       const local = await engine.call('get', id)
-      // Saves still go straight to the server, so it can have a note before this device does.
-      return local ? note(local) : notes.get(id)
+      if (!local) throw new ApiError(404, { error: 'not_found', message: 'No such note on this device' })
+      return note(local)
     },
     async filters(space, signal) {
       const [tags, locked] = await Promise.all([engine.call('tags', space), engine.call('lockedCount', space)])
@@ -48,14 +48,7 @@ export function localSource(engine: Engine): NotesSource {
         ...(otherSpaces !== undefined && { otherSpaces }),
       }
     },
-    saver: (init, hooks) =>
-      new NoteSaver(init, {
-        ...hooks,
-        saved(...args) {
-          hooks.saved?.(...args)
-          requestSync()
-        },
-      }),
+    saver: (init, hooks) => new LocalSaver(engine, init, hooks),
     spaces: {
       list: () => engine.call('spaces'),
       async put(id, name, icon) {
@@ -86,6 +79,53 @@ export function localSource(engine: Engine): NotesSource {
         clearTimeout(timer)
         off()
       }
+    },
+    sync: {
+      onUnsynced(listener) {
+        // As on the phones: Syncing is skipped, or the scheduler's retries would make it flicker.
+        let status: SyncStatus | null = null
+        let pending = 0
+        let shown: string | undefined
+        let open = true
+        const emit = () => {
+          if (!open || !status) return
+          let u: Unsynced | null = null
+          if (pending > 0 && status.kind === 'Offline') u = { pending, error: null }
+          else if (pending > 0 && status.kind === 'Failed') u = { pending, error: status.message }
+          const key = JSON.stringify(u)
+          if (key === shown) return
+          shown = key
+          listener(u)
+        }
+        const settled = (s: SyncStatus) => {
+          if (s.kind === 'Syncing') return
+          status = s
+          emit()
+        }
+        const count = () =>
+          engine.call('pendingNotes').then(
+            (n) => {
+              pending = n
+              emit()
+            },
+            () => {},
+          )
+        const off = engine.on((e) => {
+          if (e.type === 'status') settled(e.status)
+          else if (e.type === 'change') void count()
+        })
+        engine.call('status').then(settled, () => {})
+        void count()
+        return () => {
+          open = false
+          off()
+        }
+      },
+      onNotice: (listener) =>
+        engine.on((e) => {
+          if (e.type === 'notice') listener(e.notice)
+        }),
+      now: requestSync,
     },
   }
 }
