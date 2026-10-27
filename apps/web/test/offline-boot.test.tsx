@@ -1,6 +1,7 @@
 import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Session } from '../src/api/types'
+import { setCsrfToken } from '../src/api/client'
 import { App } from '../src/app'
 import { reconnectTiming } from '../src/auth/auth-context'
 import { keepOnDevice } from '../src/auth/session-hint'
@@ -27,7 +28,8 @@ function onThisDevice({ fresh = false } = {}) {
   startEngines((user, csrf) => {
     starts.push(csrf)
     const engine = fresh ? inProcessEngine(user, csrf) : (shared ??= inProcessEngine(user, csrf))
-    if (csrf) engine.setCsrfToken(csrf)
+    // A reloaded page's engine has only the token it's given: none, booted offline.
+    engine.setCsrfToken(csrf)
     return engine
   })
   return { engine: () => shared, starts }
@@ -37,6 +39,7 @@ function onThisDevice({ fresh = false } = {}) {
 function reload() {
   cleanup()
   closeNotes()
+  setCsrfToken(null)
   render(<App />)
 }
 

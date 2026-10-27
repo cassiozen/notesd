@@ -515,6 +515,13 @@
   font: 400 30px/1.1 var(--font-serif);
 }
 
+.dialogText {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
 .dialogActions {
   display: flex;
   justify-content: flex-end;

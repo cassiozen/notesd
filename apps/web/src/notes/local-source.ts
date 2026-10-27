@@ -5,7 +5,7 @@ import type { ListItem, Note } from '../api/types'
 import type { LocalListItem, LocalNote, SyncStatus } from '../offline/protocol'
 import type { Engine } from '../offline/tab'
 import { LocalSaver } from './local-saver'
-import type { NotesSource, Unsynced } from './source'
+import type { NotesSource, SyncState, Unsynced } from './source'
 
 const LIST_PAGE = 50
 
@@ -109,50 +109,64 @@ export function localSource(engine: Engine): NotesSource {
     sync: {
       onUnsynced(listener) {
         // As on the phones: Syncing is skipped, or the scheduler's retries would make it flicker.
-        let status: SyncStatus | null = null
-        let pending = 0
+        let settled: SyncStatus | null = null
         let shown: string | undefined
-        let open = true
-        const emit = () => {
-          if (!open || !status) return
+        return watchSync(engine, ({ status, pending }) => {
+          if (status.kind !== 'Syncing') settled = status
+          if (!settled) return
           let u: Unsynced | null = null
-          if (pending > 0 && status.kind === 'Offline') u = { pending, error: null }
-          else if (pending > 0 && status.kind === 'Failed') u = { pending, error: status.message }
+          if (pending > 0 && settled.kind === 'Offline') u = { pending, error: null }
+          else if (pending > 0 && settled.kind === 'Failed') u = { pending, error: settled.message }
           const key = JSON.stringify(u)
           if (key === shown) return
           shown = key
           listener(u)
-        }
-        const settled = (s: SyncStatus) => {
-          if (s.kind === 'Syncing') return
-          status = s
-          emit()
-        }
-        const count = () =>
-          engine.call('pendingNotes').then(
-            (n) => {
-              pending = n
-              emit()
-            },
-            () => {},
-          )
-        const off = engine.on((e) => {
-          if (e.type === 'status') settled(e.status)
-          else if (e.type === 'change') void count()
         })
-        engine.call('status').then(settled, () => {})
-        void count()
-        return () => {
-          open = false
-          off()
-        }
       },
+      onState: (listener) => watchSync(engine, listener),
       onNotice: (listener) =>
         engine.on((e) => {
           if (e.type === 'notice') listener(e.notice)
         }),
       now: requestSync,
     },
+  }
+}
+
+/** Status, outbox and last sync, from the engine's events; first once the status is known. */
+function watchSync(engine: Engine, listener: (state: SyncState) => void): () => void {
+  let status: SyncStatus | null = null
+  let pending = 0
+  let lastSyncAt: number | null = null
+  let open = true
+  const emit = () => {
+    if (open && status) listener({ status, pending, lastSyncAt })
+  }
+  const count = () =>
+    engine.call('pendingNotes').then((n) => {
+      pending = n
+      emit()
+    }, () => {})
+  const off = engine.on((e) => {
+    if (e.type === 'status') {
+      status = e.status
+      if (e.status.kind === 'Synced') lastSyncAt = e.status.at
+      emit()
+    } else if (e.type === 'change') void count()
+  })
+  // An event may have come first, and is the newer.
+  engine.call('status').then((s) => {
+    status ??= s
+    emit()
+  }, () => {})
+  engine.call('lastSyncAt').then((t) => {
+    lastSyncAt ??= t
+    emit()
+  }, () => {})
+  void count()
+  return () => {
+    open = false
+    off()
   }
 }
 

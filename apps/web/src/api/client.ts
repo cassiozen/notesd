@@ -34,6 +34,10 @@ export function setCsrfToken(token: string | null) {
   csrfToken = token
 }
 
+export function csrfTokenNow(): string | null {
+  return csrfToken
+}
+
 type Listener = () => void
 const unauthenticatedListeners = new Set<Listener>()
 

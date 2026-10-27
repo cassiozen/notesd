@@ -174,3 +174,11 @@ export function AppearanceIcon({ size = 16 }: Props) {
     </svg>
   )
 }
+
+export function CloudIcon({ size = 16 }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4.5 12.5h7a3 3 0 0 0 .4-5.97A4 4 0 0 0 4.2 7.6 2.5 2.5 0 0 0 4.5 12.5z" />
+    </svg>
+  )
+}

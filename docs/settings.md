@@ -40,7 +40,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
 | 4 | Synced | Integrations | `integrations` | envelope | "Email" when set up, else "Off" |
 | 5 | This device | Appearance | `appearance` | half-filled circle | "System", "Light", "Dark" ("Automatic" on iOS, as the system says) |
-| 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Offline"; Android, with no sync status yet, shows only "N waiting" |
+| 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Offline"; Android, with no sync status yet, shows only "N waiting"; web shows "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |
 
 On a wide web window, the category list sits beside the selected category's page, and Server is
@@ -66,7 +66,8 @@ the list is its own screen and a category opens on top of it with a back button.
 | Email via Resend (API key, From) | Integrations | **server** | ✓ | ✓ | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |
-| Sync status, last synced, last error, Sync now | Sync & data | device | – | ✓ | – |
+| Keep my notes on this device (also offered at sign-in; off removes them) | Sync & data | device | ✓ | – | – |
+| Sync status, last synced, last error, Sync now | Sync & data | device | ✓ (while kept) | ✓ | – |
 | Remove all data from this device | Sync & data | device | – | ✓ | ✓ |
 | App version | About | device | – | ✓ | ✓ |
 
@@ -81,6 +82,6 @@ The rules for when a category or row is visible don't change from before the spl
 - Security appears when signed in or when a lock password already exists.
 - Sync & data's status rows appear only when there's an account.
 
-Web has no rows in Sync & data or About, so it leaves those categories out. Because of the rules
+Web has no rows in About, so it leaves that category out; its Sync & data holds the choice to keep notes in the browser, and sync's status while it does. Because of the rules
 above, a native app that isn't connected shows only Server, Spaces, Appearance, Sync & data and
 About.

@@ -3,17 +3,13 @@ import { AuthLayout } from './auth/auth-layout'
 import { Login, LoginForm } from './auth/login'
 import { Onboarding } from './auth/onboarding'
 import { hadSession } from './auth/session-hint'
-import { onlineSource } from './notes/online-source'
 import { Shell } from './notes/shell'
-import { setNotesSource } from './notes/source'
+import { useNotesSourceVersion } from './notes/source'
 import { ShellSkeleton } from './notes/shell-skeleton'
 import { Button } from './ui/button'
 import { Dialog } from './ui/dialog'
 import { Kicker } from './ui/kicker'
 import styles from './auth/auth.module.css'
-
-// Every session reads and writes on the server.
-setNotesSource(onlineSource)
 
 export function App() {
   return (
@@ -25,6 +21,7 @@ export function App() {
 
 function AuthGate() {
   const { state, retry } = useAuth()
+  const notesVersion = useNotesSourceVersion()
   switch (state.status) {
     case 'loading':
       // Signed out last time: blank beats a shell that turns into the login screen.
@@ -50,7 +47,7 @@ function AuthGate() {
     case 'expired':
       return (
         <>
-          <Shell username={state.username} />
+          <Shell key={notesVersion} username={state.username} />
           {state.status === 'expired' && (
             <Dialog labelledBy="session-ended-title">
               <LoginForm

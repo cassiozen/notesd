@@ -1,8 +1,9 @@
-import { test as base, expect, type BrowserContext, type Page } from '@playwright/test'
+import { expect, type Page } from '@playwright/test'
 import type { LocalNote } from '../src/offline/protocol'
 import type { Engine, connectEngine } from '../src/offline/tab'
+import { owner, test } from './profile'
 
-// Nothing on screen uses the engine yet: each page imports it from src/ and drives it directly.
+// The engine alone: each page imports it from src/ and drives it directly.
 
 declare global {
   interface Window {
@@ -12,29 +13,6 @@ declare global {
     changes: number
   }
 }
-
-const owner = { username: 'e2e', password: 'e2e password' }
-
-// A profile on disk: WebKit has no OPFS in an ephemeral context, as Safari has none in a private window.
-const test = base.extend<{ context: BrowserContext; page: Page }>({
-  context: async ({ playwright, browserName }, provide, info) => {
-    const context = await playwright[browserName].launchPersistentContext(info.outputPath('profile'), {
-      baseURL: info.project.use.baseURL,
-    })
-    // WebKit on macOS keeps OPFS outside the profile, shared by every test and run.
-    const page = context.pages()[0] ?? (await context.newPage())
-    await page.goto('/')
-    await page.evaluate(async () => {
-      const root = await navigator.storage.getDirectory()
-      for await (const name of root.keys()) await root.removeEntry(name, { recursive: true })
-    })
-    await provide(context)
-    await context.close()
-  },
-  page: async ({ context }, provide) => {
-    await provide(context.pages()[0] ?? (await context.newPage()))
-  },
-})
 
 /** Opens the app and connects the engine; the first page in a context signs in, the rest share its session. */
 async function connect(page: Page, { signIn = false } = {}) {

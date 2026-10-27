@@ -4,7 +4,6 @@ import { settings } from '../api/settings'
 import { ApiError } from '../api/client'
 import type { Session, UpdateStatus } from '../api/types'
 import { platformBadge, sessionName } from '../api/user-agent'
-import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
@@ -16,11 +15,12 @@ import { applyTheme, readTheme, type ThemeChoice } from '../theme'
 import { Button } from '../ui/button'
 import { Command } from '../ui/code'
 import { Field } from '../ui/field'
-import { AppearanceIcon, ChevronIcon, LockIcon, MailIcon, SpacesIcon } from '../ui/icons'
+import { AppearanceIcon, ChevronIcon, CloudIcon, LockIcon, MailIcon, SpacesIcon } from '../ui/icons'
 import { Kicker } from '../ui/kicker'
 import { PHONE, useMediaQuery } from '../ui/media'
 import { Sheet } from '../ui/sheet'
 import { Surface } from '../ui/surface'
+import { DeviceCard, SignOutCard, syncSummary, useKeptHere, useSyncState } from './device'
 import { LockedNotesCard } from './locked-notes'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
@@ -115,6 +115,7 @@ const ICONS: Partial<Record<SettingsSection, ReactNode>> = {
   spaces: <SpacesIcon size={15} />,
   integrations: <MailIcon size={15} />,
   appearance: <AppearanceIcon size={15} />,
+  device: <CloudIcon size={15} />,
 }
 
 /**
@@ -191,12 +192,15 @@ function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
   const locks = useLockStatus()
   const spaces = useSpaces()
   const email = useEmailSettings()
+  const kept = useKeptHere()
+  const sync = useSyncState()
   return {
     server: window.location.host,
     security: { unknown: '', none: 'Off', locked: 'Locked', unlocked: 'Unlocked' }[locks],
     spaces: spaces ? String(spaces.length) : '',
     integrations: !email ? '' : email.configured ? 'Email' : 'Off',
     appearance: themes.find((t) => t.value === theme)?.label ?? '',
+    device: kept ? syncSummary(sync) : 'Off',
   }
 }
 
@@ -338,7 +342,6 @@ function SettingsPage({
   onTheme: (theme: ThemeChoice) => void
   onSpaceCreated: (id: string) => void
 }) {
-  const { signOut } = useAuth()
   switch (section) {
     case 'server':
       return (
@@ -352,12 +355,7 @@ function SettingsPage({
                 <ServerVersion />
               </div>
             </Surface>
-            <Surface as="section" className={styles.card} aria-label="Sign out">
-              <span className={styles.text}>Sign out of this browser. Your notes stay on the server.</span>
-              <Button variant="danger" size="md" onClick={() => void signOut()}>
-                Sign out
-              </Button>
-            </Surface>
+            <SignOutCard />
           </div>
           <UpdateCard />
           <PasswordCard />
@@ -381,6 +379,8 @@ function SettingsPage({
           <FontCard />
         </>
       )
+    case 'device':
+      return <DeviceCard username={username} />
   }
 }
 

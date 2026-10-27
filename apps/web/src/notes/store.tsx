@@ -96,6 +96,8 @@ type NotesContextValue = Omit<ListState, 'hidden'> & {
   /** Hides the note now and deletes it once the undo window passes. */
   remove: (id: string) => Promise<DeleteOutcome>
   undoRemove: (id: string) => void
+  /** Every open note's edits into the notes source: before leaving it (opting out, signing out). */
+  flushAll: () => Promise<void>
 }
 
 const NotesContext = createContext<NotesContextValue | null>(null)
@@ -520,6 +522,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       move,
       remove,
       undoRemove,
+      flushAll: async () => {
+        await Promise.all([...savers.current.values()].map((s) => s.flush()))
+      },
     }),
     [visible, space, setSpace, tagList, lockedCount, filter, setFilter, status, hasMore, total, version, fetchPage, fetchFilters, saverFor, existingSaver, newDraft, release, removed, touch, move, remove, undoRemove],
   )

@@ -210,6 +210,30 @@ describe('engine', () => {
     expect(await engine.call('sync')).toBe('Done')
     expect((await server.bytes('GET', `/images/${id}`)).status).toBe(404)
   })
+
+  test('without a session token yet, writes wait instead of being refused', async () => {
+    const { server, engine } = await engineSignedIn()
+    const token = await signIn('me', 'correct horse')
+    engine.setCsrfToken('')
+    const id = crypto.randomUUID()
+    await engine.call('save', note(id, 'Plan', 'Offline\n'))
+
+    expect(await engine.call('sync')).toBe('Offline')
+    expect(await engine.call('pendingNotes')).toBe(1)
+
+    engine.setCsrfToken(token)
+    expect(await engine.call('sync')).toBe('Done')
+    expect((await server.api<Note>('GET', `/notes/${id}`)).body.content).toBe('Offline\n')
+  })
+
+  test('a stale session token pauses sync for a new sign-in, keeping the write', async () => {
+    const { engine } = await engineSignedIn()
+    engine.setCsrfToken('stale')
+    await engine.call('save', note(crypto.randomUUID(), 'Plan', 'Waits\n'))
+
+    expect(await engine.call('sync')).toBe('SignedOut')
+    expect(await engine.call('pendingNotes')).toBe(1)
+  })
 })
 
 async function file(image: Promise<Blob | null>) {
