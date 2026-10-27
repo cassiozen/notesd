@@ -142,7 +142,7 @@ class ImageStore(
                 // Refused for good (bytes not matching the id, too large, not an
                 // image): retrying won't change that, and holding it back would
                 // stop every note from syncing. Its notes show it as missing.
-                is ApiResult.Rejected if r.status in REFUSED -> uploaded(image)
+                is ApiResult.Rejected if r.status in PendingImages.REFUSED -> uploaded(image)
 
                 else -> return r
             }
@@ -182,9 +182,6 @@ class ImageStore(
     }
 
     companion object {
-        /** hash_mismatch, image_too_large, unsupported_image. */
-        private val REFUSED = setOf(400, 413, 415)
-
         /** The image type of decrypted bytes, from their magic numbers. */
         fun sniff(b: ByteArray): String? {
             fun at(i: Int) = if (i < b.size) b[i].toInt() and 0xff else -1

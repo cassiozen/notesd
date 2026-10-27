@@ -15,6 +15,7 @@ import {
   verifier as verifierOf,
   wrap,
 } from './crypto'
+import { notesSource } from '../notes/source'
 import { createPasskey, signInWithPasskey } from './passkey'
 
 /**
@@ -87,8 +88,8 @@ class LockSession {
     if (this.loading && !force) return this.loading
     const seq = ++this.loadSeq
     const account = this.account
-    const p = api.keys().then(
-      ({ keys }) => {
+    const p = notesSource().keyring.load().then(
+      (keys) => {
         if (seq !== this.loadSeq || account !== this.account) return
         this.keyring = keys
         if (this.status === 'unlocked' && this.passwordWrap() !== this.boundTo) {
@@ -295,6 +296,9 @@ class LockSession {
     }
     this.loadSeq++
     this.keyring = next(this.keyring)
+    void notesSource()
+      .keyring.changed(this.keyring)
+      .catch(() => undefined)
     return true
   }
 

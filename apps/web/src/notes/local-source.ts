@@ -1,4 +1,5 @@
-import { ApiError } from '../api/client'
+import { ApiError, NetworkError } from '../api/client'
+import { locks } from '../api/locks'
 import { SEARCH_PAGE } from '../api/notes'
 import type { ListItem, Note } from '../api/types'
 import type { LocalListItem, LocalNote, SyncStatus } from '../offline/protocol'
@@ -49,6 +50,31 @@ export function localSource(engine: Engine): NotesSource {
       }
     },
     saver: (init, hooks) => new LocalSaver(engine, init, hooks),
+    images: {
+      async get(id) {
+        const blob = await engine.call('image', id)
+        if (!blob) throw new ApiError(404, { error: 'not_found', message: 'No such image' })
+        return blob
+      },
+      async put(id, bytes, type) {
+        await engine.call('addImage', id, bytes, type)
+      },
+    },
+    keyring: {
+      // The server's when it answers; offline, this device's copy, so locked notes still unlock.
+      async load() {
+        try {
+          return (await locks.keys()).keys
+        } catch (err) {
+          if (!(err instanceof NetworkError)) throw err
+          const kept = await engine.call('lockKeys')
+          // None kept yet isn't "no password set": the keyring stays unknown.
+          if (kept.length === 0) throw err
+          return kept
+        }
+      },
+      changed: (keys) => engine.call('replaceLockKeys', [...keys]),
+    },
     spaces: {
       list: () => engine.call('spaces'),
       async put(id, name, icon) {

@@ -191,4 +191,9 @@ interface SyncApi {
 interface PendingImages {
     /** Uploads every waiting image; the first failure a retry might fix stops it. */
     suspend fun upload(client: SyncApi): ApiResult<Unit>
+
+    companion object {
+        /** hash_mismatch, image_too_large, unsupported_image: a retry won't change these. */
+        val REFUSED = setOf(400, 413, 415)
+    }
 }

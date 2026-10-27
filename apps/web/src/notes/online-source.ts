@@ -1,3 +1,5 @@
+import { imageURL, images } from '../api/images'
+import { locks } from '../api/locks'
 import { notes, SEARCH_PAGE } from '../api/notes'
 import { spaces } from '../api/spaces'
 import { NoteSaver } from './saver'
@@ -25,6 +27,17 @@ export const onlineSource: NotesSource = {
     return { results, hasMore: results.length === SEARCH_PAGE, ...(otherSpaces !== undefined && { otherSpaces }) }
   },
   saver: (init, hooks) => new NoteSaver(init, hooks),
+  images: {
+    get: (id, signal) => images.get(id, signal),
+    put: async (id, bytes, type) => {
+      await images.put(id, bytes, type)
+    },
+    url: imageURL,
+  },
+  keyring: {
+    load: async () => (await locks.keys()).keys,
+    changed: async () => {},
+  },
   spaces: {
     list: async () => (await spaces.list()).spaces,
     put: (id, name, icon) => spaces.put(id, name, icon),

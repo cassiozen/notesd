@@ -6,6 +6,7 @@ import type { EngineEvent, Method } from '../../src/offline/protocol'
 import { syncTiming } from '../../src/offline/scheduler'
 import type { Engine } from '../../src/offline/tab'
 import { createOwner, startServer, type TestServer } from '../server'
+import { fakeCaches } from './fake-caches'
 
 // On first use: most app tests never start an engine.
 let sqlite: ReturnType<typeof sqlite3InitModule> | undefined
@@ -18,6 +19,12 @@ const defaults = { ...syncTiming }
 export function inProcessEngine(user: string, csrfToken: string): Engine & { events: EngineEvent[] } {
   const listeners = new Set<(event: EngineEvent) => void>()
   const events: EngineEvent[] = []
+  // Fresh per test: usernames repeat across tests.
+  const before = globalThis.caches
+  globalThis.caches = fakeCaches()
+  onTestFinished(() => {
+    globalThis.caches = before
+  })
   const host = engineHost(
     async () => {
       const s = await (sqlite ??= sqlite3InitModule())
@@ -30,7 +37,9 @@ export function inProcessEngine(user: string, csrfToken: string): Engine & { eve
   )
   const call = async (method: Method, ...args: unknown[]) => {
     const run = host[method] as (...a: unknown[]) => Promise<unknown>
-    return structuredClone(await run(...structuredClone(args)))
+    const result = await run(...structuredClone(args))
+    // Browsers clone a Blob; Node's structuredClone turns it into {}.
+    return result instanceof Blob ? result : structuredClone(result)
   }
   void host.open(user, csrfToken)
   onTestFinished(() => host.close())

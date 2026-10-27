@@ -19,6 +19,7 @@ import notes.core.db.directDatabase
 import notes.core.markdown.webCanonical
 import notes.core.sync.SyncEngine
 import notes.core.sync.SyncStatus
+import org.khronos.webgl.Int8Array
 
 // Kotlin/JS exports neither suspend functions nor flows: Promises and callbacks instead.
 // Longs as Doubles, exact for every timestamp and revision here.
@@ -92,10 +93,11 @@ class EngineStatus(val kind: String, val at: Double?, val message: String?)
 class EngineNotice(val kind: String, val noteId: String?, val copyId: String?, val title: String)
 
 @JsExport
-class NotesEngine internal constructor(private val db: Database) {
+class NotesEngine internal constructor(private val db: Database, files: ImageFiles) {
     private val scope = CoroutineScope(SupervisorJob())
     private var csrfToken: String? = null
-    private val engine = SyncEngine(db, { FetchApi { csrfToken } })
+    private val images = WebImages(db, files)
+    private val engine = SyncEngine(db, { FetchApi { csrfToken } }, images = images)
     private val notes = NoteStore(db)
 
     /** The session's token, for mutations (§10); the cookie goes with every request by itself. */
@@ -184,6 +186,10 @@ class NotesEngine internal constructor(private val db: Database) {
         spaceId: String
     ): Promise<String> = scope.promise { notes.recover(title, content, imageIds?.toList(), spaceId, id) }
 
+    /** A picture added here: stored, and uploaded by sync before any note that shows it. Again before then does nothing. */
+    fun addImage(id: String, bytes: Int8Array, type: String): Promise<Unit> =
+        scope.promise { images.add(id, bytes, type) }
+
     fun pendingNotes(): Promise<Int> = scope.promise { notes.pendingNotes() }
 
     fun spaces(): Promise<Array<LocalSpace>> = scope.promise {
@@ -246,11 +252,15 @@ class NotesEngine internal constructor(private val db: Database) {
     }
 }
 
-/** On sqlite-wasm's oo1 [db] and its [capi]. [canonical]: the web editor's, which merges compare with (§6.1). */
+/**
+ * On sqlite-wasm's oo1 [db] and its [capi]. [canonical]: the web editor's, which merges compare with (§6.1).
+ * [files]: where image bytes are kept.
+ */
 @JsExport
-fun openEngine(db: dynamic, capi: dynamic, canonical: (String) -> String): NotesEngine {
+fun openEngine(db: dynamic, capi: dynamic, canonical: (String) -> String, files: dynamic): NotesEngine {
     webCanonical = canonical
-    return NotesEngine(directDatabase(db, capi))
+    // An external interface isn't exported to the .d.ts; the host types its side.
+    return NotesEngine(directDatabase(db, capi), files.unsafeCast<ImageFiles>())
 }
 
 private fun filterOf(kind: String?, tag: String?): NoteFilter? = when (kind) {
