@@ -21,7 +21,7 @@ offline and syncs your notes whenever a connection is available.</p>
   <img width="368" height="259" alt="Image" src="https://github.com/user-attachments/assets/607ed533-451f-42ed-90d6-e1cfe162deae" />  
   See [Security](#security) for more details.
 
-- **Installable, offline-first web app.** Install it from your browser and it keeps your notes on the device, so it opens, edits and searches them without a connection, syncing like the mobile apps.  
+- **Installable, offline-first web app.** Install it from your browser and it keeps your notes on the device, so it opens, edits and searches them without a connection.  
   See [Installing the web app](docs/web-app.md) for more details.
 
 - **Markdown under the hood.** Notes are stored as Markdown, and you can take them out at any time.  

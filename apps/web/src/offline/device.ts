@@ -40,6 +40,13 @@ async function detectSupport(): Promise<boolean> {
     return false
   }
   if (!navigator.locks || !navigator.storage?.getDirectory) return false
+  // Whose notes are kept is recorded there (session-hint.ts): blocked, opting in wouldn't stick.
+  try {
+    localStorage.setItem('notes.probe', '1')
+    localStorage.removeItem('notes.probe')
+  } catch {
+    return false
+  }
   try {
     await navigator.storage.getDirectory()
     return true
@@ -97,12 +104,17 @@ export function keepNotesHere(user: string) {
   openNotes(user)
 }
 
+/** Whether opening the installed app would start keeping notes here, browser support aside. */
+export function wouldKeepWhenInstalled(): boolean {
+  return deviceUser() === null && !deviceDeclined()
+}
+
 /**
  * Opened as the installed app, signed in: keeps [user]'s notes here unless turned off before, or kept for someone
  * else. Before openNotes, so the screens start on this device's copy.
  */
 export async function keepIfInstalledApp(user: string) {
-  if (!isInstalledApp() || deviceUser() !== null || deviceDeclined()) return
+  if (!isInstalledApp() || !wouldKeepWhenInstalled()) return
   if (start === connectEngine && !(await detectSupport())) return
   keepOnDevice(user)
   // No click to grant it from; Chrome grants installed apps persistence without one.

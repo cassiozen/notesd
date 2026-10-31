@@ -1,7 +1,6 @@
 import { useEffect, useId, useState } from 'react'
 import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
-import { deviceDeclined } from '../auth/session-hint'
 import { useInstallPrompt } from '../install'
 import { relativeTime } from '../notes/relative-time'
 import { useNotes } from '../notes/store'
@@ -12,6 +11,7 @@ import {
   stopKeepingNotesHere,
   unsyncedHere,
   useDeviceSupported,
+  wouldKeepWhenInstalled,
 } from '../offline/device'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -109,7 +109,7 @@ export function InstallCard() {
       <Kicker id="install-kicker">Install</Kicker>
       <span className={styles.text}>Open notesd in its own window, from the dock or home screen.</span>
       {/* keepIfInstalledApp, on the app's first open. */}
-      {!kept && supported && !deviceDeclined() && (
+      {supported && wouldKeepWhenInstalled() && (
         <span className={styles.muted}>It keeps your notes on this device too, so it opens without a connection.</span>
       )}
       <div>

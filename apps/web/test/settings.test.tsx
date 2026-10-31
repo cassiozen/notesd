@@ -14,6 +14,21 @@ async function inSettings(category?: string) {
 }
 
 const nav = () => screen.getByRole('navigation', { name: 'Settings categories' })
+const installButton = () => screen.queryByRole('button', { name: 'Install notesd' })
+
+/** Chrome's beforeinstallprompt; answer settles the user's choice, made in our dialog or Chrome's own offer. */
+function offer(prompt = vi.fn(async () => {})) {
+  type Choice = { outcome: 'accepted' | 'dismissed' }
+  let answer!: (choice: Choice) => void
+  const userChoice = new Promise<Choice>((resolve) => {
+    answer = resolve
+  })
+  const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt, userChoice })
+  act(() => {
+    window.dispatchEvent(event)
+  })
+  return { event, prompt, answer }
+}
 const category = (name: string) => within(nav()).getByRole('link', { name: new RegExp(`^${name}`) })
 
 describe('settings', () => {
@@ -219,34 +234,35 @@ describe('connection', () => {
     // A browser that can keep notes: jsdom's real check says no.
     startEngines(inProcessEngine)
     const { user } = await inSettings('Sync & data')
-    expect(screen.queryByRole('button', { name: 'Install notesd' })).toBeNull()
+    expect(installButton()).toBeNull()
 
-    const prompt = vi.fn(async () => {})
-    act(() => {
-      const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
-        prompt,
-        userChoice: Promise.resolve({ outcome: 'accepted' }),
-      })
-      window.dispatchEvent(event)
-      // Chrome's own install offer still shows; Settings' is an extra way in.
-      expect(event.defaultPrevented).toBe(false)
-    })
-    const button = await screen.findByRole('button', { name: 'Install notesd' })
-    // What the installed app does on its first open.
-    expect(screen.getByText(/keeps your notes on this device too/)).toBeTruthy()
-    await user.click(button)
-    expect(prompt).toHaveBeenCalledOnce()
+    const first = offer()
+    // Chrome's own install offer still shows; Settings' is an extra way in.
+    expect(first.event.defaultPrevented).toBe(false)
+    await user.click(await screen.findByRole('button', { name: 'Install notesd' }))
+    expect(first.prompt).toHaveBeenCalledOnce()
     // prompt() works once per event.
-    expect(screen.queryByRole('button', { name: 'Install notesd' })).toBeNull()
+    expect(installButton()).toBeNull()
 
-    // A fresh event, then installed from the browser's own menu.
-    act(() => {
-      window.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt }))
-    })
+    // Dismissed in Chrome's own offer: that event can't prompt again either.
+    const second = offer()
+    // What the installed app does on its first open.
+    expect(await screen.findByText(/keeps your notes on this device too/)).toBeTruthy()
+    await act(async () => second.answer({ outcome: 'dismissed' }))
+    expect(installButton()).toBeNull()
+
+    // Refused by Chrome: no unhandled rejection.
+    const third = offer(vi.fn(() => Promise.reject(new DOMException('Already showing', 'InvalidStateError'))))
+    await user.click(await screen.findByRole('button', { name: 'Install notesd' }))
+    expect(third.prompt).toHaveBeenCalledOnce()
+    expect(installButton()).toBeNull()
+
+    // Installed from the browser's own menu.
+    offer()
     expect(await screen.findByRole('button', { name: 'Install notesd' })).toBeTruthy()
     act(() => {
       window.dispatchEvent(new Event('appinstalled'))
     })
-    expect(screen.queryByRole('button', { name: 'Install notesd' })).toBeNull()
+    expect(installButton()).toBeNull()
   })
 })

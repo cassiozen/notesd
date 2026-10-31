@@ -30,7 +30,15 @@ export function captureInstallPrompt() {
   if (captured) return
   captured = true
   window.addEventListener('beforeinstallprompt', (e) => {
-    set(e as BeforeInstallPromptEvent)
+    const event = e as BeforeInstallPromptEvent
+    set(event)
+    // Answered in Chrome's own offer as well as ours: either way this event can't prompt again.
+    event.userChoice.then(
+      () => {
+        if (deferred === event) set(null)
+      },
+      () => {},
+    )
   })
   window.addEventListener('appinstalled', () => set(null))
 }
@@ -40,7 +48,11 @@ async function install() {
   if (!event) return
   // prompt() works once per event; dismissed, Chrome fires a fresh one on a later visit.
   set(null)
-  await event.prompt()
+  try {
+    await event.prompt()
+  } catch {
+    // Refused (another prompt showing, say); Chrome's own offer is still there.
+  }
 }
 
 /** Opens Chrome's install dialog; null while the app can't be installed. */
