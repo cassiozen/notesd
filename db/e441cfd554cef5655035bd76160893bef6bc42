@@ -1,0 +1,22 @@
+server/internal/mirror/user.go
+  s_21342658100c10::t_b22831c619720c 115-116,129,425-427,453-455,472-473
+  s_21342658100c10::t_e681c63c1f470e 474
+server/internal/mirror/mirror_test.go
+  s_21342658100c10::t_b22831c619720c 394-435,457-458
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dbe441cfd554cef5655035bd76160893bef6bc42",
+  "prompts": {},
+  "sessions": {
+    "s_21342658100c10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa0306-99e0-4f07-85ff-33fa2391176f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
