@@ -1,0 +1,235 @@
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Rows.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-226
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/MarkdownParser.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-353
+apps/android/gradle/libs.versions.toml
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1,28-29
+apps/android/settings.gradle.kts
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 18-21
+shared/sync-engine/src/commonTest/kotlin/notes/core/text/Sha256Test.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-24
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/WebImages.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-63
+shared/sync-engine/src/commonMain/kotlin/notes/core/crypto/LockedEnvelope.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-8
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Database.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-173
+shared/sync-engine/src/commonMain/kotlin/notes/core/text/Platform.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-10
+shared/sync-engine/src/jsTest/kotlin/notes/core/db/SqliteWasm.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-9
+shared/sync-engine/src/jvmMain/kotlin/notes/core/doc/Lines.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-169
+shared/sync-engine/settings.gradle.kts
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-17
+docs/architecture.md
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 81,177,679,681,692
+shared/sync-engine/src/jvmMain/kotlin/notes/core/images/ImageStore.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-212
+shared/sync-engine/src/jvmMain/kotlin/notes/core/sync/NoteMailer.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-70
+docs/development.md
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 11,13-14,37,43,61,102,106-108,111
+shared/sync-engine/src/commonMain/migrations/0003_tags.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-14
+shared/sync-engine/src/commonMain/migrations/0006_pending_images.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-8
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-528
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/TestDatabase.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-32
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/Fence.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-233
+shared/sync-engine/src/jvmTest/kotlin/notes/core/images/ImagesTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-240
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-314
+mise.toml
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 21,34-37,49,60-66,68,72,76,85,91,94-98,100,102,178
+shared/sync-engine/README.md
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-42
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/Canonical.jvm.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-3
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-351
+shared/sync-engine/src/jvmTest/kotlin/notes/core/DocGen.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-120
+apps/web/tsconfig.json
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 22
+shared/sync-engine/gradle.properties
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-7
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/RandomSyncTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-112
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/LockKeyStore.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-67
+shared/sync-engine/gradlew
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-248
+shared/sync-engine/gradle/libs.versions.toml
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-34
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/MigrationsTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-20
+shared/sync-engine/src/commonMain/migrations/0009_space_icons.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-3
+shared/sync-engine/src/jsMain/kotlin/notes/core/text/Platform.js.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-104
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-205
+pnpm-workspace.yaml
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 3
+shared/sync-engine/src/jvmTest/kotlin/notes/core/doc/LinesTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-38
+shared/sync-engine/src/jvmTest/kotlin/notes/core/markdown/MarkdownFixtureTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-69
+shared/sync-engine/src/jvmTest/kotlin/notes/core/markdown/MarkdownPropertyTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-26
+apps/web/src/offline/host.ts
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 8
+shared/sync-engine/src/commonMain/kotlin/notes/core/text/PlainText.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-288
+shared/sync-engine/src/jvmTest/kotlin/notes/core/db/NoteStoreJvmTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-95
+shared/sync-engine/src/commonMain/migrations/0001_init.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-46
+shared/sync-engine/src/commonTest/kotlin/notes/core/text/PlainTextTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-35
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/TestClient.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-154
+shared/sync-engine/src/commonMain/kotlin/notes/core/text/Tags.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-104
+shared/sync-engine/src/jvmTest/kotlin/notes/core/markdown/FenceTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-29
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/Markdown.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-17
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ServerAddressTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-66
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/SyncTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-299
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-165
+shared/sync-engine/src/commonMain/kotlin/notes/core/text/Uuid7.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-20
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-168
+shared/sync-engine/src/commonTest/kotlin/notes/core/Fixtures.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-40
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Merge.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-28
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncEngineTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-49
+shared/sync-engine/src/commonTest/kotlin/notes/core/text/TagsTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-42
+shared/sync-engine/src/jvmMain/kotlin/notes/core/crypto/Keyring.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-38
+shared/sync-engine/src/commonMain/migrations/0007_locked_images.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-13
+shared/sync-engine/src/commonMain/migrations/0008_spaces.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-17
+shared/sync-engine/src/jvmTest/kotlin/notes/core/crypto/LockedNotesTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-134
+shared/sync-engine/src/jvmTest/kotlin/notes/core/crypto/LockSessionTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-94
+apps/web/package.json
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 10-11,13-15,19
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ServerAddress.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-57
+apps/web/README.md
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 40-44,197-198
+shared/sync-engine/package.json
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-18
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-491
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/NoteStoreTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-275
+shared/sync-engine/src/commonMain/migrations/0002_full_sync.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-6
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-293
+shared/sync-engine/src/jvmMain/kotlin/notes/core/crypto/LockedNotes.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-155
+shared/sync-engine/src/jsTest/kotlin/notes/core/db/TestDatabase.js.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-14
+apps/android/README.md
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 21,38,45,56,66
+shared/sync-engine/src/jvmMain/kotlin/notes/core/doc/Document.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-101
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/SpacesSyncTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-286
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SpaceStoreTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-24
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/NoteMailerTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-105
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/MarkdownSerializer.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-387
+shared/sync-engine/src/commonMain/kotlin/notes/core/markdown/Canonical.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-8
+shared/sync-engine/gradle/wrapper/gradle-wrapper.properties
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-9
+shared/sync-engine/src/jvmTest/kotlin/notes/core/markdown/MarkdownCompatTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-118
+shared/sync-engine/src/commonMain/kotlin/notes/core/text/CodePoints.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-74
+apps/android/app/build.gradle.kts
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 125
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Migrations.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-38
+shared/sync-engine/src/jvmMain/kotlin/notes/core/crypto/LockSession.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-231
+shared/sync-engine/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-92
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/CommonmarkQuirks.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-62
+shared/sync-engine/src/jvmMain/kotlin/notes/core/text/Platform.jvm.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-28
+shared/sync-engine/src/jvmTest/kotlin/notes/core/db/TestDatabase.jvm.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-9
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/LockedSyncTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-109
+shared/sync-engine/src/jvmMain/kotlin/notes/core/images/ImageRef.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-49
+shared/sync-engine/src/commonMain/kotlin/notes/core/text/JsSpace.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-14
+shared/sync-engine/src/jvmMain/kotlin/notes/core/db/JvmConnections.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-43
+shared/sync-engine/.gitignore
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-5
+shared/sync-engine/build.gradle.kts
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-189
+shared/sync-engine/src/jsMain/kotlin/notes/core/markdown/Canonical.js.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-7
+shared/sync-engine/src/commonMain/migrations/0004_lock_keys.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-12
+shared/sync-engine/src/commonMain/migrations/0005_reindex_locked.sql
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-3
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/TestServer.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-89
+shared/sync-engine/gradlew.bat
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-112
+shared/sync-engine/src/jsMain/kotlin/notes/core/db/DirectConnections.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-116
+shared/sync-engine/.editorconfig
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-7
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Search.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-43
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SearchQueryTest.kt
+  s_84ccc2ddea17c8::t_4efc04bbfe5130 1-32
+pnpm-lock.yaml
+  s_84ccc2ddea17c8::t_d93e32316b59f9 28-30,141-142
+shared/sync-engine/kotlin-js-store/package-lock.json
+  s_84ccc2ddea17c8::t_4e72c876912b96 2,8,11-12,1032-1039,1147,1153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "456c26d1b28d8954fc982a565c80caaeec69c802",
+  "prompts": {},
+  "sessions": {
+    "s_84ccc2ddea17c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1395e40-3893-41f5-835f-17fdbea9eac9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
