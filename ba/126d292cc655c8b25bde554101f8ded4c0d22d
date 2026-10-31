@@ -53,6 +53,8 @@ apps/web/src/notes/local-source.ts
   s_d22cab8726b588::t_efa6c532a93ed5 3,5,7,31-32,52,106-108,110,114,117-120,121,122,124-128
   s_d22cab8726b588::t_9d68cf3eb854a7 129
   s_d22cab8726b588::t_796fbca0786a56 53-54,58-61,62,74
+  s_d22cab8726b588::t_205b23dd8b15f2 133,136-137,140,154,160
+  s_d22cab8726b588::t_8a5461547279ae 8,109,111-113,115-116,123,134-135,138-139,141-153,155-159,161-167
 apps/web/test/engine/helpers.ts
   s_d22cab8726b588::t_b507efdfaed472 11-12,30
   s_d22cab8726b588::t_34e8d86af8268f 9,22-27
@@ -81,6 +83,7 @@ apps/web/src/notes/saver.ts
 apps/web/src/notes/source.ts
   s_d22cab8726b588::t_efa6c532a93ed5 33-35,128-131,134-137
   s_d22cab8726b588::t_796fbca0786a56 2,111-116,119,125
+  s_d22cab8726b588::t_9efd675e4cbc79 1,3-4,36-38,132-133,140-143,146,148-149,155-168
 apps/web/src/notes/note-pane.tsx
   s_d22cab8726b588::t_3e04447f266ad4 17
   s_d22cab8726b588::t_257a1fe3912375 42-43,58,163,246,254,354-364
@@ -114,6 +117,8 @@ apps/android/core/src/commonMain/kotlin/notes/core/api/Api.kt
 apps/web/src/offline/device.ts
   s_d22cab8726b588::t_de5daea9b5dc8d 4-9,11-15,17,19-22,52-55,57,59-61,63,66-67,69,76-79,80,116-117,121
   s_d22cab8726b588::t_2807a6800fd261 3,10,16,18,21-22,35-47,68,70-72,73,75,82-84,90-94,97-117,118-120
+  s_d22cab8726b588::t_dec5983f71f586 1-2,23-34,50-51,56,58,62,74,81,85-89,95-96
+  s_d22cab8726b588::t_b0d212fe209241 48-49
 apps/web/src/auth/session-hint.ts
   s_d22cab8726b588::t_de5daea9b5dc8d 21-40
 apps/web/src/auth/auth-context.tsx
@@ -121,6 +126,8 @@ apps/web/src/auth/auth-context.tsx
   s_d22cab8726b588::t_48ff4a272df3b9 62,64,108-112,142
   s_d22cab8726b588::t_03cddba236f5f6 143
   s_d22cab8726b588::t_0e97e90594d3f3 92-93
+  s_d22cab8726b588::t_a84502c264ce4c 5
+  s_d22cab8726b588::t_7d6eafca78eda6 83,121,132
 apps/web/src/sw.ts
   s_d22cab8726b588::t_5c02476d2517c4 1-2
 apps/web/test/offline-boot.test.tsx
@@ -129,6 +136,7 @@ apps/web/test/offline-boot.test.tsx
   s_d22cab8726b588::t_c1b64c00d51f35 130,132
   s_d22cab8726b588::t_d625edc1edd1b6 1-3,5-7,10,12-16,17-27,29-30,34-41,43-45,48-65,67-90,92-93,95-96,98-129,131,133-140
   s_d22cab8726b588::t_99ef4afe687f6c 31-32
+  s_d22cab8726b588::t_f10b4f97a288df 4,42
 apps/web/src/offline/tab.ts
   s_d22cab8726b588::t_a2bf0da30994b4 29-30,47,83-88,91,108-111,122-123,125,137-138
   s_d22cab8726b588::t_03b0f8a6226c30 139
@@ -154,8 +162,11 @@ apps/web/e2e/offline.spec.ts
 apps/web/src/auth/login.tsx
   s_d22cab8726b588::t_589506699fde63 22-23,26,33-34,45,49,51,98-108,123
   s_d22cab8726b588::t_77a18a09bb4dc2 12,50
+  s_d22cab8726b588::t_11ab8a2e87d458 10,46-47
 apps/web/src/settings/settings.tsx
   s_d22cab8726b588::t_7098b0104a02b9 18,23,118,196,382-383
+  s_d22cab8726b588::t_5044ed0c762bf5 195,203
+  s_d22cab8726b588::t_b7a4e9f3e54050 358
 apps/web/e2e/profile.ts
   s_d22cab8726b588::t_da4a987dc3f965 1-6,9-23
   s_d22cab8726b588::t_b9115b96941f26 7-8
@@ -167,6 +178,7 @@ apps/web/playwright.config.ts
   s_d22cab8726b588::t_71345bf54e675f 34
 apps/web/src/app.tsx
   s_d22cab8726b588::t_0e97e90594d3f3 50
+  s_d22cab8726b588::t_7d6eafca78eda6 7,24
 apps/android/core/src/jsMain/kotlin/notes/core/api/FetchApi.kt
   s_d22cab8726b588::t_32f1a88bf573ae 63-69
 apps/web/src/settings/sections.ts
@@ -175,12 +187,15 @@ apps/web/test/opt-in.test.tsx
   s_d22cab8726b588::t_c520cfb0dd6785 53,55,84,102,112,134,141,147
   s_d22cab8726b588::t_379bf3a414cab0 39-40
   s_d22cab8726b588::t_da432bd0eca8bc 1-2,4-5,7,9-12,13-15,17-18,21-38,41-52,54,56-83,85-101,103-111,113-133,135-140,142-146,148-160
+  s_d22cab8726b588::t_b23861aa61f1f9 3,6,8,16,19-20
 docs/architecture.md
   s_d22cab8726b588::t_4195824e57daea 5,49,69,73,81,90,311,373,407,429,518-519,662
   s_d22cab8726b588::t_166f6dd7dbc6f1 514
   s_d22cab8726b588::t_9767da050d40da 663
 apps/web/src/settings/device.tsx
   s_d22cab8726b588::t_c3393ac50b4287 1-3,4,7-15,18-21,24-90,94-110,117-119,123-124,126,130,132-139,141,143-225
+  s_d22cab8726b588::t_b7a4e9f3e54050 140
+  s_d22cab8726b588::t_5044ed0c762bf5 5-6,16-17,22-23,91-93,111-116,120-122,125,127-129,131,142
 ---
 {
   "schema_version": "authorship/3.0.0",
