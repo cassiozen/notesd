@@ -8,13 +8,14 @@ import {
 } from '@notes/core'
 import type { LockKey, NoteFilter } from '../api/types'
 import { canonical } from '../editor/markdown'
+import { deviceImages, type DeviceImages } from './images'
 import type { EngineApi, EngineEvent, LocalNote, SyncNotice, SyncOutcome, SyncStatus } from './protocol'
 import { Scheduler } from './scheduler'
 
 /** A user's database on sqlite-wasm: an oo1 DB and the capi it came with. */
 export type OpenDatabase = (user: string) => Promise<{ db: unknown; capi: unknown }>
 
-type Open = { user: string; engine: NotesEngine; scheduler: Scheduler; unsubscribe: (() => void)[] }
+type Open = { user: string; engine: NotesEngine; images: DeviceImages; scheduler: Scheduler; unsubscribe: (() => void)[] }
 
 /**
  * The engine behind EngineApi, for the worker that owns the database, or
@@ -24,15 +25,18 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
   // Opens chain, one at a time: two switching users at once would each stop the old engine, and one new one leak.
   let current: Promise<Open | null> = Promise.resolve(null)
 
-  async function engine() {
+  async function opened() {
     const o = await current
     if (!o) throw new Error('The notes engine is not open')
-    return o.engine
+    return o
   }
+
+  const engine = async () => (await opened()).engine
 
   async function start(user: string, csrfToken: string): Promise<Open> {
     const { db, capi } = await openDatabase(user)
-    const e = openEngine(db, capi, canonical)
+    const images = deviceImages(user)
+    const e = openEngine(db, capi, canonical, images)
     e.setCsrfToken(csrfToken)
     const scheduler = new Scheduler(async () => (await e.sync()) as SyncOutcome)
     const unsubscribe = [
@@ -41,7 +45,7 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
       e.onNotice((n) => emit({ type: 'notice', notice: notice(n) })),
       e.onLocalEdit(() => scheduler.edited()),
     ]
-    return { user, engine: e, scheduler, unsubscribe }
+    return { user, engine: e, images, scheduler, unsubscribe }
   }
 
   function stop(o: Open) {
@@ -129,6 +133,12 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     async recover(id, title, content, imageIds, spaceId) {
       return (await engine()).recover(id, title, content, imageIds, spaceId)
     },
+    async addImage(id, bytes, type) {
+      await (await engine()).addImage(id, new Int8Array(bytes.buffer, bytes.byteOffset, bytes.byteLength), type)
+    },
+    async image(id) {
+      return (await opened()).images.load(id)
+    },
     async pendingNotes() {
       return (await engine()).pendingNotes()
     },
@@ -170,7 +180,9 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
       )
     },
     async wipe() {
-      await (await engine()).wipe()
+      const o = await opened()
+      await o.engine.wipe()
+      await o.images.clear()
     },
     close() {
       void current.then((o) => o && stop(o), () => {})

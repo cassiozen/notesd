@@ -1,4 +1,4 @@
-import type { MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, TagCount } from '../api/types'
+import type { LockKey, MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, TagCount } from '../api/types'
 import type { SyncNotice } from '../offline/protocol'
 import type { Fields, Snapshot } from './saver'
 
@@ -102,6 +102,21 @@ export interface NotesSource {
     put(id: string, name: string, icon?: string): Promise<Space>
     /** Only an empty space: an ApiError space_not_empty otherwise. */
     remove(id: string): Promise<void>
+  }
+  /** Note pictures' files, by id. */
+  images: {
+    /** Rejects with an ApiError 404 when there's no such image. */
+    get(id: string, signal?: AbortSignal): Promise<Blob>
+    /** Idempotent: the id is the bytes' SHA-256. */
+    put(id: string, bytes: Uint8Array<ArrayBuffer>, type: string): Promise<void>
+    /** Where an <img> can load a plain image straight from; none when they're kept on this device. */
+    url?: (id: string) => string
+  }
+  /** The locked-notes keyring. */
+  keyring: {
+    load(): Promise<LockKey[]>
+    /** After a change made here: a copy on this device is in use offline before sync brings it. */
+    changed(keys: readonly LockKey[]): Promise<void>
   }
   /** Calls [listener] whenever what was fetched may be out of date. Returns the unsubscribe function. */
   onStale(listener: () => void): () => void

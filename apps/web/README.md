@@ -216,6 +216,14 @@ engine) is only used by tests.
   if it was deleted elsewhere; deleted while typed into, the typing opens as a
   "(Recovered copy)". The list says how many notes are stuck while sync can't
   get through, with Sync now.
+- **Locked notes** unlock offline: the keyring comes from the server, or from
+  the engine's copy (sync refreshes it every cycle) when the server can't be
+  reached. A keyring change made here goes into that copy straight away.
+- **Pictures** (`src/offline/images.ts`) live in Cache Storage, one cache per
+  user. One added here is stored there with a `pending_images` row, and sync
+  uploads it before any note that shows it; others download on first view
+  and stay. Shown from blob: URLs, so locking a note offline can encrypt its
+  pictures whenever they're on the device.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
   after an edit, when a tab comes back or goes online, and every minute.
   Failures back off from 2 s to 5 min. Signed out, it waits for the next

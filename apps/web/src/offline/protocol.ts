@@ -76,6 +76,10 @@ export type EngineApi = {
   delete(id: string): Promise<void>
   /** Keeps text whose note was deleted elsewhere, as the new note [id]. Again with the same id does nothing. */
   recover(id: string, title: string, content: string, imageIds: string[] | null, spaceId: string): Promise<string>
+  /** A picture added here, already encrypted for a locked note; sync uploads it before the notes showing it. */
+  addImage(id: string, bytes: Uint8Array<ArrayBuffer>, type: string): Promise<void>
+  /** From this device, else downloaded and kept; null when the server has no such image. */
+  image(id: string): Promise<Blob | null>
   pendingNotes(): Promise<number>
   spaces(): Promise<Space[]>
   /** Again with the same id does nothing. */

@@ -1,10 +1,13 @@
 import { describe, expect, test } from 'vitest'
 import type { Note, Space } from '../../src/api/types'
+import { sha256Hex } from '../../src/images/ref'
+import { fromBase64Url } from '../../src/locks/crypto'
 import { syncTiming } from '../../src/offline/scheduler'
 import { op } from '../helpers'
 import { engineSignedIn, signIn, waitFor } from './helpers'
 
 const note = (id: string, title: string, content = '') => ({ id, title, content, spaceId: 'default' })
+const PNG = fromBase64Url('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH_iZk9HQAAAABJRU5ErkJggg')
 
 describe('engine', () => {
   test('saves on this device, then sync sends it', async () => {
@@ -145,4 +148,63 @@ describe('engine', () => {
     await engine.call('replaceLockKeys', keys)
     expect(await engine.call('lockKeys')).toEqual(keys)
   })
+
+  test('a picture added here is kept, and sync uploads it once it can', async () => {
+    const { server, engine } = await engineSignedIn()
+    const id = await sha256Hex(PNG)
+    await engine.call('addImage', id, PNG, 'image/png')
+    expect(await file(engine.call('image', id))).toEqual({ bytes: PNG, type: 'image/png' })
+
+    server.setOffline(true)
+    expect(await engine.call('sync')).toBe('Offline')
+    server.setOffline(false)
+    expect((await server.bytes('GET', `/images/${id}`)).status).toBe(404)
+
+    expect(await engine.call('sync')).toBe('Done')
+    expect(await server.bytes('GET', `/images/${id}`)).toMatchObject({ status: 200, type: 'image/png', data: PNG })
+  })
+
+  test('a picture the server refuses for good doesn’t hold notes back', async () => {
+    const { server, engine } = await engineSignedIn()
+    // Not the bytes' hash: hash_mismatch, every time.
+    const wrong = await sha256Hex(new Uint8Array([1, 2, 3]))
+    await engine.call('addImage', wrong, PNG, 'image/png')
+    const id = crypto.randomUUID()
+    await engine.call('save', note(id, 'Trip', `![](notesd:image/${wrong}?w=1&h=1)\n`))
+
+    expect(await engine.call('sync')).toBe('Done')
+    expect((await server.api('GET', `/notes/${id}`)).status).toBe(200)
+    expect((await server.bytes('GET', `/images/${wrong}`)).status).toBe(404)
+  })
+
+  test('a picture is downloaded once, then shows offline', async () => {
+    const { server, engine } = await engineSignedIn()
+    const id = await sha256Hex(PNG)
+    await server.bytes('PUT', `/images/${id}`, { type: 'image/png', data: PNG })
+
+    expect(await file(engine.call('image', id))).toEqual({ bytes: PNG, type: 'image/png' })
+    server.setOffline(true)
+    expect(await file(engine.call('image', id))).toEqual({ bytes: PNG, type: 'image/png' })
+    server.setOffline(false)
+    expect(await engine.call('image', await sha256Hex(new Uint8Array([9])))).toBeNull()
+  })
+
+  test('wiping forgets the pictures too', async () => {
+    const { server, engine } = await engineSignedIn()
+    const id = await sha256Hex(PNG)
+    await engine.call('addImage', id, PNG, 'image/png')
+
+    await engine.call('wipe')
+
+    server.setOffline(true)
+    await expect(engine.call('image', id)).rejects.toThrow()
+    server.setOffline(false)
+    expect(await engine.call('sync')).toBe('Done')
+    expect((await server.bytes('GET', `/images/${id}`)).status).toBe(404)
+  })
 })
+
+async function file(image: Promise<Blob | null>) {
+  const blob = await image
+  return blob && { bytes: new Uint8Array(await blob.arrayBuffer()), type: blob.type }
+}

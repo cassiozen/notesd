@@ -1,12 +1,13 @@
 import type { Editor } from '@tiptap/core'
-import { LOCKED_IMAGE, images } from '../api/images'
+import { LOCKED_IMAGE } from '../api/images'
 import { LockedError, openImage, sealImage } from '../locks/crypto'
 import { lockSession } from '../locks/session'
+import { notesSource } from '../notes/source'
 import { ImageError, prepareImage, sniffType, type Prepared } from './prepare'
 import { imageMarkdown, sha256Hex, type ImageRef } from './ref'
 
-// Uploading and showing note images (architecture §7.6). The web app is
-// online-only: an image is uploaded before its reference goes in the note.
+// Storing and showing note images (architecture §7.6). An image is stored
+// (uploaded, or kept on this device for sync) before its reference goes in the note.
 
 /** Stores bytes as an image, encrypted with the session key when locked; returns its reference. */
 async function upload(file: Prepared, locked: boolean): Promise<ImageRef> {
@@ -19,7 +20,7 @@ async function upload(file: Prepared, locked: boolean): Promise<ImageRef> {
     type = LOCKED_IMAGE
   }
   const id = await sha256Hex(bytes)
-  await images.put(id, bytes, type)
+  await notesSource().images.put(id, bytes, type)
   remember(id, file.bytes, file.type, locked)
   return { id, w: file.w, h: file.h }
 }
@@ -60,15 +61,16 @@ export function knownLocked(id: string): boolean {
  * A blob: URL for an encrypted image, decrypted with the session key; null
  * when it isn't encrypted, locked notes are locked, or it won't download.
  */
-export function decryptedURL(id: string): Promise<string | null> {
+/** [blob]: the encrypted file, when the caller already has it. */
+export function decryptedURL(id: string, blob?: Blob): Promise<string | null> {
   let url = decrypted.get(id)
   if (!url) {
     url = (async () => {
       const key = lockSession.key()
       if (!key) return null
-      const blob = await images.get(id)
-      if (blob.type !== LOCKED_IMAGE) return null
-      const plain = await openImage(key, new Uint8Array(await blob.arrayBuffer()))
+      const file = blob ?? (await notesSource().images.get(id))
+      if (file.type !== LOCKED_IMAGE) return null
+      const plain = await openImage(key, new Uint8Array(await file.arrayBuffer()))
       return URL.createObjectURL(new Blob([plain], { type: sniffType(plain) ?? 'application/octet-stream' }))
     })().catch(() => null)
     decrypted.set(id, url)
@@ -118,7 +120,7 @@ export async function resealImages(editor: Editor, locked: boolean): Promise<voi
 
 /** Re-uploads one image encrypted (locked) or plain; its new id, or null if it already is. */
 async function moveImage(id: string, locked: boolean, key: CryptoKey): Promise<string | null> {
-  const blob = await images.get(id).catch(() => {
+  const blob = await notesSource().images.get(id).catch(() => {
     throw new ImageError('A picture in this note couldn’t be downloaded. Try again when the connection is back.')
   })
   if ((blob.type === LOCKED_IMAGE) === locked) return null
@@ -139,7 +141,7 @@ async function moveImage(id: string, locked: boolean, key: CryptoKey): Promise<s
     if (!type) throw new ImageError('A picture in this note isn’t an image the server accepts.')
   }
   const next = await sha256Hex(file)
-  await images.put(next, file, type).catch(() => {
+  await notesSource().images.put(next, file, type).catch(() => {
     throw new ImageError('A picture in this note couldn’t be uploaded. Try again when the connection is back.')
   })
   remember(next, bytes, blob.type, locked)

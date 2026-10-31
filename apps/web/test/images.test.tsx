@@ -1,10 +1,9 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
-import type { LockKey } from '../src/api/types'
-import { decryptBody, fromBase64Url, importKey, openImage, passwordKek, unwrapRaw } from '../src/locks/crypto'
+import { decryptBody, openImage } from '../src/locks/crypto'
 import { sha256Hex } from '../src/images/ref'
+import { chooseLock, imageRef, keyOf, LOCK_PASSWORD, lockWithNewPassword, pick, PNG, pngFile, shown } from './image-helpers'
 import { body, createNote, getNote, noteTitle, openNote as openInList, saved, selectInBody, signedIn } from './helpers'
-import type { TestServer } from './server'
 
 // jsdom can't decode or draw pictures: preparing returns the file as it is,
 // as a 1×1 PNG of the size the test names. A file named slow.png waits for
@@ -17,18 +16,6 @@ vi.mock('../src/images/prepare', async (actual) => ({
     return { bytes: new Uint8Array(await file.arrayBuffer()), type: 'image/png', w: 640, h: 480 }
   },
 }))
-
-// Nor does it make blob: URLs.
-let blobs = 0
-URL.createObjectURL ??= () => `blob:test/${++blobs}`
-URL.revokeObjectURL ??= () => undefined
-
-const PNG = fromBase64Url('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH_iZk9HQAAAABJRU5ErkJggg')
-const LOCK_PASSWORD = 'lock pass 123'
-const pngFile = () => new File([PNG], 'dot.png', { type: 'image/png' })
-
-const imageRef = (content: string) => /\(notesd:image\/([0-9a-f]{64})\?w=640&h=480\)/.exec(content)?.[1]
-const shown = () => [...body().querySelectorAll<HTMLImageElement>('[data-image-view] img')]
 
 /** Signed in with one note open; the test PNG is on the server unless asked otherwise. */
 async function openNote(title: string, content: string, { upload = true, other = '' } = {}) {
@@ -48,30 +35,9 @@ async function openNote(title: string, content: string, { upload = true, other =
 /** A clipboard's getData holding only plain text. */
 const textOnly = (type: string) => (type === 'text/plain' ? 'pasted words' : '')
 
-async function pick(...files: File[]) {
-  fireEvent.change(screen.getByTestId('image-input'), { target: { files } })
-}
-
-async function keyOf(server: TestServer): Promise<CryptoKey> {
-  const { keys } = (await server.api<{ keys: LockKey[] }>('GET', '/locks')).body
-  const entry = keys.find((k) => k.kind === 'password')
-  if (!entry) throw new Error('no password entry')
-  const kek = await passwordKek(LOCK_PASSWORD, fromBase64Url(entry.salt), entry.iterations)
-  return importKey(await unwrapRaw(kek, entry.wrapped, 'password'))
-}
-
-async function chooseLock(s: Awaited<ReturnType<typeof openNote>>, item: 'Lock note' | 'Remove lock') {
-  await s.user.click(await screen.findByRole('button', { name: 'More' }))
-  await s.user.click(within(screen.getByRole('menu', { name: 'More' })).getByRole('menuitem', { name: item }))
-}
-
 /** Locks the open note, creating the lock password; resolves once the server has it locked. */
-async function lockWithNewPassword(s: Awaited<ReturnType<typeof openNote>>) {
-  await chooseLock(s, 'Lock note')
-    const dialog = await screen.findByRole('dialog', { name: 'Create a lock password' })
-    await s.user.type(within(dialog).getByLabelText('Lock password'), LOCK_PASSWORD)
-    await s.user.type(within(dialog).getByLabelText('Confirm'), LOCK_PASSWORD)
-    await s.user.click(within(dialog).getByRole('button', { name: 'Create and lock' }))
+async function lockOnServer(s: Awaited<ReturnType<typeof openNote>>) {
+  await lockWithNewPassword(s.user)
   await waitFor(async () => expect((await getNote(s.server, s.id)).content.startsWith('notesd:locked:v1:')).toBe(true))
 }
 
@@ -165,7 +131,7 @@ describe('images', () => {
     const plain = await sha256Hex(PNG)
     const s = await openNote('Secret', `![](notesd:image/${plain}?w=640&h=480)\n`)
 
-    await lockWithNewPassword(s)
+    await lockOnServer(s)
 
     const key = await keyOf(s.server)
     const text = await decryptBody(key, (await getNote(s.server, s.id)).content)
@@ -181,7 +147,7 @@ describe('images', () => {
     // Shown decrypted, not from the server.
     await waitFor(() => expect(shown()[0]?.getAttribute('src')).toMatch(/^blob:/))
 
-    await chooseLock(s, 'Remove lock')
+    await chooseLock(s.user, 'Remove lock')
     await waitFor(async () => expect((await getNote(s.server, s.id)).content).toBe(`![](notesd:image/${plain}?w=640&h=480)\n`))
     // A plain note's images are read from its content.
     expect((s.server.sent('PUT', `/notes/${s.id}`).at(-1) as { imageIds?: string[] }).imageIds).toBeUndefined()
@@ -189,7 +155,7 @@ describe('images', () => {
 
   it('a picture added to a locked note is uploaded encrypted', async () => {
     const s = await openNote('Locked', 'Text\n')
-    await lockWithNewPassword(s)
+    await lockOnServer(s)
 
     selectInBody('Text')
     await pick(pngFile())
@@ -208,7 +174,7 @@ describe('images', () => {
     const plain = await sha256Hex(PNG)
     // Never uploaded: the image can't be downloaded to encrypt it.
     const s = await openNote('Stuck', `![](notesd:image/${plain}?w=640&h=480)\n`, { upload: false })
-    await chooseLock(s, 'Lock note')
+    await chooseLock(s.user, 'Lock note')
     const dialog = await screen.findByRole('dialog', { name: 'Create a lock password' })
     await s.user.type(within(dialog).getByLabelText('Lock password'), LOCK_PASSWORD)
     await s.user.type(within(dialog).getByLabelText('Confirm'), LOCK_PASSWORD)
