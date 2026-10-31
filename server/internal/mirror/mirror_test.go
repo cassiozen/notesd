@@ -391,6 +391,48 @@ func TestMirrorWontWriteThroughLinks(t *testing.T) {
 	if entries, _ := os.ReadDir(outside); len(entries) > 0 {
 		t.Fatalf("wrote outside: %v", entries)
 	}
+
+	// Nor delete through one.
+	if err := os.WriteFile(filepath.Join(outside, "Plan.md"), []byte("theirs"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	f.delete("a")
+	if err := f.m.flush(ctx, 1); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+		t.Fatalf("delete through a link: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, "Plan.md")); err != nil {
+		t.Fatalf("deleted outside: %v", err)
+	}
+}
+
+func TestMirrorWontCollectImagesThroughLinks(t *testing.T) {
+	f := newFixture(t)
+	png := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR")
+	sum := sha256.Sum256(png)
+	id := hex.EncodeToString(sum[:])
+	if _, _, err := f.images.Put(ctx, id, "image/png", png); err != nil {
+		t.Fatal(err)
+	}
+	f.create("a", "Trip", "![beach](notesd:image/"+id+"?w=4&h=3)\n")
+	f.flush()
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, id+".png"), []byte("theirs"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	imagesDir := filepath.Join(f.dir, "sam", "images")
+	if err := os.RemoveAll(imagesDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, imagesDir); err != nil {
+		t.Fatal(err)
+	}
+	f.delete("a")
+	if err := f.m.flush(ctx, 1); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+		t.Fatalf("collect through a link: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(outside, id+".png")); err != nil {
+		t.Fatalf("deleted outside: %v", err)
+	}
 }
 
 func TestFolderNames(t *testing.T) {
@@ -412,6 +454,8 @@ func TestMirrorRefusesADamagedManifest(t *testing.T) {
 		`{"notes":{"a":null}}`,
 		`{"notes":{"a":{"path":"N/x.md"},"b":{"path":"n/X.md"}}}`,
 		`{"spaces":{"a":"W","b":"w"}}`,
+		`{"spaces":{"a":"Images"}}`,
+		`{"notes":{"a":{"path":"Images/x.md"}}}`,
 		`null`,
 		`{"spaces":{"default":".."}}`,
 		`{"images":{"` + strings.Repeat("a", 64) + `":"../x.png"}}`,

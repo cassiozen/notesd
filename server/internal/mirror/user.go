@@ -112,7 +112,8 @@ func loadUser(dir string) (*user, error) {
 // tool may bring one from elsewhere, and the mirror deletes what it lists.
 func (m *manifest) check() error {
 	// Two owners of one name: removing one would remove the other's file.
-	folders := map[string]bool{}
+	// images/ is never a space's folder, so a note there isn't the mirror's.
+	folders := map[string]bool{mdexport.NameKey(mdexport.ImagesDir): true}
 	for _, f := range m.Spaces {
 		if !oneName(f) || folders[mdexport.NameKey(f)] {
 			return fmt.Errorf("bad folder %q", f)
@@ -125,7 +126,7 @@ func (m *manifest) check() error {
 			return fmt.Errorf("note %q has no entry", id)
 		}
 		folder, name := path.Split(e.Path)
-		if !oneName(strings.TrimSuffix(folder, "/")) || !oneName(name) || !strings.HasSuffix(name, ".md") || files[mdexport.NameKey(e.Path)] {
+		if !oneName(strings.TrimSuffix(folder, "/")) || mdexport.NameKey(folder) == mdexport.NameKey(mdexport.ImagesDir+"/") || !oneName(name) || !strings.HasSuffix(name, ".md") || files[mdexport.NameKey(e.Path)] {
 			return fmt.Errorf("bad note path %q", e.Path)
 		}
 		files[mdexport.NameKey(e.Path)] = true
@@ -421,6 +422,9 @@ func (u *user) apply(ctx context.Context, db *database.DB, n notes.Note, get mde
 	if prev != nil && prev.Path != next.Path {
 		// A rename, not write-then-delete: "Todo" retitled "todo" is the same
 		// file where names ignore case.
+		if err := noLink(u.abs(path.Dir(prev.Path))); err != nil {
+			return err
+		}
 		if err := os.Rename(u.abs(prev.Path), u.abs(next.Path)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return err
 		}
@@ -446,6 +450,9 @@ func (u *user) remove(id string) error {
 	if e == nil {
 		return nil
 	}
+	if err := noLink(u.abs(path.Dir(e.Path))); err != nil {
+		return err
+	}
 	if err := os.Remove(u.abs(e.Path)); err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
 	}
@@ -461,6 +468,9 @@ func (u *user) collectImages() error {
 		for _, id := range e.Images {
 			shown[id] = true
 		}
+	}
+	if err := noLink(u.abs(mdexport.ImagesDir)); err != nil {
+		return err
 	}
 	for id, p := range u.man.Images {
 		if shown[id] {
