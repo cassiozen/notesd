@@ -316,7 +316,7 @@ final class FlowTests: XCTestCase {
     /// keyboard, the bar laying out again) can land on nothing. Only for taps that are safe to repeat.
     private func tap(_ button: XCUIElement, until result: XCUIElement, timeout: TimeInterval = 5) {
         for _ in 0..<3 {
-            if button.exists { button.tap() }
+            if button.exists && button.isHittable { button.tap() }
             if result.waitForExistence(timeout: timeout) { return }
         }
         XCTFail("tapping \(button) never showed \(result)")
