@@ -243,8 +243,9 @@ The mirror then follows the notes:
   seconds, and at least every 2 minutes while someone keeps typing.
 - It only goes one way. Edits made to the files are overwritten the next
   time the note changes, and new files are never imported.
-- Locked notes aren't written. Locking a note deletes its file, so its plain
-  text doesn't stay on disk.
+- Locked notes aren't written. Locking a note deletes its file from the
+  mirror folder, so its plain text doesn't stay there; copies that backups
+  or sync tools made are up to them.
 - notesd only replaces or deletes files it wrote. It keeps track of them in a
   hidden `.notesd-mirror.json` in each account's folder. Renaming a space
   moves only its notes' files, leaving your own files in the old folder. If one of your own files
@@ -254,8 +255,11 @@ The mirror then follows the notes:
   backup, it rewrites the account's folder to match.
 
 The server refuses to start if an account's folder has files (other than
-hidden ones) but no `.notesd-mirror.json`, if that file is damaged, or if the
-mirror folder is or contains the data directory.
+hidden ones) but no `.notesd-mirror.json`, if that file is damaged, if the
+folder is a symbolic link or another entry has its name in another case
+(`Sam` beside `sam`), or if the mirror folder is or contains the data
+directory. The mirror never writes through a symbolic link inside an
+account's folder either.
 
 With Docker, mount a host folder for the mirror and pass its path in the
 container:

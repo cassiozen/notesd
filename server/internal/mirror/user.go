@@ -61,13 +61,23 @@ type user struct {
 // loadUser reads a user's manifest, or starts one in a missing or empty
 // folder. Hidden files, such as macOS's .DS_Store, don't count.
 func loadUser(dir string) (*user, error) {
+	if err := noLink(dir); err != nil {
+		return nil, err
+	}
 	u := &user{dir: dir}
 	data, err := os.ReadFile(filepath.Join(dir, manifestName))
 	switch {
 	case err == nil:
-		err := json.Unmarshal(data, &u.man)
+		var man *manifest
+		err := json.Unmarshal(data, &man)
+		if err == nil && man == nil {
+			err = errors.New("null")
+		}
 		if err == nil {
-			err = u.man.check()
+			err = man.check()
+		}
+		if err == nil {
+			u.man = *man
 		}
 		if err != nil {
 			return nil, fmt.Errorf("%s is damaged, so the mirror won't touch this folder: %w", filepath.Join(dir, manifestName), err)
@@ -101,19 +111,24 @@ func loadUser(dir string) (*user, error) {
 // check refuses paths a manifest written by the mirror can't hold. A sync
 // tool may bring one from elsewhere, and the mirror deletes what it lists.
 func (m *manifest) check() error {
+	// Two owners of one name: removing one would remove the other's file.
+	folders := map[string]bool{}
 	for _, f := range m.Spaces {
-		if !oneName(f) {
+		if !oneName(f) || folders[mdexport.NameKey(f)] {
 			return fmt.Errorf("bad folder %q", f)
 		}
+		folders[mdexport.NameKey(f)] = true
 	}
+	files := map[string]bool{}
 	for id, e := range m.Notes {
 		if e == nil {
 			return fmt.Errorf("note %q has no entry", id)
 		}
 		folder, name := path.Split(e.Path)
-		if !oneName(strings.TrimSuffix(folder, "/")) || !oneName(name) || !strings.HasSuffix(name, ".md") {
+		if !oneName(strings.TrimSuffix(folder, "/")) || !oneName(name) || !strings.HasSuffix(name, ".md") || files[mdexport.NameKey(e.Path)] {
 			return fmt.Errorf("bad note path %q", e.Path)
 		}
+		files[mdexport.NameKey(e.Path)] = true
 	}
 	for id, p := range m.Images {
 		folder, name := path.Split(p)
@@ -155,6 +170,9 @@ func (u *user) abs(p string) string { return filepath.Join(u.dir, filepath.FromS
 // flush brings the folder up to date with db. Stopped by ctx, it keeps what
 // it wrote, and the next flush goes on from there.
 func (u *user) flush(ctx context.Context, db *database.DB, log *slog.Logger) (err error) {
+	if err := noLink(u.dir); err != nil {
+		return err
+	}
 	if err := os.MkdirAll(u.dir, 0o700); err != nil {
 		return err
 	}
@@ -284,6 +302,9 @@ func (u *user) syncSpaces(ctx context.Context, db *database.DB) error {
 // moveFolder moves the notes in folder old to folder name: the whole folder
 // when it holds only them, otherwise each, leaving the others' files behind.
 func (u *user) moveFolder(old, name string) error {
+	if err := noLink(u.abs(old)); err != nil {
+		return err
+	}
 	entries, err := os.ReadDir(u.abs(old))
 	if err != nil && !errors.Is(err, fs.ErrNotExist) {
 		return err
@@ -348,10 +369,24 @@ func (u *user) apply(ctx context.Context, db *database.DB, n notes.Note, get mde
 	if err != nil {
 		return err
 	}
+	if err := noLink(u.abs(folder)); err != nil {
+		return err
+	}
+	if err := noLink(u.abs(mdexport.ImagesDir)); err != nil {
+		return err
+	}
 	next := &entry{}
 	paths := map[string]string{}
 	for _, id := range images.Refs(n.Content) {
 		p, ok := u.man.Images[id]
+		if ok {
+			// Deleted by hand: written again, as a note's file would be.
+			if _, err := os.Lstat(u.abs(p)); errors.Is(err, fs.ErrNotExist) {
+				ok = false
+			} else if err != nil {
+				return err
+			}
+		}
 		if !ok {
 			if p, err = mdexport.WriteImage(u.dir, id, nil, get); err != nil {
 				return err

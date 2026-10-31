@@ -309,6 +309,14 @@ func TestMirrorImages(t *testing.T) {
 	}
 	f.wantFiles("Notes/", "Notes/Trip.md", "images/", "images/"+id+".png")
 
+	// Deleted by hand: back with the note's next change.
+	if err := os.Remove(filepath.Join(f.dir, "sam", "images", id+".png")); err != nil {
+		t.Fatal(err)
+	}
+	f.update("a", "Trip", "![beach]("+ref+")\nsand\n")
+	f.flush()
+	f.wantFiles("Notes/", "Notes/Trip.md", "images/", "images/"+id+".png")
+
 	f.update("a", "Trip", "no pictures\n")
 	f.flush()
 	f.wantFiles("Notes/", "Notes/Trip.md", "images/")
@@ -345,6 +353,46 @@ func TestCheck(t *testing.T) {
 	}
 }
 
+func TestCheckRefusesClashesAndLinks(t *testing.T) {
+	f := newFixture(t)
+	if err := os.Mkdir(filepath.Join(f.dir, "SAM"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.mirror().Check(ctx, t.TempDir()); err == nil || !strings.Contains(err.Error(), "clashes") {
+		t.Fatalf("SAM beside sam: %v", err)
+	}
+	if err := os.Remove(filepath.Join(f.dir, "SAM")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(t.TempDir(), filepath.Join(f.dir, "sam")); err != nil {
+		t.Fatal(err)
+	}
+	if err := f.mirror().Check(ctx, t.TempDir()); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+		t.Fatalf("sam a link: %v", err)
+	}
+}
+
+func TestMirrorWontWriteThroughLinks(t *testing.T) {
+	f := newFixture(t)
+	f.create("a", "Plan", "q3\n")
+	f.flush()
+	outside := t.TempDir()
+	notesDir := filepath.Join(f.dir, "sam", "Notes")
+	if err := os.RemoveAll(notesDir); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, notesDir); err != nil {
+		t.Fatal(err)
+	}
+	f.update("a", "Plan", "q4\n")
+	if err := f.m.flush(ctx, 1); err == nil || !strings.Contains(err.Error(), "symbolic link") {
+		t.Fatalf("flush through a link: %v", err)
+	}
+	if entries, _ := os.ReadDir(outside); len(entries) > 0 {
+		t.Fatalf("wrote outside: %v", entries)
+	}
+}
+
 func TestFolderNames(t *testing.T) {
 	// "A B (2)" is a username, so the clash with "A B" goes on to (3).
 	got := folderNames([]Account{{ID: 4, Username: "a/b"}, {ID: 1, Username: "A B"}, {ID: 2, Username: "CON"}, {ID: 3, Username: "A B (2)"}})
@@ -362,6 +410,9 @@ func TestMirrorRefusesADamagedManifest(t *testing.T) {
 		`{"notes":{"a":{"path":"/etc/passwd"}}}`,
 		`{"notes":{"a":{"path":"Notes/sub/x.md"}}}`,
 		`{"notes":{"a":null}}`,
+		`{"notes":{"a":{"path":"N/x.md"},"b":{"path":"n/X.md"}}}`,
+		`{"spaces":{"a":"W","b":"w"}}`,
+		`null`,
 		`{"spaces":{"default":".."}}`,
 		`{"images":{"` + strings.Repeat("a", 64) + `":"../x.png"}}`,
 		`not json`,

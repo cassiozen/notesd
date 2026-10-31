@@ -210,6 +210,9 @@ func (m *Mirror) user(userID int64, folder string) (*user, error) {
 	if u := m.users[userID]; u != nil && u.dir == dir {
 		return u, nil
 	}
+	if err := clash(m.cfg.Dir, folder); err != nil {
+		return nil, err
+	}
 	u, err := loadUser(dir)
 	if err != nil {
 		return nil, err
@@ -278,6 +281,41 @@ func taken(dir, name string) (bool, error) {
 		}
 	}
 	return false, nil
+}
+
+// clash refuses an account folder that root has under another case or form:
+// one folder on macOS and Windows, two on Linux, and so two once synced.
+func clash(root, folder string) error {
+	entries, err := os.ReadDir(root)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	key := mdexport.NameKey(folder)
+	for _, e := range entries {
+		if e.Name() != folder && mdexport.NameKey(e.Name()) == key {
+			return fmt.Errorf("%s clashes with %s's folder %q where names ignore case; move it out of --mirror-dir", filepath.Join(root, e.Name()), folder, folder)
+		}
+	}
+	return nil
+}
+
+// noLink refuses p if it's a symbolic link, such as one a sync tool brought:
+// the mirror's writes and deletes would land outside --mirror-dir.
+func noLink(p string) error {
+	fi, err := os.Lstat(p)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if fi.Mode()&fs.ModeSymlink != 0 {
+		return fmt.Errorf("%s is a symbolic link; the mirror won't write through it", p)
+	}
+	return nil
 }
 
 func minTime(a, b time.Time) time.Time {
