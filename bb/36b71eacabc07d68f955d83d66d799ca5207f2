@@ -1,0 +1,57 @@
+apps/web/src/auth/session-hint.ts
+  s_84ccc2ddea17c8::t_49012279d46713 37-40,45-61
+  s_84ccc2ddea17c8::t_c9e4faca7a5384 23-24
+apps/web/src/settings/device.tsx
+  s_84ccc2ddea17c8::t_a8923b385f666e 5,101-103,106-110,115-119
+  s_84ccc2ddea17c8::t_c9e4faca7a5384 4
+  s_84ccc2ddea17c8::t_49012279d46713 9-15,46,93,104-105,111-114
+  s_84ccc2ddea17c8::t_405cf775ed944c 120-123
+apps/web/src/settings/settings.tsx
+  s_84ccc2ddea17c8::t_a8923b385f666e 23,383-388
+apps/web/src/auth/auth-context.tsx
+  s_84ccc2ddea17c8::t_49012279d46713 6,110-113
+apps/web/vite.config.ts
+  s_84ccc2ddea17c8::t_7935d1ee971510 35,42
+  s_84ccc2ddea17c8::t_afa47ef98136ac 43
+apps/web/src/install.ts
+  s_84ccc2ddea17c8::t_49012279d46713 9-15
+  s_84ccc2ddea17c8::t_b54e2ec29a5898 1-8,16-58
+apps/web/src/auth/login.tsx
+  s_84ccc2ddea17c8::t_49012279d46713 13,37-39,56
+  s_84ccc2ddea17c8::t_c9e4faca7a5384 8
+apps/web/src/offline/device.ts
+  s_84ccc2ddea17c8::t_49012279d46713 3-4,100-116
+  s_84ccc2ddea17c8::t_ec16fb5c331b8a 117
+apps/web/test/opt-in.test.tsx
+  s_84ccc2ddea17c8::t_7fbf9b165db64c 3,5,9,206,215,225,228,230-266,268-284
+  s_84ccc2ddea17c8::t_0c8bfc8972fd88 267
+  s_84ccc2ddea17c8::t_1e635e0e152a3b 207-214,216-224,226-227,229
+  s_84ccc2ddea17c8::t_4cc2ae43f3c257 285
+docs/settings.md
+  s_84ccc2ddea17c8::t_359c61f266b31b 69
+apps/web/public/manifest.webmanifest
+  s_84ccc2ddea17c8::t_7935d1ee971510 5,15-17
+apps/web/test/settings.test.tsx
+  s_84ccc2ddea17c8::t_7fbf9b165db64c 6-7,219-220,235-236
+  s_84ccc2ddea17c8::t_6c640dbd7d16a6 221,237
+  s_84ccc2ddea17c8::t_649ef764c3fb62 3-4,215-218,222-234,238-250
+  s_84ccc2ddea17c8::t_e0f1c46d71e487 251
+apps/web/src/main.tsx
+  s_84ccc2ddea17c8::t_7935d1ee971510 5,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bb36b71eacabc07d68f955d83d66d799ca5207f2",
+  "prompts": {},
+  "sessions": {
+    "s_84ccc2ddea17c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1395e40-3893-41f5-835f-17fdbea9eac9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
