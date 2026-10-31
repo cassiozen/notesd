@@ -1,0 +1,58 @@
+apps/web/src/locks/session.ts
+  s_d22cab8726b588::t_7de81fa11795ce 2,19,87,92-93,300-302,382-388
+  s_d22cab8726b588::t_446cda12e5ec56 389-391
+apps/web/src/offline/host.ts
+  s_d22cab8726b588::t_a6b315347a77df 11,18,28,34-35,38-39,48,136-141,183-185
+apps/web/src/offline/images.ts
+  s_d22cab8726b588::t_75da6fb20c108e 1-2,5-61
+  s_d22cab8726b588::t_732bbdc33a6d99 3-4
+apps/web/test/engine/helpers.ts
+  s_d22cab8726b588::t_34e8d86af8268f 9,22-27
+apps/web/src/notes/online-source.ts
+  s_d22cab8726b588::t_796fbca0786a56 1,29-35
+apps/web/test/engine/engine.test.ts
+  s_d22cab8726b588::t_372688193c1701 3-4,10,150-203
+apps/web/test/engine/fake-caches.ts
+  s_d22cab8726b588::t_34e8d86af8268f 1-50
+apps/android/core/src/jvmMain/kotlin/notes/core/images/ImageStore.kt
+  s_d22cab8726b588::t_4babb5726b2f95 145
+apps/android/core/src/jsMain/kotlin/notes/core/web/WebImages.kt
+  s_d22cab8726b588::t_14f7b0d981c290 1-63
+apps/web/src/images/store.ts
+  s_d22cab8726b588::t_91e0cfa48fbf52 2,5,9-10,23,70,122,143
+apps/web/src/notes/local-source.ts
+  s_d22cab8726b588::t_796fbca0786a56 52-66
+apps/web/test/on-device-media.test.tsx
+  s_d22cab8726b588::t_bbd1677b7f8ebf 1-104,107-126,128-149
+  s_d22cab8726b588::t_52365c724caabc 105-106,127
+apps/web/src/offline/protocol.ts
+  s_d22cab8726b588::t_796fbca0786a56 2
+  s_d22cab8726b588::t_a6b315347a77df 80-83
+apps/web/src/images/view.ts
+  s_d22cab8726b588::t_17e5f77b0b0fc0 1,3,9-10,28,44-55,58,72
+apps/android/core/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_d22cab8726b588::t_4babb5726b2f95 194-198
+apps/web/README.md
+  s_d22cab8726b588::t_9ffbe384bce056 219-226
+apps/web/src/notes/source.ts
+  s_d22cab8726b588::t_796fbca0786a56 1,106-120
+apps/android/core/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_d22cab8726b588::t_ed1406e7ec0467 22,96,99-100,188-191,254-257
+  s_d22cab8726b588::t_aba29dae66ab34 259,261-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cb963aa67be956010aff02117cc2c5884bd360df",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
