@@ -5,11 +5,12 @@ import { Button } from '../ui/button'
 import { Command } from '../ui/code'
 import { Field } from '../ui/field'
 import { useShake } from '../ui/shake'
+import { isInstalledApp } from '../install'
 import { useAuth } from './auth-context'
 import { AuthLayout } from './auth-layout'
 import { askToPersist, useDeviceSupported } from '../offline/device'
 import { genericMessage } from './errors'
-import { deviceUser, keepOnDevice } from './session-hint'
+import { declineDevice, deviceDeclined, deviceUser, keepOnDevice } from './session-hint'
 import styles from './auth.module.css'
 
 type Props = {
@@ -33,7 +34,9 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
   // Kept already: opting out is Settings', which warns of changes not yet on the server.
   const [keptHere] = useState(() => deviceUser() !== null)
   const canKeep = useDeviceSupported(offerDevice && !keptHere)
-  const [keep, setKeep] = useState(false)
+  // Installed: kept unless said otherwise, as on opening the app (keepIfInstalledApp).
+  const [installed] = useState(isInstalledApp)
+  const [keep, setKeep] = useState(() => installed && !deviceDeclined())
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -50,6 +53,7 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
     try {
       const info = await auth.login(username.trim(), password)
       if (wantsDevice) keepOnDevice(info.username)
+      else if (canKeep && installed) declineDevice()
       signedIn(info)
     } catch (err) {
       setBusy(false)

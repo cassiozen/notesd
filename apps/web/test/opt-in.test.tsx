@@ -1,11 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { App } from '../src/app'
+import { STANDALONE } from '../src/install'
 import { timing } from '../src/notes/saver'
 import { deviceUser, keepOnDevice } from '../src/auth/session-hint'
 import type { Engine } from '../src/offline/tab'
-import { inProcessEngine } from './engine/helpers'
+import { inProcessEngine, signIn } from './engine/helpers'
 import { createNote, getNote, list, listNotes, openNote, openSettings, saved, signedIn, startEngines, typeAtEnd } from './helpers'
 import { createOwner, startServer } from './server'
 
@@ -200,5 +201,85 @@ describe('a device that can’t open its notes', () => {
 
     await openSettings(user, 'Sync & data')
     expect(await screen.findByText(/The notes kept here couldn’t be opened \(No OPFS here\)/)).toBeTruthy()
+  })
+})
+
+/** Opened as the installed app rather than in a browser tab, until the test ends. */
+function installedApp() {
+  const real = window.matchMedia
+  const spy = vi
+    .spyOn(window, 'matchMedia')
+    .mockImplementation((q) => (q === STANDALONE ? { ...real(q), matches: true } : real(q)))
+  onTestFinished(() => spy.mockRestore())
+}
+
+/** A server with a note, and an owner this browser is signed in as. */
+async function signedInAlready() {
+  const server = await startServer()
+  const { username, password } = await createOwner(server)
+  await server.api('POST', '/auth/login', { username, password, client: 'web' })
+  await createNote(server, 'Plan', 'One\n')
+  await signIn(username, password)
+  return { username }
+}
+
+const planListed = () =>
+  waitFor(() => expect(within(list()).getByRole('link', { name: /^Plan/ })).toBeTruthy(), { timeout: 3000 })
+
+describe('the installed app', () => {
+  it('keeps the notes on opening, until turned off in Settings', async () => {
+    const started = engines()
+    installedApp()
+    const { username } = await signedInAlready()
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await planListed()
+    expect(deviceUser()).toBe(username)
+    expect(started).toHaveLength(1)
+
+    await openSettings(user, 'Sync & data')
+    await user.click(await screen.findByRole('checkbox', { name: /Keep my notes on this device/ }))
+    await waitFor(() => expect(screen.queryByRole('button', { name: 'Sync now' })).toBeNull())
+    expect(deviceUser()).toBeNull()
+
+    // Opened again: turned off stays off.
+    unmount()
+    render(<App />)
+    await planListed()
+    expect(deviceUser()).toBeNull()
+    expect(started).toHaveLength(1)
+  })
+
+  it('keeps nothing on opening in a browser tab', async () => {
+    const started = engines()
+    await signedInAlready()
+    render(<App />)
+    await planListed()
+    expect(deviceUser()).toBeNull()
+    expect(started).toHaveLength(0)
+  })
+
+  it('starts the box ticked at sign-in; unticked, opening again keeps nothing', async () => {
+    const started = engines()
+    installedApp()
+    const server = await startServer()
+    const { username, password } = await createOwner(server)
+    await server.api('POST', '/auth/login', { username, password, client: 'web' })
+    await createNote(server, 'Plan', 'One\n')
+    const user = userEvent.setup()
+    const { unmount } = render(<App />)
+    await user.type(await screen.findByLabelText('Username'), username)
+    await user.type(screen.getByLabelText('Password'), password)
+    const box = await screen.findByRole<HTMLInputElement>('checkbox', { name: /Keep my notes on this device/ })
+    expect(box.checked).toBe(true)
+    await user.click(box)
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    await planListed()
+
+    unmount()
+    render(<App />)
+    await planListed()
+    expect(deviceUser()).toBeNull()
+    expect(started).toHaveLength(0)
   })
 })

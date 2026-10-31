@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { csrfTokenNow, sessionGone } from '../api/client'
-import { deviceUser, keepOnDevice } from '../auth/session-hint'
+import { declineDevice, deviceDeclined, deviceUser, keepOnDevice } from '../auth/session-hint'
+import { isInstalledApp } from '../install'
 import { localSource } from '../notes/local-source'
 import { onlineSource } from '../notes/online-source'
 import { setNotesSource } from '../notes/source'
@@ -94,6 +95,24 @@ export function keepNotesHere(user: string) {
   keepOnDevice(user)
   askToPersist()
   openNotes(user)
+}
+
+/**
+ * Opened as the installed app, signed in: keeps [user]'s notes here unless turned off before, or kept for someone
+ * else. Before openNotes, so the screens start on this device's copy.
+ */
+export async function keepIfInstalledApp(user: string) {
+  if (!isInstalledApp() || deviceUser() !== null || deviceDeclined()) return
+  if (start === connectEngine && !(await detectSupport())) return
+  keepOnDevice(user)
+  // No click to grant it from; Chrome grants installed apps persistence without one.
+  askToPersist()
+}
+
+/** Turning it off in Settings: everything kept here goes, and the installed app won't turn it back on. */
+export async function stopKeepingNotesHere() {
+  declineDevice()
+  await forgetNotesHere()
 }
 
 /** Notes changed here that haven't reached the server, after trying once more; 0 when nothing's kept here. */

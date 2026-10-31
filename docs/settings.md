@@ -66,7 +66,7 @@ the list is its own screen and a category opens on top of it with a back button.
 | Email via Resend (API key, From) | Integrations | **server** | ✓ | ✓ | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |
-| Keep my notes on this device (also offered at sign-in; off removes them) | Sync & data | device | ✓ | – | – |
+| Keep my notes on this device (also offered at sign-in; on by default in the installed app; off removes them) | Sync & data | device | ✓ | – | – |
 | Sync status, last synced, last error, Sync now | Sync & data | device | ✓ (while kept) | ✓ | – |
 | Remove all data from this device | Sync & data | device | – | ✓ | ✓ |
 | App version | About | device | – | ✓ | ✓ |

@@ -1,8 +1,10 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
+import { captureInstallPrompt } from '../src/install'
 import { navigate } from '../src/router'
-import { createNote, noteTitle, openSettings, phoneLayout, signedIn } from './helpers'
+import { inProcessEngine } from './engine/helpers'
+import { createNote, noteTitle, openSettings, phoneLayout, signedIn, startEngines } from './helpers'
 
 /** Signed in, with Settings open at one of its categories. */
 async function inSettings(category?: string) {
@@ -209,5 +211,42 @@ describe('connection', () => {
 
     await user.type(screen.getByRole('searchbox', { name: 'Search notes' }), 'x')
     expect(await screen.findByText('Search didn’t work.')).toBeTruthy()
+  })
+
+  it('offers installing as an app only while Chrome says it can be', async () => {
+    // main.tsx's; tests render App alone.
+    captureInstallPrompt()
+    // A browser that can keep notes: jsdom's real check says no.
+    startEngines(inProcessEngine)
+    const { user } = await inSettings('Sync & data')
+    expect(screen.queryByRole('button', { name: 'Install notesd' })).toBeNull()
+
+    const prompt = vi.fn(async () => {})
+    act(() => {
+      const event = Object.assign(new Event('beforeinstallprompt', { cancelable: true }), {
+        prompt,
+        userChoice: Promise.resolve({ outcome: 'accepted' }),
+      })
+      window.dispatchEvent(event)
+      // Chrome's own install infobar stays away.
+      expect(event.defaultPrevented).toBe(true)
+    })
+    const button = await screen.findByRole('button', { name: 'Install notesd' })
+    // What the installed app does on its first open.
+    expect(screen.getByText(/keeps your notes on this device too/)).toBeTruthy()
+    await user.click(button)
+    expect(prompt).toHaveBeenCalledOnce()
+    // prompt() works once per event.
+    expect(screen.queryByRole('button', { name: 'Install notesd' })).toBeNull()
+
+    // A fresh event, then installed from the browser's own menu.
+    act(() => {
+      window.dispatchEvent(Object.assign(new Event('beforeinstallprompt', { cancelable: true }), { prompt }))
+    })
+    expect(await screen.findByRole('button', { name: 'Install notesd' })).toBeTruthy()
+    act(() => {
+      window.dispatchEvent(new Event('appinstalled'))
+    })
+    expect(screen.queryByRole('button', { name: 'Install notesd' })).toBeNull()
   })
 })

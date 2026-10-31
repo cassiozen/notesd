@@ -32,13 +32,15 @@ export default defineConfig({
         const files = readdirSync(outDir, { recursive: true, withFileTypes: true })
           // .woff: fallback that any browser with service workers skips for .woff2. sqlite-wasm's
           // worker1 API and "opfs" VFS ship along but go unused: the engine opens the SAH-pool VFS itself.
+          // Screenshots: only the browser's install dialog fetches them, online.
           .filter(
             (f) =>
               f.isFile() &&
               !f.name.startsWith('.') &&
               f.name !== 'sw.js' &&
               !/\.(map|woff)$/.test(f.name) &&
-              !/^sqlite3-(worker1|opfs-async-proxy)-/.test(f.name),
+              !/^sqlite3-(worker1|opfs-async-proxy)-/.test(f.name) &&
+              !f.name.startsWith('screenshot-'),
           )
           .map((f) => resolve(f.parentPath, f.name).slice(outDir.length).replaceAll('\\', '/'))
           .toSorted()
