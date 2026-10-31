@@ -150,16 +150,25 @@ bin="$(pwd)/.build/notesd"
 NOTESD_SERVER_BIN="$bin" swift test
 """
 
+[tasks."build:ios:tests"]
+description = "The iOS app and its test bundles, built for test:ios"
+dir = "apps/ios"
+run = """
+xcodebuild -quiet -project Notes.xcodeproj -scheme Notes -destination "id=$(scripts/simulator.sh)" \
+  -derivedDataPath build/DerivedData build-for-testing
+"""
+
 [tasks."test:ios"]
 description = "iOS app tests on a simulator: the editor, then the UI flows against a real notesd"
 dir = "apps/ios"
+depends = ["build:ios:tests"]
 run = """
 set -e
 bin="$(pwd)/build/notesd"
 (cd ../../server && go build -o "$bin" ./cmd/notesd)
 sim=$(scripts/simulator.sh)
 scripts/with-server.sh "$bin" scripts/xctest.sh build/test.log -project Notes.xcodeproj -scheme Notes \
-  -destination "id=$sim" -derivedDataPath build/DerivedData test
+  -destination "id=$sim" -derivedDataPath build/DerivedData test-without-building
 """
 
 [tasks."lint:ios"]
