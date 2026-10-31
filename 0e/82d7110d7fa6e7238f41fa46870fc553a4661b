@@ -1,0 +1,26 @@
+server/internal/mirror/mirror.go
+  s_21342658100c10::t_f985ada3510c8a 213-215,286-319
+  s_21342658100c10::t_17e5bbba52de18 320
+server/internal/mirror/mirror_test.go
+  s_21342658100c10::t_77d85f973a895d 312-319,356-395,413-415
+server/internal/mirror/user.go
+  s_21342658100c10::t_f985ada3510c8a 64-66,71-78,80,114-115,117,120,122,128,131,173-175,305-307,372-377,382-389
+docs/hosting.md
+  s_21342658100c10::t_70f1711124f814 246-248,258-262
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0e82d7110d7fa6e7238f41fa46870fc553a4661b",
+  "prompts": {},
+  "sessions": {
+    "s_21342658100c10": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d1aa0306-99e0-4f07-85ff-33fa2391176f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
