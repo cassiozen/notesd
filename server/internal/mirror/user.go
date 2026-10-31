@@ -106,7 +106,10 @@ func (m *manifest) check() error {
 			return fmt.Errorf("bad folder %q", f)
 		}
 	}
-	for _, e := range m.Notes {
+	for id, e := range m.Notes {
+		if e == nil {
+			return fmt.Errorf("note %q has no entry", id)
+		}
 		folder, name := path.Split(e.Path)
 		if !oneName(strings.TrimSuffix(folder, "/")) || !oneName(name) || !strings.HasSuffix(name, ".md") {
 			return fmt.Errorf("bad note path %q", e.Path)

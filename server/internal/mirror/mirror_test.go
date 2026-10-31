@@ -361,6 +361,7 @@ func TestMirrorRefusesADamagedManifest(t *testing.T) {
 		`{"notes":{"a":{"path":"../../outside.md"}}}`,
 		`{"notes":{"a":{"path":"/etc/passwd"}}}`,
 		`{"notes":{"a":{"path":"Notes/sub/x.md"}}}`,
+		`{"notes":{"a":null}}`,
 		`{"spaces":{"default":".."}}`,
 		`{"images":{"` + strings.Repeat("a", 64) + `":"../x.png"}}`,
 		`not json`,
