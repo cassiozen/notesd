@@ -88,7 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setCsrfToken(null)
       // Signed out, nothing of the account stays in this browser.
-      await forgetNotesHere().catch(() => undefined)
+      void forgetNotesHere().catch(() => undefined)
       setState({ status: 'signed-out' })
     }
   }, [])
