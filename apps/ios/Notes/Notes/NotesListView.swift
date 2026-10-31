@@ -409,6 +409,9 @@ struct NotesListView: View {
     /// restoring on undo would race sync, which could send the delete first.
     private func delete(_ id: String) {
         let store = graph.store
+        // Open beside the list, it closes now: left open, typing in the undo window would come back
+        // as a recovered copy under a "deleted on another device" banner.
+        nav.close(note: id)
         withAnimation(.snappy) {
             pendingDeletes[id] = Task {
                 try? await Task.sleep(for: .seconds(5))

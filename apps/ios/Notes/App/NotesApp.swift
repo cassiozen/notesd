@@ -169,8 +169,14 @@ struct RootView: View {
 
     /// The fold's left edge while the Duo is partly folded (a vertical fold, active); nil otherwise.
     nonisolated private static func fold(in proxy: GeometryProxy) -> CGFloat? {
-        guard #available(iOS 27.1, *) else { return nil }
-        let fold = proxy.reservedRegions(kind: .division).first { $0.isActive && $0.frame.height > $0.frame.width }
-        return fold.map { $0.frame.minX }
+        // `#available` can't hide a symbol an older SDK lacks: built with one (SwiftUI 8.0.85 is the iOS
+        // 27.1 SDK's), the list keeps its own width.
+        #if canImport(SwiftUI, _version: 8.0.85)
+            guard #available(iOS 27.1, *) else { return nil }
+            let fold = proxy.reservedRegions(kind: .division).first { $0.isActive && $0.frame.height > $0.frame.width }
+            return fold.map { $0.frame.minX }
+        #else
+            return nil
+        #endif
     }
 }
