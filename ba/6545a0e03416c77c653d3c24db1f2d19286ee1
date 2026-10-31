@@ -1,0 +1,97 @@
+apps/web/src/auth/auth-context.tsx
+  s_d22cab8726b588::t_a84502c264ce4c 5
+  s_d22cab8726b588::t_7d6eafca78eda6 83,121,132
+  s_d22cab8726b588::t_0e97e90594d3f3 92-93
+apps/web/playwright.config.ts
+  s_d22cab8726b588::t_b9115b96941f26 5,8-9,28-33
+  s_d22cab8726b588::t_71345bf54e675f 34
+  s_d22cab8726b588::t_e282935b8a8241 6
+apps/web/test/offline-boot.test.tsx
+  s_d22cab8726b588::t_99ef4afe687f6c 31-32
+  s_d22cab8726b588::t_f10b4f97a288df 4,42
+apps/web/test/opt-in.test.tsx
+  s_d22cab8726b588::t_da432bd0eca8bc 1-2,4-5,7,9-15,17-18,21-38,41-52,54,56-83,85-101,103-111,113-133,135-140,142-146,148-160
+  s_d22cab8726b588::t_c520cfb0dd6785 53,55,84,102,112,134,141,147
+  s_d22cab8726b588::t_379bf3a414cab0 39-40
+  s_d22cab8726b588::t_b23861aa61f1f9 3,6,8,16,19-20
+apps/web/e2e/engine.spec.ts
+  s_d22cab8726b588::t_da4a987dc3f965 1,4,6
+apps/web/src/api/client.ts
+  s_d22cab8726b588::t_0e97e90594d3f3 37-40
+apps/web/e2e/profile.ts
+  s_d22cab8726b588::t_b9115b96941f26 7-8
+  s_d22cab8726b588::t_da4a987dc3f965 1-6,9-23
+apps/web/src/settings/sections.ts
+  s_d22cab8726b588::t_7098b0104a02b9 1,8
+apps/web/src/auth/login.tsx
+  s_d22cab8726b588::t_589506699fde63 22-23,26,33-34,45,49,51,98-108,123
+  s_d22cab8726b588::t_11ab8a2e87d458 10,46-47
+  s_d22cab8726b588::t_77a18a09bb4dc2 12,50
+apps/web/src/auth/auth.module.css
+  s_d22cab8726b588::t_589506699fde63 112-136
+docs/settings.md
+  s_d22cab8726b588::t_166f6dd7dbc6f1 69-70,85
+  s_d22cab8726b588::t_0e669e3d790300 43
+apps/web/test/engine/engine.test.ts
+  s_d22cab8726b588::t_99ef4afe687f6c 205-228
+apps/android/core/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_d22cab8726b588::t_32f1a88bf573ae 63-69
+apps/web/src/settings/settings.tsx
+  s_d22cab8726b588::t_b7a4e9f3e54050 358
+  s_d22cab8726b588::t_7098b0104a02b9 18,23,118,196,382-383
+  s_d22cab8726b588::t_5044ed0c762bf5 195,203
+apps/web/src/settings/device.tsx
+  s_d22cab8726b588::t_5044ed0c762bf5 5-6,15-16,21-22,90-92,110-115,119-121,124,126-128,130,141
+  s_d22cab8726b588::t_b7a4e9f3e54050 139
+  s_d22cab8726b588::t_de93d0fa8ad5af 197-198,201,205
+  s_d22cab8726b588::t_c3393ac50b4287 1-4,7-14,17-20,23-89,93-109,116-118,122-123,125,129,131-138,140,142-196,199-200,202-204,206-224
+apps/android/core/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_d22cab8726b588::t_1b74ac5fc00582 90-91
+  s_d22cab8726b588::t_2eb504f3711df4 89,92,94,96
+apps/web/README.md
+  s_d22cab8726b588::t_c48fa4b8de14b0 54-57
+  s_d22cab8726b588::t_e6120f8c9ecaa8 191,193,195-203,243-245
+apps/web/test/settings.test.tsx
+  s_d22cab8726b588::t_88428c4041c48c 113,116
+README.md
+  s_d22cab8726b588::t_0c5a54cfe9b41d 24-25
+apps/web/src/settings/settings.module.css
+  s_d22cab8726b588::t_de93d0fa8ad5af 518-524
+apps/web/src/notes/local-source.ts
+  s_d22cab8726b588::t_6508a5664409de 168-169
+  s_d22cab8726b588::t_8a5461547279ae 8,109,111-113,115-116,123,134-135,138-139,141-153,155-159,161-167
+  s_d22cab8726b588::t_205b23dd8b15f2 133,136-137,140,154,160
+docs/architecture.md
+  s_d22cab8726b588::t_4195824e57daea 5,49,69,73,81,90,311,373,407,429,518-519,662
+  s_d22cab8726b588::t_166f6dd7dbc6f1 514
+  s_d22cab8726b588::t_9767da050d40da 663
+apps/web/src/offline/device.ts
+  s_d22cab8726b588::t_dec5983f71f586 1-2,23-34,50-51,56,58,62,74,81,85-89,95-96
+  s_d22cab8726b588::t_2807a6800fd261 3,10,16,18,35-47,68,70-73,75,82-84,90-94,97-120
+  s_d22cab8726b588::t_b0d212fe209241 48-49
+apps/web/src/notes/source.ts
+  s_d22cab8726b588::t_9efd675e4cbc79 1,3-4,36-38,132-133,140-143,146,148-149,155-168
+apps/web/e2e/offline.spec.ts
+  s_d22cab8726b588::t_e282935b8a8241 1-49
+apps/web/src/ui/icons.tsx
+  s_d22cab8726b588::t_7098b0104a02b9 177-184
+apps/web/src/app.tsx
+  s_d22cab8726b588::t_7d6eafca78eda6 7,24
+  s_d22cab8726b588::t_0e97e90594d3f3 50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba6545a0e03416c77c653d3c24db1f2d19286ee1",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
