@@ -240,7 +240,7 @@ Settings → Sync & data. Otherwise the app works on the server as before.
   reached, the screens open on this device's copy, provided it has synced at
   least once (an empty one would look like every note gone). The server is
   tried again every 30 s and when the browser goes online; its answer
-  decides the session. Until then writes wait: the page has no CSRF token,
+  decides the session. Until then, server writes wait: the page has no CSRF token,
   and a write without one would be refused for good. A sync that finds the
   session gone pauses and asks to sign in again, edits kept. Storage is asked to persist; a full device
   says so on the save that couldn't be stored.
