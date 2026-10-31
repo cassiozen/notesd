@@ -35,7 +35,10 @@ jobs:
       - uses: actions/checkout@v4
       # Booted cold inside the test step, iOS kept the first app launch waiting ~3.5 min while it finished
       # starting up. Booted here, that overlaps the steps below; simulator.sh then picks this booted one.
-      - run: xcrun simctl boot "$(apps/ios/scripts/simulator.sh)"
+      # simulator.sh prefers one already booted, which simctl boot refuses: that one is fine as is.
+      - run: |
+          sim=$(apps/ios/scripts/simulator.sh)
+          xcrun simctl boot "$sim" || xcrun simctl list devices booted | grep -q "$sim"
       - uses: jdx/mise-action@v2
       - run: mise run lint:ios
       - run: mise run test:ios:core
