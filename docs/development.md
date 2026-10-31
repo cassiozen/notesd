@@ -58,7 +58,7 @@ the address it logs.
 
 ```bash
 mise run build:android        # debug APK in apps/android/app/build/outputs/apk/debug
-mise run test:android         # JVM and Robolectric tests, including sync against a real server
+mise run test:android         # JVM and Robolectric tests (sync is tested in the engine: test:sync-engine)
 mise run lint:android         # ktlint and Android lint
 mise run screenshots:android  # every screen rendered to apps/android/app/build/screenshots
 ```
