@@ -37,3 +37,12 @@ jobs:
       - run: mise run lint:ios
       - run: mise run test:ios:core
       - run: mise run test:ios
+      # The log only has the failing line: the result bundle has the screenshots and each step up to it.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-test-results
+          path: |
+            apps/ios/build/test.log
+            apps/ios/build/DerivedData/Logs/Test/*.xcresult
+          retention-days: 14
