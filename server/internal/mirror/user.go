@@ -65,8 +65,12 @@ func loadUser(dir string) (*user, error) {
 	data, err := os.ReadFile(filepath.Join(dir, manifestName))
 	switch {
 	case err == nil:
-		if err := json.Unmarshal(data, &u.man); err != nil {
-			return nil, fmt.Errorf("%s: %w", filepath.Join(dir, manifestName), err)
+		err := json.Unmarshal(data, &u.man)
+		if err == nil {
+			err = u.man.check()
+		}
+		if err != nil {
+			return nil, fmt.Errorf("%s is damaged, so the mirror won't touch this folder: %w", filepath.Join(dir, manifestName), err)
 		}
 	case errors.Is(err, fs.ErrNotExist):
 		entries, err := os.ReadDir(dir)
@@ -92,6 +96,34 @@ func loadUser(dir string) (*user, error) {
 	}
 	u.index()
 	return u, nil
+}
+
+// check refuses paths a manifest written by the mirror can't hold. A sync
+// tool may bring one from elsewhere, and the mirror deletes what it lists.
+func (m *manifest) check() error {
+	for _, f := range m.Spaces {
+		if !oneName(f) {
+			return fmt.Errorf("bad folder %q", f)
+		}
+	}
+	for _, e := range m.Notes {
+		folder, name := path.Split(e.Path)
+		if !oneName(strings.TrimSuffix(folder, "/")) || !oneName(name) || !strings.HasSuffix(name, ".md") {
+			return fmt.Errorf("bad note path %q", e.Path)
+		}
+	}
+	for id, p := range m.Images {
+		folder, name := path.Split(p)
+		if !images.ValidID(id) || folder != mdexport.ImagesDir+"/" || !oneName(name) || !strings.HasPrefix(name, id+".") {
+			return fmt.Errorf("bad image path %q", p)
+		}
+	}
+	return nil
+}
+
+// oneName reports whether s is a single file or folder name.
+func oneName(s string) bool {
+	return s != "" && s != "." && s != ".." && !strings.ContainsAny(s, `/\`) && filepath.IsLocal(s)
 }
 
 func (u *user) index() {
@@ -229,13 +261,8 @@ func (u *user) syncSpaces(ctx context.Context, db *database.DB) error {
 			return err
 		}
 		if had {
-			if err := os.Rename(u.abs(old), u.abs(name)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			if err := u.moveFolder(old, name); err != nil {
 				return err
-			}
-			for _, e := range u.man.Notes {
-				if rest, ok := strings.CutPrefix(e.Path, old+"/"); ok {
-					e.Path = name + "/" + rest
-				}
 			}
 		}
 		u.man.Spaces[sp.ID] = name
@@ -248,6 +275,44 @@ func (u *user) syncSpaces(ctx context.Context, db *database.DB) error {
 		}
 	}
 	u.index()
+	return nil
+}
+
+// moveFolder moves the notes in folder old to folder name: the whole folder
+// when it holds only them, otherwise each, leaving the others' files behind.
+func (u *user) moveFolder(old, name string) error {
+	entries, err := os.ReadDir(u.abs(old))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return err
+	}
+	ours := true
+	for _, e := range entries {
+		if _, ok := u.files[mdexport.NameKey(old+"/"+e.Name())]; !ok && !strings.HasPrefix(e.Name(), ".notesd-") {
+			ours = false
+		}
+	}
+	if len(entries) > 0 && ours {
+		if err := os.Rename(u.abs(old), u.abs(name)); err != nil {
+			return err
+		}
+	} else if len(entries) > 0 {
+		if err := os.MkdirAll(u.abs(name), 0o700); err != nil {
+			return err
+		}
+	}
+	for _, e := range u.man.Notes {
+		rest, ok := strings.CutPrefix(e.Path, old+"/")
+		if !ok {
+			continue
+		}
+		next := name + "/" + rest
+		if !ours {
+			if err := os.Rename(u.abs(e.Path), u.abs(next)); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				return err
+			}
+		}
+		e.Path = next
+	}
 	return nil
 }
 
@@ -372,17 +437,17 @@ func (u *user) collectImages() error {
 }
 
 // freeName is the first of base, "base (2)"… (plus ext) in dir that neither
-// another owner in taken nor a foreign file has. was: own's previous name.
-func (u *user) freeName(dir, base, ext string, taken map[string]string, own, was string) (string, error) {
-	images := mdexport.NameKey(mdexport.ImagesDir)
+// another owner in owners nor a foreign file has. was: own's previous name.
+func (u *user) freeName(dir, base, ext string, owners map[string]string, own, was string) (string, error) {
+	imagesKey := mdexport.NameKey(mdexport.ImagesDir)
 	for i := 1; ; i++ {
 		name := mdexport.Numbered(base, i) + ext
 		p := path.Join(dir, name)
 		key := mdexport.NameKey(p)
-		if key == images {
+		if key == imagesKey {
 			continue
 		}
-		if owner, ok := taken[key]; ok {
+		if owner, ok := owners[key]; ok {
 			if owner == own {
 				return name, nil
 			}
@@ -391,7 +456,7 @@ func (u *user) freeName(dir, base, ext string, taken map[string]string, own, was
 		if was != "" && key == mdexport.NameKey(was) {
 			return name, nil
 		}
-		ok, err := exists(u.abs(p))
+		ok, err := taken(u.abs(dir), name)
 		if err != nil {
 			return "", err
 		}

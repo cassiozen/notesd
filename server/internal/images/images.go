@@ -128,9 +128,7 @@ func (s *Store) Put(ctx context.Context, id, contentType string, data []byte) (i
 	if err != nil {
 		return Image{}, false, err
 	}
-	if created {
-		s.committed()
-	}
+	s.committed()
 	return img, created, nil
 }
 

@@ -334,16 +334,62 @@ func TestCheck(t *testing.T) {
 	if err := f.mirror().Check(ctx, filepath.Join(f.dir, "data")); err == nil || !strings.Contains(err.Error(), "data directory") {
 		t.Fatalf("data dir inside: %v", err)
 	}
+	data := t.TempDir()
+	link := filepath.Join(t.TempDir(), "link")
+	if err := os.Symlink(data, link); err != nil {
+		t.Fatal(err)
+	}
+	through := New(Config{Dir: link, Accounts: f.mirror().cfg.Accounts})
+	if err := through.Check(ctx, data); err == nil || !strings.Contains(err.Error(), "data directory") {
+		t.Fatalf("data dir inside, through a symlink: %v", err)
+	}
 }
 
 func TestFolderNames(t *testing.T) {
-	got := folderNames([]Account{{ID: 3, Username: "a/b"}, {ID: 1, Username: "A B"}, {ID: 2, Username: "CON"}})
-	want := map[int64]string{1: "A B", 2: "_CON", 3: "a b (3)"}
+	// "A B (2)" is a username, so the clash with "A B" goes on to (3).
+	got := folderNames([]Account{{ID: 4, Username: "a/b"}, {ID: 1, Username: "A B"}, {ID: 2, Username: "CON"}, {ID: 3, Username: "A B (2)"}})
+	want := map[int64]string{1: "A B", 2: "_CON", 3: "A B (2)", 4: "a b (3)"}
 	for id, name := range want {
 		if got[id] != name {
 			t.Errorf("folderNames = %q, want %q", got, want)
 		}
 	}
+}
+
+func TestMirrorRefusesADamagedManifest(t *testing.T) {
+	for _, man := range []string{
+		`{"notes":{"a":{"path":"../../outside.md"}}}`,
+		`{"notes":{"a":{"path":"/etc/passwd"}}}`,
+		`{"notes":{"a":{"path":"Notes/sub/x.md"}}}`,
+		`{"spaces":{"default":".."}}`,
+		`{"images":{"` + strings.Repeat("a", 64) + `":"../x.png"}}`,
+		`not json`,
+	} {
+		dir := t.TempDir()
+		if err := os.WriteFile(filepath.Join(dir, manifestName), []byte(man), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := loadUser(dir); err == nil || !strings.Contains(err.Error(), "damaged") {
+			t.Errorf("%s: %v", man, err)
+		}
+	}
+}
+
+func TestMirrorRenamesAroundOtherFiles(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.spaces.Put(ctx, "work", "Work", nil); err != nil {
+		t.Fatal(err)
+	}
+	f.create("a", "Plan", "q3\n", "work")
+	f.flush()
+	if err := os.WriteFile(filepath.Join(f.dir, "sam", "Work", "mine.txt"), []byte("mine"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.spaces.Put(ctx, "work", "Job", nil); err != nil {
+		t.Fatal(err)
+	}
+	f.flush()
+	f.wantFiles("Job/", "Job/Plan.md", "Work/", "Work/mine.txt")
 }
 
 func TestNotifyDebounces(t *testing.T) {

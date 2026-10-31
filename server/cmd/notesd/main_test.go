@@ -178,3 +178,21 @@ func TestServeRefusesMirrorDir(t *testing.T) {
 		t.Fatalf("someone's folder: %v", err)
 	}
 }
+
+func TestRefusedMirrorCreatesNoOwner(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("NOTESD_OWNER_USERNAME", "sam")
+	t.Setenv("NOTESD_OWNER_PASSWORD", "correct horse battery")
+	err := run([]string{"serve", "--data-dir", dir, "--listen", "127.0.0.1:0", "--log-level", "error", "--mirror-dir", dir})
+	if err == nil || !strings.Contains(err.Error(), "holds the data directory") {
+		t.Fatalf("serve: %v", err)
+	}
+	db, err := database.OpenSystem(context.Background(), filepath.Join(dir, "system.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if has, err := auth.NewService(db).HasUsers(context.Background()); err != nil || has {
+		t.Fatalf("an owner was created: %v %v", has, err)
+	}
+}

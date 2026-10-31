@@ -17,7 +17,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strings"
 	"sync"
 	"time"
 
@@ -161,15 +160,15 @@ func (m *Mirror) Run(ctx context.Context) {
 // Check refuses a mirror directory that holds dataDir, or a user's folder
 // that has files but isn't a mirror: the mirror would mix with them.
 func (m *Mirror) Check(ctx context.Context, dataDir string) error {
-	dir, err := filepath.Abs(m.cfg.Dir)
+	dir, err := resolved(m.cfg.Dir)
 	if err != nil {
 		return err
 	}
-	data, err := filepath.Abs(dataDir)
+	data, err := resolved(dataDir)
 	if err != nil {
 		return err
 	}
-	if rel, err := filepath.Rel(dir, data); err == nil && !strings.HasPrefix(rel, "..") {
+	if rel, err := filepath.Rel(dir, data); err == nil && (rel == "." || filepath.IsLocal(rel)) {
 		return fmt.Errorf("--mirror-dir %s holds the data directory; choose a folder outside it", m.cfg.Dir)
 	}
 	accounts, err := m.cfg.Accounts(ctx)
@@ -219,17 +218,18 @@ func (m *Mirror) user(userID int64, folder string) (*user, error) {
 	return u, nil
 }
 
-// folderNames names each account's folder after its username. Usernames
-// that make the same folder name get their id, oldest account unchanged.
+// folderNames names each account's folder after its username, numbered when
+// two make the same name. Oldest first, so a new account never renames one.
 func folderNames(accounts []Account) map[int64]string {
 	accounts = slices.Clone(accounts)
 	slices.SortFunc(accounts, func(a, b Account) int { return cmp.Compare(a.ID, b.ID) })
 	taken := map[string]bool{}
 	names := map[int64]string{}
 	for _, a := range accounts {
-		name := mdexport.FileName(a.Username)
-		if taken[mdexport.NameKey(name)] {
-			name = fmt.Sprintf("%s (%d)", name, a.ID)
+		base := mdexport.FileName(a.Username)
+		name := base
+		for i := 2; taken[mdexport.NameKey(name)]; i++ {
+			name = mdexport.Numbered(base, i)
 		}
 		taken[mdexport.NameKey(name)] = true
 		names[a.ID] = name
@@ -237,14 +237,47 @@ func folderNames(accounts []Account) map[int64]string {
 	return names
 }
 
-// exists reports whether path is taken by anything, on a filesystem that
-// may ignore case.
-func exists(path string) (bool, error) {
-	_, err := os.Lstat(path)
+// resolved is p made absolute with symlinks followed, as far as it exists.
+func resolved(p string) (string, error) {
+	p, err := filepath.Abs(p)
+	if err != nil {
+		return "", err
+	}
+	rest := ""
+	for {
+		r, err := filepath.EvalSymlinks(p)
+		if err == nil {
+			return filepath.Join(r, rest), nil
+		}
+		if !errors.Is(err, fs.ErrNotExist) {
+			return "", err
+		}
+		parent := filepath.Dir(p)
+		if parent == p {
+			return filepath.Join(p, rest), nil
+		}
+		rest = filepath.Join(filepath.Base(p), rest)
+		p = parent
+	}
+}
+
+// taken reports whether dir has an entry named name, comparing as macOS and
+// Windows do even on Linux: the folder may be synced to one of them.
+func taken(dir, name string) (bool, error) {
+	entries, err := os.ReadDir(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return false, nil
 	}
-	return err == nil, err
+	if err != nil {
+		return false, err
+	}
+	key := mdexport.NameKey(name)
+	for _, e := range entries {
+		if mdexport.NameKey(e.Name()) == key {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 func minTime(a, b time.Time) time.Time {

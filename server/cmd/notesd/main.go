@@ -419,10 +419,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		}
 	}
 
-	hasOwner, err := ownerFromEnv(ctx, authSvc, log)
-	if err != nil {
-		return err
-	}
+	// Before ownerFromEnv: a refused mirror mustn't leave an account behind.
 	var mirr *mirror.Mirror
 	if o.mirrorDir != "" {
 		mirr = mirror.New(mirror.Config{
@@ -449,6 +446,10 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		}
 		// Before any database opens: their stores take the hook when they do.
 		users.OnChange(mirr.Notify)
+	}
+	hasOwner, err := ownerFromEnv(ctx, authSvc, log)
+	if err != nil {
+		return err
 	}
 	// Opened now, so a migration that fails shows at startup, not at sign-in.
 	list, err := authSvc.ListUsers(ctx)
