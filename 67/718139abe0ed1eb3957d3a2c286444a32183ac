@@ -1,0 +1,23 @@
+apps/web/test/setup.ts
+  s_04fe8e6c916e4e::t_14233e998b21c8 1,16-17
+apps/web/vite.config.ts
+  s_04fe8e6c916e4e::t_14233e998b21c8 88-89
+apps/web/test/editor.test.tsx
+  s_04fe8e6c916e4e::t_14233e998b21c8 3,143-151
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "67718139abe0ed1eb3957d3a2c286444a32183ac",
+  "prompts": {},
+  "sessions": {
+    "s_04fe8e6c916e4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f66b9b43-f4bf-4a40-bb95-bb4ef2850f30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
