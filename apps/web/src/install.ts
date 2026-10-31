@@ -30,8 +30,6 @@ export function captureInstallPrompt() {
   if (captured) return
   captured = true
   window.addEventListener('beforeinstallprompt', (e) => {
-    // Keeps Chrome's own install infobar from showing; Settings offers it instead.
-    e.preventDefault()
     set(e as BeforeInstallPromptEvent)
   })
   window.addEventListener('appinstalled', () => set(null))

@@ -228,8 +228,8 @@ describe('connection', () => {
         userChoice: Promise.resolve({ outcome: 'accepted' }),
       })
       window.dispatchEvent(event)
-      // Chrome's own install infobar stays away.
-      expect(event.defaultPrevented).toBe(true)
+      // Chrome's own install offer still shows; Settings' is an extra way in.
+      expect(event.defaultPrevented).toBe(false)
     })
     const button = await screen.findByRole('button', { name: 'Install notesd' })
     // What the installed app does on its first open.
