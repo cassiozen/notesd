@@ -1,4 +1,4 @@
-import { cleanup } from '@testing-library/react'
+import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { resetEmailSettings } from '../src/notes/email-settings'
 import { forgetSpaces } from '../src/notes/spaces'
@@ -13,6 +13,8 @@ timing.retryBaseMs = 60
 timing.retryMaxMs = 200
 timing.undoDeleteMs = 300
 timing.quietMs = 100
+// findBy*/waitFor default to 1s; a busy machine (real server, SQLite engine per test) can take longer.
+configure({ asyncUtilTimeout: 3000 })
 // The server's minimum; 600k iterations per unlock would dominate the run.
 kdfCost.password = 10_000
 

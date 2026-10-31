@@ -45,6 +45,9 @@ export default defineConfig({
         for (const f of files) hash.update(f).update(readFileSync(resolve(outDir, `.${f}`)))
         // The engine's worker and what only it loads: a browser that keeps no notes never needs them.
         const text = (f: string) => readFileSync(resolve(outDir, `.${f}`), 'utf8')
+        // A font the CSP blocks fails quietly (console error, fallback face): fail the build instead.
+        const inlined = files.find((f) => f.endsWith('.css') && text(f).includes('url(data:font'))
+        if (inlined) throw new Error(`service-worker: ${inlined} inlines a data: font, which the CSP's font-src blocks`)
         const worker = files.find((f) => /^\/assets\/worker-[^/]+\.js$/.test(f))
         // Not found, the engine would be precached for every browser, silently.
         if (!worker) throw new Error('service-worker: no /assets/worker-*.js in the build')
@@ -63,7 +66,12 @@ export default defineConfig({
   // Pre-bundling moves sqlite-wasm away from the .wasm it loads relative to itself.
   optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
   worker: { format: 'es' },
-  build: { outDir, emptyOutDir: true },
+  build: {
+    outDir,
+    emptyOutDir: true,
+    // The CSP's font-src is 'self' only (server/internal/web/web.go): an inlined data: font is blocked.
+    assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
+  },
   server: {
     // changeOrigin must stay false (the string shorthand turns it on): the
     // server rejects mutations whose Origin host differs from Host, and the
@@ -74,6 +82,8 @@ export default defineConfig({
   },
   test: {
     globalSetup: ['test/global-setup.ts'],
+    // Above asyncUtilTimeout (test/setup.ts), so a slow wait fails with its own message, not a bare timeout.
+    testTimeout: 15_000,
     projects: [
       {
         extends: true,
