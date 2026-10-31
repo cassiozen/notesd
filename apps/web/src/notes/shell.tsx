@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { SyncNotice } from '../offline/protocol'
 import { navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
 import { NewSpaceDialog } from '../settings/spaces'
@@ -8,7 +9,7 @@ import { Toast } from '../ui/toast'
 import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
-import type { Saver } from './source'
+import { notesSource, type Saver } from './source'
 import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
 import { NotesProvider, useNotes, type ListFilter } from './store'
 import { TagsPanel } from './tags-panel'
@@ -87,6 +88,15 @@ function ShellView({ username }: { username: string }) {
     if (mobile || draft || route.name !== 'notes' || status !== 'ready' || !first) return
     navigate(`/notes/${first}`, { replace: true })
   }, [mobile, draft, route.name, status, first])
+
+  useEffect(
+    () =>
+      notesSource().sync?.onNotice((n) =>
+        // A delete's Undo stays: replaced, the deletion would go through with no way back.
+        setNotice((shown) => (shown?.undo ? shown : { id: crypto.randomUUID(), text: noticeText(n), undo: false })),
+      ),
+    [],
+  )
 
   useEffect(() => {
     if (!notice || notice.undo) return
@@ -266,6 +276,7 @@ function ShellView({ username }: { username: string }) {
                 leave(id)
                 removed(id)
               }}
+              onNotice={(text) => setNotice({ id: crypto.randomUUID(), text, undo: false })}
             />
           ) : (
             <EmptyPane hasNotes={items.length > 0} onNew={startNote} />
@@ -295,4 +306,16 @@ function ShellView({ username }: { username: string }) {
       )}
     </>
   )
+}
+
+/** As the phones word them. */
+function noticeText(n: SyncNotice): string {
+  switch (n.kind) {
+    case 'ConflictedCopy':
+      return `Changed in two places. Your version was kept as “${n.title}”.`
+    case 'RecoveredCopy':
+      return `A note you edited was deleted elsewhere. It was kept as “${n.title}”.`
+    case 'Restored':
+      return `“${n.title || 'New note'}” changed on another device and wasn't deleted.`
+  }
 }

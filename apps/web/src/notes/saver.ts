@@ -39,10 +39,12 @@ export type Snapshot = {
   imagesBusy: boolean
   /** The space the note is (to be) in. */
   spaceId: string
+  /** Gone from the store underneath the editor; [copy] holds edits that were still unsaved. */
+  gone: { copy: Saver | null } | null
 }
 
-type Pending = {
-  operationId: string
+/** One save of the note, wherever it goes. */
+export type Save = {
   /** Plain text, as the editor shows it. */
   fields: Fields
   /** What goes over the wire: the content encrypted when locked. Fixed once, so retries send the same bytes. */
@@ -51,18 +53,18 @@ type Pending = {
   imageIds?: string[]
   locked: boolean
   spaceId: string
-  create: boolean
-  baseRevision: number
 }
 
+type Pending = Save & { operationId: string; create: boolean; baseRevision: number }
+
 /** A note from the server with a locked body opened (§10.1). */
-export type Opened = { note: Note; locked: boolean; envelope: string | null }
+export type Opened<N = Note> = { note: N; locked: boolean; envelope: string | null }
 
 /**
  * Decrypts a locked note's body with the session key. Throws LockedError
  * when locked notes are locked (or the body doesn't open).
  */
-export async function openNote(note: Note): Promise<Opened> {
+export async function openNote<N extends { content: string } = Note>(note: N): Promise<Opened<N>> {
   if (!isLocked(note.content)) return { note, locked: false, envelope: null }
   const key = lockSession.key()
   if (!key) throw new LockedError('Locked notes are locked')
@@ -73,7 +75,7 @@ export async function openNote(note: Note): Promise<Opened> {
  * The editor saves canonical Markdown, so the server's text is compared in
  * that form too: "* a" stored elsewhere isn't a local change to "- a".
  */
-function canonicalFields(f: Fields): Fields {
+export function canonicalFields(f: Fields): Fields {
   return { title: f.title, content: canonical(f.content) }
 }
 
@@ -83,47 +85,36 @@ export const timing = { debounceMs: 1500, retryBaseMs: 2000, retryMaxMs: 30_000,
 /** How many bytes a keepalive request may carry (browsers cap the total at 64 KB). */
 const KEEPALIVE_LIMIT = 60_000
 
-/**
- * Owns saving for one note, independent of React so saves outlive the editor
- * (closing the sheet, the session-expired dialog). Saves are serialized: one
- * request in flight, and edits made meanwhile go out afterwards against the
- * revision it returned.
- */
-export class NoteSaver implements Saver {
+/** What every saver does, wherever the note is stored: the editor's side, locks, images and spaces. */
+export abstract class SaverCore implements Saver {
   readonly id: string
-  private conflictOf: string | undefined
-  private revision: number
-  private created: boolean
+  protected created: boolean
   /** A new note with these values (e.g. just the selected tag) is still blank. */
-  private blank: Fields
-  /** Last values the server acknowledged: the base for §6.1 merges. */
-  private base: Fields
-  /** Whether the body is encrypted, here and as the server last acknowledged it. */
-  private locked: boolean
-  private baseLocked: boolean
-  /** The note's space, here and as the server last acknowledged it (§7.7). */
-  private space: string
-  private baseSpace: string
+  protected blank: Fields
+  /** Last values the store acknowledged: the base for merges and for "nothing changed". */
+  protected base: Fields
+  /** Whether the body is encrypted, here and as last stored. */
+  protected locked: boolean
+  protected baseLocked: boolean
+  /** The note's space, here and as last stored (§7.7). */
+  protected space: string
+  protected baseSpace: string
   /** The stored envelope and the text it holds: unchanged text is sent as the same envelope, never re-encrypted. */
-  private sealed: { plain: string; envelope: string } | null
+  protected sealed: { plain: string; envelope: string } | null
   /** The editor's current values; read lazily so serialization happens per save, not per keystroke. */
-  private read: () => Fields
-  private dirty = false
+  protected read: () => Fields
+  protected dirty = false
   private attached = 0
-  private state: SaveState = 'saved'
-  private problem: Problem | null = null
-  private updatedAt: number | null
-  private inflight: Promise<void> | null = null
-  /** Kept across retries so a lost response replays instead of applying twice. */
-  private pending: Pending | null = null
-  private debounce: ReturnType<typeof setTimeout> | undefined
-  private retryTimer: ReturnType<typeof setTimeout> | undefined
-  private attempts = 0
-  private failures = 0
-  private waitingForAuth = false
-  private waitingForUnlock = false
+  protected state: SaveState = 'saved'
+  protected problem: Problem | null = null
+  protected updatedAt: number | null
+  protected inflight: Promise<void> | null = null
+  protected debounce: ReturnType<typeof setTimeout> | undefined
+  protected failures = 0
+  protected waitingForUnlock = false
+  protected gone: Snapshot['gone'] = null
   private imageError: string | null = null
-  private imagesBusy = 0
+  protected imagesBusy = 0
   /** Re-encrypts (or decrypts) the open note's images before a lock change (images/store.ts). */
   private resealer: ((locked: boolean) => Promise<void>) | null = null
   private listeners = new Set<() => void>()
@@ -132,14 +123,12 @@ export class NoteSaver implements Saver {
 
   constructor(
     init: SaverInit,
-    private hooks: SaverHooks = {},
+    protected hooks: SaverHooks = {},
   ) {
     this.id = init.id
-    this.conflictOf = init.conflictOf
-    this.revision = init.revision ?? 0
     this.created = init.revision !== undefined
     this.updatedAt = init.updatedAt ?? null
-    // A note the server doesn't have yet has nothing acknowledged: empty base.
+    // A note not stored yet has nothing acknowledged: empty base.
     this.base = this.created ? canonicalFields(init.fields) : { title: '', content: '' }
     this.locked = init.locked ?? false
     this.baseLocked = this.created && this.locked
@@ -151,6 +140,21 @@ export class NoteSaver implements Saver {
     this.read = () => fields
     this.snapshot = this.makeSnapshot()
   }
+
+  /** Runs one save cycle; flush() keeps it to one at a time. */
+  protected abstract run(): Promise<void>
+  /** Saving waits for the user (or a sign-in, an unlock). */
+  protected abstract blocked(): boolean
+  abstract canMove(): boolean
+  abstract hasUnsavedWork(): boolean
+  abstract savedRevision(): Promise<number | null>
+  abstract retryNow(): void
+  abstract resume(): void
+  abstract flushOnUnload(): void
+  abstract keepMine(): Saver | null
+  abstract takeTheirs(): void
+  abstract recover(): Saver | null
+  abstract delete(keepalive?: boolean): Promise<'deleted' | 'changed'>
 
   // --- for the editor -------------------------------------------------------
 
@@ -257,15 +261,6 @@ export class NoteSaver implements Saver {
     return this.space
   }
 
-  /**
-   * Whether a move would be saved: not while a conflict, a delete elsewhere or a refusal
-   * holds every save until the user acts, nor for a new note with nothing in it.
-   */
-  canMove(): boolean {
-    const k = this.problem?.kind
-    return k !== 'conflict' && k !== 'deleted' && k !== 'rejected' && !this.isBlankDraft()
-  }
-
   /** Moves the note to another space: saved like an edit. */
   moveTo(spaceId: string) {
     if (this.space === spaceId) return
@@ -296,11 +291,6 @@ export class NoteSaver implements Saver {
     this.debounce = setTimeout(() => void this.flush(), timing.debounceMs)
   }
 
-  /** Whether closing the page now could lose something. */
-  hasUnsavedWork(): boolean {
-    return this.dirty || this.pending !== null || this.inflight !== null || this.imagesBusy > 0
-  }
-
   /** Edits made since the last save went out. */
   hasUnsentEdits(): boolean {
     return this.dirty
@@ -311,7 +301,7 @@ export class NoteSaver implements Saver {
     return this.isBlank(this.read())
   }
 
-  private isBlank(f: Fields): boolean {
+  protected isBlank(f: Fields): boolean {
     return !this.created && f.title.trim() === this.blank.title.trim() && f.content.trim() === this.blank.content.trim()
   }
 
@@ -331,6 +321,122 @@ export class NoteSaver implements Saver {
       this.inflight = null
     })
     await this.inflight
+  }
+
+  protected unchanged(fields: Fields): boolean {
+    return (
+      this.created &&
+      fields.title === this.base.title &&
+      fields.content === this.base.content &&
+      this.locked === this.baseLocked &&
+      this.space === this.baseSpace
+    )
+  }
+
+  /** The session key for a locked save; without one, saving waits for an unlock. */
+  protected lockKey(): CryptoKey | null {
+    const key = lockSession.key()
+    if (!key) {
+      this.waitingForUnlock = true
+      this.problem = { kind: 'unlock' }
+    }
+    return key
+  }
+
+  /** The next save of an unlocked note, built synchronously (for page unload). */
+  protected plainSave(): Save | null {
+    const fields = this.read()
+    this.dirty = false
+    if (this.unchanged(fields) || this.isBlank(fields)) return null
+    return { fields, wire: fields, locked: false, spaceId: this.space }
+  }
+
+  /** The next save, its body encrypted if the note is locked; null when there's nothing to send or no key. */
+  protected async nextSave(): Promise<Save | null> {
+    if (!this.locked) return this.plainSave()
+    const key = this.lockKey()
+    if (!key) return null
+    const fields = this.read()
+    this.dirty = false
+    if (this.unchanged(fields) || this.isBlank(fields)) return null
+    const envelope = await this.envelope(key, fields.content)
+    const wire = { title: fields.title, content: envelope }
+    return { fields, wire, imageIds: imageIds(fields.content), locked: true, spaceId: this.space }
+  }
+
+  protected envelope(key: CryptoKey, content: string): Promise<string> {
+    return this.sealed?.plain === content ? Promise.resolve(this.sealed.envelope) : encryptBody(key, content)
+  }
+
+  protected pushRemote(fields: Fields) {
+    const frozen = { ...fields }
+    // An attached editor updates what its reader returns synchronously in
+    // the listener; with no editor, the pushed values become the local ones.
+    if (this.remoteListeners.size === 0) this.read = () => frozen
+    for (const l of this.remoteListeners) l(frozen)
+  }
+
+  dispose() {
+    clearTimeout(this.debounce)
+    this.listeners.clear()
+    this.remoteListeners.clear()
+  }
+
+  protected set(state: SaveState) {
+    this.state = state
+    this.snapshot = this.makeSnapshot()
+    for (const l of this.listeners) l()
+  }
+
+  private makeSnapshot(): Snapshot {
+    return {
+      state: this.state,
+      problem: this.problem,
+      created: this.created,
+      updatedAt: this.updatedAt,
+      failures: this.failures,
+      locked: this.locked,
+      imageError: this.imageError,
+      imagesBusy: this.imagesBusy > 0,
+      spaceId: this.space,
+      gone: this.gone,
+    }
+  }
+}
+
+/**
+ * Owns saving for one note, independent of React so saves outlive the editor
+ * (closing the sheet, the session-expired dialog). Saves are serialized: one
+ * request in flight, and edits made meanwhile go out afterwards against the
+ * revision it returned.
+ */
+export class NoteSaver extends SaverCore {
+  private conflictOf: string | undefined
+  private revision: number
+  /** Kept across retries so a lost response replays instead of applying twice. */
+  private pending: Pending | null = null
+  private retryTimer: ReturnType<typeof setTimeout> | undefined
+  private attempts = 0
+  private waitingForAuth = false
+
+  constructor(init: SaverInit, hooks: SaverHooks = {}) {
+    super(init, hooks)
+    this.conflictOf = init.conflictOf
+    this.revision = init.revision ?? 0
+  }
+
+  /**
+   * Whether a move would be saved: not while a conflict, a delete elsewhere or a refusal
+   * holds every save until the user acts, nor for a new note with nothing in it.
+   */
+  canMove(): boolean {
+    const k = this.problem?.kind
+    return k !== 'conflict' && k !== 'deleted' && k !== 'rejected' && !this.isBlankDraft()
+  }
+
+  /** Whether closing the page now could lose something. */
+  hasUnsavedWork(): boolean {
+    return this.dirty || this.pending !== null || this.inflight !== null || this.imagesBusy > 0
   }
 
   /**
@@ -367,7 +473,7 @@ export class NoteSaver implements Saver {
     clearTimeout(this.debounce)
     if (this.blocked() || this.inflight) return
     // A new locked save can't be encrypted synchronously; beforeunload asks the user to stay instead.
-    const p = this.pending ?? (this.locked ? null : this.plainPending())
+    const p = this.pending ?? (this.locked ? null : this.toPending(this.plainSave()))
     if (!p) return
     // The whole body counts, the image list too.
     if (JSON.stringify({ ...p.wire, imageIds: p.imageIds }).length > KEEPALIVE_LIMIT) return
@@ -375,61 +481,13 @@ export class NoteSaver implements Saver {
     void this.send(p, true).catch(() => undefined)
   }
 
-  private blocked(): boolean {
+  protected blocked(): boolean {
     const k = this.problem?.kind
     return k === 'conflict' || k === 'deleted' || k === 'rejected' || this.waitingForAuth || this.waitingForUnlock
   }
 
-  private unchanged(fields: Fields): boolean {
-    return (
-      this.created &&
-      fields.title === this.base.title &&
-      fields.content === this.base.content &&
-      this.locked === this.baseLocked &&
-      this.space === this.baseSpace
-    )
-  }
-
-  /** The next save of an unlocked note, built synchronously (for page unload). */
-  private plainPending(): Pending | null {
-    const fields = this.read()
-    this.dirty = false
-    if (this.unchanged(fields) || this.isBlank(fields)) return null
-    return {
-      operationId: crypto.randomUUID(),
-      fields,
-      wire: fields,
-      locked: false,
-      spaceId: this.space,
-      create: !this.created,
-      baseRevision: this.revision,
-    }
-  }
-
-  /** The next save, its body encrypted if the note is locked; null when there's nothing to send or no key. */
-  private async nextPending(): Promise<Pending | null> {
-    if (!this.locked) return this.plainPending()
-    const key = lockSession.key()
-    if (!key) {
-      this.waitingForUnlock = true
-      this.problem = { kind: 'unlock' }
-      return null
-    }
-    const fields = this.read()
-    this.dirty = false
-    if (this.unchanged(fields) || this.isBlank(fields)) return null
-    const envelope =
-      this.sealed?.plain === fields.content ? this.sealed.envelope : await encryptBody(key, fields.content)
-    return {
-      operationId: crypto.randomUUID(),
-      fields,
-      wire: { title: fields.title, content: envelope },
-      imageIds: imageIds(fields.content),
-      locked: true,
-      spaceId: this.space,
-      create: !this.created,
-      baseRevision: this.revision,
-    }
+  private toPending(s: Save | null): Pending | null {
+    return s && { ...s, operationId: crypto.randomUUID(), create: !this.created, baseRevision: this.revision }
   }
 
   private send(p: Pending, keepalive = false): Promise<MutationResult> {
@@ -458,11 +516,11 @@ export class NoteSaver implements Saver {
         )
   }
 
-  private async run(): Promise<void> {
+  protected async run(): Promise<void> {
     for (;;) {
       // Sequential on purpose, like the request below.
       // oxlint-disable-next-line no-await-in-loop
-      const p = this.pending ?? (await this.nextPending())
+      const p = this.pending ?? this.toPending(await this.nextSave())
       if (!p) {
         if (this.waitingForUnlock) this.set('failed')
         else if (!this.dirty) this.set('saved')
@@ -614,14 +672,6 @@ export class NoteSaver implements Saver {
     this.problem = null
   }
 
-  private pushRemote(fields: Fields) {
-    const frozen = { ...fields }
-    // An attached editor updates what its reader returns synchronously in
-    // the listener; with no editor, the pushed values become the local ones.
-    if (this.remoteListeners.size === 0) this.read = () => frozen
-    for (const l of this.remoteListeners) l(frozen)
-  }
-
   // --- resolving conflicts --------------------------------------------------
 
   /** "Keep mine": the local text becomes a new note; this one shows the server's version. */
@@ -699,33 +749,12 @@ export class NoteSaver implements Saver {
     }
   }
 
-  dispose() {
-    clearTimeout(this.debounce)
+  override dispose() {
     clearTimeout(this.retryTimer)
-    this.listeners.clear()
-    this.remoteListeners.clear()
-  }
-
-  private set(state: SaveState) {
-    this.state = state
-    this.snapshot = this.makeSnapshot()
-    for (const l of this.listeners) l()
-  }
-
-  private makeSnapshot(): Snapshot {
-    return {
-      state: this.state,
-      problem: this.problem,
-      created: this.created,
-      updatedAt: this.updatedAt,
-      failures: this.failures,
-      locked: this.locked,
-      imageError: this.imageError,
-      imagesBusy: this.imagesBusy > 0,
-      spaceId: this.space,
-    }
+    super.dispose()
   }
 }
+
 
 /**
  * content with block on its own line at the end. A code fence left open at

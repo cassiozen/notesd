@@ -103,9 +103,10 @@ const NotesContext = createContext<NotesContextValue | null>(null)
 /** Saves come in bursts while typing; refetch the filters once they settle. */
 const FILTERS_DEBOUNCE_MS = 500
 
-type PendingDelete = { timer: ReturnType<typeof setTimeout>; resolve: (outcome: DeleteOutcome) => void }
+/** 1 for a listed note in the total: not a new one before its first save. */
+const counted = (drafts: Set<string>, item: ListItem | undefined) => (item && !drafts.has(item.id) ? 1 : 0)
 
-const counted = (item: ListItem | undefined) => (item && item.revision > 0 ? 1 : 0)
+type PendingDelete = { timer: ReturnType<typeof setTimeout>; resolve: (outcome: DeleteOutcome) => void }
 
 export function NotesProvider({ children }: { children: ReactNode }) {
   const [list, setList] = useState<ListState>({
@@ -131,6 +132,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const loading = useRef<number | null>(null)
   const savers = useRef(new Map<string, Saver>())
   const deletes = useRef(new Map<string, PendingDelete>())
+  /** New notes listed before their first save: not in the total. */
+  const drafts = useRef(new Set<string>())
 
   const fetchPage = useCallback(async (reset: boolean) => {
     const gen = generation.current
@@ -146,8 +149,8 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         const kept = reset ? prev.items.filter((n) => !seen.has(n.id) && savers.current.has(n.id)) : prev.items
         const items = reset ? [...kept, ...page.notes] : [...kept, ...page.notes.filter((n) => !kept.some((k) => k.id === n.id))]
         items.sort((a, b) => b.updatedAt - a.updatedAt)
-        const hiddenOnServer = prev.hidden.reduce((sum, id) => sum + counted(items.find((n) => n.id === id)), 0)
-        return { ...prev, items, status: 'ready', hasMore: page.hasMore, total: page.total - hiddenOnServer }
+        const hiddenCounted = prev.hidden.reduce((sum, id) => sum + counted(drafts.current, items.find((n) => n.id === id)), 0)
+        return { ...prev, items, status: 'ready', hasMore: page.hasMore, total: page.total - hiddenCounted }
       })
     } catch {
       if (gen !== generation.current) return
@@ -210,15 +213,17 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         r: { updatedAt: number; revision: number; status: string },
         locked: boolean,
         spaceId: string,
-      ) =>
+      ) => {
+        const draft = drafts.current.delete(id)
         setList((prev) => {
           const old = prev.items.find((n) => n.id === id)
+          const was = old && !draft ? 1 : 0
           const hidden = prev.hidden.includes(id)
           const slice = filterRef.current
           if (spaceId !== spaceRef.current || !matches(slice, fields, locked)) {
             // No longer in this slice (a tag removed, moved to another space): it leaves the list.
             const items = prev.items.filter((n) => n.id !== id)
-            return { ...prev, items, total: prev.total - (hidden ? 0 : counted(old)), version: prev.version + 1 }
+            return { ...prev, items, total: prev.total - (hidden ? 0 : was), version: prev.version + 1 }
           }
           // Typing since this save went out: the row already shows newer text.
           const live = old && savers.current.get(id)?.hasUnsentEdits()
@@ -233,14 +238,15 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             spaceId,
           }
           // Filtered, a note can join the slice by gaining the tag, not just by being created.
-          const joined = slice ? !counted(old) : r.status === 'created'
+          const joined = slice ? !was : r.status === 'created'
           return {
             ...prev,
             items: [item, ...prev.items.filter((n) => n.id !== id)],
             total: prev.total + (joined && !hidden ? 1 : 0),
             version: prev.version + 1,
           }
-        }),
+        })
+      },
       copied: (copy: Saver) => savers.current.set(copy.id, copy),
     }),
     [],
@@ -266,6 +272,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     const spaceId = spaceRef.current
     const s = notesSource().saver({ id: crypto.randomUUID(), fields, blank: fields, spaceId }, hooks)
     savers.current.set(s.id, s)
+    drafts.current.add(s.id)
     const now = Date.now()
     const row: ListItem = { id: s.id, title: '', preview: '', locked: false, revision: 0, createdAt: now, updatedAt: now, spaceId }
     setList((prev) => ({ ...prev, items: [row, ...prev.items] }))
@@ -275,6 +282,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const removed = useCallback((id: string) => {
     savers.current.get(id)?.dispose()
     savers.current.delete(id)
+    const draft = drafts.current.delete(id)
     setList((prev) => {
       const item = prev.items.find((n) => n.id === id)
       const hidden = prev.hidden.includes(id)
@@ -282,7 +290,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
         ...prev,
         items: prev.items.filter((n) => n.id !== id),
         hidden: prev.hidden.filter((h) => h !== id),
-        total: prev.total - (hidden ? 0 : counted(item)),
+        total: prev.total - (hidden || draft || !item ? 0 : 1),
         version: prev.version + 1,
       }
     })
@@ -311,7 +319,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       return {
         ...prev,
         items: prev.items.filter((n) => n.id !== saver.id),
-        total: prev.total - (hidden ? 0 : counted(item)),
+        total: prev.total - (hidden ? 0 : counted(drafts.current, item)),
         version: prev.version + 1,
       }
     })
@@ -329,7 +337,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const setHidden = useCallback((id: string, hide: boolean) => {
     setList((prev) => {
       if (prev.hidden.includes(id) === hide) return prev
-      const delta = counted(prev.items.find((n) => n.id === id))
+      const delta = counted(drafts.current, prev.items.find((n) => n.id === id))
       return {
         ...prev,
         hidden: hide ? [...prev.hidden, id] : prev.hidden.filter((h) => h !== id),

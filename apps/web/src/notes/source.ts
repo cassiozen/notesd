@@ -1,4 +1,5 @@
 import type { MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, TagCount } from '../api/types'
+import type { SyncNotice } from '../offline/protocol'
 import type { Fields, Snapshot } from './saver'
 
 // Where the notes screens read and write: the server directly, or a database
@@ -26,6 +27,9 @@ export type SaverHooks = {
   /** A new note was made by resolving a conflict. */
   copied?: (saver: Saver) => void
 }
+
+/** Notes changed here that sync can't get to the server; [error] when the server refused them. */
+export type Unsynced = { pending: number; error: string | null }
 
 /** Saving for one open (or recently open) note, independent of React so saves outlive the editor. */
 export interface Saver {
@@ -101,6 +105,14 @@ export interface NotesSource {
   }
   /** Calls [listener] whenever what was fetched may be out of date. Returns the unsubscribe function. */
   onStale(listener: () => void): () => void
+  /** Only when notes are kept on this device and synced in the background. */
+  sync?: {
+    /** Null while nothing is stuck: sync is meant to go unnoticed. Returns the unsubscribe function. */
+    onUnsynced(listener: (unsynced: Unsynced | null) => void): () => void
+    /** What sync did to keep both sides of a clash. Returns the unsubscribe function. */
+    onNotice(listener: (notice: SyncNotice) => void): () => void
+    now(): void
+  }
 }
 
 let current: NotesSource | null = null

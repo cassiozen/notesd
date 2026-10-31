@@ -14,7 +14,7 @@ import { lockSession, useLockStatus } from '../locks/session'
 import { UnlockForm } from '../locks/unlock'
 import { StatusPill } from '../ui/status-pill'
 import { offlineNotice, useStatusShown } from './save-status'
-import { openNote } from './saver'
+import { openNote, type Snapshot } from './saver'
 import { notesSource, type Saver } from './source'
 import { NoteMenu } from './share'
 import { spaceName, useSpaces } from './spaces'
@@ -39,6 +39,8 @@ type Props = {
   onMove: (saver: Saver, spaceId: string) => void
   /** The note is gone for good (deleted elsewhere, discarded). */
   onGone: (id: string) => void
+  /** A short message for the toast. */
+  onNotice: (text: string) => void
 }
 
 type Load =
@@ -53,7 +55,7 @@ type Load =
   | { kind: 'locked'; title: string; draft?: Saver; keyFailed: boolean }
   | { kind: 'ready'; saver: Saver }
 
-export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDraft, onDelete, onMove, onGone }: Props) {
+export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDraft, onDelete, onMove, onGone, onNotice }: Props) {
   const { existingSaver, saverFor, release, removed, space, setSpace } = useNotes()
   const lockStatus = useLockStatus()
   const [load, setLoad] = useState<Load>(() => {
@@ -158,6 +160,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
           onMove={(spaceId) => onMove(saver, spaceId)}
           onGone={() => onGone(saver.id)}
           onOpenDraft={onOpenDraft}
+          onNotice={onNotice}
         />
       ) : (
         <>
@@ -240,6 +243,7 @@ type EditorProps = {
   onMove: (spaceId: string) => void
   onGone: () => void
   onOpenDraft: (saver: Saver) => void
+  onNotice: (text: string) => void
 }
 
 const APP_TITLE = 'notesd'
@@ -247,7 +251,7 @@ const APP_TITLE = 'notesd'
 /** How often the list row follows the typing. */
 const TOUCH_MS = 150
 
-function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete, onMove, onGone, onOpenDraft }: EditorProps) {
+function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete, onMove, onGone, onOpenDraft, onNotice }: EditorProps) {
   const snap = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
   const { touch, tags, setFilter } = useNotes()
   const [initial] = useState(() => saver.fields())
@@ -346,6 +350,18 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   useEffect(() => {
     if (isDraft && snap.created) onCreated(saver.id)
   }, [isDraft, snap.created, saver.id, onCreated])
+
+  // The callbacks are new each render: act on each disappearance once.
+  const goneSeen = useRef<Snapshot['gone']>(null)
+  useEffect(() => {
+    const gone = snap.gone
+    if (!gone || goneSeen.current === gone) return
+    goneSeen.current = gone
+    onGone()
+    if (!gone.copy) return
+    onOpenDraft(gone.copy)
+    onNotice(`Deleted on another device. Your edits were kept as “${gone.copy.fields().title}”.`)
+  }, [snap.gone, onGone, onOpenDraft, onNotice])
 
   useEffect(() => {
     if (!stylesOpen) return

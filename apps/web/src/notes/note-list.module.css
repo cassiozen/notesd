@@ -291,6 +291,34 @@
   padding: 9px 14px;
 }
 
+.unsynced {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 10px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--warn-bg);
+  color: var(--warn-ink);
+  font-size: 12px;
+}
+
+.unsyncedWhy {
+  color: var(--ink-3);
+}
+
+.syncNow {
+  flex: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--link);
+  font: inherit;
+  font-weight: 500;
+  cursor: pointer;
+}
+
 .count {
   flex: 1;
   text-align: center;

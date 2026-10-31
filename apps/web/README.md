@@ -207,8 +207,15 @@ engine) is only used by tests.
 - **Reads** (`src/notes/local-source.ts`): the list, tags, search and spaces
   come from the engine, and refetch whenever a write commits there (sync or
   any tab). A list is read whole and paged from memory, so pages don't shift
-  while scrolling. Note saves still go to the server, then ask for a sync;
-  spaces are written on the device.
+  while scrolling.
+- **Writes** (`src/notes/local-saver.ts`): saves, moves and deletes go to the
+  engine, each save based on the text it last stored, so a change sync
+  brought in meanwhile is merged as on the phones (§6.1). Sync keeps both
+  sides of a clash itself and says so in a toast; nothing waits for the user
+  but an unlock. A note open and idle follows what sync brings in, and closes
+  if it was deleted elsewhere; deleted while typed into, the typing opens as a
+  "(Recovered copy)". The list says how many notes are stuck while sync can't
+  get through, with Sync now.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
   after an edit, when a tab comes back or goes online, and every minute.
   Failures back off from 2 s to 5 min. Signed out, it waits for the next

@@ -12,6 +12,7 @@ const snap = (s: Partial<Snapshot>): Snapshot => ({
   imageError: null,
   imagesBusy: false,
   spaceId: 'default',
+  gone: null,
   ...s,
 })
 
