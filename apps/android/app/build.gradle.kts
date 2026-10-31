@@ -122,7 +122,7 @@ kotlin {
 }
 
 dependencies {
-    implementation(project(":core"))
+    implementation(libs.sync.engine)
 
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
