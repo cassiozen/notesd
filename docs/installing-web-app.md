@@ -21,7 +21,7 @@ On macOS 14 or later, choose File → **Add to Dock**.
 
 <img width="494" height="452" alt="Install on Safari" src="https://github.com/user-attachments/assets/a1eb7c63-3296-4666-906c-39b9e4aad390" />
 
-### Safari additional reccomendations
+### Safari additional recommendations
 
 After the application is added to the dock, open it and click on notesd → Settings.
 <img width="551" height="375" alt="Settings" src="https://github.com/user-attachments/assets/7d7c4136-901a-4b31-9e25-b2d2e44195ad" />

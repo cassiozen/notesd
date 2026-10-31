@@ -173,7 +173,7 @@ server {
     ssl_certificate     /etc/letsencrypt/live/notes.example.com/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/notes.example.com/privkey.pem;
 
-    client_max_body_size 5m;
+    client_max_body_size 10m;
 
     location / {
         proxy_pass http://127.0.0.1:8080;
@@ -198,7 +198,7 @@ ngrok and Tailscale Funnel work too.
 - Use a dedicated hostname (`notes.example.com`), not a path (`example.com/notes`).
 - If saving fails with HTTP 403, check that `NOTESD_PUBLIC_URL` matches the address you open, or that your proxy forwards the `Host` header.
 - After 10 failed sign-ins in 15 minutes from one IP, notesd blocks sign-ins from that IP for a while. Behind a proxy, all clients may share one IP. People who are already signed in aren't affected.
-- Uploads are limited to 4 MiB.
+- Pictures can be up to 10 MiB. If your proxy limits request size, allow at least that.
 
 ## Changing Docker settings
 

@@ -13,7 +13,7 @@ offline and syncs your notes whenever a connection is available.</p>
 
 - **Full-text Search** across titles and bodies.
 
-- **Organize with tags.** Add tags like `#work` and `#reading` anyewhere in your note. The sidebar lists all your tags, so you can browse by topic. Tags can be nested with `/` (`#home/garden`).
+- **Organize with tags.** Add tags like `#work` and `#reading` anywhere in your note. The sidebar lists all your tags, so you can browse by topic. Tags can be nested with `/` (`#home/garden`).
 
 - **Spaces.** Create new spaces to keep separate contexts apart.
 
