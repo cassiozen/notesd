@@ -1,0 +1,19 @@
+apps/ios/Notes/Notes/NotesListView.swift
+  s_e0e08022f398ce::t_6c30250947f5cb 396-397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "133e414d832bd66a334d0b5568cae080805e9fa4",
+  "prompts": {},
+  "sessions": {
+    "s_e0e08022f398ce": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81f673c0-3362-4cdc-a30f-0d88361c80bf",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
