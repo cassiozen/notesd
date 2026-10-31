@@ -41,14 +41,23 @@ func Path(dataDir string, userID int64) string {
 // Registry opens users' databases on first use and keeps them open. There
 // are only ever a few users, so nothing is closed until Close.
 type Registry struct {
-	dir  string
-	mu   sync.Mutex
-	open map[int64]*Data
+	dir      string
+	mu       sync.Mutex
+	open     map[int64]*Data
+	onChange func(userID int64)
 }
 
 // NewRegistry returns a registry for the users in dataDir.
 func NewRegistry(dataDir string) *Registry {
 	return &Registry{dir: dataDir, open: map[int64]*Data{}}
+}
+
+// OnChange has fn called after a write to a user's notes, spaces or images
+// commits, for databases opened from now on. fn must not block.
+func (r *Registry) OnChange(fn func(userID int64)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.onChange = fn
 }
 
 // Open returns a user's data, opening (and creating, for a new user) their
@@ -71,6 +80,12 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 		return nil, fmt.Errorf("rebuild search index of %s: %w", path, err)
 	}
 	d := New(db)
+	if fn := r.onChange; fn != nil {
+		changed := func() { fn(userID) }
+		d.Notes.OnCommit(changed)
+		d.Spaces.OnCommit(changed)
+		d.Images.OnCommit(changed)
+	}
 	r.open[userID] = d
 	return d, nil
 }

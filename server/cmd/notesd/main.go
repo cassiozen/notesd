@@ -5,7 +5,8 @@
 //
 // Usage:
 //
-//	notesd [serve] [flags]          run the server (default)
+//	notesd [serve] [flags]          run the server (default); --mirror-dir DIR
+//	                                also keeps every user's notes in DIR as Markdown
 //	notesd create-owner --username NAME
 //	                                create the first account, an admin
 //	notesd add-user --username NAME [--admin]
@@ -27,7 +28,7 @@
 //
 // Flags may also be set through environment variables: NOTESD_DATA_DIR,
 // NOTESD_LISTEN, NOTESD_PUBLIC_URL, NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT,
-// NOTESD_RESEND_URL. serve creates the owner account from NOTESD_OWNER_USERNAME and
+// NOTESD_RESEND_URL, NOTESD_MIRROR_DIR. serve creates the owner account from NOTESD_OWNER_USERNAME and
 // NOTESD_OWNER_PASSWORD when there is none yet; otherwise the first person to
 // open the web app creates it. Commands that take a password read it from
 // NOTESD_PASSWORD or, failing that, from the first line of standard input.
@@ -57,6 +58,7 @@ import (
 	"notes/server/internal/database"
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
+	"notes/server/internal/mirror"
 	"notes/server/internal/search"
 	"notes/server/internal/userdata"
 )
@@ -84,6 +86,7 @@ type options struct {
 	locked     bool
 	dryRun     bool
 	selfUpdate bool
+	mirrorDir  string
 }
 
 func run(args []string) error {
@@ -103,6 +106,7 @@ func run(args []string) error {
 		fs.StringVar(&o.logLevel, "log-level", env("NOTESD_LOG_LEVEL", "info"), "debug, info, warn or error")
 		fs.StringVar(&o.logFormat, "log-format", env("NOTESD_LOG_FORMAT", "text"), "text or json")
 		fs.StringVar(&o.resendURL, "resend-url", env("NOTESD_RESEND_URL", ""), "Resend API base URL for emailing notes (default https://api.resend.com)")
+		fs.StringVar(&o.mirrorDir, "mirror-dir", env("NOTESD_MIRROR_DIR", ""), "also keep every user's notes in this directory as Markdown files, one folder per user")
 		fs.BoolVar(&o.selfUpdate, "self-update", env("NOTESD_SELF_UPDATE", "") == "true", "let admins update from Settings; needs the notesd-update service (docs/operations.md)")
 	case "create-owner", "remove-user":
 		usernameFlag("username")
@@ -415,6 +419,34 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		}
 	}
 
+	// Before ownerFromEnv: a refused mirror mustn't leave an account behind.
+	var mirr *mirror.Mirror
+	if o.mirrorDir != "" {
+		mirr = mirror.New(mirror.Config{
+			Dir: o.mirrorDir,
+			Accounts: func(ctx context.Context) ([]mirror.Account, error) {
+				list, err := authSvc.ListUsers(ctx)
+				out := make([]mirror.Account, len(list))
+				for i, u := range list {
+					out[i] = mirror.Account{ID: u.ID, Username: u.Username}
+				}
+				return out, err
+			},
+			Open: func(ctx context.Context, userID int64) (*database.DB, error) {
+				d, err := users.Open(ctx, userID)
+				if err != nil {
+					return nil, err
+				}
+				return d.DB, nil
+			},
+			Log: log,
+		})
+		if err := mirr.Check(ctx, o.dataDir); err != nil {
+			return err
+		}
+		// Before any database opens: their stores take the hook when they do.
+		users.OnChange(mirr.Notify)
+	}
 	hasOwner, err := ownerFromEnv(ctx, authSvc, log)
 	if err != nil {
 		return err
@@ -458,6 +490,16 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
 	go collectImages(ctx, authSvc, users, log)
+	if mirr != nil {
+		mirrorCtx, stopMirror := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			mirr.Run(mirrorCtx)
+		}()
+		// The mirror reads the databases the caller closes next.
+		defer func() { stopMirror(); <-done }()
+	}
 
 	select {
 	case err := <-errc:

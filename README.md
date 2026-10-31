@@ -52,6 +52,16 @@ notesd export --out ~/notes-export
 Locked notes are left out unless you add `--include-locked`. The command only reads the
 database, so it's safe to run while the server is up.
 
+To keep a folder of Markdown files up to date as notes change, start the server with
+`--mirror-dir`:
+
+```bash
+notesd serve --mirror-dir ~/notes-markdown
+```
+
+New and edited notes are written there shortly after they change. See
+[docs/hosting.md](docs/hosting.md#markdown-mirror).
+
 ## Security
 
 Regular notes are stored unencrypted. Use disk encryption if that
