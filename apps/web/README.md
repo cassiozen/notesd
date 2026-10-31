@@ -3,9 +3,9 @@
 The browser client for [notesd](../../server/README.md): React 19,
 TypeScript, Vite 8 and Tiptap 3. It builds into the server's
 `internal/web/dist` and is embedded in the Go binary, so a deployment is just
-that one binary; there is no separate frontend process. The design is the
-prototype in [design-system/](../../design-system/). For using the web app,
-see [docs/web.md](../../docs/web.md).
+that one binary; there is no separate frontend process. For using the web
+app, see the [README](../../README.md) and
+[installing the web app](../../docs/installing-web-app.md).
 
 ## Dev loop
 

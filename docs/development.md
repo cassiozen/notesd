@@ -12,7 +12,6 @@ apps/android/   Kotlin app, on shared/sync-engine                 → apps/andro
 apps/ios/       Swift app: NotesCore/ (Swift package) and Notes/ (UI) → apps/ios/README.md
 shared/         sync-engine/ (Kotlin, for Android and web)        → shared/sync-engine/README.md
                 and fixtures every platform is tested against (Markdown → text, tags, round trips)
-design-system/  the visual prototype the web and Android apps follow
 scripts/        dev helpers
 mise.toml       pinned toolchain and every task below
 ```

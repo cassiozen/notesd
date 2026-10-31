@@ -7,7 +7,7 @@ A self-hosted note-taking system: one Go executable backed by SQLite serves a Re
 | Area | Decision |
 | --- | --- |
 | Backend | Single Go executable, SQLite (WAL) with FTS5; no external infrastructure |
-| Web | React + TypeScript + Tiptap, embedded in the binary; requires a server connection |
+| Web | React + TypeScript + Tiptap, embedded in the binary; on the server by default, or offline-first like mobile when opted in (§2.5) |
 | Mobile | Native Swift and Kotlin apps with local SQLite + FTS5; fully usable offline |
 | Documents | Whole Markdown documents in a restricted CommonMark + GFM dialect |
 | Sync | State-based incremental replication using per-note revisions and a global change sequence |
@@ -586,24 +586,15 @@ WAL mode is enabled with a busy timeout for brief write contention. The developm
 
 ### 11.2 Process supervision
 
-systemd is recommended. The server shuts down gracefully on termination signals so transactions complete or roll back.
+systemd is recommended; the unit users install is in `docs/hosting.md`. The server shuts down gracefully on termination signals so transactions complete or roll back.
 
 ```ini
-[Unit]
-Description=notesd
-After=network.target
-
 [Service]
-Type=simple
-User=notesd
-Group=notesd
-ExecStart=/usr/local/bin/notesd --data-dir /var/lib/notesd
-Restart=on-failure
-RestartSec=5
+ExecStart=/usr/local/bin/notesd serve --listen 0.0.0.0:8080 --data-dir /var/lib/notesd
+DynamicUser=yes
 StateDirectory=notesd
-
-[Install]
-WantedBy=multi-user.target
+StateDirectoryMode=0700
+Restart=on-failure
 ```
 
 ### 11.3 Self-healing
@@ -681,8 +672,7 @@ notes/
 │   ├── android/      app/ (Compose UI, editor, accounts, WorkManager), on shared/sync-engine
 │   └── web/          src/{api,auth,notes,editor,settings,ui,styles}, test/, package.json
 ├── shared/           sync-engine (document model, Markdown codec, database, search, API client, sync; Kotlin Multiplatform, for Android and web), markdown-fixtures (plaintext, roundtrip), sync-fixtures, api
-├── design-system/    the visual prototype the web app follows
-├── docs/             user guides (hosting, android, web, operations), development, releasing, architecture (this document)
+├── docs/             user guides (hosting, android, ios, installing-web-app, operations, settings, faq), development, releasing, architecture (this document)
 ├── .github/          CI and release workflows
 ├── scripts/          dev helpers
 ├── mise.toml         pinned toolchain and build/test tasks
