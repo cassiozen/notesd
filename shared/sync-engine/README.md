@@ -24,7 +24,7 @@ Needs the JDK, Go (the sync tests build the server) and Node, all from `mise.tom
 
 ## How the tests run
 
-- On the JVM: the Markdown codec against `shared/markdown-fixtures`, the store, the API client against a mock server, and sync. The ones in `commonTest` (store, search, migrations, plain text, tags) also run on JS under Node, on sqlite-wasm in memory: `./gradlew allTests` runs both.
+- On the JVM: the Markdown codec against `shared/markdown-fixtures`, the store, the API client against a mock server, and sync. The ones in `commonTest` (store, spaces, search, migrations, a sync cycle that fails, plain text, tags, SHA-256) also run on JS under Node, on sqlite-wasm in memory: `./gradlew allTests` runs both.
 - Sync tests use the real server. Gradle builds `server/` with Go once (`buildNotesd`); each test starts it on a free port with a temporary data directory, reads the address from its log, creates the owner account, and drives two or more clients through every scenario in the architecture doc's §12.1. `RandomSyncTest` replays random edit, delete, offline and retry sequences; run more seeds with `./gradlew jvmTest -Pnotes.seeds=1,2,3`.
 
 ## Layout
