@@ -85,6 +85,8 @@ export default defineConfig({
   },
   test: {
     globalSetup: ['test/global-setup.ts'],
+    // Above asyncUtilTimeout (test/setup.ts), so a slow wait fails with its own message, not a bare timeout.
+    testTimeout: 15_000,
     projects: [
       {
         extends: true,

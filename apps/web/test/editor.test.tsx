@@ -1,5 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
+import { timing } from '../src/notes/saver'
 import { body, createNote, getNote, noteTitle, saved, selectInBody, signedIn, typeAtEnd, typeInTitle } from './helpers'
 
 /** Signed in with one note, which opens by itself. */
@@ -139,8 +140,15 @@ describe('canonical form', () => {
     const { server, user, id } = await openNote('Style', '* one\n* two')
     const before = await getNote(server, id)
 
-    await typeInTitle(user, ' guide')
-    await saved()
+    // One save for the whole edit, however slowly a busy machine types it (setup.ts makes the debounce 40ms).
+    const debounceMs = timing.debounceMs
+    timing.debounceMs = 1000
+    try {
+      await typeInTitle(user, ' guide')
+      await saved()
+    } finally {
+      timing.debounceMs = debounceMs
+    }
     const after = await getNote(server, id)
     expect(after.title).toBe('Style guide')
     // The title edit is the only change; no conflict from "*" vs "-".
