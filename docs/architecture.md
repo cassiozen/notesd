@@ -78,7 +78,7 @@ Every client reaches the server over HTTPS/JSON; the Go binary also serves the w
 | --- | --- |
 | Go server | Authentication; note CRUD; revision validation and conflict detection; global change sequence; incremental sync; full-text search; serving the web app; database maintenance and backups. Stores whole Markdown documents and never interprets edits. |
 | Native clients | Rich-text editing; local persistence and search index; recording pending changes; background sync; conflict resolution; local deletion state; connectivity and sync status. The editor only reads and writes local data; sync runs independently. |
-| Web client | Authentication; note listing and navigation; editing with debounced autosave; search; conflict handling; connection and error status. Opted in, the native clients' local persistence and sync too: the Android core (`apps/android/core`), compiled to JavaScript, runs in a worker on sqlite-wasm in the origin's private file system (OPFS), one worker per origin shared by every tab over Web Locks and a BroadcastChannel. The screens read and write through one seam (`NotesSource`): the server's API, or that engine. |
+| Web client | Authentication; note listing and navigation; editing with debounced autosave; search; conflict handling; connection and error status. Opted in, the native clients' local persistence and sync too: the sync engine (`shared/sync-engine`), compiled to JavaScript, runs in a worker on sqlite-wasm in the origin's private file system (OPFS), one worker per origin shared by every tab over Web Locks and a BroadcastChannel. The screens read and write through one seam (`NotesSource`): the server's API, or that engine. |
 
 ### 3.2 Technology stack
 
@@ -174,7 +174,7 @@ V1 retains operation records indefinitely; expiring them needs an explicit proto
 
 ### 4.3 Mobile schema
 
-As built on Android (`apps/android/core/src/commonMain/migrations`, shared by the core's JVM and JS targets); iOS has the same tables in one file (`apps/ios/NotesCore/Sources/NotesCore/Resources/migrations`).
+As built in the sync engine (`shared/sync-engine/src/commonMain/migrations`, shared by its JVM and JS targets, so by Android and the web app); iOS has the same tables in one file (`apps/ios/NotesCore/Sources/NotesCore/Resources/migrations`).
 
 ```sql
 CREATE TABLE notes (
@@ -676,9 +676,9 @@ notes/
 ├── server/           cmd/notesd, internal/{api,auth,database,mail,notes,sync,search,web}, migrations, go.mod
 ├── apps/
 │   ├── ios/          NotesCore/ (document model, Markdown codec, database, search, API client, sync; a Swift package), Notes/ (SwiftUI, TextKit editor, accounts, scheduling)
-│   ├── android/      core/ (document model, Markdown codec, database, search, API client, sync; plain Kotlin), app/ (Compose UI, editor, accounts, WorkManager)
+│   ├── android/      app/ (Compose UI, editor, accounts, WorkManager), on shared/sync-engine
 │   └── web/          src/{api,auth,notes,editor,settings,ui,styles}, test/, package.json
-├── shared/           markdown-fixtures (plaintext, roundtrip), sync-fixtures, api
+├── shared/           sync-engine (document model, Markdown codec, database, search, API client, sync; Kotlin Multiplatform, for Android and web), markdown-fixtures (plaintext, roundtrip), sync-fixtures, api
 ├── design-system/    the visual prototype the web app follows
 ├── docs/             user guides (hosting, android, web, operations), development, releasing, architecture (this document)
 ├── .github/          CI and release workflows
@@ -689,4 +689,4 @@ notes/
 
 The web app is built into `server/internal/web/dist` (gitignored) and embedded by `go:embed`; a binary built without it serves a placeholder page.
 
-`shared/` holds specifications and fixtures, not a runtime library; the mobile apps remain independent projects on their own toolchains.
+`shared/` holds specifications and fixtures, and the sync engine Android and the web app run on (iOS has its own Swift port); each app remains its own project on its own toolchain.

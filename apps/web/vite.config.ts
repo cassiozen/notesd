@@ -6,8 +6,6 @@ import { transformWithOxc } from 'vite'
 import { defineConfig } from 'vitest/config'
 
 const outDir = resolve(import.meta.dirname, '../../server/internal/web/dist')
-// The sync engine, from Kotlin (apps/android/core); `pnpm core` builds it.
-const core = resolve(import.meta.dirname, '../android/core/build/dist/js/productionLibrary/notes-android-core.mjs')
 const sqliteNode = resolve(import.meta.dirname, 'node_modules/@sqlite.org/sqlite-wasm/dist/node.mjs')
 const server = process.env.NOTESD_SERVER ?? 'http://127.0.0.1:8080'
 const base = (path: string) => path.slice(path.lastIndexOf('/') + 1)
@@ -64,7 +62,6 @@ export default defineConfig({
       },
     },
   ],
-  resolve: { alias: { '@notes/core': core } },
   // Pre-bundling moves sqlite-wasm away from the .wasm it loads relative to itself.
   optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },
   worker: { format: 'es' },

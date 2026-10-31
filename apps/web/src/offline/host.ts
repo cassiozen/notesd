@@ -5,7 +5,7 @@ import {
   type EngineStatus,
   type LocalNote as EngineNote,
   type NotesEngine,
-} from '@notes/core'
+} from '@notes/sync-engine'
 import type { LockKey, NoteFilter } from '../api/types'
 import { canonical } from '../editor/markdown'
 import { deviceImages, type DeviceImages } from './images'

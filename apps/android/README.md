@@ -18,7 +18,7 @@ Run from the repository root:
 | --- | --- |
 | `mise run build:android` | Debug APK in `app/build/outputs/apk/debug` |
 | `mise run release:android` | Release APK in `server/bin`, signed when `NOTESD_KEYSTORE` is set |
-| `mise run test:android` | All JVM and Robolectric tests, including sync against a real server, and core's shared tests on JS |
+| `mise run test:android` | All JVM and Robolectric tests |
 | `mise run lint:android` | ktlint and Android lint (warnings fail the build) |
 | `mise run screenshots:android` | Renders every screen to `app/build/screenshots` (light, dark, 200% text, two-pane, foldable) |
 
@@ -35,22 +35,14 @@ On first run, onboarding asks for the server, then either creates the account (a
 
 ## How the tests run
 
-- `:core` tests run on the JVM: the Markdown codec against `shared/markdown-fixtures`, the store, the API client against a mock server, and sync. The ones in `commonTest` (store, search, migrations, plain text, tags) also run on JS under Node, on sqlite-wasm in memory: `./gradlew :core:allTests` runs both.
-- Sync tests use the real server. Gradle builds `server/` with Go once (`buildNotesd`); each test starts it on a free port with a temporary data directory, reads the address from its log, creates the owner account, and drives two or more clients through every scenario in the architecture doc's §12.1. `RandomSyncTest` replays random edit, delete, offline and retry sequences; run more seeds with `./gradlew :core:jvmTest -Pnotes.seeds=1,2,3`.
+- The database, API client and sync live in the sync engine (`shared/sync-engine`), shared with the web app and tested there: `mise run test:sync-engine`.
 - `:app` tests run on Robolectric: the editor's spans and behaviours, the screens (onboarding, list, editor, sync changes arriving in an open note), and an accessibility audit that checks every control on every screen has a label and a 48dp target.
 
 ## Layout
 
 ```text
 apps/android/
-├── core/   Kotlin Multiplatform, no Android
-│   ├── commonMain/  database and search, sync engine, API types, plain text and tags,
-│   │                migrations (SQL, compiled into the code by generateMigrations)
-│   ├── jvmMain/     what the app uses besides: document model, Markdown codec, API client,
-│   │                locked-notes crypto, images, the bundled SQLite driver
-│   └── jsMain/      the web app's side: SQLite through sqlite-wasm, called directly, the API
-│                    over fetch, and the engine exported to TypeScript (web/Engine.kt)
-└── app/    the Android app
+└── app/    the Android app; the engine it runs on is shared/sync-engine
     ├── editor/    the EditText-based editor: spans, normaliser, formatting bar
     ├── notes/     list, editor screen, navigation (one pane, or two from 600dp)
     ├── account/   onboarding, token storage sealed with an Android Keystore key
@@ -61,7 +53,7 @@ apps/android/
 
 ## Tags
 
-Tags are text in the note (`#tag`, `#multi word#`, `#parent/child`; architecture §7.5). `core/text/Tags.kt` is the shared extractor, pinned by `shared/markdown-fixtures/tags.json`. The database keeps a `note_tags` table beside the search index, updated in the same transaction by every local save and every sync write, so tags need nothing from the sync protocol.
+Tags are text in the note (`#tag`, `#multi word#`, `#parent/child`; architecture §7.5). `shared/sync-engine`'s `text/Tags.kt` is the shared extractor, pinned by `shared/markdown-fixtures/tags.json`. The database keeps a `note_tags` table beside the search index, updated in the same transaction by every local save and every sync write, so tags need nothing from the sync protocol.
 
 - **Tags:** All notes, Untagged and the tree with counts, on their own screen under the list ("‹ Tags"), or in a sidebar from 1000dp wide. Settings open from there. Choosing one filters the list and search, and the app reopens on the list last shown; a new note starts with the selected tag and is still discarded if nothing else is typed.
 - **Editor:** the `Normalizer` tints tags with a `TagSpan` that never reaches the document. With the cursor in a tag, a strip above the formatting bar suggests existing tags while you type, or offers the notes with that tag.
@@ -71,7 +63,7 @@ Tags are text in the note (`#tag`, `#multi word#`, `#parent/child`; architecture
 A note can be emailed through notesd, which sends it with Resend (`server/README.md`). The Resend key and sender are set under Settings → Email while signed in; they live on the server, so web and phone share them.
 
 - **Share sheet:** with email set up, sharing a note adds an "Email" action: a custom chooser action on Android 14+, our own target before that. It comes back to `MainActivity` (`ACTION_EMAIL_NOTE`), which opens the note and asks for addresses.
-- **Sending:** `core/sync/NoteMailer.kt` syncs first and passes the revision the note is at here; the server sends its own copy, so the email is what's on screen. Offline, or with changes the server doesn't have yet, nothing is sent.
+- **Sending:** `shared/sync-engine`'s `sync/NoteMailer.kt` syncs first and passes the revision the note is at here; the server sends its own copy, so the email is what's on screen. Offline, or with changes the server doesn't have yet, nothing is sent.
 
 ## Design
 
