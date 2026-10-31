@@ -1,0 +1,59 @@
+apps/web/src/offline/device.ts
+  s_d22cab8726b588::t_de5daea9b5dc8d 1-56
+apps/web/README.md
+  s_d22cab8726b588::t_299b496e5337af 192-194,228-234
+apps/web/src/offline/host.ts
+  s_d22cab8726b588::t_a510001ca717e7 83-85
+apps/web/src/notes/local-saver.ts
+  s_d22cab8726b588::t_f8b2769603e321 122,284-290
+  s_d22cab8726b588::t_a37b7caf23d87d 291
+apps/web/src/notes/note-pane.tsx
+  s_d22cab8726b588::t_f8b2769603e321 403-405,477
+apps/web/src/notes/saver.ts
+  s_d22cab8726b588::t_f8b2769603e321 21-22
+apps/web/src/offline/protocol.ts
+  s_d22cab8726b588::t_a510001ca717e7 67-68
+apps/web/src/auth/session-hint.ts
+  s_d22cab8726b588::t_de5daea9b5dc8d 21-40
+apps/web/src/auth/auth-context.tsx
+  s_d22cab8726b588::t_aa02c6c5602fce 5-6,18-19,30-32,45-65,67,69-83,87,96,124,132-144
+  s_d22cab8726b588::t_48ff4a272df3b9 66,68,111-115,145
+  s_d22cab8726b588::t_03cddba236f5f6 146
+apps/web/src/sw.ts
+  s_d22cab8726b588::t_5c02476d2517c4 1-2
+apps/android/core/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_d22cab8726b588::t_a510001ca717e7 113-115
+apps/web/vite.config.ts
+  s_d22cab8726b588::t_5c02476d2517c4 32-41
+apps/web/test/offline-boot.test.tsx
+  s_d22cab8726b588::t_410877474d6854 90,93
+  s_d22cab8726b588::t_65df61d70fe6da 45-46,65,96
+  s_d22cab8726b588::t_c1b64c00d51f35 129,131
+  s_d22cab8726b588::t_d625edc1edd1b6 1-44,47-64,66-89,91-92,94-95,97-128,130,132-139
+apps/web/src/offline/tab.ts
+  s_d22cab8726b588::t_a2bf0da30994b4 29-30,47,83-88,91,108-111,122-125,137-138
+  s_d22cab8726b588::t_03b0f8a6226c30 139
+apps/web/test/helpers.tsx
+  s_d22cab8726b588::t_ca951ae6615f2a 6-8,51-52
+  s_d22cab8726b588::t_99e2704f43d45a 49-50,53-56
+apps/web/src/offline/tab.test.ts
+  s_d22cab8726b588::t_ce70112ef84730 9-10
+  s_d22cab8726b588::t_3863aa485f3e85 41-44
+  s_d22cab8726b588::t_b2745abb945af8 1-8,11-40,45-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d2462136a9568f8a66c328e8087956a728f2aa7",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
