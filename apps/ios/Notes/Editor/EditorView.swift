@@ -12,6 +12,9 @@ final class EditorController {
     var linkSheet: (text: String, href: String?)?
     /// The photo picker is open, to add a picture.
     var pickingImage = false
+    /// The text view's distance from the window's edges, which the formatting bar keeps to.
+    var barLeading: CGFloat = 0
+    var barTrailing: CGFloat = 0
     /// Pasted picture bytes, for the screen to store and insert.
     var onPasteImage: ((Data) -> Void)?
     private(set) var canUndo = false
@@ -72,6 +75,10 @@ struct EditorView: UIViewRepresentable {
         view.onFormatState = { [weak controller] state in controller?.format = state }
         view.onLinkEdit = { [weak controller] text, href in controller?.linkSheet = (text, href) }
         view.onPasteImage = { [weak controller] data in controller?.onPasteImage?(data) }
+        view.onMargins = { [weak controller] leading, trailing in
+            controller?.barLeading = leading
+            controller?.barTrailing = trailing
+        }
         let bar = UIHostingController(rootView: FormattingBar(controller: controller, tags: tags))
         bar.view.backgroundColor = .clear
         bar.sizingOptions = [.intrinsicContentSize]

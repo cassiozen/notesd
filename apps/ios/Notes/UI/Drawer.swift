@@ -67,7 +67,8 @@ struct DrawerContainer<Content: View, Side: View>: View {
                                 .accessibilityAction { drawer.close() }
                         }
                     }
-                    .clipShape(.rect(cornerRadius: 44 * progress, style: .continuous))
+                    // Not clipped to round its corners: a clip hides the Liquid Glass of a vertical bar
+                    // (the iPhone Duo's outer display), leaving its buttons there but not drawn.
                     .shadow(color: .black.opacity(0.28 * progress), radius: 24)
                     .offset(x: progress * width)
                     .gesture(

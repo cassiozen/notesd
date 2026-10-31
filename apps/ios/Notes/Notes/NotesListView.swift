@@ -1,20 +1,12 @@
 import NotesCore
 import SwiftUI
 
-/// Where the stack can go from the list.
-enum Route: Hashable {
-    /// A note by id; a new note gets its id up front and exists once it has text.
-    case note(id: String, startTag: String? = nil, isNew: Bool = false)
-    case settings
-    case settingsSection(SettingsSection)
-}
-
 /// The notes, newest first, in date sections; search as you type; the
 /// filter chosen in the sidebar. Deleting is undoable for a few seconds.
 struct NotesListView: View {
     @Environment(AppGraph.self) private var graph
     @Environment(Drawer.self) private var drawer
-    @Binding var path: [Route]
+    @Environment(Navigator.self) private var nav
 
     @State private var notes: [NoteSummary] = []
     @State private var loaded = false
@@ -52,7 +44,7 @@ struct NotesListView: View {
                     .plainRow()
             }
             if case .signedOut = graph.account {
-                SignedOutBanner { path.append(.settings) }
+                SignedOutBanner { nav.openSettings() }
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                     .plainRow()
             }
@@ -258,7 +250,8 @@ struct NotesListView: View {
         } label: {
             label()
         }
-        .buttonStyle(RowButtonStyle())
+        // Beside the list, the open note's row stays marked.
+        .buttonStyle(RowButtonStyle(selected: nav.wide && nav.openNote == id))
         .listRowInsets(EdgeInsets(top: 1, leading: 8, bottom: 1, trailing: 8))
         .plainRow()
         .swipeActions {
@@ -269,6 +262,7 @@ struct NotesListView: View {
             Button("Delete Note", systemImage: "trash", role: .destructive) { delete(id) }
         }
         .accessibilityAction(named: "Delete note") { delete(id) }
+        .accessibilityAddTraits(nav.wide && nav.openNote == id ? .isSelected : [])
     }
 
     /// The count, and what's wrong with sync when something is; the compose button at the end.
@@ -399,7 +393,8 @@ struct NotesListView: View {
         searching = false
         Task {
             await graph.preload(id)
-            path.append(.note(id: id))
+            // Swiped away while it was read: it stays closed.
+            if pendingDeletes[id] == nil { nav.open(id) }
             opening = false
         }
     }
@@ -408,13 +403,16 @@ struct NotesListView: View {
         var tag: String?
         if case .tag(_, let name) = graph.listFilter { tag = name }
         searching = false
-        path.append(.note(id: Uuid7.generate(), startTag: tag, isNew: true))
+        nav.open(Uuid7.generate(), startTag: tag, isNew: true)
     }
 
     /// The note is only hidden until the undo window ends; deleting at once and
     /// restoring on undo would race sync, which could send the delete first.
     private func delete(_ id: String) {
         let store = graph.store
+        // Open beside the list, it closes now: left open, typing in the undo window would come back
+        // as a recovered copy under a "deleted on another device" banner.
+        nav.close(note: id)
         withAnimation(.snappy) {
             pendingDeletes[id] = Task {
                 try? await Task.sleep(for: .seconds(5))

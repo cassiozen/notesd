@@ -7,6 +7,7 @@ import SwiftUI
 struct TagsView: View {
     @Environment(AppGraph.self) private var graph
     @Environment(Drawer.self) private var drawer
+    @Environment(Navigator.self) private var nav
     let openSettings: () -> Void
 
     @State private var tags: [TagCount] = []
@@ -21,7 +22,7 @@ struct TagsView: View {
                     // The space, always: its menu makes new ones too.
                     SpaceMenu(
                         font: .custom("InstrumentSerif-Regular", size: 27, relativeTo: .title), iconSize: 31,
-                        onSwitched: { drawer.close() }
+                        onSwitched: { switched() }
                     ) {
                         creating = true
                     }
@@ -83,7 +84,7 @@ struct TagsView: View {
                 creating = false
                 graph.switchSpace(id)
                 // To the new space's list, empty and ready for a note.
-                drawer.close()
+                switched()
             }
         }
         .task(id: graph.space) {
@@ -101,6 +102,12 @@ struct TagsView: View {
             tags = next
             lockedCount = locked
         }
+    }
+
+    /// Onto the space's list, without the note from the last space that was open beside it.
+    private func switched() {
+        nav.leaveNote()
+        drawer.close()
     }
 
     /// Tags whose every parent is open.

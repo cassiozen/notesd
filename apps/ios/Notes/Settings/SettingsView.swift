@@ -119,7 +119,7 @@ private struct AccountRow: View {
 /// A category's own page.
 struct SettingsSectionView: View {
     let section: SettingsSection
-    @Binding var path: [Route]
+    @Environment(Navigator.self) private var nav
     @Environment(AppGraph.self) private var graph
     @State private var connecting = false
     @State private var confirmSignOut = false
@@ -135,7 +135,7 @@ struct SettingsSectionView: View {
             case .server: server
             case .security: LockedNotesSection()
             // Back to the list, to show the new space.
-            case .spaces: SpacesSection { path.removeAll() }
+            case .spaces: SpacesSection { nav.closeAll() }
             case .integrations: EmailSection()
             case .appearance:
                 Section {
@@ -252,6 +252,9 @@ extension View {
             // The tint is too light for text on white rows; link brown reads as a button and passes contrast.
             .tint(Color(Palette.link))
             .scrollContentBackground(.hidden)
+            // Beside the list on a wide window, the rows keep a phone's width.
+            .frame(maxWidth: 640)
+            .frame(maxWidth: .infinity)
             .background(Color.notesBg)
             .navigationTitle(title)
     }
