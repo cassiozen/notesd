@@ -39,7 +39,7 @@ jobs:
       # Apart, so the job's step times split building from testing.
       - run: mise run build:ios:tests
       - run: mise run --skip-deps test:ios
-      # Kept even when green: per-step test timings, for finding where the run's time goes.
+      # Kept even when green: the log has only failing lines; the bundle has screenshots and per-step timings.
       - if: always()
         uses: actions/upload-artifact@v4
         with:
