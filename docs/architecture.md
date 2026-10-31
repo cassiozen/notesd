@@ -175,7 +175,7 @@ V1 retains operation records indefinitely; expiring them needs an explicit proto
 
 ### 4.3 Mobile schema
 
-As built on Android (`apps/android/core/src/main/resources/migrations`); iOS has the same tables in one file (`apps/ios/NotesCore/Sources/NotesCore/Resources/migrations`).
+As built on Android (`apps/android/core/src/commonMain/migrations`, shared by the core's JVM and JS targets); iOS has the same tables in one file (`apps/ios/NotesCore/Sources/NotesCore/Resources/migrations`).
 
 ```sql
 CREATE TABLE notes (
