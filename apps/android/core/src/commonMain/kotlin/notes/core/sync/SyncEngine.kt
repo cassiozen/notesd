@@ -1,5 +1,6 @@
 package notes.core.sync
 
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -93,13 +94,28 @@ class SyncEngine(
         _status.value = SyncStatus.Syncing
         rejection = null
         parked.clear()
-        val failure = cycle(client)
+        val failure = try {
+            cycle(client)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // A storage error, say: Failed and retried like any other, not left showing Syncing.
+            Stop(SyncOutcome.Failed, e.message ?: "Sync failed")
+        }
         // A dropped change isn't retried, so the cycle still counts as done, but the reason is kept,
         // beside the failure's own when the cycle failed too: the next cycle won't say it again.
-        store.finished(listOfNotNull(rejection, failure?.message).joinToString(" ").ifEmpty { null })
+        val lastSyncAt = try {
+            store.finished(listOfNotNull(rejection, failure?.message).joinToString(" ").ifEmpty { null })
+            store.state().lastSyncAt
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            // The storage that just failed may refuse this too; the status below still says why.
+            null
+        }
         val outcome = failure?.outcome ?: SyncOutcome.Done
         _status.value = when (outcome) {
-            SyncOutcome.Done -> SyncStatus.Synced(store.state().lastSyncAt ?: 0)
+            SyncOutcome.Done -> SyncStatus.Synced(lastSyncAt ?: 0)
             SyncOutcome.Offline -> SyncStatus.Offline
             SyncOutcome.SignedOut -> SyncStatus.SignedOut
             SyncOutcome.NotConnected -> SyncStatus.NotConnected

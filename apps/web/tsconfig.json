@@ -19,7 +19,10 @@
     "types": [
       "vite/client"
     ],
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "paths": {
+      "@notes/core": ["../android/core/build/dist/js/productionLibrary/notes-android-core.d.mts"]
+    }
   },
   "include": [
     "src"

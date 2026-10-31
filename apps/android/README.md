@@ -48,7 +48,8 @@ apps/android/
 │   │                migrations (SQL, compiled into the code by generateMigrations)
 │   ├── jvmMain/     what the app uses besides: document model, Markdown codec, API client,
 │   │                locked-notes crypto, images, the bundled SQLite driver
-│   └── jsMain/      the web app's side: SQLite through sqlite-wasm, called directly
+│   └── jsMain/      the web app's side: SQLite through sqlite-wasm, called directly, the API
+│                    over fetch, and the engine exported to TypeScript (web/Engine.kt)
 └── app/    the Android app
     ├── editor/    the EditText-based editor: spans, normaliser, formatting bar
     ├── notes/     list, editor screen, navigation (one pane, or two from 600dp)

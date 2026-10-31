@@ -33,9 +33,21 @@
   "overrides": [
     {
       "files": [
-        "test/**"
+        "test/**",
+        "e2e/**"
       ],
       "rules": {
+        "no-await-in-loop": "off"
+      }
+    },
+    {
+      // Worker and BroadcastChannel postMessage take no target origin; the rule only knows window's.
+      // Their loops are retries and the sync schedule, sequential on purpose.
+      "files": [
+        "src/offline/**"
+      ],
+      "rules": {
+        "unicorn/require-post-message-target-origin": "off",
         "no-await-in-loop": "off"
       }
     }

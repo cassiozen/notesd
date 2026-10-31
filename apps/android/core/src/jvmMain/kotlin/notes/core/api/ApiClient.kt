@@ -7,7 +7,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
@@ -248,35 +247,8 @@ class ApiClient(
         } catch (e: IOException) {
             return@withContext ApiResult.Unreachable(e)
         }
-        val code = reply.code
-        val retryAfter = reply.retryAfter
-        if (code in 200..299) {
-            return@withContext try {
-                ApiResult.Ok(decode(reply))
-            } catch (_: SerializationException) {
-                unexpected(code)
-            } catch (_: IllegalArgumentException) {
-                unexpected(code)
-            }
-        }
-        // Only an error's body is text here: a success may be an image.
-        val error = try {
-            json.decodeFromString<ErrorBody>(reply.text)
-        } catch (_: SerializationException) {
-            ErrorBody()
-        } catch (_: IllegalArgumentException) {
-            ErrorBody()
-        }
-        when {
-            code == 401 && error.error == "unauthenticated" -> ApiResult.Unauthenticated
-            code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
-            code == 429 -> ApiResult.RateLimited(retryAfter?.trim()?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_S)
-            else -> ApiResult.Rejected(code, error.error.ifEmpty { "http_$code" }, error.message, error.field)
-        }
+        apiResult(reply.code, reply.retryAfter, { reply.text }) { decode(reply) }
     }
-
-    private fun unexpected(code: Int) =
-        ApiResult.Rejected(code, UNEXPECTED_RESPONSE, "The server's answer wasn't understood.", null)
 
     private fun url(path: String) = baseUrl.newBuilder().addPathSegments(path).build()
 
@@ -297,11 +269,9 @@ class ApiClient(
     private fun spaceUrl(id: String) = url("api/v1/spaces").newBuilder().addPathSegment(id).build()
 
     companion object {
-        /** A 2xx answer that isn't the expected JSON: something other than notesd is at this address. */
-        const val UNEXPECTED_RESPONSE = "unexpected_response"
+        const val UNEXPECTED_RESPONSE = notes.core.api.UNEXPECTED_RESPONSE
 
         private const val REFRESH_EARLY_MS = 60_000L
-        private const val DEFAULT_RETRY_AFTER_S = 60L
         private val JSON = "application/json".toMediaType()
         private val json = Json { ignoreUnknownKeys = true }
 

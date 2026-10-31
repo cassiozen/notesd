@@ -52,3 +52,13 @@ func TestServesServiceWorkerUncached(t *testing.T) {
 		t.Fatalf("Content-Type = %q, want text/javascript", got)
 	}
 }
+
+// Without it the browser refuses to compile the sync engine's WebAssembly.
+func TestPolicyAllowsWebAssembly(t *testing.T) {
+	root := fstest.MapFS{"index.html": {Data: []byte("<!doctype html>app")}}
+	rec := httptest.NewRecorder()
+	handler(root).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/", nil))
+	if got := rec.Header().Get("Content-Security-Policy"); !strings.Contains(got, "script-src 'self' 'wasm-unsafe-eval'") {
+		t.Fatalf("Content-Security-Policy = %q", got)
+	}
+}

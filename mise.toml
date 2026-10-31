@@ -18,7 +18,7 @@ run = "pnpm install --frozen-lockfile"
 
 [tasks.dev]
 description = "Go server (rebuilt on change) + Vite, at http://localhost:5173"
-depends = ["dev:server", "dev:web"]
+depends = ["dev:server", "dev:web", "dev:core"]
 
 [tasks."dev:server"]
 description = "Go server on :8080, rebuilt and restarted on .go/.sql changes"
@@ -31,6 +31,11 @@ dir = "apps/web"
 depends = ["install"]
 run = "pnpm dev"
 
+[tasks."dev:core"]
+description = "The web app's sync engine (Kotlin, apps/android/core), rebuilt on change"
+dir = "apps/android"
+run = "./gradlew --continuous --quiet :core:jsBrowserProductionLibraryDistribution"
+
 [tasks."dev:reset"]
 description = "Delete the dev database; the next dev:server run seeds it again"
 dir = "server"
@@ -38,7 +43,7 @@ run = "rm -rf ${NOTESD_DATA_DIR:-data}"
 
 [tasks.check]
 description = "Lint, typecheck and test everything"
-depends = ["lint", "typecheck", "test"]
+depends = ["lint", "typecheck", "test", "test:e2e"]
 
 [tasks.lint]
 depends = ["lint:go", "lint:web"]
@@ -52,9 +57,15 @@ dir = "apps/web"
 depends = ["install"]
 run = "pnpm lint"
 
+# Once up front: the web tasks that need it each run it too, and Gradle in parallel with itself only waits.
+[tasks."build:core"]
+description = "The web app's sync engine, from Kotlin, into apps/android/core/build/dist/js"
+dir = "apps/web"
+run = "pnpm core"
+
 [tasks.typecheck]
 dir = "apps/web"
-depends = ["install"]
+depends = ["install", "build:core"]
 run = "pnpm typecheck"
 
 [tasks.test]
@@ -67,8 +78,14 @@ run = "go test -race ./..."
 
 [tasks."test:web"]
 dir = "apps/web"
-depends = ["install"]
+depends = ["install", "build:core"]
 run = "pnpm test"
+
+[tasks."test:e2e"]
+description = "The web app in Chromium against a real notesd; add --project=firefox or webkit for the others"
+dir = "apps/web"
+depends = ["install", "build:core"]
+run = "pnpm exec playwright install chromium && pnpm e2e --project=chromium"
 
 [tasks."test:android"]
 description = "Android unit tests (JVM and Robolectric), and core's shared tests on JS; emulator tests stay manual"
@@ -149,7 +166,7 @@ run = "xcodebuild -project Notes.xcodeproj -scheme Notes -destination \"id=$(scr
 [tasks."build:web"]
 description = "Build the web app into server/internal/web/dist"
 dir = "apps/web"
-depends = ["install"]
+depends = ["install", "build:core"]
 run = "pnpm build"
 
 [tasks.build]

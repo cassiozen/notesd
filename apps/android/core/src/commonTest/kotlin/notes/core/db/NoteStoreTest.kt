@@ -2,6 +2,7 @@ package notes.core.db
 
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertNotNull
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
@@ -20,6 +21,20 @@ class NoteStoreTest {
         assertEquals(1L, rows())
         store.delete("n")
         assertEquals(0L, rows())
+    }
+
+    @Test
+    fun `recovering as the same id again makes no second copy`() = storeTest {
+        val id = store.recover("Plan", "Monday\n", id = "r1")
+        assertEquals("r1", store.recover("Plan", "Monday\n", id = "r1"))
+        assertEquals(listOf("Plan (Recovered copy)"), store.list().map { it.title })
+        assertEquals(1, store.outbox().count { it.noteId == id })
+    }
+
+    @Test
+    fun `recovering as an id the server would refuse is refused here`() = storeTest {
+        assertFailsWith<IllegalArgumentException> { store.recover("Plan", "Monday\n", id = "a b") }
+        assertEquals(emptyList(), store.list())
     }
 
     @Test

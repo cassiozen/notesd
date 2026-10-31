@@ -7,10 +7,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "vite",
+    "core": "../android/gradlew -p ../android -q :core:jsBrowserProductionLibraryDistribution",
+    "dev": "pnpm core && vite",
     "build": "pnpm typecheck && vite build",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.sw.json",
-    "test": "vitest run",
+    "typecheck": "pnpm core && tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.sw.json",
+    "test": "pnpm core && vitest run",
+    "e2e": "pnpm core && playwright test",
     "lint": "oxlint --deny-warnings"
   },
   "dependencies": {
@@ -19,6 +21,7 @@
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
     "@fontsource-variable/literata": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
+    "@sqlite.org/sqlite-wasm": "3.53.4-build2",
     "@tiptap/core": "^3.31.4",
     "@tiptap/extension-blockquote": "^3.31.4",
     "@tiptap/extension-bold": "^3.31.4",
@@ -42,6 +45,7 @@
     "react-dom": "^19.3.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.1",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@testing-library/user-event": "^14.6.8",
