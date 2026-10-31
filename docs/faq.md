@@ -92,7 +92,8 @@ notesd export --out ~/notes-export
 ```
 
 Writes every note as a Markdown file named after its title, and pictures
-into `images/` with the notes pointing at them. Locked notes are left out
+into `images/` with the notes pointing at them. On a server with several
+accounts, add `--username NAME`. Locked notes are left out
 unless you add `--include-locked` and type the lock password. It's safe to
 run while the server is up.
 
@@ -108,8 +109,10 @@ Yes, two ways:
   a folder per space, a file per note named after its title, and pictures
   in `images/`. Point Syncthing, a backup tool or another editor at it. See
   [Markdown mirror](hosting.md#markdown-mirror).
-- **One-time export.** `notesd export --out DIR` writes the same kind of
-  folder once.
+- **One-time export.** `notesd export --out DIR` writes the files once,
+  named the same way, with pictures in `images/`. With only one space it
+  skips the space folder. On a server with several accounts, add
+  `--username NAME`.
 
 ### Can I import my existing notes?
 
@@ -182,7 +185,9 @@ Yes, regular notes are stored unencrypted on the server, like most notes
 apps. Use disk encryption on the server if that matters to you.
 
 **Locked notes** are the exception: they're encrypted on your device, and
-the server never has the key.
+the server never has the key. Only `notesd export --include-locked`,
+run on the server's machine with the lock password typed in, decrypts
+them, to export them.
 
 ### What if I forget my lock password?
 
@@ -194,8 +199,8 @@ ones stay unreadable.
 ### What if I forget my account password?
 
 The person running the server sets a new one with
-`notesd reset-password`. There are no reset emails. That doesn't affect
-locked notes, which use their own password.
+`notesd reset-password --username NAME`. There are no reset emails. That
+doesn't affect locked notes, which use their own password.
 
 ### Can I have multiple users on the same server?
 

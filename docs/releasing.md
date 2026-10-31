@@ -36,7 +36,12 @@ created twice, while a failed image push can be re-run.
 
 ### Release candidates
 
-A tag with a hyphen, such as `v0.3.0-rc1`, is published as a prerelease:
+Name prereleases `vX.Y.Z-rcN`, such as `v0.3.0-rc1`. The APK's
+`versionCode` only understands `-rcN`: any other suffix (`v0.3.0-beta1`)
+gets the same `versionCode` as `v0.3.0` itself (see [Versions](#versions)),
+so the prerelease no longer sorts before the release.
+
+A tag with a hyphen is published as a prerelease:
 the Docker image gets only its exact version tag (`0.3.0-rc1`, not
 `0.3` or `latest`), and [updating from Settings](operations.md#updating-from-settings)
 never installs it.
