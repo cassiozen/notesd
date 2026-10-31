@@ -21,7 +21,7 @@ offline and syncs your notes whenever a connection is available.</p>
   <img width="368" height="259" alt="Image" src="https://github.com/user-attachments/assets/607ed533-451f-42ed-90d6-e1cfe162deae" />  
   See [Security](#security) for more details.
 
-- **Offline in the browser too.** Tick "Keep my notes on this device" when signing in (or later, in Settings → Sync & data), and once they've synced, the web app opens, edits and searches your notes without a connection, syncing them like the mobile apps. Needs a browser that lets sites keep data: private windows can't.
+- **Offline in the browser too.** Tick "Keep my notes on this device" when signing in (or later, in Settings → Sync & data), and once they've synced, the web app opens, edits and searches your notes without a connection.
 
 - **Markdown under the hood.** Notes are stored as Markdown, and you can take them out at any time.  
   See [Your data](#your-data) for more details.
