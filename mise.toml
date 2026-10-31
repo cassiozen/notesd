@@ -61,7 +61,8 @@ run = "pnpm lint"
 dir = "shared/sync-engine"
 run = "pnpm lint"
 
-# Once up front: the web tasks that need them each run it too, and Gradle in parallel with itself only waits.
+# Once up front: the web tasks that need them each run it too, in parallel, which is safe only once it's up to date.
+# Concurrent Gradle builds of one project don't lock each other's outputs; two that compile at once corrupt them.
 [tasks."build:deps"]
 description = "The web app's workspace dependencies (the sync engine), built in dependency order"
 dir = "apps/web"
@@ -94,6 +95,8 @@ run = "pnpm exec playwright install chromium && pnpm e2e --project=chromium"
 [tasks."test:sync-engine"]
 description = "The sync engine's tests on the JVM (sync against a real notesd) and on JS under Node"
 dir = "shared/sync-engine"
+# Same Gradle project as build:deps; see there. wait_for orders them in check without building deps when run alone.
+wait_for = ["build:deps"]
 run = "pnpm test"
 
 [tasks."test:android"]
