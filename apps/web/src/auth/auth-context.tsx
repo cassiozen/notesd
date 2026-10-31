@@ -3,7 +3,7 @@ import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
 import { forgetSpaces } from '../notes/spaces'
-import { closeNotes, forgetNotesHere, openNotes } from '../offline/device'
+import { closeNotes, forgetNotesHere, keepIfInstalledApp, openNotes } from '../offline/device'
 import { deviceUser, rememberSession } from './session-hint'
 
 export type AuthState =
@@ -107,7 +107,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 async function boot(): Promise<AuthState> {
   const answer = await fromServer()
-  if (answer.status === 'session') return adopt(answer.info)
+  if (answer.status === 'session') {
+    await keepIfInstalledApp(answer.info.username)
+    return adopt(answer.info)
+  }
   return answer.status === 'unreachable' ? offlineBoot() : answer
 }
 

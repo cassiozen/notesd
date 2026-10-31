@@ -2,6 +2,7 @@
   "id": "/",
   "name": "notesd",
   "short_name": "notesd",
+  "description": "Self-hosted notes that sync across your devices and work offline.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
@@ -11,5 +12,8 @@
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
     { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "screenshots": [
+    { "src": "/screenshot-wide.jpg", "sizes": "1600x1016", "type": "image/jpeg", "form_factor": "wide", "label": "Notes, tags and a note open" }
   ]
 }

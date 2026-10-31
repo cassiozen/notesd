@@ -20,7 +20,7 @@ import { Kicker } from '../ui/kicker'
 import { PHONE, useMediaQuery } from '../ui/media'
 import { Sheet } from '../ui/sheet'
 import { Surface } from '../ui/surface'
-import { DeviceCard, SignOutCard, syncSummary, useKeptHere, useSyncState } from './device'
+import { DeviceCard, InstallCard, SignOutCard, syncSummary, useKeptHere, useSyncState } from './device'
 import { LockedNotesCard } from './locked-notes'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
@@ -380,7 +380,12 @@ function SettingsPage({
         </>
       )
     case 'device':
-      return <DeviceCard username={username} />
+      return (
+        <>
+          <DeviceCard username={username} />
+          <InstallCard />
+        </>
+      )
   }
 }
 
