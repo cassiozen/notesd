@@ -1,10 +1,10 @@
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { notes as api } from '../api/notes'
 import type { ListItem, TagCount } from '../api/types'
 import { useAuth } from '../auth/auth-context'
 import { lockSession, useLockStatus } from '../locks/session'
 import { preview as previewOf } from './plaintext'
-import { NoteSaver, timing, type Fields } from './saver'
+import { timing, type Fields } from './saver'
+import { notesSource, type Saver, type SaverInit } from './source'
 import { DEFAULT_SPACE, reloadSpaces } from './spaces'
 import { hasTag, tags, tagText } from './tags'
 
@@ -81,27 +81,24 @@ type NotesContextValue = Omit<ListState, 'hidden'> & {
   setFilter: (filter: ListFilter) => void
   loadMore: () => void
   refresh: () => void
-  /** The saver for a note, creating one from server data if needed. */
-  saverFor: (init: ConstructorParameters<typeof NoteSaver>[0]) => NoteSaver
-  existingSaver: (id: string) => NoteSaver | undefined
-  /** A new note, listed right away but sent to the server only once it has text (more than the selected tag). */
-  newDraft: () => NoteSaver
+  /** The saver for a note, creating one from stored data if needed. */
+  saverFor: (init: SaverInit) => Saver
+  existingSaver: (id: string) => Saver | undefined
+  /** A new note, listed right away but stored only once it has text (more than the selected tag). */
+  newDraft: () => Saver
   /** Drop a saver that has nothing left to do (closed editor). */
   release: (id: string) => void
   removed: (id: string) => void
   /** Live title and preview while typing, before the save lands. */
   touch: (id: string, summary: { title: string; preview: string }) => void
   /** Moves a note to another space: it leaves this space's list now. */
-  move: (saver: NoteSaver, spaceId: string) => void
+  move: (saver: Saver, spaceId: string) => void
   /** Hides the note now and deletes it once the undo window passes. */
   remove: (id: string) => Promise<DeleteOutcome>
   undoRemove: (id: string) => void
 }
 
 const NotesContext = createContext<NotesContextValue | null>(null)
-
-/** Other devices may have changed things; refetch on focus after this long. */
-const STALE_MS = 30_000
 
 /** Saves come in bursts while typing; refetch the filters once they settle. */
 const FILTERS_DEBOUNCE_MS = 500
@@ -130,10 +127,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   /** Bumped per filter change: pages for an earlier filter are dropped. */
   const generation = useRef(0)
   const cursor = useRef('')
-  const loadedAt = useRef(0)
   /** The generation being loaded, if any. */
   const loading = useRef<number | null>(null)
-  const savers = useRef(new Map<string, NoteSaver>())
+  const savers = useRef(new Map<string, Saver>())
   const deletes = useRef(new Map<string, PendingDelete>())
 
   const fetchPage = useCallback(async (reset: boolean) => {
@@ -141,10 +137,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     if (loading.current === gen) return
     loading.current = gen
     try {
-      const page = await api.list(filterRef.current, spaceRef.current, reset ? undefined : cursor.current)
+      const page = await notesSource().list(filterRef.current, spaceRef.current, reset ? undefined : cursor.current)
       if (gen !== generation.current) return
       cursor.current = page.nextCursor
-      loadedAt.current = Date.now()
       setList((prev) => {
         const seen = new Set(page.notes.map((n) => n.id))
         // Keep notes saved locally that the page doesn't include yet.
@@ -183,7 +178,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
   const filtersFor = useRef(0)
   const fetchFilters = useCallback((signal?: AbortSignal) => {
     const asked = filtersFor.current
-    api.filters(spaceRef.current, signal).then(
+    notesSource().filters(spaceRef.current, signal).then(
       ({ tags: all, locked }) => {
         if (asked !== filtersFor.current) return
         setTagList(all)
@@ -246,7 +241,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
             version: prev.version + 1,
           }
         }),
-      copied: (copy: NoteSaver) => savers.current.set(copy.id, copy),
+      copied: (copy: Saver) => savers.current.set(copy.id, copy),
     }),
     [],
   )
@@ -255,7 +250,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     (init) => {
       let s = savers.current.get(init.id)
       if (!s) {
-        s = new NoteSaver(init, hooks)
+        s = notesSource().saver(init, hooks)
         savers.current.set(init.id, s)
       }
       return s
@@ -269,7 +264,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     const f = filterRef.current
     const fields = { title: '', content: f && 'tag' in f ? tagText(f.name) : '' }
     const spaceId = spaceRef.current
-    const s = new NoteSaver({ id: crypto.randomUUID(), fields, blank: fields, spaceId }, hooks)
+    const s = notesSource().saver({ id: crypto.randomUUID(), fields, blank: fields, spaceId }, hooks)
     savers.current.set(s.id, s)
     const now = Date.now()
     const row: ListItem = { id: s.id, title: '', preview: '', locked: false, revision: 0, createdAt: now, updatedAt: now, spaceId }
@@ -440,24 +435,22 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const all = () => [...savers.current.values()]
-    const onFocus = () => {
+    const resume = () => {
       for (const s of all()) s.resume()
-      if (Date.now() - loadedAt.current > STALE_MS) {
-        void fetchPage(true)
-        fetchFilters()
-        void reloadSpaces()
-      }
-      // Every time, not only when the list is stale: a reset elsewhere must lock this
-      // tab before anything new is locked with the forgotten key. It's one small request.
-      void lockSession.load(true).catch(() => undefined)
     }
-    const onOnline = () => {
-      for (const s of all()) s.resume()
+    // Every time, not only when the list is stale: a reset elsewhere must lock this
+    // tab before anything new is locked with the forgotten key. It's one small request.
+    const reloadKeyring = () => void lockSession.load(true).catch(() => undefined)
+    // In this order on focus and online: waiting saves go out before the refetch.
+    window.addEventListener('focus', resume)
+    window.addEventListener('online', resume)
+    const offStale = notesSource().onStale(() => {
       void fetchPage(true)
       fetchFilters()
       void reloadSpaces()
-      void lockSession.load(true).catch(() => undefined)
-    }
+    })
+    window.addEventListener('focus', reloadKeyring)
+    window.addEventListener('online', reloadKeyring)
     const onHidden = () => {
       if (document.visibilityState === 'hidden') for (const s of all()) void s.flush()
     }
@@ -467,13 +460,14 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       for (const s of pending) s.flushOnUnload()
       if (pending.length > 0) e.preventDefault()
     }
-    window.addEventListener('focus', onFocus)
-    window.addEventListener('online', onOnline)
     document.addEventListener('visibilitychange', onHidden)
     window.addEventListener('beforeunload', onUnload)
     return () => {
-      window.removeEventListener('focus', onFocus)
-      window.removeEventListener('online', onOnline)
+      window.removeEventListener('focus', resume)
+      window.removeEventListener('online', resume)
+      offStale()
+      window.removeEventListener('focus', reloadKeyring)
+      window.removeEventListener('online', reloadKeyring)
       document.removeEventListener('visibilitychange', onHidden)
       window.removeEventListener('beforeunload', onUnload)
     }

@@ -1,0 +1,115 @@
+import type { MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, TagCount } from '../api/types'
+import type { Fields, Snapshot } from './saver'
+
+// Where the notes screens read and write: the server directly, or a database
+// on this device that syncs with it. Screens only see this.
+
+export type SaverInit = {
+  id: string
+  /** Plain text: a locked note's body already decrypted. */
+  fields: Fields
+  /** Set when the note is stored already. */
+  revision?: number
+  updatedAt?: number
+  conflictOf?: string
+  /** A new note with these values (e.g. just the selected tag) is still blank. */
+  blank?: Fields
+  locked?: boolean
+  /** The locked body as stored. */
+  envelope?: string | null
+  spaceId?: string
+}
+
+export type SaverHooks = {
+  /** A save landed: update the list. */
+  saved?: (id: string, fields: Fields, result: MutationResult, locked: boolean, spaceId: string) => void
+  /** A new note was made by resolving a conflict. */
+  copied?: (saver: Saver) => void
+}
+
+/** Saving for one open (or recently open) note, independent of React so saves outlive the editor. */
+export interface Saver {
+  readonly id: string
+
+  // The editor's view of it.
+  getSnapshot: () => Snapshot
+  subscribe: (listener: () => void) => () => void
+  /** The note's text changed underneath the editor (a merge, "Use theirs"). */
+  onRemoteChange(listener: (fields: Fields) => void): () => void
+  fields(): Fields
+  /** The editor reads its text through [read] while attached. */
+  attach(read: () => Fields): () => void
+  isAttached(): boolean
+  edit(): void
+  flush(): Promise<void>
+  /** Flushes, then the revision the server has, or null when it has none of this. */
+  savedRevision(): Promise<number | null>
+  retryNow(): void
+  /** Something that blocked saving may have cleared (focus, online, signed in, unlocked). */
+  resume(): void
+  /** The page is going away: send what can still go. */
+  flushOnUnload(): void
+  hasUnsavedWork(): boolean
+  hasUnsentEdits(): boolean
+  isBlankDraft(): boolean
+
+  // Locks, images and spaces.
+  isLocked(): boolean
+  setLocked(locked: boolean): void
+  changeLock(locked: boolean): Promise<void>
+  setResealer(fn: (locked: boolean) => Promise<void>): () => void
+  /** Runs image work, showing it as busy; a failure becomes Snapshot.imageError and false. */
+  withImages(work: () => Promise<void>): Promise<boolean>
+  /** Adds Markdown at the end while no editor has the note open; false if one does. */
+  appendClosed(markdown: string): boolean
+  dismissImageError(): void
+  spaceId(): string
+  canMove(): boolean
+  moveTo(spaceId: string): void
+
+  // A conflict or a delete elsewhere (Snapshot.problem).
+  keepMine(): Saver | null
+  takeTheirs(): void
+  recover(): Saver | null
+
+  delete(keepalive?: boolean): Promise<'deleted' | 'changed'>
+  dispose(): void
+}
+
+export interface NotesSource {
+  /** A page of live notes, newest first; [cursor] from the page before. */
+  list(filter: NoteFilter, space: string, cursor?: string): Promise<NoteList>
+  /** Rejects with an ApiError 404 or 410 when there's no such note. */
+  get(id: string): Promise<Note>
+  /** The tags and locked notes in [space], for the sidebar. */
+  filters(space: string, signal?: AbortSignal): Promise<{ tags: TagCount[]; locked: number }>
+  /** In one space, the first page also counts the matches in every other space. */
+  search(
+    q: string,
+    filter: NoteFilter,
+    scope: SearchScope,
+    offset: number,
+    signal: AbortSignal,
+  ): Promise<{ results: SearchResult[]; hasMore: boolean; otherSpaces?: number }>
+  saver(init: SaverInit, hooks: SaverHooks): Saver
+  spaces: {
+    list(): Promise<Space[]>
+    /** Creates (a new id) or renames; without icon, it stays as it is. */
+    put(id: string, name: string, icon?: string): Promise<Space>
+    /** Only an empty space: an ApiError space_not_empty otherwise. */
+    remove(id: string): Promise<void>
+  }
+  /** Calls [listener] whenever what was fetched may be out of date. Returns the unsubscribe function. */
+  onStale(listener: () => void): () => void
+}
+
+let current: NotesSource | null = null
+
+export function setNotesSource(source: NotesSource) {
+  current = source
+}
+
+export function notesSource(): NotesSource {
+  if (!current) throw new Error('No notes source: setNotesSource first')
+  return current
+}
