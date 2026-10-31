@@ -1,0 +1,23 @@
+docs/faq.md
+  s_1ed7f808c685d0::t_1df8cff3334824 95-96,112-115,188-190,202
+  s_1ed7f808c685d0::t_a757aeedd24e85 203
+docs/releasing.md
+  s_1ed7f808c685d0::t_b5281d5fd61dac 39-42
+  s_1ed7f808c685d0::t_1df8cff3334824 43-44
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62383f418d9f1a67ba9364628e47236613cc68ff",
+  "prompts": {},
+  "sessions": {
+    "s_1ed7f808c685d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc8980d-b34e-40c9-b850-44a7f20bfac0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
