@@ -108,6 +108,7 @@ export async function unsyncedHere(): Promise<number> {
 export async function forgetNotesHere() {
   const engine = current?.engine
   keepOnDevice(null)
+  failure = null
   try {
     await engine?.call('wipe')
   } finally {
