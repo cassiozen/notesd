@@ -65,8 +65,9 @@ func ValidID(id string) bool { return idPattern.MatchString(id) }
 
 // Store persists images.
 type Store struct {
-	db  *database.DB
-	now func() time.Time
+	db       *database.DB
+	now      func() time.Time
+	onCommit func()
 }
 
 // NewStore returns a Store using the system clock.
@@ -74,6 +75,16 @@ func NewStore(db *database.DB) *Store { return &Store{db: db, now: time.Now} }
 
 // SetClock overrides the clock, for tests.
 func (s *Store) SetClock(now func() time.Time) { s.now = now }
+
+// OnCommit has fn called after each write commits. fn must not block: it
+// runs on the request's goroutine.
+func (s *Store) OnCommit(fn func()) { s.onCommit = fn }
+
+func (s *Store) committed() {
+	if s.onCommit != nil {
+		s.onCommit()
+	}
+}
 
 // Put stores data as image id. created is false when the image already
 // existed, which makes a retried upload harmless.
@@ -116,6 +127,9 @@ func (s *Store) Put(ctx context.Context, id, contentType string, data []byte) (i
 	})
 	if err != nil {
 		return Image{}, false, err
+	}
+	if created {
+		s.committed()
 	}
 	return img, created, nil
 }

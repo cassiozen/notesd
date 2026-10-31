@@ -7,7 +7,9 @@ import (
 	"log/slog"
 	"net"
 	"net/url"
+	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"notes/server/internal/auth"
@@ -150,5 +152,29 @@ func TestUserCommands(t *testing.T) {
 	}
 	if err := a.CheckPassword(ctx, list[0].ID, "correct horse battery"); err != nil {
 		t.Fatalf("owner's password should be untouched by kid's reset: %v", err)
+	}
+}
+
+func TestServeRefusesMirrorDir(t *testing.T) {
+	dir := t.TempDir()
+	t.Setenv("NOTESD_PASSWORD", "correct horse battery")
+	if err := run([]string{"create-owner", "--username", "sam", "--data-dir", dir}); err != nil {
+		t.Fatal(err)
+	}
+	serve := func(mirror string) error {
+		return run([]string{"serve", "--data-dir", dir, "--listen", "127.0.0.1:0", "--log-level", "error", "--mirror-dir", mirror})
+	}
+	if err := serve(dir); err == nil || !strings.Contains(err.Error(), "holds the data directory") {
+		t.Fatalf("mirror holding the data dir: %v", err)
+	}
+	mirror := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(mirror, "sam"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(mirror, "sam", "mine.md"), nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := serve(mirror); err == nil || !strings.Contains(err.Error(), "isn't a notesd mirror") {
+		t.Fatalf("someone's folder: %v", err)
 	}
 }

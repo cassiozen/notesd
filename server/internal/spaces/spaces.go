@@ -60,12 +60,23 @@ var (
 
 // Store persists spaces.
 type Store struct {
-	db  *database.DB
-	now func() time.Time
+	db       *database.DB
+	now      func() time.Time
+	onCommit func()
 }
 
 // NewStore returns a Store using the system clock.
 func NewStore(db *database.DB) *Store { return &Store{db: db, now: time.Now} }
+
+// OnCommit has fn called after each write commits. fn must not block: it
+// runs on the request's goroutine.
+func (s *Store) OnCommit(fn func()) { s.onCommit = fn }
+
+func (s *Store) committed() {
+	if s.onCommit != nil {
+		s.onCommit()
+	}
+}
 
 // List returns every space, the default first, then by name.
 func (s *Store) List(ctx context.Context) ([]Space, error) {
@@ -128,6 +139,9 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 		return tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL`,
 			id).Scan(&out.NoteCount)
 	})
+	if err == nil {
+		s.committed()
+	}
 	return out, err
 }
 
@@ -136,7 +150,7 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 	if id == Default {
 		return ErrDefault
 	}
-	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		var n int
 		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL`,
 			id).Scan(&n); err != nil {
@@ -148,6 +162,10 @@ func (s *Store) Delete(ctx context.Context, id string) error {
 		_, err := tx.ExecContext(ctx, `DELETE FROM spaces WHERE id = ?`, id)
 		return err
 	})
+	if err == nil {
+		s.committed()
+	}
+	return err
 }
 
 // Resolve returns id if that space exists, or the default: a note filed

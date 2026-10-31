@@ -47,6 +47,10 @@ working on them:
   into that layout (`userdata.Upgrade`).
 - `reindex` also runs automatically when a user's database is first opened,
   if a migration asks for it.
+- `serve --mirror-dir` (`internal/mirror`) follows the sync feed to keep
+  Markdown files up to date. The notes, spaces and images stores report each
+  commit through `OnCommit`, which `userdata.Registry.OnChange` wires to the
+  mirror. `export` and the mirror share `internal/mdexport`.
 - Passwords for CLI commands come from `NOTESD_PASSWORD` or the first line
   of stdin.
 - `--resend-url` / `NOTESD_RESEND_URL` (default `https://api.resend.com`)

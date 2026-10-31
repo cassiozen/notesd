@@ -10,25 +10,17 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
-	"unicode"
-	"unicode/utf8"
 
 	"golang.org/x/term"
-	"golang.org/x/text/unicode/norm"
 
 	"notes/server/internal/database"
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
+	"notes/server/internal/mdexport"
 	"notes/server/internal/notes"
 	"notes/server/internal/spaces"
-)
-
-const (
-	maxFileNameBytes = 100
-	imagesDir        = "images"
 )
 
 // exported counts what an export wrote and what it left out.
@@ -40,8 +32,7 @@ type exported struct {
 	MissingImages int // left as notesd:image/ references: not on the server, or locked and not opened
 }
 
-// getImage returns a stored image's type and bytes, or images.ErrNotFound.
-type getImage func(id string) (contentType string, data []byte, err error)
+type getImage = mdexport.GetImage
 
 func liveNotes(ctx context.Context, db *database.DB) ([]notes.Note, error) {
 	var all []notes.Note
@@ -74,14 +65,14 @@ func spaceFolders(ctx context.Context, db *database.DB) (map[string]string, erro
 	if err != nil || len(list) < 2 {
 		return nil, err
 	}
-	taken := map[string]bool{nameKey(imagesDir): true}
+	taken := map[string]bool{mdexport.NameKey(mdexport.ImagesDir): true}
 	folders := map[string]string{}
 	for _, sp := range list {
-		name := fileName(sp.Name)
-		for i := 2; taken[nameKey(name)]; i++ {
-			name = fmt.Sprintf("%s (%d)", fileName(sp.Name), i)
+		name := mdexport.FileName(sp.Name)
+		for i := 2; taken[mdexport.NameKey(name)]; i++ {
+			name = mdexport.Numbered(mdexport.FileName(sp.Name), i)
 		}
-		taken[nameKey(name)] = true
+		taken[mdexport.NameKey(name)] = true
 		folders[sp.ID] = name
 	}
 	return folders, nil
@@ -132,8 +123,8 @@ func writeExport(dir string, all []notes.Note, folders map[string]string, key []
 		if taken[folder] == nil {
 			taken[folder] = map[string]bool{}
 		}
-		path := filepath.Join(dir, folder, uniqueName(fileName(n.Title), taken[folder]))
-		if err := os.WriteFile(path, []byte(markdown(n.Title, content)), 0o600); err != nil {
+		path := filepath.Join(dir, folder, mdexport.UniqueName(mdexport.FileName(n.Title), taken[folder]))
+		if err := os.WriteFile(path, []byte(mdexport.Markdown(n.Title, content)), 0o600); err != nil {
 			return res, err
 		}
 		t := time.UnixMilli(n.UpdatedAt)
@@ -145,77 +136,26 @@ func writeExport(dir string, all []notes.Note, folders map[string]string, key []
 	return res, nil
 }
 
-// appImageRef is an app image's destination as the apps write it (§7.6).
-var appImageRef = regexp.MustCompile(`\]\(notesd:image/([0-9a-f]{64})\?w=[1-9]\d{0,5}&h=[1-9]\d{0,5}\)`)
-
 // exportImages writes the app images content shows to dir/images (once
-// each, tracked in written) and points their references at the files, from
-// a note up levels below dir ("" or "../"). A locked image is decrypted
-// with key; one that can't be had or opened keeps its reference.
+// each, tracked in written) and points their references at the files.
 func exportImages(dir, up, content string, key []byte, get getImage, written map[string]string, res *exported) (string, error) {
-	// Only real images: the same text inside code is left alone.
-	shown := map[string]bool{}
+	shown := map[string]string{}
 	for _, id := range images.Refs(content) {
-		shown[id] = true
-	}
-	if len(shown) == 0 {
-		return content, nil
-	}
-	for id := range shown {
-		if _, done := written[id]; done {
-			continue
+		if _, done := written[id]; !done {
+			path, err := mdexport.WriteImage(dir, id, key, get)
+			if err != nil {
+				return "", err
+			}
+			written[id] = path
+			if path == "" {
+				res.MissingImages++
+			} else {
+				res.Images++
+			}
 		}
-		path, err := writeImage(dir, id, key, get)
-		if err != nil {
-			return "", err
-		}
-		written[id] = path
-		if path == "" {
-			res.MissingImages++
-		} else {
-			res.Images++
-		}
+		shown[id] = written[id]
 	}
-	return appImageRef.ReplaceAllStringFunc(content, func(ref string) string {
-		id := appImageRef.FindStringSubmatch(ref)[1]
-		if !shown[id] || written[id] == "" {
-			return ref
-		}
-		return "](" + up + written[id] + ")"
-	}), nil
-}
-
-// writeImage writes one image as a plain image file and returns its path
-// relative to dir, or "" if it isn't stored or is locked and key doesn't open it.
-func writeImage(dir, id string, key []byte, get getImage) (string, error) {
-	contentType, data, err := get(id)
-	if errors.Is(err, images.ErrNotFound) {
-		return "", nil
-	}
-	if err != nil {
-		return "", fmt.Errorf("image %s: %w", id, err)
-	}
-	if contentType == images.Locked {
-		if key == nil {
-			return "", nil
-		}
-		if data, err = locks.DecryptImage(key, data); err != nil {
-			return "", nil
-		}
-		contentType = images.Sniff(data)
-	}
-	ext := images.Ext(contentType)
-	if ext == "" {
-		return "", nil
-	}
-	if err := os.MkdirAll(filepath.Join(dir, imagesDir), 0o700); err != nil {
-		return "", err
-	}
-	path := imagesDir + "/" + id + "." + ext
-	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(path)), data, 0o600); err != nil {
-		return "", err
-	}
-	return path, nil
+	return mdexport.PointImages(content, up, shown), nil
 }
 
 // checkExportDir accepts a missing or empty dir, so an export never
@@ -271,64 +211,4 @@ func lockKey(ctx context.Context, db *database.DB, password string) ([]byte, err
 		return nil, errors.New("there is no lock password on this server to open locked notes with")
 	}
 	return key, err
-}
-
-// markdown matches the web app's Copy as Markdown: the title as a heading, then the body.
-func markdown(title, content string) string {
-	if t := strings.TrimSpace(title); t != "" {
-		return "# " + t + "\n\n" + content
-	}
-	return content
-}
-
-// fileName turns a title into a name safe on Linux, macOS and Windows, without the extension.
-func fileName(title string) string {
-	// Composed, as macOS and Windows compare names: "é" typed either way is one file.
-	s := strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) || strings.ContainsRune(`/\:*?"<>|`, r) {
-			return ' '
-		}
-		return r
-	}, norm.NFC.String(title))
-	s = strings.Join(strings.Fields(s), " ")
-	if len(s) > maxFileNameBytes {
-		s = s[:maxFileNameBytes]
-		for !utf8.ValidString(s) {
-			s = s[:len(s)-1]
-		}
-	}
-	// Leading dots hide the file; Windows drops trailing dots and spaces.
-	s = strings.TrimLeft(s, ".")
-	s = strings.TrimRight(s, ". ")
-	if s == "" {
-		return "Untitled"
-	}
-	// Windows refuses its device names, with any extension: "CON", "con.md".
-	if stem, _, _ := strings.Cut(s, "."); reservedNames[strings.ToUpper(strings.TrimRight(stem, " "))] {
-		s = "_" + s
-	}
-	return s
-}
-
-// reservedNames are Windows device names, unusable as a file or folder name.
-var reservedNames = func() map[string]bool {
-	m := map[string]bool{"CON": true, "PRN": true, "AUX": true, "NUL": true}
-	for i := 1; i <= 9; i++ {
-		m[fmt.Sprintf("COM%d", i)] = true
-		m[fmt.Sprintf("LPT%d", i)] = true
-	}
-	return m
-}()
-
-// nameKey is how filesystems compare names: macOS and Windows ignore case,
-// and macOS composed and decomposed forms.
-func nameKey(name string) string { return strings.ToLower(norm.NFC.String(name)) }
-
-func uniqueName(base string, taken map[string]bool) string {
-	name := base + ".md"
-	for i := 2; taken[nameKey(name)]; i++ {
-		name = fmt.Sprintf("%s (%d).md", base, i)
-	}
-	taken[nameKey(name)] = true
-	return name
 }

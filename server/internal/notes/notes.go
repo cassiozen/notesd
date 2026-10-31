@@ -184,8 +184,9 @@ func (e *ValidationError) Error() string { return e.Field + ": " + e.Message }
 
 // Store persists notes.
 type Store struct {
-	db  *database.DB
-	now func() time.Time
+	db       *database.DB
+	now      func() time.Time
+	onCommit func()
 }
 
 // NewStore returns a Store using the system clock.
@@ -195,6 +196,16 @@ func NewStore(db *database.DB) *Store {
 
 // SetClock overrides the clock, for tests.
 func (s *Store) SetClock(now func() time.Time) { s.now = now }
+
+// OnCommit has fn called after each write commits. fn must not block: it
+// runs on the request's goroutine.
+func (s *Store) OnCommit(fn func()) { s.onCommit = fn }
+
+func (s *Store) committed() {
+	if s.onCommit != nil {
+		s.onCommit()
+	}
+}
 
 // CreateInput describes a new note. Timestamps are optional and
 // informational; when absent or implausible the server clock is used.
@@ -614,6 +625,9 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 		out = res
 		return nil
 	})
+	if err == nil && !out.Replayed {
+		s.committed()
+	}
 	return out, err
 }
 
