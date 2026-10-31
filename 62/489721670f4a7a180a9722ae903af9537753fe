@@ -1,0 +1,220 @@
+apps/web/src/notes/online-source.ts
+  s_d22cab8726b588::t_9c1a7c8232325b 12,17,19-20
+  s_d22cab8726b588::t_cb807876855f0b 2,36-39
+  s_d22cab8726b588::t_155e7471c7f7e1 1,35
+  s_d22cab8726b588::t_796fbca0786a56 30-34,40
+apps/android/core/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_d22cab8726b588::t_413b5f2d51eedf 36-40,122-123,137-140
+  s_d22cab8726b588::t_ff7fdf96755ccc 158-159,172,182-183
+apps/android/core/src/commonTest/kotlin/notes/core/db/NoteStoreTest.kt
+  s_d22cab8726b588::t_e3f916f175b7ec 59
+  s_d22cab8726b588::t_1c66d2ee7f6a11 125
+apps/web/test/engine/helpers.ts
+  s_d22cab8726b588::t_b507efdfaed472 11-12,30
+  s_d22cab8726b588::t_d84b6e83f4cdc4 40-42
+  s_d22cab8726b588::t_34e8d86af8268f 9,22-27
+apps/android/core/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_d22cab8726b588::t_4b326575d51f84 199-201
+  s_d22cab8726b588::t_ff7fdf96755ccc 147,151
+  s_d22cab8726b588::t_b3c1d6be944f54 43-53,70,123-134
+  s_d22cab8726b588::t_ed1406e7ec0467 22,96,99-100,193-195,258-261
+  s_d22cab8726b588::t_aba29dae66ab34 263,265-266
+  s_d22cab8726b588::t_a510001ca717e7 113-115
+apps/web/test/on-device.test.tsx
+  s_d22cab8726b588::t_bda29bd185b068 1,6-8,10,12,15-23,38-57,59,61-71,76-131,183,186,321
+  s_d22cab8726b588::t_9138ece27aee92 306-311,314-315,317
+  s_d22cab8726b588::t_26dcfe75e24fc1 9
+  s_d22cab8726b588::t_32ea2188290bd7 2-4,11,13-14,24-37,58,60,72-75,132-182,184-185,187-210,241-305,312-313,316,318-320
+apps/web/src/notes/store.tsx
+  s_d22cab8726b588::t_d86d6b7995b9d6 457
+  s_d22cab8726b588::t_428cfb1bd00b5e 216-217,220,226,241,248-249,285,293
+  s_d22cab8726b588::t_e732c22ee10b63 109
+  s_d22cab8726b588::t_9662457be16830 106-107,322,340
+  s_d22cab8726b588::t_c1d25de2b8c942 152-153
+  s_d22cab8726b588::t_91277a11f576ac 135-136,275
+apps/web/vite.config.ts
+  s_d22cab8726b588::t_b507efdfaed472 11,90-91
+  s_d22cab8726b588::t_5c02476d2517c4 33-42
+  s_d22cab8726b588::t_613a7c8d6d3255 48-55,58-60
+  s_d22cab8726b588::t_09223a4940a166 13
+apps/web/src/offline/host.ts
+  s_d22cab8726b588::t_cd04c7ab47d598 92-101,149-155
+  s_d22cab8726b588::t_ff7fdf96755ccc 106,109
+  s_d22cab8726b588::t_a6b315347a77df 11,18,28,34-35,38-39,48,139-144,186-188
+  s_d22cab8726b588::t_e41c7e028a3934 31
+  s_d22cab8726b588::t_a510001ca717e7 83-85
+apps/web/src/offline/protocol.ts
+  s_d22cab8726b588::t_cd04c7ab47d598 21-31,86
+  s_d22cab8726b588::t_ff7fdf96755ccc 72
+  s_d22cab8726b588::t_a6b315347a77df 81-83
+  s_d22cab8726b588::t_155e7471c7f7e1 84
+  s_d22cab8726b588::t_a510001ca717e7 66-67
+apps/web/test/engine/engine.test.ts
+  s_d22cab8726b588::t_43568ca9c33e9e 22-31,37
+  s_d22cab8726b588::t_ff7fdf96755ccc 55
+  s_d22cab8726b588::t_a3f73091a1c97d 156,185,187,206-210
+  s_d22cab8726b588::t_372688193c1701 3-4,10,151-155,157-184,186,188-204
+apps/web/src/notes/local-source.ts
+  s_d22cab8726b588::t_ff7fdf96755ccc 42,47-48
+  s_d22cab8726b588::t_d72bb0794f3de5 4,6,9-30,33-41,43-46,49-51,78-108,156-175
+  s_d22cab8726b588::t_efa6c532a93ed5 3,5,7-8,31-32,52,109-154
+  s_d22cab8726b588::t_9d68cf3eb854a7 155
+  s_d22cab8726b588::t_155e7471c7f7e1 55-57
+  s_d22cab8726b588::t_cb807876855f0b 1-2,63-69,74-76
+  s_d22cab8726b588::t_796fbca0786a56 53-54,58-62,77
+apps/web/test/helpers.tsx
+  s_d22cab8726b588::t_0c83ccdad92faf 3,9,27-28,34-35,43-45,52,54-57,60
+  s_d22cab8726b588::t_d02c56829dacc2 46-48
+  s_d22cab8726b588::t_2f0b53fdbbed23 51,63-72
+  s_d22cab8726b588::t_ca951ae6615f2a 6-8
+  s_d22cab8726b588::t_99e2704f43d45a 49-50,73-74
+apps/android/core/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_d22cab8726b588::t_413b5f2d51eedf 37,53,58
+apps/web/README.md
+  s_d22cab8726b588::t_603115eeada7fd 87-88,208-210
+  s_d22cab8726b588::t_96c78cfef28cdc 211-219
+  s_d22cab8726b588::t_9ffbe384bce056 220-227
+  s_d22cab8726b588::t_299b496e5337af 192-194,228-236
+apps/web/src/notes/saver.ts
+  s_d22cab8726b588::t_5d3f369e958361 758
+  s_d22cab8726b588::t_037b1a6f40651b 78
+  s_d22cab8726b588::t_e5d0cf418df41b 46-47,58-59,61,67,344-364,476,489-490,523
+  s_d22cab8726b588::t_8fe3717d6d38bd 42-43,88-89,91,93-101,103,105-106,108-115,117,126,131,144-158,304,326-343,365-441,484,519,752,754
+  s_d22cab8726b588::t_f8b2769603e321 21-22
+apps/web/src/notes/note-pane.tsx
+  s_d22cab8726b588::t_f014e662ce146d 365
+  s_d22cab8726b588::t_3e04447f266ad4 17
+  s_d22cab8726b588::t_257a1fe3912375 42-43,58,163,246,254,354-364
+  s_d22cab8726b588::t_0bab807b686920 398-399,405,477
+apps/web/src/notes/shell.tsx
+  s_d22cab8726b588::t_3e04447f266ad4 92,98-100,279,310-320
+  s_d22cab8726b588::t_7d0f6cebd70fc6 321
+  s_d22cab8726b588::t_84b328f5b3694e 2,12
+apps/web/src/notes/local-saver.ts
+  s_d22cab8726b588::t_e5d0cf418df41b 3,260-264
+  s_d22cab8726b588::t_10fb627351b902 131,145,148-149,152,156-158
+  s_d22cab8726b588::t_6fd22113e1106e 1-2,4-13,16-30,32-83,86-88,89-119,121-130,132-144,146-147,150-151,153-155,159-182,193-259,265-266
+  s_d22cab8726b588::t_a37b7caf23d87d 274
+  s_d22cab8726b588::t_f8b2769603e321 120,267-273
+apps/web/src/notes/note-list.module.css
+  s_d22cab8726b588::t_84b328f5b3694e 294-321
+apps/web/src/notes/source.ts
+  s_d22cab8726b588::t_efa6c532a93ed5 2,31-33,123-130
+  s_d22cab8726b588::t_cb807876855f0b 115-119
+  s_d22cab8726b588::t_155e7471c7f7e1 112-113
+  s_d22cab8726b588::t_796fbca0786a56 1,106-111,114,120
+apps/web/src/notes/note-list.tsx
+  s_d22cab8726b588::t_ec37b596e63382 244-245
+  s_d22cab8726b588::t_84b328f5b3694e 7,32,214-224,239-243
+apps/web/src/notes/save-status.test.ts
+  s_d22cab8726b588::t_a9667ee023256b 15
+apps/web/src/locks/session.ts
+  s_d22cab8726b588::t_969ff3ff0587da 91
+  s_d22cab8726b588::t_cb807876855f0b 300
+  s_d22cab8726b588::t_7de81fa11795ce 18,92,299,301
+apps/web/test/images.test.tsx
+  s_d22cab8726b588::t_7225515f90172f 1,3
+  s_d22cab8726b588::t_42fc3441d1a820 5,39-40,134,150,158,177
+apps/web/test/on-device-media.test.tsx
+  s_d22cab8726b588::t_42fc3441d1a820 7,21-22,31,57,102,107
+  s_d22cab8726b588::t_52365c724caabc 79-80,101
+  s_d22cab8726b588::t_7225515f90172f 1,4
+  s_d22cab8726b588::t_bbd1677b7f8ebf 2-3,5,8-17,20,23-30,32-44,51-56,58-78,81-100,103-106,108-123
+  s_d22cab8726b588::t_d543a8e3ee3fd1 18-19
+apps/web/src/images/view.ts
+  s_d22cab8726b588::t_17e5f77b0b0fc0 3,9-10,28,44-49,51-55,73
+  s_d22cab8726b588::t_e2b7c4e036f810 1,57,59,62
+apps/web/test/image-helpers.ts
+  s_d22cab8726b588::t_42fc3441d1a820 1-46
+apps/android/core/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_d22cab8726b588::t_4babb5726b2f95 194-198
+apps/web/src/images/store.ts
+  s_d22cab8726b588::t_91e0cfa48fbf52 2,5,9-10,23,123,144
+apps/web/test/engine/fake-caches.ts
+  s_d22cab8726b588::t_34e8d86af8268f 1-50
+apps/web/src/offline/images.ts
+  s_d22cab8726b588::t_732bbdc33a6d99 4-5
+  s_d22cab8726b588::t_68f42ad3ef0f11 1,7-8,12,19,22,27-28,32-33,42
+  s_d22cab8726b588::t_75da6fb20c108e 2-3,6,9-11,13-18,20-21,23-26,29-31,35-41,43-48
+apps/android/core/src/jvmMain/kotlin/notes/core/images/ImageStore.kt
+  s_d22cab8726b588::t_4babb5726b2f95 145
+apps/android/core/src/jsMain/kotlin/notes/core/web/WebImages.kt
+  s_d22cab8726b588::t_14f7b0d981c290 1-63
+apps/web/src/api/client.ts
+  s_d22cab8726b588::t_0bab807b686920 40,46-50,106
+apps/web/src/auth/session-hint.ts
+  s_d22cab8726b588::t_de5daea9b5dc8d 21-40
+apps/web/test/sw.test.ts
+  s_d22cab8726b588::t_1ba2d5208eaad0 9,37-38,55-56,132-133,135-138,140-147
+  s_ef3b973f758667::t_4c65571839c2f2 148-149
+  s_d22cab8726b588::t_4d05959e58e890 139
+  s_d22cab8726b588::t_e3575d41d0f366 134
+apps/web/test/offline-boot.test.tsx
+  s_d22cab8726b588::t_d625edc1edd1b6 1-6,9,11-26,28-30,32-42,45-62,64-87,89-90,92-93,95-126,128,130-137
+  s_d22cab8726b588::t_65df61d70fe6da 43-44,63,94
+  s_d22cab8726b588::t_410877474d6854 88,91
+  s_d22cab8726b588::t_09223a4940a166 8
+  s_d22cab8726b588::t_c1b64c00d51f35 127,129
+  s_d22cab8726b588::t_2f0b53fdbbed23 7,10,27,31
+apps/web/src/offline/tab.test.ts
+  s_d22cab8726b588::t_ce70112ef84730 9-10
+  s_d22cab8726b588::t_3863aa485f3e85 41-44
+  s_d22cab8726b588::t_b2745abb945af8 1-8,11-40,45-53
+apps/web/src/offline/tab.ts
+  s_d22cab8726b588::t_03b0f8a6226c30 139
+  s_d22cab8726b588::t_a2bf0da30994b4 29-30,47,83-88,91,108-111,122-123,125,137-138
+  s_d22cab8726b588::t_0bab807b686920 124
+apps/web/src/offline/device.ts
+  s_d22cab8726b588::t_0bab807b686920 1,34-35
+  s_d22cab8726b588::t_de5daea9b5dc8d 2-33,36-51
+apps/web/src/sw.ts
+  s_d22cab8726b588::t_f9e95f10733567 6-7,13,18,46,49-72
+  s_d22cab8726b588::t_5c02476d2517c4 1-2
+  s_bbb4b2293ef23d::t_f50ee20fac9f40 73
+apps/web/src/auth/auth-context.tsx
+  s_66be3861a6f5cd::t_8b0ffe82e88c1b 80
+  s_d22cab8726b588::t_0bab807b686920 5
+  s_d22cab8726b588::t_48ff4a272df3b9 62,64,107-111,141
+  s_d22cab8726b588::t_aa02c6c5602fce 6,18-19,30-32,54-61,63,65-79,83,92,120,128-140
+  s_d22cab8726b588::t_03cddba236f5f6 142
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62489721670f4a7a180a9722ae903af9537753fe",
+  "prompts": {},
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_bbb4b2293ef23d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "78643e76-7ec0-4528-aac4-bbf7b43c1ac9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_ef3b973f758667": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d51ae887-ce6b-4d80-a063-e1f50376446f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
