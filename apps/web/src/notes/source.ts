@@ -158,6 +158,11 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener)
 }
 
+/** Calls [listener] after every change of source. Returns the unsubscribe function. */
+export function onNotesSourceChange(listener: () => void): () => void {
+  return subscribe(listener)
+}
+
 export function useNotesSource(): NotesSource {
   return useSyncExternalStore(subscribe, notesSource)
 }

@@ -1,12 +1,12 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import type { Space } from '../api/types'
-import { notesSource } from './source'
+import { notesSource, onNotesSourceChange } from './source'
 
 /** Every install has this space (architecture §7.7); it can be renamed, never deleted. */
 export const DEFAULT_SPACE = 'default'
 
 // One copy for the switcher, the note menu and Settings, fetched once per
-// page load and refetched when the notes are (focus, Settings changes).
+// source and refetched when the notes are (focus, Settings changes).
 let current: Space[] | null = null
 let loading: Promise<void> | null = null
 // Each fetch's number: only the latest started may set the list, so a slow
@@ -75,9 +75,13 @@ export async function deleteSpace(id: string): Promise<void> {
   await reloadSpaces()
 }
 
-/** For tests: forget what was loaded. */
-export function resetSpaces() {
+/** Drops the list, and any fetch still on its way, so the next useSpaces fetches anew. */
+export function forgetSpaces() {
   current = null
   loading = null
-  fetches = 0
+  fetches++
+  listeners.forEach((l) => l())
 }
+
+// Another source can have other spaces: the device's copy before its first sync.
+onNotesSourceChange(forgetSpaces)
