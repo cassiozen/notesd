@@ -1,0 +1,20 @@
+apps/web/vite.config.ts
+  s_04fe8e6c916e4e::t_e37ea4aa484078 72-77
+  s_04fe8e6c916e4e::t_54dd066ff9cb9b 50-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "266a746bd74c51d70e69ac367be3840f899dff64",
+  "prompts": {},
+  "sessions": {
+    "s_04fe8e6c916e4e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f66b9b43-f4bf-4a40-bb95-bb4ef2850f30",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
