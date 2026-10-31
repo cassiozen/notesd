@@ -393,7 +393,8 @@ struct NotesListView: View {
         searching = false
         Task {
             await graph.preload(id)
-            nav.open(id)
+            // Swiped away while it was read: it stays closed.
+            if pendingDeletes[id] == nil { nav.open(id) }
             opening = false
         }
     }
