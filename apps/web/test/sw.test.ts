@@ -6,6 +6,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 
 const ORIGIN = 'https://notes.test'
 const PRECACHE = ['/index.html', '/assets/index-abc.js', '/icon-192.png']
+const ENGINE = ['/assets/worker-abc.js', '/assets/sqlite3-abc.wasm']
 
 type Listener = (event: Record<string, unknown>) => void
 
@@ -13,6 +14,7 @@ let listeners: Record<string, Listener>
 let stores: Map<string, Map<string, string>>
 let fetched: string[]
 let skipped: number
+let full: boolean
 
 function store(name: string) {
   let s = stores.get(name)
@@ -33,6 +35,11 @@ async function loadWorker(version: string) {
       addAll: async (reqs: Request[]) => {
         for (const r of reqs) store(name).set(new URL(r.url, ORIGIN).pathname, `cached ${r.url}`)
       },
+      put: async (key: string, res: Response) => {
+        if (full) throw new DOMException('The quota has been exceeded.', 'QuotaExceededError')
+        store(name).set(key, `kept ${await res.text()}`)
+      },
+      keys: async () => [...store(name).keys()].map((k) => ({ url: new URL(k, ORIGIN).href })),
     }),
     keys: async () => [...stores.keys()],
     delete: async (name: string) => stores.delete(name),
@@ -49,7 +56,8 @@ async function loadWorker(version: string) {
     },
     addEventListener: (type: string, fn: Listener) => (listeners[type] = fn),
   }
-  runInNewContext(`const PRECACHE = ${JSON.stringify(PRECACHE)}; const VERSION = '${version}';\n${code}`, {
+  const header = `const PRECACHE = ${JSON.stringify(PRECACHE)}; const ENGINE = ${JSON.stringify(ENGINE)};`
+  runInNewContext(`${header} const VERSION = '${version}';\n${code}`, {
     self,
     caches,
     fetch,
@@ -83,6 +91,7 @@ beforeEach(async () => {
   stores = new Map()
   fetched = []
   skipped = 0
+  full = false
   await loadWorker('v1')
   await lifecycle('install')
   await lifecycle('activate')
@@ -123,6 +132,30 @@ describe('service worker', () => {
     await loadWorker('v2')
     await lifecycle('install')
     expect(skipped).toBe(2)
+  })
+
+  it('keeps the sync engine only once this browser loads it', async () => {
+    expect([...store('shell-v1').keys()]).toEqual(PRECACHE)
+    expect(await request('/assets/worker-abc.js')).toBe('network')
+    expect(await request('/assets/worker-abc.js')).toBe('kept network')
+    expect(fetched).toEqual([`${ORIGIN}/assets/worker-abc.js`])
+  })
+
+  it('starts the sync engine even when there’s no room to keep it', async () => {
+    full = true
+    expect(await request('/assets/worker-abc.js')).toBe('network')
+    expect(store('shell-v1').has('/assets/worker-abc.js')).toBe(false)
+  })
+
+  it('brings the next build’s engine along where the engine was kept', async () => {
+    await loadWorker('v2')
+    await lifecycle('install')
+    expect(store('shell-v2').has('/assets/sqlite3-abc.wasm')).toBe(false)
+
+    await request('/assets/sqlite3-abc.wasm')
+    await loadWorker('v3')
+    await lifecycle('install')
+    expect([...store('shell-v3').keys()]).toEqual([...PRECACHE, ...ENGINE])
   })
 
   it('drops the previous build when a new one activates', async () => {

@@ -3,9 +3,9 @@ import userEvent from '@testing-library/user-event'
 import { expect, onTestFinished } from 'vitest'
 import type { Note, NoteList } from '../src/api/types'
 import { App } from '../src/app'
-import { localSource } from '../src/notes/local-source'
-import { onlineSource } from '../src/notes/online-source'
-import { setNotesSource } from '../src/notes/source'
+import { keepOnDevice } from '../src/auth/session-hint'
+import { closeNotes, setEngineStart } from '../src/offline/device'
+import { connectEngine, type Engine } from '../src/offline/tab'
 import { inProcessEngine, signIn } from './engine/helpers'
 import { createOwner, startServer, type TestServer } from './server'
 
@@ -46,8 +46,9 @@ export async function signedIn({
     const e = engine
     // The first sync starts on open.
     await waitFor(async () => expect((await e.call('status')).kind).toBe('Synced'), { timeout: 5000 })
-    setNotesSource(localSource(engine))
-    onTestFinished(() => setNotesSource(onlineSource))
+    // Through the app's own choice of source: this device keeps the user's notes.
+    keepOnDevice(username)
+    startEngines(() => e)
   }
   render(<App />)
   if (!onDevice) {
@@ -57,6 +58,18 @@ export async function signedIn({
   // The footer count shows once the first page is in.
   await within(await screen.findByRole('complementary', { name: 'Notes' })).findByText(/^\d+ notes?$/)
   return { server, user, password, engine }
+}
+
+/**
+ * The app starts its engines with [make], in-process, until the test ends. Each is a stand-in whose close() keeps
+ * the database, as a reload does; it reads the engine's members live, so tests can stub them.
+ */
+export function startEngines(make: (user: string, csrfToken: string) => Engine) {
+  setEngineStart((user, csrf) => Object.assign(Object.create(make(user, csrf)) as Engine, { close() {} }))
+  onTestFinished(() => {
+    closeNotes()
+    setEngineStart(connectEngine)
+  })
 }
 
 let opSeq = 0

@@ -95,6 +95,12 @@ export class LocalSaver extends SaverCore {
     return 'deleted'
   }
 
+  protected override imageFailure(err: unknown): string {
+    return FULL.test(err instanceof Error ? err.message : String(err))
+      ? 'This device is out of storage space for the picture. Free some up, then add it again.'
+      : super.imageFailure(err)
+  }
+
   override dispose() {
     this.offChange()
     super.dispose()
@@ -117,7 +123,7 @@ export class LocalSaver extends SaverCore {
         note = await this.store(s)
       } catch (err) {
         this.dirty = true
-        this.problem = { kind: 'rejected', message: err instanceof Error ? err.message : 'This device couldn’t store it.' }
+        this.problem = { kind: 'rejected', message: storeError(err), onDevice: true }
         this.set('failed')
         return
       }
@@ -186,7 +192,7 @@ export class LocalSaver extends SaverCore {
         n = await this.engine.call('get', id)
       } catch (err) {
         this.dirty = true
-        this.problem = { kind: 'rejected', message: err instanceof Error ? err.message : 'This device couldn’t store it.' }
+        this.problem = { kind: 'rejected', message: storeError(err), onDevice: true }
         this.set('failed')
         return
       }
@@ -263,4 +269,12 @@ export class LocalSaver extends SaverCore {
       () => null,
     )
   }
+}
+
+// SQLite's SQLITE_FULL, or Cache Storage's QuotaExceededError.
+const FULL = /SQLITE_FULL|disk is full|quota/i
+
+function storeError(err: unknown): string {
+  const message = err instanceof Error ? err.message : String(err)
+  return FULL.test(message) ? 'it’s out of storage space. Free some up, then retry.' : message
 }

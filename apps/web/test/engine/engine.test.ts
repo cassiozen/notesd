@@ -4,7 +4,7 @@ import { sha256Hex } from '../../src/images/ref'
 import { fromBase64Url } from '../../src/locks/crypto'
 import { syncTiming } from '../../src/offline/scheduler'
 import { op } from '../helpers'
-import { engineSignedIn, signIn, waitFor } from './helpers'
+import { engineSignedIn, inProcessEngine, signIn, waitFor } from './helpers'
 
 const note = (id: string, title: string, content = '') => ({ id, title, content, spaceId: 'default' })
 const PNG = fromBase64Url('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH_iZk9HQAAAABJRU5ErkJggg')
@@ -147,6 +147,14 @@ describe('engine', () => {
     ]
     await engine.call('replaceLockKeys', keys)
     expect(await engine.call('lockKeys')).toEqual(keys)
+  })
+
+  test('a database no sync has brought notes to says it never synced', async () => {
+    const { server } = await engineSignedIn()
+    server.setOffline(true)
+    const engine = inProcessEngine('elsewhere', '')
+    expect(await engine.call('sync')).toBe('Offline')
+    expect(await engine.call('lastSyncAt')).toBeNull()
   })
 
   test('a picture added here is kept, and sync uploads it once it can', async () => {

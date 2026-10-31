@@ -18,8 +18,8 @@ export type Problem =
   | { kind: 'deleted' }
   /** Network or server failure; retrying with backoff. */
   | { kind: 'offline' }
-  /** The server rejected the save for good (e.g. note too large). */
-  | { kind: 'rejected'; message: string }
+  /** The server rejected the save for good (e.g. note too large); [onDevice]: this device couldn't store it. */
+  | { kind: 'rejected'; message: string; onDevice?: boolean }
   /** A locked note has edits, but locked notes were locked again before they could be encrypted. */
   | { kind: 'unlock' }
 
@@ -220,6 +220,10 @@ export abstract class SaverCore implements Saver {
     this.setLocked(locked)
   }
 
+  protected imageFailure(err: unknown): string {
+    return err instanceof Error && err.name === 'ImageError' ? err.message : 'The picture couldn’t be uploaded. Check the connection and try again.'
+  }
+
   /** Runs image work, showing it as busy; a failure becomes imageError. */
   async withImages(work: () => Promise<void>): Promise<boolean> {
     this.imagesBusy++
@@ -229,7 +233,7 @@ export abstract class SaverCore implements Saver {
       await work()
       return true
     } catch (err) {
-      this.imageError = err instanceof Error && err.name === 'ImageError' ? err.message : 'The picture couldn’t be uploaded. Check the connection and try again.'
+      this.imageError = this.imageFailure(err)
       return false
     } finally {
       this.imagesBusy--

@@ -2,7 +2,8 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
-import { rememberSession } from './session-hint'
+import { closeNotes, openNotes } from '../offline/device'
+import { deviceUser, rememberSession } from './session-hint'
 
 export type AuthState =
   // retrying: after 'unreachable', where the shell skeleton would just flash between two error screens.
@@ -14,7 +15,8 @@ export type AuthState =
   // under a sign-in dialog so unsaved edits survive and retry afterwards.
   | { status: 'expired'; username: string }
   // firstRun: just finished onboarding, for the welcome empty state.
-  | { status: 'signed-in'; username: string; firstRun?: boolean }
+  // offline: opened from this device's copy, the server not yet reached.
+  | { status: 'signed-in'; username: string; firstRun?: boolean; offline?: boolean }
 
 type AuthContextValue = {
   state: AuthState
@@ -24,6 +26,9 @@ type AuthContextValue = {
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
+
+/** Opened offline: how often to try the server again, besides on the browser's online event. */
+export const reconnectTiming = { everyMs: 30_000 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
@@ -46,8 +51,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [],
   )
 
+  // Opened offline: once the server answers, the session it has decides.
+  const offlineAs = state.status === 'signed-in' && state.offline ? state.username : null
+  useEffect(() => {
+    if (!offlineAs) return
+    let busy = false
+    let live = true
+    const reconnect = async () => {
+      if (busy) return
+      busy = true
+      const next = await fromServer()
+      busy = false
+      if (!live || next.status === 'unreachable') return
+      // Signed out meanwhile, or someone else's session: sign in again, the shell and its edits kept.
+      setState(next.status === 'session' && next.info.username === offlineAs ? adopt(next.info) : { status: 'expired', username: offlineAs })
+    }
+    const timer = setInterval(() => void reconnect(), reconnectTiming.everyMs)
+    const online = () => void reconnect()
+    window.addEventListener('online', online)
+    return () => {
+      live = false
+      clearInterval(timer)
+      window.removeEventListener('online', online)
+    }
+  }, [offlineAs])
+
   const signedIn = useCallback((info: SessionInfo, opts: { firstRun?: boolean } = {}) => {
     setCsrfToken(info.csrfToken)
+    openNotes(info.username, info.csrfToken)
     setState({ status: 'signed-in', username: info.username, firstRun: opts.firstRun ?? false })
   }, [])
 
@@ -56,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await auth.logout()
     } finally {
       setCsrfToken(null)
+      closeNotes()
       setState({ status: 'signed-out' })
     }
   }, [])
@@ -70,19 +102,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 }
 
 async function boot(): Promise<AuthState> {
+  const answer = await fromServer()
+  if (answer.status === 'session') return adopt(answer.info)
+  return answer.status === 'unreachable' ? offlineBoot() : answer
+}
+
+/** The server's session, not yet used: whose it is decides that. */
+async function fromServer(): Promise<{ status: 'setup' | 'signed-out' | 'unreachable' } | { status: 'session'; info: SessionInfo }> {
   // In parallel: boot is on the critical path of every app open.
   const session = auth.session()
   session.catch(() => {}) // unawaited when setup is required
   try {
     const { setupRequired } = await auth.status()
     if (setupRequired) return { status: 'setup' }
-    const info = await session
-    setCsrfToken(info.csrfToken)
-    return { status: 'signed-in', username: info.username }
+    return { status: 'session', info: await session }
   } catch (err) {
     if (err instanceof ApiError && err.status === 401) return { status: 'signed-out' }
     return { status: 'unreachable' }
   }
+}
+
+/** The server can't be reached: this device's copy, if it keeps one that has synced. */
+function adopt(info: SessionInfo): AuthState {
+  setCsrfToken(info.csrfToken)
+  openNotes(info.username, info.csrfToken)
+  return { status: 'signed-in', username: info.username }
+}
+
+async function offlineBoot(): Promise<AuthState> {
+  const user = deviceUser()
+  if (!user) return { status: 'unreachable' }
+  try {
+    const engine = openNotes(user, null)
+    // Never synced (or cleared by the browser): an empty list would look like every note gone.
+    if (engine && (await engine.call('lastSyncAt')) !== null) return { status: 'signed-in', username: user, offline: true }
+  } catch {
+    // The engine didn't start.
+  }
+  closeNotes()
+  return { status: 'unreachable' }
 }
 
 export function useAuth(): AuthContextValue {

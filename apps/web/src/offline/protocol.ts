@@ -63,6 +63,8 @@ export type EngineApi = {
   /** One cycle now. */
   sync(): Promise<SyncOutcome>
   status(): Promise<SyncStatus>
+  /** Null until a sync has ever finished on this database: nothing here to show offline. */
+  lastSyncAt(): Promise<number | null>
   get(id: string): Promise<LocalNote | null>
   /** Space null: every space. */
   list(filter: NoteFilter, space: string | null): Promise<LocalListItem[]>
