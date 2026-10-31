@@ -39,7 +39,17 @@ class LocalNote(
 )
 
 @JsExport
-class LocalListItem(val id: String, val title: String, val preview: String, val updatedAt: Double, val locked: Boolean)
+class LocalListItem(
+    val id: String,
+    val title: String,
+    val preview: String,
+    val createdAt: Double,
+    val updatedAt: Double,
+    val locked: Boolean,
+    /** Null until the server has the note. */
+    val revision: Double?,
+    val spaceId: String
+)
 
 /** [excerpt]: HTML-escaped, matches in `<mark>`, as the server's search returns it. */
 @JsExport
@@ -56,7 +66,7 @@ class LocalHit(
 class LocalTag(val key: String, val name: String, val count: Int)
 
 @JsExport
-class LocalSpace(val id: String, val name: String, val icon: String, val noteCount: Int)
+class LocalSpace(val id: String, val name: String, val icon: String, val noteCount: Int, val createdAt: Double)
 
 /** One wrapped copy of the locked-notes key, as the server's keyring has it (§10.1). */
 @JsExport
@@ -105,7 +115,18 @@ class NotesEngine internal constructor(private val db: Database) {
     /** [filter]: "tag" (with [tag]), "untagged", "locked", or null for every note. [space] null: every space. */
     fun list(filter: String?, tag: String?, space: String?): Promise<Array<LocalListItem>> = scope.promise {
         notes.list(filterOf(filter, tag), space)
-            .map { LocalListItem(it.id, it.title, it.preview, it.updatedAt.toDouble(), it.locked) }
+            .map {
+                LocalListItem(
+                    it.id,
+                    it.title,
+                    it.preview,
+                    it.createdAt.toDouble(),
+                    it.updatedAt.toDouble(),
+                    it.locked,
+                    it.revision?.toDouble(),
+                    it.spaceId
+                )
+            }
             .toTypedArray()
     }
 
@@ -118,10 +139,11 @@ class NotesEngine internal constructor(private val db: Database) {
         tag: String?,
         space: String?,
         exceptSpace: String?,
+        offset: Int,
         limit: Int
     ): Promise<Array<LocalHit>> = scope.promise {
         val within = space?.let { SpaceScope.In(it) } ?: exceptSpace?.let { SpaceScope.Except(it) }
-        notes.search(query, filterOf(filter, tag), limit, within).map {
+        notes.search(query, filterOf(filter, tag), limit, within, offset).map {
             LocalHit(it.id, it.title, excerptHtml(it.excerpt), it.updatedAt.toDouble(), it.locked, it.spaceId)
         }.toTypedArray()
     }
@@ -165,7 +187,9 @@ class NotesEngine internal constructor(private val db: Database) {
     fun pendingNotes(): Promise<Int> = scope.promise { notes.pendingNotes() }
 
     fun spaces(): Promise<Array<LocalSpace>> = scope.promise {
-        engine.spaces.list().map { LocalSpace(it.id, it.name, it.icon, it.noteCount) }.toTypedArray()
+        engine.spaces.list()
+            .map { LocalSpace(it.id, it.name, it.icon, it.noteCount, it.createdAt.toDouble()) }
+            .toTypedArray()
     }
 
     fun createSpace(id: String, name: String, icon: String): Promise<String> =

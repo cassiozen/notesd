@@ -1,8 +1,12 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { expect } from 'vitest'
+import { expect, onTestFinished } from 'vitest'
 import type { Note, NoteList } from '../src/api/types'
 import { App } from '../src/app'
+import { localSource } from '../src/notes/local-source'
+import { onlineSource } from '../src/notes/online-source'
+import { setNotesSource } from '../src/notes/source'
+import { inProcessEngine, signIn } from './engine/helpers'
 import { createOwner, startServer, type TestServer } from './server'
 
 export type Session = { id: string }
@@ -20,13 +24,15 @@ export function mediumLayout() {
 /**
  * A server with an owner account and the app signed in to it. seed runs
  * before the app loads, so the list starts with those notes (and, side by
- * side, the newest one is open).
+ * side, the newest one is open). onDevice: the screens read this device's
+ * engine (in memory), already synced with the seed.
  */
 export async function signedIn({
   path = '/',
   seed,
   resendUrl,
-}: { path?: string; seed?: (server: TestServer) => Promise<void>; resendUrl?: string } = {}) {
+  onDevice = false,
+}: { path?: string; seed?: (server: TestServer) => Promise<void>; resendUrl?: string; onDevice?: boolean } = {}) {
   const server = await startServer({ ...(resendUrl && { resendUrl }) })
   const { username, password } = await createOwner(server)
   // The other client (curl, a phone) signs in too, for edits from "another device".
@@ -34,12 +40,23 @@ export async function signedIn({
   await seed?.(server)
   window.history.replaceState(null, '', path)
   const user = userEvent.setup()
+  let engine: ReturnType<typeof inProcessEngine> | undefined
+  if (onDevice) {
+    engine = inProcessEngine(username, await signIn(username, password))
+    const e = engine
+    // The first sync starts on open.
+    await waitFor(async () => expect((await e.call('status')).kind).toBe('Synced'), { timeout: 5000 })
+    setNotesSource(localSource(engine))
+    onTestFinished(() => setNotesSource(onlineSource))
+  }
   render(<App />)
-  await user.type(await screen.findByLabelText('Username'), username)
-  await user.type(screen.getByLabelText('Password'), `${password}{Enter}`)
+  if (!onDevice) {
+    await user.type(await screen.findByLabelText('Username'), username)
+    await user.type(screen.getByLabelText('Password'), `${password}{Enter}`)
+  }
   // The footer count shows once the first page is in.
   await within(await screen.findByRole('complementary', { name: 'Notes' })).findByText(/^\d+ notes?$/)
-  return { server, user, password }
+  return { server, user, password, engine }
 }
 
 let opSeq = 0

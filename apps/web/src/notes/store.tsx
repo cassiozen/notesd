@@ -445,8 +445,9 @@ export function NotesProvider({ children }: { children: ReactNode }) {
     window.addEventListener('focus', resume)
     window.addEventListener('online', resume)
     const offStale = notesSource().onStale(() => {
+      // An open search reruns too, and the filters refetch.
+      setList((prev) => ({ ...prev, version: prev.version + 1 }))
       void fetchPage(true)
-      fetchFilters()
       void reloadSpaces()
     })
     window.addEventListener('focus', reloadKeyring)
@@ -471,7 +472,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       document.removeEventListener('visibilitychange', onHidden)
       window.removeEventListener('beforeunload', onUnload)
     }
-  }, [fetchPage, fetchFilters, commit])
+  }, [fetchPage, commit])
 
   // Signing out unmounts the notes: deletes waiting on undo go through.
   useEffect(

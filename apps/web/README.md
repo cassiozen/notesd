@@ -84,7 +84,8 @@ src/
   api/        fetch wrapper (CSRF token, typed errors, offline detection), endpoints
   auth/       auth gate state, onboarding, sign in
   notes/      split view: tags panel, list, editor pane, store, saver, search, tag extractor;
-              source.ts is where they read and write (online-source.ts: the server)
+              source.ts is where they read and write (online-source.ts: the server;
+              local-source.ts: this device's engine)
   editor/     Tiptap setup, Markdown ⇄ document, toolbar and text styles, tag styling and suggestions
   settings/   appearance, password, signed-in devices, sign out
   ui/         design-system primitives
@@ -188,7 +189,8 @@ typed into drops it without a request.
 
 The web app is becoming offline-first like the phone apps, on the same sync
 engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
-`@notes/core`. Nothing on screen uses it yet.
+`@notes/core`. Nothing chooses it yet: `localSource` (the screens on the
+engine) is only used by tests.
 
 - **One worker per origin** (`src/offline/worker.ts`) owns the database:
   sqlite-wasm on OPFS through its SAH-pool VFS, one file per user, in WAL
@@ -202,6 +204,11 @@ engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
   caller), and the new owner runs a call it already has only once.
 - **Calls** (`src/offline/protocol.ts`) are coarse (list, search, save,
   sync…), so no SQL statement crosses a thread.
+- **Reads** (`src/notes/local-source.ts`): the list, tags, search and spaces
+  come from the engine, and refetch whenever a write commits there (sync or
+  any tab). A list is read whole and paged from memory, so pages don't shift
+  while scrolling. Note saves still go to the server, then ask for a sync;
+  spaces are written on the device.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
   after an edit, when a tab comes back or goes online, and every minute.
   Failures back off from 2 s to 5 min. Signed out, it waits for the next
