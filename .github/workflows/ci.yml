@@ -33,18 +33,13 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      # Booted cold inside the test step, iOS kept the first app launch waiting ~3.5 min while it finished
-      # starting up. Booted here, that overlaps the steps below; simulator.sh then picks this booted one.
-      # simulator.sh prefers one already booted, which simctl boot refuses: that one is fine as is.
-      - run: |
-          sim=$(apps/ios/scripts/simulator.sh)
-          xcrun simctl boot "$sim" || xcrun simctl list devices booted | grep -q "$sim"
+      # The simulator boots inside test:ios, ~5 min cold. Booting it here instead to overlap the steps below
+      # made the job slower: the runner is short of CPU and disk, and every overlapping step slowed 2–15×.
       - uses: jdx/mise-action@v2
       - run: mise run lint:ios
       - run: mise run test:ios:core
       # Apart, so the job's step times split building from testing.
       - run: mise run build:ios:tests
-      - run: xcrun simctl bootstatus "$(apps/ios/scripts/simulator.sh)" -b
       - run: mise run --skip-deps test:ios
       # Kept even when green: the log has only failing lines; the bundle has screenshots and per-step timings.
       - if: always()
