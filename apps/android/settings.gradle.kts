@@ -15,4 +15,7 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "notes-android"
-include(":core", ":app")
+include(":app")
+
+// The sync engine, shared with the web app; Gradle builds it from source for notes:sync-engine.
+includeBuild("../../shared/sync-engine")

@@ -7,7 +7,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "core": "../android/gradlew -p ../android -q :core:jsBrowserProductionLibraryDistribution",
+    "core": "pnpm --filter @notes/sync-engine build",
     "dev": "pnpm core && vite",
     "build": "pnpm typecheck && vite build",
     "typecheck": "pnpm core && tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.sw.json",
@@ -16,6 +16,7 @@
     "lint": "oxlint --deny-warnings"
   },
   "dependencies": {
+    "@notes/sync-engine": "workspace:*",
     "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",

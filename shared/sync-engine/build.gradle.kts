@@ -4,6 +4,14 @@ import org.jetbrains.kotlin.gradle.dsl.JsSourceMapEmbedMode
 plugins {
     alias(libs.plugins.kotlin.multiplatform)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ktlint)
+}
+
+// apps/android depends on notes:sync-engine; its includeBuild substitutes this build.
+group = "notes"
+
+ktlint {
+    version.set(libs.versions.ktlint.cli.get())
 }
 
 /**
@@ -79,7 +87,7 @@ val generateMigrations = tasks.register<EmbedFiles>("generateMigrations") {
 
 // The fixtures shared with the server and the web app, for tests on every target.
 val generateFixtures = tasks.register<EmbedFiles>("generateFixtures") {
-    from.set(rootProject.layout.projectDirectory.dir("../../shared/markdown-fixtures"))
+    from.set(layout.projectDirectory.dir("../markdown-fixtures"))
     extension.set(".json")
     property.set("notes.core.MARKDOWN_FIXTURES")
     fileName.set("MarkdownFixtures.kt")
@@ -91,6 +99,7 @@ kotlin {
     jvm()
     // The web app's sync engine: an ES module with .d.ts, bundled by Vite. Tests run in Node.
     js {
+        outputModuleName.set("sync-engine")
         browser { testTask { enabled = false } }
         nodejs()
         binaries.library()
@@ -148,7 +157,7 @@ kotlin {
 }
 
 // The real notesd, built once per change to its sources; sync tests start a fresh instance per test.
-val serverDir = rootProject.file("../../server")
+val serverDir = file("../../server")
 val serverBin = layout.buildDirectory.file("notesd/notesd")
 val buildNotesd = tasks.register<Exec>("buildNotesd") {
     workingDir = serverDir
@@ -164,17 +173,17 @@ tasks.named<Test>("jvmTest") {
     timeout.set(Duration.ofMinutes(5))
     dependsOn(buildNotesd)
     systemProperty("notes.serverBin", serverBin.get().asFile.absolutePath)
-    // More seeds for RandomSyncTest: ./gradlew :core:jvmTest -Pnotes.seeds=1,2,3
+    // More seeds for RandomSyncTest: ./gradlew jvmTest -Pnotes.seeds=1,2,3
     providers.gradleProperty("notes.seeds").orNull?.let { systemProperty("notes.seeds", it) }
     // Crypto fixtures shared with the web app; the Markdown ones are compiled in (generateFixtures).
-    systemProperty("notes.sharedDir", rootProject.file("../../shared").absolutePath)
-    inputs.dir(rootProject.file("../../shared/crypto-fixtures"))
+    systemProperty("notes.sharedDir", file("..").absolutePath)
+    inputs.dir(file("../crypto-fixtures"))
 }
 
 // Node comes from mise (the web app's), not a download: settings only allow declared repositories.
 plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsPlugin> {
     the<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec>().download.set(false)
 }
-rootProject.plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin> {
-    rootProject.the<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec>().download.set(false)
+plugins.withType<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsRootPlugin> {
+    the<org.jetbrains.kotlin.gradle.targets.js.nodejs.NodeJsEnvSpec>().download.set(false)
 }

@@ -18,7 +18,7 @@ run = "pnpm install --frozen-lockfile"
 
 [tasks.dev]
 description = "Go server (rebuilt on change) + Vite, at http://localhost:5173"
-depends = ["dev:server", "dev:web", "dev:core"]
+depends = ["dev:server", "dev:web", "dev:sync-engine"]
 
 [tasks."dev:server"]
 description = "Go server on :8080, rebuilt and restarted on .go/.sql changes"
@@ -31,10 +31,10 @@ dir = "apps/web"
 depends = ["install"]
 run = "pnpm dev"
 
-[tasks."dev:core"]
-description = "The web app's sync engine (Kotlin, apps/android/core), rebuilt on change"
-dir = "apps/android"
-run = "./gradlew --continuous --quiet :core:jsBrowserProductionLibraryDistribution"
+[tasks."dev:sync-engine"]
+description = "The sync engine (Kotlin, shared/sync-engine) for the web app, rebuilt on change"
+dir = "shared/sync-engine"
+run = "pnpm dev"
 
 [tasks."dev:reset"]
 description = "Delete the dev database; the next dev:server run seeds it again"
@@ -46,7 +46,7 @@ description = "Lint, typecheck and test everything"
 depends = ["lint", "typecheck", "test", "test:e2e"]
 
 [tasks.lint]
-depends = ["lint:go", "lint:web"]
+depends = ["lint:go", "lint:web", "lint:sync-engine"]
 
 [tasks."lint:go"]
 dir = "server"
@@ -57,19 +57,23 @@ dir = "apps/web"
 depends = ["install"]
 run = "pnpm lint"
 
+[tasks."lint:sync-engine"]
+dir = "shared/sync-engine"
+run = "pnpm lint"
+
 # Once up front: the web tasks that need it each run it too, and Gradle in parallel with itself only waits.
-[tasks."build:core"]
-description = "The web app's sync engine, from Kotlin, into apps/android/core/build/dist/js"
-dir = "apps/web"
-run = "pnpm core"
+[tasks."build:sync-engine"]
+description = "The sync engine, from Kotlin, into shared/sync-engine/build/dist/js"
+dir = "shared/sync-engine"
+run = "pnpm build"
 
 [tasks.typecheck]
 dir = "apps/web"
-depends = ["install", "build:core"]
+depends = ["install", "build:sync-engine"]
 run = "pnpm typecheck"
 
 [tasks.test]
-depends = ["test:go", "test:web"]
+depends = ["test:go", "test:web", "test:sync-engine"]
 
 [tasks."test:go"]
 dir = "server"
@@ -78,19 +82,24 @@ run = "go test -race ./..."
 
 [tasks."test:web"]
 dir = "apps/web"
-depends = ["install", "build:core"]
+depends = ["install", "build:sync-engine"]
 run = "pnpm test"
 
 [tasks."test:e2e"]
 description = "The web app in Chromium against a real notesd; add --project=firefox or webkit for the others"
 dir = "apps/web"
-depends = ["install", "build:core"]
+depends = ["install", "build:sync-engine"]
 run = "pnpm exec playwright install chromium && pnpm e2e --project=chromium"
 
+[tasks."test:sync-engine"]
+description = "The sync engine's tests on the JVM (sync against a real notesd) and on JS under Node"
+dir = "shared/sync-engine"
+run = "pnpm test"
+
 [tasks."test:android"]
-description = "Android unit tests (JVM and Robolectric), and core's shared tests on JS; emulator tests stay manual"
+description = "Android unit tests (JVM and Robolectric); emulator tests stay manual"
 dir = "apps/android"
-run = "./gradlew :core:allTests :app:testDebugUnitTest"
+run = "./gradlew :app:testDebugUnitTest"
 
 [tasks."lint:android"]
 dir = "apps/android"
@@ -166,7 +175,7 @@ run = "xcodebuild -project Notes.xcodeproj -scheme Notes -destination \"id=$(scr
 [tasks."build:web"]
 description = "Build the web app into server/internal/web/dist"
 dir = "apps/web"
-depends = ["install", "build:core"]
+depends = ["install", "build:sync-engine"]
 run = "pnpm build"
 
 [tasks.build]

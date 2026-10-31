@@ -8,9 +8,10 @@ internals.
 ```text
 server/         Go backend: API, sync, search, embedded web app  → server/README.md
 apps/web/       React + Tiptap web app, built into the server     → apps/web/README.md
-apps/android/   Kotlin app: core/ (plain Kotlin) and app/ (UI)    → apps/android/README.md
+apps/android/   Kotlin app, on shared/sync-engine                 → apps/android/README.md
 apps/ios/       Swift app: NotesCore/ (Swift package) and Notes/ (UI) → apps/ios/README.md
-shared/         fixtures every platform is tested against (Markdown → text, tags, round trips)
+shared/         sync-engine/ (Kotlin, for Android and web)        → shared/sync-engine/README.md
+                and fixtures every platform is tested against (Markdown → text, tags, round trips)
 design-system/  the visual prototype the web and Android apps follow
 scripts/        dev helpers
 mise.toml       pinned toolchain and every task below
@@ -33,13 +34,13 @@ at Android Studio's default location on macOS; set `ANDROID_HOME` or
 For iOS you need Xcode 26 or later, selected with `xcode-select`, and an
 iPhone simulator (`xcodebuild -downloadPlatform iOS`).
 
-The repo root is a pnpm workspace (`apps/web` for now), with one lockfile.
+The repo root is a pnpm workspace (`apps/web` and `shared/sync-engine`), with one lockfile.
 
 ## Server and web app
 
 ```bash
 mise run dev        # Go server (rebuilt on change) + Vite: http://localhost:5173
-mise run check      # lint, typecheck and test, Go and web
+mise run check      # lint, typecheck and test: Go, web and the sync engine
 mise run build      # server/bin/notesd with the web app embedded
 ```
 
@@ -98,15 +99,16 @@ To point the app at your dev server: the simulator reaches the Mac at
 
 | Task | What it does |
 | --- | --- |
-| `dev` | `dev:server` + `dev:web` |
+| `dev` | `dev:server` + `dev:web` + `dev:sync-engine` |
 | `dev:server` | Go server on :8080, rebuilt and restarted on `.go`/`.sql` changes |
 | `dev:web` | Vite dev server, proxying the API to :8080 |
 | `dev:reset` | Delete the dev database |
-| `check` | `lint`, `typecheck` and `test` (Go and web) |
-| `lint:go`, `lint:web`, `typecheck` | One check at a time |
-| `test:go`, `test:web` | Go tests (with the race detector), Vitest |
+| `check` | `lint`, `typecheck` and `test` (Go, web and the sync engine) |
+| `lint:go`, `lint:web`, `lint:sync-engine`, `typecheck` | One check at a time |
+| `test:go`, `test:web`, `test:sync-engine` | Go tests (with the race detector), Vitest, the sync engine on JVM and JS |
 | `test:android`, `lint:android`, `screenshots:android` | Android checks |
 | `test:ios:core`, `test:ios`, `lint:ios` | iOS checks |
+| `build:sync-engine`, `dev:sync-engine` | The sync engine's JS library for the web app, once or on change |
 | `build:web` | Web app into `server/internal/web/dist` |
 | `build` | `server/bin/notesd` with the web app embedded |
 | `build:android` | Debug APK |

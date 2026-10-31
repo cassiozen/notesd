@@ -3,7 +3,7 @@ package notes.core
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 
-/** The cross-platform fixtures in shared/markdown-fixtures, compiled in by :core:generateFixtures. */
+/** The cross-platform fixtures in shared/markdown-fixtures, compiled in by generateFixtures. */
 object Fixtures {
     @Serializable
     data class Case(

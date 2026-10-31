@@ -191,8 +191,8 @@ typed into drops it without a request.
 ## Notes on this device
 
 Opted in, the web app is offline-first like the phone apps, on the same sync
-engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
-`@notes/core`. "Keep my notes on this device" is offered at sign-in (where
+engine: `shared/sync-engine`, Kotlin compiled to JavaScript, imported as
+`@notes/sync-engine`. "Keep my notes on this device" is offered at sign-in (where
 the browser has the storage it needs: not in private windows) and in
 Settings → Sync & data. Otherwise the app works on the server as before.
 
