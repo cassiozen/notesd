@@ -1,0 +1,71 @@
+shared/sync-engine/.editorconfig
+  s_6efe5ad7838f63::t_9c8e53aacfe2cf 1-7
+apps/android/README.md
+  s_6efe5ad7838f63::t_31539b21477ff1 21,38,45,56,66
+shared/sync-engine/src/commonTest/kotlin/notes/core/Fixtures.kt
+  s_6efe5ad7838f63::t_ad0968e6ed4814 1-40
+apps/android/settings.gradle.kts
+  s_6efe5ad7838f63::t_5e8e019a065897 18-21
+apps/android/app/build.gradle.kts
+  s_6efe5ad7838f63::t_85597cb260c425 125
+shared/sync-engine/gradlew
+  s_6efe5ad7838f63::t_9c8e53aacfe2cf 1-248
+shared/sync-engine/gradle.properties
+  s_6efe5ad7838f63::t_6b8d9236e2e7df 1-7
+apps/android/gradle/libs.versions.toml
+  s_6efe5ad7838f63::t_85597cb260c425 28-29
+  s_6efe5ad7838f63::t_5e8e019a065897 1
+mise.toml
+  s_6efe5ad7838f63::t_c8428bb4b9b239 21,34-37,49,60-63,65-68,72,76,85,91,94-98,100,102,178
+shared/sync-engine/settings.gradle.kts
+  s_6efe5ad7838f63::t_51d5f0f02d37cc 11
+  s_6efe5ad7838f63::t_6b8d9236e2e7df 1-10,12-17
+shared/sync-engine/gradle/libs.versions.toml
+  s_6efe5ad7838f63::t_6b8d9236e2e7df 1-34
+pnpm-workspace.yaml
+  s_6efe5ad7838f63::t_022e88195872ab 3
+shared/sync-engine/gradlew.bat
+  s_6efe5ad7838f63::t_9c8e53aacfe2cf 1-112
+docs/development.md
+  s_6efe5ad7838f63::t_31539b21477ff1 11,13-14,37,43,102,106-108,111
+shared/sync-engine/README.md
+  s_6efe5ad7838f63::t_31539b21477ff1 1-42
+shared/sync-engine/gradle/wrapper/gradle-wrapper.properties
+  s_6efe5ad7838f63::t_9c8e53aacfe2cf 1-9
+apps/web/tsconfig.json
+  s_6efe5ad7838f63::t_022e88195872ab 22
+apps/web/package.json
+  s_6efe5ad7838f63::t_022e88195872ab 10,19
+shared/sync-engine/package.json
+  s_6efe5ad7838f63::t_022e88195872ab 1-18
+shared/sync-engine/build.gradle.kts
+  s_6efe5ad7838f63::t_424d02a09c5a51 1-189
+shared/sync-engine/.gitignore
+  s_6efe5ad7838f63::t_6b8d9236e2e7df 1-5
+apps/web/src/offline/host.ts
+  s_6efe5ad7838f63::t_022e88195872ab 8
+apps/web/README.md
+  s_6efe5ad7838f63::t_31539b21477ff1 194-195
+docs/architecture.md
+  s_6efe5ad7838f63::t_31539b21477ff1 81,177,679,681,692
+pnpm-lock.yaml
+  s_6efe5ad7838f63::t_6f28aeb46430ca 28-30,141-142
+shared/sync-engine/kotlin-js-store/package-lock.json
+  s_6efe5ad7838f63::t_20b4b25cf9fa21 2,8,11-12,1032-1039,1147,1153
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9548eaa701e9e2f11b9879d7df8c13b04b6b902a",
+  "prompts": {},
+  "sessions": {
+    "s_6efe5ad7838f63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a948c799-a3ce-4f0c-bae4-f166068880a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
