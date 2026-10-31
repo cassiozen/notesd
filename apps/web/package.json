@@ -7,12 +7,12 @@
     "node": ">=22"
   },
   "scripts": {
-    "core": "pnpm --filter @notes/sync-engine build",
-    "dev": "pnpm core && vite",
+    "deps": "pnpm --filter 'notes-web^...' run build",
+    "dev": "pnpm deps && vite",
     "build": "pnpm typecheck && vite build",
-    "typecheck": "pnpm core && tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.sw.json",
-    "test": "pnpm core && vitest run",
-    "e2e": "pnpm core && playwright test",
+    "typecheck": "pnpm deps && tsc --noEmit && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.sw.json",
+    "test": "pnpm deps && vitest run",
+    "e2e": "pnpm deps && playwright test",
     "lint": "oxlint --deny-warnings"
   },
   "dependencies": {

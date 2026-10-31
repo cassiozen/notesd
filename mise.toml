@@ -18,7 +18,7 @@ run = "pnpm install --frozen-lockfile"
 
 [tasks.dev]
 description = "Go server (rebuilt on change) + Vite, at http://localhost:5173"
-depends = ["dev:server", "dev:web", "dev:sync-engine"]
+depends = ["dev:server", "dev:web", "dev:deps"]
 
 [tasks."dev:server"]
 description = "Go server on :8080, rebuilt and restarted on .go/.sql changes"
@@ -31,10 +31,10 @@ dir = "apps/web"
 depends = ["install"]
 run = "pnpm dev"
 
-[tasks."dev:sync-engine"]
-description = "The sync engine (Kotlin, shared/sync-engine) for the web app, rebuilt on change"
-dir = "shared/sync-engine"
-run = "pnpm dev"
+[tasks."dev:deps"]
+description = "The web app's workspace dependencies (the sync engine), rebuilt on change"
+dir = "apps/web"
+run = "pnpm --filter 'notes-web^...' --parallel run dev"
 
 [tasks."dev:reset"]
 description = "Delete the dev database; the next dev:server run seeds it again"
@@ -61,15 +61,15 @@ run = "pnpm lint"
 dir = "shared/sync-engine"
 run = "pnpm lint"
 
-# Once up front: the web tasks that need it each run it too, and Gradle in parallel with itself only waits.
-[tasks."build:sync-engine"]
-description = "The sync engine, from Kotlin, into shared/sync-engine/build/dist/js"
-dir = "shared/sync-engine"
-run = "pnpm build"
+# Once up front: the web tasks that need them each run it too, and Gradle in parallel with itself only waits.
+[tasks."build:deps"]
+description = "The web app's workspace dependencies (the sync engine), built in dependency order"
+dir = "apps/web"
+run = "pnpm deps"
 
 [tasks.typecheck]
 dir = "apps/web"
-depends = ["install", "build:sync-engine"]
+depends = ["install", "build:deps"]
 run = "pnpm typecheck"
 
 [tasks.test]
@@ -82,13 +82,13 @@ run = "go test -race ./..."
 
 [tasks."test:web"]
 dir = "apps/web"
-depends = ["install", "build:sync-engine"]
+depends = ["install", "build:deps"]
 run = "pnpm test"
 
 [tasks."test:e2e"]
 description = "The web app in Chromium against a real notesd; add --project=firefox or webkit for the others"
 dir = "apps/web"
-depends = ["install", "build:sync-engine"]
+depends = ["install", "build:deps"]
 run = "pnpm exec playwright install chromium && pnpm e2e --project=chromium"
 
 [tasks."test:sync-engine"]
@@ -175,7 +175,7 @@ run = "xcodebuild -project Notes.xcodeproj -scheme Notes -destination \"id=$(scr
 [tasks."build:web"]
 description = "Build the web app into server/internal/web/dist"
 dir = "apps/web"
-depends = ["install", "build:sync-engine"]
+depends = ["install", "build:deps"]
 run = "pnpm build"
 
 [tasks.build]

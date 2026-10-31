@@ -15,8 +15,8 @@ Run from the repository root, or with `pnpm <script>` here:
 
 | Task | Script | What it does |
 | --- | --- | --- |
-| `mise run build:sync-engine` | `build` | The JS library in `build/dist/js/productionLibrary`, what `@notes/sync-engine` exports |
-| `mise run dev:sync-engine` | `dev` | The same, rebuilt on change (part of `mise run dev`) |
+| `mise run build:deps` | `build` | The JS library in `build/dist/js/productionLibrary`, what `@notes/sync-engine` exports; run by the web app's `pnpm deps` |
+| `mise run dev:deps` | `dev` | The same, rebuilt on change (part of `mise run dev`) |
 | `mise run test:sync-engine` | `test` | Tests on the JVM and on JS under Node |
 | `mise run lint:sync-engine` | `lint` | ktlint |
 

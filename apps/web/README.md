@@ -37,8 +37,11 @@ pnpm e2e          # Playwright: Chromium, Firefox and WebKit (--project=chromium
 
 `mise run check` runs `e2e` in Chromium only.
 
-`typecheck`, `test`, `e2e`, `dev` and `build` first build the sync engine
-with Gradle (`pnpm core`), so they need the JDK from `mise.toml`.
+`typecheck`, `test`, `e2e`, `dev` and `build` first build the app's
+workspace dependencies (`pnpm deps`: every package in `dependencies` with
+`workspace:`, in dependency order, by their `build` scripts). Today that's
+the sync engine, built with Gradle, so they need the JDK from `mise.toml`.
+Running `vite` or `vitest` directly skips it: run `pnpm deps` once first.
 
 Most tests are integration tests: they render the whole `<App/>` in jsdom
 against a real notesd. The suite builds the server once per run

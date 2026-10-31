@@ -99,7 +99,7 @@ To point the app at your dev server: the simulator reaches the Mac at
 
 | Task | What it does |
 | --- | --- |
-| `dev` | `dev:server` + `dev:web` + `dev:sync-engine` |
+| `dev` | `dev:server` + `dev:web` + `dev:deps` |
 | `dev:server` | Go server on :8080, rebuilt and restarted on `.go`/`.sql` changes |
 | `dev:web` | Vite dev server, proxying the API to :8080 |
 | `dev:reset` | Delete the dev database |
@@ -108,7 +108,7 @@ To point the app at your dev server: the simulator reaches the Mac at
 | `test:go`, `test:web`, `test:sync-engine` | Go tests (with the race detector), Vitest, the sync engine on JVM and JS |
 | `test:android`, `lint:android`, `screenshots:android` | Android checks |
 | `test:ios:core`, `test:ios`, `lint:ios` | iOS checks |
-| `build:sync-engine`, `dev:sync-engine` | The sync engine's JS library for the web app, once or on change |
+| `build:deps`, `dev:deps` | The web app's workspace dependencies (the sync engine), once or on change |
 | `build:web` | Web app into `server/internal/web/dist` |
 | `build` | `server/bin/notesd` with the web app embedded |
 | `build:android` | Debug APK |
