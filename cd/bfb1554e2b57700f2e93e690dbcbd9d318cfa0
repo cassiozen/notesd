@@ -1,0 +1,27 @@
+shared/sync-engine/README.md
+  s_6efe5ad7838f63::t_8d924c1bb05c09 18-19
+apps/web/README.md
+  s_6efe5ad7838f63::t_8d924c1bb05c09 40-44
+mise.toml
+  s_6efe5ad7838f63::t_8d924c1bb05c09 21,34-37,64-68,72,85,91,178
+apps/web/package.json
+  s_6efe5ad7838f63::t_8d924c1bb05c09 10-11,13-15
+docs/development.md
+  s_6efe5ad7838f63::t_8d924c1bb05c09 102,111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cdbfb1554e2b57700f2e93e690dbcbd9d318cfa0",
+  "prompts": {},
+  "sessions": {
+    "s_6efe5ad7838f63": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a948c799-a3ce-4f0c-bae4-f166068880a6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
