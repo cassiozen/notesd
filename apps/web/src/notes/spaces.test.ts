@@ -1,5 +1,5 @@
 import { renderHook, waitFor } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Space } from '../api/types'
 import { onlineSource } from './online-source'
 import { setNotesSource, type NotesSource } from './source'
@@ -58,5 +58,14 @@ describe('spaces on a change of source', () => {
     forgetSpaces()
     const { result } = renderHook(() => useSpaces())
     expect(result.current).toBeNull()
+  })
+})
+
+describe('loading', () => {
+  it('source.ts loads first without tripping on spaces.ts', async () => {
+    // spaces.ts subscribes to source.ts as it loads: any import from source.ts
+    // back to spaces.ts would run that before source.ts is ready.
+    vi.resetModules()
+    await expect(import('./source')).resolves.toBeDefined()
   })
 })

@@ -2,8 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import type { Space } from '../api/types'
 import { notesSource, onNotesSourceChange } from './source'
 
-/** Every install has this space (architecture §7.7); it can be renamed, never deleted. */
-export const DEFAULT_SPACE = 'default'
+export { DEFAULT_SPACE } from './default-space'
 
 // One copy for the switcher, the note menu and Settings, fetched once per
 // source and refetched when the notes are (focus, Settings changes).
