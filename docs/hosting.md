@@ -218,6 +218,55 @@ Keep your `docker run` command somewhere; you'll need it for [upgrades](operatio
 - Pass any [setting](#configuration) as `-e NAME=value`. Don't change `NOTESD_LISTEN` or `NOTESD_DATA_DIR`; use `-p` and `-v` instead.
 - To store notes in a folder instead of a volume (`-v "$PWD/data:/data"`), create it first with `mkdir -p data && sudo chown 65532:65532 data`. notesd runs as user 65532 and can't write to a folder owned by root.
 
+## Markdown mirror
+
+To keep plain Markdown files of your notes, for another editor, a sync
+tool or your own backups, start the server with `--mirror-dir DIR` (or
+`NOTESD_MIRROR_DIR`):
+
+```bash
+notesd serve --data-dir /var/lib/notesd --mirror-dir /srv/notes-markdown
+```
+
+Each account gets a folder named after its username, with a folder per space
+inside it, a file per note named after its title, and the images notes show in
+`images/`, laid out the same way as [`export`](operations.md#maintenance-commands).
+The mirror then follows the notes:
+
+- New notes get new files, edited notes overwrite their files, renamed or
+  moved notes move their files, and deleted notes delete their files.
+- Writing the files is low priority and never slows down saving. notesd
+  writes an account's changes once its notes have been quiet for about 10
+  seconds, and at least every 2 minutes while someone keeps typing.
+- It only goes one way. Edits made to the files are overwritten the next
+  time the note changes, and new files are never imported.
+- Locked notes aren't written. Locking a note deletes its file, so its plain
+  text doesn't stay on disk.
+- notesd only touches files it wrote. It keeps track of them in a hidden
+  `.notesd-mirror.json` in each account's folder. If one of your own files
+  already has a note's name, the note gets a numbered name, such as
+  `Groceries (2).md`.
+- After a restart, notesd picks up where it stopped. After a restore from a
+  backup, it rewrites the account's folder to match.
+
+The server refuses to start if an account's folder already has files that
+notesd didn't write, or if the mirror folder contains the data directory.
+
+With Docker, mount a host folder for the mirror and pass its path in the
+container:
+
+```bash
+mkdir -p notes-markdown && sudo chown 65532:65532 notes-markdown
+docker run -d --name notesd --restart unless-stopped \
+  -p 8080:8080 \
+  -v notesd-data:/data \
+  -v "$PWD/notes-markdown:/markdown" \
+  -e NOTESD_MIRROR_DIR=/markdown \
+  ghcr.io/cassiozen/notesd:latest
+```
+
+notesd creates the files readable only by the user it runs as.
+
 ## Configuration
 
 Set options with flags or environment variables. With Docker, use environment variables.
@@ -229,7 +278,7 @@ Set options with flags or environment variables. With Docker, use environment va
 | `--public-url` | `NOTESD_PUBLIC_URL` | Unset | External URL; HTTPS enables `Secure` cookies |
 | `--log-level` | `NOTESD_LOG_LEVEL` | `info` | `debug`, `info`, `warn`, `error` |
 | `--log-format` | `NOTESD_LOG_FORMAT` | `text` | `text` or `json` |
-| `--mirror-dir` | `NOTESD_MIRROR_DIR` | Unset | Also keep every account's notes in this folder as Markdown files ([details](operations.md#markdown-mirror)) |
+| `--mirror-dir` | `NOTESD_MIRROR_DIR` | Unset | Also keep every account's notes in this folder as Markdown files ([details](#markdown-mirror)) |
 | `--self-update` | `NOTESD_SELF_UPDATE` | `false` | `true` lets admins update from Settings. systemd installs only, and it also needs the `notesd-update` units ([setup](operations.md#updating-from-settings)); not for Docker |
 | | `NOTESD_OWNER_USERNAME`, `NOTESD_OWNER_PASSWORD` | Unset | Create the account at startup ([details](#create-your-account)) |
 

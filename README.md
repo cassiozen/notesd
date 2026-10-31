@@ -60,7 +60,7 @@ notesd serve --mirror-dir ~/notes-markdown
 ```
 
 New and edited notes are written there shortly after they change. See
-[docs/operations.md](docs/operations.md#markdown-mirror).
+[docs/hosting.md](docs/hosting.md#markdown-mirror).
 
 ## Security
 
