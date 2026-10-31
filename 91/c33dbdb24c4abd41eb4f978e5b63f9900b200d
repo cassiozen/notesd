@@ -1,0 +1,39 @@
+docs/releasing.md
+  s_1ed7f808c685d0::t_8c26fea7e147a1 1-96
+docs/architecture.md
+  s_1ed7f808c685d0::t_f911705d105f9e 10,675
+  s_1ed7f808c685d0::t_4d7e85b80c2a12 589,593-594,596-597
+docs/hosting.md
+  s_1ed7f808c685d0::t_f911705d105f9e 176,201
+README.md
+  s_1ed7f808c685d0::t_f911705d105f9e 16
+apps/web/README.md
+  s_1ed7f808c685d0::t_f911705d105f9e 6-8
+docs/faq.md
+  h_506d0d833c777f 30,200,202
+  s_1ed7f808c685d0::t_2a351e19ff95dd 1-2,13-29,31-32,42-56,64-74,82,128-156,161,179-199,201,203-216,218,220,224,226,230,237-261
+  s_1ed7f808c685d0::t_c4bf3011b955b0 3-12,33-41,57-63,75-81,83-127,157-160,162-178,217,219,221-223,225,227-229,231-236
+docs/installing-web-app.md
+  s_1ed7f808c685d0::t_f911705d105f9e 24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91c33dbdb24c4abd41eb4f978e5b63f9900b200d",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_1ed7f808c685d0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cdc8980d-b34e-40c9-b850-44a7f20bfac0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
