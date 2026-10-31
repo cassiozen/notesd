@@ -7,7 +7,7 @@ import { LockedError, decryptBody, encryptBody, isLocked } from '../locks/crypto
 import { lockSession } from '../locks/session'
 import type { SaveState } from '../ui/status-pill'
 import type { Saver, SaverHooks, SaverInit } from './source'
-import { DEFAULT_SPACE } from './spaces'
+import { DEFAULT_SPACE } from './default-space'
 
 export type Fields = { title: string; content: string }
 
