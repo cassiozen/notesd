@@ -1,0 +1,19 @@
+docs/web-app.md
+  s_84ccc2ddea17c8::t_9e89e6069e4e5b 3-5,9,14-17,21,23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "55704ee73f76e3272e167217bab5f252f9d3d8ee",
+  "prompts": {},
+  "sessions": {
+    "s_84ccc2ddea17c8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a1395e40-3893-41f5-835f-17fdbea9eac9",
+        "model": "unknown"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
