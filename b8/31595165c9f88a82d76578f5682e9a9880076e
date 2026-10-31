@@ -1,0 +1,19 @@
+apps/android/core/src/commonMain/kotlin/notes/core/db/Database.kt
+  s_d22cab8726b588::t_482dc42254e2ae 18-19,91,125-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b831595165c9f88a82d76578f5682e9a9880076e",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
