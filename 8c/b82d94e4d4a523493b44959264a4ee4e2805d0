@@ -1,0 +1,31 @@
+apps/ios/NotesUITests/FlowTests.swift
+  s_dae77052dcaf01::t_96080f2f9d2779 539
+  s_dae77052dcaf01::t_bbf8c026079413 516-521
+  s_dae77052dcaf01::t_3a5bad21d83ed2 581
+  s_dae77052dcaf01::t_37c7ce2d7bbf11 315-324
+  s_dae77052dcaf01::t_35c022035d23e8 561
+  s_dae77052dcaf01::t_813fbe755e82c7 599
+  s_dae77052dcaf01::t_1c000d2c2c05c3 267,270-272,275
+  s_dae77052dcaf01::t_65eada6fd4d9bd 549
+  s_dae77052dcaf01::t_dec0abaf31f79f 474
+  s_dae77052dcaf01::t_a03b8b61ade2e9 489
+  s_dae77052dcaf01::t_3329758f71a40b 530
+.github/workflows/ci.yml
+  s_dae77052dcaf01::t_b7c43ae070e018 40-48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8cb82d94e4d4a523493b44959264a4ee4e2805d0",
+  "prompts": {},
+  "sessions": {
+    "s_dae77052dcaf01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c3284fc-36b7-4748-a4e1-770851ba5318",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

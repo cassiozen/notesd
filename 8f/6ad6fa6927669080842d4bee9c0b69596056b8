@@ -1,0 +1,19 @@
+.github/workflows/ci.yml
+  s_dae77052dcaf01::t_0387993637c73d 36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f6ad6fa6927669080842d4bee9c0b69596056b8",
+  "prompts": {},
+  "sessions": {
+    "s_dae77052dcaf01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "7c3284fc-36b7-4748-a4e1-770851ba5318",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
