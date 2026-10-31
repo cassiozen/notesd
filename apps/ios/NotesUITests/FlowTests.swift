@@ -264,16 +264,15 @@ final class FlowTests: XCTestCase {
 
         let address = app.textFields["Server address"]
         XCTAssertTrue(address.waitForExistence(timeout: 5))
-        address.tap()
+        focus(address)
         address.typeText(server)
-        app.buttons["Continue"].tap()
-
         let username = app.textFields["Username"]
-        XCTAssertTrue(username.waitForExistence(timeout: 10))
-        username.tap()
+        tap(app.buttons["Continue"], until: username, timeout: 10)
+
+        focus(username)
         username.typeText(env["NOTESD_USERNAME"] ?? "owner")
         let password = app.secureTextFields["Password"]
-        password.tap()
+        focus(password)
         password.typeText(env["NOTESD_PASSWORD"] ?? "")
         if screenshotted { screenshot("sign in") }
         app.buttons["Sign in"].tap()
@@ -311,6 +310,16 @@ final class FlowTests: XCTestCase {
             usleep(500_000)
         }
         XCTFail("\(field) never took the keyboard")
+    }
+
+    /// Taps `button` until `result` shows: a tap while the screen is still moving (a sheet closing, the
+    /// keyboard, the bar laying out again) can land on nothing. Only for taps that are safe to repeat.
+    private func tap(_ button: XCUIElement, until result: XCUIElement, timeout: TimeInterval = 5) {
+        for _ in 0..<3 {
+            if button.exists { button.tap() }
+            if result.waitForExistence(timeout: timeout) { return }
+        }
+        XCTFail("tapping \(button) never showed \(result)")
     }
 
     /// Opens a new note and types into it. A tap while a sheet is still closing (sign-in's, on CI) can be
@@ -462,7 +471,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["--fake-biometrics=match"]
         try signIn()
         writeNewNote("Bank\nPIN 4321")
-        app.buttons["More"].tap()
+        tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword()
 
@@ -476,9 +485,8 @@ final class FlowTests: XCTestCase {
         // Locked from its own screen: Face ID waits to be asked.
         let lockNow = app.buttons["Lock now"]
         XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
-        lockNow.tap()
         let useFaceID = app.buttons["Use Face ID"]
-        XCTAssertTrue(useFaceID.waitForExistence(timeout: 5))
+        tap(lockNow, until: useFaceID)
         XCTAssertTrue(app.secureTextFields["Lock password"].exists)
         screenshot("locked note with face id")
         try audit("locked note with face id")
@@ -505,7 +513,12 @@ final class FlowTests: XCTestCase {
         let onlyHere = NSPredicate(format: "label CONTAINS %@", "only on this iPhone")
         XCTAssertTrue(app.staticTexts.matching(onlyHere).firstMatch.exists)
         XCTAssertEqual(toggle.value as? String, "1")
-        toggle.switches.firstMatch.tap()
+        // Tapped again only if still on: a second tap that landed would turn it back on.
+        for _ in 0..<2 where toggle.value as? String != "0" {
+            toggle.switches.firstMatch.tap()
+            let deadline = Date().addingTimeInterval(5)
+            while toggle.value as? String != "0" && Date() < deadline { usleep(200_000) }
+        }
         XCTAssertEqual(toggle.value as? String, "0")
         // Back to Settings, then to the list.
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -514,8 +527,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(row.waitForExistence(timeout: 5))
         row.tap()
         XCTAssertTrue(lockNow.waitForExistence(timeout: 10))
-        lockNow.tap()
-        XCTAssertTrue(app.secureTextFields["Lock password"].waitForExistence(timeout: 5))
+        tap(lockNow, until: app.secureTextFields["Lock password"])
         XCTAssertFalse(useFaceID.exists)
     }
 
@@ -524,7 +536,7 @@ final class FlowTests: XCTestCase {
         app.launchArguments += ["--fake-biometrics=cancel"]
         try signIn()
         writeNewNote("Diary\nDear diary")
-        app.buttons["More"].tap()
+        tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword()
         let offer = app.alerts["Use Face ID for locked notes?"]
@@ -533,9 +545,8 @@ final class FlowTests: XCTestCase {
 
         let lockNow = app.buttons["Lock now"]
         XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
-        lockNow.tap()
         let field = app.secureTextFields["Lock password"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        tap(lockNow, until: field)
         XCTAssertFalse(app.buttons["Use Face ID"].exists)
         field.tap()
         field.typeText(lockPassword)
@@ -547,7 +558,7 @@ final class FlowTests: XCTestCase {
     func testLockAndUnlockANote() async throws {
         try signIn()
         writeNewNote("Secret plans\nMeet at noon")
-        app.buttons["More"].tap()
+        tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword(screenshotted: true)
 
@@ -566,9 +577,8 @@ final class FlowTests: XCTestCase {
         let content = try XCTUnwrap(stored?["content"] as? String, "the locked note reached the server")
         XCTAssertFalse(content.contains("noon"))
 
-        lockNow.tap()
         let field = app.secureTextFields["Lock password"]
-        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        tap(lockNow, until: field)
         XCTAssertTrue(app.staticTexts["This note is locked."].exists)
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
         sleep(1)
@@ -586,7 +596,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue((editor.value as? String ?? "").contains("Meet at noon"), "\(editor.value ?? "")")
 
         // Removing the lock stores the text plainly again.
-        app.buttons["More"].tap()
+        tap(app.buttons["More"], until: app.buttons["Remove lock"])
         app.buttons["Remove lock"].tap()
         var plain = false
         for _ in 0..<30 where !plain {
