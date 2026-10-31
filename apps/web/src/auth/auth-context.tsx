@@ -2,7 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
-import { closeNotes, openNotes } from '../offline/device'
+import { closeNotes, forgetNotesHere, openNotes } from '../offline/device'
 import { deviceUser, rememberSession } from './session-hint'
 
 export type AuthState =
@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signedIn = useCallback((info: SessionInfo, opts: { firstRun?: boolean } = {}) => {
     setCsrfToken(info.csrfToken)
-    openNotes(info.username, info.csrfToken)
+    openNotes(info.username)
     setState({ status: 'signed-in', username: info.username, firstRun: opts.firstRun ?? false })
   }, [])
 
@@ -87,7 +87,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await auth.logout()
     } finally {
       setCsrfToken(null)
-      closeNotes()
+      // Signed out, nothing of the account stays in this browser.
+      void forgetNotesHere().catch(() => undefined)
       setState({ status: 'signed-out' })
     }
   }, [])
@@ -125,7 +126,7 @@ async function fromServer(): Promise<{ status: 'setup' | 'signed-out' | 'unreach
 /** The server can't be reached: this device's copy, if it keeps one that has synced. */
 function adopt(info: SessionInfo): AuthState {
   setCsrfToken(info.csrfToken)
-  openNotes(info.username, info.csrfToken)
+  openNotes(info.username)
   return { status: 'signed-in', username: info.username }
 }
 
@@ -133,7 +134,7 @@ async function offlineBoot(): Promise<AuthState> {
   const user = deviceUser()
   if (!user) return { status: 'unreachable' }
   try {
-    const engine = openNotes(user, null)
+    const engine = openNotes(user)
     // Never synced (or cleared by the browser): an empty list would look like every note gone.
     if (engine && (await engine.call('lastSyncAt')) !== null) return { status: 'signed-in', username: user, offline: true }
   } catch {

@@ -1,5 +1,7 @@
+import { useSyncExternalStore } from 'react'
 import type { LockKey, MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, TagCount } from '../api/types'
-import type { SyncNotice } from '../offline/protocol'
+import type { SyncNotice, SyncStatus } from '../offline/protocol'
+import { onlineSource } from './online-source'
 import type { Fields, Snapshot } from './saver'
 
 // Where the notes screens read and write: the server directly, or a database
@@ -30,6 +32,9 @@ export type SaverHooks = {
 
 /** Notes changed here that sync can't get to the server; [error] when the server refused them. */
 export type Unsynced = { pending: number; error: string | null }
+
+/** [pending]: notes changed here and not yet on the server. */
+export type SyncState = { status: SyncStatus; pending: number; lastSyncAt: number | null }
 
 /** Saving for one open (or recently open) note, independent of React so saves outlive the editor. */
 export interface Saver {
@@ -124,19 +129,40 @@ export interface NotesSource {
   sync?: {
     /** Null while nothing is stuck: sync is meant to go unnoticed. Returns the unsubscribe function. */
     onUnsynced(listener: (unsynced: Unsynced | null) => void): () => void
+    /** Everything about sync, Syncing included, for Settings. Returns the unsubscribe function. */
+    onState(listener: (state: SyncState) => void): () => void
     /** What sync did to keep both sides of a clash. Returns the unsubscribe function. */
     onNotice(listener: (notice: SyncNotice) => void): () => void
     now(): void
   }
 }
 
-let current: NotesSource | null = null
+// The server's until a sign-in finds this browser keeps the user's notes (offline/device.ts).
+let current: NotesSource = onlineSource
+let version = 0
+const listeners = new Set<() => void>()
 
 export function setNotesSource(source: NotesSource) {
+  if (source === current) return
   current = source
+  version++
+  for (const l of listeners) l()
 }
 
 export function notesSource(): NotesSource {
-  if (!current) throw new Error('No notes source: setNotesSource first')
   return current
+}
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+export function useNotesSource(): NotesSource {
+  return useSyncExternalStore(subscribe, notesSource)
+}
+
+/** Moves on with every change of source, for keying the screens: they remount on the new one. */
+export function useNotesSourceVersion(): number {
+  return useSyncExternalStore(subscribe, () => version)
 }

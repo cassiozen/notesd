@@ -110,9 +110,10 @@ describe('settings categories', () => {
     await waitFor(() => expect(category('Spaces').textContent).toBe('Spaces1'))
     await waitFor(() => expect(category('Integrations').textContent).toBe('IntegrationsEmail'))
     expect(category('Appearance').textContent).toBe('AppearanceSystem')
+    expect(category('Sync & data').textContent).toBe('Sync & dataOff')
     // Each group says where its settings are kept.
     expect(within(nav()).getAllByRole('list', { name: 'Synced to your account' })).toHaveLength(1)
-    expect(within(within(nav()).getByRole('list', { name: 'This browser only' })).getAllByRole('link')).toHaveLength(1)
+    expect(within(within(nav()).getByRole('list', { name: 'This browser only' })).getAllByRole('link')).toHaveLength(2)
   })
 
   it('moves between categories without stacking up history, and Done still goes back', async () => {

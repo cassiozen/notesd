@@ -7,7 +7,9 @@ import { Field } from '../ui/field'
 import { useShake } from '../ui/shake'
 import { useAuth } from './auth-context'
 import { AuthLayout } from './auth-layout'
+import { askToPersist, useDeviceSupported } from '../offline/device'
 import { genericMessage } from './errors'
+import { deviceUser, keepOnDevice } from './session-hint'
 import styles from './auth.module.css'
 
 type Props = {
@@ -17,15 +19,21 @@ type Props = {
   /** Prefilled and read-only when re-authenticating an expired session. */
   username?: string
   headingId?: string
+  /** Offer to keep the notes in this browser (a fresh sign-in, not signing in again). */
+  offerDevice?: boolean
 }
 
-export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUsername, headingId }: Props) {
+export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUsername, headingId, offerDevice = false }: Props) {
   const { signedIn } = useAuth()
   const [username, setUsername] = useState(fixedUsername ?? '')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [fieldsRef, shake] = useShake<HTMLDivElement>()
+  // Kept already: opting out is Settings', which warns of changes not yet on the server.
+  const [keptHere] = useState(() => deviceUser() !== null)
+  const canKeep = useDeviceSupported(offerDevice && !keptHere)
+  const [keep, setKeep] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -36,8 +44,13 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
     }
     setBusy(true)
     setError(undefined)
+    const wantsDevice = canKeep && keep
+    // Now, while the click still counts.
+    if (wantsDevice || keptHere) askToPersist()
     try {
-      signedIn(await auth.login(username.trim(), password))
+      const info = await auth.login(username.trim(), password)
+      if (wantsDevice) keepOnDevice(info.username)
+      signedIn(info)
     } catch (err) {
       setBusy(false)
       setError(
@@ -84,6 +97,17 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
           </p>
         )}
       </div>
+      {canKeep && (
+        <label className={styles.keep}>
+          <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
+          <span>
+            Keep my notes on this device
+            <span className={styles.keepWhy}>
+              They open and save without a connection. Only on a device you trust: anyone using this browser can read them, locked notes aside.
+            </span>
+          </span>
+        </label>
+      )}
       <Button variant="solid" type="submit" busy={busy}>
         {busy ? 'Signing in…' : 'Sign in'}
       </Button>
@@ -98,7 +122,7 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
 export function Login() {
   return (
     <AuthLayout footer={<span className={styles.host}>{window.location.host}</span>}>
-      <LoginForm />
+      <LoginForm offerDevice />
     </AuthLayout>
   )
 }

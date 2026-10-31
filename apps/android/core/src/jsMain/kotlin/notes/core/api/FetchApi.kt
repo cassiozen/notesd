@@ -60,7 +60,13 @@ class FetchApi(private val csrfToken: () -> String?) : SyncApi {
         val headers = js("({})")
         headers["Accept"] = "application/json"
         if (body != null) headers["Content-Type"] = contentType
-        if (method != "GET") csrfToken()?.let { headers["X-CSRF-Token"] = it }
+        if (method != "GET") {
+            // Opened offline, the page has no token until the server answers it: wait, as if offline.
+            // Sent without one, the write would be refused and dropped as if for good.
+            val token = csrfToken()?.takeIf { it.isNotEmpty() }
+                ?: return ApiResult.Unreachable(IllegalStateException("No session token yet"))
+            headers["X-CSRF-Token"] = token
+        }
         val init =
             RequestInit(method = method, headers = headers, body = body, credentials = RequestCredentials.SAME_ORIGIN)
         val (res, text) = try {

@@ -2,7 +2,7 @@
 
 ## 1. Overview
 
-A self-hosted note-taking system: one Go executable backed by SQLite serves an online-only React web client and syncs with offline-first native iOS and Android apps. V1 targets a few accounts, such as a family's, each with multiple devices.
+A self-hosted note-taking system: one Go executable backed by SQLite serves a React web client and syncs with offline-first native iOS and Android apps; the web client can keep an offline copy too, by choice. V1 targets a few accounts, such as a family's, each with multiple devices.
 
 | Area | Decision |
 | --- | --- |
@@ -46,7 +46,7 @@ Sync runs automatically (in the background where the OS allows), resumes after i
 
 ### 2.5 Web application
 
-The web app offers full note management, editing and search, but needs a live server connection. It may hold unsaved edits in memory through transient failures; nothing persists across browser restarts.
+The web app offers full note management, editing and search. By default it works on the server directly and keeps nothing across browser restarts beyond unsaved edits in memory through transient failures. Opted in ("Keep my notes on this device", at sign-in or in Settings → Sync & data), a browser keeps a full replica and syncs it with the same engine as Android (§3), so it opens, edits, searches and locks notes offline. Signing out, or opting out, removes the replica, asking first if it holds changes the server doesn't have. Browsers without the storage it needs (private windows) aren't offered the choice. Supported: the last two versions of Chrome, Firefox and Safari.
 
 ### 2.6 Non-functional requirements
 
@@ -59,7 +59,6 @@ The web app offers full note management, editing and search, but needs a live se
 | Excluded | Reason |
 | --- | --- |
 | Real-time collaboration, CRDTs, WebSockets | One active editor per note; HTTP sync is sufficient |
-| Web offline mode | Would add a browser replica and a second sync engine |
 | Full version history, automatic Markdown merge | Not needed to preserve conflicts; formatting-aware merging is complex |
 | File attachments | Need their own storage and sync design; images are the exception (§7.6) |
 | Sharing or collaborating on notes between accounts, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
@@ -67,11 +66,11 @@ The web app offers full note management, editing and search, but needs a live se
 
 ## 3. Architecture
 
-Three clients talk HTTPS/JSON to one Go server. Only the native apps keep a local replica; the web client calls the API directly.
+Three clients talk HTTPS/JSON to one Go server. The native apps keep a local replica; the web client calls the API directly, or, opted in (§2.5), keeps one too.
 
 &#91;embedded content: system architecture · 3 clients, 1 server\]
 
-Every client reaches the server over HTTPS/JSON; the Go binary also serves the web app's build, and only the native apps keep working without a connection.
+Every client reaches the server over HTTPS/JSON; the Go binary also serves the web app's build. The native apps, and a browser that keeps its notes, keep working without a connection.
 
 ### 3.1 Responsibilities
 
@@ -79,7 +78,7 @@ Every client reaches the server over HTTPS/JSON; the Go binary also serves the w
 | --- | --- |
 | Go server | Authentication; note CRUD; revision validation and conflict detection; global change sequence; incremental sync; full-text search; serving the web app; database maintenance and backups. Stores whole Markdown documents and never interprets edits. |
 | Native clients | Rich-text editing; local persistence and search index; recording pending changes; background sync; conflict resolution; local deletion state; connectivity and sync status. The editor only reads and writes local data; sync runs independently. |
-| Web client | Authentication; note listing and navigation; editing with debounced autosave; search; conflict handling; connection and error status. No local database or sync engine. |
+| Web client | Authentication; note listing and navigation; editing with debounced autosave; search; conflict handling; connection and error status. Opted in, the native clients' local persistence and sync too: the Android core (`apps/android/core`), compiled to JavaScript, runs in a worker on sqlite-wasm in the origin's private file system (OPFS), one worker per origin shared by every tab over Web Locks and a BroadcastChannel. The screens read and write through one seam (`NotesSource`): the server's API, or that engine. |
 
 ### 3.2 Technology stack
 
@@ -88,7 +87,7 @@ Every client reaches the server over HTTPS/JSON; the Go binary also serves the w
 | Backend | Go, `net/http`, SQLite (WAL) + FTS5, JSON over HTTPS, structured logging, web assets via `embed`, systemd or equivalent |
 | iOS | Swift, SwiftUI, `UITextView`/TextKit editor via `UIViewRepresentable`, SQLite + FTS5, URLSession, iOS background tasks |
 | Android | Kotlin, Jetpack Compose with Navigation 3 (list and note side by side from 600dp, split around a foldable's hinge), `EditText`/`Spannable` editor via `AndroidView`, bundled SQLite + FTS5 (`androidx.sqlite`), OkHttp, WorkManager |
-| Web | TypeScript, React, Tiptap/ProseMirror, Vite, lightweight CSS; Node.js only for building |
+| Web | TypeScript, React, Tiptap/ProseMirror, Vite, lightweight CSS; for the offline copy, the Kotlin core compiled to JavaScript, sqlite-wasm on OPFS, Cache Storage for images and a service worker for the app shell; Node.js only for building |
 
 Native apps use platform controls for selection, keyboard, context menus and formatting. Pick the server's SQLite driver for portability, transaction behaviour and build simplicity, and avoid unnecessary frameworks.
 
@@ -309,6 +308,7 @@ A new device authenticates, initializes its database, syncs from cursor 0 in pag
 - Triggers: app launch, return to foreground, local edits (debounced), connectivity regained, OS-approved background windows, periodic refresh while active.
 - Failures back off exponentially with jitter; edits never cause one request per keystroke.
 - Background execution is not guaranteed on iOS or Android, so correctness must never depend on its timing.
+- Web (a browser keeping its notes): the engine's worker syncs on start, 2 s after an edit, when a tab comes back or the network does, and every minute while a tab is open; nothing runs with every tab closed. Opened offline, the page has no CSRF token, so writes wait until the server answers and hands one over; a write is never sent without one.
 
 ## 6. Conflicts and Deletion
 
@@ -370,7 +370,7 @@ The editor document is `title block+`: the note's title is its first line, unfor
 ### 7.3 Autosave
 
 - **Native:** debounced local saves, flushed on lifecycle events, keeping the gap to durable persistence short enough to survive abrupt termination. The local database and outbox stay consistent.
-- **Web:** debounced HTTP saves, serialized per note so responses cannot arrive out of order.
+- **Web:** debounced HTTP saves, serialized per note so responses cannot arrive out of order. A browser keeping its notes saves to its local database like the native apps, each save based on the text it last stored, so a change sync brought in meanwhile is merged (§6.1).
 - **UI states:** unsaved changes, saving, saved, save failed, conflict detected.
 
 ### 7.4 Cross-platform consistency
@@ -404,7 +404,7 @@ An image lives outside the note's text, as a content-addressed blob on the serve
 - **Reference.** The hash is SHA-256 of the bytes as stored, so uploads are idempotent and integrity-checked. `w` and `h` are the pixel size, so editors lay the image out before its bytes arrive. Editors show such an image as an atomic, read-only node (deleted whole) and write its source back byte for byte; any other image (`![a](cat.png)`) stays a raw inline run (§7.1). Search, previews and tags treat it like any image: its alt text is plain text and never holds tags.
 - **Preparing.** Clients downscale before uploading: the long side is capped at 2048 px, orientation is applied, and the image is re-encoded as JPEG (quality 0.85), or PNG when it has transparency, which drops EXIF metadata including location. GIFs are uploaded as they are, so animation survives, along with any metadata they hold. The server caps an image at 10 MiB; clients cap a prepared one 28 bytes lower, the nonce and tag encryption adds, so it fits locked or not.
 - **Uploading.** The web app uploads before it inserts the reference. Android stores a new image locally with a pending-upload row, and each sync cycle uploads pending images before any note operation, so no device sees a reference before its bytes exist.
-- **Caching.** The web relies on the browser cache (images are immutable). Android fetches an image the first time it is shown and keeps it in its cache directory, which the system may evict; images still waiting to upload live in its files directory.
+- **Caching.** The web relies on the browser cache (images are immutable); a browser keeping its notes stores images in Cache Storage instead, per account: one added there waits as a `pending_images` row until sync uploads it, before any note showing it, and others are downloaded on first view and kept. Android fetches an image the first time it is shown and keeps it in its cache directory, which the system may evict; images still waiting to upload live in its files directory.
 - **Locked notes.** A locked note's images are encrypted too (§10.1). Whether to decrypt is decided by the blob's type as served, not by the note, so a note that mixes both still renders.
 - **Storage.** Blobs are rows of the server's SQLite database (`images`), so a backup of the one file holds notes and images consistently.
 - **Export.** `notesd export` writes each image a note shows once, as a plain file in `images/<id>.<ext>`, and points the reference there (only image syntax; the same text inside code is left alone). Locked images are decrypted with the lock password under `--include-locked`; one that is missing or doesn't open keeps its `notesd:image/` reference.
@@ -426,7 +426,7 @@ Spaces keep separate contexts, such as Work and Personal, apart: each note is in
 
 ## 8. Search
 
-Every platform uses SQLite FTS5: mobile searches its local database with no network, and the web app calls `GET /api/v1/search` on the server.
+Every platform uses SQLite FTS5: mobile searches its local database with no network, and the web app calls `GET /api/v1/search` on the server, or searches its own copy when it keeps one.
 
 ### 8.1 Indexed content
 
@@ -511,11 +511,12 @@ An installation holds a few accounts, such as a family's, each signed in from mu
 - **Isolation:** each account's notes, search index, sync state, spaces, locked-notes keyring and images are in its own SQLite file, `users/<id>.db`. A request's session picks the file, and handlers only ever see that one, so a missing check can't expose another account's data. Ids, image hashes and sync generations are per file. Backup, export and removal are per file too.
 - **Accounts:** the first is created at first run (below). The rest are added on the server with `notesd add-user`; there is no sign-up and no email, so a forgotten password is reset by the host with `notesd reset-password --username`. `remove-user` deletes the account and its sessions and leaves its notes file for the host to export or delete.
 - **Admins:** the first account is an admin; `add-user --admin` makes others. Only admins change server-wide settings (the email integration), which every account uses. The server enforces it (403 `admin_only`).
-- **Devices:** a signed-out device keeps its notes, and its first sync under another account would upload them there (a different sync generation means full reconciliation, §11.4). So the apps let only the same account sign in again; switching accounts means removing all data first.
+- **Devices:** a signed-out device keeps its notes, and its first sync under another account would upload them there (a different sync generation means full reconciliation, §11.4). So the apps let only the same account sign in again; switching accounts means removing all data first. The web app removes its copy on sign-out and keeps a database per account, so neither applies there.
 
 - **Credentials:** username and password, hashed with Argon2id (parameters encoded in the hash so they can be raised later); never stored in plaintext. Password changes are supported and sign out every other session. Failed logins are rate-limited (10 per 15 minutes per client address).
 - **First run:** while no account exists, `POST /auth/setup` creates one for whoever calls it first, with no token, and every client's onboarding goes straight to creating the account. After that the endpoint returns `already_set_up`. The server logs a warning with its address until the owner exists. The cost: a server reachable from the network before its owner exists can be claimed by a stranger. The default listen address is loopback, so a fresh install isn't reachable, and the hosting guide says to create the account before exposing it. To skip the open window entirely, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at startup (ignored once one exists), or `notesd create-owner` creates it from the shell. A claimed server holds no one else's data, and deleting the data directory starts over. That's why tokenless setup is acceptable here (the same trade-off Coolify and Jellyfin make).
-- **Web sessions:** an HttpOnly, SameSite=Lax cookie (`Secure` and `__Host-` prefixed when `--public-url` is https) with a 30-day sliding expiry, plus a CSRF token the web app keeps only in memory and sends as `X-CSRF-Token` on every mutation; cross-origin `Origin` headers are rejected.
+- **Web sessions:** an HttpOnly, SameSite=Lax cookie (`Secure` and `__Host-` prefixed when `--public-url` is https) with a 30-day sliding expiry, plus a CSRF token the web app keeps only in memory and sends as `X-CSRF-Token` on every mutation; cross-origin `Origin` headers are rejected. A session that ends while a browser keeps its notes pauses sync and asks to sign in again; local notes stay readable, as on mobile.
+- **Browser copies:** a browser that keeps its notes stores them in plain text in its origin storage (locked notes and their images stay encrypted), readable by anyone using that browser profile, which is why it's opt-in and worded "on a device you trust". The app asks the browser to persist the storage; without that, the browser may clear it under pressure, and with it any edits not yet synced. Each account has its own database file and image cache; signing out removes them.
 - **Mobile sessions:** a one-hour access token and a 180-day sliding refresh token, sent as bearer tokens and kept in the iOS Keychain or Android Keystore-backed storage. Refresh tokens are not rotated, so a refresh whose response is lost can be retried; revocation deletes the session. Only token hashes are stored server-side. Session expiry affects sync only, never access to local notes.
 - **Transport:** HTTPS for any remote access; TLS may terminate at any common reverse proxy. Private-network and VPN-only installations are supported.
 - **Encryption:** no at-rest encryption; users may rely on disk encryption. Documentation must state that the server can read note content, except for locked notes (§10.1), which are end-to-end encrypted. Encrypting every note would affect search, authentication and the data model, so it remains a separate decision.
@@ -657,6 +658,8 @@ Testing emphasizes failure scenarios over happy paths, with multiple simulated c
 Property-based, randomized tests should generate arbitrary sequences of edits, deletions, disconnects, retries and reconnects, then assert that no unsynced user content disappears silently.
 
 ### 12.2 Other suites
+
+- **Web replica** (Vitest, the engine in-process on in-memory sqlite-wasm against a real server; Playwright in Chromium, Firefox and WebKit): the screens on the local copy, merges and conflicted or recovered copies, locked notes and images offline, opening offline from the service worker and the copy, a session ending under sync, tabs handing the engine over without losing a call, opting in and out.
 
 - **Backend** (temporary SQLite databases): note CRUD, revision conflicts, deletions, transaction rollback, sequence allocation, pagination, search indexing, duplicate operation IDs, migrations, authentication.
 - **Editors** (shared fixtures across web, iOS and Android): formatting selections, including across paragraphs; lists; nested formatting; undo/redo; cursor preservation; Markdown round trips; Unicode, emoji and right-to-left text; multiline selections; IME composition.

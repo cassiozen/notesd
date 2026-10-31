@@ -51,7 +51,10 @@ are checked by hand in a browser.
 `test/engine/` runs the sync engine in Node (the `engine` Vitest project), on
 an in-memory sqlite-wasm database, against a real notesd. `e2e/` runs it in
 real browsers, where it needs OPFS, workers and Web Locks: one engine for
-several tabs, a reload, the tab running it closing. Those tests use
+several tabs, a reload, the tab running it closing. `e2e/offline.spec.ts`
+runs against the production build (`vite preview`, so the service worker is
+on): opted in at sign-in, the app reloads offline and syncs what was typed
+once back. Those tests use
 persistent profiles, because WebKit has no OPFS in an ephemeral one (nor
 Safari in a private window). Playwright's Firefox didn't start on macOS 27
 when this was written; run that project in the Linux image
@@ -185,13 +188,19 @@ New notes exist only in the browser until their first save with content, and
 go into the URL only once the server has them. Leaving a new note nobody
 typed into drops it without a request.
 
-## Sync engine (in progress)
+## Notes on this device
 
-The web app is becoming offline-first like the phone apps, on the same sync
+Opted in, the web app is offline-first like the phone apps, on the same sync
 engine: `apps/android/core`, Kotlin compiled to JavaScript, imported as
-`@notes/core`. Nothing turns it on yet: `src/offline/device.ts` picks the
-engine for a user only when this browser keeps their notes (`keepOnDevice`),
-and no screen sets that.
+`@notes/core`. "Keep my notes on this device" is offered at sign-in (where
+the browser has the storage it needs: not in private windows) and in
+Settings → Sync & data. Otherwise the app works on the server as before.
+
+- **Choosing** (`src/offline/device.ts`): on every sign-in and boot, the
+  engine for a user this browser keeps notes for, else the server; the
+  screens remount when that changes. A worker that can't start falls back to
+  the server, and Settings says why. Signing out or opting out wipes the
+  copy, pictures and keyring, asking first if notes there haven't synced.
 
 - **One worker per origin** (`src/offline/worker.ts`) owns the database:
   sqlite-wasm on OPFS through its SAH-pool VFS, one file per user, in WAL
@@ -231,8 +240,9 @@ and no screen sets that.
   reached, the screens open on this device's copy, provided it has synced at
   least once (an empty one would look like every note gone). The server is
   tried again every 30 s and when the browser goes online; its answer
-  decides the session. A sync that finds the session gone pauses and asks
-  to sign in again, edits kept. Storage is asked to persist; a full device
+  decides the session. Until then, server writes wait: the page has no CSRF token,
+  and a write without one would be refused for good. A sync that finds the
+  session gone pauses and asks to sign in again, edits kept. Storage is asked to persist; a full device
   says so on the save that couldn't be stored.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
   after an edit, when a tab comes back or goes online, and every minute.

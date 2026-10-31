@@ -86,8 +86,14 @@ internal fun <T> apiResult(code: Int, retryAfter: String?, errorText: () -> Stri
     }
     return when {
         code == 401 && error.error == "unauthenticated" -> ApiResult.Unauthenticated
+
+        // Cookie sessions: a token from an older one. Signing in again gives a good one; the write waits for it.
+        code == 403 && error.error == "csrf_failed" -> ApiResult.Unauthenticated
+
         code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
+
         code == 429 -> ApiResult.RateLimited(retryAfter?.trim()?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_S)
+
         else -> ApiResult.Rejected(code, error.error.ifEmpty { "http_$code" }, error.message, error.field)
     }
 }
