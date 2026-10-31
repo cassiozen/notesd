@@ -1,0 +1,41 @@
+apps/web/src/notes/shell.tsx
+  s_d22cab8726b588::t_5384530f04d55d 11,54,169,182
+apps/web/src/notes/search.ts
+  s_d22cab8726b588::t_67043ed0e63d07 3,48-49,67,70,77
+apps/web/src/notes/online-source.ts
+  s_d22cab8726b588::t_960c4a058931ef 1-44
+apps/web/src/notes/share.tsx
+  s_d22cab8726b588::t_5384530f04d55d 13,19,38,247
+apps/web/src/notes/note-pane.tsx
+  s_d22cab8726b588::t_5384530f04d55d 17-18,29,36-37,39,53-54,97,208,213,233,242
+apps/web/src/notes/source.ts
+  s_d22cab8726b588::t_cd2d90182b1ef2 1-60,62,64-98,100-115
+  s_d22cab8726b588::t_960c4a058931ef 61,63,99
+apps/web/src/app.tsx
+  s_d22cab8726b588::t_5384530f04d55d 6,8,15-16
+  s_d22cab8726b588::t_eeaf5fdfca29bc 17
+apps/web/src/notes/store.tsx
+  s_d22cab8726b588::t_67043ed0e63d07 6-7,84-88,95,132,140,181,244,253,267,438,441-447,451-453,466-470
+apps/web/src/notes/spaces.ts
+  s_d22cab8726b588::t_67043ed0e63d07 3,32-33,68,74
+apps/web/src/notes/saver.ts
+  s_d22cab8726b588::t_38be2dcf806f64 9,92,134-135
+apps/web/README.md
+  s_d22cab8726b588::t_dbd9c3e85125fb 86-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "754df1fa19108daacf46b14b37d5ca60b149fef4",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

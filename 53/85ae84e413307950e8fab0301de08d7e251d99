@@ -1,0 +1,19 @@
+apps/web/src/notes/online-source.ts
+  s_d22cab8726b588::t_9c1a7c8232325b 10,15,17-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5385ae84e413307950e8fab0301de08d7e251d99",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

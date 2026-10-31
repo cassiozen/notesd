@@ -1,0 +1,208 @@
+apps/android/core/src/commonMain/kotlin/notes/core/text/CodePoints.kt
+  s_d22cab8726b588::t_518edc99012f3b 24-25,29,32,35-43
+  s_d22cab8726b588::t_56937125f34784 1-23,26-28,30-31,33-34,44-74
+apps/android/core/src/jvmMain/kotlin/notes/core/db/JvmConnections.kt
+  s_d22cab8726b588::t_74d6de2fe5042c 26-27
+  s_d22cab8726b588::t_518edc99012f3b 23,28-37
+  s_d22cab8726b588::t_0202b3cc44860e 1-22,24-25,38-43
+apps/android/core/src/commonMain/kotlin/notes/core/db/Database.kt
+  s_d22cab8726b588::t_518edc99012f3b 86-90,92-93
+  s_d22cab8726b588::t_ee9bb634ae074f 5-8,16-17,20-31,32-33,36-39,41,43,53,55,57,59,61-62,71-72,75,79,84-85,99,102,105,107,112-121,134,138,143,146,148
+apps/android/README.md
+  s_d22cab8726b588::t_518edc99012f3b 21
+  s_d22cab8726b588::t_61e72b14e511e1 38-39,46-50
+  s_d22cab8726b588::t_66de0656d40c7d 51-52
+apps/android/core/src/commonTest/kotlin/notes/core/db/SearchQueryTest.kt
+  s_d22cab8726b588::t_518edc99012f3b 20-22
+docs/architecture.md
+  s_d22cab8726b588::t_518edc99012f3b 178
+apps/android/core/src/commonTest/kotlin/notes/core/db/TestDatabase.kt
+  s_d22cab8726b588::t_518edc99012f3b 11-15
+  s_d22cab8726b588::t_fa9faee4f90af7 1-10,16-32
+apps/android/core/src/jsMain/kotlin/notes/core/db/DirectConnections.kt
+  s_d22cab8726b588::t_74d6de2fe5042c 20-27
+  s_d22cab8726b588::t_994aa2e16572e4 56-57
+  s_d22cab8726b588::t_1a63de851d7939 9
+  s_d22cab8726b588::t_e1669afcb626b9 8,12,32-55,58-115
+  s_d22cab8726b588::t_e8b7e21c76c2bf 1-7,10-11,13-19,28-31,116
+apps/android/core/src/jsMain/kotlin/notes/core/markdown/Canonical.js.kt
+  s_d22cab8726b588::t_e1669afcb626b9 7
+  s_d22cab8726b588::t_1cb5daaf617e42 1-6
+apps/android/core/src/jsTest/kotlin/notes/core/db/SqliteWasm.kt
+  s_d22cab8726b588::t_fa9faee4f90af7 1-9
+apps/android/core/src/commonTest/kotlin/notes/core/text/PlainTextTest.kt
+  s_d22cab8726b588::t_fa9faee4f90af7 1-35
+apps/android/core/src/jvmTest/kotlin/notes/core/db/TestDatabase.jvm.kt
+  s_d22cab8726b588::t_fa9faee4f90af7 1-9
+apps/android/core/src/commonTest/kotlin/notes/core/Fixtures.kt
+  s_d22cab8726b588::t_fa9faee4f90af7 1-19,29-33,35,40
+mise.toml
+  s_d22cab8726b588::t_994aa2e16572e4 91,93
+  s_d22cab8726b588::t_66de0656d40c7d 21,34-38,46,60-65,68,81,84-89,169
+apps/android/core/build.gradle.kts
+  s_d22cab8726b588::t_04205997b93eb3 9-24,29-36,46-71,73-75,77-80,82-84,86-88,91-98,104,106-113,115-147,177,180
+  s_d22cab8726b588::t_1a63de851d7939 43,72,81
+  s_d22cab8726b588::t_1462c957b4ee93 25-28,39,76,85
+  s_d22cab8726b588::t_61e72b14e511e1 169
+  s_d22cab8726b588::t_69480bfa9fbe36 37-38
+  s_d22cab8726b588::t_5cec4bbd620f29 5,40-42,44-45,162,167,173-176,178-179
+  s_d22cab8726b588::t_e59780f1b01048 99-101,103
+  s_d22cab8726b588::t_67ea518e0b391d 2,102
+apps/android/core/src/commonTest/kotlin/notes/core/text/Sha256Test.kt
+  s_d22cab8726b588::t_8daf6311e5a1bf 6
+  s_d22cab8726b588::t_5108e716aec7e8 1-5,7-11,16-24
+  s_d22cab8726b588::t_4b0765ba4df999 12-15
+apps/android/core/src/jsMain/kotlin/notes/core/text/Platform.js.kt
+  s_d22cab8726b588::t_5108e716aec7e8 16
+  s_d22cab8726b588::t_9dd5f617752869 1-15,17-104
+apps/android/core/src/jvmTest/kotlin/notes/core/db/NoteStoreJvmTest.kt
+  s_d22cab8726b588::t_86fd53436d98e0 1-95
+apps/android/gradle/libs.versions.toml
+  s_d22cab8726b588::t_04205997b93eb3 19
+  s_d22cab8726b588::t_5d0932a12323c8 36-37,45,78
+  s_d22cab8726b588::t_66de0656d40c7d 18
+apps/android/core/src/commonTest/kotlin/notes/core/db/NoteStoreTest.kt
+  s_d22cab8726b588::t_86fd53436d98e0 1-8,10-155,162-195,202-258
+  s_d22cab8726b588::t_189148d2e6d0c8 9,156-161,196-201
+apps/android/core/src/jsTest/kotlin/notes/core/db/TestDatabase.js.kt
+  s_d22cab8726b588::t_fa9faee4f90af7 1-14
+apps/android/build.gradle.kts
+  s_d22cab8726b588::t_d3709a997c7452 4
+apps/android/core/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_d22cab8726b588::t_7a108ef6e2582f 137-164
+apps/android/core/src/commonMain/kotlin/notes/core/crypto/LockedEnvelope.kt
+  s_d22cab8726b588::t_3e909f93ac9d64 1-8
+apps/android/core/src/commonMain/kotlin/notes/core/db/LockKeyStore.kt
+  s_d22cab8726b588::t_bb8b8852c3f92f 3-4,13,16,45,51-52
+apps/android/core/src/commonMain/kotlin/notes/core/db/Merge.kt
+  s_d22cab8726b588::t_f2a8dd895eaba9 3-4,26
+apps/android/core/src/commonMain/kotlin/notes/core/db/Migrations.kt
+  s_d22cab8726b588::t_6e07744f8adf1d 4-8,11-15,18,20,23,25-27,29
+apps/android/core/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_d22cab8726b588::t_aa1ef259e5571a 6-7,74,99,121-122,165-166,281,297,345
+apps/android/core/src/commonMain/kotlin/notes/core/db/Rows.kt
+  s_d22cab8726b588::t_b22b766146178f 6,9,38-39,42,48,52,57,59,67,97,115,127,151,197-198,202,217,220-221,224
+apps/android/core/src/commonMain/kotlin/notes/core/db/Search.kt
+  s_d22cab8726b588::t_16f1cae8f2953c 3-4,25-33,38
+apps/android/core/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_d22cab8726b588::t_815a9060cf62fa 5-7,21-22,41
+  s_d22cab8726b588::t_fe497e0c45f63b 55-59,63
+apps/android/core/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_d22cab8726b588::t_68df1647df7793 7,52,215,263,330,393,406,447,487,498,512-513,526
+apps/android/core/src/commonMain/kotlin/notes/core/markdown/Canonical.kt
+  s_d22cab8726b588::t_7a2a2fbceb6bf7 1-8
+apps/android/core/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_d22cab8726b588::t_275b59ed98156d 18,20,27,57,59,61,122,143,184,198,211,220,256,293
+  s_d22cab8726b588::t_9f158d99cf1798 3,97-108
+apps/android/core/src/commonMain/kotlin/notes/core/text/JsSpace.kt
+  s_d22cab8726b588::t_c2f7687d810d16 8
+apps/android/core/src/commonMain/kotlin/notes/core/text/PlainText.kt
+  s_d22cab8726b588::t_5a757e0f39fce3 58,60,254-255,263
+apps/android/core/src/commonMain/kotlin/notes/core/text/Platform.kt
+  s_d22cab8726b588::t_6b123664480cb8 1-10
+apps/android/core/src/commonMain/kotlin/notes/core/text/Tags.kt
+  s_d22cab8726b588::t_395b8c2c4bbd93 39,41,57,64,90
+apps/android/core/src/commonMain/kotlin/notes/core/text/Uuid7.kt
+  s_d22cab8726b588::t_4d642d3f097b36 3,7-9,13
+apps/android/core/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_d22cab8726b588::t_cd85560367854a 35,70,73,76,80,122,148,152,165-166,169
+apps/android/core/src/jvmMain/kotlin/notes/core/crypto/LockedNotes.kt
+  s_d22cab8726b588::t_1ffddbdfded828 39,53
+apps/android/core/src/jvmMain/kotlin/notes/core/images/ImageRef.kt
+  s_d22cab8726b588::t_989be34e484949 3,47
+apps/android/core/src/jvmMain/kotlin/notes/core/images/ImageStore.kt
+  s_d22cab8726b588::t_bfa77164938909 12-13,36,131
+apps/android/core/src/jvmMain/kotlin/notes/core/markdown/Canonical.jvm.kt
+  s_d22cab8726b588::t_a667d6a2ce5202 1-3
+apps/android/core/src/jvmMain/kotlin/notes/core/text/Platform.jvm.kt
+  s_d22cab8726b588::t_d35688eefc750f 1-28
+apps/android/gradle.properties
+  s_d22cab8726b588::t_cef08ab47483d8 7-9
+apps/android/kotlin-js-store/package-lock.json
+  s_d22cab8726b588::t_3aac9293cf665b 1-1166
+apps/android/core/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_d22cab8726b588::t_5f8cc8e240191c 1-113
+.gitignore
+  s_d22cab8726b588::t_87990bf95a0b1f 22-25
+apps/web/src/offline/worker.ts
+  s_d22cab8726b588::t_68c1785d9b6d21 1-51
+apps/web/e2e/notesd.sh
+  s_d22cab8726b588::t_87990bf95a0b1f 1-6
+  s_d22cab8726b588::t_2ead945acbcc08 7
+.github/workflows/ci.yml
+  s_d22cab8726b588::t_66de0656d40c7d 25-26
+apps/web/package.json
+  s_d22cab8726b588::t_65b5865a8d08f7 10-11,13-15
+  s_d22cab8726b588::t_ca00c8aa4704d5 24,48
+apps/web/src/offline/host.ts
+  s_d22cab8726b588::t_7dd10e38d48e4a 26-28,30-33,35,140-141,148-151
+  s_d22cab8726b588::t_89633bb0108cfc 1-25,29,34,36-139,142-147,152-195
+apps/android/core/src/commonTest/kotlin/notes/core/sync/SyncEngineTest.kt
+  s_d22cab8726b588::t_7a62d45c93f14e 1-49
+apps/android/core/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_d22cab8726b588::t_7420c6e1730c55 1-22,25-100,104-122,125-128,132-136,138-183,187-218,220-268
+  s_d22cab8726b588::t_b506ed42849222 23-24,137,219
+  s_d22cab8726b588::t_a1a1f6cd062402 123-124
+  s_d22cab8726b588::t_613ca55380d377 101-103,129-131,184-186
+apps/web/README.md
+  s_d22cab8726b588::t_26f381e0d6d078 54-56
+  s_d22cab8726b588::t_66de0656d40c7d 13-14,35,38-40,49-53,57,89,91,184-205
+  s_d22cab8726b588::t_c14d248003f4ae 206
+apps/web/.oxlintrc.json
+  s_d22cab8726b588::t_2e71f5ce78f1bf 36-37
+  s_d22cab8726b588::t_7dd10e38d48e4a 42-52
+apps/web/tsconfig.json
+  s_d22cab8726b588::t_65b5865a8d08f7 22-25
+apps/web/tsconfig.node.json
+  s_d22cab8726b588::t_9bed6ba2719d0b 7
+apps/web/test/engine/helpers.ts
+  s_d22cab8726b588::t_2f3930dff54ab2 1-4,6-10,12-61,65-81
+  s_d22cab8726b588::t_991442fc16a3c0 5,11,62-64
+apps/web/vite.config.ts
+  s_d22cab8726b588::t_65b5865a8d08f7 9-10,45-48,60-62,70-73
+  s_d22cab8726b588::t_26f381e0d6d078 63-69
+apps/web/src/offline/protocol.ts
+  s_d22cab8726b588::t_4572b080e48ebf 3,32,42
+  s_d22cab8726b588::t_4060ac9b750dac 1-2,4-31,33-41,43-117
+apps/android/core/src/jvmTest/kotlin/notes/core/sync/SyncTest.kt
+  s_d22cab8726b588::t_7a90c4494ae13f 157
+apps/web/e2e/engine.spec.ts
+  s_d22cab8726b588::t_d0cc93c7838588 1,17-19,21-23,32-33,36-37
+  s_d22cab8726b588::t_026eafba3d91e2 24-30
+  s_d22cab8726b588::t_9bed6ba2719d0b 2-11,13-16,38-47,50-52,54-56,58-69,71-78,80-89,91-96,98,100-104,106-117,120-121,130-133,135-138
+  s_d22cab8726b588::t_9ab79af619b15d 12,97,99,105,118-119,122,127-129,134
+  s_d22cab8726b588::t_1ce1c8a7429a6d 20,31,34-35,48-49,53,57,70,79,123-126
+  s_d22cab8726b588::t_eeab088bea52a7 90
+apps/web/src/offline/scheduler.ts
+  s_d22cab8726b588::t_e59780f1b01048 42,56,59
+  s_d22cab8726b588::t_2c78d41b6d0247 12-13,69,71,74
+  s_d22cab8726b588::t_3f7d7893ee8651 1-11,14-41,43-55,57-58,60-68,70,72-73,75-78
+apps/web/src/offline/tab.ts
+  s_d22cab8726b588::t_7dd10e38d48e4a 48,80,109,144,151,154,161,170
+  s_d22cab8726b588::t_c9eba14e21a240 99-100
+  s_d22cab8726b588::t_35b7059992aecf 36-37,103-107
+  s_d22cab8726b588::t_8bf81ceacef871 1-35,38-47,49-79,81-98,101-102,108,110-143,145-150,152-153,155-160,162-169,171-177
+apps/web/playwright.config.ts
+  s_d22cab8726b588::t_87990bf95a0b1f 1-9,12-27
+  s_d22cab8726b588::t_026eafba3d91e2 10-11
+apps/web/test/engine/engine.test.ts
+  s_d22cab8726b588::t_95ade7f836668d 1-129
+pnpm-lock.yaml
+  s_d22cab8726b588::t_3f0f0eb59f08fd 28-30,95-97,360-364,458-461,1015-1024,1429-1432,1480-1481,1937-1942
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "63c3026a4c33eb6ff82a685e70946412929e0493",
+  "prompts": {},
+  "sessions": {
+    "s_d22cab8726b588": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9fdb1e83-09d6-4acd-9159-337d8da2708c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
