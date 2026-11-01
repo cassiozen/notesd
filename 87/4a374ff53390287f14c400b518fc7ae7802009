@@ -1,0 +1,19 @@
+website/.vitepress/config.mjs
+  s_83e146316c3831::t_c704c139aa1a14 11-17,25,27-29,41,69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "874a374ff53390287f14c400b518fc7ae7802009",
+  "prompts": {},
+  "sessions": {
+    "s_83e146316c3831": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4e0ee9eb-f668-4803-a88f-ea17992d6af3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
