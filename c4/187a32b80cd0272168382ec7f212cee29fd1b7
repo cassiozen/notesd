@@ -1,0 +1,25 @@
+website/index.html
+  s_8af56085700b0d::t_7c9580b05690b8 29-31
+website/src/main.css
+  s_8af56085700b0d::t_97a778829fcca6 765,770,802
+  s_8af56085700b0d::t_d9bada2157c0b6 762
+  s_8af56085700b0d::t_8173f49a33a123 737-747,755-760,767-769,771
+  s_8af56085700b0d::t_aafb8494c8d99b 754,761,763-764,766,788-790,794-795,801
+  s_8af56085700b0d::t_a97773ac1bed4d 772
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c4187a32b80cd0272168382ec7f212cee29fd1b7",
+  "prompts": {},
+  "sessions": {
+    "s_8af56085700b0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "128cb454-091c-46f0-9981-7106ac8257fb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
