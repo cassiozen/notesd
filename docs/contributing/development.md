@@ -8,7 +8,13 @@ description: The toolchain, building and testing each part, and conventions.
 A monorepo: the Go server, the web app it embeds, the Android and iOS apps, and
 fixtures they share. How it all fits together is in
 [architecture.md](architecture.md); each component's README covers its
-internals.
+internals. In brief:
+
+- **Simple sync.** Each note has a revision, and the server keeps a global change sequence.
+  Clients push edits against the revision they started from, and pull everything changed since a
+  cursor. No CRDTs, no WebSockets.
+- **No other services.** No Postgres, Redis, queue or search engine: search is SQLite's FTS5, and
+  the whole state is one data directory (`system.db` and one database per account).
 
 ```text
 server/         Go backend: API, sync, search, embedded web app  → server/README.md
@@ -128,7 +134,9 @@ push to `main` and every pull request, and the iOS checks on a macOS runner.
 
 - `docs/contributing/architecture.md` is the specification. Change it along with any
   change to the protocol, data model or document format.
-- `server/README.md` is the authoritative API reference.
+- [`docs/reference/api.md`](../reference/api.md) documents the API. Update it with any change to
+  an endpoint, parameter, response or error code.
 - Rules every platform must agree on (plain-text extraction, tags, Markdown
-  round trips) are pinned by fixtures in `shared/markdown-fixtures/`, and
-  each platform's tests run against them. Change the fixture first.
+  round trips, locked-notes crypto) are pinned by fixtures in
+  `shared/markdown-fixtures/` and `shared/crypto-fixtures/`, and each
+  platform's tests run against them. Change the fixture first.
