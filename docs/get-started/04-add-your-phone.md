@@ -13,13 +13,13 @@ connection. They sync with the server whenever they can reach it.
 Your phone can't use `localhost`: that's the phone itself. It needs the address of the computer
 running notesd on your network. On that computer:
 
-| System | Command |
+| System | Where |
 | --- | --- |
-| Linux | `hostname -I` |
-| macOS | `ipconfig getifaddr en0` (Wi-Fi) or `ipconfig getifaddr en1` |
+| Linux | Run `hostname -I` |
+| macOS | **System Settings → Wi-Fi → Details…** next to your network (or **Network → Ethernet** if it's wired) shows the IP address |
 
-These can list more than one address, such as Docker's or a VPN's. Pick the one on the same
-network as the phone: it usually starts the same way as the phone's own address, often
+`hostname -I` can list more than one address, such as Docker's or a VPN's. Pick the one on the
+same network as the phone: it usually starts the same way as the phone's own address, often
 `192.168.` or `10.`. With an address like `192.168.1.20`, the server is at `http://192.168.1.20:8080`. Connect the
 phone to the same Wi-Fi and open that address in its browser: you should see notesd's sign-in
 page. If it doesn't load, the computer's firewall may be blocking port 8080.
