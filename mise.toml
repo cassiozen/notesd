@@ -42,8 +42,14 @@ dir = "website"
 depends = ["install"]
 run = "pnpm dev"
 
+[tasks."dev:docs"]
+description = "Docs site (VitePress over docs/) dev server"
+dir = "website"
+depends = ["install"]
+run = "pnpm dev:docs"
+
 [tasks."build:website"]
-description = "Landing page, built to website/dist"
+description = "Landing page and docs (at /docs/), built to website/dist"
 dir = "website"
 depends = ["install"]
 run = "pnpm build"
