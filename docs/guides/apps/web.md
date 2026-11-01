@@ -1,3 +1,8 @@
+---
+title: Installing the web app
+description: Install notesd from Chrome or Safari so it opens in its own window and works offline.
+---
+
 # Installing the web app
 
 Installed, notesd opens in its own window from your dock or taskbar, and
@@ -6,7 +11,7 @@ keeps your notes on the computer so it works without a connection.
 It needs notesd served over HTTPS (or from `localhost`): on a plain-HTTP
 address like `http://192.168.1.20:8080`, Chrome won't show its install
 offer, and no browser keeps notes on the computer. See
-[Access from anywhere with HTTPS](hosting.md#access-from-anywhere-with-https).
+[Access from anywhere with HTTPS](../self-hosting/https.md#access-from-anywhere-with-https).
 
 ## Chrome
 

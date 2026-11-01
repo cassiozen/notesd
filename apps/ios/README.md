@@ -2,12 +2,12 @@
 
 The native iPhone client: offline-first, with its own SQLite database and
 full-text index, a native rich-text editor, and sync with notesd. Design and
-protocol are in [`docs/architecture.md`](../../docs/architecture.md); the
+protocol are in [`docs/contributing/architecture.md`](../../docs/contributing/architecture.md); the
 Android app (`apps/android`) is the reference this one ports from, file for
 file where it can.
 
 This README is for working on the app. To install and use it, see
-[`docs/ios.md`](../../docs/ios.md).
+[`docs/guides/apps/iphone.md`](../../docs/guides/apps/iphone.md).
 
 ## Setup
 

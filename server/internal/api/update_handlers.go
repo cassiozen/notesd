@@ -35,7 +35,7 @@ func (s *Server) updateStatus(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// POST /api/v1/update — asks notesd-update (docs/operations.md) to install
+// POST /api/v1/update — asks notesd-update (docs/guides/self-hosting/upgrading.md) to install
 // the newest release. notesd only leaves a file in its data directory; the
 // root service decides what to install, so this can't run anything else.
 func (s *Server) requestUpdate(w http.ResponseWriter, r *http.Request) {

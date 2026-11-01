@@ -1,3 +1,8 @@
+---
+title: notesd — Architecture Specification
+description: The specification of the data model, sync protocol, conflicts, Markdown, search, API and security.
+---
+
 # notesd — Architecture Specification
 
 ## 1. Overview
@@ -582,11 +587,11 @@ Configuration is flags and environment variables (`NOTESD_DATA_DIR`, `NOTESD_LIS
 
 **Markdown mirror.** `serve --mirror-dir DIR` keeps every account's live, unlocked notes in `DIR/<username>/` as files laid out like `export`'s, always with a folder per space, so a second space doesn't move every file (`internal/mirror`). It is low priority and one-way. A committed write to notes, spaces or images only flags its account, without blocking. One goroutine writes an account once it has been quiet for 10 s, or 2 min after its first unwritten change. It reads what changed from the sync feed (§5.2), from a cursor kept in a manifest (`.notesd-mirror.json`) beside the files, together with the path and hash of each file it wrote. So a restart resumes, an unchanged note isn't rewritten, and only the mirror's own files are ever replaced or deleted. A new sync generation (a restore, §11.4) rewrites the folder and drops files of notes the database doesn't have. Spaces aren't in the feed, so each pass compares their names to their folders; a renamed space's folder moves whole only when it holds nothing but the mirror's files. Names that would clash are compared ignoring case on every filesystem, since the folder may be synced to macOS or Windows. A manifest path that isn't a plain relative path refuses the folder, since a synced manifest could come from elsewhere. Files are replaced through a temporary file and a rename. A note that is locked loses its file, so its plain text doesn't outlive the lock on disk. A note showing an image not yet uploaded is written again once the image arrives.
 
-WAL mode is enabled with a busy timeout for brief write contention. The development toolchain and build tasks are defined in the root `mise.toml` (`mise run build` produces the binary with the web app embedded). Installation, HTTPS and systemd are covered for users in `docs/hosting.md`; releases (server binaries and the signed APK) in `docs/releasing.md`.
+WAL mode is enabled with a busy timeout for brief write contention. The development toolchain and build tasks are defined in the root `mise.toml` (`mise run build` produces the binary with the web app embedded). Installation, HTTPS and systemd are covered for users in `docs/guides/self-hosting/`; releases (server binaries and the signed APK) in `docs/contributing/releasing.md`.
 
 ### 11.2 Process supervision
 
-systemd is recommended; the unit users install is in `docs/hosting.md`. The server shuts down gracefully on termination signals so transactions complete or roll back.
+systemd is recommended; the unit users install is in `docs/guides/self-hosting/binary-systemd.md`. The server shuts down gracefully on termination signals so transactions complete or roll back.
 
 ```ini
 [Service]

@@ -107,7 +107,7 @@ func run(args []string) error {
 		fs.StringVar(&o.logFormat, "log-format", env("NOTESD_LOG_FORMAT", "text"), "text or json")
 		fs.StringVar(&o.resendURL, "resend-url", env("NOTESD_RESEND_URL", ""), "Resend API base URL for emailing notes (default https://api.resend.com)")
 		fs.StringVar(&o.mirrorDir, "mirror-dir", env("NOTESD_MIRROR_DIR", ""), "also keep every user's notes in this directory as Markdown files, one folder per user")
-		fs.BoolVar(&o.selfUpdate, "self-update", env("NOTESD_SELF_UPDATE", "") == "true", "let admins update from Settings; needs the notesd-update service (docs/operations.md)")
+		fs.BoolVar(&o.selfUpdate, "self-update", env("NOTESD_SELF_UPDATE", "") == "true", "let admins update from Settings; needs the notesd-update service (docs/guides/self-hosting/upgrading.md)")
 	case "create-owner", "remove-user":
 		usernameFlag("username")
 	case "add-user":

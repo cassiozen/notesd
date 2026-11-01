@@ -1,3 +1,8 @@
+---
+title: notesd on iPhone
+description: Build and install the iPhone app, connect it to your server, and use it.
+---
+
 # notesd on iPhone
 
 The iPhone app keeps a full copy of your notes on the phone. Writing,
@@ -45,7 +50,7 @@ to a server** in Settings (the sidebar's gear):
 2. Then either:
    - **Sign in** with your username and password, or
    - on a **new server** that has no account yet, create the account
-     from the phone (see [hosting.md](hosting.md#create-your-account)).
+     from the phone (see [hosting.md](../self-hosting/users.md#create-your-account)).
 
 The app only connects over **HTTPS**, or over plain HTTP to an address on
 your own network (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`,

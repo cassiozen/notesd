@@ -5,14 +5,14 @@ TypeScript, Vite 8 and Tiptap 3. It builds into the server's
 `internal/web/dist` and is embedded in the Go binary, so a deployment is just
 that one binary; there is no separate frontend process. For using the web
 app, see the [README](../../README.md) and
-[installing the web app](../../docs/installing-web-app.md).
+[installing the web app](../../docs/guides/apps/web.md).
 
 ## Dev loop
 
 From the repo root, `mise run dev` starts the API server (rebuilt on Go
 changes), Vite at http://localhost:5173, and Gradle rebuilding the sync
 engine (below) when its Kotlin changes. See
-[docs/development.md](../../docs/development.md).
+[docs/contributing/development.md](../../docs/contributing/development.md).
 
 Vite proxies `/api`, `/healthz` and `/readyz` to `http://127.0.0.1:8080`.
 Set `NOTESD_SERVER` to point it elsewhere. The proxy keeps the browser's

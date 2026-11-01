@@ -1,3 +1,8 @@
+---
+title: Settings
+description: How Settings is organized on every app, and where a new setting goes.
+---
+
 # Settings
 
 Settings is a list of categories in two groups. Each category opens its own page. Web, iOS and

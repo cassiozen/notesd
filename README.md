@@ -22,20 +22,20 @@ offline and syncs your notes whenever a connection is available.</p>
   See [Security](#security) for more details.
 
 - **Installable, offline-first web app.** Install it from your browser and it keeps your notes on the device, so it opens, edits and searches them without a connection.  
-  See [Installing the web app](docs/installing-web-app.md) for more details.
+  See [Installing the web app](docs/guides/apps/web.md) for more details.
 
 - **Markdown under the hood.** Notes are stored as Markdown, and you can take them out at any time.  
   See [Your data](#your-data) for more details.
 
 ## Get started
 
-1. **Host the server.** Run it with Docker (`ghcr.io/cassiozen/notesd`) or download the single binary for your machine. See [docs/hosting.md](docs/hosting.md).
+1. **Host the server.** Run it with Docker (`ghcr.io/cassiozen/notesd`) or download the single binary for your machine. See [Run with Docker](docs/guides/self-hosting/docker.md) or [Run the binary](docs/guides/self-hosting/binary-systemd.md).
 2. **Create your account.** Open the server in a browser and create your
    account. Do this before exposing it to the internet; see
-   [docs/hosting.md](docs/hosting.md#create-your-account).
+   [Accounts](docs/guides/self-hosting/users.md#create-your-account).
 3. **Install the Android app.** Download the APK from
    [Releases](https://github.com/cassiozen/notesd/releases) and connect it to
-   your server. See [docs/android.md](docs/android.md).
+   your server. See [Android](docs/guides/apps/android.md).
 
 ## Your data
 
@@ -60,7 +60,7 @@ notesd serve --mirror-dir ~/notes-markdown
 ```
 
 New and edited notes are written there shortly after they change. See
-[docs/hosting.md](docs/hosting.md#markdown-mirror).
+[Markdown mirror and export](docs/guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror).
 
 ## Security
 
@@ -81,7 +81,7 @@ matters to you, and HTTPS for anything reachable from the internet.
   passkey or fingerprint set up, those notes can't be recovered.
 
 The full threat model is in
-[docs/architecture.md §10.1](docs/architecture.md#101-locked-notes).
+[architecture §10.1](docs/contributing/architecture.md#101-locked-notes).
 
 ## How it's built
 
@@ -94,7 +94,7 @@ The full threat model is in
 
 A few things that may be interesting if you're reading the code:
 
-- **One spec.** [docs/architecture.md](docs/architecture.md) is the
+- **One spec.** [docs/contributing/architecture.md](docs/contributing/architecture.md) is the
   specification: data model, sync protocol, conflict rules, Markdown dialect,
   search ranking and the locked-notes design. Changes to any of those start
   there.
@@ -111,13 +111,13 @@ A few things that may be interesting if you're reading the code:
 
 ## Documentation
 
-| Guide | For |
+Start at the [documentation index](docs/README.md).
+
+| Section | For |
 | --- | --- |
-| [Hosting](docs/hosting.md) | Installing the server with Docker or as a binary with systemd, HTTPS, configuration |
-| [Android](docs/android.md) | Installing the app, connecting, how sync works |
-| [iPhone](docs/ios.md) | Building and installing the iPhone app, connecting |
-| [Operations](docs/operations.md) | Upgrades, maintenance, monitoring |
-| [Development](docs/development.md) | Building from source and working on notesd |
-| [Settings](docs/settings.md) | How Settings is organized on every app, and where a new setting goes |
-| [Architecture](docs/architecture.md) | How it works: data model, sync protocol, conflicts |
-| [Server API](server/README.md) | The HTTP API reference |
+| [Self-hosting](docs/README.md#guides) | Docker or a binary with systemd, HTTPS, accounts, backups, upgrades, monitoring |
+| [Apps](docs/README.md#guides) | Installing and connecting the web, Android and iPhone apps |
+| [Command line](docs/reference/cli.md) | Every command, flag and environment variable |
+| [FAQ](docs/faq.md) | Quick answers |
+| [Contributing](docs/README.md#contributing) | Building from source, the architecture spec, releasing |
+| [Server API](server/README.md#api) | The HTTP API reference |

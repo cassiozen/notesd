@@ -102,8 +102,8 @@ private sealed interface Confirm {
 }
 
 /**
- * Settings, laid out like the system's (docs/settings.md): the account on top, then each category with its
- * state on the right, under a header that says where its settings are kept.
+ * Settings, laid out like the system's (docs/contributing/settings-guidelines.md): the account on top, then each
+ * category with its state on the right, under a header that says where its settings are kept.
  */
 @Composable
 fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOpen: (SettingsSection) -> Unit) {

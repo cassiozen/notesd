@@ -1,4 +1,4 @@
-# Builds and publishes a release when a v* tag is pushed (docs/releasing.md).
+# Builds and publishes a release when a v* tag is pushed (docs/contributing/releasing.md).
 name: Release
 
 on:
@@ -79,7 +79,7 @@ jobs:
         run: |
           cd server/bin
           rm -f notesd-dev
-          cp ../../scripts/notesd-update . # for Updating from Settings (docs/operations.md)
+          cp ../../scripts/notesd-update . # for Updating from Settings (docs/guides/self-hosting/upgrading.md)
           sha256sum notesd-* > SHA256SUMS
           prerelease=""
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac

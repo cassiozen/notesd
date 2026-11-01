@@ -1,4 +1,4 @@
-/** Settings' categories, in the order docs/settings.md gives. The native apps' About has nothing on the web. */
+/** Settings' categories, in the order docs/contributing/settings-guidelines.md gives. The native apps' About has nothing on the web. */
 export const SECTIONS = [
   { key: 'server', title: 'Server', group: 'account' },
   { key: 'security', title: 'Security', group: 'account' },

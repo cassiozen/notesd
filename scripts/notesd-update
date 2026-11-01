@@ -1,5 +1,5 @@
 #!/bin/bash
-# Installs the newest notesd release when the web app asks (docs/operations.md, "Updating from
+# Installs the newest notesd release when the web app asks (docs/guides/self-hosting/upgrading.md, "Updating from
 # Settings"). Run as root by notesd-update.service:
 #
 #   notesd-update DATA_DIR [BINARY]

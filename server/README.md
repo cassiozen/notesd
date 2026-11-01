@@ -1,19 +1,18 @@
 # notesd server
 
-The backend from [docs/architecture.md](../docs/architecture.md): one Go binary
+The backend from [docs/contributing/architecture.md](../docs/contributing/architecture.md): one Go binary
 serving the JSON API, the sync feed, full-text search and the embedded web
 app ([apps/web](../apps/web/README.md)), backed by SQLite: a system database
 for accounts, sessions and server-wide settings, and one database per account
 for its notes.
 
 This README is the developer and API reference. To install and run notesd,
-see [docs/hosting.md](../docs/hosting.md) and
-[docs/operations.md](../docs/operations.md).
+see the [documentation](../docs/README.md).
 
 ## Build and test
 
 Requires the toolchain in the root `mise.toml` (see
-[docs/development.md](../docs/development.md)). No cgo: the SQLite driver is
+[docs/contributing/development.md](../docs/contributing/development.md)). No cgo: the SQLite driver is
 `modernc.org/sqlite` (pure Go, FTS5 included), so cross-compiling for a
 Raspberry Pi is a plain `GOARCH` switch.
 
@@ -37,8 +36,7 @@ exist). A binary built without the web app still works; web pages show a
 The commands (`serve`, the default, plus `create-owner`, `add-user`,
 `list-users`, `remove-user`, `reset-password`, `reindex`, `check`,
 `gc-images`, `export` and `version`) and every user-facing flag are documented
-in [docs/hosting.md](../docs/hosting.md#configuration) and
-[docs/operations.md](../docs/operations.md#maintenance-commands). Notes for
+in the [command line reference](../docs/reference/cli.md). Notes for
 working on them:
 
 - The data directory holds `system.db` (accounts, sessions, server-wide

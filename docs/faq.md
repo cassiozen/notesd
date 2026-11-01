@@ -1,3 +1,8 @@
+---
+title: Frequently asked questions
+description: Short answers about notesd, your data, sync, the apps and running the server.
+---
+
 # Frequently asked questions
 
 - [About notesd](#about-notesd)
@@ -35,7 +40,7 @@ instead of someone else's cloud.
 No. There are no analytics in the server or the apps. The server contacts
 other services only for features you turn on: Resend, to email a note, and
 GitHub, to check for new releases, only when
-[updating from Settings](operations.md#updating-from-settings) is enabled.
+[updating from Settings](guides/self-hosting/upgrading.md#updating-from-settings) is enabled.
 
 ## Notes and Markdown
 
@@ -98,7 +103,7 @@ unless you add `--include-locked` and type the lock password. It's safe to
 run while the server is up.
 
 To keep an always-current copy instead, use the
-[Markdown mirror](hosting.md#markdown-mirror).
+[Markdown mirror](guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror).
 
 ### Can I keep my notes as `.md` files, like an Obsidian vault?
 
@@ -108,7 +113,7 @@ Yes, two ways:
   folder of Markdown files up to date as you write: a folder per account,
   a folder per space, a file per note named after its title, and pictures
   in `images/`. Point Syncthing, a backup tool or another editor at it. See
-  [Markdown mirror](hosting.md#markdown-mirror).
+  [Markdown mirror](guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror).
 - **One-time export.** `notesd export --out DIR` writes the files once,
   named the same way, with pictures in `images/`. With only one space it
   skips the space folder. On a server with several accounts, add
@@ -123,7 +128,7 @@ and pasting into the title line makes the first line the title.
 ### How do I back up?
 
 Back up the whole data directory. For a consistent copy, stop the server
-first (the [operations guide](operations.md) shows how, with and without
+first ([Backups](guides/self-hosting/backups.md) shows how, with and without
 Docker). The phones' copies aren't a backup. Keep a copy off the machine.
 
 ## Offline and sync
@@ -135,7 +140,7 @@ Docker). The phones' copies aren't a backup. Keep a copy off the machine.
 - **Web:** if you choose **Keep my notes on this device** (at sign-in or in
   **Settings → Sync & data**), the browser keeps a full copy and works
   offline too. It's on by default in the
-  [installed web app](installing-web-app.md). It needs HTTPS, and isn't
+  [installed web app](guides/apps/web.md). It needs HTTPS, and isn't
   offered in private windows.
 
 ### When does it sync?
@@ -246,7 +251,7 @@ Each note has a revision; the server keeps a global change counter. A device
 uploads an edit with the revision it started from, and downloads everything
 changed since its last cursor. No CRDTs, no WebSockets. Every upload carries
 an operation ID, so a retry after a lost response is never applied twice.
-Details in [architecture §5–6](architecture.md#5-synchronization-protocol).
+Details in [architecture §5–6](contributing/architecture.md#5-synchronization-protocol).
 
 ### How does the web app work offline?
 
@@ -261,6 +266,6 @@ Yes, a JSON API under `/api/v1`. See [server/README.md](../server/README.md).
 
 ### Where's the spec?
 
-[docs/architecture.md](architecture.md): data model, sync protocol,
+[The architecture spec](contributing/architecture.md): data model, sync protocol,
 conflict rules, the Markdown dialect, search ranking and the locked-notes
 design. Changes to any of those start there.

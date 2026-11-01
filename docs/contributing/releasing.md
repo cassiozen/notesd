@@ -1,14 +1,19 @@
+---
+title: Releasing notesd
+description: Cutting a release, versions, Android signing and local release builds.
+---
+
 # Releasing notesd
 
 A release is a `v*` tag. Pushing one runs
-[`.github/workflows/release.yml`](../.github/workflows/release.yml), which
+[`.github/workflows/release.yml`](../../.github/workflows/release.yml), which
 checks, builds and publishes everything:
 
 | Artifact | Where |
 | --- | --- |
 | Server binaries: `notesd-linux-amd64`, `notesd-linux-arm64`, `notesd-darwin-arm64` | GitHub release |
 | Signed Android APK: `notesd-<version>.apk` | GitHub release |
-| `notesd-update`, for [updating from Settings](operations.md#updating-from-settings) | GitHub release |
+| `notesd-update`, for [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings) | GitHub release |
 | `SHA256SUMS` for all of the above | GitHub release |
 | Docker image, `linux/amd64` and `linux/arm64` | `ghcr.io/cassiozen/notesd` |
 
@@ -43,7 +48,7 @@ so the prerelease no longer sorts before the release.
 
 A tag with a hyphen is published as a prerelease:
 the Docker image gets only its exact version tag (`0.3.0-rc1`, not
-`0.3` or `latest`), and [updating from Settings](operations.md#updating-from-settings)
+`0.3` or `latest`), and [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings)
 never installs it.
 
 ## Versions
