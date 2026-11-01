@@ -20,8 +20,10 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 
 ### Requests
 
-- Every endpoint is under `/api/v1`, except [health](#health). Any other path serves the web app.
-- Request and response bodies are JSON. Unknown fields in a request are ignored, so newer clients
+- Every endpoint is under `/api/v1`, except [health](#health). An unknown path under `/api/` is
+  `404 not_found`; any other path serves the web app.
+- Request and response bodies are JSON, except [images](#images), which are uploaded and
+  downloaded as raw bytes. Unknown fields in a request are ignored, so newer clients
   keep working with older servers. Bodies can be up to 4 MiB; images have their own
   [limit](#images).
 - Timestamps are milliseconds since the Unix epoch.
@@ -57,9 +59,13 @@ Creating, updating and deleting a note are idempotent and checked against the no
   `Idempotent-Replayed: true`, even if the note has changed since. The same ID with another body
   is `422 operation_id_reused`.
 - **`baseRevision`** is the revision the edit started from. If the note has a newer one, the write
-  is refused with `409 revision_conflict`, so an edit never overwrites one it hasn't seen.
+  is refused with `409 revision_conflict`, so an edit never overwrites one it hasn't seen. The
+  exception: deleting a note that's already deleted succeeds as `already_deleted`, whatever
+  `baseRevision` says.
 - **Note IDs** are chosen by the client: 1–64 characters of `[A-Za-z0-9_-]`. A title can be up to
-  1 KiB and content up to 1 MiB, as UTF-8 without NUL characters.
+  1 KiB and content up to 1 MiB, as UTF-8 without NUL characters. For a
+  [locked note](#locked-notes), the 1 MiB applies to the body before encryption, so its
+  encrypted `content` can be somewhat longer.
 - **`createdAt` and `updatedAt`** may be sent, so edits made offline show when they happened. They
   are informational only, and a time more than a day in the future is replaced with the server's.
 
@@ -264,8 +270,9 @@ parents of nested tags. `count` is the number of notes with the tag or one neste
 | `PUT` | `/images/{sha256}` | The raw image → `201 {id, contentType, size, createdAt}`, or `200` if it's already stored |
 | `GET` | `/images/{sha256}` | → the image bytes |
 
-`{sha256}` is the lowercase hex SHA-256 of the bytes (`400 hash_mismatch` otherwise), so
-uploading the same image again is safe. `Content-Type` must be `image/jpeg`, `image/png`,
+`{sha256}` is the lowercase hex SHA-256 of the bytes, so uploading the same image again is safe.
+An ID that isn't 64 lowercase hex characters is `400 invalid_request`; one that doesn't match
+the bytes is `400 hash_mismatch`. `Content-Type` must be `image/jpeg`, `image/png`,
 `image/webp` or `image/gif`, matching the bytes (`415 unsupported_image` otherwise), or
 `application/vnd.notesd.locked` for an encrypted image. Images can be up to 10 MiB
 (`413 image_too_large`). `GET` answers with `ETag`,
@@ -379,7 +386,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |
 | `image_too_large` | 413 | Images can be up to 10 MiB |
-| `unsupported_image` | 415 | Not JPEG, PNG, WebP or GIF, or the bytes don't match the type |
+| `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
 | `rate_limited` | 429 | Too many failed attempts; see `Retry-After` |
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |

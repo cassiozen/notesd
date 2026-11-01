@@ -65,7 +65,8 @@ working on them:
 The API is documented for its users in
 [docs/reference/api.md](../docs/reference/api.md). When you change an endpoint, a
 parameter, a response or an error code, update that page in the same change. Error
-codes come from `writeErr` in `internal/api/respond.go`.
+codes come from `writeErr` in `internal/api/respond.go` and from `writeError` calls in
+the handlers and middleware (`grep -rn 'writeError\|Error:' internal/api`).
 
 ## Layout
 
