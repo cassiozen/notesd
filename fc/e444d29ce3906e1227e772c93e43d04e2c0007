@@ -1,0 +1,40 @@
+docs/concepts/how-sync-works.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 47-51,69-77
+docs/guides/using/offline-and-sync.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 18,20-21,47
+docs/guides/apps/web.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 8-9
+docs/guides/using/settings.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 17,21
+docs/guides/apps/android.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 58-59
+docs/guides/using/writing-and-markdown.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 42-44,74-75
+docs/guides/self-hosting/backups.md
+  s_9dd17d69a6442f::t_b16c02306e95d3 12-13,61-62,66-67,70-77,79-81,83,85-91,94-95
+  s_9dd17d69a6442f::t_d1cd7aba78737c 96
+docs/README.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 33
+README.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 43-44
+docs/concepts/where-data-lives.md
+  s_9dd17d69a6442f::t_b16c02306e95d3 49
+docs/concepts/security-model.md
+  s_9dd17d69a6442f::t_dbb152253a48c8 64-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fce444d29ce3906e1227e772c93e43d04e2c0007",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
