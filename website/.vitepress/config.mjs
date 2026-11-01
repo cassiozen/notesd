@@ -8,9 +8,13 @@ const docsDir = path.join(repoDir, "docs");
 const repo = "https://github.com/cassiozen/notesd";
 const vueDir = path.dirname(createRequire(import.meta.url).resolve("vue/package.json"));
 
-// Contributor docs and repo files outside docs/ aren't on the site; links to them go to GitHub
-// instead of 404ing. Docs keep plain relative links so they also work when browsed on GitHub.
-function linkOutsideSiteToGitHub(md) {
+// README.md is the index on GitHub; numeric prefixes only order files there.
+const rewrite = (file) => file.replace(/^README\.md$/, "index.md").replace(/(^|\/)\d+-/, "$1");
+
+// Docs keep plain relative links to source files so they also work when browsed on GitHub.
+// VitePress applies `rewrites` to page URLs but not to links, so links into the site are rewritten
+// here too. Contributor docs and repo files outside docs/ aren't on the site; links go to GitHub.
+function rewriteLinks(md) {
   const render = md.renderer.rules.link_open;
   md.renderer.rules.link_open = (tokens, idx, options, env, self) => {
     const token = tokens[idx];
@@ -18,8 +22,11 @@ function linkOutsideSiteToGitHub(md) {
     if (href && !/^[a-z]+:/i.test(href) && !href.startsWith("#")) {
       const [file, hash] = href.split("#");
       const target = path.relative(repoDir, path.resolve(path.dirname(env.realPath ?? env.path), file));
+      const anchor = hash ? `#${hash}` : "";
       if (!target.startsWith("docs/") || target.startsWith("docs/contributing/")) {
-        token.attrSet("href", `${repo}/blob/main/${target}${hash ? `#${hash}` : ""}`);
+        token.attrSet("href", `${repo}/blob/main/${target}${anchor}`);
+      } else if (target.endsWith(".md")) {
+        token.attrSet("href", `/${rewrite(path.relative("docs", target))}${anchor}`);
       }
     }
     return render(tokens, idx, options, env, self);
@@ -31,8 +38,7 @@ export default defineConfig({
   srcExclude: ["contributing/**"],
   outDir: "dist/docs",
   base: "/docs/",
-  // README.md is the index on GitHub; numeric prefixes only order files there.
-  rewrites: (id) => id.replace(/^README\.md$/, "index.md").replace(/(^|\/)\d+-/, "$1"),
+  rewrites: rewrite,
 
   title: "notesd",
   description: "Guides and reference for running and using notesd.",
@@ -60,7 +66,7 @@ export default defineConfig({
   },
 
   markdown: {
-    config: linkOutsideSiteToGitHub,
+    config: rewriteLinks,
   },
 
   themeConfig: {
