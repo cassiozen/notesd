@@ -20,7 +20,7 @@ description: Create the first account on your new server, before anyone else can
 You're signed in, looking at an empty list of notes.
 
 This first account is the server's **admin**. It can change settings that apply to everyone on the
-server, such as [emailing notes](../guides/apps/iphone.md#email), and you can
+server, such as [emailing notes](../guides/using/email.md), and you can
 [add accounts](../guides/self-hosting/users.md#adding-people) for other people later. Each account
 has its own notes, which no other account can see.
 

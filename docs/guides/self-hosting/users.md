@@ -19,7 +19,7 @@ NOTESD_OWNER_USERNAME=me
 NOTESD_OWNER_PASSWORD=…
 ```
 
-This first account is an admin: it can set up [emailing notes](../apps/iphone.md#email) for everyone.
+This first account is an admin: it can set up [emailing notes](../using/email.md) for everyone.
 
 ## Adding people
 
@@ -41,6 +41,6 @@ sudo -u notesd notesd reset-password --username sam --data-dir /var/lib/notesd
 docker exec -it notesd notesd reset-password --username sam
 ```
 
-`list-users` and `remove-user` are in the [command line reference](../../reference/cli.md#commands).
+`list-users` and `remove-user` are in the [command line reference](../../reference/cli.md#account-commands).
 
 A phone that's signed out keeps its notes, so only the same account can sign in on it again. To hand a phone to someone else, remove all data from it in Settings first.
