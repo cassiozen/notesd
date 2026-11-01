@@ -1,0 +1,33 @@
+docs/get-started/00-introduction.md
+  h_506d0d833c777f 21
+docs/get-started/02-create-your-account.md
+  s_2926c3e44f013e::t_d8d4b2da6afb5c 16-17,31-33
+  s_2926c3e44f013e::t_885fcda66a8ae7 23,28,36
+docs/get-started/04-write-your-first-note.md
+  s_2926c3e44f013e::t_7f4ee51a5a7657 36
+README.md
+  s_2926c3e44f013e::t_90327c0b1d4a4b 24
+docs/guides/self-hosting/users.md
+  s_2926c3e44f013e::t_c044537a10dd1e 17-19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f44c7e3fb6b4866aa8b1b33b36ca73ad088100f5",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2926c3e44f013e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3453cd1f-094b-4fd1-9ec8-8c72330cb856",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
