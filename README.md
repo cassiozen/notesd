@@ -2,12 +2,16 @@
 
 <h2 align="center">notesd</h2>
 <p align="center">Self-hosted notes, with a web app and native Android and iPhone apps that work offline.</p>
+<p align="center"><sub><b>notesd</b> · /notes-dee/ · <i>n.</i> a small daemon, like sshd or httpd, but for your grocery lists.</sub></p>
 <p align="center"><a href="https://notesd.app">notesd.app</a></p>
 
 <img width="1448" height="1086" alt="notesd in a browser and on a phone" src="https://github.com/user-attachments/assets/9ceabc92-18c3-443d-9e3f-5a8e058d0c4f" />
 
-notesd is a small server you run yourself, on a cheap VPS, a home server or a Raspberry Pi: one
-binary with SQLite inside, and nothing else to set up.
+notesd is a small server you run yourself, on a cheap VPS, a home server, or a Raspberry Pi under
+your desk: one binary with SQLite inside, and nothing else to set up.
+
+I wanted a notes app that runs on my own server, works offline on my phone, and doesn't try to be
+a second brain.
 
 ## Quick start
 
