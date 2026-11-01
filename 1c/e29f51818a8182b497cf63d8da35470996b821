@@ -1,0 +1,63 @@
+docs/guides/using/writing-and-markdown.md
+  s_9dd17d69a6442f::t_8fad8fd0505390 1-28,32-34,37-65,67-77
+  s_9dd17d69a6442f::t_f6227766d99901 29-31,35-36,66
+README.md
+  s_9dd17d69a6442f::t_d10cfb85b3356c 22,25,28,39,41-48,82-87
+docs/faq.md
+  s_9dd17d69a6442f::t_6bda0609509b47 61-62,69,131-134,174,197,256-257
+docs/guides/using/organize-and-find.md
+  s_9dd17d69a6442f::t_476690c4ea0d7b 1-65
+docs/guides/apps/iphone.md
+  s_9dd17d69a6442f::t_f76487540bb2a0 53
+  s_9dd17d69a6442f::t_12cbbcbc555ef4 67-88
+docs/README.md
+  s_9dd17d69a6442f::t_51852cc394c103 16-17,24,26-31,33-38,40-46,57-61
+  s_9dd17d69a6442f::t_c48e16e3856118 62
+docs/concepts/security-model.md
+  s_9dd17d69a6442f::t_22ff796a26ce07 24-25,75
+  s_9dd17d69a6442f::t_25a777ed5cc660 1-23,26-74,76-82
+docs/guides/using/email.md
+  s_9dd17d69a6442f::t_99f6fe6c3eb59c 34-36
+  s_9dd17d69a6442f::t_b5d522a7391dcb 1-33,37-38
+docs/get-started/04-add-your-phone.md
+  s_9dd17d69a6442f::t_e8fda45c2440b7 67
+docs/get-started/02-create-your-account.md
+  s_9dd17d69a6442f::t_e8fda45c2440b7 23
+docs/guides/using/offline-and-sync.md
+  s_9dd17d69a6442f::t_2dcba2eaa4a40f 1-23,25-69
+  s_9dd17d69a6442f::t_c03f34dd0f1e6c 24
+docs/guides/apps/web.md
+  s_9dd17d69a6442f::t_f76487540bb2a0 2-3,6,8-9,11-27,30,37,43,53-60
+  s_9dd17d69a6442f::t_11e351994dcc96 50,52
+docs/guides/self-hosting/users.md
+  s_9dd17d69a6442f::t_e8fda45c2440b7 22
+docs/concepts/how-sync-works.md
+  s_9dd17d69a6442f::t_46fb5b49f561d7 1-78
+docs/guides/using/settings.md
+  s_9dd17d69a6442f::t_6d24e6377f3d60 1-26
+docs/guides/using/locked-notes.md
+  s_9dd17d69a6442f::t_66463b0a5c02cf 1-73
+docs/concepts/where-data-lives.md
+  s_9dd17d69a6442f::t_34ddc475e13eac 1-49
+docs/guides/apps/android.md
+  s_9dd17d69a6442f::t_f76487540bb2a0 40
+  s_9dd17d69a6442f::t_12cbbcbc555ef4 55,57-70
+docs/guides/self-hosting/backups.md
+  s_9dd17d69a6442f::t_dcaa926922302a 3,8-10,12-15,17-20,22,26,30-58,60-64,67-73,75-76,79-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ce29f51818a8182b497cf63d8da35470996b821",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
