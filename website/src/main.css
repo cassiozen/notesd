@@ -766,8 +766,10 @@ h2 em {
     mask-image: radial-gradient(closest-side, #000 50%, transparent 100%);
   }
 
-  .feature-overlay:hover img {
-    opacity: 0.6;
+  @media (hover: hover) {
+    .feature-overlay:hover img {
+      opacity: 0.6;
+    }
   }
 
   /* Full-width single column leaves the strip too dominant; tuck it under the text, halfway toward the overlay look */
