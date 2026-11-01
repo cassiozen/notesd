@@ -1,0 +1,19 @@
+website/index.html
+  s_5eed454af967ad::t_c4d0824b8e6123 185-186
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6e422eb387a201df0c8ea4f5e51f69b060504180",
+  "prompts": {},
+  "sessions": {
+    "s_5eed454af967ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "aa7769b4-c3ba-4a73-ad5c-48b4a12251f1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
