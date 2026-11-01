@@ -1,0 +1,29 @@
+docs/get-started/02-create-your-account.md
+  s_9dd17d69a6442f::t_771cd48c43a0b8 32
+docs/guides/self-hosting/binary-systemd.md
+  s_9dd17d69a6442f::t_771cd48c43a0b8 37,40
+docs/get-started/03-write-your-first-note.md
+  s_9dd17d69a6442f::t_771cd48c43a0b8 27-28,49-50
+docs/guides/self-hosting/docker.md
+  s_9dd17d69a6442f::t_771cd48c43a0b8 21-26,42
+docs/guides/self-hosting/upgrading.md
+  s_9dd17d69a6442f::t_771cd48c43a0b8 21-22
+docs/get-started/04-add-your-phone.md
+  s_9dd17d69a6442f::t_771cd48c43a0b8 18-19,21-23,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b7c8ddc9a2a309df181b090cef20044a52518e2d",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
