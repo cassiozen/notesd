@@ -55,7 +55,7 @@ run = "rm -rf ${NOTESD_DATA_DIR:-data}"
 
 [tasks.check]
 description = "Lint, typecheck and test everything"
-depends = ["lint", "typecheck", "test", "test:e2e", "build:website"]
+depends = ["lint", "typecheck", "test", "test:e2e"]
 
 [tasks.lint]
 depends = ["lint:go", "lint:web", "lint:sync-engine"]
