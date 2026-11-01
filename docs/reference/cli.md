@@ -13,12 +13,31 @@ Without a command, notesd runs `serve`. Every command but `version` takes `--dat
 command but `serve` and `version` works on the data directory directly, so run it as the same user as the
 server, with the same data directory. They're all safe to run while the server is up.
 
+With Docker, the image already sets the data directory:
+
 ```bash
-# systemd setup
-sudo -u notesd notesd check --data-dir /var/lib/notesd
-# Docker: the image already sets the data directory
 docker exec -it notesd notesd check
 ```
+
+### With systemd
+
+The [systemd setup](../guides/self-hosting/binary-systemd.md#keep-it-running-with-systemd) uses
+`DynamicUser=yes`, which keeps the data directory under `/var/lib/private`, where only root and the
+service can reach it, so `sudo -u notesd` doesn't work. Run commands through `systemd-run` with
+the same dynamic user and state directory instead. Units with the same `User=` share one dynamic
+user. A shell function saves typing it:
+
+```bash
+notesd-run() {
+  sudo systemd-run --pipe --wait --quiet \
+    -p DynamicUser=yes -p User=notesd -p StateDirectory=notesd -p StateDirectoryMode=0700 \
+    /usr/local/bin/notesd "$@" --data-dir /var/lib/notesd
+}
+notesd-run check
+```
+
+The rest of the file system is read-only to the command, so point `export --out` inside
+`/var/lib/notesd`.
 
 | Command | What it does |
 | --- | --- |

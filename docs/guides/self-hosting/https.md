@@ -102,6 +102,7 @@ change Docker flags, see [Changing Docker settings](docker.md#changing-docker-se
 > public IP, `-p 8080:8080` exposes notesd to the internet over plain HTTP.
 
 Without HTTPS, your password and notes are sent unencrypted, so serve plain HTTP only to networks
-you trust, and leave `NOTESD_PUBLIC_URL` unset. The apps allow plain HTTP only to private
-addresses (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`, `*.local`), and the web app can't keep
+you trust, and leave `NOTESD_PUBLIC_URL` unset. The apps allow plain HTTP only to local
+addresses (private, link-local or loopback IPs such as `192.168.x` or `10.x`, `localhost`,
+`*.local`), and the web app can't keep
 notes offline or be installed over it.

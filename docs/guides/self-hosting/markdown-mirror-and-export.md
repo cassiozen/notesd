@@ -49,7 +49,7 @@ directory. The mirror never writes through a symbolic link inside an
 account's folder either.
 
 With Docker, mount a host folder for the mirror and pass its path in the
-container:
+container. The other flags are the ones from [Run with Docker](docker.md#start-the-container):
 
 ```bash
 mkdir -p notes-markdown && sudo chown 65532:65532 notes-markdown

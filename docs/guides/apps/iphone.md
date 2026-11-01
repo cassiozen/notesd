@@ -52,9 +52,9 @@ to a server** in Settings (the sidebar's gear):
    - on a **new server** that has no account yet, create the account
      from the phone (see [Create your account](../self-hosting/users.md#create-your-account)).
 
-The app only connects over **HTTPS**, or over plain HTTP to a private
-address (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`,
-`*.local`), so your password never crosses the internet unencrypted. For a
+The app only connects over **HTTPS**, or over plain HTTP to a local
+address (private, link-local or loopback IPs such as `192.168.x` or `10.x`,
+`localhost`, `*.local`), so your password never crosses the internet unencrypted. For a
 server on your LAN, iOS asks once whether notesd may find devices on
 your local network. Allow it, or the app can't reach the server.
 

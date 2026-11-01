@@ -62,14 +62,15 @@ Open your HTTPS address in a browser and sign in with the account from
 [step 2](02-create-your-account.md).
 
 If saving fails with HTTP 403, `NOTESD_PUBLIC_URL` doesn't match the address you opened. Fix it
-by recreating the container: see
-[Changing Docker settings](../guides/self-hosting/docker.md#changing-docker-settings).
+and restart notesd: with Docker, [recreate the container](../guides/self-hosting/docker.md#changing-docker-settings);
+with systemd, edit the unit, then `sudo systemctl daemon-reload && sudo systemctl restart notesd`.
 
 > [!NOTE]
 > **Only on a network you trust**, you can skip HTTPS and serve plain HTTP to your LAN instead.
-> Recreate the container with `-p 8080:8080` and without `NOTESD_PUBLIC_URL`, and use
-> `http://<lan-ip>:8080` (`hostname -I` lists the machine's addresses). The apps accept plain
-> HTTP only to private addresses (`192.168.x`, `10.x`, `172.16–31.x`, `*.local`), and the web app
-> can't keep notes offline or be installed.
+> Recreate the container with `-p <lan-ip>:8080:8080` (binary: `--listen <lan-ip>:8080`) and
+> without `NOTESD_PUBLIC_URL`, and use `http://<lan-ip>:8080` (`hostname -I` lists the machine's
+> addresses). Never use `-p 8080:8080` on a machine with a public interface: it publishes on every
+> interface. The apps accept plain HTTP only to local addresses (private, link-local or loopback
+> IPs, `localhost`, `*.local`), and the web app can't keep notes offline or be installed.
 
 **Next:** [4. Write your first note](04-write-your-first-note.md)

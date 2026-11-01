@@ -12,23 +12,18 @@ description: Create the first account on your new server, before anyone else can
 On the server:
 
 ```bash
-read -rsp 'Password: ' pw; echo
+printf 'Password: '; IFS= read -rs pw; echo
 printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username YOUR_USERNAME
 unset pw
 ```
-
-The password needs at least 8 characters. Reading it this way keeps it off the screen, out of your
-shell history and out of `docker inspect`.
 
 ```text
 owner account created
 ```
 
-Prefer the browser? Forward the port and sign up at `http://localhost:8080` instead:
-
-```bash
-ssh -L 8080:127.0.0.1:8080 you@server
-```
+The password needs at least 8 characters. Reading it this way keeps it off the screen, out of your
+shell history and out of `docker inspect`. With the systemd setup, pipe it to
+[`notesd-run create-owner`](../reference/cli.md#with-systemd) instead.
 
 This first account is the server's **admin**. It can change settings that apply to everyone on the
 server, such as [emailing notes](../guides/using/email.md), and you can

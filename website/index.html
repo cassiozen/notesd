@@ -239,7 +239,7 @@
         <div class="cta-inner">
           <h2>Try it:</h2>
           <div class="terminal">
-            <code id="run-cmd">docker run -d -p 127.0.0.1:8080:8080 -v notesd-data:/data ghcr.io/cassiozen/notesd</code>
+            <code id="run-cmd">docker run -d --name notesd -p 127.0.0.1:8080:8080 -v notesd-data:/data -e NOTESD_PUBLIC_URL=https://notes.example.com ghcr.io/cassiozen/notesd</code>
             <button type="button" class="copy" data-copy="run-cmd" aria-live="polite">Copy</button>
           </div>
           <p>
