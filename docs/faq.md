@@ -1,3 +1,8 @@
+---
+title: Frequently asked questions
+description: Short answers about notesd, your data, sync, the apps and running the server.
+---
+
 # Frequently asked questions
 
 - [About notesd](#about-notesd)
@@ -35,7 +40,7 @@ instead of someone else's cloud.
 No. There are no analytics in the server or the apps. The server contacts
 other services only for features you turn on: Resend, to email a note, and
 GitHub, to check for new releases, only when
-[updating from Settings](operations.md#updating-from-settings) is enabled.
+[updating from Settings](guides/self-hosting/upgrading.md#updating-from-settings) is enabled.
 
 ## Notes and Markdown
 
@@ -53,14 +58,15 @@ bulleted, numbered and check lists, quotes, links and pictures.
 Code blocks show highlighted, and the web app can create and edit them.
 Anything else (tables, other images, horizontal rules, HTML) is shown
 read-only and kept exactly as written. Opening and saving a note never
-mangles Markdown written elsewhere.
+mangles Markdown written elsewhere. See
+[Writing and Markdown](guides/using/writing-and-markdown.md#markdown).
 
 ### Do `#tags` work like in Obsidian or Bear?
 
 Mostly. `#tag` anywhere in a note tags it, and `#parent/child` nests, as in
 both. `#multi word tag#` (closed with a `#`) is Bear's syntax for tags with
 spaces. Tags are plain text in the note, so they survive export as they
-are.
+are. See [Tags](guides/using/organize-and-find.md#tags).
 
 ### What about wiki-links, backlinks, graphs, plugins?
 
@@ -98,7 +104,7 @@ unless you add `--include-locked` and type the lock password. It's safe to
 run while the server is up.
 
 To keep an always-current copy instead, use the
-[Markdown mirror](hosting.md#markdown-mirror).
+[Markdown mirror](guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror).
 
 ### Can I keep my notes as `.md` files, like an Obsidian vault?
 
@@ -108,7 +114,7 @@ Yes, two ways:
   folder of Markdown files up to date as you write: a folder per account,
   a folder per space, a file per note named after its title, and pictures
   in `images/`. Point Syncthing, a backup tool or another editor at it. See
-  [Markdown mirror](hosting.md#markdown-mirror).
+  [Markdown mirror](guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror).
 - **One-time export.** `notesd export --out DIR` writes the files once,
   named the same way, with pictures in `images/`. With only one space it
   skips the space folder. On a server with several accounts, add
@@ -122,9 +128,10 @@ and pasting into the title line makes the first line the title.
 
 ### How do I back up?
 
-Back up the whole data directory. For a consistent copy, stop the server
-first (the [operations guide](operations.md) shows how, with and without
-Docker). The phones' copies aren't a backup. Keep a copy off the machine.
+Back up the whole data directory, with the server stopped for a consistent
+copy, and keep a copy off the machine. The phones' copies aren't a backup.
+[Backups](guides/self-hosting/backups.md) shows how, with and without Docker,
+and what to do when you restore.
 
 ## Offline and sync
 
@@ -135,7 +142,7 @@ Docker). The phones' copies aren't a backup. Keep a copy off the machine.
 - **Web:** if you choose **Keep my notes on this device** (at sign-in or in
   **Settings → Sync & data**), the browser keeps a full copy and works
   offline too. It's on by default in the
-  [installed web app](installing-web-app.md). It needs HTTPS, and isn't
+  [installed web app](guides/apps/web.md). It needs HTTPS, and isn't
   offered in private windows.
 
 ### When does it sync?
@@ -164,7 +171,7 @@ Nothing is lost.
 
 Yes. They share a design, the same Settings layout, and the same rules for
 Markdown, tags and locked notes, checked by shared tests. Small differences
-are listed in each platform's guide.
+are listed in each [app's guide](README.md#apps).
 
 ### Why aren't the apps in the Play Store or App Store?
 
@@ -187,7 +194,7 @@ apps. Use disk encryption on the server if that matters to you.
 **Locked notes** are the exception: they're encrypted on your device, and
 the server never has the key. Only `notesd export --include-locked`,
 run on the server's machine with the lock password typed in, decrypts
-them, to export them.
+them, to export them. See the [security model](concepts/security-model.md).
 
 ### What if I forget my lock password?
 
@@ -246,7 +253,8 @@ Each note has a revision; the server keeps a global change counter. A device
 uploads an edit with the revision it started from, and downloads everything
 changed since its last cursor. No CRDTs, no WebSockets. Every upload carries
 an operation ID, so a retry after a lost response is never applied twice.
-Details in [architecture §5–6](architecture.md#5-synchronization-protocol).
+See [How sync works](concepts/how-sync-works.md), or
+[architecture §5–6](contributing/architecture.md#5-synchronization-protocol) for the protocol.
 
 ### How does the web app work offline?
 
@@ -257,10 +265,12 @@ service worker serves the app itself.
 
 ### Is there an API?
 
-Yes, a JSON API under `/api/v1`. See [server/README.md](../server/README.md).
+Yes, a JSON API under `/api/v1`: the one notesd's own apps use. It isn't a supported
+interface for other programs yet and can change in any release. See the
+[API reference](reference/api.md).
 
 ### Where's the spec?
 
-[docs/architecture.md](architecture.md): data model, sync protocol,
+[The architecture spec](contributing/architecture.md): data model, sync protocol,
 conflict rules, the Markdown dialect, search ranking and the locked-notes
 design. Changes to any of those start there.

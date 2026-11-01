@@ -131,7 +131,7 @@ dir = "apps/android"
 run = "./gradlew :app:assembleDebug"
 
 [tasks."release:android"]
-description = "Release APK in server/bin, signed when NOTESD_KEYSTORE is set (docs/releasing.md)"
+description = "Release APK in server/bin, signed when NOTESD_KEYSTORE is set (docs/contributing/releasing.md)"
 dir = "apps/android"
 run = """
 set -e

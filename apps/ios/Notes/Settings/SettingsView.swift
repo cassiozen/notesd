@@ -1,7 +1,7 @@
 import NotesCore
 import SwiftUI
 
-/// Like the system's settings (docs/settings.md): who you're signed in as at the top, then each
+/// Like the system's settings (docs/contributing/settings-guidelines.md): who you're signed in as at the top, then each
 /// category with its state on the right, under a header that says where its settings are kept.
 struct SettingsView: View {
     @Environment(AppGraph.self) private var graph

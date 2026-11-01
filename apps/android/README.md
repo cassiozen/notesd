@@ -1,8 +1,8 @@
 # notesd for Android
 
-The native Android client: offline-first, with its own SQLite database and full-text index, a native rich-text editor, and background sync with notesd. Design and protocol are in [`docs/architecture.md`](../../docs/architecture.md).
+The native Android client: offline-first, with its own SQLite database and full-text index, a native rich-text editor, and background sync with notesd. Design and protocol are in [`docs/contributing/architecture.md`](../../docs/contributing/architecture.md).
 
-This README is for working on the app. To install and use it, see [`docs/android.md`](../../docs/android.md); release builds and signing are in [`docs/releasing.md`](../../docs/releasing.md).
+This README is for working on the app. To install and use it, see [`docs/guides/apps/android.md`](../../docs/guides/apps/android.md); release builds and signing are in [`docs/contributing/releasing.md`](../../docs/contributing/releasing.md).
 
 ## Setup
 

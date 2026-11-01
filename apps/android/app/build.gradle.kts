@@ -42,7 +42,7 @@ android {
         applicationId = "notes.app"
         minSdk = 28
         targetSdk = 37
-        // `mise run release:android` passes both, derived from the git tag (docs/releasing.md).
+        // `mise run release:android` passes both, derived from the git tag (docs/contributing/releasing.md).
         versionCode = providers.gradleProperty("notes.versionCode").map(String::toInt).getOrElse(1)
         versionName = providers.gradleProperty("notes.versionName").getOrElse("0.1.0")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"

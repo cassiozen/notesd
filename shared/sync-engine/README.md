@@ -1,6 +1,6 @@
 # Sync engine
 
-The client side of notesd's offline-first model, in Kotlin Multiplatform: the local database and search index, the API client, and sync. Design and protocol are in [`docs/architecture.md`](../../docs/architecture.md).
+The client side of notesd's offline-first model, in Kotlin Multiplatform: the local database and search index, the API client, and sync. Design and protocol are in [`docs/contributing/architecture.md`](../../docs/contributing/architecture.md).
 
 Two apps use it:
 

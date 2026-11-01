@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Settings' categories, in the order docs/settings.md gives. Server is the account row at the top.
+/// Settings' categories, in the order docs/contributing/settings-guidelines.md gives. Server is the account row at
+/// the top.
 enum SettingsSection: String, Hashable, CaseIterable {
     case server, security, spaces, integrations, appearance, device, about
 

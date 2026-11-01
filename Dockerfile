@@ -1,4 +1,4 @@
-# The release binaries (mise run release) in a minimal image; see docs/hosting.md.
+# The release binaries (mise run release) in a minimal image; see docs/guides/self-hosting/docker.md.
 FROM --platform=$BUILDPLATFORM busybox:1.37 AS data
 RUN mkdir /data
 

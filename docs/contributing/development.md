@@ -1,3 +1,8 @@
+---
+title: Developing notesd
+description: The toolchain, building and testing each part, and conventions.
+---
+
 # Developing notesd
 
 A monorepo: the Go server, the web app it embeds, the Android and iOS apps, and
@@ -87,7 +92,7 @@ mise run build:ios       # debug build for a simulator
 
 Open `apps/ios/Notes.xcodeproj` in Xcode to run the app. To install it on your
 iPhone with a free Apple ID, copy `apps/ios/Config/Local.xcconfig.example` to
-`Local.xcconfig` and fill in your team; see [ios.md](ios.md).
+`Local.xcconfig` and fill in your team; see [iPhone](../guides/apps/iphone.md).
 
 To point the app at your dev server: the simulator reaches the Mac at
 `http://localhost:8080`; a phone on your Wi-Fi connects to
@@ -121,7 +126,7 @@ push to `main` and every pull request, and the iOS checks on a macOS runner.
 
 ## Conventions
 
-- `docs/architecture.md` is the specification. Change it along with any
+- `docs/contributing/architecture.md` is the specification. Change it along with any
   change to the protocol, data model or document format.
 - `server/README.md` is the authoritative API reference.
 - Rules every platform must agree on (plain-text extraction, tags, Markdown

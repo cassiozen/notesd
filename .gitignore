@@ -8,7 +8,7 @@ node_modules/
 /server/internal/web/dist/*
 !/server/internal/web/dist/.gitkeep
 
-# Android signing keys (docs/releasing.md)
+# Android signing keys (docs/contributing/releasing.md)
 *.jks
 *.keystore
 

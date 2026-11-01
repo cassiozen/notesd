@@ -187,7 +187,7 @@ function SettingsNav({
   )
 }
 
-/** Each category's state in a word, as the list shows it (docs/settings.md); empty while it loads. */
+/** Each category's state in a word, as the list shows it (docs/contributing/settings-guidelines.md); empty while it loads. */
 function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
   const locks = useLockStatus()
   const spaces = useSpaces()
@@ -206,7 +206,7 @@ function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
 
 const RELEASES = 'https://github.com/cassiozen/notesd/releases'
 
-/** Which notesd the server runs, beside where to find newer ones (docs/operations.md, Upgrading). */
+/** Which notesd the server runs, beside where to find newer ones (docs/guides/self-hosting/upgrading.md). */
 function ServerVersion() {
   const [version, setVersion] = useState<string>()
   useEffect(() => {
@@ -234,7 +234,7 @@ function ServerVersion() {
 const UPDATE_SLOW = 3 * 60_000
 
 /**
- * A newer release, on a server set up to update itself (docs/operations.md, Updating from Settings).
+ * A newer release, on a server set up to update itself (docs/guides/self-hosting/upgrading.md, Updating from Settings).
  * Once asked, the server goes away while notesd-update swaps the binary; the page reloads when it's back
  * with a new version, so the web app matches the server.
  */

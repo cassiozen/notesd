@@ -19,69 +19,33 @@ offline and syncs your notes whenever a connection is available.</p>
 
 - **Locked notes.** You can secure notes with end-to-end encryption (AES-256-GCM). The server only stores ciphertext. Unlock with a password, a passkey (web) or biometrics (Android and iOS).  
   <img width="368" height="259" alt="Image" src="https://github.com/user-attachments/assets/607ed533-451f-42ed-90d6-e1cfe162deae" />  
-  See [Security](#security) for more details.
+  See [Locked notes](docs/guides/using/locked-notes.md) for more details.
 
 - **Installable, offline-first web app.** Install it from your browser and it keeps your notes on the device, so it opens, edits and searches them without a connection.  
-  See [Installing the web app](docs/installing-web-app.md) for more details.
+  See [Web app](docs/guides/apps/web.md) for more details.
 
 - **Markdown under the hood.** Notes are stored as Markdown, and you can take them out at any time.  
-  See [Your data](#your-data) for more details.
+  See [Markdown mirror and export](docs/guides/self-hosting/markdown-mirror-and-export.md) for more details.
 
 ## Get started
 
-1. **Host the server.** Run it with Docker (`ghcr.io/cassiozen/notesd`) or download the single binary for your machine. See [docs/hosting.md](docs/hosting.md).
-2. **Create your account.** Open the server in a browser and create your
-   account. Do this before exposing it to the internet; see
-   [docs/hosting.md](docs/hosting.md#create-your-account).
-3. **Install the Android app.** Download the APK from
-   [Releases](https://github.com/cassiozen/notesd/releases) and connect it to
-   your server. See [docs/android.md](docs/android.md).
+The [Get started guide](docs/get-started/01-run-the-server.md) takes about ten minutes:
 
-## Your data
+1. [Run the server](docs/get-started/01-run-the-server.md) with Docker (`ghcr.io/cassiozen/notesd`), or [as a single binary](docs/guides/self-hosting/binary-systemd.md).
+2. [Create your account](docs/get-started/02-create-your-account.md), before anyone else can.
+3. [Write your first note](docs/get-started/03-write-your-first-note.md) in the web app.
+4. [Add your phone](docs/get-started/04-add-your-phone.md) and watch it sync.
 
-All data is stored in SQLite, with WAL mode and FTS5. Everything runs in-process, with no database server to manage.
+## Your data and security
 
-Notes are stored as Markdown, but using a database instead of individual files gives us fast queries, indexed full-text search, and reliable transactions.
-
-You can export notes as individual markdown files with:
-
-```bash
-notesd export --out ~/notes-export
-```
-
-Locked notes are left out unless you add `--include-locked`. The command only reads the
-database, so it's safe to run while the server is up.
-
-To keep a folder of Markdown files up to date as notes change, start the server with
-`--mirror-dir`:
-
-```bash
-notesd serve --mirror-dir ~/notes-markdown
-```
-
-New and edited notes are written there shortly after they change. See
-[docs/hosting.md](docs/hosting.md#markdown-mirror).
-
-## Security
-
-Regular notes are stored unencrypted. Use disk encryption if that
-matters to you, and HTTPS for anything reachable from the internet.
-(The Android app won't send your password over plain HTTP outside your local network.)
-
-**Locked notes** have their body and images encrypted. Be aware that:
-
-- The server still sees the titles, and locked notes can't be searched by their text or emailed.
-- **Text from before locking.** When you lock a note, the server scrubs the
-  previous text from its database. Backups made earlier still hold it.
-- **Images.** A locked note's images are encrypted too. Their plain copies
-  from before locking, like images you remove from any note, stay on the
-  server for 30 days after the last note showing them stops, then they're
-  deleted. A copy another note still shows stays.
-- **Forgotten passwords.** If you forget the lock password and have no
-  passkey or fingerprint set up, those notes can't be recovered.
-
-The full threat model is in
-[docs/architecture.md §10.1](docs/architecture.md#101-locked-notes).
+- **Your data** is in one directory on the server: SQLite databases, one per account, holding notes
+  and pictures. Notes are Markdown inside, and [`notesd export`](docs/reference/cli.md#export) or
+  the [Markdown mirror](docs/guides/self-hosting/markdown-mirror-and-export.md) give you the
+  unlocked ones as files (`export --include-locked` decrypts locked notes too). See [Where your data lives](docs/concepts/where-data-lives.md) and
+  [Backups](docs/guides/self-hosting/backups.md).
+- **Regular notes are stored unencrypted** on the server. Use disk encryption if that matters to
+  you, and HTTPS for anything reachable from the internet. **Locked notes** are end-to-end
+  encrypted, with limits worth knowing. See the [security model](docs/concepts/security-model.md).
 
 ## How it's built
 
@@ -94,7 +58,7 @@ The full threat model is in
 
 A few things that may be interesting if you're reading the code:
 
-- **One spec.** [docs/architecture.md](docs/architecture.md) is the
+- **One spec.** [docs/contributing/architecture.md](docs/contributing/architecture.md) is the
   specification: data model, sync protocol, conflict rules, Markdown dialect,
   search ranking and the locked-notes design. Changes to any of those start
   there.
@@ -111,13 +75,15 @@ A few things that may be interesting if you're reading the code:
 
 ## Documentation
 
-| Guide | For |
+Start at the [documentation index](docs/README.md).
+
+| Section | For |
 | --- | --- |
-| [Hosting](docs/hosting.md) | Installing the server with Docker or as a binary with systemd, HTTPS, configuration |
-| [Android](docs/android.md) | Installing the app, connecting, how sync works |
-| [iPhone](docs/ios.md) | Building and installing the iPhone app, connecting |
-| [Operations](docs/operations.md) | Upgrades, maintenance, monitoring |
-| [Development](docs/development.md) | Building from source and working on notesd |
-| [Settings](docs/settings.md) | How Settings is organized on every app, and where a new setting goes |
-| [Architecture](docs/architecture.md) | How it works: data model, sync protocol, conflicts |
-| [Server API](server/README.md) | The HTTP API reference |
+| [Get started](docs/get-started/01-run-the-server.md) | From `docker run` to notes syncing on your phone |
+| [Using notesd](docs/README.md#using-notesd) | Writing, tags, spaces, search, locked notes, email, offline and sync, settings |
+| [Apps](docs/README.md#apps) | Installing and connecting the web, Android and iPhone apps |
+| [Self-hosting](docs/README.md#self-hosting) | Docker or a binary with systemd, HTTPS, accounts, backups, upgrades, monitoring |
+| [Concepts](docs/README.md#concepts) | How sync works, the security model, where your data lives |
+| [Reference](docs/README.md#reference) | The command line and the HTTP API |
+| [FAQ](docs/faq.md) | Quick answers |
+| [Contributing](docs/README.md#contributing) | Building from source, the architecture spec, releasing |
