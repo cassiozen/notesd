@@ -1,0 +1,25 @@
+docs/get-started/04-write-your-first-note.md
+  s_2926c3e44f013e::t_2c2595d580becf 8
+docs/get-started/05-add-your-phone.md
+  s_2926c3e44f013e::t_2c2595d580becf 46-47
+docs/get-started/00-introduction.md
+  s_2926c3e44f013e::t_2c2595d580becf 18-19
+docs/guides/self-hosting/https.md
+  s_2926c3e44f013e::t_2c2595d580becf 108
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b1c1d0d4b7d23e57074d7a0a182cbf9004bfc4e",
+  "prompts": {},
+  "sessions": {
+    "s_2926c3e44f013e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3453cd1f-094b-4fd1-9ec8-8c72330cb856",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
