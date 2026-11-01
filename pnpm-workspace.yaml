@@ -1,3 +1,4 @@
 packages:
   - apps/web
   - shared/sync-engine
+  - website
