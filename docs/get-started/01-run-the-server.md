@@ -5,16 +5,8 @@ description: Start notesd with Docker and check that it's running.
 
 # 1. Run the server
 
-This walkthrough takes you from nothing to notes syncing between your browser and your phone,
-over HTTPS, in about fifteen minutes.
-
-**You need** a Linux machine with [Docker](https://docs.docker.com/get-docker/) that you can SSH
-into and that stays on: a VPS, a home server, a NAS, or a Raspberry Pi 4 or 5. The image runs on
-64-bit Linux (x86-64 or ARM64). For HTTPS in [step 3](03-set-up-https.md), you also need either a
-domain you can point at the machine, or [Tailscale](https://tailscale.com) on it and on your
-devices.
-
-No Docker? [Run the binary instead](../guides/self-hosting/binary-systemd.md), then come back for
+Check [what you need](00-introduction.md#what-you-need) first. No Docker?
+[Run the binary instead](../guides/self-hosting/binary-systemd.md), then come back for
 [step 2](02-create-your-account.md).
 
 ## Start notesd

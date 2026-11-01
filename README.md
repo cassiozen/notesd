@@ -26,7 +26,7 @@ printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username YOUR_
 ```
 
 Then put HTTPS in front of `127.0.0.1:8080` with Caddy or Tailscale. The
-[Get started guide](docs/get-started/01-run-the-server.md) walks through it, then writing a note
+[Get started guide](docs/get-started/00-introduction.md) walks through it, then writing a note
 and connecting your phone. To run it without Docker, see
 [Run the binary with systemd](docs/guides/self-hosting/binary-systemd.md).
 
@@ -62,7 +62,7 @@ with Xcode.
 
 Start at the [documentation index](docs/README.md). Most-used pages:
 
-- [Get started](docs/get-started/01-run-the-server.md)
+- [Get started](docs/get-started/00-introduction.md)
 - [Network access and HTTPS](docs/guides/self-hosting/https.md)
 - [Command line](docs/reference/cli.md)
 - [FAQ](docs/faq.md)

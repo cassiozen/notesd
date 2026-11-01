@@ -5,7 +5,7 @@ description: Guides and reference for running and using notesd.
 
 # notesd documentation
 
-New to notesd? **[Get started](get-started/01-run-the-server.md)**: run the server, create your
+New to notesd? **[Get started](get-started/00-introduction.md)**: run the server, create your
 account, put HTTPS in front, write a note and sync your phone, in about fifteen minutes.
 
 ## I want to…
@@ -22,6 +22,8 @@ account, put HTTPS in front, write a note and sync your phone, in about fifteen 
 - **Find a quick answer:** [FAQ](faq.md)
 
 ## Get started
+
+Start with the [introduction](get-started/00-introduction.md): what notesd is, and what you need.
 
 1. [Run the server](get-started/01-run-the-server.md)
 2. [Create your account](get-started/02-create-your-account.md)
