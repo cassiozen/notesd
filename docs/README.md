@@ -30,7 +30,7 @@ account, write a note and sync your phone, in about ten minutes.
 
 ## Using notesd
 
-- [Writing and Markdown](guides/using/writing-and-markdown.md): formatting, pictures, deleting, the Markdown notes are stored as
+- [Writing and Markdown](guides/using/writing-and-markdown.md): formatting, pictures, deleting, and how notes are stored as Markdown
 - [Tags, spaces and search](guides/using/organize-and-find.md)
 - [Locked notes](guides/using/locked-notes.md): end-to-end encrypted notes
 - [Emailing notes](guides/using/email.md)

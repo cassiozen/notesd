@@ -40,8 +40,8 @@ The [Get started guide](docs/get-started/01-run-the-server.md) takes about ten m
 
 - **Your data** is in one directory on the server: SQLite databases, one per account, holding notes
   and pictures. Notes are Markdown inside, and [`notesd export`](docs/reference/cli.md#export) or
-  the [Markdown mirror](docs/guides/self-hosting/markdown-mirror-and-export.md) give you them as
-  files. See [Where your data lives](docs/concepts/where-data-lives.md) and
+  the [Markdown mirror](docs/guides/self-hosting/markdown-mirror-and-export.md) give you the
+  unlocked ones as files (`export --include-locked` decrypts locked notes too). See [Where your data lives](docs/concepts/where-data-lives.md) and
   [Backups](docs/guides/self-hosting/backups.md).
 - **Regular notes are stored unencrypted** on the server. Use disk encryption if that matters to
   you, and HTTPS for anything reachable from the internet. **Locked notes** are end-to-end

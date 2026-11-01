@@ -44,10 +44,11 @@ version, and merges field by field, comparing each with the version both started
 A field only one side changed takes that side's value. The note's space works the same way; if
 both moved it, the server's move wins.
 
-When **both changed the text**, notesd doesn't try to merge the words. The phones keep the server's
-version as the note and save their own as a new note, "… (Conflicted copy)", linked to the
-original. The web app, working on the server, asks you which to keep. Either way, both versions
-exist and nothing is silently dropped.
+When **both changed the text differently**, notesd doesn't try to merge the words. The phones keep
+the server's version as the note and save their own as a new note, "… (Conflicted copy)", linked
+to the original, so both versions exist. The web app, working on the server, asks you instead:
+**Keep mine** saves your version as a separate note, and **Use theirs** drops your edit. Nothing
+is dropped without you choosing it. (If both made the same change, there's nothing to resolve.)
 
 ## Deletions
 
@@ -65,11 +66,15 @@ uploading its old copy.
 ## Restoring a backup
 
 A server restored from a backup is behind its devices: they've seen changes the backup doesn't
-have. Each database has a **sync generation**, and devices notice when their cursor is ahead of
-the server or the generation changed. They then compare every note with the server instead of
-syncing from their cursor, re-upload what the server lost, and never treat a note missing on the
-server as deleted. [Backups](../guides/self-hosting/backups.md) describes how to restore safely
-today.
+have. A device that notices compares every note with the server instead of syncing from its
+cursor, re-uploads what the server lost, and never treats a note missing on the server as deleted.
+
+Each database has a **sync generation** for this, but notesd doesn't change it on a restore yet.
+Today a device notices only because its cursor is ahead of the server's. If new notes are written
+on the restored server before a device syncs, the server can move past that cursor, and the device
+can miss changes or overwrite some with its own copy. So after a restore, let every device sync
+before anyone writes anything new: [Backups](../guides/self-hosting/backups.md#restore) has the
+steps.
 
 ## More
 

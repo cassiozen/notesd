@@ -9,8 +9,8 @@ Everything notesd stores is in its [data directory](../../concepts/where-data-li
 accounts, every note, and every picture. Back up that whole directory, and keep a copy off the
 machine.
 
-The copies on your phones and browsers aren't a backup. They can help after a restore, but only
-for notes they had synced.
+The copies on your phones and browsers aren't a backup. They can help after a restore, with the
+notes they hold, including edits that hadn't reached the server yet.
 
 ## Make a backup
 
@@ -58,24 +58,41 @@ notesd check --data-dir /tmp/notesd-restore-test
 ## Restore
 
 1. Stop the server.
-2. Replace the data directory's contents with the backup's.
-3. Start the server.
+2. Set the current data aside, so you can go back if the restore goes wrong.
+3. Unpack the backup into the data directory. Start the server only if that succeeded.
 4. **Before anyone writes anything new,** open each app that was signed in, phones and web apps
    that keep notes, and let it sync.
 
-```bash
-# systemd
-sudo systemctl stop notesd
-sudo find /var/lib/private/notesd -mindepth 1 -delete
-sudo tar xzf notesd-backup-2026-11-01.tgz -C /var/lib/private/notesd
-sudo systemctl start notesd
+**systemd:**
 
-# Docker
-docker stop notesd
-docker run --rm -v notesd-data:/data -v "$PWD":/backup busybox \
-  sh -c 'find /data -mindepth 1 -delete && tar xzf /backup/notesd-backup-2026-11-01.tgz -C /data'
-docker start notesd
+```bash
+sudo systemctl stop notesd
+sudo mv /var/lib/private/notesd /var/lib/private/notesd.before-restore
+sudo mkdir -m 700 /var/lib/private/notesd
+sudo tar xzf notesd-backup-2026-11-01.tgz -C /var/lib/private/notesd && sudo systemctl start notesd
 ```
+
+If `tar` fails, the server stays stopped. Put the old data back with
+`sudo rm -rf /var/lib/private/notesd && sudo mv /var/lib/private/notesd.before-restore /var/lib/private/notesd`.
+Once the restored server works, delete `notesd.before-restore`.
+
+**Docker:**
+
+```bash
+docker stop notesd
+# Set the current data aside
+docker run --rm -v notesd-data:/data -v "$PWD":/backup busybox \
+  tar czf /backup/notesd-before-restore.tgz -C /data .
+# Check the backup unpacks, then replace the volume's contents with it
+docker run --rm -v notesd-data:/data -v "$PWD":/backup busybox sh -c \
+  'tar tzf /backup/notesd-backup-2026-11-01.tgz >/dev/null &&
+   find /data -mindepth 1 -delete &&
+   tar xzf /backup/notesd-backup-2026-11-01.tgz -C /data' \
+  && docker start notesd
+```
+
+If the second command fails, the server stays stopped. Put the old data back by running it again
+with `notesd-before-restore.tgz`.
 
 ### Why sync every device first
 

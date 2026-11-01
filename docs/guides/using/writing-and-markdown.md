@@ -39,8 +39,9 @@ exception: they're kept exactly as they are, so they stay animated, and keep any
 carry. A picture can be up to 10 MiB.
 
 On the phones, pictures added offline upload with the next sync. Pictures from your other devices
-download the first time you open their note, and stay on the phone for when you're offline
-(Android may clear them from its cache, and then downloads them again).
+download the first time you open their note, and are kept for when you're offline. They're kept in
+the phone's cache, which the system may clear to free space; then they download again the next
+time you open the note with a connection.
 
 ## Deleting a note
 
@@ -70,7 +71,8 @@ write: the editor shows formatting, the way Apple Notes does.
 | Picture | `![](notesd:image/<sha256>?w=1600&h=1200)` |
 
 Markdown written elsewhere is safe to open. Anything the editor can't edit (tables, horizontal
-rules, HTML, images from elsewhere) shows read-only and is saved back exactly as written.
+rules, HTML, images from elsewhere) shows read-only and is saved back as written, except that
+spaces at the end of lines are dropped.
 **Code blocks** show highlighted on every app. The web app can also create one (type ```` ``` ````,
 optionally with a language, and press Return) and edit it; the phone apps show them read-only.
 

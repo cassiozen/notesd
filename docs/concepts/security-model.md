@@ -61,7 +61,9 @@ only ciphertext.
 - **Text from before locking.** The server scrubs a note's earlier text from its live database
   when you lock it, but backups made before still have it. Free disk blocks, file-system snapshots
   and SSD wear-levelling are beyond notesd's reach.
-- **Pictures from before locking** stay on the server, unencrypted, for 30 days.
+- **Pictures from before locking** stay on the server, unencrypted, for 30 days, or longer while
+  another note still shows them. Backups made before locking keep them for as long as you keep
+  the backups.
 - **The web app** is served by the server it's protecting your notes from. Someone who controls the
   server could change the app to capture your lock password. The phone apps don't have this
   weakness.

@@ -15,9 +15,10 @@ They sync:
 - when the app opens or comes back to the screen;
 - a few seconds after you stop typing;
 - when the network comes back;
-- every couple of minutes while the app is open;
+- on the iPhone, every couple of minutes while the app is open;
 - when you pull down on the list;
-- now and then in the background, when the system allows it (on its own schedule).
+- now and then in the background, when the system allows it: on Android at most every 15 minutes,
+  on the iPhone on its own schedule.
 
 On the iPhone, the list's footer counts the notes while sync is fine, and says so when it isn't
 (Offline, or how many notes are waiting to upload); tap it for **Sync now**. **Settings → Sync &
@@ -43,7 +44,7 @@ while a tab is open. It's on by default in the [installed web app](../apps/web.m
 
 ## When two devices edit the same note
 
-Nothing is lost.
+Nothing is lost unless you choose to drop it.
 
 - **Different parts changed**, such as the title on one device and the text on another: both
   changes are kept.

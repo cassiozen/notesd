@@ -55,8 +55,8 @@ sign in again. Nothing is lost.
 ## Android specifics
 
 - Format text with the bar above the keyboard. Add a photo with its picture button.
-- On wide screens, tablets and unfolded foldables, the tags and spaces sidebar sits beside the list;
-  on a phone, **‹ Tags** above the list opens it.
+- On a wide window, such as a large tablet in landscape, the tags and spaces sidebar sits beside
+  the list. Otherwise, **‹ Tags** above the list opens it.
 - Open locked notes with your fingerprint: see [Locked notes](../using/locked-notes.md). While a
   locked note is open, it's kept out of screenshots and the recent-apps view.
 - To email a note, share it and choose **Email** ([setup](../using/email.md)).

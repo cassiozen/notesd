@@ -46,4 +46,4 @@ You can still have files whenever you want:
   its cache.
 
 A device's copy isn't a backup. If the server's data is lost, devices can help put it back (see
-[restoring](../guides/self-hosting/backups.md#restore)), but only for notes they had synced.
+[restoring](../guides/self-hosting/backups.md#restore)), but only with the notes they hold.

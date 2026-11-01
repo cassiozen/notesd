@@ -5,7 +5,8 @@ description: Use notesd in a browser, keep your notes offline, and install it as
 
 # Web app
 
-The web app is built into the server: open the server's address in any modern browser and sign in.
+The web app is built into the server: open the server's address in a browser and sign in.
+The last two versions of Chrome, Firefox and Safari are supported.
 There's nothing else to install.
 
 By default it works directly on the server, so it needs a connection. Check **Keep my notes on this
