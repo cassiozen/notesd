@@ -734,10 +734,40 @@ h2 em {
   }
 }
 
+/* Five links don't fit beside the logo; in-page anchors are the least needed on a page you just scroll */
+@media (max-width: 640px) {
+  .nav {
+    gap: 20px;
+  }
+
+  .nav .nav-section {
+    display: none;
+  }
+}
+
 @media (max-width: 600px) {
   .features {
     grid-template-columns: minmax(0, 1fr);
     grid-auto-rows: 1fr;
+  }
+
+  /* Screenshots sit under the text at this size; shadow keeps it legible over them */
+  .feature h3,
+  .feature p {
+    text-shadow: 0 1px 10px var(--surface), 0 0 2px var(--surface);
+  }
+
+  .feature-overlay img {
+    right: -14%;
+    bottom: -16%;
+    width: 62%;
+    opacity: 0.4;
+    filter: grayscale(0.35);
+    mask-image: radial-gradient(closest-side, #000 50%, transparent 100%);
+  }
+
+  .feature-overlay:hover img {
+    opacity: 0.6;
   }
 
   /* Full-width single column leaves the strip too dominant; tuck it under the text, halfway toward the overlay look */
@@ -755,21 +785,21 @@ h2 em {
   .feature-strip .feature-shot {
     position: absolute;
     right: -6%;
-    bottom: -40px;
-    width: 80%;
-    height: 160px;
+    bottom: -35px;
+    width: 82%;
+    height: 165px;
     margin: 0;
     transform: rotate(-3deg);
     mask-image:
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.3) 0%, #000 40%, transparent 100%),
-      linear-gradient(to right, transparent 0%, #000 35%);
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.45) 0%, #000 35%, transparent 100%),
+      linear-gradient(to right, transparent 0%, #000 28%);
     mask-composite: intersect;
     pointer-events: none;
   }
 
   .feature-strip img {
-    opacity: 0.38;
-    filter: saturate(0.6);
+    opacity: 0.45;
+    filter: saturate(0.7);
   }
 
   /* Strip is already tilted at this size; hover adds to it instead of straightening it */
