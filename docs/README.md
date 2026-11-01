@@ -23,6 +23,7 @@ account, write a note and sync your phone, in about ten minutes.
 - **Add someone, or reset a password:** [Accounts](guides/self-hosting/users.md)
 - **Get my notes out as Markdown:** [Markdown mirror and export](guides/self-hosting/markdown-mirror-and-export.md)
 - **Look up a command or setting:** [Command line](reference/cli.md)
+- **Look up an endpoint:** [HTTP API](reference/api.md)
 - **Find a quick answer:** [FAQ](faq.md)
 
 ## Guides
@@ -47,6 +48,7 @@ account, write a note and sync your phone, in about ten minutes.
 ## Reference
 
 - [Command line](reference/cli.md): commands, flags and environment variables
+- [HTTP API](reference/api.md): endpoints, authentication, errors
 - [FAQ](faq.md)
 
 ## Contributing

@@ -119,4 +119,4 @@ Start at the [documentation index](docs/README.md).
 | [Command line](docs/reference/cli.md) | Every command, flag and environment variable |
 | [FAQ](docs/faq.md) | Quick answers |
 | [Contributing](docs/README.md#contributing) | Building from source, the architecture spec, releasing |
-| [Server API](server/README.md#api) | The HTTP API reference |
+| [HTTP API](docs/reference/api.md) | The JSON API the apps use |

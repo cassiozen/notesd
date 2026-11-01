@@ -262,7 +262,9 @@ service worker serves the app itself.
 
 ### Is there an API?
 
-Yes, a JSON API under `/api/v1`. See [server/README.md](../server/README.md).
+Yes, a JSON API under `/api/v1`: the one notesd's own apps use. It isn't a supported
+interface for other programs yet and can change in any release. See the
+[API reference](reference/api.md).
 
 ### Where's the spec?
 

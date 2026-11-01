@@ -18,7 +18,7 @@ notesd serve --data-dir /var/lib/notesd --mirror-dir /srv/notes-markdown
 Each account gets a folder named after its username (made safe for file
 names, and numbered, such as `sam (2)`, if two usernames would make the same
 name). Inside it there's always a folder per space, even with only one (unlike
-[`export`](../../reference/cli.md#commands), which stays flat then), with a
+[`export`](../../reference/cli.md#export), which stays flat then), with a
 file per note named after its title, as `export` names them, and the images
 notes show in `images/`.
 The mirror then follows the notes:
