@@ -34,10 +34,10 @@ To build from source, see [Development](../../contributing/development.md).
 
 ## Keep it running with systemd
 
-To start notesd on boot and restart it if it crashes, install the binary:
+To start notesd on boot and restart it if it crashes, install the binary you downloaded:
 
 ```bash
-sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd
+sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd   # notesd-linux-arm64 on ARM64
 ```
 
 Then create `/etc/systemd/system/notesd.service`:
