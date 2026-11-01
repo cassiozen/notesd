@@ -178,6 +178,38 @@ h2 em {
   text-wrap: pretty;
 }
 
+/* Dictionary-entry styling explains the name and how to say it */
+.hero .pronounce {
+  margin-top: -6px;
+  font-size: 17px;
+  color: var(--subtle);
+}
+
+.pronounce .word {
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.pronounce .say {
+  font-family: var(--font-mono);
+  font-size: 15px;
+}
+
+.pronounce .say::before {
+  content: "/";
+}
+
+.pronounce .say::after {
+  content: "/";
+}
+
+.pronounce abbr {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 19px;
+  text-decoration: none;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -214,11 +246,65 @@ h2 em {
   gap: 28px;
 }
 
-.showcase img {
-  display: block;
+.mockup {
+  position: relative;
   width: 100%;
   max-width: 1100px;
+}
+
+.mockup img {
+  display: block;
+  width: 100%;
   height: auto;
+}
+
+/* Margin notes, as if scribbled on the screenshot */
+.scribble {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 22px;
+  line-height: 1.1;
+  color: var(--accent);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.scribble svg {
+  width: 52px;
+  flex: none;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Offsets track the transparent margins in mockup.png */
+.scribble-server {
+  top: 0;
+  left: 3%;
+  align-items: flex-start;
+  transform: rotate(-3deg);
+}
+
+.scribble-server svg {
+  width: 60px;
+  margin-top: 16px;
+}
+
+.scribble-phone {
+  bottom: -40px;
+  right: 2%;
+  align-items: flex-end;
+  transform: rotate(-2deg);
+}
+
+.scribble-phone svg {
+  order: 1;
+  margin-bottom: 8px;
 }
 
 .btn-video {
@@ -725,6 +811,11 @@ h2 em {
 }
 
 @media (max-width: 900px) {
+  /* No room around a shrunken mockup; notes would sit on the screenshot */
+  .scribble {
+    display: none;
+  }
+
   .features {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
