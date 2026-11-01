@@ -1,0 +1,37 @@
+docs/guides/self-hosting/docker.md
+  s_9dd17d69a6442f::t_b6d8eee1afe5aa 36,42
+server/README.md
+  s_9dd17d69a6442f::t_a39bf739c6d2a6 9,65-68
+docs/reference/api.md
+  s_9dd17d69a6442f::t_3b33f8ab818298 1-196,198-364,366-386
+  s_9dd17d69a6442f::t_a39bf739c6d2a6 197,365
+docs/guides/self-hosting/markdown-mirror-and-export.md
+  s_9dd17d69a6442f::t_b6d8eee1afe5aa 21
+docs/reference/cli.md
+  s_9dd17d69a6442f::t_6d4cfa012edc2e 8-47,49-51,55-57,60-61,63,65-70,72-74,77,80-129,131-185
+  s_9dd17d69a6442f::t_228044bacaab64 130
+docs/faq.md
+  s_9dd17d69a6442f::t_a39bf739c6d2a6 265-267
+docs/README.md
+  s_9dd17d69a6442f::t_a39bf739c6d2a6 26,51
+docs/guides/self-hosting/users.md
+  s_9dd17d69a6442f::t_b6d8eee1afe5aa 44
+README.md
+  s_9dd17d69a6442f::t_a39bf739c6d2a6 122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d60757b4926d8ce48bc47dcd00576f71de276fe0",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
