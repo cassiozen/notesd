@@ -19,7 +19,7 @@ NOTESD_OWNER_USERNAME=me
 NOTESD_OWNER_PASSWORD=…
 ```
 
-This first account is an admin: it can set up [emailing notes](../apps/iphone.md#email) for everyone.
+This first account is an admin: it can set up [emailing notes](../using/email.md) for everyone.
 
 ## Adding people
 

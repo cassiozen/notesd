@@ -64,7 +64,7 @@ You have a working notesd on your home network. From here:
   notesd in its own window: [Installing the web app](../guides/apps/web.md).
 - **Set up backups.** The phones' copies aren't a backup: [Backups](../guides/self-hosting/backups.md).
 - **Lock private notes.** Locked notes are encrypted on your device, and the server can't read
-  them: [Locked notes](../guides/apps/iphone.md#locked-notes).
+  them: [Locked notes](../guides/using/locked-notes.md).
 - **Add people.** Family or friends can have their own accounts on the same server:
   [Accounts](../guides/self-hosting/users.md#adding-people).
 - **Run it as a service without Docker:** [Run the binary with systemd](../guides/self-hosting/binary-systemd.md).

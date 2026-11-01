@@ -58,14 +58,15 @@ bulleted, numbered and check lists, quotes, links and pictures.
 Code blocks show highlighted, and the web app can create and edit them.
 Anything else (tables, other images, horizontal rules, HTML) is shown
 read-only and kept exactly as written. Opening and saving a note never
-mangles Markdown written elsewhere.
+mangles Markdown written elsewhere. See
+[Writing and Markdown](guides/using/writing-and-markdown.md#markdown).
 
 ### Do `#tags` work like in Obsidian or Bear?
 
 Mostly. `#tag` anywhere in a note tags it, and `#parent/child` nests, as in
 both. `#multi word tag#` (closed with a `#`) is Bear's syntax for tags with
 spaces. Tags are plain text in the note, so they survive export as they
-are.
+are. See [Tags](guides/using/organize-and-find.md#tags).
 
 ### What about wiki-links, backlinks, graphs, plugins?
 
@@ -127,9 +128,10 @@ and pasting into the title line makes the first line the title.
 
 ### How do I back up?
 
-Back up the whole data directory. For a consistent copy, stop the server
-first ([Backups](guides/self-hosting/backups.md) shows how, with and without
-Docker). The phones' copies aren't a backup. Keep a copy off the machine.
+Back up the whole data directory, with the server stopped for a consistent
+copy, and keep a copy off the machine. The phones' copies aren't a backup.
+[Backups](guides/self-hosting/backups.md) shows how, with and without Docker,
+and what to do when you restore.
 
 ## Offline and sync
 
@@ -169,7 +171,7 @@ Nothing is lost.
 
 Yes. They share a design, the same Settings layout, and the same rules for
 Markdown, tags and locked notes, checked by shared tests. Small differences
-are listed in each platform's guide.
+are listed in each [app's guide](README.md#apps).
 
 ### Why aren't the apps in the Play Store or App Store?
 
@@ -192,7 +194,7 @@ apps. Use disk encryption on the server if that matters to you.
 **Locked notes** are the exception: they're encrypted on your device, and
 the server never has the key. Only `notesd export --include-locked`,
 run on the server's machine with the lock password typed in, decrypts
-them, to export them.
+them, to export them. See the [security model](concepts/security-model.md).
 
 ### What if I forget my lock password?
 
@@ -251,7 +253,8 @@ Each note has a revision; the server keeps a global change counter. A device
 uploads an edit with the revision it started from, and downloads everything
 changed since its last cursor. No CRDTs, no WebSockets. Every upload carries
 an operation ID, so a retry after a lost response is never applied twice.
-Details in [architecture §5–6](contributing/architecture.md#5-synchronization-protocol).
+See [How sync works](concepts/how-sync-works.md), or
+[architecture §5–6](contributing/architecture.md#5-synchronization-protocol) for the protocol.
 
 ### How does the web app work offline?
 

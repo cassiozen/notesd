@@ -50,7 +50,7 @@ to a server** in Settings (the sidebar's gear):
 2. Then either:
    - **Sign in** with your username and password, or
    - on a **new server** that has no account yet, create the account
-     from the phone (see [hosting.md](../self-hosting/users.md#create-your-account)).
+     from the phone (see [Create your account](../self-hosting/users.md#create-your-account)).
 
 The app only connects over **HTTPS**, or over plain HTTP to an address on
 your own network (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`,
@@ -64,85 +64,25 @@ The app stays signed in as long as you use it at least every six months. If
 the session ends (for example after you sign out that device from the web
 app), your notes stay on the phone and the list offers to sign in again.
 
-## Notes, tags and search
+## iPhone specifics
 
-- The first line of a note is its title. Format text with the bar above the
-  keyboard: headings, bullet, numbered and check lists, quotes, pictures and
-  indentation; select text for bold, italic, strikethrough and links. Undo
-  and Redo sit at the top of the note. With a hardware keyboard, ⌘B,
-  ⌘I, ⇧⌘X, Tab and ⇧Tab work too, and ⇧Return starts a new line within a
-  paragraph.
-- Write `#tag` anywhere in a note to tag it. Use `#multi word tag#` for
-  names with spaces and `#parent/child` to nest them. The sidebar (the
-  button at the top left of the list, or swipe in from the left edge)
-  filters by tag, and holds Settings. While you type a tag, the bar
-  suggests ones you already use.
-- Search covers titles and text, works offline, and finds words as you type
-  them.
-- Swipe a note left, or touch and hold it, to delete it. Undo appears for a
-  few seconds.
+- The bar above the keyboard has headings, lists, quotes, pictures and indenting; select text for
+  bold, italic, strikethrough and links. Undo and Redo sit at the top of the note. With a hardware
+  keyboard, ⌘B, ⌘I, ⇧⌘X, Tab and ⇧Tab work, and ⇧Return starts a new line within a paragraph.
+- The sidebar (the button at the top left of the list, or swipe in from the left edge) holds tags,
+  spaces and Settings.
+- Swipe a note left, or touch and hold it, to delete it.
+- The list's footer shows the sync status; tap it for **Sync now**. iOS lets the app sync in the
+  background only now and then, on its own schedule.
+- Open locked notes with Face ID (or Touch ID): see [Locked notes](../using/locked-notes.md).
+  iOS doesn't let apps block screenshots, so the app covers an open locked note in the app
+  switcher instead.
+- Email a note with **Email…** in its ••• menu ([setup](../using/email.md)).
 
-## Sync
+## Using notesd
 
-The app syncs when it opens, every couple of minutes while it's open, a few
-seconds after you stop typing, when the network comes back, and when you
-pull down on the list. iOS also lets it
-sync now and then in the background, but on its own schedule. While sync
-is fine, the list's footer just counts the notes; when it isn't, it says so
-(Offline, or how many notes are waiting to upload), and tapping it offers
-Sync now.
-
-If the same note was changed on two devices before they synced, nothing is
-lost. When both changed different parts (one the title, the other the
-text), the changes are combined. When both changed the text, this phone's
-version becomes a copy titled "(Conflicted copy)" that links back to the
-original.
-
-## Pictures
-
-Add a picture with the photo button on the bar above the keyboard, or paste
-one. It goes on a line of its own, below the line you're on. Pictures are
-resized (at most 2048 pixels on the long side) and their location and other
-metadata removed before they're stored. GIFs are the exception: they're kept
-exactly as they are, so they stay animated, keep their size and keep any
-metadata they carry. They upload with the next sync, so
-you can add them offline too. Pictures from your other devices download the
-first time you open their note, and stay on the phone for when you're
-offline. Backspace after a picture removes it.
-
-## Locked notes
-
-A locked note is encrypted on the phone; the server can't read it. Its title
-stays readable, so it shows in the list and in search by title.
-
-- **Lock a note** from its ••• menu. The first time, on any of your devices,
-  you create the lock password; every locked note uses it.
-- **Open a locked note** by typing the lock password, or with Face ID
-  (Touch ID on an iPhone that has it) once that's on. Locked notes stay open
-  until you leave the app, choose **Lock now**, or don't use the app for
-  five minutes.
-- **Face ID**: the first time you type the lock password on the iPhone, it
-  asks whether to use Face ID for locked notes from then on. After that,
-  opening a locked note asks for your face straight away; **Use Password**
-  falls back to the lock password. **Not Now** is remembered.
-  **Settings → Locked notes → Unlock with Face ID** turns it on or off.
-  It turns itself off, and asks for the password again, when the lock
-  password is changed on another device or reset, or when you set up
-  Face ID again. Changing the lock password on the iPhone keeps it on.
-- **Remove the lock** from the ••• menu of an open locked note.
-- **Settings → Locked notes** changes the lock password, or resets it if you
-  forgot it. Resetting needs your account password, and notes locked with
-  the old password can never be opened again.
-
-While a locked note is open, the app covers it in the app switcher. iOS
-doesn't let apps block screenshots, so the iPhone app can't do what Android
-does there.
-
-## Email
-
-notesd can email a note through [Resend](https://resend.com). In
-**Settings → Email**, paste a Resend API key with sending access and the
-address emails come from (on a domain you verified with Resend). Then a
-note's ••• menu has **Email…**. The server sends the note as it is after a
-sync, as formatted HTML with the Markdown as plain text. Locked notes can't
-be emailed.
+- [Writing and Markdown](../using/writing-and-markdown.md)
+- [Tags, spaces and search](../using/organize-and-find.md)
+- [Locked notes](../using/locked-notes.md)
+- [Offline and sync](../using/offline-and-sync.md)
+- [Settings](../using/settings.md)
