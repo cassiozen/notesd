@@ -1,0 +1,23 @@
+docs/reference/cli.md
+  s_9dd17d69a6442f::t_40564d8ff76f85 12-13,86-89,158-160
+docs/reference/api.md
+  s_9dd17d69a6442f::t_40564d8ff76f85 23-26,62-64,66-68,273-275,389
+server/README.md
+  s_9dd17d69a6442f::t_40564d8ff76f85 68-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a5cd0877572c79a3d688f59a23ff14b879cc5529",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
