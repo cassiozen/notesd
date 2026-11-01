@@ -23,3 +23,6 @@ xcuserdata/
 # Playwright (apps/web/e2e)
 /apps/web/test-results/
 /apps/web/playwright-report/
+
+# Landing page (website)
+/website/dist/

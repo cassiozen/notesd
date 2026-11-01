@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>notesd — Self-hosted notes</title>
+    <meta
+      name="description"
+      content="Self-hosted notes: a single lightweight binary for your server, and native mobile apps that work fully offline."
+    />
+    <link rel="icon" href="./src/assets/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="./src/main.css" />
+    <script type="module" src="./src/main.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="#" class="logo">
+          <img src="./src/assets/icon.png" alt="" />
+          <span>notesd</span>
+        </a>
+        <nav class="nav">
+          <a href="#features">Features</a>
+          <a href="#start">Get started</a>
+          <a href="#faq">FAQ</a>
+          <a href="https://github.com/cassiozen/notesd" class="nav-github">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="hero-inner">
+          <h1>Self-hosted <em>notes</em></h1>
+          <p>
+            A single lightweight binary you can drop onto a Raspberry Pi or a cheap VPS.
+            <br />Native mobile apps that work fully offline and sync whenever a connection is available.
+          </p>
+          <div class="actions">
+            <a href="#start" class="btn btn-primary">Get started</a>
+            <a href="https://github.com/cassiozen/notesd" class="btn btn-ghost">View on GitHub</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="showcase">
+        <div class="container">
+          <img src="./src/assets/mockup.png" alt="notesd in a browser and on a phone" />
+          <button type="button" class="btn btn-ghost btn-video" data-open="teaser-dialog">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            Watch the video
+            <span class="duration">0:44</span>
+          </button>
+        </div>
+      </section>
+
+      <dialog id="teaser-dialog" class="video-dialog" aria-label="notesd teaser video">
+        <button type="button" class="video-close" data-close aria-label="Close video">
+          <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" /></svg>
+        </button>
+        <video controls playsinline preload="none" src="/notesd-teaser.mp4"></video>
+      </dialog>
+
+      <section id="features" class="section">
+        <div class="container">
+          <div class="section-head">
+            <span class="eyebrow">Features</span>
+            <h2>Simple, but not basic.</h2>
+          </div>
+
+          <div class="features">
+            <article class="feature feature-overlay">
+              <img src="./src/assets/search.png" alt="Search results for “malaga”" />
+              <div class="feature-body">
+                <h3>Full-text search</h3>
+                <p>Search across titles and bodies, indexed and ranked — instant on the server and on your phone.</p>
+              </div>
+            </article>
+
+            <article class="feature feature-strip">
+              <h3>Organize with tags</h3>
+              <p>Type a tag anywhere in a note. The sidebar lists them all, and tags nest with a slash.</p>
+              <div class="feature-shot">
+                <img src="./src/assets/tags.png" alt="Tags linked to a note" />
+              </div>
+            </article>
+
+            <article class="feature feature-overlay">
+              <img src="./src/assets/locked.png" alt="A locked note with Face ID" />
+              <div class="feature-body">
+                <h3>Locked notes</h3>
+                <p>
+                  End-to-end encryption with AES-256-GCM. The server only stores ciphertext. Unlock with a password,
+                  passkey or biometrics.
+                </p>
+              </div>
+            </article>
+
+            <article class="feature feature-strip">
+              <h3>Spaces</h3>
+              <p>Create separate spaces to keep contexts apart: a journal, a side project, recipes...</p>
+              <div class="feature-shot">
+                <img src="./src/assets/spaces2.png" alt="Spaces: Notes, Personal, Journal, Recipes" />
+              </div>
+            </article>            
+
+            <article class="feature feature-strip">
+              <h3>Markdown under the hood</h3>
+              <p>Notes are stored as Markdown. Take them out whenever you want.</p>
+              <div class="feature-shot">
+                <img src="./src/assets/markdown.png" alt="Rich editor alongside its Markdown source" />
+              </div>
+            </article>
+
+            <article class="feature feature-strip">
+              <h3>Offline first</h3>
+              <p>Native apps keep a full local copy and sync whenever you're back online.</p>
+              <div class="feature-shot">
+                <img src="./src/assets/offline.png" alt="Notes syncing between devices" />
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section id="start" class="section">
+        <div class="container">
+          <div class="section-head">
+            <span class="eyebrow">Get started</span>
+            <h2>Up and running in three steps.</h2>
+          </div>
+
+          <ol class="steps" role="list">
+            <li class="step">
+              <span class="step-num">1</span>
+              <h3>Host the server</h3>
+              <p>Run it with Docker or download the single binary for your machine.</p>
+              <code class="code">ghcr.io/cassiozen/notesd</code>
+              <a href="https://github.com/cassiozen/notesd/blob/main/docs/hosting.md">Hosting guide →</a>
+            </li>
+            <li class="step">
+              <span class="step-num">2</span>
+              <h3>Create your account</h3>
+              <p>Open the server in a browser and create your account — before exposing it to the internet.</p>
+              <a href="https://github.com/cassiozen/notesd/blob/main/docs/hosting.md#create-your-account">
+                Account setup →
+              </a>
+            </li>
+            <li class="step">
+              <span class="step-num">3</span>
+              <h3>Install the app</h3>
+              <p>Download the Android APK from Releases, or build the iPhone app, and connect it to your server.</p>
+              <a href="https://github.com/cassiozen/notesd/releases">Releases →</a>
+            </li>
+          </ol>
+        </div>
+      </section>
+
+      <section id="faq" class="section">
+        <div class="container">
+          <div class="section-head">
+            <span class="eyebrow">FAQ</span>
+            <h2>Questions, answered.</h2>
+          </div>
+
+          <div class="faq">
+            <details class="faq-item">
+              <summary>Are my notes Markdown?</summary>
+              <p>
+                Yes. Every note is stored as a Markdown document. You never see the syntax while writing, but it's what's
+                saved and what you get out.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>Where are my notes stored, and how do I get them out?</summary>
+              <p>
+                In SQLite files in the server's data directory, one per account. <code>notesd export</code> writes every
+                note as a Markdown file, or start the server with <code>--mirror-dir</code> to keep a folder of
+                <code>.md</code> files always up to date.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>Does it work offline?</summary>
+              <p>
+                On Android and iPhone, fully: every note lives on the phone. In the browser too, if you choose “Keep my
+                notes on this device”. Everything syncs when the server is reachable again.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>What if I edit the same note on two devices?</summary>
+              <p>
+                Nothing is lost. If one device changed the title and the other the text, both are kept. If both changed
+                the text, the other version becomes a “Conflicted copy” linked to the original.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>Does notesd phone home or track me?</summary>
+              <p>
+                No. There are no analytics in the server or the apps. The server only contacts Resend to email a note and
+                GitHub to check for releases, and only if you turn those on.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>Can the server read my notes?</summary>
+              <p>
+                Regular notes are stored unencrypted on the server, like most notes apps. Locked notes are the exception:
+                they're encrypted on your device and the server never has the key.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>Can I have multiple users on one server?</summary>
+              <p>
+                Yes. Each account gets its own database file with its own notes, spaces and pictures. Add people with
+                <code>notesd add-user</code>; there's no public sign-up.
+              </p>
+            </details>
+            <details class="faq-item">
+              <summary>Why aren't the apps in the Play Store or App Store?</summary>
+              <p>
+                Not yet. On Android, install the APK from Releases; updates install over it. On iPhone, build the app
+                yourself with Xcode.
+              </p>
+            </details>
+          </div>
+
+          <a class="faq-more" href="https://github.com/cassiozen/notesd/blob/main/docs/faq.md">Read the full FAQ →</a>
+        </div>
+      </section>
+
+      <section class="cta">
+        <div class="cta-inner">
+          <h2>Try it:</h2>
+          <div class="terminal">
+            <code id="run-cmd">docker run -d -p 8080:8080 -v notesd-data:/data ghcr.io/cassiozen/notesd</code>
+            <button type="button" class="copy" data-copy="run-cmd" aria-live="polite">Copy</button>
+          </div>
+          <p>
+            Then open <code>localhost:8080</code> and create your account. For HTTPS and running as a service, see the
+            <a href="https://github.com/cassiozen/notesd/blob/main/docs/hosting.md">hosting guide</a>.
+          </p>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-brand">
+          <img src="./src/assets/icon.png" alt="" />
+          <span>notesd — self-hosted notes</span>
+        </div>
+        <a href="https://github.com/cassiozen/notesd">github.com/cassiozen/notesd</a>
+      </div>
+    </footer>
+  </body>
+</html>

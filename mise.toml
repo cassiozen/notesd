@@ -36,6 +36,18 @@ description = "The web app's workspace dependencies (the sync engine), rebuilt o
 dir = "apps/web"
 run = "pnpm --filter 'notes-web^...' --parallel run dev"
 
+[tasks."dev:website"]
+description = "Landing page dev server"
+dir = "website"
+depends = ["install"]
+run = "pnpm dev"
+
+[tasks."build:website"]
+description = "Landing page, built to website/dist"
+dir = "website"
+depends = ["install"]
+run = "pnpm build"
+
 [tasks."dev:reset"]
 description = "Delete the dev database; the next dev:server run seeds it again"
 dir = "server"
@@ -43,7 +55,7 @@ run = "rm -rf ${NOTESD_DATA_DIR:-data}"
 
 [tasks.check]
 description = "Lint, typecheck and test everything"
-depends = ["lint", "typecheck", "test", "test:e2e"]
+depends = ["lint", "typecheck", "test", "test:e2e", "build:website"]
 
 [tasks.lint]
 depends = ["lint:go", "lint:web", "lint:sync-engine"]
