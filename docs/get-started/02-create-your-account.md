@@ -29,7 +29,7 @@ has its own notes, which no other account can see.
 > server:
 >
 > ```bash
-> docker exec -it notesd notesd reset-password
+> docker exec -it notesd notesd reset-password --username YOUR_USERNAME
 > ```
 
 **Next:** [3. Write your first note](03-write-your-first-note.md)

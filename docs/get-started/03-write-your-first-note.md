@@ -24,7 +24,8 @@ lists.
 
 ## Tag
 
-Add a tag anywhere in the note by typing `#` and a name:
+Add a tag anywhere in the title or text by typing `#` and a name (tags aren't picked up inside
+links or code):
 
 ```text
 #recipes #breakfast
@@ -45,7 +46,8 @@ Click one to show only its notes. A parent tag such as `#home` also shows the no
 ## Search
 
 Type in **Search all notes** above the list. Search covers titles and text, matches the
-beginning of words (`panc` finds "Pancakes"), and shows the matching text under each result.
+beginning of words (`panc` finds "Pancakes"). When the match is in a note's text, the result
+shows the text around it.
 
 - **Enter** opens the first result.
 - **Escape** clears the search.
