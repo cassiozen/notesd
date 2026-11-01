@@ -38,7 +38,9 @@ docker start notesd
 
 The server is down for a few seconds; the apps keep working and sync once it's back. To back up
 on a schedule, run the same commands from a systemd timer or cron, then hand the file to restic,
-Borg or your NAS's backup job.
+Borg or another backup job. A backup on the same disk doesn't survive losing the server: copy it
+off, for example from your own machine with
+`rsync -a you@server:notesd-backup-*.tgz ~/notesd-backups/`.
 
 Before an upgrade, back up first: a newer notesd updates the database when it starts, and an older
 one can't open it after that. [Updating from Settings](upgrading.md#updating-from-settings) makes

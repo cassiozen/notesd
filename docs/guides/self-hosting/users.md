@@ -7,17 +7,27 @@ description: Create the first account, add people, and reset passwords.
 
 ## Create your account
 
-Open notesd in a browser, or enter the server address in the Android or iPhone app, and sign up.
-
 > [!IMPORTANT]
-> Until the account exists, anyone who can reach the server can create it. Do this right after starting notesd.
+> Until the account exists, anyone who can reach the server can create it. Create it while notesd
+> listens on the machine only, before you put [HTTPS](https.md) in front.
 
-You can also create the account when the server first starts by setting these variables (with Docker, as `-e` flags):
+On the server, with [`create-owner`](../../reference/cli.md#create-owner):
 
-```text
-NOTESD_OWNER_USERNAME=me
-NOTESD_OWNER_PASSWORD=…
+```bash
+read -rsp 'Password: ' pw; echo
+printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username me
+# systemd
+printf '%s\n' "$pw" | sudo -u notesd notesd create-owner --username me --data-dir /var/lib/notesd
+unset pw
 ```
+
+Or sign up in a browser through an SSH tunnel (`ssh -L 8080:127.0.0.1:8080 you@server`, then open
+`http://localhost:8080`). On a LAN-only server, you can also sign up from the web app or the
+Android or iPhone app directly.
+
+To create it when the server first starts instead, set `NOTESD_OWNER_USERNAME` and
+`NOTESD_OWNER_PASSWORD` (with Docker, as `-e` flags). The password then stays in the container's
+or unit's configuration.
 
 This first account is an admin: it can set up [emailing notes](../using/email.md) for everyone.
 

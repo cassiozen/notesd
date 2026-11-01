@@ -11,29 +11,35 @@ The image, `ghcr.io/cassiozen/notesd`, runs on 64-bit Linux (x86-64 or ARM64):
 
 ```bash
 docker run -d --name notesd --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
+  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 ```
 
-Open `http://localhost:8080` (from your other devices, use the machine's address), then [create your account](users.md#create-your-account). Your notes are stored in the `notesd-data` Docker volume. To change a setting later, see [Changing Docker settings](#changing-docker-settings).
+This publishes notesd on the machine's loopback interface only, for a reverse proxy or
+`tailscale serve` on the same machine to put [HTTPS](https.md) in front. Set `NOTESD_PUBLIC_URL`
+to that HTTPS address. Your notes are stored in the `notesd-data` Docker volume.
+
+[Create your account](users.md#create-your-account) before you set up HTTPS: until it exists,
+anyone who can reach the server can claim it.
 
 > [!WARNING]
-> `-p 8080:8080` publishes notesd on every network the machine is on, over plain HTTP, and
-> Docker's published ports bypass host firewalls such as UFW. On a machine with a public IP,
-> that exposes notesd, and your password and notes, to the internet unencrypted. Read
-> [Network access and HTTPS](https.md) before running it there.
+> Docker's published ports bypass host firewalls such as UFW. `-p 8080:8080` publishes notesd on
+> every interface, over plain HTTP, which on a machine with a public IP exposes your password and
+> notes to the internet. Only publish beyond `127.0.0.1` on a network you trust: see
+> [Limiting who can reach notesd](https.md#limiting-who-can-reach-notesd).
 
 ## Changing Docker settings
 
-You can't change the flags of an existing container. Remove it and run it again with the new flags. Your notes stay in the volume. For example, to switch to HTTPS behind a proxy:
+You can't change the flags of an existing container. Remove it and run it again with the new flags. Your notes stay in the volume. For example, to change the public URL:
 
 ```bash
 docker rm -f notesd
 docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
-  -e NOTESD_PUBLIC_URL=https://notes.example.com \
+  -e NOTESD_PUBLIC_URL=https://notes.example.org \
   ghcr.io/cassiozen/notesd:latest
 ```
 

@@ -148,7 +148,7 @@
             <li class="step">
               <span class="step-num">2</span>
               <h3>Create your account</h3>
-              <p>Open the server in a browser and create your account — before exposing it to the internet.</p>
+              <p>Create your account on the server, before putting HTTPS in front and exposing it.</p>
               <a href="/docs/get-started/create-your-account.html">
                 Account setup →
               </a>
@@ -239,12 +239,12 @@
         <div class="cta-inner">
           <h2>Try it:</h2>
           <div class="terminal">
-            <code id="run-cmd">docker run -d -p 8080:8080 -v notesd-data:/data ghcr.io/cassiozen/notesd</code>
+            <code id="run-cmd">docker run -d -p 127.0.0.1:8080:8080 -v notesd-data:/data ghcr.io/cassiozen/notesd</code>
             <button type="button" class="copy" data-copy="run-cmd" aria-live="polite">Copy</button>
           </div>
           <p>
-            Then open <code>localhost:8080</code> and create your account. For HTTPS and running as a service, see the
-            <a href="/docs/#self-hosting">hosting guide</a>.
+            Then create your account over SSH and put HTTPS in front. The
+            <a href="/docs/get-started/run-the-server.html">Get started guide</a> walks through it.
           </p>
         </div>
       </section>

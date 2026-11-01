@@ -32,15 +32,15 @@ To build the app yourself, see [development.md](../../contributing/development.m
 
 On first launch, the app asks for your server:
 
-1. Enter the **server address**, for example `notes.example.com` or
-   `http://192.168.1.20:8080`.
+1. Enter the **server address**, for example `notes.example.com`, or
+   `http://192.168.1.20:8080` for a server on your LAN.
 2. Then either:
    - **Sign in** with your username and password, or
    - on a **new server** that has no account yet, create the account
      from the phone (see [Create your account](../self-hosting/users.md#create-your-account)).
 
-The app only connects over **HTTPS**, or over plain HTTP to an address on
-your own network (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`,
+The app only connects over **HTTPS**, or over plain HTTP to a private
+address (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`,
 `*.local`), so your password never crosses the internet unencrypted.
 
 **Use without a server** skips this step: notes stay on the phone, and you

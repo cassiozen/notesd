@@ -37,8 +37,9 @@ with the same flags you started it with:
 docker pull ghcr.io/cassiozen/notesd:latest
 docker rm -f notesd
 docker run -d --name notesd --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
+  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 ```
 

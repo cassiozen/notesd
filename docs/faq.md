@@ -28,8 +28,8 @@ instead of someone else's cloud.
 
 ### Who is it for?
 
-- People who want their notes on their own hardware: a Raspberry Pi, a home
-  server, a cheap VPS.
+- People who want their notes on a server they control: a cheap VPS, a home
+  server, a Raspberry Pi.
 - People who want a plain, fast notes app without a subscription or an
   account with a company.
 - One server can hold a few accounts, each with its own private

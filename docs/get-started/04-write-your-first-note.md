@@ -1,9 +1,11 @@
 ---
-title: 3. Write your first note
+title: 4. Write your first note
 description: Write a note in the web app, tag it, and find it again with search.
 ---
 
-# 3. Write your first note
+# 4. Write your first note
+
+Open your HTTPS address and sign in.
 
 ## Write
 
@@ -52,4 +54,4 @@ shows the text around it.
 - **Enter** opens the first result.
 - **Escape** clears the search.
 
-**Next:** [4. Add your phone](04-add-your-phone.md)
+**Next:** [5. Add your phone](05-add-your-phone.md)

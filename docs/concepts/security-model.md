@@ -11,8 +11,8 @@ description: What the server can read, how accounts and sessions are protected, 
   read the server's disk or backups can read them. Use disk encryption if that matters to you.
 - **[Locked notes](../guides/using/locked-notes.md) are end-to-end encrypted.** The server stores
   only ciphertext, and never has the key.
-- **Use HTTPS** for anything reachable from outside your home network. The apps refuse plain HTTP
-  to public addresses.
+- **Use HTTPS.** Plain HTTP is only safe on a network you trust, and the apps refuse it to public
+  addresses.
 
 ## Accounts
 
@@ -24,8 +24,8 @@ description: What the server can read, how accounts and sessions are protected, 
 - **Admins** can change settings that apply to the whole server (email) and update the server
   from Settings. The first account is one. Admins can't see other accounts' notes.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
-  reach it could claim it. That's why the binary listens only on the machine itself by default,
-  and the guides create the account before exposing the server. To skip that window,
+  reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
+  and create the account before putting HTTPS in front. To skip that window,
   `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create it when the server starts.
 
 ## Passwords and sessions
