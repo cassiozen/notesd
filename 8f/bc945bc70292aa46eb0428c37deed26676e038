@@ -1,0 +1,19 @@
+README.md
+  s_12bdec691e5556::t_004de03b8e0853 5,10-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8fbc945bc70292aa46eb0428c37deed26676e038",
+  "prompts": {},
+  "sessions": {
+    "s_12bdec691e5556": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1c96ae24-2ee9-4866-a8b8-9c6c53bbcb40",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
