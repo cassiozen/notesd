@@ -96,8 +96,8 @@
               <div class="feature-body">
                 <h3>Locked notes</h3>
                 <p>
-                  End-to-end encryption with AES-256-GCM. The server only stores ciphertext. Unlock with a password,
-                  passkey or biometrics.
+                  The body is encrypted on your device with AES-256-GCM; the server never has the key. Titles stay
+                  readable, so lists and search still work. Unlock with a password, passkey or biometrics.
                 </p>
               </div>
             </article>
@@ -180,9 +180,10 @@
             <details class="faq-item">
               <summary>Where are my notes stored, and how do I get them out?</summary>
               <p>
-                In SQLite files in the server's data directory, one per account. <code>notesd export</code> writes every
-                note as a Markdown file, or start the server with <code>--mirror-dir</code> to keep a folder of
-                <code>.md</code> files always up to date.
+                In SQLite files in the server's data directory, one per account. <code>notesd export</code> writes your notes
+                as Markdown files, or start the server with <code>--mirror-dir</code> to keep a folder of
+                <code>.md</code> files always up to date. Both leave out locked notes; add
+                <code>--include-locked</code> to the export and type the lock password to include them.
               </p>
             </details>
             <details class="faq-item">
