@@ -5,7 +5,7 @@ description: Write a note in the web app, tag it, and find it again with search.
 
 # 4. Write your first note
 
-Open your HTTPS address and sign in.
+Open notesd at its address from [step 3](03-set-up-https.md) and sign in.
 
 ## Write
 

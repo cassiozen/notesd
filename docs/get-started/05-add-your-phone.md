@@ -43,7 +43,8 @@ the list.
 4. Turn airplane mode off. The edit uploads on its own.
 
 If the same note changes on two devices before they sync, nothing is lost: changes to different
-parts are combined, and otherwise one version is kept as a "Conflicted copy".
+parts are combined, and otherwise one version is kept as a "Conflicted copy". The web app, when
+it works directly on the server, asks you which version to keep instead.
 
 ## What's next
 

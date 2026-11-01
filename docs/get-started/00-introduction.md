@@ -15,7 +15,8 @@ sync with it over that HTTPS address.
 ## What you need
 
 - **A server:** a 64-bit Linux machine (x86-64 or ARM64) that stays on and that you can SSH into,
-  such as a VPS, a home server or a Raspberry Pi 4 or 5.
+  such as a VPS, a home server or a Raspberry Pi 4 or 5. The binary also runs on Apple silicon
+  Macs.
 - **[Docker](https://docs.docker.com/get-docker/)** on it, or the
   [notesd binary](../guides/self-hosting/binary-systemd.md) instead.
 - **For HTTPS:** a domain you can point at the server, or [Tailscale](https://tailscale.com) on
