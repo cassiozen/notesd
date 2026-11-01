@@ -26,3 +26,4 @@ xcuserdata/
 
 # Landing page (website)
 /website/dist/
+/website/.vitepress/cache/
