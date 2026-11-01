@@ -33,7 +33,7 @@ Click one to show only its notes. A parent tag such as `#home` also shows the no
 ## Search
 
 Type in **Search all notes** above the list. Search covers titles and text, matches the
-beginning of words (`panc` finds "Pancakes"). When the match is in a note's text, the result
+beginning of words (`panc` finds a note titled "Pancakes"). When the match is in a note's text, the result
 shows the text around it.
 
 - **Enter** opens the first result.

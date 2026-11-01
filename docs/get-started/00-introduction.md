@@ -18,7 +18,7 @@ apps, which keep a full copy of your notes, work offline and sync when they can 
   [notesd binary](../guides/self-hosting/binary-systemd.md) instead.
 - **For HTTPS:** a domain you can point at the server, or [Tailscale](https://tailscale.com) on
   the server and your devices.
-- **For your phone** (optional): Android 9 or later, or an iPhone on iOS 26.
+- **For your phone** (optional): Android 9 or later, or an iPhone on iOS 26 or later.
 
 ## What you'll do
 

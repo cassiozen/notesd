@@ -21,9 +21,7 @@ docker run -d --name notesd --restart unless-stopped \
   ghcr.io/cassiozen/notesd:latest
 
 # Create your account before anything else can reach the server
-printf 'Password: '; IFS= read -rs pw; echo
-printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username YOUR_USERNAME
-unset pw
+docker exec -it notesd notesd create-owner --username YOUR_USERNAME
 ```
 
 Then put HTTPS in front of `127.0.0.1:8080` with Caddy or Tailscale. The

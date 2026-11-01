@@ -14,11 +14,9 @@ description: Create the first account, add people, and reset passwords.
 On the server, with [`create-owner`](../../reference/cli.md#create-owner):
 
 ```bash
-printf 'Password: '; IFS= read -rs pw; echo
-printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username me
-# systemd, with notesd-run from the command line reference
-printf '%s\n' "$pw" | notesd-run create-owner --username me
-unset pw
+docker exec -it notesd notesd create-owner --username me
+# systemd
+notesd-run create-owner --username me
 ```
 
 With systemd, define [`notesd-run`](../../reference/cli.md#with-systemd) first. On a server that

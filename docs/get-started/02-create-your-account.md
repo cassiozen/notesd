@@ -13,29 +13,28 @@ description: Create the first account on your new server, before anyone else can
 
 1. Open [http://localhost:8080](http://localhost:8080).
 2. notesd sees that it has no account yet. Click **Get started**.
-3. Choose a **Username** and a **Password**
+3. Choose a **Username** and a **Password** of at least 8 characters, type the password again
+   under **Confirm password**, and click **Create account**.
 
 You're signed in, looking at an empty list of notes.
 
 ### Otherwise, create the account via command line:
 
-Use `notesd create-owner`:
+Use `notesd create-owner`. It asks for a password of at least 8 characters.
 
 **If you're using Docker:**
 
 ```bash
-printf 'Password: '; IFS= read -rs pw; echo
-printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username YOUR_USERNAME
-unset pw
+docker exec -it notesd notesd create-owner --username YOUR_USERNAME
 ```
 
-** Otherwise**:
+**If you're using the binary with systemd:** define
+[`notesd-run`](../reference/cli.md#with-systemd) first. It runs the command as the service's user,
+on its data directory.
 
 ```bash
-notesd create-owner --username YOUR_USERNAME
+notesd-run create-owner --username YOUR_USERNAME
 ```
-
-It will ask for your password next.
 
 **Either way:**
 
@@ -44,10 +43,6 @@ The command should return:
 ```text
 owner account created
 ```
-
-The password needs at least 8 characters. Reading it this way keeps it off the screen, out of your
-shell history and out of `docker inspect`. With the systemd setup, pipe it to
-[`notesd-run create-owner`](../reference/cli.md#with-systemd) instead.
 
 This first account is the server's **admin**. It can change settings that apply to everyone on the
 server, such as [emailing notes](../guides/using/email.md), and you can
