@@ -1,0 +1,23 @@
+docs/get-started/02-create-your-account.md
+  s_9dd17d69a6442f::t_38e37bb6575742 32
+docs/get-started/03-write-your-first-note.md
+  s_9dd17d69a6442f::t_8e3da001f48041 27-28,49-50
+docs/get-started/04-add-your-phone.md
+  s_9dd17d69a6442f::t_f7a2a3e6c85e7e 18-19,21-23,50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "50f75fb100b507db4cb8ae2131cba124acf19388",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
