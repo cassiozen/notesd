@@ -9,8 +9,8 @@ description: Every notesd command, flag and environment variable.
 notesd [command] [flags]
 ```
 
-Without a command, notesd runs `serve`. Every command takes `--data-dir`, and every command but
-`serve` and `version` works on the data directory directly, so run it as the same user as the
+Without a command, notesd runs `serve`. Every command but `version` takes `--data-dir`, and every
+command but `serve` and `version` works on the data directory directly, so run it as the same user as the
 server, with the same data directory. They're all safe to run while the server is up.
 
 ```bash
@@ -83,9 +83,10 @@ printf '%s\n' "$PASSWORD" | notesd add-user --username sam
 notesd create-owner --username NAME
 ```
 
-Creates the first account, an admin, if there isn't one yet. The usual way is to
-[sign up in the browser](../guides/self-hosting/users.md#create-your-account) or set
-`NOTESD_OWNER_USERNAME`; this does the same from a shell.
+Creates the first account, an admin, if there isn't one yet. Its password comes from
+`NOTESD_PASSWORD` or standard input, like the other account commands. The usual ways are to
+[sign up in the browser](../guides/self-hosting/users.md#create-your-account), or to set
+`NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` for `serve`; this command doesn't read those.
 
 ### add-user
 
@@ -154,8 +155,9 @@ notesd check [--username NAME]
 ```
 
 Runs SQLite's integrity check on the system database and each account's database, re-hashes every
-image, and prints `ok`, with a warning for each image a note shows that isn't stored. It never
-changes anything. notesd never deletes or replaces a damaged database by itself: if `check`
+image, and prints `ok`, with a warning for each image a note shows that isn't stored. The checks
+never change anything. Like every command, though, it first applies any upgrade a newer notesd
+needs to the data directory, as `serve` would. notesd never deletes or replaces a damaged database by itself: if `check`
 reports problems, stop the server and [restore from a backup](../guides/self-hosting/backups.md).
 
 ### reindex
