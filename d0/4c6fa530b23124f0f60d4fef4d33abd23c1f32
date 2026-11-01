@@ -1,0 +1,32 @@
+docs/get-started/03-write-your-first-note.md
+  s_9dd17d69a6442f::t_c9fb1bbedefeab 1-9,11-18,20,24-32,34-40,43-53
+  s_9dd17d69a6442f::t_d5dc7dd046ab94 10,19,21-23,33,41-42
+docs/get-started/01-run-the-server.md
+  s_9dd17d69a6442f::t_5f5df6a8d2adcb 1-41,43-48,51-60
+  s_9dd17d69a6442f::t_f4c7e91df2127f 42
+  s_9dd17d69a6442f::t_1d87c165ded311 49-50
+docs/get-started/02-create-your-account.md
+  s_9dd17d69a6442f::t_f32e8f8f06ad0e 1-35
+docs/get-started/04-add-your-phone.md
+  s_9dd17d69a6442f::t_f6bf8971ebbbee 1-72
+docs/README.md
+  s_9dd17d69a6442f::t_9703dc841c79a6 8-17
+README.md
+  s_9dd17d69a6442f::t_9703dc841c79a6 32-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d04c6fa530b23124f0f60d4fef4d33abd23c1f32",
+  "prompts": {},
+  "sessions": {
+    "s_9dd17d69a6442f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cda3632-7288-4f6f-b11c-709617b846e6",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
