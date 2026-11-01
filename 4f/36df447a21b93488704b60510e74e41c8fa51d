@@ -1,0 +1,29 @@
+docs/get-started/02-create-your-account.md
+  h_506d0d833c777f 12-22,24,32-42
+  h_506d0d833c777f 23,43
+docs/guides/apps/iphone.md
+  h_506d0d833c777f 14
+docs/get-started/05-add-your-phone.md
+  h_506d0d833c777f 26,30
+docs/guides/apps/android.md
+  h_506d0d833c777f 15
+docs/get-started/04-write-your-first-note.md
+  h_506d0d833c777f 8
+docs/get-started/01-run-the-server.md
+  h_506d0d833c777f 8
+docs/get-started/03-set-up-https.md
+  h_506d0d833c777f 15,17-21
+docs/get-started/00-introduction.md
+  h_506d0d833c777f 21
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4f36df447a21b93488704b60510e74e41c8fa51d",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
