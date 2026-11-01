@@ -74,7 +74,7 @@ export default defineConfig({
     // Used as-is (no base), so the logo leads back to the landing page.
     logoLink: { link: "/", target: "_self" },
     nav: [
-      { text: "Get started", link: "/get-started/run-the-server" },
+      { text: "Get started", link: "/get-started/introduction" },
       { text: "FAQ", link: "/faq" },
     ],
     socialLinks: [{ icon: "github", link: repo }],
@@ -85,10 +85,12 @@ export default defineConfig({
       {
         text: "Get started",
         items: [
+          { text: "Introduction", link: "/get-started/introduction" },
           { text: "1. Run the server", link: "/get-started/run-the-server" },
           { text: "2. Create your account", link: "/get-started/create-your-account" },
-          { text: "3. Write your first note", link: "/get-started/write-your-first-note" },
-          { text: "4. Add your phone", link: "/get-started/add-your-phone" },
+          { text: "3. Set up HTTPS", link: "/get-started/set-up-https" },
+          { text: "4. Write your first note", link: "/get-started/write-your-first-note" },
+          { text: "5. Add your phone", link: "/get-started/add-your-phone" },
         ],
       },
       {

@@ -9,15 +9,9 @@ The iPhone app keeps a full copy of your notes on the phone. Writing,
 search and tags all work offline, and the app syncs with your notesd server
 whenever it can. It runs on iOS 26 or later.
 
-It does what the web and Android apps do, except that there's no iPad
-layout. On an iPhone Duo it uses both displays: folded, it's the phone
-layout; unfolded, the list and the open note sit side by side (split at the
-fold while it's partly folded, on iOS 27.1 or later). Folding or unfolding keeps the note you're
-writing open.
-
 ## Install
 
-notesd isn't on the App Store. You build it with Xcode on a Mac and install
+notesd isn't on the App Store yet. You build it with Xcode on a Mac and install
 it on your iPhone with your Apple ID. A free Apple ID works.
 
 1. Install Xcode from the Mac App Store, open it once and sign in with your
@@ -45,17 +39,17 @@ phone until you connect. To connect, tap **Connect to a server** on the empty
 list, the **On this iPhone only** line at the bottom of the list, or **Connect
 to a server** in Settings (the sidebar's gear):
 
-1. Enter the **server address**, for example `notes.example.com` or
-   `http://192.168.1.20:8080`.
+1. Enter the **server address**, for example `notes.example.com`, or
+   `http://192.168.1.20:8080` for a server on your LAN.
 2. Then either:
    - **Sign in** with your username and password, or
    - on a **new server** that has no account yet, create the account
      from the phone (see [Create your account](../self-hosting/users.md#create-your-account)).
 
-The app only connects over **HTTPS**, or over plain HTTP to an address on
-your own network (`192.168.x`, `10.x`, `172.16–31.x`, `localhost`,
-`*.local`), so your password never crosses the internet unencrypted. For a
-server on your network, iOS asks once whether notesd may find devices on
+The app only connects over **HTTPS**, or over plain HTTP to a local
+address (private, link-local or loopback IPs such as `192.168.x` or `10.x`,
+`localhost`, `*.local`), so your password never crosses the internet unencrypted. For a
+server on your LAN, iOS asks once whether notesd may find devices on
 your local network. Allow it, or the app can't reach the server.
 
 Notes you wrote before connecting upload when you connect.

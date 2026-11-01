@@ -5,13 +5,13 @@ description: Guides and reference for running and using notesd.
 
 # notesd documentation
 
-New to notesd? **[Get started](get-started/01-run-the-server.md)**: run the server, create your
-account, write a note and sync your phone, in about ten minutes.
+New to notesd? **[Get started](get-started/00-introduction.md)**: run the server, create your
+account, put HTTPS in front, write a note and sync your phone, in about fifteen minutes.
 
 ## I want to…
 
 - **Run notesd:** [with Docker](guides/self-hosting/docker.md) or [as a binary with systemd](guides/self-hosting/binary-systemd.md)
-- **Use it from outside my network:** [Network access and HTTPS](guides/self-hosting/https.md)
+- **Reach it from my devices:** [Network access and HTTPS](guides/self-hosting/https.md)
 - **Install an app:** [web](guides/apps/web.md), [Android](guides/apps/android.md), [iPhone](guides/apps/iphone.md)
 - **Keep a note private, even from the server:** [Locked notes](guides/using/locked-notes.md)
 - **Back up, or restore:** [Backups](guides/self-hosting/backups.md)
@@ -23,10 +23,13 @@ account, write a note and sync your phone, in about ten minutes.
 
 ## Get started
 
+Start with the [introduction](get-started/00-introduction.md): what notesd is, and what you need.
+
 1. [Run the server](get-started/01-run-the-server.md)
 2. [Create your account](get-started/02-create-your-account.md)
-3. [Write your first note](get-started/03-write-your-first-note.md)
-4. [Add your phone](get-started/04-add-your-phone.md)
+3. [Set up HTTPS](get-started/03-set-up-https.md)
+4. [Write your first note](get-started/04-write-your-first-note.md)
+5. [Add your phone](get-started/05-add-your-phone.md)
 
 ## Using notesd
 

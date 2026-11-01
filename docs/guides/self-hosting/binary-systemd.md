@@ -17,18 +17,16 @@ Download the binary for your machine from the [latest release](https://github.co
 | Linux ARM64 (including Raspberry Pi 4/5) | `notesd-linux-arm64` |
 | macOS Apple silicon | `notesd-darwin-arm64` |
 
-Make it executable and start it (use the file name you downloaded):
+To try it, make it executable and start it (use the file name you downloaded):
 
 ```bash
 chmod +x notesd-linux-amd64
-./notesd-linux-amd64 serve --listen 0.0.0.0:8080
+./notesd-linux-amd64 serve
 ```
 
-Open `http://localhost:8080` and [create your account](users.md#create-your-account).
-
-By default the binary only accepts connections from this machine. `--listen 0.0.0.0:8080` lets your other devices reach it. Notes are stored in `./data`.
-
-That's all you need on a home network. The rest of this page covers [keeping notesd running](#keep-it-running-with-systemd). To limit who can reach it or use it outside your network, see [Network access and HTTPS](https.md).
+It listens on `127.0.0.1:8080`, so only this machine can reach it, and stores notes in `./data`.
+To run it for real, [install it as a service](#keep-it-running-with-systemd), then
+[create your account](users.md#create-your-account) and put [HTTPS](https.md) in front.
 
 To build from source, see [Development](../../contributing/development.md).
 
@@ -47,7 +45,8 @@ Then create `/etc/systemd/system/notesd.service`:
 Description=notesd
 
 [Service]
-ExecStart=/usr/local/bin/notesd serve --listen 0.0.0.0:8080 --data-dir /var/lib/notesd
+ExecStart=/usr/local/bin/notesd serve --data-dir /var/lib/notesd
+Environment=NOTESD_PUBLIC_URL=https://notes.example.com
 DynamicUser=yes
 StateDirectory=notesd
 StateDirectoryMode=0700
@@ -65,3 +64,7 @@ sudo systemctl enable --now notesd
 ```
 
 Check on it with `sudo systemctl status notesd`, or follow the logs with `sudo journalctl -u notesd -f`.
+
+notesd listens on `127.0.0.1:8080`, for a reverse proxy or `tailscale serve` on the same machine.
+Set `NOTESD_PUBLIC_URL` to the HTTPS address it serves. To serve plain HTTP to a network you trust
+instead, see [Limiting who can reach notesd](https.md#limiting-who-can-reach-notesd).

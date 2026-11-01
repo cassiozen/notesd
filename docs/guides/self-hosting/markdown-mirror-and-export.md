@@ -49,14 +49,15 @@ directory. The mirror never writes through a symbolic link inside an
 account's folder either.
 
 With Docker, mount a host folder for the mirror and pass its path in the
-container:
+container. The other flags are the ones from [Run with Docker](docker.md#start-the-container):
 
 ```bash
 mkdir -p notes-markdown && sudo chown 65532:65532 notes-markdown
 docker run -d --name notesd --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
   -v "$PWD/notes-markdown:/markdown" \
+  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   -e NOTESD_MIRROR_DIR=/markdown \
   ghcr.io/cassiozen/notesd:latest
 ```

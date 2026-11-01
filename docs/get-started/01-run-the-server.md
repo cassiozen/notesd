@@ -5,34 +5,33 @@ description: Start notesd with Docker and check that it's running.
 
 # 1. Run the server
 
-This walkthrough takes you from nothing to notes syncing between your browser and your phone. It
-takes about ten minutes, and all of it happens on your home network. You'll make notesd reachable
-from the internet later, if you want to.
-
-**You need** a computer with [Docker](https://docs.docker.com/get-docker/) that stays on while
-you use notesd: a home server, a Raspberry Pi 4 or 5, a NAS, or your own computer to try it out.
-The image runs on 64-bit Linux (x86-64 or ARM64), and on Macs through Docker Desktop.
-
-No Docker? [Run the binary instead](../guides/self-hosting/binary-systemd.md), then come back for
+This guide will walk you through using Docker. No Docker?
+[Run the binary instead](../guides/self-hosting/binary-systemd.md), then come back for
 [step 2](02-create-your-account.md).
 
 ## Start notesd
 
+On the server:
+
 ```bash
 docker run -d --name notesd --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
+  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 ```
 
-This runs notesd in the background on port 8080, and starts it again when the computer
-restarts. Your notes go in a Docker volume called `notesd-data`, so they survive when you
-upgrade or recreate the container.
+- `-p 127.0.0.1:8080:8080` publishes notesd on the machine's loopback interface only. Nothing
+  outside the machine can reach it until you put HTTPS in front in step 3.
+- `NOTESD_PUBLIC_URL` is the HTTPS address you'll open notesd at: your domain, or
+  `https://<machine>.<tailnet>.ts.net` with Tailscale.
+- Your notes go in the `notesd-data` volume, so they survive upgrading or recreating the
+  container.
 
 ## Check that it's running
 
 ```bash
-curl http://localhost:8080/healthz
+curl http://127.0.0.1:8080/healthz
 ```
 
 ```json
@@ -46,15 +45,8 @@ docker logs notesd
 ```
 
 ```text
-time=… level=WARN msg="no owner account yet: open url and create it before anyone else does, …" url=http://localhost:8080/
+time=… level=WARN msg="no owner account yet: open url and create it before anyone else does, …" url=https://notes.example.com/
 time=… level=INFO msg="notesd started" version=… listen=[::]:8080 …
 ```
-
-> [!NOTE]
-> `-p 8080:8080` makes notesd reachable from every device on your network, which you'll need
-> for your phone in step 4. On a machine with a public IP address, it's reachable from the
-> internet too. In that case, read
-> [Limiting who can reach notesd](../guides/self-hosting/https.md#limiting-who-can-reach-notesd)
-> first.
 
 **Next:** [2. Create your account](02-create-your-account.md)

@@ -6,21 +6,27 @@
 
 <img width="1448" height="1086" alt="notesd in a browser and on a phone" src="https://github.com/user-attachments/assets/9ceabc92-18c3-443d-9e3f-5a8e058d0c4f" />
 
-notesd is a small server you run yourself, on a Raspberry Pi, a home server or a cheap VPS: one
+notesd is a small server you run yourself, on a cheap VPS, a home server or a Raspberry Pi: one
 binary with SQLite inside, and nothing else to set up.
 
 ## Quick start
 
+On the server:
+
 ```bash
 docker run -d --name notesd --restart unless-stopped \
-  -p 8080:8080 \
+  -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
+  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
+
+# Create your account before anything else can reach the server
+docker exec -it notesd notesd create-owner --username YOUR_USERNAME
 ```
 
-Open http://localhost:8080 and create your account right away: until it exists, anyone who can
-reach the server can claim it. The [Get started guide](docs/get-started/01-run-the-server.md)
-walks through the rest: writing a note, connecting your phone, and what to do next. To run it without Docker, see
+Then put HTTPS in front of `127.0.0.1:8080` with Caddy or Tailscale. The
+[Get started guide](docs/get-started/00-introduction.md) walks through it, then writing a note
+and connecting your phone. To run it without Docker, see
 [Run the binary with systemd](docs/guides/self-hosting/binary-systemd.md).
 
 ## Features
@@ -55,7 +61,7 @@ with Xcode.
 
 Start at the [documentation index](docs/README.md). Most-used pages:
 
-- [Get started](docs/get-started/01-run-the-server.md)
+- [Get started](docs/get-started/00-introduction.md)
 - [Network access and HTTPS](docs/guides/self-hosting/https.md)
 - [Command line](docs/reference/cli.md)
 - [FAQ](docs/faq.md)

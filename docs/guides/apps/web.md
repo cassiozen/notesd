@@ -23,10 +23,10 @@ locked notes, the list of signed-in devices and changing your account password i
 Installed, notesd opens in its own window from your dock or taskbar, and keeps your notes on the
 computer so it works without a connection.
 
-It needs notesd served over HTTPS (or from `localhost`): on a plain-HTTP address like
+It needs notesd served over HTTPS (or from `localhost`), as set up in
+[Get started](../../get-started/03-set-up-https.md). On a plain-HTTP LAN address like
 `http://192.168.1.20:8080`, Chrome won't show its install offer, and no browser keeps notes on the
-computer. See
-[Access from anywhere with HTTPS](../self-hosting/https.md#access-from-anywhere-with-https).
+computer.
 
 ### Chrome
 
