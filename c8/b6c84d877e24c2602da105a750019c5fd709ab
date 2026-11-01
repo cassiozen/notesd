@@ -1,0 +1,46 @@
+docs/guides/self-hosting/backups.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 41-50
+docs/guides/apps/iphone.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 55-57
+docs/get-started/02-create-your-account.md
+  s_2926c3e44f013e::t_7160e4c11b4135 15,24-26
+docs/reference/cli.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 16-17,22-40
+  s_2926c3e44f013e::t_3a8916f41cd998 41
+README.md
+  s_2926c3e44f013e::t_7160e4c11b4135 24
+  s_2926c3e44f013e::t_e00cf50b9241a9 26
+docs/guides/self-hosting/users.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 19-20,24-26,40-41,50-51
+  s_2926c3e44f013e::t_7160e4c11b4135 17
+docs/guides/self-hosting/https.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 105-107
+website/index.html
+  s_2926c3e44f013e::t_e00cf50b9241a9 242
+docs/guides/apps/android.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 42-44
+docs/guides/self-hosting/markdown-mirror-and-export.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 52
+docs/get-started/03-set-up-https.md
+  s_2926c3e44f013e::t_7160e4c11b4135 70
+  s_2926c3e44f013e::t_e00cf50b9241a9 65-66
+  s_2926c3e44f013e::t_a0f7df4b1ce13d 71-74
+docs/guides/self-hosting/upgrading.md
+  s_2926c3e44f013e::t_e00cf50b9241a9 34-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c8b6c84d877e24c2602da105a750019c5fd709ab",
+  "prompts": {},
+  "sessions": {
+    "s_2926c3e44f013e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3453cd1f-094b-4fd1-9ec8-8c72330cb856",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
