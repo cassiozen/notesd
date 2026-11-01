@@ -1,0 +1,32 @@
+website/index.html
+  s_2926c3e44f013e::t_73bb944efb34c6 247
+docs/get-started/00-introduction.md
+  s_2926c3e44f013e::t_154e3f53676209 1-14,16-36
+  s_2926c3e44f013e::t_dc7d2677e294d5 15
+docs/README.md
+  s_2926c3e44f013e::t_ff5e02056a17e2 26
+  s_2926c3e44f013e::t_73bb944efb34c6 8
+  s_2926c3e44f013e::t_aaedccfa5544cb 27
+docs/get-started/01-run-the-server.md
+  s_2926c3e44f013e::t_73bb944efb34c6 8-9
+README.md
+  s_2926c3e44f013e::t_73bb944efb34c6 29,65
+website/.vitepress/config.mjs
+  s_2926c3e44f013e::t_73bb944efb34c6 77,88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0db50337dab527bf08447737fabead05da89edea",
+  "prompts": {},
+  "sessions": {
+    "s_2926c3e44f013e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3453cd1f-094b-4fd1-9ec8-8c72330cb856",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
