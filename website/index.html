@@ -39,6 +39,12 @@
       <section class="hero">
         <div class="hero-inner">
           <h1>Self-hosted <em>notes</em></h1>
+          <p class="pronounce">
+            <span class="word">notesd</span>
+            <span class="say">notes-dee</span>
+            <abbr title="noun">n.</abbr>
+            a small daemon, like sshd or httpd, but for your grocery lists.
+          </p>
           <p>
             A single lightweight binary you can drop onto a Raspberry Pi or a cheap VPS.
             <br />Native mobile apps that work fully offline and sync whenever a connection is available.
@@ -52,7 +58,17 @@
 
       <section class="showcase">
         <div class="container">
-          <img src="./src/assets/mockup.png" alt="notesd in a browser and on a phone" />
+          <div class="mockup">
+            <img src="./src/assets/mockup.png" alt="notesd in a browser and on a phone" />
+            <p class="scribble scribble-server">
+              served from a Pi under your desk
+              <svg viewBox="0 0 60 50" aria-hidden="true"><path d="M4 6c6 22 22 34 46 34M41 32l10 8-10 7" /></svg>
+            </p>
+            <p class="scribble scribble-phone">
+              <svg viewBox="0 0 50 60" aria-hidden="true"><path d="M8 54c22-4 32-22 30-48M30 14l8-9 7 10" /></svg>
+              works on the subway, too
+            </p>
+          </div>
           <button type="button" class="btn btn-ghost btn-video" data-open="teaser-dialog">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             Watch the video
@@ -174,6 +190,13 @@
 
           <div class="faq">
             <details class="faq-item">
+              <summary>Why another notes app?</summary>
+              <p>
+                I wanted one that runs on my own server, works offline on my phone, and doesn't try to be a second
+                brain. Maybe you do too.
+              </p>
+            </details>
+            <details class="faq-item">
               <summary>Are my notes Markdown?</summary>
               <p>
                 Yes. Every note is stored as a Markdown document. You never see the syntax while writing, but it's what's
@@ -231,6 +254,10 @@
                 yourself with Xcode.
               </p>
             </details>
+            <details class="faq-item">
+              <summary>How do you say it?</summary>
+              <p>Notes-dee. The “d” is for daemon, same as in sshd.</p>
+            </details>
           </div>
 
           <a class="section-more" href="/docs/faq.html">Read the full FAQ →</a>
@@ -258,6 +285,7 @@
           <img src="./src/assets/icon.png" alt="" />
           <span>notesd — self-hosted notes</span>
         </div>
+        <p>No cookies on this page. Not even the good kind.</p>
         <a href="https://github.com/cassiozen/notesd">github.com/cassiozen/notesd</a>
       </div>
     </footer>
