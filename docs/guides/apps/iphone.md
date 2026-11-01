@@ -9,15 +9,9 @@ The iPhone app keeps a full copy of your notes on the phone. Writing,
 search and tags all work offline, and the app syncs with your notesd server
 whenever it can. It runs on iOS 26 or later.
 
-It does what the web and Android apps do, except that there's no iPad
-layout. On an iPhone Duo it uses both displays: folded, it's the phone
-layout; unfolded, the list and the open note sit side by side (split at the
-fold while it's partly folded, on iOS 27.1 or later). Folding or unfolding keeps the note you're
-writing open.
-
 ## Install
 
-notesd isn't on the App Store. You build it with Xcode on a Mac and install
+notesd isn't on the App Store yet. You build it with Xcode on a Mac and install
 it on your iPhone with your Apple ID. A free Apple ID works.
 
 1. Install Xcode from the Mac App Store, open it once and sign in with your

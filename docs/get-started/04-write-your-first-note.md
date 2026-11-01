@@ -5,24 +5,9 @@ description: Write a note in the web app, tag it, and find it again with search.
 
 # 4. Write your first note
 
-Open notesd at its address from [step 3](03-set-up-https.md) and sign in.
-
-## Write
-
-1. Click **New note** at the top of the list.
-2. Type a title, press Return, and write something:
-
-   ```text
-   Pancakes
-
-   2 eggs, 1 cup flour, 1 cup milk. Rest the batter for 10 minutes.
-   ```
+Open notesd at its address from [step 3](03-set-up-https.md) and sign in - You're ready to add your notes.
 
 The first line of a note is always its title. There's no Save button: notes save as you type.
-
-To format text, use the formatting bar: bold, italic and strikethrough, a check list, indenting,
-links and pictures. **Text styles** (**Aa**) holds headings, quotes, and bulleted and numbered
-lists.
 
 ## Tag
 

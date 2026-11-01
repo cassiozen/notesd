@@ -12,7 +12,7 @@ foldables.
 
 ## Install
 
-notesd isn't on the Play Store. Install the APK from GitHub:
+notesd isn't on the Play Store yet. Install the APK from GitHub:
 
 1. On the phone, open the
    [latest release](https://github.com/cassiozen/notesd/releases/latest) and

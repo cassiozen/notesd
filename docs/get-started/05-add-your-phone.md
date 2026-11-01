@@ -23,28 +23,11 @@ The server address is your HTTPS address from [step 3](03-set-up-https.md), such
 3. Open notesd, enter the server address, and sign in with the username and password from
    [step 2](02-create-your-account.md).
 
-**iPhone** (iOS 26 or later): notesd isn't on the App Store, so you build it with Xcode on a Mac.
+**iPhone** (iOS 26 or later): notesd isn't on the App Store yet, so you build it with Xcode on a Mac.
 Follow [Install](../guides/apps/iphone.md#install) in the iPhone guide, then in the app tap
 **Connect to a server**, enter the server address and sign in.
 
-Your notes download, and the pancake recipe from [step 4](04-write-your-first-note.md) appears in
-the list.
-
-> [!NOTE]
-> Serving plain HTTP on your LAN instead? Enter `http://<lan-ip>:8080`, with the phone on the same
-> Wi-Fi. On iPhone, allow notesd to find devices on your local network when iOS asks, or the app
-> can't reach the server.
-
-## Watch it sync
-
-1. On the phone, open the note and add a line.
-2. Back in the browser, reload the page. The note shows the new line.
-3. Now turn on airplane mode and edit the note on the phone. It saves on the phone as usual.
-4. Turn airplane mode off. The edit uploads on its own.
-
-If the same note changes on two devices before they sync, nothing is lost: changes to different
-parts are combined, and otherwise one version is kept as a "Conflicted copy". The web app, when
-it works directly on the server, asks you which version to keep instead.
+Your notes download.
 
 ## What's next
 

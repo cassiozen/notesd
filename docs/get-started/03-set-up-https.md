@@ -12,9 +12,13 @@ HTTPS to keep notes offline.
 Pick one. The address you end up with must match `NOTESD_PUBLIC_URL` from
 [step 1](01-run-the-server.md).
 
-## With a domain: Caddy
+## With a domain: A proxy server 
 
-Caddy gets and renews certificates from Let's Encrypt on its own.
+In this example, we will use Caddy. Caddy gets and renews certificates from Let's Encrypt on its own.
+nginx and Cloudflare Tunnel work too: see
+[Network access and HTTPS](../guides/self-hosting/https.md#access-from-anywhere-with-https).
+
+### Setting Up Caddy
 
 1. Point a DNS `A` (and `AAAA`, if the machine has IPv6) record for `notes.example.com` at the
    machine's public IP.
@@ -40,9 +44,6 @@ Caddy gets and renews certificates from Let's Encrypt on its own.
    ```bash
    sudo systemctl reload caddy
    ```
-
-nginx and Cloudflare Tunnel work too: see
-[Network access and HTTPS](../guides/self-hosting/https.md#access-from-anywhere-with-https).
 
 ## Without a domain: Tailscale
 

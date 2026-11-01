@@ -9,13 +9,37 @@ description: Create the first account on your new server, before anyone else can
 > Until the first account exists, anyone who can reach the server can create it and become its
 > admin. Create it now, while notesd only listens on the machine itself.
 
-On the server:
+### If you're using a home server and it has a browser:
+
+1. Open [http://localhost:8080](http://localhost:8080).
+2. notesd sees that it has no account yet. Click **Get started**.
+3. Choose a **Username** and a **Password**
+
+You're signed in, looking at an empty list of notes.
+
+### Otherwise, create the account via command line:
+
+Use `notesd create-owner`:
+
+**If you're using Docker:**
 
 ```bash
 printf 'Password: '; IFS= read -rs pw; echo
 printf '%s\n' "$pw" | docker exec -i notesd notesd create-owner --username YOUR_USERNAME
 unset pw
 ```
+
+** Otherwise**:
+
+```bash
+notesd create-owner --username YOUR_USERNAME
+```
+
+It will ask for your password next.
+
+**Either way:**
+
+The command should return:
 
 ```text
 owner account created

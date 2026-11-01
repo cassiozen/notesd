@@ -9,9 +9,6 @@ notesd is a notes app you host yourself. The server is a single binary with SQLi
 nothing else to set up. You use it from the web app it serves, or from the Android and iPhone
 apps, which keep a full copy of your notes, work offline and sync when they can reach the server.
 
-The server runs on a machine you control, with HTTPS in front of it. Your browser and phones
-sync with it over that HTTPS address.
-
 ## What you need
 
 - **A server:** a 64-bit Linux machine (x86-64 or ARM64) that stays on and that you can SSH into,
@@ -21,8 +18,7 @@ sync with it over that HTTPS address.
   [notesd binary](../guides/self-hosting/binary-systemd.md) instead.
 - **For HTTPS:** a domain you can point at the server, or [Tailscale](https://tailscale.com) on
   the server and your devices.
-- **For your phone** (optional): Android 9 or later, or an iPhone on iOS 26 or later plus a Mac
-  with Xcode to build the app.
+- **For your phone** (optional): Android 9 or later, or an iPhone on iOS 26.
 
 ## What you'll do
 
