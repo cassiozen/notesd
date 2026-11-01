@@ -15,10 +15,12 @@ running notesd on your network. On that computer:
 
 | System | Command |
 | --- | --- |
-| Linux | `hostname -I` (the first address) |
-| macOS | `ipconfig getifaddr en0` |
+| Linux | `hostname -I` |
+| macOS | `ipconfig getifaddr en0` (Wi-Fi) or `ipconfig getifaddr en1` |
 
-With an address like `192.168.1.20`, the server is at `http://192.168.1.20:8080`. Connect the
+These can list more than one address, such as Docker's or a VPN's. Pick the one on the same
+network as the phone: it usually starts the same way as the phone's own address, often
+`192.168.` or `10.`. With an address like `192.168.1.20`, the server is at `http://192.168.1.20:8080`. Connect the
 phone to the same Wi-Fi and open that address in its browser: you should see notesd's sign-in
 page. If it doesn't load, the computer's firewall may be blocking port 8080.
 
@@ -45,8 +47,7 @@ the list.
 ## Watch it sync
 
 1. On the phone, open the note and add a line.
-2. Back on the computer, click into the browser window. Within a few seconds the note shows the
-   new line (reload the page if it doesn't).
+2. Back on the computer, reload the browser page. The note shows the new line.
 3. Now turn on airplane mode and edit the note on the phone. It saves on the phone as usual.
 4. Turn airplane mode off. The edit uploads on its own.
 

@@ -18,6 +18,12 @@ docker run -d --name notesd --restart unless-stopped \
 
 Open `http://localhost:8080` (from your other devices, use the machine's address), then [create your account](users.md#create-your-account). Your notes are stored in the `notesd-data` Docker volume. To change a setting later, see [Changing Docker settings](#changing-docker-settings).
 
+> [!WARNING]
+> `-p 8080:8080` publishes notesd on every network the machine is on, over plain HTTP, and
+> Docker's published ports bypass host firewalls such as UFW. On a machine with a public IP,
+> that exposes notesd, and your password and notes, to the internet unencrypted. Read
+> [Network access and HTTPS](https.md) before running it there.
+
 ## Changing Docker settings
 
 You can't change the flags of an existing container. Remove it and run it again with the new flags. Your notes stay in the volume. For example, to switch to HTTPS behind a proxy:
@@ -33,7 +39,7 @@ docker run -d --name notesd --restart unless-stopped \
 
 Keep your `docker run` command somewhere; you'll need it for [upgrades](upgrading.md#docker).
 
-- Pass any [setting](../../reference/cli.md#serve) as `-e NAME=value`. Don't change `NOTESD_LISTEN` or `NOTESD_DATA_DIR`; use `-p` and `-v` instead.
+- Pass any [setting](../../reference/cli.md#serve) as `-e NAME=value`. Don't change `NOTESD_LISTEN` or `NOTESD_DATA_DIR`; use `-p` and `-v` instead. `NOTESD_SELF_UPDATE` doesn't work in Docker: [upgrade](upgrading.md#docker) by replacing the container.
 - To store notes in a folder instead of a volume (`-v "$PWD/data:/data"`), create it first with `mkdir -p data && sudo chown 65532:65532 data`. notesd runs as user 65532 and can't write to a folder owned by root.
 
 ## Running commands
