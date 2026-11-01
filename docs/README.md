@@ -5,6 +5,16 @@ description: Guides and reference for running and using notesd.
 
 # notesd documentation
 
+New to notesd? **[Get started](get-started/01-run-the-server.md)**: run the server, create your
+account, write a note and sync your phone, in about ten minutes.
+
+## Get started
+
+1. [Run the server](get-started/01-run-the-server.md)
+2. [Create your account](get-started/02-create-your-account.md)
+3. [Write your first note](get-started/03-write-your-first-note.md)
+4. [Add your phone](get-started/04-add-your-phone.md)
+
 ## I want to…
 
 - **Run notesd:** [with Docker](guides/self-hosting/docker.md) or [as a binary with systemd](guides/self-hosting/binary-systemd.md)

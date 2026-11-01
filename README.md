@@ -29,13 +29,12 @@ offline and syncs your notes whenever a connection is available.</p>
 
 ## Get started
 
-1. **Host the server.** Run it with Docker (`ghcr.io/cassiozen/notesd`) or download the single binary for your machine. See [Run with Docker](docs/guides/self-hosting/docker.md) or [Run the binary](docs/guides/self-hosting/binary-systemd.md).
-2. **Create your account.** Open the server in a browser and create your
-   account. Do this before exposing it to the internet; see
-   [Accounts](docs/guides/self-hosting/users.md#create-your-account).
-3. **Install the Android app.** Download the APK from
-   [Releases](https://github.com/cassiozen/notesd/releases) and connect it to
-   your server. See [Android](docs/guides/apps/android.md).
+The [Get started guide](docs/get-started/01-run-the-server.md) takes about ten minutes:
+
+1. [Run the server](docs/get-started/01-run-the-server.md) with Docker (`ghcr.io/cassiozen/notesd`), or [as a single binary](docs/guides/self-hosting/binary-systemd.md).
+2. [Create your account](docs/get-started/02-create-your-account.md), before anyone else can.
+3. [Write your first note](docs/get-started/03-write-your-first-note.md) in the web app.
+4. [Add your phone](docs/get-started/04-add-your-phone.md) and watch it sync.
 
 ## Your data
 
