@@ -18,8 +18,8 @@ back up the data directory, then replace the binary and restart:
 
 ```bash
 sudo systemctl stop notesd
-sudo cp -a /var/lib/private/notesd ~/notesd-backup   # DynamicUser keeps it here
-sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd
+sudo cp -a /var/lib/private/notesd ~/notesd-backup-$(date +%Y%m%d-%H%M%S)   # DynamicUser keeps it here
+sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd   # notesd-linux-arm64 on ARM64
 sudo systemctl start notesd
 notesd version
 ```
