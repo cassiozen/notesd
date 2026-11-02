@@ -74,11 +74,20 @@ notesd now works out where it's served from on its own. After upgrading:
   [the example](https.md#nginx). Without it, sign-in still works but session cookies aren't
   marked `Secure`.
 - **Docker without `-v`:** the image no longer declares a volume. If you started the container
-  without `-v`, your notes are in an anonymous volume that a new container won't see. Find its
-  name, then start the new container with `-v <that name>:/data`:
+  without `-v`, your notes are in an anonymous volume that a new container won't see. **Before**
+  you remove the old container, find the volume's name, then start the new container with
+  `-v <that name>:/data`:
 
   ```bash
   docker inspect -f '{{range .Mounts}}{{.Name}} {{.Destination}}{{end}}' notesd
+  ```
+
+  Already removed it? `docker rm -f` keeps anonymous volumes, so your notes are still there. List
+  the unused ones, and look for the one holding `system.db`:
+
+  ```bash
+  docker volume ls -q -f dangling=true
+  docker run --rm -v <name>:/data busybox ls /data
   ```
 - **Docker, Caddy, Tailscale and Cloudflare Tunnel:** nothing to change. You can drop `-e NOTESD_PUBLIC_URL=…` the
   next time you recreate the container.
