@@ -60,6 +60,7 @@ apps/web/src/settings/agent-section.tsx
 apps/web/src/settings/settings.tsx
   s_f7b126b009a7df::t_4706c2be4fa4b0 728
   s_f7b126b009a7df::t_1cddfc6481cdd6 28,377
+  s_f7b126b009a7df::t_bf23da246ae242 10
 apps/web/test/agent-config.test.tsx
   s_f7b126b009a7df::t_7ecd92511e43af 1-29,31-38,40-50,52-56,58-74,76-113
   s_f7b126b009a7df::t_db4b97bff2e426 51
