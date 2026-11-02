@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
+import { resetAgentConfigs } from '../notes/agent-config'
 import { resetAiSettings } from '../notes/ai-settings'
 import { resetEmailSettings } from '../notes/email-settings'
 import { forgetSpaces } from '../notes/spaces'
@@ -37,6 +38,7 @@ export const reconnectTiming = { everyMs: 30_000 }
 function forgetAccountSettings() {
   resetAiSettings()
   resetEmailSettings()
+  resetAgentConfigs()
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

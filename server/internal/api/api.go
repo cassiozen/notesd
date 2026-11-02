@@ -183,6 +183,18 @@ func userFrom(ctx context.Context) *userdata.Data {
 	return d
 }
 
+// noteTimeZone keeps the device's time zone for the account if it has none
+// yet. Best effort: a request never fails over the time zone.
+func (s *Server) noteTimeZone(r *http.Request, data *userdata.Data) {
+	tz := r.Header.Get("X-Notesd-Time-Zone")
+	if tz == "" {
+		return
+	}
+	if err := data.Agent.NoteDeviceTimeZone(r.Context(), tz); err != nil {
+		s.log.WarnContext(r.Context(), "record time zone", "error", err)
+	}
+}
+
 // authed requires a valid session, and opens the session's user's data. Devices authenticate with
 // "Authorization: Bearer <access token>". Browsers use the session cookie
 // and must send X-CSRF-Token on every non-GET request; a cross-origin
@@ -225,12 +237,7 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 			s.writeErr(w, r, err)
 			return
 		}
-		if tz := r.Header.Get("X-Notesd-Time-Zone"); tz != "" {
-			// Best effort: a request never fails over the time zone.
-			if err := data.Agent.NoteDeviceTimeZone(r.Context(), tz); err != nil {
-				s.log.WarnContext(r.Context(), "record time zone", "error", err)
-			}
-		}
+		s.noteTimeZone(r, data)
 		ctx := context.WithValue(context.WithValue(r.Context(), sessionKey, sess), userKey, data)
 		h(w, r.WithContext(ctx))
 	})

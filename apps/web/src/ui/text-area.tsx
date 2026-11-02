@@ -1,7 +1,8 @@
 import { useId, type ReactNode, type TextareaHTMLAttributes } from 'react'
 import styles from './field.module.css'
 
-type Props = TextareaHTMLAttributes<HTMLTextAreaElement> & {
+// The label and messages are tied to the generated id; a caller's would cut them off.
+type Props = Omit<TextareaHTMLAttributes<HTMLTextAreaElement>, 'id' | 'aria-describedby' | 'aria-invalid'> & {
   label: string
   error?: string | undefined
   hint?: ReactNode

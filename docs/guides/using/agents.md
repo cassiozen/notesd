@@ -13,7 +13,8 @@ Agents are being built: you can set one up for a space, but it doesn't act yet.
 
 ## Give a space an agent
 
-Once an admin has [set up AI](#set-it-up-admins), every space has an **Agent** switch: in **Edit
+Once an admin has [set up AI](#set-it-up-admins), every space that has synced to the server has an
+**Agent** switch: in **Edit
 space** (Settings → Spaces), and as **Add an agent** when you make a new space, which also offers
 examples to start from (Journal, Meeting notes, Recipes, Auto-tags). Turning it on says where your
 notes will be sent. [Locked notes](locked-notes.md) never are.

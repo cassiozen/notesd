@@ -577,6 +577,29 @@
   cursor: pointer;
 }
 
+/* display: flex drops the native disclosure marker; this one stands in for it. */
+.agentTriggerName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agentTriggerChevron {
+  display: flex;
+  color: var(--ink-3);
+  transition: transform 120ms ease;
+}
+
+.agentTrigger[open] .agentTriggerChevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agentTriggerChevron {
+    transition: none;
+  }
+}
+
 .agentTrigger[open] {
   display: flex;
   flex-direction: column;

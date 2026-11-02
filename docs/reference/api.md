@@ -404,7 +404,7 @@ space and how its agent behaves. `triggers` maps each trigger the agent acts on 
 exist is `404 not_found`. Deleting a space deletes its agent.
 
 The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)
-until a device says otherwise: any signed-in request may carry `X-Notesd-Time-Zone` with an IANA
+until a device says otherwise: any signed-in request, and sign-in itself, may carry `X-Notesd-Time-Zone` with an IANA
 name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
 a name that isn't a time zone is `400 invalid_request` on `timeZone`.
 

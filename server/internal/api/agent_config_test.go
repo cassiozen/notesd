@@ -50,6 +50,20 @@ func TestAgentConfigEndpoints(t *testing.T) {
 	}
 }
 
+func TestTimeZoneAtSignIn(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c := e.client()
+	r := c.do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, "X-Notesd-Time-Zone", "Europe/Lisbon")
+	if r.status != 200 {
+		t.Fatalf("login: %d %s", r.status, r.raw)
+	}
+	c.csrf, _ = r.body["csrfToken"].(string)
+	if r := c.do("GET", "/api/v1/settings/account", nil); r.body["timeZone"] != "Europe/Lisbon" || r.body["timeZoneSource"] != "auto" {
+		t.Fatalf("after sign-in: %s", r.raw)
+	}
+}
+
 func TestAccountTimeZone(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()

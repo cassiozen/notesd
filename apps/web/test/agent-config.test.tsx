@@ -23,10 +23,14 @@ async function openSpaceDialog(user: Awaited<ReturnType<typeof signedIn>>['user'
 
 describe('a space’s agent', () => {
   it('isn’t offered until AI is set up', async () => {
-    const { user } = await signedIn()
+    const { server, user } = await signedIn()
     const dialog = await openSpaceDialog(user, 'New space', 'New space')
-    // Give the agents and AI settings time to load: they'd show by now.
-    await new Promise((r) => setTimeout(r, 200))
+    await waitFor(() => {
+      expect(server.answered('GET', '/settings/ai')).toBeGreaterThan(0)
+      expect(server.answered('GET', '/agent/spaces')).toBeGreaterThan(0)
+    })
+    // The answers' bodies are read, and the stores set, a task later.
+    await new Promise((r) => setTimeout(r, 0))
     expect(within(dialog).queryByRole('checkbox', { name: 'Add an agent' })).toBeNull()
   })
 

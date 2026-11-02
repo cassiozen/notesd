@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import auth from '../auth/auth.module.css'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
+import { ChevronIcon } from '../ui/icons'
 import { TextArea } from '../ui/text-area'
 import styles from './settings.module.css'
 
@@ -20,7 +21,7 @@ export function draftOf(config: AgentConfig | undefined): AgentDraft {
 
 /** Whether there's anything to save: an agent turned on, or words written for one. */
 export function hasAgent(d: AgentDraft): boolean {
-  return d.enabled || d.prompt.trim() !== '' || Object.values(d.triggers).some((p) => p?.trim())
+  return d.enabled || d.prompt.trim() !== '' || d.menuLabel.trim() !== '' || Object.values(d.triggers).some((p) => p?.trim())
 }
 
 export function sameAgent(a: AgentDraft, b: AgentDraft): boolean {
@@ -187,7 +188,12 @@ export function AgentSection({ draft, onChange, errors, provider, isNew }: Props
               return (
                 <details key={t.key} className={styles.agentTrigger} open={prompt !== '' || !!error}>
                   <summary>
-                    <span>{t.label}</span>
+                    <span className={styles.agentTriggerName}>
+                      <span className={styles.agentTriggerChevron}>
+                        <ChevronIcon />
+                      </span>
+                      {t.label}
+                    </span>
                     <span className={styles.muted}>{prompt.trim() ? 'On' : 'Off'}</span>
                   </summary>
                   {t.key === 'menu' && (
