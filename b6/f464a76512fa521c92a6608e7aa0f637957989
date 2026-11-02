@@ -1,0 +1,36 @@
+docs/guides/self-hosting/users.md
+  s_c5efa23713fc29::t_ee01db0b6ac197 42
+server/internal/api/auth_handlers.go
+  s_c5efa23713fc29::t_62cede999b24a2 140,219-228
+  s_c5efa23713fc29::t_8caf2e347b1ee7 229
+server/internal/api/api.go
+  s_c5efa23713fc29::t_62cede999b24a2 167-173,175,276-281,283-284,287
+docs/guides/self-hosting/upgrading.md
+  s_c5efa23713fc29::t_ee01db0b6ac197 50-65
+server/internal/api/api_test.go
+  s_c5efa23713fc29::t_86e7fe48558602 215-249
+docs/contributing/architecture.md
+  s_c5efa23713fc29::t_ee01db0b6ac197 523
+docs/faq.md
+  s_c5efa23713fc29::t_ee01db0b6ac197 38-43
+docs/get-started/02-create-your-account.md
+  s_c5efa23713fc29::t_ee01db0b6ac197 23-24
+docs/guides/self-hosting/monitoring-and-logs.md
+  s_c5efa23713fc29::t_ee01db0b6ac197 22-29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6f464a76512fa521c92a6608e7aa0f637957989",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
