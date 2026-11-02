@@ -99,6 +99,14 @@ Creating, updating and deleting a note are idempotent and checked against the no
   encrypted `content` can be somewhat longer.
 - **`createdAt` and `updatedAt`** may be sent, so edits made offline show when they happened. They
   are informational only, and a time more than a day in the future is replaced with the server's.
+- **`agent`**, optional, marks a write that holds an [agent's](../guides/using/agents.md) edit:
+  `{"runId": "…", "only": true}`. `runId` is the run that made it, with the same characters as an
+  operation ID. `only` is `true` when the save holds nothing but the agent's changes, and `false`
+  once the user has typed too. A save marked `only` doesn't count as the user's own editing. Part
+  of the body, so of the request hash.
+- **`X-Notesd-Sync`**, an optional header, says a write isn't someone editing: `initial` while a
+  device makes its first sync, `import` for an import. Agents don't react to these. It isn't part
+  of the request hash.
 
 Every write answers with the result:
 
