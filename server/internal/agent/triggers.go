@@ -48,6 +48,9 @@ type Event struct {
 // write's transaction it keeps writing sessions up to date and queues the
 // triggers a write fires, so neither is lost to a crash.
 func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
+	if err := removeText(ctx, tx, ev, s.now().UnixMilli()); err != nil {
+		return err
+	}
 	if ev.Unchanged || ev.Origin != "" {
 		// Nothing changed, or no one is editing: a device's first sync or an import.
 		return nil
@@ -104,6 +107,39 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 			return nil
 		}
 		return s.extendSession(ctx, tx, ev, "new", 0, now)
+	}
+	return nil
+}
+
+// removeText clears the agents' copies of a note's text when the note is
+// locked (its body) or deleted (title and body), whoever made the change:
+// Activity must not keep what the note itself no longer shows.
+func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) error {
+	if ev.Unchanged {
+		return nil
+	}
+	switch {
+	case ev.Kind == notes.EventDeleted:
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_title = '', after_title = '',
+			before_content = '', after_content = '', text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
+			return err
+		}
+		// A queued run keeps its snapshot: a "note deleted" run needs it, and drops it when it finishes.
+		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET event_json = json_remove(event_json, '$.title', '$.content')
+			WHERE note_id = ? AND status NOT IN ('queued', 'running')`, ev.NoteID)
+		return err
+	case ev.Kind == notes.EventUpdated && locks.IsLocked(ev.After.Content) && !locks.IsLocked(ev.Before.Content):
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_content = '', after_content = '',
+			text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, finished_at = ?,
+			message = 'The note was locked before the agent got to it. Locked notes are never sent.'
+			WHERE note_id = ? AND status = 'queued'`, StatusSkipped, FailNoteLocked, now, ev.NoteID); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET event_json = json_remove(event_json, '$.content') WHERE note_id = ?`, ev.NoteID)
+		return err
 	}
 	return nil
 }

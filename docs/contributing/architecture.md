@@ -499,8 +499,14 @@ The user guide is [agents](../guides/using/agents.md).
   run changed nothing. The queue holds at most 500 runs per account.
 - **Record.** Each run keeps its status, tokens, the model's last line or why it failed, and for
   each note it changed the text before and after (`agent_run_edits`), written in the same
-  transaction as the change. A *note deleted* run drops the note's text from its event when it
-  finishes, as the tombstone did. Finished runs are deleted after 30 days.
+  transaction as the change. A finished run drops the note's body from its event, and a *note
+  deleted* run its title too, as the tombstone did. Locking a note clears its body from every
+  run's copies (and skips its queued runs); deleting it clears title and body. Finished runs are
+  deleted after 30 days.
+- **Activity and undo.** `GET /agent/runs` lists runs with their edits; a run's detail diffs
+  each note line by line (LCS after trimming the common start and end), computed on read. Undo
+  writes each note back based on the revision the run left, marked `agent.only` so it fires
+  nothing, with a fixed operation id so a retry replays; a note changed since is skipped.
 
 ## 8. Search
 

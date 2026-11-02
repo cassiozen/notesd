@@ -396,6 +396,7 @@ other accounts get `403 admin_only` when they change it.
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
 | `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore, usage}`, newest first |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
+| `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
@@ -425,7 +426,16 @@ is `{day, tokens, runs, dailyTokenCap}` for today in the account's time zone.
 lines}`. `lines` compares the content before the run's first change with after its last: each is
 `{op, text}` with `op` `=` (kept), `-` (removed) or `+` (added), `text` left out for a blank line;
 or `{op: "…", count}` for unchanged lines left out, three kept around each change. Each change lists
-its removed lines, then its added ones. An unknown run is `404 not_found`.
+its removed lines, then its added ones. `textRemoved` says the note was locked (its content) or
+deleted (title and content) since: notesd then clears the run's copies too, and `lines` is empty.
+An unknown run is `404 not_found`.
+
+**Undo** puts back each note a finished run changed, if nobody has changed it since: an edit's
+title and content are restored as a new revision, and a note the run created is deleted. Each
+note is undone on its own, so one changed note doesn't stop the rest; `skipped` gives each
+`reason`, as `blocked` above. Undoing again retries only what was skipped. When nothing can be
+undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
+`partly_undone` while some of its changes stand. Undo fires no triggers.
 
 ### AI
 
@@ -486,7 +496,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `csrf_failed` | 403 | A browser request without the right `X-CSRF-Token`, or from another origin |
 | `admin_only` | 403 | Only an admin can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
-| `not_found` | 404 | No such note, session, lock key or image |
+| `not_found` | 404 | No such note, session, lock key, image, space or agent run |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
@@ -501,6 +511,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `note_locked` | 409 | Locked notes can't be emailed |
 | `email_not_configured` | 409 | Email isn't set up on this server |
 | `ai_not_configured` | 409 | AI isn't set up on this server |
+| `nothing_to_undo` | 409 | None of the run's changes can be undone; see `skipped` |
 | `generation_mismatch` | 409 | The server was restored; reconcile in full |
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |

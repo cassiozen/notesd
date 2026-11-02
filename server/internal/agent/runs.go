@@ -121,9 +121,12 @@ type finished struct {
 // maxMessage bounds a run's stored message.
 const maxMessage = 4 << 10
 
-// doneEvent is a finished run's event_json: a deleted note's text dropped
-// once the run no longer needs it, as deleting a note clears it everywhere else.
-const doneEvent = `CASE WHEN trigger = 'noteDeleted' THEN json_remove(event_json, '$.title', '$.content') ELSE event_json END`
+// doneEvent is a finished run's event_json: the note's body dropped once the
+// run no longer needs it, as the note may be locked or deleted later; a
+// deleted note's title too, as deleting clears it everywhere else.
+const doneEvent = `CASE WHEN trigger = 'noteDeleted'
+		OR EXISTS (SELECT 1 FROM notes n WHERE n.id = agent_runs.note_id AND n.deleted_at IS NOT NULL)
+	THEN json_remove(event_json, '$.title', '$.content') ELSE json_remove(event_json, '$.content') END`
 
 // finish records how a run ended, or puts it back in the queue for a retry.
 // Its tokens were counted as each call came back (addUsage).

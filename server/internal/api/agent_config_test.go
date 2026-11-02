@@ -103,4 +103,7 @@ func TestAgentRunsEndpoints(t *testing.T) {
 	if r := c.do("GET", "/api/v1/agent/runs/run_nope", nil); r.status != 404 || r.body["error"] != "not_found" {
 		t.Fatalf("unknown run: %d %s", r.status, r.raw)
 	}
+	if r := c.do("POST", "/api/v1/agent/runs/run_nope/undo", nil); r.status != 404 {
+		t.Fatalf("undo unknown run: %d %s", r.status, r.raw)
+	}
 }

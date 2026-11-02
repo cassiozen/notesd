@@ -68,6 +68,8 @@ type NoteDiff struct {
 	TitleBefore string     `json:"titleBefore"`
 	TitleAfter  string     `json:"titleAfter"`
 	Lines       []DiffLine `json:"lines"`
+	// TextRemoved: the note was locked or deleted since, and its text cleared here too.
+	TextRemoved bool `json:"textRemoved"`
 }
 
 // RunDetail is a run with what it changed, line by line.
@@ -149,7 +151,7 @@ func (s *Store) Run(ctx context.Context, id string) (RunDetail, error) {
 			return err
 		}
 		d.Run = runs[0]
-		erows, err := tx.QueryContext(ctx, `SELECT note_id, kind, before_title, before_content, after_title, after_content
+		erows, err := tx.QueryContext(ctx, `SELECT note_id, kind, before_title, before_content, after_title, after_content, text_removed
 			FROM agent_run_edits WHERE run_id = ? ORDER BY written_at, note_id`, id)
 		if err != nil {
 			return err
@@ -159,7 +161,7 @@ func (s *Store) Run(ctx context.Context, id string) (RunDetail, error) {
 		for erows.Next() {
 			var nd NoteDiff
 			var before, after string
-			if err := erows.Scan(&nd.NoteID, &nd.Kind, &nd.TitleBefore, &before, &nd.TitleAfter, &after); err != nil {
+			if err := erows.Scan(&nd.NoteID, &nd.Kind, &nd.TitleBefore, &before, &nd.TitleAfter, &after, &nd.TextRemoved); err != nil {
 				return err
 			}
 			nd.Lines = Diff(before, after)

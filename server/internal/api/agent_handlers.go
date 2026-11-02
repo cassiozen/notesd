@@ -125,6 +125,23 @@ func (s *Server) agentRuns(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// POST /api/v1/agent/runs/{id}/undo — puts back what a run changed, where
+// nobody has changed it since. 409 nothing_to_undo when nothing could be.
+func (s *Server) undoAgentRun(w http.ResponseWriter, r *http.Request) {
+	u := userFrom(r.Context())
+	res, err := u.Agent.Undo(r.Context(), u.Notes, r.PathValue("id"))
+	if errors.Is(err, agent.ErrNothingToUndo) {
+		writeJSON(w, http.StatusConflict, map[string]any{"error": "nothing_to_undo",
+			"message": "nothing this run changed can be undone", "skipped": res.Skipped})
+		return
+	}
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, res)
+}
+
 // GET /api/v1/agent/runs/{id} — a run, with a line diff of each note it changed.
 func (s *Server) agentRun(w http.ResponseWriter, r *http.Request) {
 	d, err := userFrom(r.Context()).Agent.Run(r.Context(), r.PathValue("id"))

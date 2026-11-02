@@ -293,7 +293,10 @@ func TestSkippedWithoutCallingTheModel(t *testing.T) {
 			h.agent("work", agent.NewNoteDone)
 			h.done("n1", "a")
 			tc.prepare(h)
-			h.next()
+			// Locking skips the note's queued runs then and there, so there may be none left to run.
+			if _, err := h.runner.RunNext(ctx, 1); err != nil {
+				t.Fatal(err)
+			}
 			r := h.allRuns()[0]
 			if r.Status != agent.StatusSkipped || r.Failure != tc.failure || h.model.calls() != 0 {
 				t.Fatalf("run: %+v, model calls %d", r, h.model.calls())
@@ -514,9 +517,9 @@ func TestDeletedAndMovedOutGetTheirSnapshot(t *testing.T) {
 	if !strings.Contains(user, `"content": "Leaving"`) || !strings.Contains(user, `"movedTo": "space home"`) {
 		t.Fatalf("moved out event: %s", user)
 	}
-	// Once run, a deleted note's text is gone from its event, as from the note.
+	// Once run, an event keeps no body, and a deleted note's no title, as the note itself.
 	runs := h.runs()
-	if runs[0].Event.Content != nil || runs[0].Event.Title != nil || runs[1].Event.Content == nil {
+	if runs[0].Event.Content != nil || runs[0].Event.Title != nil || runs[1].Event.Content != nil || runs[1].Event.Title == nil {
 		t.Fatalf("events kept: %+v", runs)
 	}
 }
