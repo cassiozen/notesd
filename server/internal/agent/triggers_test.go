@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"sync"
@@ -111,7 +112,7 @@ type run struct {
 
 func (f *fixture) runs() []run {
 	f.t.Helper()
-	rows, err := f.db.R.Query(`SELECT status, trigger, space_id, note_id, failure, event_json FROM agent_runs ORDER BY created_at, id`)
+	rows, err := f.db.R.Query(`SELECT status, trigger, space_id, note_id, failure, event_json FROM agent_runs ORDER BY created_at, rowid`)
 	if err != nil {
 		f.t.Fatal(err)
 	}
@@ -302,10 +303,27 @@ func TestLockedAndConflictCopies(t *testing.T) {
 	f.wantRuns()
 }
 
+func TestTriggerErrorFailsTheWrite(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.db.W.Exec(`DROP TABLE agent_triggers; DROP TABLE agent_spaces`); err != nil {
+		t.Fatal(err)
+	}
+	space := "work"
+	if _, err := f.d.Notes.Create(ctx, notes.CreateInput{OperationID: f.op(), ID: "n1", Title: "T", Content: "a", SpaceID: &space}); err == nil {
+		t.Fatal("the write committed without its triggers")
+	}
+	if _, err := f.d.Notes.Get(ctx, "n1"); !errors.Is(err, notes.ErrNotFound) {
+		t.Fatalf("the note was written: %v", err)
+	}
+}
+
 func TestTurnedOffBeforeTheSessionEnds(t *testing.T) {
 	f := newFixture(t)
 	f.agent("work", agent.NewNoteDone)
 	f.create("n1", "work", "a")
+	if f.sessions() != 1 {
+		t.Fatal("no session to end")
+	}
 	if _, err := f.d.Agent.Put(ctx, agent.Config{SpaceID: "work", Enabled: false, Triggers: map[agent.Trigger]string{agent.NewNoteDone: "x"}}); err != nil {
 		t.Fatal(err)
 	}

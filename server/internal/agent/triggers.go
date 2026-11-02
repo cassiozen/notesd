@@ -61,8 +61,8 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 		// The agent's own change, or a save holding only that: never a trigger.
 		return nil
 	}
-	if !anyAgent(ctx, tx) {
-		return nil
+	if on, err := anyAgent(ctx, tx); err != nil || !on {
+		return err
 	}
 	now := s.now().UnixMilli()
 
@@ -104,10 +104,13 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 
 // anyAgent reports whether any space's agent is on, so accounts without one
 // pay a single small query per write.
-func anyAgent(ctx context.Context, tx *sql.Tx) bool {
+func anyAgent(ctx context.Context, tx *sql.Tx) (bool, error) {
 	var one int
 	err := tx.QueryRowContext(ctx, `SELECT 1 FROM agent_spaces WHERE enabled = 1 LIMIT 1`).Scan(&one)
-	return err == nil
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 // extendSession starts a writing session on the note, or extends the one in

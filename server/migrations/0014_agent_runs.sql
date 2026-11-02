@@ -13,7 +13,7 @@ CREATE TABLE agent_runs (
     finished_at INTEGER,
     failure     TEXT NOT NULL DEFAULT ''    -- why it failed or was skipped
 );
-CREATE INDEX idx_agent_runs_queue ON agent_runs(priority DESC, created_at) WHERE status IN ('queued', 'running');
+CREATE INDEX idx_agent_runs_queue ON agent_runs(priority DESC, created_at) WHERE status = 'queued';
 CREATE INDEX idx_agent_runs_note ON agent_runs(note_id, created_at DESC);
 
 -- Writing sessions in progress: someone is changing a note, and its "done"
