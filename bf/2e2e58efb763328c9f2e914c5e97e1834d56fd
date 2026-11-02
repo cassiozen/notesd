@@ -79,6 +79,7 @@ shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
   s_c5efa23713fc29::t_92ea70f16b9010 80,128-129,176-177,456-462
 docs/guides/self-hosting/upgrading.md
   s_c5efa23713fc29::t_469f1361201409 52-61,64,101
+  s_c5efa23713fc29::t_c6ee6640b83e3e 62-63,113-114
 apps/android/app/src/main/kotlin/notes/app/sync/SyncWorker.kt
   s_c5efa23713fc29::t_084446d495c4cb 9-12
 server/cmd/notesd/main.go
