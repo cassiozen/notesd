@@ -380,6 +380,9 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		}
 		ev.After = Note{ID: in.ID, Title: in.Title, Content: in.Content, Revision: 1, ChangeSeq: seq,
 			CreatedAt: created, UpdatedAt: updated, ConflictOf: in.ConflictOf, SpaceID: space}
+		if err := FillImageIDs(ctx, tx, &ev.After); err != nil {
+			return Result{}, err
+		}
 		return Result{ID: in.ID, Status: StatusCreated, Revision: 1, ChangeSeq: seq,
 			UpdatedAt: updated, SpaceID: space, HTTPStatus: 201}, nil
 	})
@@ -438,6 +441,9 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 				if err := images.SetRefs(ctx, tx, cur.rowid, in.ImageIDs, now); err != nil {
 					return Result{}, err
 				}
+				if err := FillImageIDs(ctx, tx, &ev.After); err != nil {
+					return Result{}, err
+				}
 			}
 			return Result{ID: cur.ID, Status: StatusUnchanged, Revision: cur.Revision,
 				ChangeSeq: cur.ChangeSeq, UpdatedAt: cur.UpdatedAt, SpaceID: space, HTTPStatus: 200}, nil
@@ -467,6 +473,9 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		locking = locks.IsLocked(in.Content) && !locks.IsLocked(cur.Content)
 		ev.After.Title, ev.After.Content, ev.After.Revision = in.Title, in.Content, rev
 		ev.After.ChangeSeq, ev.After.UpdatedAt, ev.After.SpaceID = seq, updated, space
+		if err := FillImageIDs(ctx, tx, &ev.After); err != nil {
+			return Result{}, err
+		}
 		return Result{ID: cur.ID, Status: StatusUpdated, Revision: rev, ChangeSeq: seq,
 			UpdatedAt: updated, SpaceID: space, HTTPStatus: 200}, nil
 	})

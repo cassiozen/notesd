@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"testing"
 
 	"notes/server/internal/notes"
@@ -109,6 +110,30 @@ func TestEvents(t *testing.T) {
 	}
 	if ev = rec.last(t); ev.Kind != notes.EventDeleted || !ev.Unchanged {
 		t.Fatalf("already deleted: %+v", ev)
+	}
+}
+
+func TestEventsCarryLockedImages(t *testing.T) {
+	_, s := setup(t)
+	rec := record(s)
+	a, b := img('a'), img('b')
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "o1", ID: "n1", Title: "T", Content: sealedBody, ImageIDs: []string{a, b}}); err != nil {
+		t.Fatal(err)
+	}
+	if ev := rec.last(t); !slices.Equal(ev.After.ImageIDs, []string{a, b}) {
+		t.Fatalf("create: %q", ev.After.ImageIDs)
+	}
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "o2", ID: "n1", BaseRevision: 1, Title: "T2", Content: sealedBody, ImageIDs: []string{b}}); err != nil {
+		t.Fatal(err)
+	}
+	if ev := rec.last(t); !slices.Equal(ev.Before.ImageIDs, []string{a, b}) || !slices.Equal(ev.After.ImageIDs, []string{b}) {
+		t.Fatalf("update: %q → %q", ev.Before.ImageIDs, ev.After.ImageIDs)
+	}
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "o3", ID: "n1", BaseRevision: 2, Title: "T2", Content: sealedBody, ImageIDs: []string{}}); err != nil {
+		t.Fatal(err)
+	}
+	if ev := rec.last(t); !ev.Unchanged || len(ev.After.ImageIDs) != 0 {
+		t.Fatalf("unchanged: %q", ev.After.ImageIDs)
 	}
 }
 
