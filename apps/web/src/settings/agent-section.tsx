@@ -58,6 +58,11 @@ const TRIGGERS: { key: AgentTrigger; label: string; when: string }[] = [
   { key: 'menu', label: 'Run from menu', when: 'You pick the command in a note’s menu. Also a handy way to try a prompt.' },
 ]
 
+/** A trigger's name, as Settings shows it. */
+export function triggerLabel(key: AgentTrigger): string {
+  return TRIGGERS.find((t) => t.key === key)?.label ?? key
+}
+
 const DIGEST = 'Find the note titled "Digest"'
 
 /** Starting points, from the agents guide. */

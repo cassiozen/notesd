@@ -9,6 +9,7 @@ export type Route =
   | { name: 'note'; id: string }
   | { name: 'settings'; section?: SettingsSection }
   | { name: 'tags' }
+  | { name: 'activity' }
 
 const listeners = new Set<() => void>()
 
@@ -50,7 +51,7 @@ export function navigate(
 }
 
 /** Phones: the tags, the list and a note stack like screens; deeper pushes, shallower pops. */
-const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null })[route.name]
+const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null, activity: null })[route.name]
 
 /** How a user-initiated move animates (see base.css), or null for none. */
 export function transitionFor(from: string, to: string): 'forward' | 'back' | 'switch' | null {
@@ -71,6 +72,7 @@ export function parseRoute(pathname: string): Route {
     return isSettingsSection(settings) ? { name: 'settings', section: settings } : { name: 'settings' }
   }
   if (pathname === '/tags') return { name: 'tags' }
+  if (pathname === '/activity') return { name: 'activity' }
   const match = /^\/notes\/([A-Za-z0-9_-]{1,64})$/.exec(pathname)
   if (match?.[1]) return { name: 'note', id: match[1] }
   return { name: 'notes' }

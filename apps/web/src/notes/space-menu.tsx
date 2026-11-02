@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Space } from '../api/types'
-import { ChevronIcon, PlusIcon } from '../ui/icons'
+import { ActivityIcon, ChevronIcon, PlusIcon } from '../ui/icons'
 import { SpaceIcon } from './space-icon'
 import styles from './space-menu.module.css'
 
@@ -13,11 +13,14 @@ export function SpaceMenu({
   current,
   onSwitch,
   onCreate,
+  onActivity,
 }: {
   spaces: Space[]
   current: string
   onSwitch: (id: string) => void
   onCreate: () => void
+  /** Activity…, for a space with an agent. */
+  onActivity?: (() => void) | undefined
 }) {
   const [open, setOpen] = useState(false)
   const menuId = useId()
@@ -37,7 +40,7 @@ export function SpaceMenu({
   }, [open])
 
   // Opened, focus goes to the space shown (as a menu's keyboard users expect), else the first.
-  // New space… comes after the spaces, at items.current[spaces.length].
+  // New space… comes after the spaces, at items.current[spaces.length], then Activity….
   useEffect(() => {
     if (!open) return
     items.current[Math.max(0, spaces.findIndex((s) => s.id === current))]?.focus()
@@ -139,6 +142,26 @@ export function SpaceMenu({
             </span>
             <span className={styles.itemName}>New space…</span>
           </button>
+          {onActivity && (
+            <button
+              ref={(el) => {
+                items.current[spaces.length + 1] = el
+              }}
+              type="button"
+              role="menuitem"
+              tabIndex={-1}
+              className={styles.item}
+              onClick={() => {
+                close()
+                onActivity()
+              }}
+            >
+              <span className={styles.plus} aria-hidden="true">
+                <ActivityIcon />
+              </span>
+              <span className={styles.itemName}>Activity…</span>
+            </button>
+          )}
         </div>
       )}
     </span>

@@ -8,6 +8,7 @@ import { providerHost, useAiSettings } from '../notes/ai-settings'
 import { notesSource } from '../notes/source'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
+import { navigate } from '../router'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
@@ -264,6 +265,13 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
             isNew={false}
           />
         )}
+        {agent.saved && (
+          <div>
+            <Button size="sm" onClick={() => navigate('/activity', { state: { space: space.id } })}>
+              Activity…
+            </Button>
+          </div>
+        )}
         {formError && (
           <p role="alert" className={styles.error}>
             {formError}
@@ -296,6 +304,8 @@ function useAgentSetup(spaceId: string | undefined) {
   const current = draft ?? initial
   return {
     shown: configs !== null && ai !== null && (ai.configured || (saved !== undefined && hasAgent(initial))),
+    /** The space has an agent set up already: it may have done something to see in Activity. */
+    saved: saved !== undefined,
     draft: current,
     setDraft,
     changed: draft !== null && !sameAgent(current, saved ? initial : emptyAgent),
