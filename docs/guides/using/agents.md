@@ -9,7 +9,42 @@ A space can have an agent. It isn't a chatbot, and it doesn't write notes for yo
 notes when you ask it to: it tags new notes, titles them, or keeps a digest up to date. You decide
 what it does and when.
 
-Agents are being built. For now, an admin can set up the AI provider they'll use.
+Agents are being built: you can set one up for a space, but it doesn't act yet.
+
+## Give a space an agent
+
+Once an admin has [set up AI](#set-it-up-admins), every space has an **Agent** switch: in **Edit
+space** (Settings → Spaces), and as **Add an agent** when you make a new space, which also offers
+examples to start from (Journal, Meeting notes, Recipes, Auto-tags). Turning it on says where your
+notes will be sent. [Locked notes](locked-notes.md) never are.
+
+**What this space is for** describes the space and how the agent should behave. It goes with every
+prompt, and on its own does nothing:
+
+- *This is my journal. Never change what I wrote. Keep notes findable with a small, stable set of tags.*
+- *Recipes. I cook mostly vegetarian. Quantities in metric.*
+
+Then write a prompt for each moment you want the agent to act. A moment without a prompt does
+nothing.
+
+| Trigger | When |
+| --- | --- |
+| **Note created** | A new note is opened, before anything is typed |
+| **Started editing** | The first change to a note after it's opened, or after 3 minutes without changes |
+| **New note done** | A new note is closed, or left for 2 minutes |
+| **Note edit done** | The same, for a note that already existed |
+| **Note deleted** | A note in the space is deleted |
+| **Note moved in** | A note is moved here from another space |
+| **Note moved out** | A note is moved from here to another space |
+| **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos* |
+
+Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
+agent is paused until it's back.
+
+## Time zone
+
+"Today" depends on where you are, so your account has a time zone. It's filled in from the first
+device that connects, and you can change it in **Settings → Server**.
 
 ## Set it up (admins)
 

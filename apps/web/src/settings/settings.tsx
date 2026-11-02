@@ -7,7 +7,7 @@ import { platformBadge, sessionName } from '../api/user-agent'
 import { genericMessage } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
-import { DEFAULT_DAILY_TOKEN_CAP, setAiSettings, useAiSettings } from '../notes/ai-settings'
+import { DEFAULT_DAILY_TOKEN_CAP, providerHost, setAiSettings, useAiSettings } from '../notes/ai-settings'
 import { setEmailSettings, useEmailSettings } from '../notes/email-settings'
 import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
@@ -25,6 +25,7 @@ import { DeviceCard, InstallCard, SignOutCard, syncSummary, useKeptHere, useSync
 import { LockedNotesCard } from './locked-notes'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
+import { TimeZoneCard } from './time-zone'
 import styles from './settings.module.css'
 
 /** On a phone. Opened from the list, a page's entry is popped, so browser Back won't reopen the page. */
@@ -373,6 +374,7 @@ function SettingsPage({
           </div>
           <UpdateCard />
           <PasswordCard />
+          <TimeZoneCard />
         </>
       )
     case 'security':
@@ -723,7 +725,7 @@ function AiCard() {
         <Kicker id="ai-kicker">AI</Kicker>
         <span className={styles.text}>
           {saved.configured
-            ? `Spaces can have an agent, using ${saved.model} at ${hostOf(saved.baseUrl)}. An admin manages this for everyone on the server.`
+            ? `Spaces can have an agent, using ${saved.model} at ${providerHost(saved.baseUrl)}. An admin manages this for everyone on the server.`
             : 'An admin can set up AI for everyone on this server, so spaces can have an agent.'}
         </span>
       </Surface>
@@ -907,14 +909,6 @@ function AiForm({ saved }: { saved: AiSettings }) {
       </form>
     </Surface>
   )
-}
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
 }
 
 function sentence(message: string): string {

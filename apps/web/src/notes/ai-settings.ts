@@ -56,3 +56,12 @@ export function resetAiSettings() {
   fetches++
   listeners.forEach((l) => l())
 }
+
+/** Where an agent's notes go, as people know it: the API address's host. */
+export function providerHost(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host
+  } catch {
+    return baseUrl
+  }
+}
