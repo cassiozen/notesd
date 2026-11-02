@@ -39,7 +39,7 @@ docker exec -it notesd notesd add-user --username sam
 notesd-run add-user --username sam
 ```
 
-It asks for the new account's password twice, hidden as you type (or reads `NOTESD_PASSWORD`). Add `--admin` to let them change server-wide settings too. They can then sign in from the web app or a phone.
+It asks for the new account's password (or reads `NOTESD_PASSWORD`). Add `--admin` to let them change server-wide settings too. They can then sign in from the web app or a phone.
 
 notesd doesn't send password-reset emails. If someone forgets their password, set a new one for them. That signs them out everywhere:
 
