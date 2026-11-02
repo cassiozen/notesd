@@ -276,10 +276,16 @@ func cookieName(r *http.Request) string {
 // sessionCookies returns the tokens under either name, each to be tried: a
 // browser can hold both when the forwarded scheme changes between requests
 // (a proxy that stopped sending it), and the one under the other name may be
-// stale, such as a session signed out since.
+// stale, such as a session signed out since. The name this request would set
+// comes first: when both are valid, it's the newer sign-in, whose CSRF token
+// the web app holds.
 func sessionCookies(r *http.Request) []string {
+	names := []string{secureCookieName, plainCookieName}
+	if !secureRequest(r) {
+		names[0], names[1] = names[1], names[0]
+	}
 	var tokens []string
-	for _, name := range []string{secureCookieName, plainCookieName} {
+	for _, name := range names {
 		if c, err := r.Cookie(name); err == nil && c.Value != "" {
 			tokens = append(tokens, c.Value)
 		}

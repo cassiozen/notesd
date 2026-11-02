@@ -45,7 +45,7 @@ docker run -d --name notesd --restart unless-stopped \
 Keep your `docker run` command somewhere; you'll need it for [upgrades](upgrading.md#docker).
 
 - Pass any [setting](../../reference/cli.md#serve) as `-e NAME=value`. Don't change `PORT` or `NOTESD_DATA_DIR`; use `-p` and `-v` instead. `NOTESD_SELF_UPDATE` doesn't work in Docker: [upgrade](upgrading.md#docker) by replacing the container.
-- Always pass `-v` for `/data`. Without it, Docker gives each new container an empty anonymous volume, so replacing the container loses track of your notes. On hosting platforms that run the image, mount a persistent volume at `/data`; if there's none, notesd warns at startup: `the data directory is not on a volume`.
+- Always pass `-v` for `/data`. Without it, your notes live in the container itself and are lost when you replace it, as upgrading does. notesd warns at startup when that's the case: `the data directory is not on a volume`.
 - To store notes in a folder instead of a volume (`-v "$PWD/data:/data"`), create it first with `mkdir -p data && sudo chown 65532:65532 data`. notesd runs as user 65532 and can't write to a folder owned by root.
 
 ## Running commands

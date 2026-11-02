@@ -247,6 +247,31 @@ func TestStaleSecureCookieDoesNotShadowSession(t *testing.T) {
 	}
 }
 
+// With valid sessions under both names, the one this request's scheme would
+// set wins: it's the latest sign-in, and its CSRF token is the one in use.
+func TestCookieMatchingSchemeWins(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	login := func(hdr ...string) (token, csrf string) {
+		t.Helper()
+		r := e.client().do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, hdr...)
+		cookies := (&http.Response{Header: r.header}).Cookies()
+		if r.status != 200 || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", r.status, r.header)
+		}
+		return cookies[0].Value, r.body["csrfToken"].(string)
+	}
+	secure, secureCSRF := login("X-Forwarded-Proto", "https")
+	plain, plainCSRF := login()
+	both := "__Host-notes_session=" + secure + "; notes_session=" + plain
+	if r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", both); r.body["csrfToken"] != plainCSRF {
+		t.Errorf("plain request should use the plain cookie's session: %s", r.raw)
+	}
+	if r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", both, "X-Forwarded-Proto", "https"); r.body["csrfToken"] != secureCSRF {
+		t.Errorf("https request should use the secure cookie's session: %s", r.raw)
+	}
+}
+
 func TestOriginBehindHostRewritingProxy(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()

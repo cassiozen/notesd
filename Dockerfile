@@ -10,5 +10,6 @@ COPY --from=data --chown=nonroot:nonroot /data /data
 ENV PORT=8080 \
     NOTESD_DATA_DIR=/data
 EXPOSE 8080
-VOLUME /data
+# No VOLUME: an anonymous one would hide a missing -v from notesd's startup
+# warning, and is orphaned when the container is replaced anyway.
 ENTRYPOINT ["notesd"]

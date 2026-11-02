@@ -56,11 +56,18 @@ notesd now works out where it's served from on its own. After upgrading:
 - **systemd:** remove `--public-url` from `ExecStart` if it's there, or notesd won't start. You can
   delete `Environment=NOTESD_PUBLIC_URL=…` too; it's ignored.
 - **If you set `NOTESD_LISTEN`:** use `--listen ADDR` instead. Without it, notesd falls back to
-  `127.0.0.1:8080`.
+  `127.0.0.1:8080`, or to every interface at `$PORT` when `PORT` is set.
 - **nginx:** add `proxy_set_header X-Forwarded-Proto $scheme;` to the `location` block, as in
   [the example](https.md#nginx). Without it, sign-in still works but session cookies aren't
   marked `Secure`.
-- **Docker, Caddy and Tailscale:** nothing to change. You can drop `-e NOTESD_PUBLIC_URL=…` the
+- **Docker without `-v`:** the image no longer declares a volume. If you started the container
+  without `-v`, your notes are in an anonymous volume that a new container won't see. Find its
+  name, then start the new container with `-v <that name>:/data`:
+
+  ```bash
+  docker inspect -f '{{range .Mounts}}{{.Name}} {{.Destination}}{{end}}' notesd
+  ```
+- **Docker, Caddy, Tailscale and Cloudflare Tunnel:** nothing to change. You can drop `-e NOTESD_PUBLIC_URL=…` the
   next time you recreate the container.
 
 ## From a single-account version
