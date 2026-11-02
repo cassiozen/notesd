@@ -99,6 +99,12 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
 	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))
 	mux.Handle("DELETE /api/v1/settings/email", s.authed(adminOnly(s.deleteEmailSettings)))
+	mux.Handle("GET /api/v1/settings/account", s.authed(s.accountSettings))
+	mux.Handle("PUT /api/v1/settings/account", s.authed(s.saveAccountSettings))
+	mux.Handle("GET /api/v1/agent/spaces", s.authed(s.agentConfigs))
+	mux.Handle("GET /api/v1/agent/spaces/{id}", s.authed(s.agentConfig))
+	mux.Handle("PUT /api/v1/agent/spaces/{id}", s.authed(s.putAgentConfig))
+	mux.Handle("DELETE /api/v1/agent/spaces/{id}", s.authed(s.deleteAgentConfig))
 	mux.Handle("GET /api/v1/settings/ai", s.authed(s.aiSettings))
 	mux.Handle("PUT /api/v1/settings/ai", s.authed(adminOnly(s.saveAISettings)))
 	mux.Handle("DELETE /api/v1/settings/ai", s.authed(adminOnly(s.deleteAISettings)))
@@ -218,6 +224,12 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 		if err != nil {
 			s.writeErr(w, r, err)
 			return
+		}
+		if tz := r.Header.Get("X-Notesd-Time-Zone"); tz != "" {
+			// Best effort: a request never fails over the time zone.
+			if err := data.Agent.NoteDeviceTimeZone(r.Context(), tz); err != nil {
+				s.log.WarnContext(r.Context(), "record time zone", "error", err)
+			}
 		}
 		ctx := context.WithValue(context.WithValue(r.Context(), sessionKey, sess), userKey, data)
 		h(w, r.WithContext(ctx))

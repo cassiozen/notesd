@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/database"
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
@@ -26,11 +27,15 @@ type Data struct {
 	Locks  *locks.Store
 	Images *images.Store
 	Spaces *spaces.Store
+	Agent  *agent.Store
 }
 
 // New wraps an open notes database.
 func New(db *database.DB) *Data {
-	return &Data{DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db), Spaces: spaces.NewStore(db)}
+	return &Data{
+		DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db),
+		Spaces: spaces.NewStore(db), Agent: agent.NewStore(db),
+	}
 }
 
 // Path is where a user's notes database lives.

@@ -13,7 +13,7 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 - [Basics](#basics): requests, compatibility, authentication, writing notes, errors
 - [Endpoints](#endpoints): [auth](#auth), [notes](#notes), [sync](#sync),
   [search and filters](#search-and-filters), [spaces](#spaces), [images](#images),
-  [locked notes](#locked-notes), [email](#email), [AI](#ai), [updates](#updates), [health](#health)
+  [locked notes](#locked-notes), [email](#email), [agents](#agents), [AI](#ai), [updates](#updates), [health](#health)
 - [Error codes](#error-codes)
 
 ## Basics
@@ -383,6 +383,30 @@ for an unverified domain, `502 email_failed` with Resend's message.
 account. `apiKey` starts with `re_`, and can be left out to keep the saved one. It's never
 returned: `keyHint` is its last 4 characters. `editable` says whether this account is an admin;
 other accounts get `403 admin_only` when they change it.
+
+### Agents
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `GET` | `/agent/spaces` | → `{spaces: [config, …]}`, every space whose agent has been set up |
+| `GET` | `/agent/spaces/{id}` | → the space's config; off and empty if none was set up |
+| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers}` → the config as stored |
+| `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
+| `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
+| `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
+
+A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
+space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
+`noteCreated`, `editStarted`, `newNoteDone`, `editDone`, `noteDeleted`, `movedIn`, `movedOut` and
+`menu`. A trigger with an empty prompt is dropped, and so is one the server doesn't know.
+`menuLabel` names the `menu` command in a note's menu, up to 40 characters, and is required with a
+`menu` prompt. Prompts can be up to 16 KiB. `PUT` replaces the whole config. A space that doesn't
+exist is `404 not_found`. Deleting a space deletes its agent.
+
+The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)
+until a device says otherwise: any signed-in request may carry `X-Notesd-Time-Zone` with an IANA
+name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
+a name that isn't a time zone is `400 invalid_request` on `timeZone`.
 
 ### AI
 
