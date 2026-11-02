@@ -1,0 +1,72 @@
+docs/faq.md
+  s_c5efa23713fc29::t_d4485a84682ee3 245-246
+website/index.html
+  s_c5efa23713fc29::t_338472587ff864 271
+docs/guides/self-hosting/docker.md
+  s_c5efa23713fc29::t_d54760d962aed8 20-21,34,41,47
+docs/contributing/development.md
+  s_c5efa23713fc29::t_0732bbdf1ccacd 59-60,81,106
+Dockerfile
+  s_c5efa23713fc29::t_b33fa4a83bb0ef 10
+docs/reference/cli.md
+  s_c5efa23713fc29::t_815a6a0380eac0 70,74
+server/cmd/notesd/main_test.go
+  s_c5efa23713fc29::t_f72d61d93ebf40 25-26
+  s_c5efa23713fc29::t_a98c37d2106042 21-22,24,27,29-30,35-43
+  s_c5efa23713fc29::t_cd6312c9f21d5e 44-45
+docs/concepts/security-model.md
+  s_c5efa23713fc29::t_b9ef8c8cec2a16 28-29
+  s_c5efa23713fc29::t_815a6a0380eac0 30,36-37
+docs/guides/self-hosting/upgrading.md
+  s_c5efa23713fc29::t_d4485a84682ee3 36
+docs/guides/self-hosting/binary-systemd.md
+  s_c5efa23713fc29::t_d4485a84682ee3 68
+server/cmd/notesd/main.go
+  s_c5efa23713fc29::t_5890e8fd95e1b9 34,476
+  s_c5efa23713fc29::t_f72d61d93ebf40 538
+  s_c5efa23713fc29::t_44c1e281ce3b9a 30-33,104,455,536,544-551
+  s_c5efa23713fc29::t_486d965714e2e9 552-553
+docs/get-started/03-set-up-https.md
+  s_c5efa23713fc29::t_2c96124702345b 12,64-65,70
+  s_c5efa23713fc29::t_a1519af9867cf9 66
+server/internal/api/api_test.go
+  s_c5efa23713fc29::t_65a72dd8f4204f 189-218,220-222,224-227
+  s_c5efa23713fc29::t_2871901da30eb4 219,223
+docs/contributing/architecture.md
+  s_c5efa23713fc29::t_a5f8368ceeee14 523
+  s_c5efa23713fc29::t_b9ef8c8cec2a16 522
+  s_c5efa23713fc29::t_338472587ff864 586
+docs/guides/self-hosting/users.md
+  s_c5efa23713fc29::t_b9ef8c8cec2a16 11-12,22-24
+server/README.md
+  s_c5efa23713fc29::t_b9ef8c8cec2a16 58
+  s_c5efa23713fc29::t_289352b64cc2c1 59-60
+docs/guides/self-hosting/https.md
+  s_c5efa23713fc29::t_d4442e8b33a587 15-18,65,84,104
+docs/get-started/01-run-the-server.md
+  s_c5efa23713fc29::t_b9ef8c8cec2a16 45
+docs/reference/api.md
+  s_c5efa23713fc29::t_815a6a0380eac0 42
+apps/android/README.md
+  s_c5efa23713fc29::t_4df7e82b9fd0e7 31
+server/internal/api/api.go
+  s_c5efa23713fc29::t_c7711e2f406acf 167,170,173,226-229,241-243,246-254,257-277,279
+server/internal/api/auth_handlers.go
+  s_c5efa23713fc29::t_21fd9a1179aeb4 96,140,207,209,214
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1fc199c3846e5963637bead23fce444bfb25596f",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
