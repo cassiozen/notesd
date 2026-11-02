@@ -48,9 +48,10 @@ type Settings struct {
 	DailyTokenCap int64 // tokens per account per day
 }
 
-// KeyHint is the key's last four characters, enough to tell keys apart.
+// KeyHint is the key's last four characters, enough to tell keys apart;
+// none for a key so short they'd give away much of it.
 func (s Settings) KeyHint() string {
-	if len(s.APIKey) < 4 {
+	if len(s.APIKey) < 8 {
 		return ""
 	}
 	return s.APIKey[len(s.APIKey)-4:]

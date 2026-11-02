@@ -9,7 +9,9 @@ A space can have an agent. It isn't a chatbot, and it doesn't write notes for yo
 notes when you ask it to: it tags new notes, titles them, or keeps a digest up to date. You decide
 what it does and when.
 
-Agents are being built: you can set one up for a space, but it doesn't act yet.
+Agents are being built. They act on **new note done**, **note edit done**, **note deleted** and the
+two **moved** triggers. Note created, started editing and the menu command come with the editor
+work; the activity log and undo come next.
 
 ## Give a space an agent
 

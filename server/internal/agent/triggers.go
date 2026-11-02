@@ -180,7 +180,7 @@ func queue(ctx context.Context, tx *sql.Tx, spaceID string, e Event, priority in
 	status, failure := StatusQueued, ""
 	var finished any
 	if queued >= MaxQueued {
-		status, failure, finished = StatusSkipped, "queue_full", now
+		status, failure, finished = StatusSkipped, FailQueueFull, now
 	}
 	id := newRunID(now)
 	_, err = tx.ExecContext(ctx, `INSERT INTO agent_runs (id, status, trigger, space_id, note_id, priority, event_json, created_at, finished_at, failure)
