@@ -20,7 +20,8 @@ You're signed in, looking at an empty list of notes.
 
 ### Otherwise, create the account via command line:
 
-Use `notesd create-owner`. It asks for a password of at least 8 characters.
+Use `notesd create-owner`. It asks for a password of at least 8 characters, twice. Nothing shows
+as you type.
 
 **If you're using Docker:**
 

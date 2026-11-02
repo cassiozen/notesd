@@ -212,6 +212,41 @@ func TestSessionCookieFollowsScheme(t *testing.T) {
 	}
 }
 
+// A browser that kept a __Host- cookie from when its proxy sent the scheme,
+// signed out since, must still sign in under the plain cookie.
+func TestStaleSecureCookieDoesNotShadowSession(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	login := func(hdr ...string) string {
+		t.Helper()
+		r := e.client().do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, hdr...)
+		cookies := (&http.Response{Header: r.header}).Cookies()
+		if r.status != 200 || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", r.status, r.header)
+		}
+		return cookies[0].Value
+	}
+	stale := login("X-Forwarded-Proto", "https")
+	staleCSRF := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", "__Host-notes_session="+stale).body["csrfToken"].(string)
+	out := e.client().do("POST", "/api/v1/auth/logout", nil, "Cookie", "__Host-notes_session="+stale, "X-CSRF-Token", staleCSRF)
+	if out.status != 204 {
+		t.Fatalf("logout: %d %s", out.status, out.raw)
+	}
+	cleared := map[string]bool{}
+	for _, c := range (&http.Response{Header: out.header}).Cookies() {
+		cleared[c.Name] = c.MaxAge < 0
+	}
+	if !cleared["__Host-notes_session"] || !cleared["notes_session"] {
+		t.Errorf("logout should clear both cookie names: %v", out.header.Values("Set-Cookie"))
+	}
+
+	fresh := login()
+	r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", "__Host-notes_session="+stale+"; notes_session="+fresh)
+	if r.status != 200 {
+		t.Fatalf("session with a stale secure cookie beside a valid one: %d %s", r.status, r.raw)
+	}
+}
+
 func TestOriginBehindHostRewritingProxy(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()

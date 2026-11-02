@@ -137,7 +137,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sess.Kind == auth.KindWeb {
-		setSessionCookie(w, r, "", time.Unix(0, 0))
+		clearSessionCookies(w)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -214,8 +214,16 @@ func setSessionCookie(w http.ResponseWriter, r *http.Request, value string, expi
 		Secure:   secureRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	}
-	if value == "" {
-		c.MaxAge = -1
-	}
 	http.SetCookie(w, c)
+}
+
+// clearSessionCookies removes both names, whichever the browser holds.
+// Removing a __Host- cookie needs the same Secure attribute that set it.
+func clearSessionCookies(w http.ResponseWriter) {
+	for _, name := range []string{secureCookieName, plainCookieName} {
+		http.SetCookie(w, &http.Cookie{
+			Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
+			Secure: name == secureCookieName, SameSite: http.SameSiteLaxMode,
+		})
+	}
 }

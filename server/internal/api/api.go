@@ -164,10 +164,15 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 		var err error
 		if token, ok := bearerToken(r); ok {
 			sess, err = s.auth.Authenticate(r.Context(), token, auth.KindDevice)
-		} else if c, ok := sessionCookie(r); ok {
-			sess, err = s.auth.Authenticate(r.Context(), c.Value, auth.KindWeb)
+		} else if tokens := sessionCookies(r); len(tokens) > 0 {
+			var token string
+			for _, token = range tokens {
+				if sess, err = s.auth.Authenticate(r.Context(), token, auth.KindWeb); err == nil {
+					break
+				}
+			}
 			if err == nil && sess.Renewed {
-				setSessionCookie(w, r, c.Value, time.UnixMilli(sess.ExpiresAt))
+				setSessionCookie(w, r, token, time.UnixMilli(sess.ExpiresAt))
 			}
 			if err == nil && !safeMethod(r.Method) {
 				if !sameOrigin(r) {
@@ -268,15 +273,18 @@ func cookieName(r *http.Request) string {
 	return plainCookieName
 }
 
-// sessionCookie accepts either name, so a request that loses its forwarded
-// scheme on the way (a proxy hop that drops the header) still authenticates.
-func sessionCookie(r *http.Request) (*http.Cookie, bool) {
+// sessionCookies returns the tokens under either name, each to be tried: a
+// browser can hold both when the forwarded scheme changes between requests
+// (a proxy that stopped sending it), and the one under the other name may be
+// stale, such as a session signed out since.
+func sessionCookies(r *http.Request) []string {
+	var tokens []string
 	for _, name := range []string{secureCookieName, plainCookieName} {
-		if c, err := r.Cookie(name); err == nil {
-			return c, true
+		if c, err := r.Cookie(name); err == nil && c.Value != "" {
+			tokens = append(tokens, c.Value)
 		}
 	}
-	return nil, false
+	return tokens
 }
 
 func clientKey(r *http.Request) string {

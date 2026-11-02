@@ -47,6 +47,22 @@ docker run -d --name notesd --restart unless-stopped \
 To stay on one release line, use its tag instead of `latest`, e.g.
 `ghcr.io/cassiozen/notesd:0.2`.
 
+## Changes that need action
+
+### 1.0: `NOTESD_PUBLIC_URL` and `NOTESD_LISTEN` removed
+
+notesd now works out where it's served from on its own. After upgrading:
+
+- **systemd:** remove `--public-url` from `ExecStart` if it's there, or notesd won't start. You can
+  delete `Environment=NOTESD_PUBLIC_URL=…` too; it's ignored.
+- **If you set `NOTESD_LISTEN`:** use `--listen ADDR` instead. Without it, notesd falls back to
+  `127.0.0.1:8080`.
+- **nginx:** add `proxy_set_header X-Forwarded-Proto $scheme;` to the `location` block, as in
+  [the example](https.md#nginx). Without it, sign-in still works but session cookies aren't
+  marked `Secure`.
+- **Docker, Caddy and Tailscale:** nothing to change. You can drop `-e NOTESD_PUBLIC_URL=…` the
+  next time you recreate the container.
+
 ## From a single-account version
 
 A data directory from before there were

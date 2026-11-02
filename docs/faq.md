@@ -35,6 +35,12 @@ instead of someone else's cloud.
 - One server can hold a few accounts, each with its own private
   notes.
 
+### Can I host it on Vercel, Netlify or Heroku?
+
+No. notesd is a long-running server that keeps your notes in SQLite files on disk. Those
+platforms run short-lived functions or wipe the disk on every deploy. Use a VPS, a computer at
+home, or a hosting platform that runs a container with a persistent volume.
+
 ### Does notesd phone home or track me?
 
 No. There are no analytics in the server or the apps. The server contacts
