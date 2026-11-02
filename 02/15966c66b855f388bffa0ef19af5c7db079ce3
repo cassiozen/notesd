@@ -1,0 +1,16 @@
+docs/guides/self-hosting/users.md
+  h_506d0d833c777f 42
+docs/get-started/02-create-your-account.md
+  h_506d0d833c777f 23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0215966c66b855f388bffa0ef19af5c7db079ce3",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
