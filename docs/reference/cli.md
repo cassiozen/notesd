@@ -87,9 +87,9 @@ These are read only from the environment:
 
 ## Account commands
 
-The commands that take a password read it from `NOTESD_PASSWORD`, or else from the first line of
-standard input. Typed at the prompt, the password shows on screen, so prefer the variable or a
-pipe:
+The commands that take a password ask for it at the terminal, hidden, and twice so a typo can't
+slip through. With Docker, keep `-it` in `docker exec -it` so there is a terminal to type at. For
+scripts, they read `NOTESD_PASSWORD`, or else the first line of standard input:
 
 ```bash
 printf '%s\n' "$PASSWORD" | notesd add-user --username sam

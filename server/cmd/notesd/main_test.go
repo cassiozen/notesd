@@ -201,3 +201,23 @@ func TestRefusedMirrorCreatesNoOwner(t *testing.T) {
 		t.Fatalf("an owner was created: %v %v", has, err)
 	}
 }
+
+func TestReadNewPasswordFromPipe(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	if _, err := w.WriteString("piped password\r\nignored\n"); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+	var prompts strings.Builder
+	pw, err := readNewPassword(r, &prompts)
+	if err != nil || pw != "piped password" {
+		t.Fatalf("got %q, %v", pw, err)
+	}
+	if prompts.Len() != 0 {
+		t.Errorf("prompted a pipe: %q", prompts.String())
+	}
+}

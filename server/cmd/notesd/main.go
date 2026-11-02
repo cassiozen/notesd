@@ -31,8 +31,9 @@
 // Without --listen, serve listens on every interface at $PORT when it is set,
 // else on 127.0.0.1:8080. serve creates the owner account from
 // NOTESD_OWNER_USERNAME and NOTESD_OWNER_PASSWORD when there is none yet;
-// otherwise the first person to open the web app creates it. Commands that take a password read it from
-// NOTESD_PASSWORD or, failing that, from the first line of standard input.
+// otherwise the first person to open the web app creates it. Commands that
+// take a password read it from NOTESD_PASSWORD, or ask for it twice, hidden,
+// at a terminal, or else read the first line of standard input.
 // export --include-locked asks for the lock password at the terminal, every time.
 package main
 
@@ -53,6 +54,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/term"
 
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
@@ -438,6 +441,11 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		// Before any database opens: their stores take the hook when they do.
 		users.OnChange(mirr.Notify)
 	}
+	if onContainerLayer(o.dataDir) {
+		log.Warn("the data directory is not on a volume: your notes will be lost when this container is "+
+			"replaced, as every redeploy and upgrade does. Mount a persistent volume at it",
+			"data_dir", o.dataDir)
+	}
 	hasOwner, err := ownerFromEnv(ctx, authSvc, log)
 	if err != nil {
 		return err
@@ -570,12 +578,42 @@ func readPassword() (string, error) {
 	if pw, ok := os.LookupEnv("NOTESD_PASSWORD"); ok {
 		return pw, nil
 	}
-	fmt.Fprint(os.Stderr, "password (input is not hidden; prefer NOTESD_PASSWORD or piping): ")
-	line, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil && !(errors.Is(err, io.EOF) && line != "") {
-		return "", fmt.Errorf("read password: %w", err)
+	return readNewPassword(os.Stdin, os.Stderr)
+}
+
+// readNewPassword reads a password typed at a terminal without echoing it,
+// twice since a typo can't be seen; anything else (a pipe, a file) gives its
+// first line.
+func readNewPassword(stdin *os.File, stderr io.Writer) (string, error) {
+	fd := int(stdin.Fd())
+	if !term.IsTerminal(fd) {
+		line, err := bufio.NewReader(stdin).ReadString('\n')
+		if err != nil && !(errors.Is(err, io.EOF) && line != "") {
+			return "", fmt.Errorf("read password: %w", err)
+		}
+		return strings.TrimRight(line, "\r\n"), nil
 	}
-	return strings.TrimRight(line, "\r\n"), nil
+	ask := func(prompt string) (string, error) {
+		fmt.Fprint(stderr, prompt)
+		raw, err := term.ReadPassword(fd)
+		fmt.Fprintln(stderr)
+		if err != nil {
+			return "", fmt.Errorf("read password: %w", err)
+		}
+		return string(raw), nil
+	}
+	pw, err := ask("password: ")
+	if err != nil {
+		return "", err
+	}
+	again, err := ask("password again: ")
+	if err != nil {
+		return "", err
+	}
+	if pw != again {
+		return "", errors.New("the passwords don't match")
+	}
+	return pw, nil
 }
 
 func env(key, def string) string {
