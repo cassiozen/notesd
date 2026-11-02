@@ -205,6 +205,7 @@ function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
 }
 
 const RELEASES = 'https://github.com/cassiozen/notesd/releases'
+const UPGRADING = 'https://notesd.app/docs/guides/self-hosting/upgrading.html'
 
 /** Which notesd the server runs, beside where to find newer ones (docs/guides/self-hosting/upgrading.md). */
 function ServerVersion() {
@@ -277,7 +278,8 @@ function UpdateCard() {
     }
   }, [phase, status])
 
-  if (!status?.enabled || !(status.newer || phase !== 'idle')) return null
+  const selfUpdate = status?.enabled && (status.newer || phase !== 'idle')
+  if (!status || (!selfUpdate && !status.majorAvailable)) return null
 
   async function update() {
     setError(undefined)
@@ -292,7 +294,7 @@ function UpdateCard() {
   return (
     <Surface as="section" className={styles.card} aria-labelledby="update-kicker">
       <Kicker id="update-kicker">Update</Kicker>
-      {phase === 'idle' && (
+      {selfUpdate && phase === 'idle' && (
         <>
           <span className={styles.text}>
             notesd {status.latest} is available. This server runs {status.current}.{' '}
@@ -308,6 +310,16 @@ function UpdateCard() {
             <span className={styles.muted}>An admin can update the server.</span>
           )}
         </>
+      )}
+      {status.majorAvailable && phase === 'idle' && (
+        // Never offered as a button: a new major version can need steps notesd-update won't take.
+        <span className={styles.text}>
+          notesd {status.majorAvailable} is available. Major versions are installed by hand: see{' '}
+          <a href={UPGRADING} target="_blank" rel="noreferrer">
+            Upgrading
+          </a>
+          .
+        </span>
       )}
       {phase === 'updating' && (
         <p role="status" className={styles.text}>

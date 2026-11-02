@@ -339,13 +339,14 @@ other accounts get `403 admin_only` when they change it.
 
 | Method | Path | Response |
 | --- | --- | --- |
-| `GET` | `/update` | `{current, enabled, editable, latest?, newer?, requested?}` |
+| `GET` | `/update` | `{current, enabled, editable, latest?, newer?, majorAvailable?, requested?}` |
 | `POST` | `/update` | `204`. Admins only |
 
 `current` is the running version. `enabled` is whether the server was started with
-[`--self-update`](cli.md#serve); only then are `latest` (the newest release on GitHub, checked at
-most once an hour), `newer` and `requested` (an update is pending) there. `POST` asks the
-`notesd-update` service to install the newest release
+[`--self-update`](cli.md#serve); only then are `latest` (the newest release on GitHub with the
+same major version, checked at most once an hour), `newer`, `majorAvailable` (the newest release of
+a later major version, which is installed by hand) and `requested` (an update is pending) there.
+`POST` asks the `notesd-update` service to install `latest`
 ([setup](../guides/self-hosting/upgrading.md#updating-from-settings)); without `--self-update`
 it's `409 updates_disabled`.
 

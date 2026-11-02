@@ -72,6 +72,32 @@ export function startEngines(make: (user: string, csrfToken: string) => Engine) 
   })
 }
 
+/**
+ * Answers the app's matching API requests with [respond] instead of the server (a proxy, a portal,
+ * a server this version doesn't have yet); returns the function that stops. Stopped when the test ends,
+ * pass or fail.
+ */
+export function interceptApi(
+  match: (method: string, path: string) => boolean,
+  respond: (method: string, path: string, real: () => Promise<Response>) => Response | Promise<Response>,
+): () => void {
+  const real = globalThis.fetch
+  let on = true
+  const intercepting = (async (input, init) => {
+    const method = init?.method ?? 'GET'
+    const path = new URL(String(input), 'http://x').pathname
+    if (!on || !match(method, path)) return real(input, init)
+    return respond(method, path, () => real(input, init))
+  }) as typeof fetch
+  globalThis.fetch = intercepting
+  const stop = () => {
+    on = false
+    if (globalThis.fetch === intercepting) globalThis.fetch = real
+  }
+  onTestFinished(stop)
+  return stop
+}
+
 let opSeq = 0
 export const op = () => `test-op-${++opSeq}`
 

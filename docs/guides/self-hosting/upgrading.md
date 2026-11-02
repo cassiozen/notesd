@@ -63,11 +63,21 @@ web app instead. notesd can't replace its own binary, so it only leaves an
 [`scripts/notesd-update`](../../../scripts/notesd-update), does the rest. That
 service:
 
-- installs the newest release from GitHub, never an older one, and only if
+- installs the newest release from GitHub with the same major version as the
+  one running (0.x stays on 0.x, 1.x on 1.x), never an older one, and only if
   it matches the release's `SHA256SUMS`;
 - backs up the data directory and binary to `/var/backups/notesd` first;
 - puts both back if the new version doesn't start;
 - keeps the newest three backups and deletes older ones.
+
+A new major version can need steps of its own, so it's never installed from
+Settings: Settings says when one is out, and you upgrade by hand after reading
+its notes on this page.
+
+> [!IMPORTANT]
+> A copy of `notesd-update` from before 0.15 installs whatever release is
+> newest, including a new major version. Install it again from 0.15 or later,
+> as below.
 
 To set it up, download the script from the same release as your binary
 and check it against that release's `SHA256SUMS`, then install it:
