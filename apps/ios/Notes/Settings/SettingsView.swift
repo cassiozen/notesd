@@ -69,6 +69,7 @@ struct SettingsView: View {
         case .offline: "Offline"
         case .signedOut: "Signed out"
         case .failed: "Sync problem"
+        case .upgradeRequired: "Update notesd"
         }
     }
 }
@@ -207,8 +208,16 @@ struct SettingsSectionView: View {
             Section {
                 LabeledContent("Status") { SyncLabel(status: graph.syncStatus, pending: pendingNotes) }
                 if let lastSync { LabeledContent("Last synced", value: listTime(lastSync)) }
-                if let lastError { Text(lastError).font(.notesSmall).foregroundStyle(Color.errInk) }
-                Button("Sync now") { graph.scheduler.request() }
+                if case .upgradeRequired = graph.syncStatus {
+                    Text(SyncMessages.upgradeRequired).font(.notesSmall).foregroundStyle(Color.errInk)
+                } else if let lastError {
+                    Text(lastError).font(.notesSmall).foregroundStyle(Color.errInk)
+                }
+                if graph.parkedNotes > 0 {
+                    Text(SyncMessages.parked(graph.parkedNotes)).font(.notesSmall).foregroundStyle(Color.errInk)
+                    Button("Retry") { graph.scheduler.retryParked() }
+                }
+                Button("Sync now") { graph.scheduler.request(byUser: true) }
             } header: {
                 SectionHeader("Sync")
             }

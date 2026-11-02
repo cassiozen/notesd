@@ -33,6 +33,29 @@ public struct Operation: Hashable, Sendable {
     public var spaceId: String? { payload.spaceId }
 }
 
+/// Unexpected answers a change gets before it's parked.
+let maxAttempts = 3
+
+extension Sql {
+    /// Notes sync holds back whole, so their operations still go in order: one with a parked
+    /// operation, one filed in a parked new space (the server would file it in the default), or
+    /// one showing a parked image (its bytes must reach the server before anything referencing them).
+    fileprivate func heldNotes() throws -> Set<String> {
+        var held = Set(try query("SELECT note_id FROM sync_outbox WHERE parked = 1") { $0.text(0) })
+        let spaces = Set(try query("SELECT id FROM spaces WHERE parked = 1 AND dirty = 1") { $0.text(0) })
+        let images = Set(try query("SELECT id FROM pending_images WHERE parked = 1") { $0.text(0) })
+        if spaces.isEmpty && images.isEmpty { return held }
+        for (noteId, json) in try query(
+            "SELECT note_id, payload_json FROM sync_outbox", row: { ($0.text(0), $0.text(1)) })
+        where !held.contains(noteId) {
+            guard let payload = try? Payload.decode(json) else { continue }
+            let shown = Set(ImageRef.ids(payload.content)).union(payload.imageIds ?? [])
+            if payload.spaceId.map(spaces.contains) == true || !shown.isDisjoint(with: images) { held.insert(noteId) }
+        }
+        return held
+    }
+}
+
 private let operationColumns = "operation_id, note_id, operation_type, base_revision, payload_json, sent"
 
 private func operationRow(_ r: Row) throws -> Operation {
@@ -72,10 +95,71 @@ public final class SyncStore: Sendable {
 
     // MARK: push
 
+    /// The oldest operation of a note that isn't held (see `heldNotes`).
     public func nextOperation() async throws -> Operation? {
-        try await db.read {
-            try $0.one(
-                "SELECT \(operationColumns) FROM sync_outbox ORDER BY created_at, rowid LIMIT 1", row: operationRow)
+        try await db.read { sql in
+            let held = try sql.heldNotes()
+            // The outbox is small: read whole rather than built into a query.
+            return try sql.query(
+                "SELECT \(operationColumns) FROM sync_outbox ORDER BY created_at, rowid", row: operationRow
+            ).first { !held.contains($0.noteId) }
+        }
+    }
+
+    /// Counts an unexpected answer against `op`; the third parks it (see 0006_parking.sql).
+    public func attempted(_ op: Operation) async throws {
+        try await db.write { sql in
+            try sql.exec(
+                "UPDATE sync_outbox SET attempts = attempts + 1, parked = attempts + 1 >= ? WHERE operation_id = ?",
+                maxAttempts, op.operationId)
+        }
+    }
+
+    /// `op` again under a new operationId: the server had the old one for another request.
+    public func remint(_ op: Operation) async throws -> Operation {
+        let id = Uuid7.generate()
+        try await db.write { sql in
+            try sql.exec("UPDATE sync_outbox SET operation_id = ? WHERE operation_id = ?", id, op.operationId)
+        }
+        var next = op
+        next.operationId = id
+        return next
+    }
+
+    /// Parked changes (operations, spaces, images) get one more try: a failure parks them again at once.
+    public func unpark() async throws {
+        try await db.write { sql in
+            for table in ["sync_outbox", "spaces", "pending_images"] {
+                try sql.exec("UPDATE \(table) SET parked = 0, attempts = ? WHERE parked = 1", maxAttempts - 1)
+            }
+        }
+    }
+
+    /// Notes and spaces held back by parking.
+    public func parkedCount() async throws -> Int {
+        try await db.read { sql in
+            try sql.heldNotes().count + Int(try sql.int64("SELECT count(*) FROM spaces WHERE parked = 1"))
+        }
+    }
+
+    /// Queues the text of every note edited here that has nothing queued: an older app could drop a
+    /// change it shouldn't have, leaving the note dirty with nothing to send it.
+    public func requeueDirty() async throws {
+        let clock = clock
+        try await db.write { sql in
+            let orphans = try sql.query(
+                """
+                SELECT \(noteColumns) FROM notes n
+                WHERE n.dirty = 1 AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id)
+                """, row: noteRow)
+            for note in orphans {
+                if note.deletedAt != nil {
+                    try sql.enqueue(note.id, type: deleteOp, payload: nil, now: clock())
+                } else {
+                    try sql.queueText(
+                        note.id, title: note.title, content: note.content, spaceId: note.spaceId, now: clock())
+                }
+            }
         }
     }
 
@@ -150,6 +234,17 @@ public final class SyncStore: Sendable {
                 try sql.exec(
                     "UPDATE notes SET base_title = ?, base_content = ?, base_deleted_at = NULL, base_space_id = ? WHERE id = ?",
                     op.title, op.content, stored, note.id)
+            }
+        }
+    }
+
+    /// A delete the server answered not_found for: it doesn't have the note either, so it's done.
+    public func gone(_ op: Operation) async throws {
+        try await db.write { sql in
+            try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
+            guard let note = try sql.note(op.noteId), note.deletedAt != nil else { return }
+            if try sql.int64("SELECT count(*) FROM sync_outbox WHERE note_id = ?", note.id) == 0 {
+                try self.markTombstone(sql, note.id, deletedAt: note.deletedAt!, updatedAt: note.updatedAt)
             }
         }
     }

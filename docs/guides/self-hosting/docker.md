@@ -13,13 +13,12 @@ The image, `ghcr.io/cassiozen/notesd`, runs on 64-bit Linux (x86-64 or ARM64):
 docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
-  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 ```
 
 This publishes notesd on the machine's loopback interface only, for a reverse proxy or
-`tailscale serve` on the same machine to put [HTTPS](https.md) in front. Set `NOTESD_PUBLIC_URL`
-to that HTTPS address. Your notes are stored in the `notesd-data` Docker volume.
+`tailscale serve` on the same machine to put [HTTPS](https.md) in front. Your notes are stored in
+the `notesd-data` Docker volume.
 
 [Create your account](users.md#create-your-account) before you set up HTTPS: until it exists,
 anyone who can reach the server can claim it.
@@ -32,20 +31,21 @@ anyone who can reach the server can claim it.
 
 ## Changing Docker settings
 
-You can't change the flags of an existing container. Remove it and run it again with the new flags. Your notes stay in the volume. For example, to change the public URL:
+You can't change the flags of an existing container. Remove it and run it again with the new flags. Your notes stay in the volume. For example, to log JSON:
 
 ```bash
 docker rm -f notesd
 docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
-  -e NOTESD_PUBLIC_URL=https://notes.example.org \
+  -e NOTESD_LOG_FORMAT=json \
   ghcr.io/cassiozen/notesd:latest
 ```
 
 Keep your `docker run` command somewhere; you'll need it for [upgrades](upgrading.md#docker).
 
-- Pass any [setting](../../reference/cli.md#serve) as `-e NAME=value`. Don't change `NOTESD_LISTEN` or `NOTESD_DATA_DIR`; use `-p` and `-v` instead. `NOTESD_SELF_UPDATE` doesn't work in Docker: [upgrade](upgrading.md#docker) by replacing the container.
+- Pass any [setting](../../reference/cli.md#serve) as `-e NAME=value`. Don't change `PORT` or `NOTESD_DATA_DIR`; use `-p` and `-v` instead. `NOTESD_SELF_UPDATE` doesn't work in Docker: [upgrade](upgrading.md#docker) by replacing the container.
+- Always pass `-v` for `/data`. Without it, your notes live in the container itself and are lost when you replace it, as upgrading does. notesd warns at startup when that's the case: `the data directory is not on a volume`.
 - To store notes in a folder instead of a volume (`-v "$PWD/data:/data"`), create it first with `mkdir -p data && sudo chown 65532:65532 data`. notesd runs as user 65532 and can't write to a folder owned by root.
 
 ## Running commands

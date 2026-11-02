@@ -57,7 +57,12 @@ func (s *Server) getNote(w http.ResponseWriter, r *http.Request) {
 func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	var in notes.CreateInput
-	if err := decode(w, r, &in); err != nil {
+	body, err := decodeBody(w, r, &in)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	if in.Fingerprint, err = notes.Fingerprint("create", "", body); err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
@@ -84,7 +89,8 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		SpaceID      *string  `json:"spaceId"`
 		ImageIDs     []string `json:"imageIds"`
 	}
-	if err := decode(w, r, &req); err != nil {
+	body, err := decodeBody(w, r, &req)
+	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
@@ -92,7 +98,13 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, &notes.ValidationError{Field: "body", Message: "title and content are both required"})
 		return
 	}
+	fp, err := notes.Fingerprint("update", r.PathValue("id"), body)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
 	res, err := u.Notes.Update(r.Context(), notes.UpdateInput{
+		Fingerprint:  fp,
 		OperationID:  req.OperationID,
 		ID:           r.PathValue("id"),
 		BaseRevision: req.BaseRevision,
@@ -112,11 +124,18 @@ func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 		OperationID  string `json:"operationId"`
 		BaseRevision int64  `json:"baseRevision"`
 	}
-	if err := decode(w, r, &req); err != nil {
+	body, err := decodeBody(w, r, &req)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	fp, err := notes.Fingerprint("delete", r.PathValue("id"), body)
+	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
 	res, err := u.Notes.Delete(r.Context(), notes.DeleteInput{
+		Fingerprint:  fp,
 		OperationID:  req.OperationID,
 		ID:           r.PathValue("id"),
 		BaseRevision: req.BaseRevision,

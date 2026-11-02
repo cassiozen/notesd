@@ -186,6 +186,105 @@ func TestFirstRunSetup(t *testing.T) {
 	}
 }
 
+func TestSessionCookieFollowsScheme(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	login := func(hdr ...string) *http.Cookie {
+		t.Helper()
+		r := e.client().do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, hdr...)
+		cookies := (&http.Response{Header: r.header}).Cookies()
+		if r.status != 200 || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", r.status, r.header)
+		}
+		return cookies[0]
+	}
+	if c := login(); c.Name != "notes_session" || c.Secure {
+		t.Errorf("over http: %+v", c)
+	}
+	c := login("X-Forwarded-Proto", "https")
+	if c.Name != "__Host-notes_session" || !c.Secure {
+		t.Fatalf("behind an https proxy: %+v", c)
+	}
+	// The secure cookie authenticates even if a hop drops the forwarded scheme.
+	r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", c.Name+"="+c.Value)
+	if r.status != 200 {
+		t.Errorf("session with the secure cookie: %d %s", r.status, r.raw)
+	}
+}
+
+// A browser that kept a __Host- cookie from when its proxy sent the scheme,
+// signed out since, must still sign in under the plain cookie.
+func TestStaleSecureCookieDoesNotShadowSession(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	login := func(hdr ...string) string {
+		t.Helper()
+		r := e.client().do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, hdr...)
+		cookies := (&http.Response{Header: r.header}).Cookies()
+		if r.status != 200 || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", r.status, r.header)
+		}
+		return cookies[0].Value
+	}
+	stale := login("X-Forwarded-Proto", "https")
+	staleCSRF := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", "__Host-notes_session="+stale).body["csrfToken"].(string)
+	out := e.client().do("POST", "/api/v1/auth/logout", nil, "Cookie", "__Host-notes_session="+stale, "X-CSRF-Token", staleCSRF)
+	if out.status != 204 {
+		t.Fatalf("logout: %d %s", out.status, out.raw)
+	}
+	cleared := map[string]bool{}
+	for _, c := range (&http.Response{Header: out.header}).Cookies() {
+		cleared[c.Name] = c.MaxAge < 0
+	}
+	if !cleared["__Host-notes_session"] || !cleared["notes_session"] {
+		t.Errorf("logout should clear both cookie names: %v", out.header.Values("Set-Cookie"))
+	}
+
+	fresh := login()
+	r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", "__Host-notes_session="+stale+"; notes_session="+fresh)
+	if r.status != 200 {
+		t.Fatalf("session with a stale secure cookie beside a valid one: %d %s", r.status, r.raw)
+	}
+}
+
+// With valid sessions under both names, the one this request's scheme would
+// set wins: it's the latest sign-in, and its CSRF token is the one in use.
+func TestCookieMatchingSchemeWins(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	login := func(hdr ...string) (token, csrf string) {
+		t.Helper()
+		r := e.client().do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, hdr...)
+		cookies := (&http.Response{Header: r.header}).Cookies()
+		if r.status != 200 || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", r.status, r.header)
+		}
+		return cookies[0].Value, r.body["csrfToken"].(string)
+	}
+	secure, secureCSRF := login("X-Forwarded-Proto", "https")
+	plain, plainCSRF := login()
+	both := "__Host-notes_session=" + secure + "; notes_session=" + plain
+	if r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", both); r.body["csrfToken"] != plainCSRF {
+		t.Errorf("plain request should use the plain cookie's session: %s", r.raw)
+	}
+	if r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", both, "X-Forwarded-Proto", "https"); r.body["csrfToken"] != secureCSRF {
+		t.Errorf("https request should use the secure cookie's session: %s", r.raw)
+	}
+}
+
+func TestOriginBehindHostRewritingProxy(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c := e.webClient()
+	note := map[string]any{"operationId": "op1", "id": "n1", "title": "Hello", "content": "World"}
+	if r := c.do("POST", "/api/v1/notes", note, "Origin", "https://notes.example.com"); r.status != 403 {
+		t.Fatalf("foreign origin: %d", r.status)
+	}
+	if r := c.do("POST", "/api/v1/notes", note, "Origin", "https://notes.example.com", "X-Forwarded-Host", "notes.example.com"); r.status != 201 {
+		t.Fatalf("origin matching X-Forwarded-Host: %d %s", r.status, r.raw)
+	}
+}
+
 func TestAuthRequired(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()
@@ -482,7 +581,7 @@ func TestHealthAndWeb(t *testing.T) {
 	if r := c.do("GET", "/missing.js", nil); r.status != 404 {
 		t.Errorf("missing asset: %d", r.status)
 	}
-	if r := c.do("GET", "/api/v1/nope", nil); r.status != 404 || r.body["error"] != "not_found" {
+	if r := c.do("GET", "/api/v1/nope", nil); r.status != 404 || r.body["error"] != "no_such_endpoint" {
 		t.Errorf("unknown API path: %d %s", r.status, r.raw)
 	}
 	if r := c.do("PATCH", "/api/v1/notes/x", nil); r.status != 405 && r.status != 404 {
@@ -532,5 +631,40 @@ func TestTagsOverHTTP(t *testing.T) {
 	}
 	if r := c.do("GET", "/api/v1/notes?tag=%23", nil); r.status != 400 {
 		t.Fatalf("bad tag: %d", r.status)
+	}
+}
+
+// A retry is recognized by its body as sent, however it's formatted.
+func TestRetryFingerprint(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c, _ := e.deviceClient()
+	if r := c.raw("POST", "/api/v1/notes", "application/json", []byte(`{"operationId":"c1","id":"n1","title":"T","content":"a"}`)); r.status != 201 {
+		t.Fatalf("create: %d %s", r.status, r.raw)
+	}
+	r := c.raw("POST", "/api/v1/notes", "application/json", []byte(`{ "content": "a", "title": "T",
+		"id": "n1", "operationId": "c1" }`))
+	if r.status != 201 || r.header.Get("Idempotent-Replayed") != "true" {
+		t.Fatalf("reformatted retry: %d %s", r.status, r.raw)
+	}
+	put := `{"operationId":"u1","baseRevision":1,"title":"T","content":"b","updatedAt":1700000000000}`
+	if r := c.raw("PUT", "/api/v1/notes/n1", "application/json", []byte(put)); r.status != 200 {
+		t.Fatalf("put: %d %s", r.status, r.raw)
+	}
+	for name, body := range map[string]string{
+		"a field this server ignores": `{"operationId":"u1","baseRevision":1,"title":"T","content":"b","updatedAt":1700000000000,"pinned":true}`,
+		"null for absent":             `{"operationId":"u1","baseRevision":1,"title":"T","content":"b","updatedAt":1700000000000,"spaceId":null}`,
+	} {
+		if r := c.raw("PUT", "/api/v1/notes/n1", "application/json", []byte(body)); r.status != 422 || r.body["error"] != "operation_id_reused" {
+			t.Errorf("%s: %d %s", name, r.status, r.raw)
+		}
+	}
+	// The note in the path is part of the request.
+	c.raw("POST", "/api/v1/notes", "application/json", []byte(`{"operationId":"c2","id":"n2","title":"T","content":"a"}`))
+	if r := c.raw("PUT", "/api/v1/notes/n2", "application/json", []byte(put)); r.status != 422 {
+		t.Fatalf("other note: %d %s", r.status, r.raw)
+	}
+	if r := c.raw("PUT", "/api/v1/notes/n1", "application/json", []byte(`{"operationId":"u1","baseRevision":1,"title":"T","content":"\u0062","updatedAt":1700000000000}`)); r.status != 200 || r.header.Get("Idempotent-Replayed") != "true" {
+		t.Fatalf("retry: %d %s", r.status, r.raw)
 	}
 }

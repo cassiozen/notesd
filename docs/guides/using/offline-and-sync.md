@@ -24,6 +24,18 @@ On the iPhone, the list's footer counts the notes while sync is fine, and says s
 (Offline, or how many notes are waiting to upload); tap it for **Sync now**. **Settings → Sync &
 data** shows the last sync and any error, on the iPhone and in a web app that keeps your notes.
 
+**When the server answers strangely.** If something between your device and the server answers
+instead of notesd, such as a Wi-Fi login page, a company sign-in page or a redirect, the apps keep
+your change and say what happened; sign in to the network or proxy, then sync again. A change that
+fails this way 3 times is set aside so the rest can sync: the list says how many couldn't sync, and
+**Retry** tries them again. Server errors (HTTP 5xx, such as a proxy's 502 while the server
+restarts) and being offline never set a change aside: the apps just keep retrying. They stay on your device the whole time and count
+as not synced, so signing out warns you before they'd be lost.
+
+**When an app is too old.** If your server needs a newer version of an app, that app stops syncing,
+keeps your changes, and asks you to update. In the web app, after the server is upgraded, an open
+tab offers to reload.
+
 You can use either app without a server: choose **Use without a server** (Android) or just start
 writing (iPhone), and connect later in **Settings → Server**. Notes you wrote before connecting
 upload when you connect.

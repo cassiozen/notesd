@@ -1,7 +1,12 @@
 import { download, upload } from './client'
 
-/** The type a locked note's images are stored as: ciphertext (architecture §7.6). */
+/** The type a locked note's images are stored as: ciphertext (architecture §7.6). The one version this release opens. */
 export const LOCKED_IMAGE = 'application/vnd.notesd.locked'
+
+/** A locked note's image in any version: later ones add theirs to the subtype (….locked.v2). */
+export function isLockedImageType(type: string): boolean {
+  return type === LOCKED_IMAGE || type.startsWith(`${LOCKED_IMAGE}.`)
+}
 
 export type StoredImage = { id: string; contentType: string; size: number; createdAt: number }
 

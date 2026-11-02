@@ -11,9 +11,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import notes.core.db.NoteFilter
 import notes.core.db.NoteStore
 import notes.core.db.NoteSummary
@@ -46,8 +48,12 @@ fun notSynced(status: Flow<SyncStatus>, pending: Flow<Int>): Flow<NotSynced?> =
     combine(status.filter { it != SyncStatus.Syncing }, pending) { s, n ->
         when {
             n == 0 -> null
+
             s == SyncStatus.Offline -> NotSynced(n, null)
+
             s is SyncStatus.Failed -> NotSynced(n, s.message)
+
+            // UpgradeRequired has its own banner.
             else -> null
         }
     }.distinctUntilChanged()
@@ -67,7 +73,22 @@ class NotesListViewModel(
         notSynced(engine.status, store.changes.onSubscription { emit(Unit) }.mapLatest { store.pendingNotes() })
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
+    /** Changes set aside after failing again and again: their notes stay here, unsynced, until [retryParked]. */
+    val parked: StateFlow<Int> = store.changes.onSubscription { emit(Unit) }.mapLatest { engine.parked() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), 0)
+
+    /** The server needs a newer app: sync stopped, every change kept. */
+    val upgradeRequired: StateFlow<Boolean> = engine.status.map { it is SyncStatus.UpgradeRequired }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     fun syncNow() = requestSync()
+
+    fun retryParked() {
+        viewModelScope.launch {
+            engine.retryParked()
+            requestSync()
+        }
+    }
 
     private val query = MutableStateFlow("")
 

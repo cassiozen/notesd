@@ -4,7 +4,6 @@ import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime } from './list-time'
 import { useSearch } from './search'
-import { notesSource, type Unsynced } from './source'
 import { SpaceIcon } from './space-icon'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
@@ -29,7 +28,6 @@ type Props = {
 
 export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onNew, tags, onTags, mobile }: Props) {
   const { items, status, hasMore, total, loadMore, refresh, version, filter, setFilter, space } = useNotes()
-  const unsynced = useUnsynced()
   const spaces = useSpaces()
   const many = (spaces?.length ?? 0) > 1
   const search = useSearch(query, filter, { space }, version)
@@ -211,17 +209,6 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
         )}
       </div>
 
-      {unsynced && (
-        <div className={styles.unsynced} role="status">
-          <span>
-            {unsynced.pending === 1 ? '1 note not synced' : `${unsynced.pending} notes not synced`}
-            {unsynced.error && <span className={styles.unsyncedWhy}> · {unsynced.error}</span>}
-          </span>
-          <button type="button" className={styles.syncNow} onClick={() => notesSource().sync?.now()}>
-            Sync now
-          </button>
-        </div>
-      )}
       <div className={styles.footer}>
         <span className={styles.count} aria-live="polite">
           {count}
@@ -234,13 +221,6 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
       </div>
     </aside>
   )
-}
-
-/** Notes stuck on this device, when the source keeps them there. */
-function useUnsynced(): Unsynced | null {
-  const [unsynced, setUnsynced] = useState<Unsynced | null>(null)
-  useEffect(() => notesSource().sync?.onUnsynced(setUnsynced), [])
-  return unsynced
 }
 
 function Section({ label, listLabel, children }: { label: string; listLabel?: string; children: ReactNode }) {

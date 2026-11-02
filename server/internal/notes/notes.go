@@ -15,6 +15,7 @@
 package notes
 
 import (
+	"bytes"
 	"context"
 	"crypto/sha256"
 	"database/sql"
@@ -223,6 +224,9 @@ type CreateInput struct {
 	// ciphertext (§7.6). Ignored for a plain note. Not omitempty: the
 	// request hash must tell absent (nil) from none ([]).
 	ImageIDs []string `json:"imageIds"`
+	// Fingerprint identifies the request as received (see Fingerprint);
+	// empty, it is taken from the fields above.
+	Fingerprint string `json:"-"`
 }
 
 // UpdateInput replaces a note's title and content, provided BaseRevision is
@@ -239,6 +243,8 @@ type UpdateInput struct {
 	// As CreateInput.ImageIDs; nil (absent) keeps the images recorded, for
 	// a client that sends a locked body it can't read, such as a merge's.
 	ImageIDs []string `json:"imageIds"`
+	// As CreateInput.Fingerprint.
+	Fingerprint string `json:"-"`
 }
 
 // DeleteInput turns a note into a tombstone, provided BaseRevision is still
@@ -247,6 +253,8 @@ type DeleteInput struct {
 	OperationID  string `json:"operationId"`
 	ID           string `json:"id"`
 	BaseRevision int64  `json:"baseRevision"`
+	// As CreateInput.Fingerprint.
+	Fingerprint string `json:"-"`
 }
 
 // Create inserts a new note at revision 1.
@@ -278,7 +286,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		updated = created
 	}
 
-	return s.apply(ctx, in.OperationID, hashRequest("create", in), func(tx *sql.Tx) (Result, error) {
+	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "create", "", in), func(tx *sql.Tx) (Result, error) {
 		if cur, err := loadForUpdate(ctx, tx, in.ID); err == nil {
 			return Result{}, &ConflictError{Code: CodeNoteExists, Current: cur.Note}
 		} else if !errors.Is(err, ErrNotFound) {
@@ -338,7 +346,7 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	updated := s.clientTime(in.UpdatedAt, now)
 
 	locking := false
-	res, err := s.apply(ctx, in.OperationID, hashRequest("update", in), func(tx *sql.Tx) (Result, error) {
+	res, err := s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "update", in.ID, in), func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return Result{}, err
@@ -414,7 +422,7 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 	}
 	now := s.now().UnixMilli()
 
-	return s.apply(ctx, in.OperationID, hashRequest("delete", in), func(tx *sql.Tx) (Result, error) {
+	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "delete", in.ID, in), func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return Result{}, err
@@ -513,7 +521,7 @@ func (s *Store) List(ctx context.Context, filter search.Filter, limit int, curso
 		  AND `+cond+`
 		ORDER BY n.updated_at DESC, n.id DESC
 		LIMIT ?`,
-		append(append([]any{previewFetch, len(locks.Prefix), locks.Prefix, boolInt(cursor != ""), afterTime, afterID}, args...), limit+1)...)
+		append(append([]any{previewFetch, len(locks.Family), locks.Family, boolInt(cursor != ""), afterTime, afterID}, args...), limit+1)...)
 	if err != nil {
 		return nil, "", err
 	}
@@ -588,12 +596,14 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 	var out Result
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		var storedHash, storedJSON string
+		var hashVersion int
 		err := tx.QueryRowContext(ctx,
-			`SELECT request_hash, response_json FROM applied_operations WHERE operation_id = ?`,
-			opID).Scan(&storedHash, &storedJSON)
+			`SELECT request_hash, hash_version, response_json FROM applied_operations WHERE operation_id = ?`,
+			opID).Scan(&storedHash, &hashVersion, &storedJSON)
 		switch {
 		case err == nil:
-			if storedHash != reqHash {
+			// A version 1 hash can't be recomputed: trust the operation id.
+			if hashVersion >= hashVersionBody && storedHash != reqHash {
 				return ErrOperationReuse
 			}
 			var sr storedResponse
@@ -617,9 +627,9 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 			return err
 		}
 		if _, err := tx.ExecContext(ctx,
-			`INSERT INTO applied_operations (operation_id, request_hash, response_json, applied_at)
-			 VALUES (?, ?, ?, ?)`,
-			opID, reqHash, string(body), s.now().UnixMilli()); err != nil {
+			`INSERT INTO applied_operations (operation_id, request_hash, hash_version, response_json, applied_at)
+			 VALUES (?, ?, ?, ?, ?)`,
+			opID, reqHash, hashVersionBody, string(body), s.now().UnixMilli()); err != nil {
 			return err
 		}
 		out = res
@@ -631,9 +641,6 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 	return out, err
 }
 
-// hashRequest fingerprints a mutation by its kind and decoded input, so a
-// reused operation ID with a different payload is detected regardless of
-// JSON formatting.
 // shownImages is the images a note shows: read from a plain note's
 // content, as its client listed them for a locked one.
 func shownImages(content string, listed []string) []string {
@@ -655,13 +662,40 @@ func validateImageIDs(ids []string) error {
 	return nil
 }
 
-func hashRequest(kind string, input any) string {
-	b, _ := json.Marshal(struct {
-		Kind  string `json:"kind"`
-		Input any    `json:"input"`
-	}{kind, input})
-	sum := sha256.Sum256(b)
-	return hex.EncodeToString(sum[:])
+// hashVersionBody marks applied_operations rows fingerprinted by Fingerprint.
+const hashVersionBody = 2
+
+// Fingerprint identifies a mutation request, so a reused operation ID with
+// a different payload is detected: its kind, the note id in its path ("" for
+// a create) and its JSON body as received, in canonical form (keys sorted,
+// whitespace dropped, numbers as sent), so a field this server doesn't
+// decode still tells two requests apart.
+func Fingerprint(kind, pathID string, body []byte) (string, error) {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	dec.UseNumber()
+	var v any
+	if err := dec.Decode(&v); err != nil {
+		return "", err
+	}
+	canon, err := json.Marshal(v)
+	if err != nil {
+		return "", err
+	}
+	h := sha256.New()
+	h.Write([]byte(kind + "\x00" + pathID + "\x00"))
+	h.Write(canon)
+	return hex.EncodeToString(h.Sum(nil)), nil
+}
+
+// fingerprint is the request's Fingerprint, or one of input for a caller
+// that has no request body.
+func fingerprint(given, kind, pathID string, input any) string {
+	if given != "" {
+		return given
+	}
+	b, _ := json.Marshal(input)
+	fp, _ := Fingerprint(kind, pathID, b)
+	return fp
 }
 
 func (s *Store) clientTime(t *int64, now int64) int64 {

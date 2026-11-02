@@ -159,7 +159,7 @@ func (f Filter) kind() (string, []any) {
 	case f.Untagged:
 		return `NOT EXISTS (SELECT 1 FROM note_tags t WHERE t.note_seq = n.seq)`, nil
 	case f.Locked:
-		return `substr(n.content, 1, ?) = ?`, []any{len(locks.Prefix), locks.Prefix}
+		return `substr(n.content, 1, ?) = ?`, []any{len(locks.Family), locks.Family}
 	case f.Tag != "":
 		// '0' sorts right after '/', so the range holds exactly the nested keys.
 		return `EXISTS (SELECT 1 FROM note_tags t WHERE t.note_seq = n.seq

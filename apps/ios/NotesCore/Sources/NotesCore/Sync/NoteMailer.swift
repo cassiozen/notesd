@@ -31,6 +31,7 @@ public final class NoteMailer: Sendable {
             case .offline: return .offline
             case .done, .failed: break
             case .notConnected, .signedOut: return .notSynced
+            case .upgradeRequired: return .failed(SyncMessages.upgradeRequired)
             }
             guard let note = try? await store.get(id), note.deletedAt == nil else {
                 return .failed("This note was deleted.")
@@ -44,6 +45,8 @@ public final class NoteMailer: Sendable {
             case .unreachable: return .offline
             case .unauthenticated: return .notSynced
             case .rateLimited: return .failed("Too many attempts. Try again in a minute.")
+            case .unexpected(let status): return .failed(SyncMessages.unexpected(status))
+            case .upgradeRequired: return .failed(SyncMessages.upgradeRequired)
             case .rejected(_, let error, let message, let field):
                 let text =
                     switch error {

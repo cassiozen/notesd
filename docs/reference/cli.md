@@ -67,12 +67,11 @@ notesd [serve] [flags]
 
 Runs the server: the API, sync, search and the web app. Every flag can also be set with its
 environment variable; a flag wins over the variable. With Docker, use the variables (`-e NAME=value`),
-and use `-p` and `-v` rather than changing `NOTESD_LISTEN` or `NOTESD_DATA_DIR`.
+and use `-p` and `-v` rather than changing `PORT` or `NOTESD_DATA_DIR`.
 
 | Flag | Environment variable | Default | Description |
 | --- | --- | --- | --- |
-| `--listen` | `NOTESD_LISTEN` | `127.0.0.1:8080` (Docker: `0.0.0.0:8080`) | Address to listen on. The default accepts connections from this machine only ([details](../guides/self-hosting/https.md#limiting-who-can-reach-notesd)) |
-| `--public-url` | `NOTESD_PUBLIC_URL` | Unset | The address people open, such as `https://notes.example.com`. Set it behind HTTPS: it makes session cookies `Secure` and lets the browser's `Origin` match ([details](../guides/self-hosting/https.md#access-from-anywhere-with-https)) |
+| `--listen` | `PORT` | `127.0.0.1:8080` (Docker: `:8080`) | Address to listen on. The default accepts connections from this machine only ([details](../guides/self-hosting/https.md#limiting-who-can-reach-notesd)). With `PORT` set, as hosting platforms do, notesd listens on every interface at that port |
 | `--log-level` | `NOTESD_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `--log-format` | `NOTESD_LOG_FORMAT` | `text` | `text` or `json` |
 | `--mirror-dir` | `NOTESD_MIRROR_DIR` | Unset | Also keep every account's unlocked notes in this folder as Markdown files ([details](../guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror)) |
@@ -88,9 +87,9 @@ These are read only from the environment:
 
 ## Account commands
 
-The commands that take a password read it from `NOTESD_PASSWORD`, or else from the first line of
-standard input. Typed at the prompt, the password shows on screen, so prefer the variable or a
-pipe:
+The commands that take a password ask for it at the terminal, hidden, and twice so a typo can't
+slip through. With Docker, keep `-it` in `docker exec -it` so there is a terminal to type at. For
+scripts, they read `NOTESD_PASSWORD`, or else the first line of standard input:
 
 ```bash
 printf '%s\n' "$PASSWORD" | notesd add-user --username sam

@@ -155,7 +155,7 @@ func (s *Server) emailImages(r *http.Request, ids []string, budget int) ([]mail.
 		if err != nil {
 			return nil, err
 		}
-		if info.ContentType == images.Locked || info.Size > int64(budget) {
+		if images.IsLockedType(info.ContentType) || info.Size > int64(budget) {
 			continue
 		}
 		img, data, err := u.Images.Get(r.Context(), id)

@@ -12,6 +12,7 @@ import { NotePane } from './note-pane'
 import { notesSource, type Saver } from './source'
 import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
 import { NotesProvider, useNotes, type ListFilter } from './store'
+import { SyncBanners } from './sync-banners'
 import { TagsPanel } from './tags-panel'
 import styles from './shell.module.css'
 
@@ -237,50 +238,53 @@ function ShellView({ username }: { username: string }) {
   return (
     <>
       <Backdrop />
-      <div className={styles.app}>
-        {sidebar && tagsPanel(() => hideSidebar(true))}
-        {tagsScreen && tagsPanel()}
-        {showList && (
-          <NoteList
-            selectedId={selectedId}
-            query={query}
-            onQuery={setQuery}
-            onSelect={select}
-            onSelectElsewhere={(id, spaceId) => {
-              setSpace(spaceId)
-              select(id)
-            }}
-            onNew={startNote}
-            tags={!wide ? 'back' : sidebarHidden ? 'show' : null}
-            onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
-            mobile={mobile}
-          />
-        )}
-        {showPane &&
-          (selectedId ? (
-            <NotePane
-              key={selectedId}
-              id={draft ? undefined : selectedId}
-              draft={draft ?? undefined}
-              mobile={mobile}
-              onBack={() => {
-                setDraft(null)
-                navigate('/')
+      <div className={styles.frame}>
+        <SyncBanners />
+        <div className={styles.app}>
+          {sidebar && tagsPanel(() => hideSidebar(true))}
+          {tagsScreen && tagsPanel()}
+          {showList && (
+            <NoteList
+              selectedId={selectedId}
+              query={query}
+              onQuery={setQuery}
+              onSelect={select}
+              onSelectElsewhere={(id, spaceId) => {
+                setSpace(spaceId)
+                select(id)
               }}
               onNew={startNote}
-              onCreated={created}
-              onOpenDraft={setDraft}
-              onDelete={deleteNote}
-              onMove={moveNote}
-              onGone={(id) => {
-                leave(id)
-                removed(id)
-              }}
-              onNotice={(text) => setNotice({ id: crypto.randomUUID(), text, undo: false })}
+              tags={!wide ? 'back' : sidebarHidden ? 'show' : null}
+              onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
+              mobile={mobile}
             />
-          ) : (
-            <EmptyPane hasNotes={items.length > 0} onNew={startNote} />
-          ))}
+          )}
+          {showPane &&
+            (selectedId ? (
+              <NotePane
+                key={selectedId}
+                id={draft ? undefined : selectedId}
+                draft={draft ?? undefined}
+                mobile={mobile}
+                onBack={() => {
+                  setDraft(null)
+                  navigate('/')
+                }}
+                onNew={startNote}
+                onCreated={created}
+                onOpenDraft={setDraft}
+                onDelete={deleteNote}
+                onMove={moveNote}
+                onGone={(id) => {
+                  leave(id)
+                  removed(id)
+                }}
+                onNotice={(text) => setNotice({ id: crypto.randomUUID(), text, undo: false })}
+              />
+            ) : (
+              <EmptyPane hasNotes={items.length > 0} onNew={startNote} />
+            ))}
+        </div>
       </div>
 
       {notice && <Toast text={notice.text} onUndo={notice.undo ? () => undo(notice.id) : undefined} />}
@@ -317,5 +321,7 @@ function noticeText(n: SyncNotice): string {
       return `A note you edited was deleted elsewhere. It was kept as “${n.title}”.`
     case 'Restored':
       return `“${n.title || 'New note'}” changed on another device and wasn't deleted.`
+    case 'Rejected':
+      return n.message
   }
 }

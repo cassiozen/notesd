@@ -25,6 +25,8 @@ const (
 var (
 	ErrWrongPassword = errors.New("wrong lock password")
 	ErrCannotOpen    = errors.New("could not open the locked note")
+	// ErrUnsupported is a locked body or keyring entry from a newer notesd.
+	ErrUnsupported = errors.New("locked by a newer version of notesd")
 )
 
 // PasswordKEK is PBKDF2-HMAC-SHA256 of the NFC-normalized password: the key
@@ -52,11 +54,21 @@ func UnlockWithPassword(keys []Key, password string) ([]byte, error) {
 		if k.Kind != KindPassword {
 			continue
 		}
+		kdf := k.KDF
+		if kdf.Name == "" {
+			kdf = legacyKDF(k.Kind, k.Iterations)
+		}
+		if kdf.Name != KDFPBKDF2 {
+			return nil, ErrUnsupported
+		}
+		if kdf.Iterations <= 0 {
+			return nil, ErrCannotOpen
+		}
 		salt, err := decodeB64(k.Salt)
 		if err != nil {
 			return nil, err
 		}
-		key, err := Unwrap(PasswordKEK(password, salt, k.Iterations), k.Kind, k.Wrapped)
+		key, err := Unwrap(PasswordKEK(password, salt, kdf.Iterations), k.Kind, k.Wrapped)
 		if err != nil {
 			// The GCM tag is the only password check there is.
 			return nil, ErrWrongPassword
@@ -68,6 +80,9 @@ func UnlockWithPassword(keys []Key, password string) ([]byte, error) {
 
 // Decrypt returns a locked note's Markdown body.
 func Decrypt(key []byte, content string) (string, error) {
+	if IsLocked(content) && !Supported(content) {
+		return "", ErrUnsupported
+	}
 	if !ValidEnvelope(content) {
 		return "", ErrCannotOpen
 	}

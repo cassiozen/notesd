@@ -75,7 +75,8 @@ struct NoteScreen: View {
             if model.needsUnlock || model.unreadable {
                 LockedNoteView(
                     title: model.title, unreadable: model.unreadable, locks: graph.locks,
-                    promptBiometrics: !lockedHere)
+                    promptBiometrics: !lockedHere,
+                    reason: model.unsupported ? LockedError.unsupportedVersion.message : nil)
             } else if model.document != nil {
                 EditorView(model: model, controller: controller, tags: model.tags, autofocus: isNew)
                     .ignoresSafeArea(.container, edges: .bottom)

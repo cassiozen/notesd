@@ -1,7 +1,9 @@
 import Foundation
+import Synchronization
 
-/// How a cycle ended; the scheduler retries `offline` and `failed` with backoff.
-public enum SyncOutcome: Hashable, Sendable { case done, notConnected, offline, signedOut, failed }
+/// How a cycle ended; the scheduler retries `offline` and `failed` with backoff. After `upgradeRequired`
+/// every cycle ends that way at once, without the server, until the app starts again.
+public enum SyncOutcome: Hashable, Sendable { case done, notConnected, offline, signedOut, failed, upgradeRequired }
 
 public enum SyncStatus: Hashable, Sendable {
     case notConnected
@@ -10,6 +12,24 @@ public enum SyncStatus: Hashable, Sendable {
     case offline
     case signedOut
     case failed(String)
+    /// The server needs a newer app; every change is kept here meanwhile.
+    case upgradeRequired(minVersion: String?)
+}
+
+public enum SyncMessages {
+    public static let upgradeRequired =
+        "Your notesd server needs a newer version of this app. Update notesd to keep syncing; your changes are kept here."
+
+    public static func unexpected(_ status: Int) -> String {
+        "Your server answered something notesd didn’t expect (HTTP \(status)). If you sign in to a proxy or Wi-Fi "
+            + "portal first, do that, then sync again."
+    }
+
+    public static func parked(_ count: Int) -> String {
+        count == 1
+            ? "1 change couldn’t sync. It’s kept on this device."
+            : "\(count) changes couldn’t sync. They’re kept on this device."
+    }
 }
 
 /// One sync cycle's outcome and what it told the user.
@@ -35,6 +55,12 @@ public final class SyncEngine: Sendable {
     private let eventFeed = Broadcast<SyncEvent>(buffer: 16)
 
     public let status = StateCell<SyncStatus>(.notConnected)
+    /// Notes (and spaces) held back after the server kept answering unexpectedly; `retryParked()` tries them again.
+    public let parked = StateCell<Int>(0)
+    private let opened = Mutex(false)
+    /// Set by a 426: until the engine is made again (the app restarts) or `clearUpgradeRequired()`, no cycle
+    /// contacts the server.
+    private let upgradeRequired = Mutex<String??>(nil)
 
     public init(
         db: Database, api: @escaping @Sendable () async -> ApiClient?, images: ImageStore? = nil,
@@ -54,6 +80,10 @@ public final class SyncEngine: Sendable {
     @discardableResult
     public func sync() async -> SyncReport {
         await lock.withLock {
+            if let minVersion = self.upgradeRequired.withLock({ $0 }) {
+                self.status.set(.upgradeRequired(minVersion: minVersion))
+                return SyncReport(outcome: .upgradeRequired, events: [])
+            }
             guard let client = await self.api() else {
                 self.status.set(.notConnected)
                 return SyncReport(outcome: .notConnected, events: [])
@@ -62,11 +92,16 @@ public final class SyncEngine: Sendable {
             var events: [SyncEvent] = []
             var rejection: String?
             var stop: Stop?
+            var pushed = false
             do {
-                stop = try await self.cycle(client, &events, &rejection)
+                try await self.open()
+                stop = try await self.cycle(client, &events, &rejection, &pushed)
+                // Getting changes through means the server is answering properly again.
+                if pushed { try await self.store.unpark() }
             } catch {
                 stop = Stop(outcome: .failed, message: "This device's notes couldn't be updated (\(error)).")
             }
+            if let count = try? await self.store.parkedCount() { self.parked.set(count) }
             // A dropped operation isn't retried, so the cycle still counts as done, but the user must hear why,
             // beside the failure's own when the cycle failed too: the next cycle won't say it again.
             let reasons = [rejection, stop?.message].compactMap { $0 }
@@ -78,9 +113,36 @@ public final class SyncEngine: Sendable {
             case .signedOut: self.status.set(.signedOut)
             case .notConnected: self.status.set(.notConnected)
             case .failed: self.status.set(.failed(stop?.message ?? "Sync failed"))
+            case .upgradeRequired:
+                self.upgradeRequired.withLock { $0 = .some(stop?.minVersion) }
+                self.status.set(.upgradeRequired(minVersion: stop?.minVersion))
             }
             return SyncReport(outcome: outcome, events: events)
         }
+    }
+
+    /// Gives parked changes another try, then syncs.
+    @discardableResult
+    public func retryParked() async -> SyncReport {
+        await lock.withLock {
+            try? await self.store.unpark()
+            if let count = try? await self.store.parkedCount() { self.parked.set(count) }
+        }
+        return await sync()
+    }
+
+    /// Another server or account, or all data removed: the 426 was about a server this may no longer be talking to.
+    public func clearUpgradeRequired() {
+        upgradeRequired.withLock { $0 = nil }
+    }
+
+    /// Once per engine (app start): parked changes get another try, and edits an older app
+    /// dropped from the outbox are queued again.
+    private func open() async throws {
+        if opened.withLock({ $0 }) { return }
+        try await store.unpark()
+        try await store.requeueDirty()
+        opened.withLock { $0 = true }
     }
 
     /// Runs `body` with no sync cycle in flight, and none starting until it's done.
@@ -91,19 +153,25 @@ public final class SyncEngine: Sendable {
     private struct Stop {
         var outcome: SyncOutcome
         var message: String?
+        var minVersion: String?
+    }
+
+    private func unexpected(_ status: Int) -> Stop {
+        Stop(outcome: .failed, message: SyncMessages.unexpected(status))
     }
 
     /// Spaces made or renamed here go before the notes, so the server knows the space a note
     /// names. Deleted ones are tried first, to free their names, and again after the notes
     /// moved out of them have gone (§7.7).
-    private func cycle(_ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?) async throws -> Stop?
-    {
+    private func cycle(
+        _ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?, _ pushed: inout Bool
+    ) async throws -> Stop? {
         // Spaces sent under a name a space deleted here still holds on the server: stored there
         // with a number for now, and sent again, to take the name, once the delete has gone.
         var parked = Set<String>()
         if let stop = try await pushSpaces(api, deletes: true, final: false, &rejection, &parked) { return stop }
         if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
-        if let stop = try await push(api, &events, &rejection, &parked) { return stop }
+        if let stop = try await push(api, &events, &rejection, &parked, &pushed) { return stop }
         if let stop = try await pushSpaces(api, deletes: true, &rejection, &parked) { return stop }
         // The names those deletes freed, for the spaces made here meanwhile.
         if !parked.isEmpty {
@@ -113,7 +181,7 @@ public final class SyncEngine: Sendable {
         if let stop = try await pull(api, &events) { return stop }
         if let stop = try await fetchSpaces(api) { return stop }
         if let stop = try await keyring(api) { return stop }
-        return try await store.nextOperation() != nil ? try await push(api, &events, &rejection, &parked) : nil
+        return try await store.nextOperation() != nil ? try await push(api, &events, &rejection, &parked, &pushed) : nil
     }
 
     /// Sends the spaces created or renamed here, or (`deletes`) the ones deleted here. Not
@@ -132,9 +200,13 @@ public final class SyncEngine: Sendable {
                     guard final else { continue }
                     try await spaces.dropped(change)
                     rejection = "“\(change.name)” wasn’t deleted: notes reached it from another device."
-                case .rejected(let status, let error, let message, _) where status < 500:
+                case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
                     try await spaces.dropped(change)
                     rejection = "“\(change.name)” wasn’t deleted: \(message.isEmpty ? error : message)"
+                case .unexpected(let status),
+                    .rejected(let status, _, _, _) where status < 500:
+                    try await spaces.attempted(change)
+                    return unexpected(status)
                 case let other: return stop(other)
                 }
             } else {
@@ -145,9 +217,13 @@ public final class SyncEngine: Sendable {
                 switch await api.putSpace(change.id, name: change.name, icon: change.icon) {
                 case .ok(let stored):
                     if held { parked.insert(change.id) } else { try await spaces.sent(change, stored: stored) }
-                case .rejected(let status, let error, let message, _) where status < 500:
+                case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
                     try await spaces.dropped(change)
                     rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? error : message)"
+                case .unexpected(let status),
+                    .rejected(let status, _, _, _) where status < 500:
+                    try await spaces.attempted(change)
+                    return unexpected(status)
                 case let other: return stop(other)
                 }
             }
@@ -185,20 +261,21 @@ public final class SyncEngine: Sendable {
         guard let images else { return nil }
         switch try await images.upload(api) {
         case .ok: return nil
-        case .rejected(let status, _, _, _):
-            return Stop(outcome: .failed, message: "The server had a problem (\(status)).")
+        // Counted against the image already.
+        case .unexpected(let status): return unexpected(status)
         case let other: return stop(other)
         }
     }
 
     private func push(
-        _ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?, _ parked: inout Set<String>
+        _ api: ApiClient, _ events: inout [SyncEvent], _ rejection: inout String?, _ parked: inout Set<String>,
+        _ pushed: inout Bool
     ) async throws -> Stop? {
         // Every waiting image goes, whether or not a note operation follows.
         if let stop = try await uploadImages(api) { return stop }
         while true {
             guard let next = try await store.nextOperation() else { return nil }
-            guard let op = try await store.prepare(next) else { continue }
+            guard var op = try await store.prepare(next) else { continue }
             // For each operation, once it's in hand: an image's pending row is written
             // before the note showing it is saved, so this sends every image the
             // operation can show, including ones added while an earlier one was in flight.
@@ -206,27 +283,45 @@ public final class SyncEngine: Sendable {
             // Likewise a space made since the cycle began: the server files a note naming an
             // unknown space in the default.
             if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
-            switch await send(api, op) {
-            case .ok(let result):
-                try await store.sent(op, result)
-            case .conflict(_, let message, let current):
-                if let current {
-                    // Unreadable: keep the operation for a later cycle rather than drop the user's change.
-                    guard let note = try? JSONDecoder().decode(RemoteNote.self, from: current) else {
+            var reminted = false
+            while true {
+                let result = await send(api, op)
+                switch result {
+                case .ok(let result):
+                    try await store.sent(op, result)
+                    pushed = true
+                case .conflict(_, _, let current):
+                    // Unreadable or missing: keep the operation for a later cycle rather than drop the user's change.
+                    // Counted like an unexpected answer, so a server that keeps doing it can't block the queue.
+                    guard let current, let note = try? JSONDecoder().decode(RemoteNote.self, from: current) else {
+                        try await store.attempted(op)
                         return Stop(outcome: .failed, message: "The server's answer wasn't understood.")
                     }
                     emit(try await store.conflict(op, current: note), into: &events)
-                } else {
-                    try await store.rejected(op, message: message)
-                    rejection = message
+                case .rejected(let status, _, _, _) where status >= 500:
+                    return Stop(outcome: .failed, message: "The server had a problem (\(status)).")
+                case .rejected(_, "not_found", _, _) where op.type == deleteOp:
+                    try await store.gone(op)
+                    pushed = true
+                case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
+                    let reason = message.isEmpty ? error : message
+                    try await store.rejected(op, message: reason)
+                    rejection = reason
+                // The id was used for another request (another install restored from the same backup):
+                // a new one is safe, as the revision check makes a repeat a conflict or a no-op.
+                case .rejected(_, "operation_id_reused", _, _) where !reminted:
+                    op = try await store.remint(op)
+                    reminted = true
+                    continue
+                case .rejected(_, "csrf_failed", let message, _):
+                    return Stop(outcome: .failed, message: message)
+                case .unexpected(let status), .rejected(let status, _, _, _):
+                    try await store.attempted(op)
+                    return unexpected(status)
+                case let other:
+                    return stop(other)
                 }
-            case .rejected(let status, let error, let message, _):
-                if status >= 500 { return Stop(outcome: .failed, message: "The server had a problem (\(status)).") }
-                let reason = message.isEmpty ? error : message
-                try await store.rejected(op, message: reason)
-                rejection = reason
-            case let other:
-                return stop(other)
+                break
             }
         }
     }
@@ -279,6 +374,9 @@ public final class SyncEngine: Sendable {
         case .unreachable, .rateLimited: Stop(outcome: .offline)
         case .rejected(let status, _, _, _): Stop(outcome: .failed, message: "The server had a problem (\(status)).")
         case .conflict(_, let message, _): Stop(outcome: .failed, message: message)
+        case .unexpected(let status): unexpected(status)
+        case .upgradeRequired(let minVersion):
+            Stop(outcome: .upgradeRequired, message: SyncMessages.upgradeRequired, minVersion: minVersion)
         case .ok: preconditionFailure("not a failure")
         }
     }

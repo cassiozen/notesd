@@ -97,6 +97,11 @@ func writeExport(dir string, all []notes.Note, folders map[string]string, key []
 	for _, n := range all {
 		content := n.Content
 		if locks.IsLocked(content) {
+			if !locks.Supported(content) {
+				// Locked by a newer notesd: no password opens it here.
+				res.Unreadable++
+				continue
+			}
 			if key == nil {
 				res.Locked++
 				continue
@@ -209,6 +214,9 @@ func lockKey(ctx context.Context, db *database.DB, password string) ([]byte, err
 	key, err := locks.UnlockWithPassword(keys, password)
 	if errors.Is(err, locks.ErrNoPassword) {
 		return nil, errors.New("there is no lock password on this server to open locked notes with")
+	}
+	if errors.Is(err, locks.ErrUnsupported) {
+		return nil, errors.New("the lock password was set up by a newer version of notesd; export with that version")
 	}
 	return key, err
 }

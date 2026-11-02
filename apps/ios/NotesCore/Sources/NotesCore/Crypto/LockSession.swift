@@ -22,8 +22,8 @@ public final class LockSession: Sendable {
         case unlocked
     }
 
-    /// How a keyring change ended.
-    public enum Outcome: Hashable, Sendable { case done, wrongPassword, notConnected, offline, failed }
+    /// How a keyring change ended. `unsupported`: the lock was set up by a newer notesd; no password opens it here.
+    public enum Outcome: Hashable, Sendable { case done, wrongPassword, unsupported, notConnected, offline, failed }
 
     public typealias Hook = @Sendable () async -> Bool
 
@@ -109,7 +109,11 @@ public final class LockSession: Sendable {
     public func unlocking(_ password: String) async -> Outcome {
         await mutex.withLock {
             guard let stored = try? await self.keys.keys() else { return .failed }
-            guard let key = try? Keyring.unlock(stored, password) else { return .wrongPassword }
+            let key: Data
+            switch Result(catching: { () throws(LockedError) in try Keyring.unlock(stored, password) }) {
+            case .success(let k): key = k
+            case .failure(let error): return Self.outcome(error)
+            }
             self.adopt(key, entry: Self.passwordEntry(stored))
             return .done
         }
@@ -146,7 +150,11 @@ public final class LockSession: Sendable {
         await mutex.withLock {
             guard let client = await self.api() else { return .notConnected }
             guard let stored = try? await self.keys.keys() else { return .failed }
-            guard let key = try? Keyring.unlock(stored, current) else { return .wrongPassword }
+            let key: Data
+            switch Result(catching: { () throws(LockedError) in try Keyring.unlock(stored, current) }) {
+            case .success(let k): key = k
+            case .failure(let error): return Self.outcome(error)
+            }
             let entry = Keyring.passwordEntry(key, next, iterations: self.iterations)
             switch await client.putLockKey(entry, verifier: LockedNotes.verifier(key)) {
             case .ok(let saved):
@@ -245,6 +253,14 @@ public final class LockSession: Sendable {
 
     private static func passwordEntry(_ keys: [LockKey]) -> String? {
         keys.first { $0.kind == WrapKind.password.rawValue }?.wrapped
+    }
+
+    private static func outcome(_ error: LockedError) -> Outcome {
+        switch error.reason {
+        case .invalid: .wrongPassword
+        case .unsupportedKdf, .unsupportedVersion: .unsupported
+        case .malformedEntry: .failed
+        }
     }
 
     private static func outcome<T>(_ result: ApiResult<T>) -> Outcome {

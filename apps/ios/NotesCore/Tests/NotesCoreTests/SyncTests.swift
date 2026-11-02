@@ -288,6 +288,32 @@ final class SyncTests {
         #expect(try await a.notes.pendingNotes() == 1)
     }
 
+    @Test func aPortalInTheWayKeepsTheEditUntilTheServerAnswers() async throws {
+        let a = try await client()
+        try await a.save("n", "T", "kept\n")
+        a.answerNext({ $0.path.hasSuffix("/notes") }, status: 200)
+        #expect(await a.sync() == .failed)
+        a.answerNext({ $0.path.hasSuffix("/notes") }, status: 302, body: "")
+        #expect(await a.sync() == .failed)
+        #expect(try await a.note("n")?.dirty == true)
+        #expect(try await a.notes.pendingNotes() == 1)
+        #expect(await a.sync() == .done)
+        #expect(try await serverNotes() == [NoteView(id: "n", title: "T", content: "kept\n")])
+        #expect(try await a.notes.pendingNotes() == 0)
+    }
+
+    @Test func aRestartRequeuesAnEditWithNothingQueued() async throws {
+        let a = try await client()
+        try await a.save("n", "T", "one\n")
+        #expect(await a.sync() == .done)
+        try await a.save("n", "T", "two\n")
+        // As an older app's drop left it: dirty, nothing in the outbox.
+        try await a.db.write { try $0.exec("DELETE FROM sync_outbox") }
+        await a.restart()
+        #expect(await a.sync() == .done)
+        #expect(try await serverNotes() == [NoteView(id: "n", title: "T", content: "two\n")])
+    }
+
     @Test func notConnectedIsNotAnError() async throws {
         let dir = FileManager.default.temporaryDirectory.appending(path: "notes-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)

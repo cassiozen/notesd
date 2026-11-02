@@ -2,6 +2,10 @@ package api_test
 
 import (
 	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -71,8 +75,21 @@ func TestLockKeyring(t *testing.T) {
 		}
 	}
 
+	argon := map[string]any{"kind": "password", "salt": b64(16, 's'), "kdf": map[string]any{"name": "argon2id", "m": 65536, "t": 3, "p": 1},
+		"wrapped": b64(60, 'w'), "verifier": verifier}
+	if r := c.do("PUT", "/api/v1/locks/keys/password", argon); r.status != 400 || r.body["error"] != "invalid_request" || r.body["field"] != "kdf" {
+		t.Fatalf("unknown kdf: %d %s", r.status, r.raw)
+	}
+
 	r := c.do("GET", "/api/v1/locks", nil)
 	keys := r.body["keys"].([]any)
+	// Entries saved without a KDF get the one their kind implies.
+	if kdf := keys[0].(map[string]any)["kdf"].(map[string]any); kdf["name"] != "pbkdf2-sha256" || kdf["iterations"] != 600000.0 {
+		t.Fatalf("password kdf: %s", r.raw)
+	}
+	if kdf := keys[1].(map[string]any)["kdf"].(map[string]any); kdf["name"] != "hkdf-sha256" || keys[1].(map[string]any)["iterations"] != 0.0 {
+		t.Fatalf("passkey kdf: %s", r.raw)
+	}
 	if len(keys) != 2 || keys[0].(map[string]any)["kind"] != "password" ||
 		keys[0].(map[string]any)["wrapped"] != b64(60, 'w') || keys[1].(map[string]any)["credentialId"] != "Y3JlZA" {
 		t.Fatalf("keyring: %s", r.raw)
@@ -139,6 +156,61 @@ func TestLockedNoteOverHTTP(t *testing.T) {
 	}
 	c.do("PUT", "/api/v1/settings/email", map[string]any{"apiKey": "re_123456789", "from": "Me <me@example.com>"})
 	if r := c.do("POST", "/api/v1/notes/n1/email", map[string]any{"to": []string{"a@b.c"}, "revision": 1}); r.status != 409 || r.body["error"] != "note_locked" {
+		t.Fatalf("email: %d %s", r.status, r.raw)
+	}
+}
+
+// Bodies locked by a later version are stored as given, if well formed, and
+// kept out of everything a plain note is in.
+func TestLaterLockVersionOverHTTP(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", "..", "shared", "crypto-fixtures", "locked.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var f struct {
+		Unsupported []struct {
+			Name, Envelope string
+			ServerAccepts  bool
+		}
+	}
+	if err := json.Unmarshal(raw, &f); err != nil || len(f.Unsupported) == 0 {
+		t.Fatalf("fixtures: %v", err)
+	}
+	e := newEnv(t)
+	e.setupOwner()
+	c, _ := e.deviceClient()
+	accepted := 0
+	for i, v := range f.Unsupported {
+		r := c.do("POST", "/api/v1/notes", map[string]any{"operationId": fmt.Sprintf("c%d", i), "id": fmt.Sprintf("n%d", i), "title": "Vault", "content": v.Envelope})
+		switch {
+		case v.ServerAccepts && r.status == 201:
+			accepted++
+			if got := c.do("GET", fmt.Sprintf("/api/v1/notes/n%d", i), nil); got.body["content"] != v.Envelope {
+				t.Errorf("%s: stored %s", v.Name, got.raw)
+			}
+		case !v.ServerAccepts && r.status == 400 && r.body["error"] == "invalid_request":
+		default:
+			t.Errorf("%s: %d %s", v.Name, r.status, r.raw)
+		}
+	}
+	r := c.do("GET", "/api/v1/notes?locked=true", nil)
+	if r.body["total"] != float64(accepted) {
+		t.Fatalf("locked: %s", r.raw)
+	}
+	for _, item := range r.body["notes"].([]any) {
+		if it := item.(map[string]any); it["locked"] != true || it["preview"] != "" {
+			t.Fatalf("list item: %v", it)
+		}
+	}
+	if r := c.do("GET", "/api/v1/search?q=KTA3PkVMU1phaG92", nil); len(r.body["results"].([]any)) != 0 {
+		t.Fatalf("body indexed: %s", r.raw)
+	}
+	r = c.do("GET", "/api/v1/search?q=vault", nil)
+	if res := r.body["results"].([]any); len(res) != accepted || res[0].(map[string]any)["locked"] != true {
+		t.Fatalf("search: %s", r.raw)
+	}
+	c.do("PUT", "/api/v1/settings/email", map[string]any{"apiKey": "re_123456789", "from": "Me <me@example.com>"})
+	if r := c.do("POST", "/api/v1/notes/n0/email", map[string]any{"to": []string{"a@b.c"}, "revision": 1}); r.status != 409 || r.body["error"] != "note_locked" {
 		t.Fatalf("email: %d %s", r.status, r.raw)
 	}
 }

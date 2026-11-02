@@ -1,6 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Scheme LastUpgradeVersion = "2700" version = "1.7">
    <BuildAction parallelizeBuildables = "YES" buildImplicitDependencies = "YES">
+      <PreActions>
+         <ExecutionAction ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent title = "Version from git" scriptText = "&quot;$SRCROOT/scripts/version.sh&quot;&#10;">
+               <EnvironmentBuildable>
+                  <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "Notes.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
+                  </BuildableReference>
+               </EnvironmentBuildable>
+            </ActionContent>
+         </ExecutionAction>
+      </PreActions>
       <BuildActionEntries>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
             <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "Notes.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">

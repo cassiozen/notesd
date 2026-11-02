@@ -46,6 +46,8 @@ final class EditorModel {
     private(set) var locked = false
     /// Locked with a key the keyring no longer has (it was reset), or it won't open: it can't be read.
     private(set) var unreadable = false
+    /// Locked by a newer notesd (another envelope version): shown read-only, never unlocked nor saved over.
+    private(set) var unsupported = false
     private(set) var lockState: LockSession.State = .none
     private(set) var title = ""
     /// Every tag, for completing one being typed.
@@ -60,7 +62,7 @@ final class EditorModel {
     @ObservationIgnored var currentDocument: (() -> Document?)?
 
     /// A locked note while locked notes are locked: ask for the password instead of showing the text.
-    var needsUnlock: Bool { locked && lockState != .unlocked }
+    var needsUnlock: Bool { locked && !unsupported && lockState != .unlocked }
 
     /// The note has been read (or is new) and is showing.
     private var ready = false
@@ -173,7 +175,7 @@ final class EditorModel {
             // with no lock password left (a reset), that the note can't be opened.
             document = nil
             sealed = nil
-            unreadable = state == .none
+            unreadable = unsupported || state == .none
         }
     }
 
@@ -230,7 +232,7 @@ final class EditorModel {
     }
 
     private func store(_ doc: Document, _ edit: Int) async {
-        if deleted { return }
+        if deleted || unsupported { return }
         let title = doc.title ?? ""
         let plain = Markdown.serialize(doc)
         let basedOn = known
@@ -347,9 +349,14 @@ final class EditorModel {
 
     /// The note as the editor shows it; nil for a locked note while locked notes are locked.
     private func parse(title: String, content: String) -> Document? {
+        unsupported = LockedNotes.isUnsupported(content)
         guard LockedNotes.isLocked(content) else {
             unreadable = false
             return Document.forNote(title: title, body: Markdown.parse(content))
+        }
+        if unsupported {
+            unreadable = true
+            return nil
         }
         guard let key = locks?.key() else {
             // No lock password at all (reset): nothing can open it. Otherwise the screen asks to unlock.

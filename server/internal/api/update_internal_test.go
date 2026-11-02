@@ -23,6 +23,18 @@ func TestNewerVersion(t *testing.T) {
 	}
 }
 
+func TestAppVersion(t *testing.T) {
+	for in, want := range map[string]bool{
+		"1.2.3": true, "v1.2.3": true, "1.2.3-4-g51d93ed": true, "1.2.3-dirty": true, "1.2.3-4-g51d93ed-dirty": true,
+		"1.2.3-rc1": false, "1.2.3+build": false, "0.0.0-dev": false, "0.0.0": false, "1.2.3-dev": false,
+		"dev": false, "": false, "1.2": false, "1.2.3.4": false, "v": false, "1.x.3": false, "-1.2.3": false,
+	} {
+		if _, ok := appVersion(in); ok != want {
+			t.Errorf("appVersion(%q) ok = %v", in, ok)
+		}
+	}
+}
+
 func TestPickReleases(t *testing.T) {
 	tags := []string{"v2.1.0", "v2.0.0", "v1.10.0", "v1.9.2", "v1.10.0-rc1", "v0.12.0", "nightly", "v3.0.0"}
 	for _, c := range []struct{ current, latest, major string }{

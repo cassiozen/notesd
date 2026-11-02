@@ -6,6 +6,7 @@ import notes.core.api.ApiResult
 import notes.core.api.PendingImages
 import notes.core.api.SyncApi
 import notes.core.db.Database
+import notes.core.db.uploadPendingImages
 import notes.core.text.nowMillis
 import org.khronos.webgl.Int8Array
 
@@ -35,29 +36,12 @@ internal class WebImages(private val db: Database, private val files: ImageFiles
         }
     }
 
-    override suspend fun upload(client: SyncApi): ApiResult<Unit> {
-        val pending = db.read { sql ->
-            sql.query("SELECT id, content_type FROM pending_images ORDER BY created_at, id") {
-                it.getText(0) to it.getText(1)
-            }
-        }
-        for ((id, type) in pending) {
-            val bytes = files.read(id).await()
-            if (bytes == null) {
-                forget(id)
-                continue
-            }
-            when (val r = client.putImage(id, bytes.unsafeCast<ByteArray>(), type)) {
-                is ApiResult.Ok -> forget(id)
-
-                // Holding it back would stop every note from syncing; its notes show it as missing.
-                is ApiResult.Rejected if r.status in PendingImages.REFUSED -> forget(id)
-
-                else -> return r
-            }
-        }
-        return ApiResult.Ok(Unit)
-    }
+    override suspend fun upload(client: SyncApi): ApiResult<List<String>> = uploadPendingImages(
+        db,
+        client,
+        read = { id, _ -> files.read(id).await()?.unsafeCast<ByteArray>() },
+        uploaded = { id, _ -> forget(id) }
+    )
 
     private suspend fun forget(id: String) = db.write { sql -> sql.exec("DELETE FROM pending_images WHERE id = ?", id) }
 }

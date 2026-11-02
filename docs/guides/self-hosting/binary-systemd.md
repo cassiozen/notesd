@@ -46,7 +46,6 @@ Description=notesd
 
 [Service]
 ExecStart=/usr/local/bin/notesd serve --data-dir /var/lib/notesd
-Environment=NOTESD_PUBLIC_URL=https://notes.example.com
 DynamicUser=yes
 StateDirectory=notesd
 StateDirectoryMode=0700
@@ -66,5 +65,5 @@ sudo systemctl enable --now notesd
 Check on it with `sudo systemctl status notesd`, or follow the logs with `sudo journalctl -u notesd -f`.
 
 notesd listens on `127.0.0.1:8080`, for a reverse proxy or `tailscale serve` on the same machine.
-Set `NOTESD_PUBLIC_URL` to the HTTPS address it serves. To serve plain HTTP to a network you trust
+To serve plain HTTP to a network you trust
 instead, see [Limiting who can reach notesd](https.md#limiting-who-can-reach-notesd).

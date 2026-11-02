@@ -244,6 +244,24 @@ final class SpacesSyncTests {
         #expect(try await spaceOf(fresh, "n") == Spaces.defaultId)
     }
 
+    @Test func aSpaceAnsweredByAPortalWaitsAndItsNotesStillGo() async throws {
+        let a = try await client()
+        let b = try await client()
+        let work = try await a.engine.spaces.create("Work")
+        try await a.notes.save("n", title: "Plan", content: "x\n")
+        for _ in 1...3 {
+            a.answerNext({ $0.method == "PUT" && $0.path.hasPrefix("/api/v1/spaces/") }, status: 403)
+            #expect(await a.sync() == .failed)
+        }
+        // Parked: the note behind it goes, and that gives the space another try, which works now.
+        #expect(await a.sync() == .done)
+        #expect(await a.sync() == .done)
+        await syncAll(b)
+        #expect(try await names(b) == ["Notes", "Work"])
+        #expect(try await b.notes.get("n") != nil)
+        #expect(try await a.engine.spaces.list().contains { $0.id == work })
+    }
+
     @Test func searchCountsTheMatchesInOtherSpaces() async throws {
         let a = try await client()
         let work = try await a.engine.spaces.create("Work")

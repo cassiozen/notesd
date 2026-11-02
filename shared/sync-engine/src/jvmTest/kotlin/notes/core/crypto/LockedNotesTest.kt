@@ -8,6 +8,10 @@ import kotlin.test.assertNotEquals
 import kotlin.test.assertTrue
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import notes.core.api.LOCKED_IMAGE
+import notes.core.api.LockKey
+import notes.core.api.isLockedImageType
 
 /** shared/crypto-fixtures/locked.json, the vectors the web app checks too. */
 class LockedNotesTest {
@@ -36,12 +40,30 @@ class LockedNotesTest {
     private data class Verifier(val name: String, val key: String, val verifier: String)
 
     @Serializable
+    private data class Unsupported(val name: String, val envelope: String, val version: String?)
+
+    @Serializable
+    private data class ImageType(val type: String, val locked: Boolean, val supported: Boolean)
+
+    @Serializable
+    private data class KeyringEntry(
+        val name: String,
+        val kind: String,
+        val kdf: JsonObject? = null,
+        val iterations: Int = 0,
+        val verdict: String
+    )
+
+    @Serializable
     private data class Suite(
         val kdf: List<Kdf>,
         val hkdf: List<Hkdf>,
         val wraps: List<Wrap>,
         val envelopes: List<Envelope>,
         val invalid: List<Envelope>,
+        val unsupported: List<Unsupported>,
+        val imageTypes: List<ImageType>,
+        val keyring: List<KeyringEntry>,
         val images: List<Image>,
         val verifiers: List<Verifier>
     )
@@ -98,6 +120,45 @@ class LockedNotesTest {
     fun refusesInvalid() {
         for (v in fixtures.invalid) {
             assertFailsWith<LockedException>(v.name) { LockedNotes.decrypt(b(v.key), v.envelope) }
+        }
+    }
+
+    @Test
+    fun unsupportedVersions() {
+        val key = b(fixtures.envelopes.first().key)
+        for (v in fixtures.unsupported) {
+            assertTrue(LockedNotes.isLocked(v.envelope), v.name)
+            assertEquals(v.version, LockedEnvelope.lockVersion(v.envelope), v.name)
+            assertTrue(LockedEnvelope.isUnsupported(v.envelope), v.name)
+            // Never "wrong password": a distinct error, whatever the key.
+            val e = assertFailsWith<UnsupportedVersionException>(v.name) { LockedNotes.decrypt(key, v.envelope) }
+            assertEquals(v.version, e.version, v.name)
+        }
+        for (v in fixtures.envelopes) assertEquals("v1", LockedEnvelope.lockVersion(v.envelope), v.name)
+    }
+
+    @Test
+    fun imageTypes() {
+        for (v in fixtures.imageTypes) {
+            assertEquals(v.locked, isLockedImageType(v.type), v.type)
+            // Supported: the base type opens here; image types are shown as they are.
+            assertEquals(v.supported, !v.locked || v.type == LOCKED_IMAGE, v.type)
+        }
+    }
+
+    @Test
+    fun keyring() {
+        for (v in fixtures.keyring) {
+            val entry = LockKey(v.name, v.kind, salt = "", iterations = v.iterations, wrapped = "", kdf = v.kdf)
+            val verdict = try {
+                notes.core.crypto.Kdf.of(entry)
+                "ok"
+            } catch (_: UnsupportedKdfException) {
+                "unsupported"
+            } catch (_: MalformedKeyException) {
+                "invalid"
+            }
+            assertEquals(v.verdict, verdict, v.name)
         }
     }
 

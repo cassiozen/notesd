@@ -10,6 +10,7 @@ import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 import notes.core.api.ServerAddress
 import notes.core.api.SignIn
+import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
@@ -194,8 +195,14 @@ class OnboardingViewModel(
 
         is ApiResult.RateLimited -> "Too many attempts. Wait a moment and try again."
 
-        is ApiResult.Rejected if r.error == ApiClient.UNEXPECTED_RESPONSE || r.status == 404 ->
-            "There's no notes server at that address."
+        // No notesd there, or something in between answering for it (a proxy, a Wi-Fi portal).
+        is ApiResult.Unexpected ->
+            "Something other than a notes server answered at that address. Check the address; if you sign in " +
+                "to a proxy or Wi-Fi portal first, do that, then try again."
+
+        is ApiResult.Rejected if r.status == 404 -> "There's no notes server at that address."
+
+        is ApiResult.UpgradeRequired -> UPGRADE_REQUIRED_MESSAGE
 
         is ApiResult.Rejected -> r.message.ifEmpty { "The server refused that (error ${r.status})." }
 

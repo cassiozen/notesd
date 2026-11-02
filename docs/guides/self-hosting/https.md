@@ -12,12 +12,10 @@ a reverse proxy or Tailscale on the same machine. That's the setup the
 ## Access from anywhere with HTTPS
 
 1. Make sure notesd listens on [this machine only](#limiting-who-can-reach-notesd).
-2. [Create your account](users.md#create-your-account) first: once the HTTPS address is up,
-   anyone who reaches it before you can claim the server.
-3. Set `NOTESD_PUBLIC_URL` to the HTTPS address, such as `https://notes.example.com`. With Docker,
-   add `-e NOTESD_PUBLIC_URL=…`. With systemd, add `Environment=NOTESD_PUBLIC_URL=…` under
-   `[Service]`.
-4. Set up one of the options below.
+2. [Create your account](users.md#create-your-account) first. Behind a proxy on the same machine,
+   notesd can't tell you from anyone else who reaches the HTTPS address.
+3. Set up one of the options below. notesd learns that it's served over HTTPS from the proxy's
+   `X-Forwarded-Proto` header, and then makes session cookies `Secure`.
 
 For Caddy and nginx, point a DNS `A` (and `AAAA`) record at the machine's public IP and open
 ports 80 and 443: `sudo ufw allow 80,443/tcp`, plus your provider's firewall or security group if
@@ -64,6 +62,7 @@ server {
     location / {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
     }
 }
 ```
@@ -82,7 +81,7 @@ ngrok and Tailscale Funnel work too.
 ### Good to know
 
 - Use a dedicated hostname (`notes.example.com`), not a path (`example.com/notes`).
-- If saving fails with HTTP 403, check that `NOTESD_PUBLIC_URL` matches the address you open, or that your proxy forwards the `Host` header.
+- If saving fails with HTTP 403, your proxy rewrites the `Host` header: forward it unchanged, or send the original as `X-Forwarded-Host`.
 - After 10 failed sign-ins in 15 minutes from one IP, notesd blocks sign-ins from that IP for a while. Behind a proxy, all clients may share one IP. People who are already signed in aren't affected.
 - Pictures can be up to 10 MiB. If your proxy limits request size, allow at least that.
 
@@ -102,7 +101,7 @@ change Docker flags, see [Changing Docker settings](docker.md#changing-docker-se
 > public IP, `-p 8080:8080` exposes notesd to the internet over plain HTTP.
 
 Without HTTPS, your password and notes are sent unencrypted, so serve plain HTTP only to networks
-you trust, and leave `NOTESD_PUBLIC_URL` unset. The apps allow plain HTTP only to local
+you trust. The apps allow plain HTTP only to local
 addresses (private, link-local or loopback IPs such as `192.168.x` or `10.x`, `localhost`,
 `*.local`), and the web app can't keep
 notes offline or be installed over a plain-HTTP LAN address.

@@ -131,7 +131,8 @@ func (rs *releases) tags(ctx context.Context) []string {
 	rs.checked = time.Now() // failures too, so an outage isn't asked every time
 	// Not cancelled with the caller's request: a closed tab would otherwise
 	// be remembered as a failed check for an hour. The client's timeout bounds it.
-	ctx = context.WithoutCancel(ctx)
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+	defer cancel()
 	list := []string{}
 	url := rs.url
 	for page := 0; page < maxReleasePages && url != ""; page++ {

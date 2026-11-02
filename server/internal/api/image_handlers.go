@@ -16,8 +16,10 @@ import (
 // and answers 200 instead of 201.
 func (s *Server) putImage(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
-	ct, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
-	if err != nil || !images.Types[ct] {
+	ct, params, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	// A locked image's version is in its subtype; a parameter could only be
+	// a version this server would ignore and mistake for v1.
+	if err != nil || !images.ValidType(ct) || (images.IsLockedType(ct) && len(params) > 0) {
 		writeError(w, http.StatusUnsupportedMediaType, "unsupported_image", "images must be JPEG, PNG, WebP or GIF")
 		return
 	}

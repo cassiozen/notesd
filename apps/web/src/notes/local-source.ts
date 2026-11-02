@@ -128,6 +128,26 @@ export function localSource(engine: Engine): NotesSource {
         engine.on((e) => {
           if (e.type === 'notice') listener(e.notice)
         }),
+      onParked(listener) {
+        let open = true
+        let shown: number | null = null
+        const count = () =>
+          engine.call('parked').then((n) => {
+            if (!open || n === shown) return
+            shown = n
+            listener(n)
+          }, () => {})
+        // A cycle parks (status) and pushes or unparks (change).
+        const off = engine.on((e) => {
+          if (e.type === 'status' || e.type === 'change') void count()
+        })
+        void count()
+        return () => {
+          open = false
+          off()
+        }
+      },
+      retryParked: () => engine.call('retryParked'),
       now: requestSync,
     },
   }

@@ -1,7 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 import type { Space } from '../src/api/types'
 import { timing } from '../src/notes/saver'
+import { UPGRADE_REQUIRED } from '../src/notes/sync-banners'
+import { syncTiming } from '../src/offline/scheduler'
 import type { Engine } from '../src/offline/tab'
 import {
   bodyText,
@@ -9,6 +11,7 @@ import {
   deleteNote,
   editElsewhere,
   getNote,
+  interceptApi,
   list,
   listNotes,
   noteTitle,
@@ -29,6 +32,15 @@ afterEach(() => {
   // @ts-expect-error -- back to the document's own getter
   delete document.visibilityState
 })
+
+/** Sync runs only when a test calls it, not after edits settle. */
+function quietScheduler() {
+  const before = { ...syncTiming }
+  Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, firstRetryMs: 60_000 })
+  onTestFinished(() => {
+    Object.assign(syncTiming, before)
+  })
+}
 
 /** Saves go out when the tab is hidden, without waiting for the typing to pause. */
 function hideTab() {
@@ -271,6 +283,73 @@ describe('notes on this device', () => {
     await user.click(screen.getByRole('button', { name: 'Sync now' }))
     await waitFor(() => expect(screen.queryByText('1 note not synced')).toBeNull())
     expect((await listNotes(server)).map((n) => n.preview)).toEqual(['One, two'])
+  })
+
+  it('sets aside an edit the server keeps answering strangely, and Retry sends it', async () => {
+    let id = ''
+    const { engine, server, user } = await signedIn({
+      onDevice: true,
+      seed: async (s) => {
+        id = await createNote(s, 'Plan', 'One')
+      },
+    })
+    if (!engine) throw new Error('no engine')
+    quietScheduler()
+    await openNote(user, 'Plan')
+    await typeAtEnd(user, ', two')
+    await saved()
+
+    // A portal in front of the server: every push is redirected to its sign-in page.
+    const stop = interceptApi(
+      (method, path) => method !== 'GET' && path.startsWith('/api/v1/notes'),
+      () => new Response(null, { status: 302, headers: { Location: '/portal' } }),
+    )
+    for (let i = 0; i < 3; i++) {
+      // Cycles in turn: each counts once against the edit.
+      // oxlint-disable-next-line no-await-in-loop
+      expect(await engine.call('sync')).toBe('Failed')
+    }
+    expect(await engine.call('parked')).toBe(1)
+    const banner = (await screen.findByText('1 change couldn’t sync. It’s kept on this device.')).closest('[role="status"]')
+    if (!(banner instanceof HTMLElement)) throw new Error('no banner')
+    // One message, one Retry: not "not synced" beside it.
+    expect(screen.queryByText(/not synced/)).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^(Retry|Sync now)$/ })).toHaveLength(1)
+    expect((await getNote(server, id)).content).toBe('One')
+
+    stop()
+    await user.click(within(banner).getByRole('button', { name: 'Retry' }))
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('One, two\n'))
+    await waitFor(() => expect(screen.queryByText(/couldn’t sync/)).toBeNull())
+  })
+
+  it('stops syncing and says to update when the server needs a newer app, keeping the edit', async () => {
+    let id = ''
+    const { engine, server, user } = await signedIn({
+      onDevice: true,
+      seed: async (s) => {
+        id = await createNote(s, 'Plan', 'One')
+      },
+    })
+    if (!engine) throw new Error('no engine')
+    quietScheduler()
+    await openNote(user, 'Plan')
+    await typeAtEnd(user, ', two')
+    await saved()
+
+    interceptApi(
+      (_m, path) => path.startsWith('/api/v1/') && path !== '/api/v1/auth/status',
+      () =>
+        Response.json(
+          { error: 'upgrade_required', message: 'this app is too old for this server; update notesd', minVersion: '9.0.0' },
+          { status: 426 },
+        ),
+    )
+    expect(await engine.call('sync')).toBe('UpgradeRequired')
+    expect((await screen.findByRole('alert')).textContent).toBe(UPGRADE_REQUIRED)
+    expect((await getNote(server, id)).content).toBe('One')
+    expect(await engine.call('pendingNotes')).toBe(1)
+    expect((await engine.call('get', id))?.content).toBe('One, two\n')
   })
 
   it('moves a note to another space on this device', async () => {

@@ -52,7 +52,11 @@ class SyncScheduler(
     }
 
     fun start() {
-        scope.launch { loop() }
+        scope.launch {
+            // Edits older versions dropped go back in line before the first cycle; that cycle does it if this fails.
+            runCatching { engine.open() }
+            loop()
+        }
         scope.launch {
             store.localEdits.collectLatest {
                 delay(AFTER_EDIT_MS)
@@ -94,6 +98,8 @@ class SyncScheduler(
             requests.receive()
             while (true) {
                 val outcome = engine.sync()
+                // Only an updated app helps, and that's a new process: nothing more until then.
+                if (outcome == SyncOutcome.UpgradeRequired) return
                 if (outcome != SyncOutcome.Offline && outcome != SyncOutcome.Failed) {
                     backoff = FIRST_RETRY_MS
                     break

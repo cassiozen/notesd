@@ -8,6 +8,10 @@ import kotlin.test.assertNull
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -94,7 +98,94 @@ class ApiClientTest {
     @Test
     fun `something that isn't notesd`() = runBlocking<Unit> {
         server.enqueue(MockResponse.Builder().code(200).body("<html>router</html>").build())
-        assertEquals(ApiClient.UNEXPECTED_RESPONSE, assertIs<ApiResult.Rejected>(api.status()).error)
+        assertEquals(ApiResult.Unexpected(200), api.status())
+    }
+
+    private fun html(code: Int) = MockResponse.Builder().code(code).body("<html>Sign in to the Wi-Fi</html>").build()
+
+    @Test
+    fun `only notesd's own errors are classified, anything else is unexpected`() = runBlocking<Unit> {
+        val body = buildJsonObject { put("operationId", "op") }
+        for (code in listOf(400, 401, 403, 404, 409, 413, 415, 426)) {
+            server.enqueue(html(code))
+            assertEquals(ApiResult.Unexpected(code), api.updateNote("n", body), "HTTP $code")
+        }
+        // A proxy's 5xx or 429 page means what notesd's would.
+        server.enqueue(html(502))
+        assertEquals("http_502", assertIs<ApiResult.Rejected>(api.updateNote("n", body)).error)
+        server.enqueue(MockResponse.Builder().code(429).addHeader("Retry-After", "7").body("<html/>").build())
+        assertEquals(ApiResult.RateLimited(7), api.updateNote("n", body))
+        // An unknown code is notesd's: the caller decides what it means for its request.
+        server.enqueue(json(422, """{"error":"something_new","message":"m"}"""))
+        assertEquals(ApiResult.Rejected(422, "something_new", "m", null), api.updateNote("n", body))
+        // A success that isn't what the endpoint returns.
+        server.enqueue(json(200, """{"hello":"world"}"""))
+        assertEquals(ApiResult.Unexpected(200), api.updateNote("n", body))
+    }
+
+    @Test
+    fun `redirects aren't followed`() = runBlocking<Unit> {
+        server.enqueue(MockResponse.Builder().code(302).addHeader("Location", server.url("/portal")).build())
+        assertEquals(ApiResult.Unexpected(302), api.sync(0, 10, null))
+        assertEquals(1, server.requestCount)
+    }
+
+    @Test
+    fun `an upgrade the server asks for`() = runBlocking<Unit> {
+        server.enqueue(
+            json(426, """{"error":"upgrade_required","message":"update notesd","minVersion":"1.2.0"}""")
+        )
+        assertEquals(ApiResult.UpgradeRequired("1.2.0"), api.sync(0, 10, null))
+        server.enqueue(json(426, """{"error":"upgrade_required","message":"update notesd"}"""))
+        assertEquals(ApiResult.UpgradeRequired(null), api.sync(0, 10, null))
+    }
+
+    @Test
+    fun `a space delete is a 204 and an image upload answers with the image`() = runBlocking<Unit> {
+        server.enqueue(MockResponse.Builder().code(204).build())
+        assertEquals(ApiResult.Ok(Unit), api.deleteSpace("s"))
+        server.enqueue(json(200, "{}"))
+        assertEquals(ApiResult.Unexpected(200), api.deleteSpace("s"))
+
+        val id = "a".repeat(64)
+        server.enqueue(json(201, """{"id":"$id","contentType":"image/png","size":3,"createdAt":1}"""))
+        assertEquals(ApiResult.Ok(Unit), api.putImage(id, byteArrayOf(1, 2, 3), "image/png"))
+        server.enqueue(MockResponse.Builder().code(200).body("<html/>").build())
+        assertEquals(ApiResult.Unexpected(200), api.putImage(id, byteArrayOf(1, 2, 3), "image/png"))
+        server.enqueue(json(201, """{"id":"${"b".repeat(64)}","contentType":"image/png"}"""))
+        assertEquals(ApiResult.Unexpected(201), api.putImage(id, byteArrayOf(1, 2, 3), "image/png"))
+    }
+
+    @Test
+    fun `every request says which app sent it`() = runBlocking<Unit> {
+        val app = ApiClient(server.url("/"), creds, clock = { now }, client = ClientInfo("android", "v1.0.0"))
+        server.enqueue(json(200, """{"setupRequired":false,"serverVersion":"v1.0.0","apiVersion":1}"""))
+        assertEquals(ApiResult.Ok(AuthStatus(false, "v1.0.0", 1)), app.status())
+        server.enqueue(MockResponse.Builder().code(204).build())
+        app.logout()
+        repeat(2) {
+            val sent = server.takeRequest()
+            assertEquals("android/1.0.0", sent.headers["X-Notesd-Client"])
+            assertEquals("notesd-android/1.0.0", sent.headers["User-Agent"])
+        }
+    }
+
+    @Test
+    fun `a keyring entry goes with its kdf`() = runBlocking<Unit> {
+        val kdf = buildJsonObject {
+            put("name", "pbkdf2-sha256")
+            put("iterations", 600000)
+        }
+        val key = LockKey("password", "password", salt = "s", iterations = 600000, wrapped = "w", kdf = kdf)
+        server.enqueue(
+            json(
+                200,
+                """{"id":"password","kind":"password","salt":"s","iterations":600000,"wrapped":"w","createdAt":1,"kdf":$kdf}"""
+            )
+        )
+        assertEquals(kdf, assertIs<ApiResult.Ok<LockKey>>(api.putLockKey(key, "v")).value.kdf)
+        val sent = Json.parseToJsonElement(server.takeRequest().body!!.utf8()).jsonObject
+        assertEquals(kdf, sent["kdf"])
     }
 
     @Test

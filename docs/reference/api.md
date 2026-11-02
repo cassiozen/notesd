@@ -6,11 +6,11 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 # HTTP API
 
 > [!NOTE]
-> This is the internal API of notesd's own web, Android and iPhone apps. It isn't a supported
-> interface for other programs yet, and it can change in any release. If you build on it anyway,
-> pin your notesd version.
+> This is the API of notesd's own web, Android and iPhone apps. It isn't a supported interface for
+> other programs yet. Within a major version it only changes in the ways listed under
+> [Compatibility](#compatibility), so that apps and servers of different 1.x releases work together.
 
-- [Basics](#basics): requests, authentication, writing notes, errors
+- [Basics](#basics): requests, compatibility, authentication, writing notes, errors
 - [Endpoints](#endpoints): [auth](#auth), [notes](#notes), [sync](#sync),
   [search and filters](#search-and-filters), [spaces](#spaces), [images](#images),
   [locked notes](#locked-notes), [email](#email), [updates](#updates), [health](#health)
@@ -21,7 +21,7 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 ### Requests
 
 - Every endpoint is under `/api/v1`, except [health](#health). An unknown path under `/api/` is
-  `404 not_found`; any other path serves the web app.
+  `404 no_such_endpoint`; any other path serves the web app.
 - Request and response bodies are JSON, except [images](#images), which are uploaded and
   downloaded as raw bytes. Unknown fields in a request are ignored, so newer clients
   keep working with older servers. Bodies can be up to 4 MiB; images have their own
@@ -31,6 +31,37 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
   `Accept-Encoding: gzip`.
 - Every request is logged on one line, without its query string, so search terms aren't logged.
 
+### Compatibility
+
+Apps and servers of different releases meet all the time: a phone updates before its server, or the
+other way round. These rules keep them working together.
+
+- **Versions.** Every response carries `X-Notesd-Server: <version>`, such as `v1.2.0`.
+  [`GET /auth/status`](#auth) also returns `serverVersion` and `apiVersion`, without signing in.
+  `apiVersion` is `1` for every 1.x server and only changes with an incompatible API, alongside a
+  new path prefix.
+- **Clients say what they are** with `X-Notesd-Client: <platform>/<version>` on every request, such
+  as `android/1.2.0`, `ios/1.2.0` or `web/1.2.0`. The Android and iPhone apps also send
+  `User-Agent: notesd-<platform>/<version>`.
+- **Too old.** A server may answer `426 upgrade_required`, with the oldest version it accepts in
+  `minVersion`, to a client whose `X-Notesd-Client` is older than that. It never does so to a client
+  that doesn't send the header, and never on `/auth/status`. Apps pause syncing, keep every change,
+  and ask to update. 1.0 servers accept every version.
+- **Additive only within `v1`.** New releases add endpoints, optional request fields, response
+  fields and error codes; they don't remove or rename them, or change what an existing field means.
+  Clients ignore response fields they don't know. Servers ignore unknown request fields, except
+  where a value decides how data is read: an unknown [lock version](#locked-notes) is stored only as
+  an opaque locked body, and an unknown [key derivation](#locked-notes) is refused.
+- **Unknown errors are temporary.** Apps drop a queued change only for an error code that means the
+  change itself can never be accepted (`invalid_request`, `hash_mismatch`, `image_too_large`,
+  `unsupported_image`, `space_default`). Any other code, or an answer that isn't notesd's own JSON
+  (a proxy's login page, a captive portal, a redirect), keeps the change for later. A change that
+  fails this way 3 times is set aside, still on the device, so the ones behind it can sync.
+- **Versioned formats.** A locked body starts with `notesd:locked:` and its version (`v1`); a
+  locked image's type is `application/vnd.notesd.locked`, with later versions as a subtype
+  (`application/vnd.notesd.locked.v2`). Apps treat every version as locked and open the ones they
+  don't know read-only, asking to update.
+
 ### Authentication
 
 There are two kinds of session. Get either from [`POST /auth/login`](#auth); every endpoint
@@ -39,7 +70,7 @@ except `/auth/status`, `/auth/setup`, `/auth/login` and `/auth/refresh` needs on
 **Browsers** (`"client": "web"`) get an HttpOnly session cookie that expires after 30 days
 without use, and a `csrfToken`. Every request other than `GET`, `HEAD` and `OPTIONS` must send it
 as `X-CSRF-Token`, and is rejected if its `Origin` header names another host than the request's
-`Host` or `--public-url`.
+`Host` or `X-Forwarded-Host`.
 
 **Apps** (`"client": "device"`) get an `accessToken` that lasts 1 hour and a `refreshToken`
 that lasts 180 days from its last use. Send the access token as `Authorization: Bearer <token>`,
@@ -57,7 +88,7 @@ Creating, updating and deleting a note are idempotent and checked against the no
 - **`operationId`** is required on every write: 1–128 characters of `[A-Za-z0-9_.:-]`, unique
   per write. Sending the same ID and body again returns the original response with
   `Idempotent-Replayed: true`, even if the note has changed since. The same ID with another body
-  is `422 operation_id_reused`.
+  is `422 operation_id_reused`; key order and whitespace don't make a body different.
 - **`baseRevision`** is the revision the edit started from. If the note has a newer one, the write
   is refused with `409 revision_conflict`, so an edit never overwrites one it hasn't seen. The
   exception: deleting a note that's already deleted succeeds as `already_deleted`, whatever
@@ -128,10 +159,10 @@ Paths are relative to `/api/v1`.
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `GET` | `/auth/status` | → `{setupRequired}`: `true` while the server has no account |
+| `GET` | `/auth/status` | → `{setupRequired, serverVersion, apiVersion}`. `setupRequired` is `true` while the server has no account |
 | `POST` | `/auth/setup` | `{username, password}` → `201`. Creates the first account, an admin, for whoever calls it first. Later: `409 already_set_up` |
-| `POST` | `/auth/login` | `{username, password, client, deviceName?}` → a [session](#session-response). `client` is `web` or `device`; `deviceName` defaults to the `User-Agent` |
-| `POST` | `/auth/refresh` | `{refreshToken}` → a [session](#session-response) with a new `accessToken` |
+| `POST` | `/auth/login` | `{username, password, client, deviceName?}` → a [session](#session-response) with `serverVersion`. `client` is `web` or `device`; `deviceName` defaults to the `User-Agent` |
+| `POST` | `/auth/refresh` | `{refreshToken}` → a [session](#session-response) with a new `accessToken` and `serverVersion` |
 | `POST` | `/auth/logout` | → `204`. Ends this session |
 | `GET` | `/auth/session` | → this [session](#session-response), with `csrfToken` for browsers and `serverVersion` |
 | `POST` | `/auth/password` | `{currentPassword, newPassword}` → `204`. Signs out every other session |
@@ -151,7 +182,8 @@ Accounts after the first are added with [`notesd add-user`](cli.md#add-user).
   "accessToken": "…",
   "accessExpiresAt": 1767229200000,
   "refreshToken": "…",
-  "refreshExpiresAt": 1782777600000
+  "refreshExpiresAt": 1782777600000,
+  "serverVersion": "v1.2.0"
 }
 ```
 
@@ -274,7 +306,9 @@ parents of nested tags. `count` is the number of notes with the tag or one neste
 An ID that isn't 64 lowercase hex characters is `400 invalid_request`; one that doesn't match
 the bytes is `400 hash_mismatch`. `Content-Type` must be `image/jpeg`, `image/png`,
 `image/webp` or `image/gif`, matching the bytes (`415 unsupported_image` otherwise), or
-`application/vnd.notesd.locked` for an encrypted image. Images can be up to 10 MiB
+`application/vnd.notesd.locked` for an encrypted image. A later version of the encryption uses a
+subtype, such as `application/vnd.notesd.locked.v2`, which the server stores without reading it.
+Parameters on a locked type (`; v=2`) are refused with `415 unsupported_image`. Images can be up to 10 MiB
 (`413 image_too_large`). `GET` answers with `ETag`,
 `Cache-Control: private, max-age=31536000, immutable` and a restrictive
 `Content-Security-Policy`.
@@ -287,7 +321,9 @@ for 30 days is deleted.
 
 A locked note's `content` is `notesd:locked:v1:` followed by one line of unpadded base64url: the
 encrypted body. The server can't read it and refuses anything else after that prefix
-(`400 invalid_request`, `field: content`). Its title stays readable: it's indexed, searchable and
+(`400 invalid_request`, `field: content`). Any content starting with `notesd:locked:` is locked.
+A later version (`notesd:locked:v2:` and so on) is stored as an opaque locked body if the rest is
+one line of base64url, and refused otherwise; apps that don't know the version open it read-only. Its title stays readable: it's indexed, searchable and
 tagged, and the note's `locked` is `true`. Because the server can't see a locked note's images,
 creates and updates send them as `imageIds` (up to 1,000 SHA-256 IDs); leaving `imageIds` out of
 an update keeps the ones stored.
@@ -296,14 +332,19 @@ The keyring holds the account's note key, wrapped (encrypted) under each way of 
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `GET` | `/locks` | → `{keys: [{id, kind, credentialId?, salt, iterations, wrapped, createdAt}]}`, the password entry first |
-| `PUT` | `/locks/keys/{id}` | `{kind, credentialId?, salt, iterations, wrapped, verifier}` → the entry |
+| `GET` | `/locks` | → `{keys: [{id, kind, credentialId?, salt, iterations, kdf, wrapped, createdAt}]}`, the password entry first |
+| `PUT` | `/locks/keys/{id}` | `{kind, credentialId?, salt, iterations, kdf?, wrapped, verifier}` → the entry |
 | `DELETE` | `/locks/keys/{id}` | `{verifier}` → `204` |
 | `DELETE` | `/locks` | `{accountPassword}` → `204`. Forgets the whole keyring, for a forgotten lock password |
 
 - `kind` is `password`, `recovery` or `passkey`. The first two use their kind as `id`; a passkey
   takes any other 1–64 characters of `[A-Za-z0-9_-]`.
 - `salt`, `wrapped`, `credentialId` and `verifier` are unpadded base64url.
+- `kdf` says how the key that wraps the note key is derived:
+  `{"name": "pbkdf2-sha256", "iterations": 600000}` for `password` and `recovery` (10,000 to
+  10,000,000 iterations), `{"name": "hkdf-sha256"}` for `passkey`. Without it, a `PUT` gets the
+  one its kind implies, with `iterations`. An unknown name, or one that doesn't fit the kind, is
+  `400 invalid_request` with `field: kdf`. `iterations` stays alongside it for apps from before 1.0.
 - The first entry must be the password (`409 no_lock_password` otherwise), and it can't be
   deleted (`409 password_key_required`).
 - `verifier` is HMAC-SHA256 of the note key with the message `notesd:verifier:v1`. The server
@@ -370,7 +411,8 @@ Outside `/api/v1`, need no session, and expose no data:
 | `csrf_failed` | 403 | A browser request without the right `X-CSRF-Token`, or from another origin |
 | `admin_only` | 403 | Only an admin can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
-| `not_found` | 404 | No such note, session, lock key, image or endpoint |
+| `not_found` | 404 | No such note, session, lock key or image |
+| `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
@@ -389,6 +431,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `image_too_large` | 413 | Images can be up to 10 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
+| `upgrade_required` | 426 | This app is older than the server accepts; see `minVersion` and [Compatibility](#compatibility) |
 | `rate_limited` | 429 | Too many failed attempts; see `Retry-After` |
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |
 | `email_failed` | 502 | Resend refused the email; see `message` |

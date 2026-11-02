@@ -1,5 +1,7 @@
 package notes.core.images
 
+import java.io.File
+import java.nio.file.Files
 import java.util.Base64
 import kotlin.test.AfterTest
 import kotlin.test.Test
@@ -15,9 +17,16 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import notes.core.api.ApiClient
 import notes.core.api.ApiResult
+import notes.core.api.Credentials
 import notes.core.api.LOCKED_IMAGE
+import notes.core.api.Tokens
+import notes.core.api.isLockedImageType
 import notes.core.crypto.LockedNotes
+import notes.core.db.Database
 import notes.core.sync.SyncOutcome
 import notes.core.sync.TestClient
 import notes.core.sync.TestServer
@@ -236,5 +245,72 @@ class ImagesTest {
         assertEquals("image/gif", ImageStore.sniff("GIF89a".toByteArray()))
         assertEquals("image/webp", ImageStore.sniff("RIFF\u0000\u0000\u0000\u0000WEBPVP8 ".toByteArray()))
         assertNull(ImageStore.sniff("<svg".toByteArray()))
+    }
+
+    /** An [ImageStore] whose server is [mock], for answers notesd itself wouldn't give. */
+    private fun mocked(mock: MockWebServer, block: suspend (ImageStore, ApiClient) -> Unit) = runBlocking {
+        val dir = Files.createTempDirectory("notes-images").toFile()
+        val db = Database(File(dir, "notes.db").path)
+        val creds = object : Credentials {
+            override suspend fun tokens() = Tokens("a", Long.MAX_VALUE, "r")
+
+            override suspend fun refreshed(tokens: Tokens) = Unit
+
+            override suspend fun revoked() = Unit
+        }
+        val api = ApiClient(mock.url("/"), creds)
+        try {
+            block(ImageStore(db, File(dir, "pending"), File(dir, "cache"), { api }), api)
+        } finally {
+            db.close()
+            dir.deleteRecursively()
+            mock.close()
+        }
+    }
+
+    private fun answer(code: Int, body: String, type: String = "application/json") =
+        MockResponse.Builder().code(code).body(body).addHeader("Content-Type", type).build()
+
+    @Test
+    fun `only notesd's own refusals let an image go, anything else is kept and parked after three`() {
+        val mock = MockWebServer().apply { start() }
+        mocked(mock) { images, api ->
+            val id = images.add(png, "image/png")
+            // A proxy's 413: not notesd's word that the image is too large.
+            repeat(3) {
+                mock.enqueue(answer(413, "<html>Too big</html>", "text/html"))
+                assertEquals(ApiResult.Unexpected(413), images.upload(api))
+            }
+            // Parked: skipped, so the notes behind it go.
+            assertEquals(ApiResult.Ok(emptyList()), images.upload(api))
+            assertEquals(3, mock.requestCount)
+            assertEquals(listOf(PendingImage(id, "image/png")), images.pending())
+
+            val other = images.add(byteArrayOf(1, 2, 3), "image/png")
+            mock.enqueue(answer(413, """{"error":"image_too_large","message":"image is too large"}"""))
+            assertEquals(ApiResult.Ok(listOf("A picture wasn’t uploaded: image is too large.")), images.upload(api))
+            assertFalse(images.pending().any { it.id == other })
+        }
+    }
+
+    @Test
+    fun `a locked image of a newer version isn't shown or resealed`() {
+        val mock = MockWebServer().apply { start() }
+        mocked(mock) { images, _ ->
+            val bytes = ByteArray(40) { it.toByte() }
+            val id = ImageRef.sha256(bytes)
+            assertTrue(isLockedImageType("$LOCKED_IMAGE.v2"))
+            mock.enqueue(
+                MockResponse.Builder().code(200).body(okio.Buffer().write(bytes))
+                    .addHeader("Content-Type", "$LOCKED_IMAGE.v2").build()
+            )
+            assertNull(images.load(id))
+            mock.enqueue(
+                MockResponse.Builder().code(200).body(okio.Buffer().write(bytes))
+                    .addHeader("Content-Type", "$LOCKED_IMAGE.v2").build()
+            )
+            assertNull(images.move(setOf(id), locked = false, LockedNotes.newKey()))
+            assertEquals(emptyList(), images.pending())
+        }
     }
 }

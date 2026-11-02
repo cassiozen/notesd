@@ -49,14 +49,18 @@ working on them:
   Markdown files up to date. The notes, spaces and images stores report each
   commit through `OnCommit`, which `userdata.Registry.OnChange` wires to the
   mirror. `export` and the mirror share `internal/mdexport`.
-- Passwords for CLI commands come from `NOTESD_PASSWORD` or the first line
-  of stdin.
+- Passwords for the account commands (`create-owner`, `add-user`,
+  `reset-password`) come from `NOTESD_PASSWORD`, a hidden prompt (typed
+  twice) at a terminal, or else the first line of stdin. `export
+  --include-locked` is the exception: it asks for the lock password once, at a
+  terminal only, never from the environment or a pipe.
 - `--resend-url` / `NOTESD_RESEND_URL` (default `https://api.resend.com`)
   exists so tests can point email at a fake.
 - First-run setup has no token: `POST /api/v1/auth/setup` creates the first
   account, an admin, for whoever calls it first, then answers `already_set_up` (architecture
-  §10). While there's no owner, `serve` logs a warning with the app's `url`
-  (`--public-url` when set, otherwise the listen address).
+  §10). While there's no owner, `serve` logs a warning with the app's `url`.
+- Without `--listen`, `serve` listens on `:$PORT` when `PORT` is set (hosting
+  platforms), otherwise `127.0.0.1:8080`.
   `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at
   startup instead. They're env-only, so the password stays out of process arguments.
 

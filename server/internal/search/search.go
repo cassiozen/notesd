@@ -86,7 +86,7 @@ func Search(ctx context.Context, db *database.DB, input string, filter Filter, l
 		  AND `+cond+`
 		ORDER BY bm25(notes_fts, ?, ?), n.updated_at DESC
 		LIMIT ? OFFSET ?`,
-		append(append([]any{markOpen, markClose, len(locks.Prefix), locks.Prefix, match}, args...), titleWeight, contentWeight, limit, offset)...)
+		append(append([]any{markOpen, markClose, len(locks.Family), locks.Family, match}, args...), titleWeight, contentWeight, limit, offset)...)
 	if err != nil {
 		return nil, err
 	}

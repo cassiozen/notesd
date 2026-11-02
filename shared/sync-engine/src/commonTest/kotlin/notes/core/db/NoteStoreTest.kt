@@ -272,4 +272,21 @@ class NoteStoreTest {
         assertEquals(emptyList(), store.list(NoteFilter.Locked))
         assertEquals(0, store.lockedCount())
     }
+
+    @Test
+    fun `a body locked by a newer version is locked too`() = storeTest {
+        for ((id, body) in listOf("v2" to "notesd:locked:v2:c2VhbGVk", "x" to "notesd:locked:x:notesd")) {
+            store.save(id, "Newer", body)
+            assertTrue(LockedEnvelope.isLocked(body))
+            assertTrue(LockedEnvelope.isUnsupported(body))
+        }
+        assertEquals(listOf("v2", "x"), store.list(NoteFilter.Locked).map { it.id }.sorted())
+        assertTrue(store.list().all { it.locked && it.preview.isEmpty() })
+        assertEquals(emptyList(), store.search("notesd"))
+        assertEquals(2, store.lockedCount())
+        // Never merged as Markdown: two envelopes differ unless identical.
+        assertTrue(!Merge.sameMarkdown("notesd:locked:v2:a", "notesd:locked:v2:b"))
+        assertEquals(null, LockedEnvelope.lockVersion("notesd:locked:v2"))
+        assertEquals("v1", LockedEnvelope.lockVersion(LockedEnvelope.PREFIX + "abc"))
+    }
 }

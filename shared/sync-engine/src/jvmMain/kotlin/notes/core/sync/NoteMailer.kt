@@ -2,6 +2,8 @@ package notes.core.sync
 
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
+import notes.core.api.UPGRADE_REQUIRED_MESSAGE
+import notes.core.api.unexpectedMessage
 import notes.core.db.NoteStore
 
 sealed interface EmailOutcome {
@@ -30,6 +32,7 @@ class NoteMailer(private val store: NoteStore, private val engine: SyncEngine, p
                 SyncOutcome.Offline -> return EmailOutcome.Offline
                 SyncOutcome.Done, SyncOutcome.Failed -> Unit
                 SyncOutcome.NotConnected, SyncOutcome.SignedOut -> return EmailOutcome.NotSynced
+                SyncOutcome.UpgradeRequired -> return EmailOutcome.Failed(UPGRADE_REQUIRED_MESSAGE)
             }
             val note = store.get(id) ?: return EmailOutcome.Failed("This note was deleted.")
             if (note.deletedAt != null) return EmailOutcome.Failed("This note was deleted.")
@@ -45,6 +48,10 @@ class NoteMailer(private val store: NoteStore, private val engine: SyncEngine, p
                 ApiResult.Unauthenticated -> return EmailOutcome.NotSynced
 
                 is ApiResult.RateLimited -> return EmailOutcome.Failed("Too many attempts. Try again in a minute.")
+
+                is ApiResult.UpgradeRequired -> return EmailOutcome.Failed(UPGRADE_REQUIRED_MESSAGE)
+
+                is ApiResult.Unexpected -> return EmailOutcome.Failed(unexpectedMessage(r.status))
 
                 is ApiResult.Rejected -> return EmailOutcome.Failed(
                     when (r.error) {

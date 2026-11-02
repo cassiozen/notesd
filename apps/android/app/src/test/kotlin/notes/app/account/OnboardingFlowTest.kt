@@ -70,6 +70,18 @@ class OnboardingFlowTest {
     }
 
     @Test
+    fun `an address where something else answers says so, portals included`() {
+        // Health is any 2xx; then status gets a page, not notesd's JSON.
+        server.enqueue(MockResponse.Builder().code(200).body("ok").build())
+        server.enqueue(MockResponse.Builder().code(200).body("<html>Sign in to the Wi-Fi</html>").build())
+        launch()
+        enterServer()
+        compose.waitUntilExactlyOneExists(
+            hasText("Something other than a notes server answered at that address.", substring = true)
+        )
+    }
+
+    @Test
     fun `first run can skip straight to the notes`() {
         launch()
         compose.waitUntilExactlyOneExists(hasText("Use without a server"))

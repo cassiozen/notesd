@@ -2,11 +2,23 @@ import CommonCrypto
 import CryptoKit
 import Foundation
 
-/// The body failed to open: wrong key, tampering, or not an envelope at all.
+/// The body failed to open: wrong key, tampering, or not an envelope at all; or it, or the keyring
+/// entry, comes from a newer version of notesd (`reason`), which no password fixes.
 public struct LockedError: Error, Equatable {
-    public var message: String
+    public enum Reason: Sendable, Equatable { case invalid, unsupportedVersion, unsupportedKdf, malformedEntry }
 
-    public init(_ message: String = "Could not open the locked note") { self.message = message }
+    public var message: String
+    public var reason: Reason
+
+    public init(_ message: String = "Could not open the locked note", reason: Reason = .invalid) {
+        self.message = message
+        self.reason = reason
+    }
+
+    public static let unsupportedVersion = LockedError(
+        "This note was locked by a newer version of notesd. Update notesd to open it.", reason: .unsupportedVersion)
+    public static let unsupportedKdf = LockedError(
+        "This lock was set up by a newer version of notesd. Update notesd to unlock.", reason: .unsupportedKdf)
 }
 
 /// Which secret a keyring entry is wrapped under (§10.1).
@@ -23,7 +35,10 @@ public enum WrapKind: String, Sendable, CaseIterable {
 /// that key wrapped the same way under keys derived from the lock password,
 /// the recovery code or a passkey.
 public enum LockedNotes {
-    public static let prefix = "notesd:locked:v1:"
+    /// Every version of a locked body starts with this; `prefix` is the one this app reads and writes.
+    public static let familyPrefix = "notesd:locked:"
+    public static let version = "v1"
+    public static let prefix = familyPrefix + version + ":"
     public static let passwordIterations = 600_000
     public static let recoveryIterations = 10_000
     public static let keyBytes = 32
@@ -33,9 +48,26 @@ public enum LockedNotes {
     private static let nonceBytes = 12
     private static let tagBytes = 16
 
-    /// Whether `content` is an encrypted body. Byte-exact, as on the server.
+    /// Whether `content` is an encrypted body, of any version. Byte-exact, as on the server.
     public static func isLocked(_ content: String) -> Bool {
-        content.utf8.starts(with: prefix.utf8)
+        content.utf8.starts(with: familyPrefix.utf8)
+    }
+
+    /// A locked body's version ("v1", "v2", …); nil when it isn't one, or the version is malformed.
+    public static func lockVersion(_ content: String) -> String? {
+        guard isLocked(content) else { return nil }
+        let rest = content.utf8.dropFirst(familyPrefix.utf8.count)
+        guard let colon = rest.firstIndex(of: UInt8(ascii: ":")) else { return nil }
+        let v = Array(rest[..<colon])
+        guard v.count >= 2, v[0] == UInt8(ascii: "v"), (UInt8(ascii: "1")...UInt8(ascii: "9")).contains(v[1]),
+            v.dropFirst(2).allSatisfy({ (UInt8(ascii: "0")...UInt8(ascii: "9")).contains($0) })
+        else { return nil }
+        return String(decoding: v, as: UTF8.self)
+    }
+
+    /// Locked by a version of notesd this app can't open: shown read-only, never saved over.
+    public static func isUnsupported(_ content: String) -> Bool {
+        isLocked(content) && lockVersion(content) != version
     }
 
     public static func newKey() -> Data { randomBytes(keyBytes) }
@@ -76,6 +108,7 @@ public enum LockedNotes {
     /// Decrypts stored content; throws unless it is an envelope `key` sealed.
     public static func decrypt(_ key: Data, _ content: String) throws(LockedError) -> String {
         guard isLocked(content) else { throw LockedError("Not a locked note") }
+        guard lockVersion(content) == version else { throw .unsupportedVersion }
         let plain = try open(key, decode(String(content.dropFirst(prefix.count))), bodyAAD)
         guard let text = String(data: plain, encoding: .utf8) else { throw LockedError("Not UTF-8") }
         return text
@@ -89,8 +122,10 @@ public enum LockedNotes {
         try open(key, sealed, imageAAD)
     }
 
-    /// PBKDF2-HMAC-SHA256 of the NFC-normalized password.
-    public static func passwordKek(_ password: String, salt: Data, iterations: Int) -> Data {
+    /// PBKDF2-HMAC-SHA256 of the NFC-normalized password. A keyring entry from elsewhere may carry any
+    /// iteration count: one CommonCrypto can't run is a malformed entry, not a crash.
+    public static func passwordKek(_ password: String, salt: Data, iterations: Int) throws(LockedError) -> Data {
+        guard let rounds = UInt32(exactly: iterations), rounds > 0 else { throw malformedEntry }
         let normalized = Array(password.precomposedStringWithCanonicalMapping.utf8)
         var out = [UInt8](repeating: 0, count: keyBytes)
         let status = normalized.withUnsafeBufferPointer { pw in
@@ -99,13 +134,15 @@ public enum LockedNotes {
                     CCKeyDerivationPBKDF(
                         CCPBKDFAlgorithm(kCCPBKDF2), pw8.baseAddress, pw8.count,
                         s.bindMemory(to: UInt8.self).baseAddress, s.count,
-                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), UInt32(iterations), &out, out.count)
+                        CCPseudoRandomAlgorithm(kCCPRFHmacAlgSHA256), rounds, &out, out.count)
                 }
             }
         }
-        precondition(status == kCCSuccess, "PBKDF2 failed")
+        guard status == kCCSuccess else { throw malformedEntry }
         return Data(out)
     }
+
+    static let malformedEntry = LockedError("This lock’s settings are damaged.", reason: .malformedEntry)
 
     /// HKDF-SHA256 (RFC 5869) of a passkey's PRF output.
     public static func passkeyKek(prf: Data, salt: Data) -> Data {

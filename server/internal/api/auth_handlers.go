@@ -30,7 +30,7 @@ func (s *Server) authStatus(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]bool{"setupRequired": !has})
+	writeJSON(w, http.StatusOK, map[string]any{"setupRequired": !has, "serverVersion": s.version(), "apiVersion": APIVersion})
 }
 
 // POST /api/v1/auth/setup — first-run creation of the first account, an admin. Open to whoever
@@ -91,9 +91,9 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	s.limiter.Reset(key)
 
-	resp := sessionResponse{Session: creds.Session, Username: creds.Session.Username, IsAdmin: creds.Session.IsAdmin}
+	resp := sessionResponse{Session: creds.Session, Username: creds.Session.Username, IsAdmin: creds.Session.IsAdmin, ServerVersion: s.version()}
 	if creds.Session.Kind == auth.KindWeb {
-		s.setSessionCookie(w, creds.AccessToken, time.UnixMilli(creds.AccessExpiresAt))
+		setSessionCookie(w, r, creds.AccessToken, time.UnixMilli(creds.AccessExpiresAt))
 		resp.CSRFToken = creds.CSRFToken
 	} else {
 		resp.AccessToken = creds.AccessToken
@@ -126,6 +126,7 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
 		AccessExpiresAt:  creds.AccessExpiresAt,
 		RefreshToken:     creds.RefreshToken,
 		RefreshExpiresAt: creds.RefreshExpiresAt,
+		ServerVersion:    s.version(),
 	})
 }
 
@@ -137,7 +138,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sess.Kind == auth.KindWeb {
-		s.setSessionCookie(w, "", time.Unix(0, 0))
+		clearSessionCookies(w)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -146,7 +147,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 // returns the CSRF token, which the web app keeps only in memory.
 func (s *Server) currentSession(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	writeJSON(w, http.StatusOK, sessionResponse{Session: sess, Username: sess.Username, IsAdmin: sess.IsAdmin, CSRFToken: sess.CSRFToken, ServerVersion: s.cfg.Version})
+	writeJSON(w, http.StatusOK, sessionResponse{Session: sess, Username: sess.Username, IsAdmin: sess.IsAdmin, CSRFToken: sess.CSRFToken, ServerVersion: s.version()})
 }
 
 // POST /api/v1/auth/password {"currentPassword": "...", "newPassword": "..."}
@@ -204,18 +205,26 @@ func (s *Server) allow(w http.ResponseWriter, key string) bool {
 	return ok
 }
 
-func (s *Server) setSessionCookie(w http.ResponseWriter, value string, expires time.Time) {
+func setSessionCookie(w http.ResponseWriter, r *http.Request, value string, expires time.Time) {
 	c := &http.Cookie{
-		Name:     s.cookieName(),
+		Name:     cookieName(r),
 		Value:    value,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   s.secureCookies(),
+		Secure:   secureRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	}
-	if value == "" {
-		c.MaxAge = -1
-	}
 	http.SetCookie(w, c)
+}
+
+// clearSessionCookies removes both names, whichever the browser holds.
+// Removing a __Host- cookie needs the same Secure attribute that set it.
+func clearSessionCookies(w http.ResponseWriter) {
+	for _, name := range []string{secureCookieName, plainCookieName} {
+		http.SetCookie(w, &http.Cookie{
+			Name: name, Value: "", Path: "/", MaxAge: -1, HttpOnly: true,
+			Secure: name == secureCookieName, SameSite: http.SameSiteLaxMode,
+		})
+	}
 }

@@ -25,18 +25,20 @@ import (
 
 // Config holds HTTP-layer settings.
 type Config struct {
-	// PublicURL is the externally visible base URL, if known. An https URL
-	// makes cookies Secure; its host is accepted as an Origin.
-	PublicURL *url.URL
 	// ResendURL overrides Resend's API base URL (tests).
 	ResendURL string
-	// Version is the server's build version, shown to signed-in clients.
+	// Version is the server's build version (v1.2.3), sent on every
+	// response; empty is a development build, sent as "dev".
 	Version string
 	// UpdateRequest is the file an admin's update request leaves for the
 	// notesd-update service; empty when the server can't update itself.
 	UpdateRequest string
-	// ReleasesURL overrides where the newest release is looked up (tests).
+	// ReleasesURL overrides where releases are listed (tests).
 	ReleasesURL string
+	// MinClient is the oldest app version, X.Y.Z, this server syncs with,
+	// by platform (android, ios, web). Raised only when a server change
+	// would break older apps; empty means every version is accepted.
+	MinClient map[string]string
 }
 
 // Server serves the API and web app.
@@ -111,12 +113,23 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/search", gzipped(s.authed(s.search)))
 	mux.Handle("GET /api/v1/filters", gzipped(s.authed(s.listFilters)))
 
+	// Not not_found: a client treats that as a missing note or image, which
+	// an older server lacking the endpoint isn't.
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, http.StatusNotFound, "not_found", "no such endpoint")
+		writeError(w, http.StatusNotFound, "no_such_endpoint", "no such endpoint")
 	})
 	mux.Handle("/", web.Handler())
 
-	return s.recoverer(s.logRequests(mux))
+	return s.serverHeader(s.recoverer(s.logRequests(s.checkClient(mux))))
+}
+
+// serverHeader names this server's version on every response, so the web
+// app can tell it was updated underneath it.
+func (s *Server) serverHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Notesd-Server", s.version())
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---- health ----
@@ -167,13 +180,18 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 		var err error
 		if token, ok := bearerToken(r); ok {
 			sess, err = s.auth.Authenticate(r.Context(), token, auth.KindDevice)
-		} else if c, cerr := r.Cookie(s.cookieName()); cerr == nil {
-			sess, err = s.auth.Authenticate(r.Context(), c.Value, auth.KindWeb)
+		} else if tokens := sessionCookies(r); len(tokens) > 0 {
+			var token string
+			for _, token = range tokens {
+				if sess, err = s.auth.Authenticate(r.Context(), token, auth.KindWeb); err == nil {
+					break
+				}
+			}
 			if err == nil && sess.Renewed {
-				s.setSessionCookie(w, c.Value, time.UnixMilli(sess.ExpiresAt))
+				setSessionCookie(w, r, token, time.UnixMilli(sess.ExpiresAt))
 			}
 			if err == nil && !safeMethod(r.Method) {
-				if !s.sameOrigin(r) {
+				if !sameOrigin(r) {
 					writeError(w, http.StatusForbidden, "csrf_failed", "cross-origin request rejected")
 					return
 				}
@@ -226,8 +244,10 @@ func safeMethod(m string) bool {
 
 // sameOrigin accepts requests without an Origin header (non-browser clients
 // and some same-origin requests) and those whose Origin host matches the
-// request host or the configured public URL.
-func (s *Server) sameOrigin(r *http.Request) bool {
+// request host, or X-Forwarded-Host for proxies that rewrite Host. Trusting
+// that header is safe here: a cross-site page can't add it to a victim's
+// request without a CORS preflight, which this server never grants.
+func sameOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return true
@@ -239,20 +259,54 @@ func (s *Server) sameOrigin(r *http.Request) bool {
 	if strings.EqualFold(u.Host, r.Host) {
 		return true
 	}
-	return s.cfg.PublicURL != nil && strings.EqualFold(u.Host, s.cfg.PublicURL.Host)
+	fwd, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Host"), ",")
+	fwd = strings.TrimSpace(fwd)
+	return fwd != "" && strings.EqualFold(u.Host, fwd)
 }
 
-func (s *Server) secureCookies() bool {
-	return s.cfg.PublicURL != nil && s.cfg.PublicURL.Scheme == "https"
-}
-
-// cookieName uses the __Host- prefix when cookies are Secure, which pins the
-// cookie to this exact host and path "/".
-func (s *Server) cookieName() string {
-	if s.secureCookies() {
-		return "__Host-notes_session"
+// secureRequest reports whether the browser reached this server over HTTPS,
+// directly or through a proxy. A client faking X-Forwarded-Proto only gets a
+// Secure cookie its own browser won't keep over plain HTTP.
+func secureRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
 	}
-	return "notes_session"
+	proto, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
+// Over HTTPS the cookie is Secure with the __Host- prefix, which pins it to
+// this exact host and path "/".
+const (
+	secureCookieName = "__Host-notes_session"
+	plainCookieName  = "notes_session"
+)
+
+func cookieName(r *http.Request) string {
+	if secureRequest(r) {
+		return secureCookieName
+	}
+	return plainCookieName
+}
+
+// sessionCookies returns the tokens under either name, each to be tried: a
+// browser can hold both when the forwarded scheme changes between requests
+// (a proxy that stopped sending it), and the one under the other name may be
+// stale, such as a session signed out since. The name this request would set
+// comes first: when both are valid, it's the newer sign-in, whose CSRF token
+// the web app holds.
+func sessionCookies(r *http.Request) []string {
+	names := []string{secureCookieName, plainCookieName}
+	if !secureRequest(r) {
+		names[0], names[1] = names[1], names[0]
+	}
+	var tokens []string
+	for _, name := range names {
+		if c, err := r.Cookie(name); err == nil && c.Value != "" {
+			tokens = append(tokens, c.Value)
+		}
+	}
+	return tokens
 }
 
 func clientKey(r *http.Request) string {
@@ -303,9 +357,13 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		if sw.status >= 500 {
 			level = slog.LevelError
 		}
+		client := "-"
+		if platform, version, ok := requestClient(r); ok {
+			client = platform + "/" + version
+		}
 		s.log.Log(r.Context(), level, "request",
 			"method", r.Method, "path", r.URL.Path, "status", sw.status,
-			"bytes", sw.bytes, "duration_ms", time.Since(start).Milliseconds())
+			"bytes", sw.bytes, "duration_ms", time.Since(start).Milliseconds(), "client", client)
 	})
 }
 

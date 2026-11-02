@@ -9,8 +9,7 @@ notesd serves plain HTTP on the machine's loopback interface. To reach it from y
 HTTPS in front of it. The phone apps refuse plain HTTP to public addresses, and the web app needs
 HTTPS to keep notes offline.
 
-Pick one. The address you end up with must match `NOTESD_PUBLIC_URL` from
-[step 1](01-run-the-server.md).
+Pick one.
 
 ## With a domain: A proxy server 
 
@@ -62,14 +61,13 @@ The address is `https://<machine>.<tailnet>.ts.net`.
 Open your HTTPS address in a browser and sign in with the account from
 [step 2](02-create-your-account.md).
 
-If saving fails with HTTP 403, `NOTESD_PUBLIC_URL` doesn't match the address you opened. Fix it
-and restart notesd: with Docker, [recreate the container](../guides/self-hosting/docker.md#changing-docker-settings);
-with systemd, edit the unit, then `sudo systemctl daemon-reload && sudo systemctl restart notesd`.
+If saving fails with HTTP 403, your proxy changes the `Host` header without sending
+`X-Forwarded-Host`. Caddy and Tailscale keep it as it is; see
+[Network access and HTTPS](../guides/self-hosting/https.md#good-to-know) for others.
 
 > [!NOTE]
 > **Only on a network you trust**, you can skip HTTPS and serve plain HTTP to your LAN instead.
-> Recreate the container with `-p <lan-ip>:8080:8080` (binary: `--listen <lan-ip>:8080`) and
-> without `NOTESD_PUBLIC_URL`, and use `http://<lan-ip>:8080` (`hostname -I` lists the machine's
+> Recreate the container with `-p <lan-ip>:8080:8080` (binary: `--listen <lan-ip>:8080`), and use `http://<lan-ip>:8080` (`hostname -I` lists the machine's
 > addresses). Never use `-p 8080:8080` on a machine with a public interface: it publishes on every
 > interface. The apps accept plain HTTP only to local addresses (private, link-local or loopback
 > IPs, `localhost`, `*.local`), and the web app can't keep notes offline or be installed.

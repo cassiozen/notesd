@@ -5,6 +5,7 @@ import { useInstallPrompt } from '../install'
 import { relativeTime } from '../notes/relative-time'
 import { useNotes } from '../notes/store'
 import { useNotesSource, type SyncState } from '../notes/source'
+import { UPGRADE_REQUIRED } from '../notes/sync-banners'
 import {
   deviceFailure,
   keepNotesHere,
@@ -137,6 +138,8 @@ export function syncSummary(state: SyncState | null): string {
       return waiting ? `Couldn’t sync · ${waiting}` : 'Couldn’t sync'
     case 'SignedOut':
       return 'Sign in again to sync'
+    case 'UpgradeRequired':
+      return 'Update notesd to sync'
     case 'NotConnected':
       return ''
   }
@@ -158,6 +161,7 @@ function SyncRow() {
     <div className={styles.who}>
       <span className={styles.text}>{syncSummary(state)}</span>
       {status?.kind === 'Failed' && <span className={styles.muted}>{status.message}</span>}
+      {status?.kind === 'UpgradeRequired' && <span className={styles.muted}>{UPGRADE_REQUIRED}</span>}
       {state?.lastSyncAt != null && (
         <span className={styles.muted}>Last synced {relativeTime(state.lastSyncAt).toLowerCase()}</span>
       )}

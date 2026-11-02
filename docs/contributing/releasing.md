@@ -54,7 +54,12 @@ never installs it.
 ## Versions
 
 The server's version is `git describe --tags`, shown by `notesd version` and
-in Settings → Server.
+in Settings → Server. The web app is built with the same version, without the
+`v`, and compares it with the server's to offer a reload after an upgrade.
+The iPhone app's `MARKETING_VERSION` comes from `git describe` at build time
+too (see `apps/ios/Config`), so an app built from a tag reports that version.
+Every app sends its version as `X-Notesd-Client`; see
+[Compatibility](../reference/api.md#compatibility) for what a release may change.
 
 The APK's `versionName` is the tag without the `v`. Its `versionCode` is
 computed from the tag so that every release installs over the one before:

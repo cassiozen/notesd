@@ -23,6 +23,8 @@ final class AppGraph {
     /// The account as the screens show it, kept in step with the store.
     private(set) var account: Account
     private(set) var syncStatus: SyncStatus = .notConnected
+    /// Notes sync gave up on for now (the server kept answering unexpectedly): offered for a retry.
+    private(set) var parkedNotes = 0
     private(set) var lockState: LockSession.State = .none
 
     /// What the list shows. Kept so the app reopens on it, unless it was chosen in another space:
@@ -149,6 +151,9 @@ final class AppGraph {
                 if case .synced = status { await locks.refresh() }
             }
         }
+        Task { [weak self, engine] in
+            for await count in engine.parked.stream() { self?.parkedNotes = count }
+        }
         Task { [weak self, locks] in
             for await state in locks.state.stream() {
                 self?.lockState = state
@@ -228,6 +233,9 @@ final class AppGraph {
             // Through the key store, which moves its generation on: a keyring fetch still in flight can't put it back.
             try await engine.lockKeys.replace([])
         }
+        // Nothing is parked in an empty database, and no server has refused this app.
+        engine.parked.set(0)
+        engine.clearUpgradeRequired()
         email.forget()
         await locks.forget()
         biometrics.disable()

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 	"time"
 
 	"notes/server/internal/database"
@@ -24,8 +25,23 @@ import (
 const MaxBytes = 10 << 20
 
 // Locked is the type of a locked note's image: AES-256-GCM ciphertext the
-// server can't read (§10.1).
+// server can't read (§10.1). Later versions are subtypes of it
+// (Locked+".v2"), never a parameter, so a type check can't mistake one for
+// this version.
 const Locked = "application/vnd.notesd.locked"
+
+var lockedVersion = regexp.MustCompile(`^application/vnd\.notesd\.locked\.v([2-9]|[1-9][0-9]+)$`)
+
+// IsLockedType reports whether contentType is a locked image of any version.
+func IsLockedType(contentType string) bool {
+	return contentType == Locked || strings.HasPrefix(contentType, Locked+".")
+}
+
+// ValidType reports whether an image may be stored as contentType: one of
+// Types, or a later version of Locked, kept as opaque as this one.
+func ValidType(contentType string) bool {
+	return Types[contentType] || lockedVersion.MatchString(contentType)
+}
 
 // Types are the content types an image may be stored as. SVG is not one: it
 // is a document that can run script, not a picture.
@@ -235,13 +251,13 @@ var magic = map[string][][]byte{
 }
 
 func checkType(contentType string, data []byte) error {
-	if !Types[contentType] {
+	if !ValidType(contentType) {
 		return &TypeError{Message: "images must be JPEG, PNG, WebP or GIF"}
 	}
 	if len(data) == 0 {
 		return &TypeError{Message: "the image is empty"}
 	}
-	if contentType == Locked {
+	if IsLockedType(contentType) {
 		// nonce(12) ‖ ciphertext ‖ tag(16): anything shorter can't be one.
 		if len(data) < 12+16+1 {
 			return &TypeError{Message: "an encrypted image is too short"}

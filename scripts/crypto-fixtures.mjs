@@ -75,11 +75,45 @@ const invalid = [
   { name: 'wrong aad', envelope: PREFIX + b64(seal(lnk, bytes(12, 60), Buffer.from('x'), 'other')) },
   { name: 'wrong key', envelope: PREFIX + b64(seal(bytes(32, 99), bytes(12, 61), Buffer.from('x'), BODY_AAD)) },
   { name: 'missing prefix', envelope: good.slice(PREFIX.length) },
-  { name: 'unknown version', envelope: 'notesd:locked:v2:' + good.slice(PREFIX.length) },
   { name: 'too short', envelope: PREFIX + b64(bytes(20, 0)) },
   { name: 'not base64url', envelope: PREFIX + 'abc+/=' },
   { name: 'line break', envelope: good.slice(0, 40) + '\r\n' + good.slice(40) }
 ].map((v) => ({ ...v, key: b64(lnk) }))
+
+// Bodies in the locked family (FAMILY prefix) whose version this release
+// can't open: every client treats them as locked, opens them read-only with
+// "update notesd", and never saves over them. The server stores them as
+// opaque when they match the opaque shape (§10.1), and refuses them otherwise.
+const FAMILY = 'notesd:locked:'
+const unsupported = [
+  { name: 'v2', envelope: FAMILY + 'v2:' + good.slice(PREFIX.length), version: 'v2', serverAccepts: true },
+  { name: 'v10', envelope: FAMILY + 'v10:' + good.slice(PREFIX.length), version: 'v10', serverAccepts: true },
+  { name: 'unparseable version', envelope: FAMILY + 'x:' + good.slice(PREFIX.length), version: null, serverAccepts: false },
+  { name: 'v2 not base64url', envelope: FAMILY + 'v2:abc+/=', version: 'v2', serverAccepts: false }
+]
+
+// Content types of a locked note's images: the family is
+// application/vnd.notesd.locked, versions after v1 in the subtype, never as a parameter.
+const imageTypes = [
+  { type: 'application/vnd.notesd.locked', locked: true, supported: true },
+  { type: 'application/vnd.notesd.locked.v2', locked: true, supported: false },
+  { type: 'image/png', locked: false, supported: true }
+]
+
+// Keyring entries' key-derivation functions (§10.1). An entry without kdf is
+// from before 1.0: its kind implies it (password and recovery PBKDF2 with the
+// entry's iterations, passkey HKDF). unsupported: a client says "update
+// notesd", never "wrong password"; the server refuses to store it.
+const keyring = [
+  { name: 'pbkdf2', kind: 'password', kdf: { name: 'pbkdf2-sha256', iterations: 600000 }, verdict: 'ok' },
+  { name: 'recovery pbkdf2', kind: 'recovery', kdf: { name: 'pbkdf2-sha256', iterations: 600000 }, verdict: 'ok' },
+  { name: 'passkey hkdf', kind: 'passkey', kdf: { name: 'hkdf-sha256' }, verdict: 'ok' },
+  { name: 'legacy password, no kdf', kind: 'password', iterations: 600000, kdf: null, verdict: 'ok' },
+  { name: 'legacy passkey, no kdf', kind: 'passkey', iterations: 0, kdf: null, verdict: 'ok' },
+  { name: 'argon2id', kind: 'password', kdf: { name: 'argon2id', m: 65536, t: 3, p: 1 }, verdict: 'unsupported' },
+  { name: 'pbkdf2 zero iterations', kind: 'password', kdf: { name: 'pbkdf2-sha256', iterations: 0 }, verdict: 'invalid' },
+  { name: 'hkdf for a password', kind: 'password', kdf: { name: 'hkdf-sha256' }, verdict: 'invalid' }
+]
 
 // A locked note's images (§7.6): the whole file, binary, no prefix.
 // The 1×1 PNG stands for any image; nothing about its type is in the AAD.
@@ -110,6 +144,9 @@ const out = {
     'wraps: AES-256-GCM of the 32-byte locked-notes key under kek, nonce(12) ‖ ciphertext ‖ tag, AAD "notesd:lnk:v1:<kind>". ' +
     'envelopes: note content "notesd:locked:v1:" + base64url(nonce(12) ‖ ciphertext ‖ tag) of the UTF-8 Markdown body, AAD "notesd:locked:v1". ' +
     'invalid: envelopes every client must refuse to open with key. ' +
+    'unsupported: bodies starting "notesd:locked:" whose version (null: unparseable) this release can\'t open; locked, read-only, never saved over; serverAccepts: stored as opaque. ' +
+    'imageTypes: image content types; locked: a locked note\'s image, supported: this release opens it. ' +
+    'keyring: keyring entries\' kdf (null: pre-1.0, implied by kind) and whether a client can unlock with it (ok), must say "update notesd" (unsupported), or must treat it as malformed (invalid). ' +
     'images: a locked note\'s image file, nonce(12) ‖ ciphertext ‖ tag, AAD "notesd:image:v1"; plain null means it must be refused. ' +
     'verifiers: HMAC-SHA256(key, "notesd:verifier:v1"), sent to change the keyring.',
   kdf,
@@ -117,6 +154,9 @@ const out = {
   wraps,
   envelopes,
   invalid,
+  unsupported,
+  imageTypes,
+  keyring,
   images,
   verifiers
 }

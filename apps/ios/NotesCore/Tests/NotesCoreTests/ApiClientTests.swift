@@ -111,11 +111,112 @@ struct ApiClientTests {
 
     @Test func somethingThatIsntNotesd() async throws {
         let stub = StubTransport(queue: [(200, "<html>router</html>", [:])])
-        guard case .rejected(_, let error, _, _) = await api(stub).status() else {
-            Issue.record(Comment(rawValue: "expected a rejection"))
+        guard case .unexpected(200) = await api(stub).status() else {
+            Issue.record(Comment(rawValue: "expected an unexpected answer"))
             return
         }
-        #expect(error == ApiClient.unexpectedResponse)
+    }
+
+    @Test func answersNotesdWouldntGiveAreUnexpected() async throws {
+        for (answer, status) in [
+            ((302, "", ["Location": "https://portal.example/login"]), 302),
+            ((403, "<html>sign in to the Wi-Fi</html>", ["Content-Type": "text/html"]), 403),
+            ((404, #"{"message":"no error code"}"#, jsonHeaders), 404),
+            ((401, "", [:]), 401),
+            ((409, "<html>conflict</html>", [:]), 409),
+            ((200, #"{"id":"n"}"#, jsonHeaders), 200),
+        ] as [((Int, String, [String: String]), Int)] {
+            let stub = StubTransport(queue: [answer])
+            let result = await api(stub).updateNote("n", NoteRequest(operationId: "o"))
+            guard case .unexpected(let got) = result, got == status else {
+                Issue.record(Comment(rawValue: "\(answer.0): got \(result)"))
+                continue
+            }
+        }
+    }
+
+    @Test func redirectsAreNotFollowed() async throws {
+        let server = try FakeResend()
+        server.enqueue(302, "", location: server.url + "/elsewhere")
+        server.enqueue(200, #"{"setupRequired":false}"#)
+        guard case .unexpected(302) = await ApiClient(baseURL: URL(string: server.url)!).status() else {
+            Issue.record(Comment(rawValue: "expected the redirect itself"))
+            return
+        }
+        #expect(server.bodies.count == 1)
+    }
+
+    @Test func aServerErrorIsNotUnexpected() async throws {
+        let stub = StubTransport(queue: [(502, "<html>bad gateway</html>", [:])])
+        guard case .rejected(502, "http_502", _, _) = await api(stub).updateNote("n", NoteRequest(operationId: "o"))
+        else {
+            Issue.record(Comment(rawValue: "expected a server problem"))
+            return
+        }
+    }
+
+    @Test func upgradeRequiredCarriesTheMinimum() async throws {
+        let stub = StubTransport(queue: [
+            (426, #"{"error":"upgrade_required","message":"update","minVersion":"1.2.0"}"#, jsonHeaders)
+        ])
+        guard case .upgradeRequired("1.2.0") = await api(stub).sync(since: 0, limit: 1, generation: nil) else {
+            Issue.record(Comment(rawValue: "expected upgrade required"))
+            return
+        }
+    }
+
+    @Test func everyRequestSaysWhichAppSentIt() async throws {
+        let stub = StubTransport(queue: [(200, #"{"setupRequired":false}"#, jsonHeaders), (204, "", [:])])
+        let api = ApiClient(
+            baseURL: URL(string: "http://127.0.0.1:1/")!, credentials: creds, transport: stub, clock: { [now] in now },
+            version: "1.2.3")
+        _ = await api.status()
+        _ = await api.logout()
+        #expect(stub.requests.count == 2)
+        for request in stub.requests {
+            #expect(request.value(forHTTPHeaderField: "X-Notesd-Client") == "ios/1.2.3")
+            #expect(request.value(forHTTPHeaderField: "User-Agent") == "notesd-ios/1.2.3")
+        }
+    }
+
+    @Test func statusMayCarryTheServerVersion() async throws {
+        let stub = StubTransport(queue: [
+            (200, #"{"setupRequired":false,"serverVersion":"v1.0.0","apiVersion":1}"#, jsonHeaders),
+            (200, #"{"setupRequired":true}"#, jsonHeaders),
+        ])
+        let api = api(stub)
+        let status = try #require(await api.status().value)
+        #expect(status.serverVersion == "v1.0.0")
+        #expect(status.apiVersion == 1)
+        let old = try #require(await api.status().value)
+        #expect(old.serverVersion == nil && old.apiVersion == nil)
+    }
+
+    @Test func successBodiesAreChecked() async throws {
+        let id = String(repeating: "a", count: 64)
+        let stub = StubTransport(queue: [
+            (200, "", [:]),
+            (204, "", [:]),
+            (200, "<html>ok</html>", [:]),
+            (201, #"{"id":"\#(id)","contentType":"image/png","size":1,"createdAt":1}"#, jsonHeaders),
+        ])
+        let api = api(stub)
+        guard case .unexpected(200) = await api.deleteSpace("s") else {
+            Issue.record(Comment(rawValue: "a space delete answers 204"))
+            return
+        }
+        guard case .ok = await api.deleteSpace("s") else {
+            Issue.record(Comment(rawValue: "expected ok"))
+            return
+        }
+        guard case .unexpected(200) = await api.putImage(id, bytes: Data([1]), type: "image/png") else {
+            Issue.record(Comment(rawValue: "an image upload answers its JSON"))
+            return
+        }
+        guard case .ok = await api.putImage(id, bytes: Data([1]), type: "image/png") else {
+            Issue.record(Comment(rawValue: "expected ok"))
+            return
+        }
     }
 
     @Test func a401RefreshesOnceAndResendsTheSameRequest() async throws {
@@ -196,24 +297,22 @@ struct ApiClientTests {
         ] {
             let stub = StubTransport(queue: [(200, answer, jsonHeaders)])
             guard
-                case .rejected(let status, let error, _, _) = await api(stub).login(
+                case .unexpected(let status) = await api(stub).login(
                     username: "me", password: "x", deviceName: "P")
             else {
-                Issue.record(Comment(rawValue: "expected a rejection for \(answer)"))
+                Issue.record(Comment(rawValue: "expected an unexpected answer for \(answer)"))
                 continue
             }
             #expect(status == 200)
-            #expect(error == ApiClient.unexpectedResponse)
         }
     }
 
     @Test func aRefreshWithoutAnAccessTokenKeepsTheSession() async throws {
         let stub = StubTransport(queue: [unauthenticated, (200, #"{"accessExpiresAt":5}"#, jsonHeaders)])
-        guard case .rejected(_, let error, _, _) = await api(stub).logout() else {
-            Issue.record(Comment(rawValue: "expected a rejection"))
+        guard case .unexpected = await api(stub).logout() else {
+            Issue.record(Comment(rawValue: "expected an unexpected answer"))
             return
         }
-        #expect(error == ApiClient.unexpectedResponse)
         #expect(creds.current?.access == "a1")
         #expect(stub.requests.count == 2)
     }

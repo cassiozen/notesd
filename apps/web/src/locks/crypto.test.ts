@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest'
 import fixtures from '../../../../shared/crypto-fixtures/locked.json'
+import { LOCKED_IMAGE, isLockedImageType } from '../api/images'
+import type { Kdf } from '../api/types'
 import {
   LockedError,
+  MalformedKeyError,
+  UnsupportedKdfError,
+  UnsupportedLockError,
   decryptBody,
   encryptBody,
+  entryKdf,
   fromBase64Url,
   importKey,
   isLocked,
+  isSupportedLock,
+  lockVersion,
   newRecoveryCode,
   normalizeRecoveryCode,
   openImage,
@@ -59,6 +67,8 @@ describe('locked notes crypto (shared fixtures)', () => {
     it(`envelope: ${v.name}`, async () => {
       const key = await exportable(v.key)
       expect(isLocked(v.envelope)).toBe(true)
+      expect(lockVersion(v.envelope)).toBe('v1')
+      expect(isSupportedLock(v.envelope)).toBe(true)
       expect(await decryptBody(key, v.envelope)).toBe(v.plaintext)
       const again = await encryptBody(key, v.plaintext)
       expect(again).not.toBe(v.envelope) // fresh nonce every time
@@ -69,6 +79,45 @@ describe('locked notes crypto (shared fixtures)', () => {
   for (const v of fixtures.invalid) {
     it(`refuses: ${v.name}`, async () => {
       await expect(decryptBody(await exportable(v.key), v.envelope)).rejects.toBeInstanceOf(LockedError)
+    })
+  }
+
+  for (const v of fixtures.unsupported) {
+    it(`unsupported: ${v.name}`, async () => {
+      // Locked, so never shown or indexed as plain text, but not openable by any key here.
+      expect(isLocked(v.envelope)).toBe(true)
+      expect(lockVersion(v.envelope)).toBe(v.version)
+      expect(isSupportedLock(v.envelope)).toBe(false)
+      await expect(decryptBody(await exportable(lnk), v.envelope)).rejects.toBeInstanceOf(UnsupportedLockError)
+    })
+  }
+
+  for (const v of fixtures.imageTypes) {
+    it(`image type: ${v.type}`, () => {
+      expect(isLockedImageType(v.type)).toBe(v.locked)
+      // Supported locked images are the one type this release seals and opens.
+      if (v.locked) expect(v.type === LOCKED_IMAGE).toBe(v.supported)
+    })
+  }
+
+  for (const v of fixtures.keyring) {
+    it(`keyring: ${v.name}`, () => {
+      const entry = {
+        kind: v.kind as WrapKind,
+        ...('iterations' in v && { iterations: v.iterations }),
+        kdf: v.kdf as Kdf | null,
+      }
+      const verdict = (() => {
+        try {
+          entryKdf(entry)
+          return 'ok'
+        } catch (err) {
+          if (err instanceof UnsupportedKdfError) return 'unsupported'
+          if (err instanceof MalformedKeyError) return 'invalid'
+          throw err
+        }
+      })()
+      expect(verdict).toBe(v.verdict)
     })
   }
 
@@ -108,5 +157,31 @@ describe('bodies', () => {
   it('a leading byte order mark survives the round trip', async () => {
     const key = await importKey(fromBase64Url(lnk))
     expect(await decryptBody(key, await encryptBody(key, '﻿secret\n'))).toBe('﻿secret\n')
+  })
+})
+
+describe('lock versions', () => {
+  it('reads the version up to the next colon, and only v<n> as one', () => {
+    expect(lockVersion('notesd:locked:v12:abc')).toBe('v12')
+    expect(lockVersion('notesd:locked:v0:abc')).toBeNull()
+    expect(lockVersion('notesd:locked:v1')).toBeNull()
+    expect(lockVersion('plain text')).toBeNull()
+    expect(isLocked('notesd:locked:')).toBe(true)
+  })
+})
+
+describe('keyring kdf', () => {
+  it('uses an entry’s own iterations, or the legacy ones its kind implies', () => {
+    expect(entryKdf({ kind: 'password', iterations: 600_000, kdf: null })).toEqual({ name: 'pbkdf2-sha256', iterations: 600_000 })
+    expect(entryKdf({ kind: 'recovery', iterations: 1, kdf: { name: 'pbkdf2-sha256', iterations: 20_000 } })).toEqual({
+      name: 'pbkdf2-sha256',
+      iterations: 20_000,
+    })
+    expect(entryKdf({ kind: 'passkey', iterations: 0 })).toEqual({ name: 'hkdf-sha256' })
+  })
+
+  it('treats a legacy entry without iterations as malformed, not as a wrong password', () => {
+    expect(() => entryKdf({ kind: 'password', iterations: 0, kdf: null })).toThrow(MalformedKeyError)
+    expect(() => entryKdf({ kind: 'password', kdf: { name: 'pbkdf2-sha256', iterations: -5 } })).toThrow(MalformedKeyError)
   })
 })

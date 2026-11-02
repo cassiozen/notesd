@@ -57,7 +57,7 @@ struct PlainTextTests {
 
     @Test func lockedEnvelopesAreRecognisedExactly() {
         #expect(LockedNotes.isLocked("notesd:locked:v1:AAAA"))
-        #expect(!LockedNotes.isLocked("notesd:locked:v2:AAAA"))
+        #expect(LockedNotes.isLocked("notesd:locked:v2:AAAA"))
         #expect(!LockedNotes.isLocked(" notesd:locked:v1:AAAA"))
     }
 }

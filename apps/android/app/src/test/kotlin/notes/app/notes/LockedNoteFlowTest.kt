@@ -22,6 +22,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import notes.app.FakeBiometrics
 import notes.app.MainActivity
 import notes.app.NotesApp
@@ -29,6 +31,7 @@ import notes.app.TestNotesApp
 import notes.core.crypto.Keyring
 import notes.core.crypto.LockSession
 import notes.core.crypto.LockedNotes
+import notes.core.crypto.UnsupportedKdfException
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -113,6 +116,18 @@ class LockedNoteFlowTest {
     private fun unlock(password: String) {
         compose.onNodeWithText("Lock password").performTextInput(password)
         compose.onNode(hasText("Unlock") and hasClickAction()).performClick()
+    }
+
+    @Test
+    fun `a lock password entry from a newer notesd isn't a wrong password`() {
+        onMain {
+            val entry = graph.sync.lockKeys.keys().single()
+            graph.sync.lockKeys.replace(listOf(entry.copy(kdf = buildJsonObject { put("name", "argon2id") })))
+        }
+        openBank()
+        unlock(PASSWORD)
+        compose.waitUntilExactlyOneExists(hasText(UnsupportedKdfException.UNSUPPORTED_KDF_MESSAGE))
+        compose.onNodeWithText("Wrong password.").assertDoesNotExist()
     }
 
     @Test

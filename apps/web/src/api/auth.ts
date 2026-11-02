@@ -3,7 +3,8 @@ import type { Session, SessionInfo } from './types'
 import { browserName } from './user-agent'
 
 export const auth = {
-  status: () => request<{ setupRequired: boolean }>('GET', '/auth/status'),
+  /** serverVersion and apiVersion: absent from servers before 1.0. */
+  status: () => request<{ setupRequired: boolean; serverVersion?: string; apiVersion?: number }>('GET', '/auth/status'),
   setup: (username: string, password: string) =>
     request<{ status: 'created' }>('POST', '/auth/setup', { username, password }),
   login: (username: string, password: string) =>

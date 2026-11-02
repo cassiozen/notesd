@@ -44,7 +44,7 @@ public enum NoteFilter: Hashable, Sendable, Codable {
         case .untagged:
             ("NOT EXISTS (SELECT 1 FROM note_tags t WHERE t.note_seq = n.seq)", [])
         case .locked:
-            ("substr(n.content, 1, ?) = ?", [LockedNotes.prefix.count, LockedNotes.prefix])
+            ("substr(n.content, 1, ?) = ?", [LockedNotes.familyPrefix.utf8.count, LockedNotes.familyPrefix])
         case .tag(let key, _):
             // '0' sorts right after '/', so the range holds exactly the nested keys.
             (
@@ -125,7 +125,7 @@ public final class NoteStore: Sendable {
     public func list(_ filter: NoteFilter? = nil, space: String? = nil) async throws -> [NoteSummary] {
         try await db.read { sql in
             let (cond, args) = and(filter.sql, space.map { SpaceScope.only($0) }.sql)
-            let all: [(any SQLValue)?] = [LockedNotes.prefix.count, LockedNotes.prefix] + args
+            let all: [(any SQLValue)?] = [LockedNotes.familyPrefix.utf8.count, LockedNotes.familyPrefix] + args
             return try sql.queryArray(
                 """
                 SELECT n.id, n.title, n.updated_at, f.body_text, substr(n.content, 1, ?) = ?
@@ -161,7 +161,10 @@ public final class NoteStore: Sendable {
         return try await db.read { sql in
             let (cond, args) = and(filter.sql, scope.sql)
             let all: [(any SQLValue)?] =
-                [Search.markOpen, Search.markClose, LockedNotes.prefix.count, LockedNotes.prefix, match] + args
+                [
+                    Search.markOpen, Search.markClose, LockedNotes.familyPrefix.utf8.count, LockedNotes.familyPrefix,
+                    match,
+                ] + args
                 + [Search.titleWeight, Search.contentWeight, limit]
             return try sql.queryArray(
                 """
@@ -402,9 +405,9 @@ public final class NoteStore: Sendable {
         }
     }
 
-    /// How many notes have changes the server hasn't confirmed.
+    /// How many notes have changes the server hasn't confirmed, queued or not (one dropped, or parked, still counts).
     public func pendingNotes() async throws -> Int {
-        try await db.read { Int(try $0.int64("SELECT count(DISTINCT note_id) FROM sync_outbox")) }
+        try await db.read { Int(try $0.int64("SELECT count(*) FROM notes WHERE dirty = 1")) }
     }
 
     /// For tests of coalescing without a server: pretend `operationId` went out.

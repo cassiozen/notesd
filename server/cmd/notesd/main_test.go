@@ -6,7 +6,6 @@ import (
 	"io"
 	"log/slog"
 	"net"
-	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
@@ -18,23 +17,29 @@ import (
 
 func TestAppURL(t *testing.T) {
 	tcp := func(ip string, port int) net.Addr { return &net.TCPAddr{IP: net.ParseIP(ip), Port: port} }
-	public, _ := url.Parse("https://notes.example.com/")
-	under, _ := url.Parse("https://example.com/notes")
 	for _, c := range []struct {
-		public *url.URL
-		addr   net.Addr
-		want   string
+		addr net.Addr
+		want string
 	}{
-		{nil, tcp("127.0.0.1", 8080), "http://127.0.0.1:8080/"},
-		{nil, tcp("0.0.0.0", 8080), "http://localhost:8080/"},
-		{nil, tcp("::", 9000), "http://localhost:9000/"},
-		{nil, tcp("::1", 8080), "http://[::1]:8080/"},
-		{public, tcp("127.0.0.1", 8080), "https://notes.example.com/"},
-		{under, tcp("127.0.0.1", 8080), "https://example.com/notes/"},
+		{tcp("127.0.0.1", 8080), "http://127.0.0.1:8080/"},
+		{tcp("0.0.0.0", 8080), "http://localhost:8080/"},
+		{tcp("::", 9000), "http://localhost:9000/"},
+		{tcp("::1", 8080), "http://[::1]:8080/"},
 	} {
-		if got := appURL(c.public, c.addr); got != c.want {
-			t.Errorf("appURL(%v, %v) = %q, want %q", c.public, c.addr, got, c.want)
+		if got := appURL(c.addr); got != c.want {
+			t.Errorf("appURL(%v) = %q, want %q", c.addr, got, c.want)
 		}
+	}
+}
+
+func TestDefaultListen(t *testing.T) {
+	t.Setenv("PORT", "")
+	if got := defaultListen(); got != "127.0.0.1:8080" {
+		t.Errorf("without PORT: %q", got)
+	}
+	t.Setenv("PORT", "10000")
+	if got := defaultListen(); got != ":10000" {
+		t.Errorf("with PORT: %q", got)
 	}
 }
 
@@ -194,5 +199,25 @@ func TestRefusedMirrorCreatesNoOwner(t *testing.T) {
 	defer db.Close()
 	if has, err := auth.NewService(db).HasUsers(context.Background()); err != nil || has {
 		t.Fatalf("an owner was created: %v %v", has, err)
+	}
+}
+
+func TestReadNewPasswordFromPipe(t *testing.T) {
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer r.Close()
+	if _, err := w.WriteString("piped password\r\nignored\n"); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+	var prompts strings.Builder
+	pw, err := readNewPassword(r, &prompts)
+	if err != nil || pw != "piped password" {
+		t.Fatalf("got %q, %v", pw, err)
+	}
+	if prompts.Len() != 0 {
+		t.Errorf("prompted a pipe: %q", prompts.String())
 	}
 }

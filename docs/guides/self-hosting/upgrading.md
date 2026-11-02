@@ -33,7 +33,7 @@ updated, so to go back, restore the backup too.
 To upgrade to the latest release, pull the image, then replace the container
 with the same flags you started it with. The command below uses the ones from
 [Run with Docker](docker.md#start-the-container); keep your own port binding and
-`NOTESD_PUBLIC_URL`:
+settings:
 
 ```bash
 docker pull ghcr.io/cassiozen/notesd:latest
@@ -41,12 +41,56 @@ docker rm -f notesd
 docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
-  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 ```
 
 To stay on one release line, use its tag instead of `latest`, e.g.
 `ghcr.io/cassiozen/notesd:0.2`.
+
+## Changes that need action
+
+### 1.0: update the apps too
+
+1.0 changes how the apps handle sync errors, versions and locked notes, so update every phone and
+browser along with the server. 0.x apps keep working with a 1.0 server, but only 1.0 apps:
+
+- keep a change that a proxy or Wi-Fi portal answered instead of notesd, rather than dropping it;
+- recover changes that older apps dropped this way, the first time they open;
+- understand later versions of locked notes and lock passwords, instead of showing them as text or
+  saying "wrong password".
+
+If you update from Settings, install `notesd-update` again from 1.0: see
+[Updating from Settings](#updating-from-settings).
+
+### 1.0: `NOTESD_PUBLIC_URL` and `NOTESD_LISTEN` removed
+
+notesd now works out where it's served from on its own. After upgrading:
+
+- **systemd:** remove `--public-url` from `ExecStart` if it's there, or notesd won't start. You can
+  delete `Environment=NOTESD_PUBLIC_URL=…` too; it's ignored.
+- **If you set `NOTESD_LISTEN`:** use `--listen ADDR` instead. Without it, notesd falls back to
+  `127.0.0.1:8080`, or to every interface at `$PORT` when `PORT` is set.
+- **nginx:** add `proxy_set_header X-Forwarded-Proto $scheme;` to the `location` block, as in
+  [the example](https.md#nginx). Without it, sign-in still works but session cookies aren't
+  marked `Secure`.
+- **Docker without `-v`:** the image no longer declares a volume. If you started the container
+  without `-v`, your notes are in an anonymous volume that a new container won't see. **Before**
+  you remove the old container, find the volume's name, then start the new container with
+  `-v <that name>:/data`:
+
+  ```bash
+  docker inspect -f '{{range .Mounts}}{{.Name}} {{.Destination}}{{end}}' notesd
+  ```
+
+  Already removed it? `docker rm -f` keeps anonymous volumes, so your notes are still there. List
+  the unused ones, and look for the one holding `system.db`:
+
+  ```bash
+  docker volume ls -q -f dangling=true
+  docker run --rm -v <name>:/data busybox ls /data
+  ```
+- **Docker, Caddy, Tailscale and Cloudflare Tunnel:** nothing to change. You can drop `-e NOTESD_PUBLIC_URL=…` the
+  next time you recreate the container.
 
 ## From a single-account version
 
@@ -75,8 +119,8 @@ Settings: Settings says when one is out, and you upgrade by hand after reading
 its notes on this page.
 
 > [!IMPORTANT]
-> A copy of `notesd-update` from before 0.15 installs whatever release is
-> newest, including a new major version. Install it again from 0.15 or later,
+> A copy of `notesd-update` from before 1.0 installs whatever release is
+> newest, including a new major version. Install it again from 1.0 or later,
 > as below.
 
 To set it up, download the script from the same release as your binary

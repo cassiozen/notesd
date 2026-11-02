@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -115,6 +116,15 @@ func TestImages(t *testing.T) {
 	if r := c.raw("PUT", "/api/v1/images/"+sha(locked), "application/vnd.notesd.locked", locked); r.status != 201 {
 		t.Fatalf("locked: %d %s", r.status, r.raw)
 	}
+	// A later version is stored as opaque as v1, and served as its own type.
+	v2 := bytes.Repeat([]byte{8}, 29)
+	if r := c.raw("PUT", "/api/v1/images/"+sha(v2), "application/vnd.notesd.locked.v2", v2); r.status != 201 ||
+		r.body["contentType"] != "application/vnd.notesd.locked.v2" {
+		t.Fatalf("locked v2: %d %s", r.status, r.raw)
+	}
+	if r := c.raw("GET", "/api/v1/images/"+sha(v2), "", nil); r.header.Get("Content-Type") != "application/vnd.notesd.locked.v2" {
+		t.Fatalf("get locked v2: %v", r.header)
+	}
 
 	svg := []byte(`<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>`)
 	gif := []byte("GIF89a\x01\x00\x01\x00")
@@ -132,6 +142,12 @@ func TestImages(t *testing.T) {
 		{"webp without riff", sha(gif), "image/webp", gif, 415, "unsupported_image"},
 		{"empty", sha(nil), "image/jpeg", nil, 415, "unsupported_image"},
 		{"locked too short", sha([]byte("short")), "application/vnd.notesd.locked", []byte("short"), 415, "unsupported_image"},
+		{"locked v2 too short", sha(locked[:28]), "application/vnd.notesd.locked.v2", locked[:28], 415, "unsupported_image"},
+		{"locked with a parameter", sha(locked), "application/vnd.notesd.locked; v=2", locked, 415, "unsupported_image"},
+		{"locked v2 with a parameter", sha(v2), "application/vnd.notesd.locked.v2; charset=binary", v2, 415, "unsupported_image"},
+		{"locked v1 subtype", sha(locked), "application/vnd.notesd.locked.v1", locked, 415, "unsupported_image"},
+		{"locked v0 subtype", sha(locked), "application/vnd.notesd.locked.v0", locked, 415, "unsupported_image"},
+		{"locked other subtype", sha(locked), "application/vnd.notesd.locked.foo", locked, 415, "unsupported_image"},
 	} {
 		if r := c.raw("PUT", "/api/v1/images/"+bad.id, bad.ct, bad.data); r.status != bad.status || r.body["error"] != bad.code {
 			t.Errorf("%s: %d %s", bad.name, r.status, r.raw)
@@ -181,10 +197,16 @@ func TestEmailInlinesImages(t *testing.T) {
 	locked := bytes.Repeat([]byte{7}, 40)
 	lockedID := sha(locked)
 	c.raw("PUT", "/api/v1/images/"+lockedID, "application/vnd.notesd.locked", locked)
+	newer := bytes.Repeat([]byte{8}, 40)
+	newerID := sha(newer)
+	if r := c.raw("PUT", "/api/v1/images/"+newerID, "application/vnd.notesd.locked.v2", newer); r.status != 201 {
+		t.Fatalf("locked v2: %d %s", r.status, r.raw)
+	}
 	missing := sha([]byte("never uploaded"))
 
 	content := "![a dot](notesd:image/" + id + "?w=1&h=1)\n\n" +
 		"![sealed](notesd:image/" + lockedID + "?w=1&h=1)\n\n" +
+		"![sealed later](notesd:image/" + newerID + "?w=1&h=1)\n\n" +
 		"![gone](notesd:image/" + missing + "?w=1&h=1)\n\n" +
 		"![again](notesd:image/" + id + "?w=1&h=1)\n\n" +
 		"![no size](notesd:image/" + id + ")\n"
@@ -198,7 +220,8 @@ func TestEmailInlinesImages(t *testing.T) {
 	if strings.Count(html, `src="cid:`+id+`"`) != 2 || strings.Count(html, `src="notesd:image/`+id+`"`) != 1 {
 		t.Fatalf("html: %s", html)
 	}
-	if !strings.Contains(html, "sealed") || !strings.Contains(html, "gone") || strings.Contains(html, lockedID) {
+	if !strings.Contains(html, "sealed") || !strings.Contains(html, "gone") || strings.Contains(html, lockedID) ||
+		!strings.Contains(html, "sealed later") || strings.Contains(html, newerID) {
 		t.Fatalf("alt text for unattached images: %s", html)
 	}
 	att, _ := m["attachments"].([]any)
@@ -245,5 +268,13 @@ func TestLockedNoteImageIDs(t *testing.T) {
 	r = c.do("PUT", "/api/v1/notes/n1", map[string]any{"operationId": "op-3", "baseRevision": 2, "title": "T", "content": sealed, "imageIds": []string{"nope"}})
 	if r.status != 400 || r.body["field"] != "imageIds" {
 		t.Fatalf("bad id: %d %s", r.status, r.raw)
+	}
+	// A body locked by a newer app is as unreadable here: its images are as listed.
+	r = c.do("PUT", "/api/v1/notes/n1", map[string]any{"operationId": "op-4", "baseRevision": 2, "title": "T", "content": "notesd:locked:v2:opaque", "imageIds": []string{a}})
+	if r.status != 200 || strings.Join(shows(), ",") != a {
+		t.Fatalf("v2: %d %s, shows %q", r.status, r.raw, shows())
+	}
+	if r := c.do("GET", "/api/v1/notes/n1", nil); r.status != 200 || !reflect.DeepEqual(r.body["imageIds"], []any{a}) {
+		t.Fatalf("v2 imageIds: %d %s", r.status, r.raw)
 	}
 }

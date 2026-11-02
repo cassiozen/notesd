@@ -2,6 +2,8 @@ package notes.core.db
 
 import kotlin.concurrent.atomics.AtomicLong
 import kotlin.concurrent.atomics.incrementAndFetch
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import notes.core.api.LockKey
 
 /**
@@ -18,7 +20,7 @@ class LockKeyStore(private val db: Database) {
     suspend fun keys(): List<LockKey> = db.read { sql ->
         sql.query(
             """
-            SELECT id, kind, credential_id, salt, iterations, wrapped, created_at FROM lock_keys
+            SELECT id, kind, credential_id, salt, iterations, wrapped, created_at, kdf FROM lock_keys
             ORDER BY kind != 'password', created_at, id
             """
         ) {
@@ -29,7 +31,8 @@ class LockKeyStore(private val db: Database) {
                 it.getText(3),
                 it.getLong(4).toInt(),
                 it.getText(5),
-                it.getLong(6)
+                it.getLong(6),
+                it.textOrNull(7)?.let(::kdfOf)
             )
         }
     }
@@ -53,15 +56,29 @@ class LockKeyStore(private val db: Database) {
         exec("DELETE FROM lock_keys")
         for (k in keys) {
             exec(
-                "INSERT INTO lock_keys (id, kind, credential_id, salt, iterations, wrapped, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                """
+                INSERT INTO lock_keys (id, kind, credential_id, salt, iterations, wrapped, created_at, kdf)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 k.id,
                 k.kind,
                 k.credentialId,
                 k.salt,
                 k.iterations,
                 k.wrapped,
-                k.createdAt
+                k.createdAt,
+                k.kdf?.toString()
             )
         }
     }
 }
+
+/**
+ * A stored kdf. Text that isn't a JSON object reads as an empty one, which names no function: the entry
+ * stays malformed instead of passing for one from before 1.0 (SQL NULL).
+ */
+private fun kdfOf(text: String): JsonObject = try {
+    Json.parseToJsonElement(text) as? JsonObject
+} catch (_: IllegalArgumentException) {
+    null
+} ?: JsonObject(emptyMap())

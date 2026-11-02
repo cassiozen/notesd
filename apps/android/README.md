@@ -28,7 +28,7 @@ Install on a connected device with `cd apps/android && mise exec -- ./gradlew :a
 
 The app talks to notesd over HTTPS, or plain HTTP to an address only reachable on your network (`10.x`, `172.16–31.x`, `192.168.x`, loopback, link-local, `localhost`, `*.local`); anything else must use HTTPS, so tokens never cross the internet in the clear.
 
-- **Phone on your Wi-Fi:** `NOTESD_LISTEN=0.0.0.0:8080 mise run dev:server`, then connect to `http://<your computer's LAN address>:8080`.
+- **Phone on your Wi-Fi:** `PORT=8080 mise run dev:server`, then connect to `http://<your computer's LAN address>:8080`.
 - **Emulator:** `mise run dev:server` and connect to `http://10.0.2.2:8080`, the emulator's alias for the host machine.
 
 On first run, onboarding asks for the server, then either creates the account (a new server) or signs in with a username and password. "Use without a server" skips it; you can connect later in Settings.

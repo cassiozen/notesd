@@ -1,5 +1,6 @@
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import fixtures from '../../../shared/crypto-fixtures/locked.json'
 import type { LockKey } from '../src/api/types'
 import {
   LOCKED_PREFIX,
@@ -19,6 +20,7 @@ import {
   bodyText,
   createNote,
   getNote,
+  interceptApi,
   list,
   listNotes,
   newNoteButton,
@@ -205,6 +207,50 @@ async function addPasskey(s: Session) {
 async function closeSettings(s: Session) {
   await s.user.click(screen.getByRole('button', { name: 'Done' }))
 }
+
+describe('locks from a newer notesd', () => {
+  it('a note locked in a newer version opens read-only, saying to update, and is never saved', async () => {
+    const envelope = fixtures.unsupported[0]?.envelope ?? ''
+    let id = ''
+    const { server } = await signedIn({ seed: async (srv) => void (id = await createNote(srv, 'Future', envelope)) })
+
+    expect(await screen.findByText('This note was locked by a newer version of notesd. Update notesd to open it.')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Future' })).toBeTruthy()
+    // Nothing to type into, unlock or lock.
+    expect(screen.queryByRole('textbox', { name: 'Note' })).toBeNull()
+    expect(screen.queryByLabelText('Lock password')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'More' })).toBeNull()
+    expect((await getNote(server, id)).content).toBe(envelope)
+  })
+
+  it('a lock password set up with a newer key derivation says to update, never "wrong password"', async () => {
+    const s = await seeded()
+    await lockOpenNote(s)
+    await s.user.click(screen.getByRole('button', { name: 'Lock now' }))
+    expect(await screen.findByText('This note is locked.')).toBeTruthy()
+
+    interceptApi(
+      (method, path) => method === 'GET' && path === '/api/v1/locks',
+      async (_m, _p, real) => {
+        const { keys } = (await (await real()).json()) as { keys: LockKey[] }
+        for (const k of keys) if (k.kind === 'password') k.kdf = { name: 'argon2id', m: 65536, t: 3, p: 1 }
+        return Response.json({ keys })
+      },
+    )
+    await act(() => lockSession.load(true))
+    await s.user.type(screen.getByLabelText('Lock password'), `${LOCK_PASSWORD}{Enter}`)
+    expect(await screen.findByText('This lock was set up by a newer version of notesd. Update notesd to unlock.')).toBeTruthy()
+    expect(screen.queryByText('Wrong password.')).toBeNull()
+    expect(lockSession.key()).toBeNull()
+  })
+
+  it('new keyring entries carry their kdf', async () => {
+    const s = await seeded()
+    await lockOpenNote(s)
+    const sent = s.server.sent('PUT', '/locks/keys/password') as { kdf?: unknown; iterations: number }[]
+    expect(sent.at(-1)?.kdf).toEqual({ name: 'pbkdf2-sha256', iterations: sent.at(-1)?.iterations })
+  })
+})
 
 describe('passkeys for locked notes', () => {
   it('a passkey added in Settings unlocks locked notes', async () => {

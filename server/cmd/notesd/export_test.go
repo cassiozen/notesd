@@ -203,7 +203,9 @@ func TestExportLockedImages(t *testing.T) {
 	get, put := storedImages(t, db)
 	lockedID, lockedRef := put(images.Locked, sealed)
 	_, otherRef := put(images.Locked, seal(t, make([]byte, 32), plain, "notesd:image:v1"))
-	body := "![x](" + lockedRef + ")\n\n![y](" + otherRef + ")\n"
+	// Sealed under the right key, but typed as a later version: not opened.
+	_, newerRef := put(images.Locked+".v2", seal(t, key, plain, "notesd:image:v1"))
+	body := "![x](" + lockedRef + ")\n\n![y](" + otherRef + ")\n\n![z](" + newerRef + ")\n"
 	create("a", "Secret", locks.Prefix+base64.RawURLEncoding.EncodeToString(seal(t, key, []byte(body), "notesd:locked:v1")))
 	all, err := liveNotes(ctx, db)
 	if err != nil {
@@ -222,11 +224,11 @@ func TestExportLockedImages(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The second image is sealed under another key: it keeps its reference.
-	if res != (exported{Written: 1, Images: 1, MissingImages: 1}) {
+	if res != (exported{Written: 1, Images: 1, MissingImages: 2}) {
 		t.Fatalf("result = %+v", res)
 	}
 	got, _ := os.ReadFile(filepath.Join(dir, "Secret.md"))
-	if want := "# Secret\n\n![x](images/" + lockedID + ".png)\n\n![y](" + otherRef + ")\n"; string(got) != want {
+	if want := "# Secret\n\n![x](images/" + lockedID + ".png)\n\n![y](" + otherRef + ")\n\n![z](" + newerRef + ")\n"; string(got) != want {
 		t.Fatalf("Secret.md = %q, want %q", got, want)
 	}
 	if img, _ := os.ReadFile(filepath.Join(dir, "images", lockedID+".png")); !bytes.Equal(img, plain) {
@@ -243,10 +245,11 @@ type cryptoFixtures struct {
 		Password, Salt string
 		Iterations     int
 	}
-	Wraps     []struct{ Kind, Wrapped string }
-	Envelopes []struct{ Name, Plaintext, Envelope string }
-	Invalid   []struct{ Name, Envelope string }
-	Images    []struct{ Name, Key, Plain, Sealed string }
+	Wraps       []struct{ Kind, Wrapped string }
+	Envelopes   []struct{ Name, Plaintext, Envelope string }
+	Invalid     []struct{ Name, Envelope string }
+	Unsupported []struct{ Name, Envelope string }
+	Images      []struct{ Name, Key, Plain, Sealed string }
 }
 
 func loadCryptoFixtures(t *testing.T) cryptoFixtures {
@@ -279,12 +282,18 @@ func TestExportLockedNotes(t *testing.T) {
 				return e.Envelope
 			}
 		}
+		for _, e := range f.Unsupported {
+			if e.Name == name {
+				return e.Envelope
+			}
+		}
 		t.Fatalf("no fixture %q", name)
 		return ""
 	}
 	create("a", "Bank", envelope("markdown"))
 	create("b", "Broken", envelope("tampered tag"))
 	create("c", "Open", "plain\n")
+	create("d", "Newer", envelope("v2"))
 	all, err := liveNotes(ctx, db)
 	if err != nil {
 		t.Fatal(err)
@@ -315,13 +324,27 @@ func TestExportLockedNotes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// The KDF named, as entries saved since are, opens it the same.
+	if _, err := db.W.ExecContext(ctx, `UPDATE lock_keys SET kdf = json_object('name', 'pbkdf2-sha256', 'iterations', iterations)`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lockKey(ctx, db, fixturePassword); err != nil {
+		t.Fatalf("named kdf: %v", err)
+	}
+	if _, err := db.W.ExecContext(ctx, `UPDATE lock_keys SET kdf = '{"name":"argon2id"}'`); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := lockKey(ctx, db, fixturePassword); err == nil || !strings.Contains(err.Error(), "newer") {
+		t.Fatalf("unknown kdf: %v", err)
+	}
 
 	dir := filepath.Join(t.TempDir(), "out")
 	res, err := writeExport(dir, all, nil, key, noImages)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res != (exported{Written: 2, Unreadable: 1}) {
+	// Locked by a newer notesd: no password opens it here.
+	if res != (exported{Written: 2, Unreadable: 2}) {
 		t.Fatalf("result = %+v", res)
 	}
 	got, _ := os.ReadFile(filepath.Join(dir, "Bank.md"))

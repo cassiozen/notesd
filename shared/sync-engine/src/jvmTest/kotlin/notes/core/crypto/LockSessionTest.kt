@@ -11,6 +11,8 @@ import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import notes.core.db.Database
 import notes.core.db.LockKeyStore
 
@@ -51,7 +53,7 @@ class LockSessionTest {
         val created = Keyring.create("lock pass 123", iterations = 10_000)
         keys.replace(listOf(created.entry))
         session.refresh()
-        assertTrue(session.unlock("lock pass 123"))
+        assertEquals(LockSession.Outcome.Done, session.unlock("lock pass 123"))
 
         // Nothing changed: still unlocked.
         session.refresh()
@@ -62,7 +64,7 @@ class LockSessionTest {
         assertEquals(LockSession.State.Locked, session.state.value)
         assertNull(session.key())
 
-        assertTrue(session.unlock("another one"))
+        assertEquals(LockSession.Outcome.Done, session.unlock("another one"))
         keys.replace(emptyList())
         session.refresh()
         assertEquals(LockSession.State.None, session.state.value)
@@ -74,7 +76,7 @@ class LockSessionTest {
         val created = Keyring.create("lock pass 123", iterations = 10_000)
         keys.replace(listOf(created.entry))
         session.refresh()
-        assertTrue(session.unlock("lock pass 123"))
+        assertEquals(LockSession.Outcome.Done, session.unlock("lock pass 123"))
         var saves = 0
         val unhook = session.onBeforeLock {
             saves++
@@ -90,5 +92,38 @@ class LockSessionTest {
         assertEquals(LockSession.State.Locked, session.state.value)
         assertEquals(2, saves)
         unhook()
+    }
+
+    @Test
+    fun `an entry from a newer app or a broken one is never a wrong password`() = runBlocking {
+        val created = Keyring.create("lock pass 123", iterations = 10_000)
+        val argon = buildJsonObject { put("name", "argon2id") }
+        keys.replace(listOf(created.entry.copy(kdf = argon)))
+        session.refresh()
+        assertEquals(LockSession.Outcome.UnsupportedKdf, session.unlock("lock pass 123"))
+
+        keys.replace(listOf(created.entry.copy(kdf = Kdf.pbkdf2(0))))
+        assertEquals(LockSession.Outcome.MalformedKey, session.unlock("lock pass 123"))
+        keys.replace(listOf(created.entry.copy(kdf = null, iterations = -1)))
+        assertEquals(LockSession.Outcome.MalformedKey, session.unlock("lock pass 123"))
+        assertEquals(LockSession.State.Locked, session.state.value)
+
+        // A stored kdf that doesn't parse is broken, not one from before 1.0.
+        keys.replace(listOf(created.entry))
+        db.write { it.exec("UPDATE lock_keys SET kdf = 'not json'") }
+        assertEquals(LockSession.Outcome.MalformedKey, session.unlock("lock pass 123"))
+
+        // Before 1.0 there was no kdf: implied by the kind.
+        keys.replace(listOf(created.entry.copy(kdf = null)))
+        assertEquals(LockSession.Outcome.WrongPassword, session.unlock("wrong"))
+        assertEquals(LockSession.Outcome.Done, session.unlock("lock pass 123"))
+    }
+
+    @Test
+    fun `new entries say how they're derived, and the copy here keeps it`() = runBlocking {
+        val created = Keyring.create("lock pass 123", iterations = 10_000)
+        assertEquals(Kdf.pbkdf2(10_000), created.entry.kdf)
+        keys.replace(listOf(created.entry))
+        assertEquals(created.entry, keys.keys().single())
     }
 }

@@ -161,6 +161,7 @@ fun EditorScreen(
     val locked by vm.locked.collectAsStateWithLifecycle()
     val needsUnlock by vm.needsUnlock.collectAsStateWithLifecycle()
     val unreadable by vm.unreadable.collectAsStateWithLifecycle()
+    val unsupported by vm.unsupported.collectAsStateWithLifecycle()
     val storedTitle by vm.title.collectAsStateWithLifecycle()
     val imageProblem by vm.imageProblem.collectAsStateWithLifecycle()
 
@@ -300,7 +301,7 @@ fun EditorScreen(
         ) {
             if (showBack) BackLink(onBack) else Spacer(Modifier.width(12.dp))
             Spacer(Modifier.weight(1f))
-            if (!needsUnlock) {
+            if (!needsUnlock && !unsupported) {
                 if (locked) {
                     IconAction(Icons.Lock, "Lock now", {
                         // Typing from the last moments saves (encrypted) before the key goes.
@@ -321,14 +322,15 @@ fun EditorScreen(
                 IconAction(Icons.More, "More", { menu = true })
             }
         }
-        if (needsUnlock || unreadable) {
+        if (needsUnlock || unreadable || unsupported) {
             LockedNote(
                 storedTitle,
                 unreadable,
                 locks,
                 Modifier.weight(1f),
                 fingerprint = fingerprint,
-                promptFingerprint = !lockedHere
+                promptFingerprint = !lockedHere,
+                unsupported = unsupported
             )
         }
         imageProblem?.let { message ->
@@ -357,7 +359,7 @@ fun EditorScreen(
             )
         }
         val doc = loaded
-        if (doc != null && !needsUnlock) {
+        if (doc != null && !needsUnlock && !unsupported) {
             AndroidView(
                 factory = { ctx ->
                     // The scroll view, not the EditText, scrolls: TextView's own scrolling has no fling or edge stretch.

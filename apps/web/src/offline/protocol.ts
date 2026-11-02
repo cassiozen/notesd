@@ -30,18 +30,22 @@ export type LocalListItem = {
   spaceId: string
 }
 
-export type SyncOutcome = 'Done' | 'NotConnected' | 'Offline' | 'SignedOut' | 'Failed'
+export type SyncOutcome = 'Done' | 'NotConnected' | 'Offline' | 'SignedOut' | 'UpgradeRequired' | 'Failed'
 
 export type SyncStatus =
   | { kind: 'NotConnected' | 'Syncing' | 'Offline' | 'SignedOut' }
   | { kind: 'Synced'; at: number }
   | { kind: 'Failed'; message: string }
+  // The server needs a newer app: sync paused, changes kept. minVersion null when the server didn't say.
+  | { kind: 'UpgradeRequired'; minVersion: string | null }
 
-/** What sync did to keep both sides of a clash (§6.2, §6.4). */
+/** What sync did to keep both sides of a clash (§6.2, §6.4), or a change the server refused for good. */
 export type SyncNotice =
   | { kind: 'ConflictedCopy'; noteId: string; copyId: string; title: string }
   | { kind: 'RecoveredCopy'; copyId: string; title: string }
   | { kind: 'Restored'; noteId: string; title: string }
+  /** Dropped from the queue; [message] says what and why. */
+  | { kind: 'Rejected'; message: string }
 
 export type SaveNote = {
   id: string
@@ -63,6 +67,10 @@ export type EngineApi = {
   /** One cycle now. */
   sync(): Promise<SyncOutcome>
   status(): Promise<SyncStatus>
+  /** Notes whose change failed to sync 3 times and was set aside; still dirty, still here. */
+  parked(): Promise<number>
+  /** Puts set-aside changes back in line and syncs. */
+  retryParked(): Promise<void>
   /** Null until a sync has ever finished on this database: nothing here to show offline. */
   lastSyncAt(): Promise<number | null>
   get(id: string): Promise<LocalNote | null>

@@ -25,14 +25,16 @@ description: What the server can read, how accounts and sessions are protected, 
   from Settings. The first account is one. Admins can't see other accounts' notes.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
   reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
-  and create the account before putting HTTPS in front. To skip that window,
-  `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create it when the server starts.
+  and create the account before putting HTTPS in front. On a hosting platform, create it right
+  after deploying. To skip that window, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create
+  it when the server starts.
 
 ## Passwords and sessions
 
 - Passwords are hashed with Argon2id. After 10 failed sign-ins in 15 minutes from one address,
   sign-ins from it are refused for a while.
-- **Browsers** get an HttpOnly session cookie, `Secure` when `--public-url` is HTTPS, and must
+- **Browsers** get an HttpOnly session cookie, `Secure` when served over HTTPS (directly or
+  as reported by the proxy's `X-Forwarded-Proto`), and must
   send a CSRF token with every change; requests from other sites are refused. A session ends after
   30 days without use.
 - **Phones** get an access token that lasts an hour and a refresh token that lasts 180 days from
@@ -74,7 +76,10 @@ Face ID set up that still opens your notes, they can't be recovered, by you or a
 The cryptography: each account has one 256-bit key that encrypts locked notes and their pictures
 with AES-256-GCM. The server keeps it only wrapped (encrypted) under the lock password
 (PBKDF2-SHA256, 600,000 iterations) and under each passkey (WebAuthn PRF). Fingerprint and Face ID
-keep a copy on the phone, sealed by the Android Keystore or iOS Keychain behind the biometric check. The full design is in
+keep a copy on the phone, sealed by the Android Keystore or iOS Keychain behind the biometric check.
+Each keyring entry records how its key is derived, and a locked note records its format version, so
+a later notesd can strengthen either without an older app mistaking the result for a wrong password
+or for plain text: older apps ask you to update instead. The full design is in
 [architecture §10.1](../contributing/architecture.md#101-locked-notes).
 
 ## What notesd connects to

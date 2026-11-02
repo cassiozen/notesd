@@ -7,8 +7,9 @@ ARG TARGETARCH
 COPY --chmod=755 server/bin/notesd-linux-${TARGETARCH} /usr/local/bin/notesd
 # Owned by nonroot, so a new named volume is writable without a chown.
 COPY --from=data --chown=nonroot:nonroot /data /data
-ENV NOTESD_LISTEN=0.0.0.0:8080 \
+ENV PORT=8080 \
     NOTESD_DATA_DIR=/data
 EXPOSE 8080
-VOLUME /data
+# No VOLUME: an anonymous one would hide a missing -v from notesd's startup
+# warning, and is orphaned when the container is replaced anyway.
 ENTRYPOINT ["notesd"]

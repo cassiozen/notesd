@@ -12,12 +12,14 @@ public struct URLSessionTransport: HTTPTransport {
         self.session = session
     }
 
-    /// No cookies or cache, a quick failure when nothing answers.
+    /// No cookies or cache, a quick failure when nothing answers, and no redirects: notesd never
+    /// redirects an API call, so one comes from something in between (a portal, a proxy).
     public static let standard: URLSessionTransport = {
         let config = URLSessionConfiguration.ephemeral
         config.timeoutIntervalForRequest = 30
         config.waitsForConnectivity = false
-        return URLSessionTransport(session: URLSession(configuration: config))
+        return URLSessionTransport(
+            session: URLSession(configuration: config, delegate: NoRedirects(), delegateQueue: nil))
     }()
 
     public func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -25,6 +27,14 @@ public struct URLSessionTransport: HTTPTransport {
         guard let http = response as? HTTPURLResponse else { throw URLError(.badServerResponse) }
         return (data, http)
     }
+}
+
+/// Hands a redirect back as the answer instead of following it.
+private final class NoRedirects: NSObject, URLSessionTaskDelegate, Sendable {
+    func urlSession(
+        _ session: URLSession, task: URLSessionTask, willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest
+    ) async -> URLRequest? { nil }
 }
 
 /// The body of a note create, update or delete. Built once per operation and
@@ -64,10 +74,12 @@ public struct NoteRequest: Encodable, Sendable, Hashable {
 /// and on a 401 refresh once and resend the identical request, so an
 /// operationId inside it stays the same. Only one refresh runs at a time.
 public final class ApiClient: Sendable {
-    /// A 2xx answer that isn't the expected JSON: something other than notesd is at this address.
-    public static let unexpectedResponse = "unexpected_response"
+    /// This app's version as the server sees it: `MARKETING_VERSION`, generated from `git describe`.
+    public static let appVersion: String =
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.0.0-dev"
 
     public let baseURL: URL
+    private let version: String
     private let credentials: (any Credentials)?
     private let transport: any HTTPTransport
     private let clock: Clock
@@ -79,9 +91,10 @@ public final class ApiClient: Sendable {
     public init(
         baseURL: URL, credentials: (any Credentials)? = nil,
         transport: any HTTPTransport = URLSessionTransport.standard,
-        clock: @escaping Clock = systemClock
+        clock: @escaping Clock = systemClock, version: String = ApiClient.appVersion
     ) {
         self.baseURL = baseURL
+        self.version = version
         self.credentials = credentials
         self.transport = transport
         self.clock = clock
@@ -217,7 +230,12 @@ public final class ApiClient: Sendable {
 
     /// Deletes an empty space: a conflict (space_not_empty) while it holds notes.
     public func deleteSpace(_ id: String) async -> ApiResult<Void> {
-        await authed({ self.request("DELETE", "api/v1/spaces/\(id)", access: $0) }, decode: { _ in () })
+        await authed(
+            { self.request("DELETE", "api/v1/spaces/\(id)", access: $0) },
+            decode: { reply in
+                // Any other success came from something that isn't notesd: the space may still be there.
+                guard reply.code == 204 else { throw URLError(.cannotParseResponse) }
+            })
     }
 
     /// Creates or replaces a keyring entry; `verifier` proves this device holds the key (the first password entry sets it).
@@ -229,10 +247,11 @@ public final class ApiClient: Sendable {
             var iterations: Int
             var wrapped: String
             var verifier: String
+            var kdf: Kdf?
         }
         let body = Body(
             kind: key.kind, credentialId: key.credentialId, salt: key.salt, iterations: key.iterations,
-            wrapped: key.wrapped, verifier: verifier)
+            wrapped: key.wrapped, verifier: verifier, kdf: key.kdf)
         return await authed(
             { self.request("PUT", "api/v1/locks/keys/\(key.id)", body: body, access: $0) },
             decode: json(LockKey.self))
@@ -255,7 +274,13 @@ public final class ApiClient: Sendable {
                 r.httpBody = bytes
                 r.setValue(type, forHTTPHeaderField: "Content-Type")
                 return r
-            }, decode: { _ in () })
+            },
+            decode: { reply in
+                struct Stored: Decodable { var id: String }
+                guard try JSONDecoder().decode(Stored.self, from: reply.data).id == id else {
+                    throw URLError(.cannotParseResponse)
+                }
+            })
     }
 
     /// Downloads an image with the type it is stored as.
@@ -338,29 +363,36 @@ public final class ApiClient: Sendable {
                     .split(separator: ";").first.map { $0.trimmingCharacters(in: .whitespaces).lowercased() }
                 return .ok(try decode(Reply(code: code, data: data, type: type)))
             } catch {
-                return .rejected(
-                    status: code, error: Self.unexpectedResponse, message: "The server's answer wasn't understood.",
-                    field: nil)
+                return .unexpected(status: code)
             }
         }
+        if (300...399).contains(code) { return .unexpected(status: code) }
         let object = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
         let error = object["error"] as? String ?? ""
         let message = object["message"] as? String ?? ""
         switch code {
+        case 429:
+            // From notesd or a proxy in front of it, waiting is right either way.
+            let retry = response.value(forHTTPHeaderField: "Retry-After")?.trimmingCharacters(in: .whitespaces)
+            return .rateLimited(retryAfterSeconds: retry.flatMap { Int64($0) } ?? Self.defaultRetryAfter)
+        case 500...:
+            return .rejected(
+                status: code, error: error.isEmpty ? "http_\(code)" : error, message: message,
+                field: object["field"] as? String)
+        case _ where error.isEmpty:
+            // A login page, a portal, a proxy's error: not an answer from notesd.
+            return .unexpected(status: code)
         case 401 where error == "unauthenticated":
             return .unauthenticated
+        case 426 where error == "upgrade_required":
+            return .upgradeRequired(minVersion: object["minVersion"] as? String)
         case 409:
             let current = (object["current"] as? [String: Any]).flatMap {
                 try? JSONSerialization.data(withJSONObject: $0)
             }
             return .conflict(code: error, message: message, current: current)
-        case 429:
-            let retry = response.value(forHTTPHeaderField: "Retry-After")?.trimmingCharacters(in: .whitespaces)
-            return .rateLimited(retryAfterSeconds: retry.flatMap { Int64($0) } ?? Self.defaultRetryAfter)
         default:
-            return .rejected(
-                status: code, error: error.isEmpty ? "http_\(code)" : error, message: message,
-                field: object["field"] as? String)
+            return .rejected(status: code, error: error, message: message, field: object["field"] as? String)
         }
     }
 
@@ -372,6 +404,8 @@ public final class ApiClient: Sendable {
         if !query.isEmpty { url.append(queryItems: query) }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.setValue("ios/\(version)", forHTTPHeaderField: "X-Notesd-Client")
+        request.setValue("notesd-ios/\(version)", forHTTPHeaderField: "User-Agent")
         if let body {
             request.httpBody = try? jsonEncoder.encode(body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

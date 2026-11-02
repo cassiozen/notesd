@@ -7,15 +7,21 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.khronos.webgl.Int8Array
+import org.w3c.fetch.MANUAL
+import org.w3c.fetch.OPAQUEREDIRECT
 import org.w3c.fetch.RequestCredentials
 import org.w3c.fetch.RequestInit
+import org.w3c.fetch.RequestRedirect
+import org.w3c.fetch.ResponseType
 import org.w3c.fetch.SAME_ORIGIN
 
 /**
  * [SyncApi] for the web app: same origin, the session cookie, and the CSRF
  * token on every mutation (§10). The bodies are the sync engine's, sent as given.
+ * [client] (`web/<version>`) goes with every request. Redirects aren't followed:
+ * notesd sends none, so one is [ApiResult.Unexpected].
  */
-class FetchApi(private val csrfToken: () -> String?) : SyncApi {
+class FetchApi(private val csrfToken: () -> String?, private val client: ClientInfo? = null) : SyncApi {
     override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
         send("POST", "/notes", body.toString()) { json.decodeFromString(it) }
 
@@ -45,20 +51,24 @@ class FetchApi(private val csrfToken: () -> String?) : SyncApi {
         }.toString()
     ) { json.decodeFromString(it) }
 
-    override suspend fun deleteSpace(id: String): ApiResult<Unit> = send("DELETE", "/spaces/${enc(id)}", null) { }
+    override suspend fun deleteSpace(id: String): ApiResult<Unit> =
+        send("DELETE", "/spaces/${enc(id)}", null, ok = 204) { }
 
     override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> =
-        send("PUT", "/images/${enc(id)}", bytes.unsafeCast<Int8Array>(), type) { }
+        send("PUT", "/images/${enc(id)}", bytes.unsafeCast<Int8Array>(), type) { checkStoredImage(id, it) }
 
+    /** [ok]: the one success status the endpoint answers with, when it matters. */
     private suspend fun <T> send(
         method: String,
         path: String,
         body: Any?,
         contentType: String = "application/json",
+        ok: Int? = null,
         decode: (String) -> T
     ): ApiResult<T> {
         val headers = js("({})")
         headers["Accept"] = "application/json"
+        if (client != null) headers["X-Notesd-Client"] = client.header
         if (body != null) headers["Content-Type"] = contentType
         if (method != "GET") {
             // Opened offline, the page has no token until the server answers it: wait, as if offline.
@@ -67,8 +77,13 @@ class FetchApi(private val csrfToken: () -> String?) : SyncApi {
                 ?: return ApiResult.Unreachable(IllegalStateException("No session token yet"))
             headers["X-CSRF-Token"] = token
         }
-        val init =
-            RequestInit(method = method, headers = headers, body = body, credentials = RequestCredentials.SAME_ORIGIN)
+        val init = RequestInit(
+            method = method,
+            headers = headers,
+            body = body,
+            credentials = RequestCredentials.SAME_ORIGIN,
+            redirect = RequestRedirect.MANUAL
+        )
         val (res, text) = try {
             // globalThis, not window: the engine may run in a worker.
             val r = fetch("/api/v1$path", init).await()
@@ -78,7 +93,13 @@ class FetchApi(private val csrfToken: () -> String?) : SyncApi {
         } catch (e: Throwable) {
             return ApiResult.Unreachable(e)
         }
-        return apiResult(res.status.toInt(), res.headers.get("Retry-After"), { text }) { decode(text) }
+        // A redirect not followed comes back opaque, status 0.
+        if (res.type == ResponseType.OPAQUEREDIRECT) return ApiResult.Unexpected(0)
+        val status = res.status.toInt()
+        return apiResult(status, res.headers.get("Retry-After"), { text }) {
+            require(ok == null || status == ok) { "Answered $status" }
+            decode(text)
+        }
     }
 
     private fun fetch(url: String, init: RequestInit): kotlin.js.Promise<org.w3c.fetch.Response> =

@@ -36,8 +36,10 @@ export function platformBadge(name: string, kind: 'web' | 'device'): string {
   return kind === 'device' ? 'APP' : 'WEB'
 }
 
-/** A session's display name; older sessions stored the raw user agent. */
+/** A session's display name; older sessions stored the raw user agent, and apps that sent no device name theirs. */
 export function sessionName(name: string, kind: 'web' | 'device'): string {
   if (name.startsWith('Mozilla/')) return browserName(name)
+  const app = /^notesd-(android|ios)\//i.exec(name)?.[1]?.toLowerCase()
+  if (app) return app === 'ios' ? 'iOS' : 'Android'
   return name || (kind === 'web' ? 'Browser' : 'Device')
 }

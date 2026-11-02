@@ -139,14 +139,15 @@ CREATE TABLE spaces (id TEXT PRIMARY KEY, name TEXT NOT NULL, name_key TEXT NOT 
 
 -- Locked notes' keyring (§10.1): the key wrapped under each secret, and the verifier's hash.
 CREATE TABLE lock_keys (id TEXT PRIMARY KEY, kind TEXT, credential_id TEXT, salt TEXT, iterations INTEGER,
-                        wrapped TEXT, created_at INTEGER);
+                        kdf TEXT, wrapped TEXT, created_at INTEGER);  -- kdf: JSON, §10.1
 CREATE TABLE lock_state (id INTEGER PRIMARY KEY CHECK (id = 1), verifier_hash TEXT NOT NULL);
 
 CREATE TABLE applied_operations (
     operation_id  TEXT PRIMARY KEY,
     request_hash  TEXT    NOT NULL,
     response_json TEXT    NOT NULL,          -- status code and body, replayed verbatim
-    applied_at    INTEGER NOT NULL
+    applied_at    INTEGER NOT NULL,
+    hash_version  INTEGER NOT NULL DEFAULT 1 -- §4.2
 );
 
 ```
@@ -174,6 +175,10 @@ Clients attach a unique operation ID to each mutation so retries after a lost re
 
 1. Looks up the operation ID. If found, it checks the request hash and returns the stored response; a reused ID with a different payload is rejected.
 2. Otherwise it validates and applies the mutation, storing the ID and response in the same transaction.
+
+The request hash (version 2) is SHA-256 of the kind of write, the note ID from the path and the body as received, in canonical form: parsed and re-encoded with sorted keys, numbers kept as written. It never depends on the server's own types, so a later release that adds a field to them still recognizes a retry from before. Records from before 1.0 (version 1 hashed the server's decoded struct, which can't be recomputed) match on the operation ID alone.
+
+A client whose retry is refused as reused (`422 operation_id_reused`) sends the change once more under a new operation ID: the revision check (§4.1) turns a duplicate into a conflict or `unchanged`, never a second write.
 
 V1 retains operation records indefinitely; expiring them needs an explicit protocol, since clients may retry at any time.
 
@@ -209,7 +214,9 @@ CREATE TABLE sync_outbox (
     base_revision  INTEGER,
     payload_json   TEXT NOT NULL,
     created_at     INTEGER NOT NULL,
-    sent           INTEGER NOT NULL DEFAULT 0  -- frozen once sent
+    sent           INTEGER NOT NULL DEFAULT 0, -- frozen once sent
+    attempts       INTEGER NOT NULL DEFAULT 0, -- unexpected answers so far (§5.1)
+    parked         INTEGER NOT NULL DEFAULT 0  -- set aside after 3 (§5.1)
 );
 
 CREATE TABLE sync_state (               -- one row
@@ -272,7 +279,13 @@ PUT /api/v1/notes/019a1234
 
 - **Base revision is current** → `{ "id": "019a1234", "revision": 6, "changeSeq": 105, "updatedAt": …, "status": "updated", "spaceId": "default" }`, and the client acknowledges the operation locally. `spaceId` is the space the note is now in, which the client adopts: the one it sent, the default if that space was deleted, or the note's own space for an update that sent none. Identical content and space answer `"status": "unchanged"` without a new revision; a move alone is an update.
 - **Base revision is stale** → `409 Conflict` with `{ "error": "revision_conflict", "current": { …latest note… } }`, and the client resolves it as described in section 6. Two more conflict codes use the same shape: `note_deleted` (the note is a tombstone; `current` carries `deletedAt`) and `note_exists` (a create reusing an ID, including a deleted one).
-- **Operation already applied** → the stored response, with the header `Idempotent-Replayed: true`. The same operation ID with a different payload is `422 operation_id_reused`.
+- **Operation already applied** → the stored response, with the header `Idempotent-Replayed: true`. The same operation ID with a different payload is `422 operation_id_reused`, and the client sends the change once more under a new operation ID (§4.2).
+
+**Failed uploads never lose an edit.** Between the app and the server there may be a proxy, an SSO gateway or a Wi-Fi portal that answers in its own way, and a newer server may add error codes. So a change is dropped only when notesd itself says the change can never be accepted: an error body with `invalid_request`, `hash_mismatch`, `image_too_large`, `unsupported_image` or `space_default` (and `not_found` on a delete, which is done). The app keeps the reason to show. Everything else that isn't success, a conflict, a sign-out, a rate limit or `upgrade_required` is *unexpected*: an unknown code, a redirect (API calls don't follow them), a page that isn't notesd's JSON, or a success whose body doesn't decode. The change stays queued and the cycle stops with a message. After 3 unexpected answers for the same change it is *parked*: skipped, so the changes behind it sync, while its note stays dirty and counts as not synced. Parked changes go back in line when the app starts, after a cycle that uploaded something, and when the user taps Retry; one more unexpected answer parks them again. Server errors (5xx) and being offline don't count, since they say nothing about the change.
+
+"Not synced" counts, including the warning before signing out, count dirty notes rather than queue entries. Opening the engine queues a change for any dirty note without one, which also recovers edits that releases before 1.0 dropped.
+
+**Versions.** Apps send `X-Notesd-Client: <platform>/<version>` on every request; the server sends `X-Notesd-Server` on every response and reports its version and `apiVersion` from `GET /auth/status` before sign-in. A server may refuse an app older than a minimum with `426 upgrade_required`; the app pauses sync, keeps every change and asks to update. It never refuses an app that doesn't send the header, so apps from before 1.0, which would treat a 426 as a permanent rejection, are never refused. The minimums are compiled into the server and empty in 1.0. The web app is served by the server it talks to; when `X-Notesd-Server` differs from the version it was built with, an open tab offers to reload. Compatibility rules for later releases are in the [API reference](../reference/api.md#compatibility).
 
 ### 5.2 Downloading changes
 
@@ -519,8 +532,8 @@ An installation holds a few accounts, such as a family's, each signed in from mu
 - **Devices:** a signed-out device keeps its notes, and its first sync under another account would upload them there (a different sync generation means full reconciliation, §11.4). So the apps let only the same account sign in again; switching accounts means removing all data first. The web app removes its copy on sign-out and keeps a database per account, so neither applies there.
 
 - **Credentials:** username and password, hashed with Argon2id (parameters encoded in the hash so they can be raised later); never stored in plaintext. Password changes are supported and sign out every other session. Failed logins are rate-limited (10 per 15 minutes per client address).
-- **First run:** while no account exists, `POST /auth/setup` creates one for whoever calls it first, with no token, and every client's onboarding goes straight to creating the account. After that the endpoint returns `already_set_up`. The server logs a warning with its address until the owner exists. The cost: a server reachable from the network before its owner exists can be claimed by a stranger. The default listen address is loopback, so a fresh install isn't reachable, and the hosting guide says to create the account before exposing it. To skip the open window entirely, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at startup (ignored once one exists), or `notesd create-owner` creates it from the shell. A claimed server holds no one else's data, and deleting the data directory starts over. That's why tokenless setup is acceptable here (the same trade-off Coolify and Jellyfin make).
-- **Web sessions:** an HttpOnly, SameSite=Lax cookie (`Secure` and `__Host-` prefixed when `--public-url` is https) with a 30-day sliding expiry, plus a CSRF token the web app keeps only in memory and sends as `X-CSRF-Token` on every mutation; cross-origin `Origin` headers are rejected. A session that ends while a browser keeps its notes pauses sync and asks to sign in again; local notes stay readable, as on mobile.
+- **First run:** while no account exists, `POST /auth/setup` creates one for whoever calls it first, with no token, and every client's onboarding goes straight to creating the account. After that the endpoint returns `already_set_up`. The server logs a warning with its address until the owner exists. The cost: a server reachable from the network before its owner exists can be claimed by a stranger. The default listen address is loopback, so a fresh install isn't reachable, and the hosting guide says to create the account before exposing it; on a hosting platform (`$PORT`) it's public from the start, accepted to keep one-click deploys free of setup. To skip the open window entirely, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at startup (ignored once one exists), or `notesd create-owner` creates it from the shell. A claimed server holds no one else's data, and deleting the data directory starts over. That's why tokenless setup is acceptable here (the same trade-off Coolify and Jellyfin make).
+- **Web sessions:** an HttpOnly, SameSite=Lax cookie (`Secure` and `__Host-` prefixed when the request came over HTTPS, directly or per the proxy's `X-Forwarded-Proto`; a request's cookies under either name are each tried, so a hop that drops the header doesn't sign anyone out and a stale one under the other name can't shadow a valid one; sign-out clears both) with a 30-day sliding expiry, plus a CSRF token the web app keeps only in memory and sends as `X-CSRF-Token` on every mutation; cross-origin `Origin` headers are rejected (the request's `Host` and `X-Forwarded-Host` count as same-origin). A session that ends while a browser keeps its notes pauses sync and asks to sign in again; local notes stay readable, as on mobile.
 - **Browser copies:** a browser that keeps its notes stores them in plain text in its origin storage (locked notes and their images stay encrypted), readable by anyone using that browser profile, which is why it's opt-in and worded "on a device you trust". The app asks the browser to persist the storage; without that, the browser may clear it under pressure, and with it any edits not yet synced. Each account has its own database file and image cache; signing out removes them.
 - **Mobile sessions:** a one-hour access token and a 180-day sliding refresh token, sent as bearer tokens and kept in the iOS Keychain or Android Keystore-backed storage. Refresh tokens are not rotated, so a refresh whose response is lost can be retried; revocation deletes the session. Only token hashes are stored server-side. Session expiry affects sync only, never access to local notes.
 - **Transport:** HTTPS for any remote access; TLS may terminate at any common reverse proxy. Private-network and VPN-only installations are supported.
@@ -534,6 +547,7 @@ Like Apple Notes' locked notes: the user locks chosen notes, and their bodies ar
 
 **Envelope.** A locked note's `content` is one line, `notesd:locked:v1:` + unpadded base64url of a 12-byte nonce, then AES-256-GCM ciphertext and tag of the UTF-8 Markdown body, with additional data `notesd:locked:v1`. The note ID is not bound in, so conflicted and recovered copies (new IDs) stay readable. Being locked is a property of the content, like tags (§7.5): no new note field, and the sync protocol, revisions, outbox and tombstones are unchanged. Locking and removing the lock are ordinary updates.
 
+- **Versions.** Any content starting with `notesd:locked:` is locked; the next segment is its version (`v1`). Every client and the server recognize the whole family, so a later format can't be mistaken for plain text, edited, indexed, emailed or have its images collected by an older release. A client that doesn't know the version opens the note read-only and asks to update. The server stores an unknown version as an opaque locked body if it is `notesd:locked:v<n>:` + one line of base64url, and refuses anything else. Locked images do the same with their type: `application/vnd.notesd.locked` is v1, later versions are subtypes (`application/vnd.notesd.locked.v2`), never parameters.
 - Clients never re-encrypt unchanged text: an open note keeps the envelope it was stored as and replaces it only when the decrypted text changes, so the server's `unchanged` status and byte comparisons stay meaningful. A retried operation resends the same envelope (an operation ID's payload is fixed, §4.2).
 - The server checks only shape (prefix, one line of strict base64url, length), which is enough to refuse an edit made on the ciphertext as if it were text. The 1 MiB content cap applies to the plain body: an envelope may be as long as that of a 1 MiB body.
 - Merging (§6.1) compares envelopes as stored, never in canonical Markdown form, so sync merges without the key: a body changed on one side takes that side; changed on both, the local version becomes a conflicted copy, still locked. The web app, which merges interactively, decrypts first and merges text.
@@ -542,11 +556,13 @@ Like Apple Notes' locked notes: the user locks chosen notes, and their bodies ar
 
 **Keys.** Each account has one 32-byte locked-notes key, created by the first device to lock a note. The server keeps a keyring of wrapped copies, each AES-256-GCM of the key under a key-encryption key, with additional data `notesd:lnk:v1:<kind>`:
 
-| Kind | Key-encryption key |
-| --- | --- |
-| `password` (exactly one) | PBKDF2-HMAC-SHA256 of the NFC-normalized lock password, 600,000 iterations, 16-byte salt |
-| `recovery` (optional) | PBKDF2 of a random 120-bit code shown once, 10,000 iterations |
-| `passkey` (any number) | HKDF-SHA256 of the WebAuthn PRF output, info `notesd:passkey:v1`; the entry's 32-byte salt is both the PRF input and the HKDF salt |
+| Kind | Key-encryption key | `kdf` |
+| --- | --- | --- |
+| `password` (exactly one) | PBKDF2-HMAC-SHA256 of the NFC-normalized lock password, 600,000 iterations, 16-byte salt | `{"name":"pbkdf2-sha256","iterations":600000}` |
+| `recovery` (optional) | PBKDF2 of a random 120-bit code shown once, 10,000 iterations | `{"name":"pbkdf2-sha256","iterations":10000}` |
+| `passkey` (any number) | HKDF-SHA256 of the WebAuthn PRF output, info `notesd:passkey:v1`; the entry's 32-byte salt is both the PRF input and the HKDF salt | `{"name":"hkdf-sha256"}` |
+
+Each entry records its key derivation in `kdf`, with its parameters; entries from before 1.0 have it filled in from their kind. Clients derive with the function `kdf` names, and one they don't know is reported as "update notesd", never as a wrong password; the server refuses to store a name it doesn't know, so an entry is never kept under an assumed function. A later move to Argon2id is a new `kdf` name, adopted by re-wrapping on the next password change.
 
 The GCM tag doubles as the wrong-password check. Changing the lock password re-wraps the key; no note is re-encrypted. PBKDF2 rather than Argon2 because WebCrypto and the JVM both have it built in.
 
@@ -583,7 +599,7 @@ data/
 ./notesd --data-dir /var/lib/notesd --listen 127.0.0.1:8080
 ```
 
-Configuration is flags and environment variables (`NOTESD_DATA_DIR`, `NOTESD_LISTEN`, `NOTESD_PUBLIC_URL`, `NOTESD_LOG_LEVEL`, `NOTESD_LOG_FORMAT`, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` for first-run owner creation, `NOTESD_MIRROR_DIR` for the Markdown mirror (below), and `NOTESD_RESEND_URL` for tests); a config file is not planned unless the option count grows. Subcommands: `create-owner`, `add-user`, `list-users`, `remove-user`, `reset-password`, `reindex` (rebuild the search index), `check` (integrity check), `gc-images` (delete images no note has shown for 30 days), `export`, `version`; `backup` is still to be built (§11.4). Targets: Linux x86-64 and ARM64 (including Raspberry Pi 5), small VPS installs and home servers. Docker images are optional.
+Configuration is flags and environment variables (`NOTESD_DATA_DIR`, `PORT` (the hosting-platform convention: listen on every interface at that port, unless `--listen` is given), `NOTESD_LOG_LEVEL`, `NOTESD_LOG_FORMAT`, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` for first-run owner creation, `NOTESD_MIRROR_DIR` for the Markdown mirror (below), and `NOTESD_RESEND_URL` for tests); a config file is not planned unless the option count grows. Subcommands: `create-owner`, `add-user`, `list-users`, `remove-user`, `reset-password`, `reindex` (rebuild the search index), `check` (integrity check), `gc-images` (delete images no note has shown for 30 days), `export`, `version`; `backup` is still to be built (§11.4). Targets: Linux x86-64 and ARM64 (including Raspberry Pi 5), small VPS installs and home servers. Docker images are optional.
 
 **Markdown mirror.** `serve --mirror-dir DIR` keeps every account's live, unlocked notes in `DIR/<username>/` as files laid out like `export`'s, always with a folder per space, so a second space doesn't move every file (`internal/mirror`). It is low priority and one-way. A committed write to notes, spaces or images only flags its account, without blocking. One goroutine writes an account once it has been quiet for 10 s, or 2 min after its first unwritten change. It reads what changed from the sync feed (§5.2), from a cursor kept in a manifest (`.notesd-mirror.json`) beside the files, together with the path and hash of each file it wrote. So a restart resumes, an unchanged note isn't rewritten, and only the mirror's own files are ever replaced or deleted. A new sync generation (a restore, §11.4) rewrites the folder and drops files of notes the database doesn't have. Spaces aren't in the feed, so each pass compares their names to their folders; a renamed space's folder moves whole only when it holds nothing but the mirror's files. Names that would clash are compared ignoring case on every filesystem, since the folder may be synced to macOS or Windows. A manifest path that isn't a plain relative path refuses the folder, since a synced manifest could come from elsewhere. Files are replaced through a temporary file and a rename. A note that is locked loses its file, so its plain text doesn't outlive the lock on disk. A note showing an image not yet uploaded is written again once the image arrives.
 

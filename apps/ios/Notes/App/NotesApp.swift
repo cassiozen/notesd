@@ -13,6 +13,8 @@ struct NotesApp: App {
         // Registered before launch ends, as BGTaskScheduler requires.
         let engine = graph.engine
         SyncScheduler.registerBackgroundTask {
+            // Retried only once the app starts again.
+            if case .upgradeRequired = engine.status.value { return true }
             let outcome = await engine.sync().outcome
             return outcome == .done || outcome == .notConnected
         }

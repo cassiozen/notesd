@@ -57,7 +57,6 @@ docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
   -v "$PWD/notes-markdown:/markdown" \
-  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   -e NOTESD_MIRROR_DIR=/markdown \
   ghcr.io/cassiozen/notesd:latest
 ```

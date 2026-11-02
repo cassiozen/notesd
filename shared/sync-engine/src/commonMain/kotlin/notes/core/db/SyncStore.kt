@@ -4,6 +4,7 @@ import androidx.sqlite.SQLiteStatement
 import notes.core.api.MutationResult
 import notes.core.api.RemoteNote
 import notes.core.api.SyncPage
+import notes.core.text.Uuid7
 import notes.core.text.nowMillis
 
 /** Something sync did that the user should hear about. */
@@ -16,6 +17,9 @@ sealed interface SyncEvent {
 
     /** Deleted here, edited elsewhere: the edit wins and the note is back. */
     data class Restored(val noteId: String, val title: String) : SyncEvent
+
+    /** The server refused a change for good, so it was dropped; [message] says what and why. */
+    data class Rejected(val message: String) : SyncEvent
 }
 
 data class SyncState(
@@ -61,14 +65,80 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
 
     // --- push ----------------------------------------------------------------
 
+    /**
+     * The oldest operation to send. A note waits whole (its later operations build on the earlier ones) while
+     * one of its operations is parked, or shows a parked image, or names a parked new or renamed space: sent
+     * now, its image would be missing, or the server would file it in the default space.
+     */
     suspend fun nextOperation(): Operation? = db.read { sql ->
-        sql.one(
+        val images = sql.query("SELECT id FROM pending_images WHERE parked = 1") { it.getText(0) }.toSet()
+        val spaces = sql.query("SELECT id FROM spaces WHERE parked = 1 AND dirty = 1") { it.getText(0) }.toSet()
+        val queued = sql.query(
             """
-            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent
-            FROM sync_outbox ORDER BY created_at, rowid LIMIT 1
-            """,
-            row = ::operationRow
+            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent, parked
+            FROM sync_outbox ORDER BY created_at, rowid
+            """
+        ) { operationRow(it) to (it.getLong(6) == 1L) }
+        val held = HashSet<String>()
+        for ((op, parked) in queued) {
+            if (op.noteId in held) continue
+            val waits = parked || op.spaceId in spaces ||
+                (images.isNotEmpty() && (imageIdsIn(op.content) + op.imageIds.orEmpty()).any { it in images })
+            if (!waits) return@read op
+            held += op.noteId
+        }
+        null
+    }
+
+    /**
+     * [op] again under a new operationId, for a server that has the old one with a different body
+     * (operation_id_reused). Safe: the base revision makes a duplicate a conflict or a no-op.
+     */
+    suspend fun remint(op: Operation): Operation = db.write { sql ->
+        val id = Uuid7.generate()
+        sql.exec("UPDATE sync_outbox SET operation_id = ? WHERE operation_id = ?", id, op.operationId)
+        Operation(id, op.noteId, op.type, op.baseRevision, op.payload, op.sent)
+    }
+
+    /** [op] got an answer that wasn't notesd's: one more attempt, parked at the limit. */
+    suspend fun attempted(op: Operation) {
+        db.write { sql -> sql.attempted("sync_outbox", "operation_id = ?", op.operationId) }
+    }
+
+    /** Changes set aside after failing again and again: notes (by note), spaces and images. */
+    suspend fun parked(): Int = db.read { sql ->
+        sql.long(
+            """
+            SELECT (SELECT count(DISTINCT note_id) FROM sync_outbox WHERE parked = 1)
+                + (SELECT count(*) FROM spaces WHERE parked = 1)
+                + (SELECT count(*) FROM pending_images WHERE parked = 1)
+            """
+        ).toInt()
+    }
+
+    /** Every parked change back in line, one failure from parking again. */
+    suspend fun unpark() {
+        db.write { sql -> sql.unparkAll() }
+    }
+
+    /**
+     * Queues a change for every note changed here that has none: older versions dropped some
+     * the server refused, and the note kept the edit. Returns how many.
+     */
+    suspend fun requeueDirty(): Int = db.write { sql ->
+        val stranded = sql.query(
+            "SELECT $NOTE_COLUMNS FROM notes WHERE dirty = 1 AND id NOT IN (SELECT note_id FROM sync_outbox)",
+            row = ::noteRow
         )
+        val now = clock()
+        for (note in stranded) {
+            if (note.deletedAt != null) {
+                sql.enqueue(note.id, DELETE, null, now)
+            } else {
+                sql.queueText(note.id, note.title, note.content, note.spaceId, now)
+            }
+        }
+        stranded.size
     }
 
     /**
@@ -169,11 +239,21 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         }
     }
 
-    /** The server refused [op] for good (invalid data): drop it rather than retry forever. */
-    suspend fun rejected(op: Operation, message: String) {
+    /**
+     * The server refused [op] for good (invalid data): drop it rather than retry forever. The note keeps
+     * the edit, and stays dirty; the engine tells the user.
+     */
+    suspend fun rejected(op: Operation) {
+        db.write { sql -> sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId) }
+    }
+
+    /** A delete the server answered not_found: it has no such note, which is what was asked. */
+    suspend fun deleteDone(op: Operation) {
         db.write { sql ->
             sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
-            sql.exec("UPDATE sync_state SET last_error = ? WHERE id = 1", message)
+            val note = sql.note(op.noteId) ?: return@write
+            val more = sql.long("SELECT count(*) FROM sync_outbox WHERE note_id = ?", note.id) > 0
+            if (!more) markTombstone(sql, note.id, note.deletedAt ?: clock(), note.updatedAt)
         }
     }
 

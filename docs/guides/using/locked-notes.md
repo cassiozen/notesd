@@ -42,6 +42,10 @@ Once unlocked, locked notes stay open until:
 While a locked note is open, Android keeps it out of screenshots and the recent-apps view. iOS
 doesn't let apps block screenshots, so the iPhone app covers the note in the app switcher instead.
 
+A note locked by a newer version of notesd than the app you're using opens read-only with
+**Update notesd to open this note**; the app never changes it. The same goes for a lock password
+set up by a newer version: the app asks you to update instead of saying the password is wrong.
+
 ## Change or reset the lock password
 
 In **Settings → Security**:

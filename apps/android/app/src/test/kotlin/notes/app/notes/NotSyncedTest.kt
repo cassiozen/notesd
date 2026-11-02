@@ -41,4 +41,20 @@ class NotSyncedTest {
         assertEquals(listOf<NotSynced?>(null), seen)
         job.cancel()
     }
+
+    @Test
+    fun `an upgrade the server needs has its own banner`() = runTest {
+        val status = MutableStateFlow<SyncStatus>(SyncStatus.UpgradeRequired("1.2.0"))
+        val seen = ArrayList<NotSynced?>()
+        val job =
+            launch(UnconfinedTestDispatcher(testScheduler)) { notSynced(status, MutableStateFlow(2)).toList(seen) }
+        assertEquals(listOf<NotSynced?>(null), seen)
+        job.cancel()
+    }
+
+    @Test
+    fun `the parked banner counts changes`() {
+        assertEquals("1 change couldn’t sync. It’s kept on this device.", parkedMessage(1))
+        assertEquals("3 changes couldn’t sync. They’re kept on this device.", parkedMessage(3))
+    }
 }

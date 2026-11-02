@@ -6,6 +6,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.promise
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import notes.core.api.ClientInfo
 import notes.core.api.FetchApi
 import notes.core.api.LockKey
 import notes.core.db.Database
@@ -78,35 +81,53 @@ class LocalLockKey(
     val salt: String,
     val iterations: Int,
     val wrapped: String,
-    val createdAt: Double
+    val createdAt: Double,
+    /** The entry's key derivation as JSON text (`{"name":"pbkdf2-sha256",…}`); null from servers before 1.0. */
+    val kdf: String?
 )
 
-/** [kind]: NotConnected, Syncing, Synced (with [at]), Offline, SignedOut or Failed (with [message]). */
+/**
+ * [kind]: NotConnected, Syncing, Synced (with [at]), Offline, SignedOut, Failed (with [message]) or
+ * UpgradeRequired (with [minVersion] when the server said).
+ */
 @JsExport
-class EngineStatus(val kind: String, val at: Double?, val message: String?)
+class EngineStatus(val kind: String, val at: Double?, val message: String?, val minVersion: String? = null)
 
 /**
  * Something sync did that the user should hear about. [kind]: ConflictedCopy
- * ([noteId] and [copyId]), RecoveredCopy ([copyId]) or Restored ([noteId]).
+ * ([noteId] and [copyId]), RecoveredCopy ([copyId]), Restored ([noteId]) or
+ * Rejected (a change the server refused for good; [title] says what and why).
  */
 @JsExport
 class EngineNotice(val kind: String, val noteId: String?, val copyId: String?, val title: String)
 
 @JsExport
-class NotesEngine internal constructor(private val db: Database, files: ImageFiles) {
+class NotesEngine internal constructor(private val db: Database, files: ImageFiles, client: ClientInfo?) {
     private val scope = CoroutineScope(SupervisorJob())
     private var csrfToken: String? = null
     private val images = WebImages(db, files)
-    private val engine = SyncEngine(db, { FetchApi { csrfToken } }, images = images)
+    private val engine = SyncEngine(db, { FetchApi({ csrfToken }, client) }, images = images)
     private val notes = NoteStore(db)
+
+    init {
+        // Edits older versions dropped go back in line, and parked changes get another try. The first
+        // sync does it too, if this fails.
+        scope.launch { runCatching { engine.open() } }
+    }
 
     /** The session's token, for mutations (§10); the cookie goes with every request by itself. */
     fun setCsrfToken(token: String?) {
         csrfToken = token
     }
 
-    /** One cycle. Resolves with how it ended: Done, NotConnected, Offline, SignedOut or Failed. */
+    /** One cycle. Resolves with how it ended: Done, NotConnected, Offline, SignedOut, UpgradeRequired or Failed. */
     fun sync(): Promise<String> = scope.promise { engine.sync().name }
+
+    /** Changes set aside after failing again and again; their notes are still here and still dirty. */
+    fun parked(): Promise<Int> = scope.promise { engine.parked() }
+
+    /** Parked changes back in line; the caller syncs. */
+    fun retryParked(): Promise<Unit> = scope.promise { engine.retryParked() }
 
     fun status(): EngineStatus = engine.status.value.export()
 
@@ -216,7 +237,16 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
 
     fun lockKeys(): Promise<Array<LocalLockKey>> = scope.promise {
         engine.lockKeys.keys().map {
-            LocalLockKey(it.id, it.kind, it.credentialId, it.salt, it.iterations, it.wrapped, it.createdAt.toDouble())
+            LocalLockKey(
+                it.id,
+                it.kind,
+                it.credentialId,
+                it.salt,
+                it.iterations,
+                it.wrapped,
+                it.createdAt.toDouble(),
+                it.kdf?.toString()
+            )
         }.toTypedArray()
     }
 
@@ -224,7 +254,16 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
     fun replaceLockKeys(keys: Array<LocalLockKey>): Promise<Unit> = scope.promise {
         engine.lockKeys.replace(
             keys.map {
-                LockKey(it.id, it.kind, it.credentialId, it.salt, it.iterations, it.wrapped, it.createdAt.toLong())
+                LockKey(
+                    it.id,
+                    it.kind,
+                    it.credentialId,
+                    it.salt,
+                    it.iterations,
+                    it.wrapped,
+                    it.createdAt.toLong(),
+                    it.kdf?.let { kdf -> Json.parseToJsonElement(kdf) as? JsonObject }
+                )
             }
         )
     }
@@ -260,13 +299,24 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
 
 /**
  * On sqlite-wasm's oo1 [db] and its [capi]. [canonical]: the web editor's, which merges compare with (§6.1).
- * [files]: where image bytes are kept.
+ * [files]: where image bytes are kept. [version]: the web app's (no leading v), sent as `X-Notesd-Client:
+ * web/<version>`; null sends none.
  */
 @JsExport
-fun openEngine(db: dynamic, capi: dynamic, canonical: (String) -> String, files: dynamic): NotesEngine {
+fun openEngine(
+    db: dynamic,
+    capi: dynamic,
+    canonical: (String) -> String,
+    files: dynamic,
+    version: String? = null
+): NotesEngine {
     webCanonical = canonical
     // An external interface isn't exported to the .d.ts; the host types its side.
-    return NotesEngine(directDatabase(db, capi), files.unsafeCast<ImageFiles>())
+    return NotesEngine(
+        directDatabase(db, capi),
+        files.unsafeCast<ImageFiles>(),
+        version?.takeIf { it.isNotEmpty() }?.let { ClientInfo("web", it) }
+    )
 }
 
 private fun filterOf(kind: String?, tag: String?): NoteFilter? = when (kind) {
@@ -305,10 +355,12 @@ private fun SyncStatus.export(): EngineStatus = when (this) {
     SyncStatus.Syncing -> EngineStatus("Syncing", null, null)
     SyncStatus.Offline -> EngineStatus("Offline", null, null)
     SyncStatus.SignedOut -> EngineStatus("SignedOut", null, null)
+    is SyncStatus.UpgradeRequired -> EngineStatus("UpgradeRequired", null, null, minVersion)
 }
 
 private fun SyncEvent.export(): EngineNotice = when (this) {
     is SyncEvent.ConflictedCopy -> EngineNotice("ConflictedCopy", noteId, copyId, title)
     is SyncEvent.RecoveredCopy -> EngineNotice("RecoveredCopy", null, copyId, title)
     is SyncEvent.Restored -> EngineNotice("Restored", noteId, null, title)
+    is SyncEvent.Rejected -> EngineNotice("Rejected", null, null, message)
 }

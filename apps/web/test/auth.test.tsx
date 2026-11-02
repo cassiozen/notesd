@@ -27,7 +27,11 @@ describe('first run', () => {
 
     await signedInAs('cassio')
     expect(await screen.findByText('You’re all set, cassio')).toBeTruthy()
-    expect((await server.api('GET', '/auth/status')).body).toEqual({ setupRequired: false })
+    expect((await server.api('GET', '/auth/status')).body).toEqual({
+      setupRequired: false,
+      serverVersion: expect.any(String),
+      apiVersion: 1,
+    })
     expect(server.sent('POST', '/auth/setup')).toEqual([{ username: 'cassio', password: 'correct horse' }])
   })
 
