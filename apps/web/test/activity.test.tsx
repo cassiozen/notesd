@@ -112,3 +112,36 @@ describe('Activity', () => {
     expect(screen.queryByRole('menuitem', { name: 'Activity…' })).toBeNull()
   })
 })
+
+/** A note moved into a space whose agent then takes too many steps. */
+async function failedRun(server: TestServer, llm: FakeLLM) {
+  await server.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
+  await server.api('PUT', '/spaces/home', { name: 'Home' })
+  await server.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'Lists.', triggers: { movedIn: 'Tidy it.' } })
+  await server.api('POST', '/notes', { operationId: 'op-n', id: 'eggs', title: 'Eggs', content: 'Eggs', spaceId: 'home' })
+  for (let i = 0; i < 21; i++) llm.script.push({ tool: 'get_note', args: {} })
+  await server.api('PUT', '/notes/eggs', { operationId: 'op-m', baseRevision: 1, title: 'Eggs', content: 'Eggs', spaceId: 'default' })
+  await waitFor(
+    async () => {
+      const { runs } = (await server.api<{ runs: AgentRun[] }>('GET', '/agent/runs')).body
+      expect(runs[0]?.status).toBe('failed')
+    },
+    { timeout: 5000 },
+  )
+}
+
+describe('a failed run', () => {
+  it('shows on its note, opens in Activity, and can be dismissed', async () => {
+    const llm = await startFakeLLM()
+    const { user } = await signedIn({ path: '/notes/eggs', seed: (s) => failedRun(s, llm) })
+    expect(await screen.findByText('The agent’s last run on this note failed: it took too many steps.')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Activity' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Run' })
+    expect(within(within(sheet).getByRole('region', { name: 'Summary' })).getByText('Failed: it took too many steps')).toBeTruthy()
+    await user.click(within(sheet).getByRole('button', { name: 'Done' }))
+
+    await user.click(await screen.findByRole('button', { name: 'Dismiss' }))
+    expect(screen.queryByText(/last run on this note failed/)).toBeNull()
+  })
+})

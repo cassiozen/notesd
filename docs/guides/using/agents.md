@@ -58,6 +58,9 @@ against the daily limit.
 changed since is left alone, so undo never loses your writing; Activity says which and why. Undo
 doesn't make the agent act again.
 
+If an agent's last run on a note failed, the note says so when you open it, with a link to the run
+in Activity. **Dismiss** hides it.
+
 When you lock or delete a note, Activity forgets its text too, as the note itself does. As with
 the note, backups made before still have it; see
 [what locking doesn't cover](../../concepts/security-model.md#locked-notes). Runs are kept for 30

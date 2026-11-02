@@ -52,6 +52,11 @@ const BLOCKED: Record<UndoBlock, string> = {
   changed: 'The note changed since, so undoing would lose those changes.',
 }
 
+/** Why a run failed or was skipped, in a few words. */
+export function failureText(r: AgentRun): string {
+  return FAILURES[r.failure] ?? r.failure
+}
+
 /** What became of a run, in a few words. */
 export function runStatus(r: AgentRun): string {
   switch (r.status) {
@@ -62,9 +67,9 @@ export function runStatus(r: AgentRun): string {
     case 'done':
       return OUTCOMES[r.outcome] ?? 'Done'
     case 'failed':
-      return `Failed: ${FAILURES[r.failure] ?? r.failure}`
+      return `Failed: ${failureText(r)}`
     case 'skipped':
-      return `Skipped: ${FAILURES[r.failure] ?? r.failure}`
+      return `Skipped: ${failureText(r)}`
   }
 }
 
@@ -83,7 +88,11 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
     const state = window.history.state as { space?: string } | null
     return state?.space ?? ''
   })
-  const [open, setOpen] = useState<string | null>(null)
+  // From a failed run's notice: that run.
+  const [open, setOpen] = useState<string | null>(() => {
+    const state = window.history.state as { run?: string } | null
+    return state?.run ?? null
+  })
   // Bumped by an undo: the list behind the run shows its new outcome.
   const [listVersion, setListVersion] = useState(0)
   const [usage, setUsage] = useState<AgentUsage | null>(null)
