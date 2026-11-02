@@ -149,6 +149,12 @@ CREATE TABLE agent_spaces (space_id TEXT PRIMARY KEY REFERENCES spaces(id) ON DE
                            prompt TEXT, menu_label TEXT, updated_at INTEGER);
 CREATE TABLE agent_triggers (space_id TEXT REFERENCES agent_spaces(space_id) ON DELETE CASCADE, trigger TEXT,
                              prompt TEXT, PRIMARY KEY (space_id, trigger));
+-- Agents' runs: queued and running ones are the queue, finished ones the activity log.
+CREATE TABLE agent_runs (id TEXT PRIMARY KEY, status TEXT, trigger TEXT, space_id TEXT, note_id TEXT, priority INTEGER,
+                         event_json TEXT, created_at INTEGER, started_at INTEGER, finished_at INTEGER, failure TEXT);
+-- Writing sessions in progress: a "done" trigger fires 2 minutes after the user's last change.
+CREATE TABLE agent_sessions (note_id TEXT PRIMARY KEY, kind TEXT, start_revision INTEGER, last_revision INTEGER,
+                             last_user_save_at INTEGER);
 
 CREATE TABLE applied_operations (
     operation_id  TEXT PRIMARY KEY,
