@@ -85,5 +85,6 @@ or for plain text: older apps ask you to update instead. The full design is in
 ## What notesd connects to
 
 Nothing, unless you turn it on: there are no analytics. The server contacts
-[Resend](../guides/using/email.md) to email a note, and GitHub to look for new releases only when
+[Resend](../guides/using/email.md) to email a note, the AI provider an admin sets up for
+[agents](../guides/using/agents.md), and GitHub to look for new releases only when
 [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings) is on.

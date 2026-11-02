@@ -43,7 +43,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 1 | (account row) | Server | `server` | initial | username and server; "Signed out"; "Not connected" |
 | 2 | Synced | Security | `security` | lock | "Off" (no lock password), "Locked", "Unlocked" |
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
-| 4 | Synced | Integrations | `integrations` | envelope | "Email" when set up, else "Off" |
+| 4 | Synced | Integrations | `integrations` | envelope | What's set up: "Email", "AI" or "Email, AI"; else "Off" |
 | 5 | This device | Appearance | `appearance` | half-filled circle | "System", "Light", "Dark" ("Automatic" on iOS, as the system says) |
 | 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Offline"; Android, with no sync status yet, shows only "N waiting"; web shows "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |

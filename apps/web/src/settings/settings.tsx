@@ -2,11 +2,12 @@ import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type Reac
 import { auth } from '../api/auth'
 import { settings } from '../api/settings'
 import { ApiError } from '../api/client'
-import type { Session, UpdateStatus } from '../api/types'
+import type { AiSettings, Session, UpdateStatus } from '../api/types'
 import { platformBadge, sessionName } from '../api/user-agent'
 import { genericMessage } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
+import { setAiSettings, useAiSettings } from '../notes/ai-settings'
 import { setEmailSettings, useEmailSettings } from '../notes/email-settings'
 import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
@@ -192,13 +193,14 @@ function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
   const locks = useLockStatus()
   const spaces = useSpaces()
   const email = useEmailSettings()
+  const ai = useAiSettings()
   const kept = useKeptHere()
   const sync = useSyncState()
   return {
     server: window.location.host,
     security: { unknown: '', none: 'Off', locked: 'Locked', unlocked: 'Unlocked' }[locks],
     spaces: spaces ? String(spaces.length) : '',
-    integrations: !email ? '' : email.configured ? 'Email' : 'Off',
+    integrations: !email || !ai ? '' : integrationsValue(email.configured, ai.configured),
     appearance: themes.find((t) => t.value === theme)?.label ?? '',
     device: kept ? syncSummary(sync) : 'Off',
   }
@@ -383,7 +385,12 @@ function SettingsPage({
     case 'spaces':
       return <SpacesCard onCreated={onSpaceCreated} />
     case 'integrations':
-      return <EmailCard />
+      return (
+        <>
+          <EmailCard />
+          <AiCard />
+        </>
+      )
     case 'appearance':
       return (
         <>
@@ -694,6 +701,220 @@ function EmailCard() {
       </form>
     </Surface>
   )
+}
+
+function integrationsValue(email: boolean, ai: boolean): string {
+  if (email && ai) return 'Email, AI'
+  if (email) return 'Email'
+  if (ai) return 'AI'
+  return 'Off'
+}
+
+type AiField = 'baseUrl' | 'apiKey' | 'model' | 'dailyTokenCap'
+type AiErrors = Partial<Record<AiField, string>>
+const aiFields: readonly string[] = ['baseUrl', 'apiKey', 'model', 'dailyTokenCap'] satisfies AiField[]
+
+function AiCard() {
+  const saved = useAiSettings()
+  if (!saved) return null
+  if (!saved.editable) {
+    return (
+      <Surface as="section" className={[styles.card, styles.email].join(' ')} aria-labelledby="ai-kicker">
+        <Kicker id="ai-kicker">AI</Kicker>
+        <span className={styles.text}>
+          {saved.configured
+            ? `Spaces can have an agent, using ${saved.model} at ${hostOf(saved.baseUrl)}. An admin manages this for everyone on the server.`
+            : 'An admin can set up AI for everyone on this server, so spaces can have an agent.'}
+        </span>
+      </Surface>
+    )
+  }
+  return <AiForm saved={saved} />
+}
+
+function AiForm({ saved }: { saved: AiSettings }) {
+  const [baseUrl, setBaseUrl] = useState<string>()
+  const [apiKey, setApiKey] = useState('')
+  const [model, setModel] = useState<string>()
+  const [cap, setCap] = useState<string>()
+  const [errors, setErrors] = useState<AiErrors>({})
+  const [formError, setFormError] = useState<string>()
+  const [done, setDone] = useState<string>()
+  const [busy, setBusy] = useState<'save' | 'test' | 'remove'>()
+
+  const baseUrlValue = baseUrl ?? saved.baseUrl
+  const modelValue = model ?? saved.model
+  const capValue = cap ?? String(saved.dailyTokenCap)
+
+  function input() {
+    const found: AiErrors = {}
+    if (!baseUrlValue.trim()) found.baseUrl = 'Enter the API’s address.'
+    if (!saved.configured && !apiKey.trim()) found.apiKey = 'Paste the provider’s API key.'
+    if (!modelValue.trim()) found.model = 'Enter the model’s name.'
+    const tokens = Number(capValue.trim() || '0')
+    if (!Number.isInteger(tokens) || tokens < 0) found.dailyTokenCap = 'Enter a whole number of tokens.'
+    setErrors(found)
+    setFormError(undefined)
+    setDone(undefined)
+    if (Object.keys(found).length > 0) return undefined
+    return {
+      baseUrl: baseUrlValue.trim(),
+      model: modelValue.trim(),
+      dailyTokenCap: tokens,
+      ...(apiKey.trim() && { apiKey: apiKey.trim() }),
+    }
+  }
+
+  function fail(err: unknown, prefix = '') {
+    if (err instanceof ApiError && err.status === 400 && err.field && aiFields.includes(err.field)) {
+      setErrors({ [err.field]: sentence(err.message) })
+    } else if (err instanceof ApiError && err.code === 'ai_test_failed') {
+      setFormError(prefix + sentence(err.message))
+    } else {
+      setFormError(genericMessage(err))
+    }
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    const body = input()
+    if (!body) return
+    setBusy('save')
+    try {
+      setAiSettings(await settings.saveAi(body))
+      setApiKey('')
+      setBaseUrl(undefined)
+      setModel(undefined)
+      setCap(undefined)
+      setDone('Saved. Spaces can now have an agent.')
+    } catch (err) {
+      fail(err)
+    } finally {
+      setBusy(undefined)
+    }
+  }
+
+  async function test() {
+    const body = input()
+    if (!body) return
+    setBusy('test')
+    try {
+      const res = await settings.testAi(body)
+      setDone(`Connected. ${res.model} called a tool, in ${(res.latencyMs / 1000).toFixed(1)} s.`)
+    } catch (err) {
+      fail(err, 'The test failed: ')
+    } finally {
+      setBusy(undefined)
+    }
+  }
+
+  async function remove() {
+    setBusy('remove')
+    setFormError(undefined)
+    setDone(undefined)
+    try {
+      await settings.removeAi()
+      setAiSettings({ ...saved, configured: false, baseUrl: '', model: '', keyHint: '' })
+      setApiKey('')
+      setBaseUrl(undefined)
+      setModel(undefined)
+      setCap(undefined)
+      setErrors({})
+    } catch (err) {
+      setFormError(genericMessage(err))
+    } finally {
+      setBusy(undefined)
+    }
+  }
+
+  return (
+    <Surface as="section" className={[styles.card, styles.email].join(' ')} aria-labelledby="ai-kicker">
+      <Kicker id="ai-kicker">AI</Kicker>
+      <span className={styles.text}>
+        Lets spaces have an agent that tags, titles and tidies notes. Works with any OpenAI-compatible API, and
+        the model must support tool calls. The key stays on this server.
+      </span>
+      <form className={styles.form} onSubmit={(e) => void submit(e)} noValidate>
+        <div className={styles.pair}>
+          <Field
+            label="API address"
+            type="url"
+            mono
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="https://api.openai.com/v1"
+            value={baseUrlValue}
+            onChange={(e) => setBaseUrl(e.target.value)}
+            error={errors.baseUrl}
+          />
+          <Field
+            label="API key"
+            type="password"
+            mono
+            autoComplete="off"
+            spellCheck={false}
+            placeholder={saved.configured ? `Saved · …${saved.keyHint}` : 'sk-…'}
+            value={apiKey}
+            onChange={(e) => setApiKey(e.target.value)}
+            error={errors.apiKey}
+          />
+        </div>
+        <div className={styles.pair}>
+          <Field
+            label="Model"
+            type="text"
+            mono
+            autoComplete="off"
+            spellCheck={false}
+            placeholder="gpt-4.1-mini"
+            value={modelValue}
+            onChange={(e) => setModel(e.target.value)}
+            error={errors.model}
+          />
+          <Field
+            label="Daily tokens per account"
+            type="text"
+            inputMode="numeric"
+            autoComplete="off"
+            value={capValue}
+            onChange={(e) => setCap(e.target.value)}
+            error={errors.dailyTokenCap}
+          />
+        </div>
+        {formError && (
+          <p role="alert" className={styles.error}>
+            {formError}
+          </p>
+        )}
+        {done && (
+          <p role="status" className={styles.success}>
+            {done}
+          </p>
+        )}
+        <div className={styles.buttons}>
+          <Button variant="solid" size="md" type="submit" busy={busy === 'save'} disabled={!!busy && busy !== 'save'}>
+            Save
+          </Button>
+          <Button variant="ghost" size="md" onClick={() => void test()} busy={busy === 'test'} disabled={!!busy && busy !== 'test'}>
+            Test
+          </Button>
+          {saved.configured && (
+            <Button variant="danger-text" size="md" onClick={() => void remove()} disabled={!!busy}>
+              Remove
+            </Button>
+          )}
+        </div>
+      </form>
+    </Surface>
+  )
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).host
+  } catch {
+    return url
+  }
 }
 
 function sentence(message: string): string {

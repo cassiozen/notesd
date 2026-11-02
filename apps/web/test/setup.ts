@@ -1,5 +1,6 @@
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
+import { resetAiSettings } from '../src/notes/ai-settings'
 import { resetEmailSettings } from '../src/notes/email-settings'
 import { forgetSpaces } from '../src/notes/spaces'
 import { versionState } from '../src/api/version'
@@ -82,6 +83,7 @@ afterEach(() => {
 afterEach(() => {
   cleanup()
   resetEmailSettings()
+  resetAiSettings()
   forgetSpaces()
   versionState.reset()
   globalThis.layout = 'wide'

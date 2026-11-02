@@ -103,6 +103,22 @@ export type ErrorBody = {
 /** The server's Resend settings for emailing notes; the key itself is never sent back. */
 export type EmailSettings = { configured: boolean; from: string; keyHint: string }
 
+/** GET /settings/ai. Server-wide; editable when this user is an admin. */
+export type AiSettings = {
+  configured: boolean
+  baseUrl: string
+  model: string
+  keyHint: string
+  dailyTokenCap: number
+  editable: boolean
+}
+
+/** PUT /settings/ai and POST /settings/ai/test. Omit apiKey to use the saved one. */
+export type AiSettingsInput = { baseUrl: string; model: string; apiKey?: string; dailyTokenCap?: number }
+
+/** A passed POST /settings/ai/test. model is as the provider named it. */
+export type AiTestResult = { ok: true; model: string; latencyMs: number }
+
 /** GET /update. latest, newer and requested only when the server can update itself. */
 export type UpdateStatus = {
   current: string
