@@ -170,6 +170,18 @@ struct LockedNotesTests {
         }
     }
 
+    @Test func aPbkdf2EntryNeedsAUsableCountOfItsOwn() throws {
+        let entry = { (kdf: Kdf?, iterations: Int) in
+            LockKey(id: "password", kind: "password", salt: "", iterations: iterations, wrapped: "", kdf: kdf)
+        }
+        // A kdf without a count is damaged, whatever the legacy field says.
+        #expect(throws: LockedNotes.malformedEntry) { try Keyring.derivation(entry(Kdf(name: Kdf.pbkdf2), 600_000)) }
+        #expect(throws: LockedNotes.malformedEntry) {
+            try Keyring.derivation(entry(Kdf(name: Kdf.pbkdf2, iterations: Int(UInt32.max) + 1), 0))
+        }
+        #expect(try Keyring.derivation(entry(nil, 600_000)) == .pbkdf2(iterations: 600_000))
+    }
+
     @Test func newEntriesSayHowTheyreDerived() throws {
         let created = Keyring.create("secret", iterations: 1000)
         #expect(created.entry.kdf == Kdf(name: Kdf.pbkdf2, iterations: 1000))

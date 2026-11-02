@@ -47,34 +47,36 @@ func TestMinClient(t *testing.T) {
 	e.setupOwner()
 	c, _ := e.deviceClient()
 	for _, tc := range []struct {
-		name string
-		hdr  []string
-		want int
+		name       string
+		hdr        []string
+		want       int
+		minVersion string // on 426: the platform's own minimum
 	}{
-		{"older android", []string{"X-Notesd-Client", "android/1.1.9"}, 426},
-		{"older android, v prefix", []string{"X-Notesd-Client", "android/v1.1.9"}, 426},
-		{"older android by user agent", []string{"User-Agent", "notesd-android/1.0.0 okhttp/4.12"}, 426},
-		{"header wins over user agent", []string{"X-Notesd-Client", "android/1.2.0", "User-Agent", "notesd-android/1.0.0"}, 200},
-		{"minimum android", []string{"X-Notesd-Client", "android/1.2.0"}, 200},
-		{"newer android", []string{"X-Notesd-Client", "android/1.10.0"}, 200},
-		{"between releases", []string{"X-Notesd-Client", "android/1.2.0-4-g51d93ed"}, 200},
-		{"older between releases", []string{"X-Notesd-Client", "android/1.1.0-4-g51d93ed"}, 426},
-		{"minimum with v prefix", []string{"X-Notesd-Client", "ios/1.0.9"}, 426},
-		{"newer ios", []string{"X-Notesd-Client", "ios/1.1.0"}, 200},
-		{"unparseable minimum", []string{"X-Notesd-Client", "web/0.0.1"}, 200},
-		{"unparseable app", []string{"X-Notesd-Client", "android/dev"}, 200},
-		{"unknown platform", []string{"X-Notesd-Client", "desktop/0.0.1"}, 200},
-		{"malformed header", []string{"X-Notesd-Client", "android"}, 200},
-		{"no header", nil, 200},
-		{"other user agent", []string{"User-Agent", "Mozilla/5.0"}, 200},
+		{"dev build", []string{"X-Notesd-Client", "android/0.0.0-dev"}, 200, ""},
+		{"release candidate", []string{"X-Notesd-Client", "android/1.0.0-rc1"}, 200, ""},
+		{"older android", []string{"X-Notesd-Client", "android/1.1.9"}, 426, "1.2.0"},
+		{"older android, v prefix", []string{"X-Notesd-Client", "android/v1.1.9"}, 426, "1.2.0"},
+		{"older android by user agent", []string{"User-Agent", "notesd-android/1.0.0 okhttp/4.12"}, 426, "1.2.0"},
+		{"header wins over user agent", []string{"X-Notesd-Client", "android/1.2.0", "User-Agent", "notesd-android/1.0.0"}, 200, ""},
+		{"minimum android", []string{"X-Notesd-Client", "android/1.2.0"}, 200, ""},
+		{"newer android", []string{"X-Notesd-Client", "android/1.10.0"}, 200, ""},
+		{"between releases", []string{"X-Notesd-Client", "android/1.2.0-4-g51d93ed"}, 200, ""},
+		{"older between releases", []string{"X-Notesd-Client", "android/1.1.0-4-g51d93ed"}, 426, "1.2.0"},
+		{"minimum with v prefix", []string{"X-Notesd-Client", "ios/1.0.9"}, 426, "1.1.0"},
+		{"newer ios", []string{"X-Notesd-Client", "ios/1.1.0"}, 200, ""},
+		{"unparseable minimum", []string{"X-Notesd-Client", "web/0.0.1"}, 200, ""},
+		{"unparseable app", []string{"X-Notesd-Client", "android/dev"}, 200, ""},
+		{"unknown platform", []string{"X-Notesd-Client", "desktop/0.0.1"}, 200, ""},
+		{"malformed header", []string{"X-Notesd-Client", "android"}, 200, ""},
+		{"no header", nil, 200, ""},
+		{"other user agent", []string{"User-Agent", "Mozilla/5.0"}, 200, ""},
 	} {
 		r := c.do("GET", "/api/v1/notes", nil, tc.hdr...)
 		if r.status != tc.want {
 			t.Errorf("%s: %d %s", tc.name, r.status, r.raw)
 			continue
 		}
-		if tc.want == 426 && (r.body["error"] != "upgrade_required" || r.body["message"] == "" ||
-			(r.body["minVersion"] != "1.2.0" && r.body["minVersion"] != "1.1.0")) {
+		if tc.want == 426 && (r.body["error"] != "upgrade_required" || r.body["message"] == "" || r.body["minVersion"] != tc.minVersion) {
 			t.Errorf("%s: %s", tc.name, r.raw)
 		}
 	}

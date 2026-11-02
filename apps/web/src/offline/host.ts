@@ -48,7 +48,6 @@ export function engineHost(
       e.onStatus((s) => emit({ type: 'status', status: status(s) })),
       e.onChange(() => emit({ type: 'change' })),
       e.onNotice((n) => {
-        // Rejected (a change refused for good) has no SyncNotice kind yet; the engine records it as its last error.
         const shown = notice(n)
         if (shown) emit({ type: 'notice', notice: shown })
       }),
@@ -265,6 +264,9 @@ function notice(n: EngineNotice): SyncNotice | null {
       return { kind: 'RecoveredCopy', copyId: n.copyId ?? '', title: n.title }
     case 'Restored':
       return { kind: 'Restored', noteId: n.noteId ?? '', title: n.title }
+    case 'Rejected':
+      // The engine puts the message in title.
+      return { kind: 'Rejected', message: n.title }
     default:
       return null
   }

@@ -123,8 +123,10 @@ async function moveImage(id: string, locked: boolean, key: CryptoKey): Promise<s
   const blob = await notesSource().images.get(id).catch(() => {
     throw new ImageError('A picture in this note couldn’t be downloaded. Try again when the connection is back.')
   })
-  // Sealed by a newer notesd: this one can't open it, and sealing it again would bury it for good.
-  if (isLockedImageType(blob.type) && blob.type !== LOCKED_IMAGE) return null
+  // Sealed by a newer notesd: this one can't open it or seal it again, so the lock can't change here.
+  if (isLockedImageType(blob.type) && blob.type !== LOCKED_IMAGE) {
+    throw new ImageError('A picture in this note was locked by a newer version of notesd. Update notesd to change this note’s lock.')
+  }
   if ((blob.type === LOCKED_IMAGE) === locked) return null
   const bytes = new Uint8Array(await blob.arrayBuffer())
   let file: Uint8Array<ArrayBuffer>

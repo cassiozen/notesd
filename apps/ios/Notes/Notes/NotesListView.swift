@@ -54,11 +54,9 @@ struct NotesListView: View {
                     .plainRow()
             }
             if graph.parkedNotes > 0 {
-                Banner(text: SyncMessages.parked(graph.parkedNotes), action: "Retry") {
-                    Task { await graph.engine.retryParked() }
-                }
-                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
-                .plainRow()
+                Banner(text: SyncMessages.parked(graph.parkedNotes), action: "Retry") { graph.scheduler.retryParked() }
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .plainRow()
             }
             if let all = hits {
                 // Notes waiting out the undo window are hidden, as in the list.
@@ -153,7 +151,7 @@ struct NotesListView: View {
         .sheet(isPresented: $syncSheet) {
             SyncSheet(status: graph.syncStatus, pending: pendingNotes) {
                 syncSheet = false
-                graph.scheduler.request()
+                graph.scheduler.request(byUser: true)
             }
         }
         .sheet(isPresented: $connecting) {
@@ -584,6 +582,16 @@ private struct SyncSheet: View {
     let syncNow: () -> Void
 
     var body: some View {
+        // Scrolls when the text outgrows the sheet (a long reason, large Dynamic Type).
+        ScrollView {
+            content
+        }
+        .scrollBounceBehavior(.basedOnSize)
+        .presentationDetents([.height(260), .large])
+        .presentationBackground(Color.notesBg)
+    }
+
+    private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(pending == 0 ? "Not syncing" : pending == 1 ? "1 note not synced" : "\(pending) notes not synced")
                 .font(.notesTitle)
@@ -607,8 +615,6 @@ private struct SyncSheet: View {
             .padding(.top, 6)
         }
         .padding(24)
-        .presentationDetents([.height(260)])
-        .presentationBackground(Color.notesBg)
     }
 }
 

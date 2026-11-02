@@ -19,7 +19,6 @@ import { notesSource, type Saver } from './source'
 import { NoteMenu } from './share'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
-import { UPGRADE_REQUIRED } from './sync-banners'
 import { tagKey } from './tags'
 import styles from './note-pane.module.css'
 
@@ -505,11 +504,6 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
           }
         >
           {problem.message}
-        </Notice>
-      )}
-      {problem?.kind === 'upgrade' && (
-        <Notice tone="error" actions={null}>
-          {UPGRADE_REQUIRED}
         </Notice>
       )}
       {problem?.kind === 'conflict' && (

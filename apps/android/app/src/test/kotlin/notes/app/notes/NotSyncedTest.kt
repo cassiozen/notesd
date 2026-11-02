@@ -53,8 +53,8 @@ class NotSyncedTest {
     }
 
     @Test
-    fun `the parked banner counts notes`() {
-        assertEquals("1 note couldn't sync. It's kept on this device.", parkedMessage(1))
-        assertEquals("3 notes couldn't sync. They're kept on this device.", parkedMessage(3))
+    fun `the parked banner counts changes`() {
+        assertEquals("1 change couldn’t sync. It’s kept on this device.", parkedMessage(1))
+        assertEquals("3 changes couldn’t sync. They’re kept on this device.", parkedMessage(3))
     }
 }

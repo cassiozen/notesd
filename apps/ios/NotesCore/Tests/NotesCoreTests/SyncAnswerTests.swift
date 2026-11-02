@@ -233,6 +233,24 @@ struct SyncAnswerTests {
         #expect(try await attempts("n") == (0, false))
     }
 
+    @Test func afterUpgradeRequiredNoCycleContactsTheServer() async throws {
+        try await notes.save("n", title: "T", content: "body")
+        let stub = StubTransport { _ in
+            (426, #"{"error":"upgrade_required","message":"update","minVersion":"1.2.0"}"#, jsonHeaders)
+        }
+        let engine = engine(stub: stub) { _ in (500, "", [:]) }
+        #expect(await engine.sync().outcome == .upgradeRequired)
+        let sent = stub.requests.count
+        #expect(await engine.sync().outcome == .upgradeRequired)
+        #expect(await engine.retryParked().outcome == .upgradeRequired)
+        #expect(stub.requests.count == sent)
+        #expect(engine.status.value == .upgradeRequired(minVersion: "1.2.0"))
+        // Another server or account: tried again.
+        engine.clearUpgradeRequired()
+        #expect(await engine.sync().outcome == .upgradeRequired)
+        #expect(stub.requests.count > sent)
+    }
+
     @Test func aConflictWithoutTheCurrentNoteKeepsTheChange() async throws {
         try await notes.save("n", title: "T", content: "body")
         let engine = engine(mutation: (409, #"{"error":"stale_revision","message":"stale"}"#, jsonHeaders))
@@ -261,6 +279,61 @@ struct SyncAnswerTests {
         let sent = try #require(stub.requests.first { $0.path == "/api/v1/notes" })
         #expect(body(sent)["content"] == "body")
         #expect(try await notes.get("n")?.dirty == false)
+    }
+
+    @Test func notesFiledInAParkedSpaceWaitWithIt() async throws {
+        let id = try await SpaceStore(db: db).create("Work")
+        try await notes.save("in", title: "In", content: "x", spaceId: id)
+        try await notes.save("out", title: "Out", content: "y")
+        let stub = StubTransport { request in
+            switch request.path {
+            case "/api/v1/sync": emptyPage
+            case "/api/v1/locks": noKeys
+            case "/api/v1/spaces": defaultSpace
+            case "/api/v1/spaces/\(id)": (200, "<html>ok</html>", [:])
+            default: (200, #"{"id":"x","status":"created","revision":1,"changeSeq":1,"updatedAt":1}"#, jsonHeaders)
+            }
+        }
+        let engine = engine(stub: stub) { _ in (500, "", [:]) }
+        for _ in 1...3 { #expect(await engine.sync().outcome == .failed) }
+        // The space is parked: the note in it waits too, so the server can't file it in the default.
+        #expect(await engine.sync().outcome == .done)
+        #expect(try await notes.get("out")?.dirty == false)
+        #expect(try await notes.get("in")?.dirty == true)
+        #expect(!stub.requests.contains { body($0)["title"] == "In" })
+        // Unparked by that, the space fails once more and parks again, its note with it.
+        #expect(await engine.sync().outcome == .failed)
+        #expect(engine.parked.value == 2)
+    }
+
+    @Test func parkedCopyCountsChanges() {
+        #expect(SyncMessages.parked(1) == "1 change couldn’t sync. It’s kept on this device.")
+        #expect(SyncMessages.parked(3) == "3 changes couldn’t sync. They’re kept on this device.")
+    }
+
+    @Test func aSpaceChangedWhileItsRequestWasOutIsntCountedForIt() async throws {
+        let spaces = SpaceStore(db: db)
+        let id = try await spaces.create("Work")
+        let sent = try #require(try await spaces.pending().first)
+        try await spaces.update(id, name: "Play")
+        try await spaces.attempted(sent)
+        let row = try await db.read { sql in
+            try sql.one("SELECT attempts FROM spaces WHERE id = ?", id) { $0.int64(0) }
+        }
+        #expect(row == 0)
+    }
+
+    @Test func aNoteMentioningAParkedImagesIdIsntHeld() async throws {
+        let image = String(repeating: "ab", count: 32)
+        try await db.write { sql in
+            try sql.exec(
+                "INSERT INTO pending_images (id, content_type, created_at, parked) VALUES (?, 'image/png', 0, 1)", image
+            )
+        }
+        try await notes.save("n", title: "Hash", content: "the id is \(image)")
+        #expect(try await SyncStore(db: db).nextOperation()?.noteId == "n")
+        try await notes.save("p", title: "Pic", content: ImageRef(id: image, width: 1, height: 1).markdown())
+        #expect(try await SyncStore(db: db).parkedCount() == 1)
     }
 
     @Test func aSpaceThatKeepsGettingUnexpectedAnswersIsParked() async throws {

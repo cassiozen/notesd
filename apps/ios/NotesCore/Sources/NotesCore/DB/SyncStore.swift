@@ -36,10 +36,25 @@ public struct Operation: Hashable, Sendable {
 /// Unexpected answers a change gets before it's parked.
 let maxAttempts = 3
 
-/// An outbox row aliased b that sync holds back: parked, or showing a parked image (its bytes must reach
-/// the server before anything referencing them).
-private let heldOperation =
-    "(b.parked = 1 OR EXISTS (SELECT 1 FROM pending_images p WHERE p.parked = 1 AND instr(b.payload_json, p.id) > 0))"
+extension Sql {
+    /// Notes sync holds back whole, so their operations still go in order: one with a parked
+    /// operation, one filed in a parked new space (the server would file it in the default), or
+    /// one showing a parked image (its bytes must reach the server before anything referencing them).
+    fileprivate func heldNotes() throws -> Set<String> {
+        var held = Set(try query("SELECT note_id FROM sync_outbox WHERE parked = 1") { $0.text(0) })
+        let spaces = Set(try query("SELECT id FROM spaces WHERE parked = 1 AND dirty = 1") { $0.text(0) })
+        let images = Set(try query("SELECT id FROM pending_images WHERE parked = 1") { $0.text(0) })
+        if spaces.isEmpty && images.isEmpty { return held }
+        for (noteId, json) in try query(
+            "SELECT note_id, payload_json FROM sync_outbox", row: { ($0.text(0), $0.text(1)) })
+        where !held.contains(noteId) {
+            guard let payload = try? Payload.decode(json) else { continue }
+            let shown = Set(ImageRef.ids(payload.content)).union(payload.imageIds ?? [])
+            if payload.spaceId.map(spaces.contains) == true || !shown.isDisjoint(with: images) { held.insert(noteId) }
+        }
+        return held
+    }
+}
 
 private let operationColumns = "operation_id, note_id, operation_type, base_revision, payload_json, sent"
 
@@ -80,16 +95,14 @@ public final class SyncStore: Sendable {
 
     // MARK: push
 
-    /// The oldest operation of a note that isn't held: a note with a parked operation, or one showing a
-    /// parked image, waits whole, so its operations still go in order.
+    /// The oldest operation of a note that isn't held (see `heldNotes`).
     public func nextOperation() async throws -> Operation? {
-        try await db.read {
-            try $0.one(
-                """
-                SELECT \(operationColumns) FROM sync_outbox o WHERE NOT EXISTS
-                    (SELECT 1 FROM sync_outbox b WHERE b.note_id = o.note_id AND \(heldOperation))
-                ORDER BY created_at, rowid LIMIT 1
-                """, row: operationRow)
+        try await db.read { sql in
+            let held = try sql.heldNotes()
+            // The outbox is small: read whole rather than built into a query.
+            return try sql.query(
+                "SELECT \(operationColumns) FROM sync_outbox ORDER BY created_at, rowid", row: operationRow
+            ).first { !held.contains($0.noteId) }
         }
     }
 
@@ -125,12 +138,7 @@ public final class SyncStore: Sendable {
     /// Notes and spaces held back by parking.
     public func parkedCount() async throws -> Int {
         try await db.read { sql in
-            Int(
-                try sql.int64(
-                    """
-                    SELECT (SELECT count(DISTINCT b.note_id) FROM sync_outbox b WHERE \(heldOperation))
-                        + (SELECT count(*) FROM spaces WHERE parked = 1)
-                    """))
+            try sql.heldNotes().count + Int(try sql.int64("SELECT count(*) FROM spaces WHERE parked = 1"))
         }
     }
 

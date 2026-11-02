@@ -185,6 +185,9 @@ func TestLaterLockVersionOverHTTP(t *testing.T) {
 		switch {
 		case v.ServerAccepts && r.status == 201:
 			accepted++
+			if got := c.do("GET", fmt.Sprintf("/api/v1/notes/n%d", i), nil); got.body["content"] != v.Envelope {
+				t.Errorf("%s: stored %s", v.Name, got.raw)
+			}
 		case !v.ServerAccepts && r.status == 400 && r.body["error"] == "invalid_request":
 		default:
 			t.Errorf("%s: %d %s", v.Name, r.status, r.raw)

@@ -17,7 +17,8 @@ final class SyncScheduler {
     private var foreground = false
     private var started = false
     private var requested = false
-    /// The server needs a newer app: nothing syncs on its own again until the app restarts; asking still does.
+    /// The server needs a newer app: nothing syncs on its own again until the app restarts. The engine answers
+    /// any cycle asked for meanwhile the same way, without the server.
     private var upgradeRequired = false
     private var waiter: CheckedContinuation<Void, Never>?
     private var afterEdit: Task<Void, Never>?
@@ -68,7 +69,14 @@ final class SyncScheduler {
         // Every sign-in.
         Task {
             var wasSignedIn = false
+            var previous: Account?
             for await account in graph.accounts.account.stream() {
+                // A sign-in, another server or account, or everything removed: an old 426 no longer applies.
+                if account != previous {
+                    previous = account
+                    graph.engine.clearUpgradeRequired()
+                    upgradeRequired = false
+                }
                 let signedIn = if case .signedIn = account { true } else { false }
                 if signedIn && !wasSignedIn { request() }
                 wasSignedIn = signedIn
@@ -96,6 +104,11 @@ final class SyncScheduler {
         } else {
             requested = true
         }
+    }
+
+    /// The user's retry of parked changes; its outcome counts like any cycle's.
+    func retryParked() {
+        Task { upgradeRequired = await graph.engine.retryParked().outcome == .upgradeRequired }
     }
 
     func enteredForeground() {

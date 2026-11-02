@@ -108,6 +108,11 @@ class LockSessionTest {
         assertEquals(LockSession.Outcome.MalformedKey, session.unlock("lock pass 123"))
         assertEquals(LockSession.State.Locked, session.state.value)
 
+        // A stored kdf that doesn't parse is broken, not one from before 1.0.
+        keys.replace(listOf(created.entry))
+        db.write { it.exec("UPDATE lock_keys SET kdf = 'not json'") }
+        assertEquals(LockSession.Outcome.MalformedKey, session.unlock("lock pass 123"))
+
         // Before 1.0 there was no kdf: implied by the kind.
         keys.replace(listOf(created.entry.copy(kdf = null)))
         assertEquals(LockSession.Outcome.WrongPassword, session.unlock("wrong"))

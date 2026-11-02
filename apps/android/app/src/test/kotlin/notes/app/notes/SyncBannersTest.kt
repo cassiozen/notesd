@@ -81,9 +81,9 @@ class SyncBannersTest {
             assertEquals(1, graph.store.pendingNotes())
         }
         scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.waitUntilExactlyOneExists(hasText("1 note couldn't sync. It's kept on this device."))
+        compose.waitUntilExactlyOneExists(hasText("1 change couldn’t sync. It’s kept on this device."))
         compose.onNode(hasText("Retry") and hasClickAction()).performClick()
-        compose.waitUntilDoesNotExist(hasText("1 note couldn't sync. It's kept on this device."))
+        compose.waitUntilDoesNotExist(hasText("1 change couldn’t sync. It’s kept on this device."))
         assertEquals(0, runBlocking { graph.sync.parked() })
         // Every request named the app.
         assertEquals(

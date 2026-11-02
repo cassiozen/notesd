@@ -209,6 +209,12 @@ class EditorViewModel(
         private set
 
     private val saveLock = Mutex()
+
+    /**
+     * Held while a stored note is read and what it shows ([document], [unsupported]) is published: an
+     * older read finishing after a newer one would bring back text, and saves, over a newer body.
+     */
+    private val loadLock = Mutex()
     private var lastSave: Job? = null
     private var edits = 0
     private var saved = 0
@@ -262,7 +268,7 @@ class EditorViewModel(
     private suspend fun lockChanged(state: LockSession.State) {
         if (!_locked.value) return
         if (state == LockSession.State.Unlocked) {
-            if (_document.value == null) store.get(id)?.let { _document.value = parse(it) }
+            loadLock.withLock { if (_document.value == null) store.get(id)?.let { _document.value = parse(it) } }
             stranded?.let {
                 stranded = null
                 edited()
@@ -343,6 +349,12 @@ class EditorViewModel(
         // The server can't read a locked body's images: the save lists them (§7.6).
         // From the body being saved, not the lock flag, which may have changed while it encrypted.
         val imageIds = if (LockedNotes.isLocked(content)) ImageRef.ids(plain) else null
+        // Whatever the editor showed: a body a newer notesd locked is never saved over.
+        if (store.get(id)?.content?.let(LockedEnvelope::isUnsupported) == true) {
+            _unsupported.value = true
+            _document.value = null
+            return
+        }
         val note = store.save(id, title, content, basedOn, imageIds, noteSpace)
         if (note == null) {
             if (basedOn != null && basedOn != (title to content)) {
@@ -363,9 +375,11 @@ class EditorViewModel(
             known = stored
             _locked.value = LockedNotes.isLocked(note.content)
             // Null while locked: unlocking then loads the stored body, not the text from before.
-            val doc = parse(note)
-            _document.value = doc
-            if (doc != null) _incoming.tryEmit(doc)
+            loadLock.withLock {
+                val doc = parse(note)
+                _document.value = doc
+                if (doc != null) _incoming.tryEmit(doc)
+            }
         } else {
             // If typing continued, the next save merges from what this one sent.
             known = if (stored == (title to content)) stored else title to content
@@ -373,12 +387,12 @@ class EditorViewModel(
         if (edit == edits) show(note)
     }
 
-    private suspend fun refresh() {
-        if (edits != saved || saving > 0) return
-        val note = store.get(id) ?: return
+    private suspend fun refresh() = loadLock.withLock {
+        if (edits != saved || saving > 0) return@withLock
+        val note = store.get(id) ?: return@withLock
         if (note.deletedAt != null) {
             _gone.value = true
-            return
+            return@withLock
         }
         val stored = note.title to note.content
         val before = known

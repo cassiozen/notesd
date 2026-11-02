@@ -1,7 +1,27 @@
-.app {
+.frame {
   position: relative;
   z-index: 1;
   height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Above every screen; the app below gives up the room. */
+.banners {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 12px 0;
+}
+
+.bannerWhy {
+  opacity: 0.75;
+}
+
+.app {
+  flex: 1;
+  min-height: 0;
   display: flex;
   gap: 12px;
   padding: 12px;
@@ -11,5 +31,9 @@
   .app {
     padding: 0;
     gap: 0;
+  }
+
+  .banners {
+    padding: calc(8px + env(safe-area-inset-top)) 8px 8px;
   }
 }

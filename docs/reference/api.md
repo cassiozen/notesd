@@ -182,7 +182,8 @@ Accounts after the first are added with [`notesd add-user`](cli.md#add-user).
   "accessToken": "…",
   "accessExpiresAt": 1767229200000,
   "refreshToken": "…",
-  "refreshExpiresAt": 1782777600000
+  "refreshExpiresAt": 1782777600000,
+  "serverVersion": "v1.2.0"
 }
 ```
 

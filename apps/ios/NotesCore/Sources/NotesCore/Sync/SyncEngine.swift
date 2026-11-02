@@ -1,8 +1,8 @@
 import Foundation
 import Synchronization
 
-/// How a cycle ended; the scheduler retries `offline` and `failed` with backoff, and nothing after
-/// `upgradeRequired` until the app starts again.
+/// How a cycle ended; the scheduler retries `offline` and `failed` with backoff. After `upgradeRequired`
+/// every cycle ends that way at once, without the server, until the app starts again.
 public enum SyncOutcome: Hashable, Sendable { case done, notConnected, offline, signedOut, failed, upgradeRequired }
 
 public enum SyncStatus: Hashable, Sendable {
@@ -26,7 +26,9 @@ public enum SyncMessages {
     }
 
     public static func parked(_ count: Int) -> String {
-        "\(count) \(count == 1 ? "note" : "notes") couldn’t sync. They’re kept on this device."
+        count == 1
+            ? "1 change couldn’t sync. It’s kept on this device."
+            : "\(count) changes couldn’t sync. They’re kept on this device."
     }
 }
 
@@ -56,6 +58,9 @@ public final class SyncEngine: Sendable {
     /// Notes (and spaces) held back after the server kept answering unexpectedly; `retryParked()` tries them again.
     public let parked = StateCell<Int>(0)
     private let opened = Mutex(false)
+    /// Set by a 426: until the engine is made again (the app restarts) or `clearUpgradeRequired()`, no cycle
+    /// contacts the server.
+    private let upgradeRequired = Mutex<String??>(nil)
 
     public init(
         db: Database, api: @escaping @Sendable () async -> ApiClient?, images: ImageStore? = nil,
@@ -75,6 +80,10 @@ public final class SyncEngine: Sendable {
     @discardableResult
     public func sync() async -> SyncReport {
         await lock.withLock {
+            if let minVersion = self.upgradeRequired.withLock({ $0 }) {
+                self.status.set(.upgradeRequired(minVersion: minVersion))
+                return SyncReport(outcome: .upgradeRequired, events: [])
+            }
             guard let client = await self.api() else {
                 self.status.set(.notConnected)
                 return SyncReport(outcome: .notConnected, events: [])
@@ -104,7 +113,9 @@ public final class SyncEngine: Sendable {
             case .signedOut: self.status.set(.signedOut)
             case .notConnected: self.status.set(.notConnected)
             case .failed: self.status.set(.failed(stop?.message ?? "Sync failed"))
-            case .upgradeRequired: self.status.set(.upgradeRequired(minVersion: stop?.minVersion))
+            case .upgradeRequired:
+                self.upgradeRequired.withLock { $0 = .some(stop?.minVersion) }
+                self.status.set(.upgradeRequired(minVersion: stop?.minVersion))
             }
             return SyncReport(outcome: outcome, events: events)
         }
@@ -118,6 +129,11 @@ public final class SyncEngine: Sendable {
             if let count = try? await self.store.parkedCount() { self.parked.set(count) }
         }
         return await sync()
+    }
+
+    /// Another server or account, or all data removed: the 426 was about a server this may no longer be talking to.
+    public func clearUpgradeRequired() {
+        upgradeRequired.withLock { $0 = nil }
     }
 
     /// Once per engine (app start): parked changes get another try, and edits an older app

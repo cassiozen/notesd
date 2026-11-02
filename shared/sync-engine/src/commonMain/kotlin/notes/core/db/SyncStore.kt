@@ -65,17 +65,29 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
 
     // --- push ----------------------------------------------------------------
 
-    /** The oldest operation to send. A note with a parked one waits whole: its later ones build on it. */
+    /**
+     * The oldest operation to send. A note waits whole (its later operations build on the earlier ones) while
+     * one of its operations is parked, or shows a parked image, or names a parked new or renamed space: sent
+     * now, its image would be missing, or the server would file it in the default space.
+     */
     suspend fun nextOperation(): Operation? = db.read { sql ->
-        sql.one(
+        val images = sql.query("SELECT id FROM pending_images WHERE parked = 1") { it.getText(0) }.toSet()
+        val spaces = sql.query("SELECT id FROM spaces WHERE parked = 1 AND dirty = 1") { it.getText(0) }.toSet()
+        val queued = sql.query(
             """
-            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent
-            FROM sync_outbox o
-            WHERE NOT EXISTS (SELECT 1 FROM sync_outbox p WHERE p.note_id = o.note_id AND p.parked = 1)
-            ORDER BY created_at, rowid LIMIT 1
-            """,
-            row = ::operationRow
-        )
+            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent, parked
+            FROM sync_outbox ORDER BY created_at, rowid
+            """
+        ) { operationRow(it) to (it.getLong(6) == 1L) }
+        val held = HashSet<String>()
+        for ((op, parked) in queued) {
+            if (op.noteId in held) continue
+            val waits = parked || op.spaceId in spaces ||
+                (images.isNotEmpty() && (imageIdsIn(op.content) + op.imageIds.orEmpty()).any { it in images })
+            if (!waits) return@read op
+            held += op.noteId
+        }
+        null
     }
 
     /**

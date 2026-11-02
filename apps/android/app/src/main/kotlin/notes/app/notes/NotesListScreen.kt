@@ -794,11 +794,8 @@ fun highlight(excerpt: String, style: SpanStyle): AnnotatedString = buildAnnotat
     }
 }
 
-/** The parked banner's words. */
-internal fun parkedMessage(n: Int) = if (n ==
-    1
-) {
-    "1 note couldn't sync. It's kept on this device."
-} else {
-    "$n notes couldn't sync. They're kept on this device."
+/** The parked banner's words: notes, spaces and pictures all count, so "changes". */
+internal fun parkedMessage(n: Int): String {
+    if (n == 1) return "1 change couldn’t sync. It’s kept on this device."
+    return "$n changes couldn’t sync. They’re kept on this device."
 }

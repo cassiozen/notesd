@@ -20,7 +20,12 @@ func (s *Server) listLockKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"keys": keys})
 }
 
-// PUT /api/v1/locks/keys/{id}  {"kind", "credentialId"?, "salt", "kdf", "iterations"?, "wrapped", "verifier"}
+// PUT /api/v1/locks/keys/{id}  {"kind", "credentialId"?, "salt", "kdf"?, "iterations"?, "wrapped", "verifier"}
+//
+// kdf is {"name": "pbkdf2-sha256", "iterations": N} for password and
+// recovery, {"name": "hkdf-sha256"} for a passkey. Apps from before kdf
+// existed send only iterations (0 for a passkey), which then implies it.
+// Sent with kdf, iterations must equal kdf's (0 for a passkey).
 func (s *Server) putLockKey(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	var req locks.PutInput

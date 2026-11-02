@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -71,23 +72,24 @@ func (s *Server) checkClient(next http.Handler) http.Handler {
 	})
 }
 
-// appVersion parses an app's X.Y.Z, with or without a leading v. Anything
-// after the numbers ("-rc1", "-4-g51d93ed" between releases) is ignored:
-// such a build has at least that release's code.
+// describedVersion is an app's version as git describe gives it: a release,
+// or a build that many commits past one, maybe with uncommitted changes.
+var describedVersion = regexp.MustCompile(`^([0-9]+)\.([0-9]+)\.([0-9]+)(?:-[0-9]+-g[0-9a-f]+)?(?:-dirty)?$`)
+
+// appVersion parses an app's X.Y.Z, with or without a leading v. A build
+// past a release has at least that release's code, so it counts as it.
+// Anything else is unparseable: a pre-release ("-rc1"), a build outside a
+// tagged checkout ("0.0.0-dev"), or 0.0.0 itself, which no release is.
 func appVersion(v string) (n [3]int, ok bool) {
-	v = strings.TrimPrefix(v, "v")
-	if i := strings.IndexAny(v, "-+"); i >= 0 {
-		v = v[:i]
-	}
-	parts := strings.Split(v, ".")
-	if len(parts) != 3 {
+	m := describedVersion.FindStringSubmatch(strings.TrimPrefix(v, "v"))
+	if m == nil {
 		return n, false
 	}
-	for i, p := range parts {
+	for i := range n {
 		var err error
-		if n[i], err = strconv.Atoi(p); err != nil {
+		if n[i], err = strconv.Atoi(m[i+1]); err != nil {
 			return n, false
 		}
 	}
-	return n, true
+	return n, n != [3]int{}
 }

@@ -43,8 +43,11 @@ public enum Keyring {
         let name = entry.kdf?.name ?? (kind == .passkey ? Kdf.hkdf : Kdf.pbkdf2)
         switch name {
         case Kdf.pbkdf2:
-            let iterations = entry.kdf?.iterations ?? entry.iterations
-            guard kind == .password || kind == .recovery, iterations > 0 else { throw LockedNotes.malformedEntry }
+            // The top-level count only stands in for a missing kdf (entries from before 1.0).
+            let iterations = entry.kdf.map { $0.iterations } ?? entry.iterations
+            guard kind == .password || kind == .recovery, let iterations, let rounds = UInt32(exactly: iterations),
+                rounds > 0
+            else { throw LockedNotes.malformedEntry }
             return .pbkdf2(iterations: iterations)
         case Kdf.hkdf:
             guard kind == .passkey else { throw LockedNotes.malformedEntry }

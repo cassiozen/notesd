@@ -215,7 +215,7 @@ struct SettingsSectionView: View {
                 }
                 if graph.parkedNotes > 0 {
                     Text(SyncMessages.parked(graph.parkedNotes)).font(.notesSmall).foregroundStyle(Color.errInk)
-                    Button("Retry") { Task { await graph.engine.retryParked() } }
+                    Button("Retry") { graph.scheduler.retryParked() }
                 }
                 Button("Sync now") { graph.scheduler.request(byUser: true) }
             } header: {

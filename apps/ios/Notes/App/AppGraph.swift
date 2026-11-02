@@ -233,6 +233,9 @@ final class AppGraph {
             // Through the key store, which moves its generation on: a keyring fetch still in flight can't put it back.
             try await engine.lockKeys.replace([])
         }
+        // Nothing is parked in an empty database, and no server has refused this app.
+        engine.parked.set(0)
+        engine.clearUpgradeRequired()
         email.forget()
         await locks.forget()
         biometrics.disable()

@@ -1,15 +1,15 @@
 #!/bin/sh
 # Writes Config/Version.xcconfig (gitignored), which Config/Base.xcconfig includes:
-# MARKETING_VERSION is `git describe --tags` without the "v" (0.0.0-dev outside a
-# tagged checkout), CURRENT_PROJECT_VERSION the nearest tag as Android's versionCode
+# MARKETING_VERSION is the X.Y.Z of `git describe --tags` (Apple allows only up to three
+# integers: v1.2.0-rc1-3-gabc → 1.2.0; 0.0.0 outside a tagged checkout),
+# CURRENT_PROJECT_VERSION the nearest tag as Android's versionCode
 # (docs/contributing/releasing.md). Run by the Notes scheme's build pre-action, so
 # Xcode and xcodebuild (mise run build:ios / test:ios) both get it.
 set -eu
 cd "$(dirname "$0")/.."
 
-describe=$(git describe --tags 2>/dev/null || true)
-version=${describe#v}
-[ -n "$version" ] || version=0.0.0-dev
+version=$(git describe --tags 2>/dev/null | sed -nE 's/^v?([0-9]+\.[0-9]+\.[0-9]+).*$/\1/p' || true)
+[ -n "$version" ] || version=0.0.0
 
 # vX.Y.Z → XXYYZZ99, vX.Y.Z-rcN → XXYYZZNN; any other suffix counts as the release.
 tag=$(git describe --tags --abbrev=0 2>/dev/null || true)

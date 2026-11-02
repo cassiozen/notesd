@@ -139,6 +139,7 @@ final class ImagesTests {
         #expect(a.engine.parked.value == 1)
         #expect(await a.sync() == .done)
         #expect(try await a.note("plain")?.dirty == false)
+        #expect(try await a.note("pic")?.dirty == true, "held with its image")
         #expect(await a.sync() == .done)
         #expect(try await a.note("pic")?.dirty == false)
         #expect(await Self.fetched(a, id))

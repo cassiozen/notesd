@@ -19,6 +19,7 @@ import notes.core.api.SyncApi
 import notes.core.api.SyncPage
 import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.api.unexpectedMessage
+import notes.core.crypto.LockedEnvelope
 import notes.core.db.Database
 import notes.core.db.NoteStore
 import notes.core.db.SyncEvent
@@ -241,5 +242,48 @@ class SyncClassificationTest {
         assertEquals(SyncOutcome.Done, engine.sync())
         assertEquals(0, engine.parked())
         assertEquals("The space “Work” wasn’t saved: name taken", engine.store.state().lastError)
+    }
+
+    @Test
+    fun aNoteWaitsForItsParkedSpace() = env {
+        engine.spaces.create("Work", id = "w")
+        api.spaceAnswer = { portal }
+        repeat(3) { assertEquals(SyncOutcome.Failed, engine.sync()) }
+        notes.save("a", "In work", "text", spaceId = "w")
+        notes.save("b", "Elsewhere", "text")
+        // Sent now, "a" would be filed in the default space.
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(listOf("b"), api.sent.map { it.first })
+        assertEquals(listOf("a"), notes.outbox().map { it.noteId })
+
+        api.spaceAnswer = { null }
+        engine.retryParked()
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(listOf("b", "a"), api.sent.map { it.first })
+        assertEquals(0, notes.pendingNotes())
+    }
+
+    @Test
+    fun aNoteWaitsForItsParkedImage() = env {
+        val image = "c".repeat(64)
+        // Opening gives parked changes another try: parked after it, as a failing upload would leave it.
+        engine.open()
+        db.write {
+            it.exec(
+                "INSERT INTO pending_images (id, content_type, created_at, attempts, parked) VALUES (?, 'image/png', 0, 3, 1)",
+                image
+            )
+        }
+        notes.save("plain", "Plain", "![](notesd:image/$image?w=1&h=1)\n")
+        notes.save("locked", "Locked", LockedEnvelope.PREFIX + "c2VhbGVk", imageIds = listOf(image))
+        // Mentioned in text only, not as a reference: no wait.
+        notes.save("other", "Other", "notesd:image/$image\n")
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(listOf("other"), api.sent.map { it.first })
+        assertEquals(setOf("plain", "locked"), notes.outbox().map { it.noteId }.toSet())
+        // That cycle sent something, so the image is back in line, and its notes behind it.
+        assertEquals(0, engine.parked())
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(0, notes.pendingNotes())
     }
 }

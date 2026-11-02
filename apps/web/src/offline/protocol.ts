@@ -39,11 +39,13 @@ export type SyncStatus =
   // The server needs a newer app: sync paused, changes kept. minVersion null when the server didn't say.
   | { kind: 'UpgradeRequired'; minVersion: string | null }
 
-/** What sync did to keep both sides of a clash (§6.2, §6.4). */
+/** What sync did to keep both sides of a clash (§6.2, §6.4), or a change the server refused for good. */
 export type SyncNotice =
   | { kind: 'ConflictedCopy'; noteId: string; copyId: string; title: string }
   | { kind: 'RecoveredCopy'; copyId: string; title: string }
   | { kind: 'Restored'; noteId: string; title: string }
+  /** Dropped from the queue; [message] says what and why. */
+  | { kind: 'Rejected'; message: string }
 
 export type SaveNote = {
   id: string

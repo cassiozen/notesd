@@ -1,8 +1,9 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, onTestFinished } from 'vitest'
 import type { Space } from '../src/api/types'
 import { timing } from '../src/notes/saver'
 import { UPGRADE_REQUIRED } from '../src/notes/sync-banners'
+import { syncTiming } from '../src/offline/scheduler'
 import type { Engine } from '../src/offline/tab'
 import {
   bodyText,
@@ -31,6 +32,15 @@ afterEach(() => {
   // @ts-expect-error -- back to the document's own getter
   delete document.visibilityState
 })
+
+/** Sync runs only when a test calls it, not after edits settle. */
+function quietScheduler() {
+  const before = { ...syncTiming }
+  Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, firstRetryMs: 60_000 })
+  onTestFinished(() => {
+    Object.assign(syncTiming, before)
+  })
+}
 
 /** Saves go out when the tab is hidden, without waiting for the typing to pause. */
 function hideTab() {
@@ -275,35 +285,58 @@ describe('notes on this device', () => {
     expect((await listNotes(server)).map((n) => n.preview)).toEqual(['One, two'])
   })
 
-  it('says how many notes couldn’t sync, and Retry puts them back in line', async () => {
-    const { engine, user } = await signedIn({ onDevice: true, seed: (s) => createNote(s, 'Plan', 'One').then(() => undefined) })
+  it('sets aside an edit the server keeps answering strangely, and Retry sends it', async () => {
+    let id = ''
+    const { engine, server, user } = await signedIn({
+      onDevice: true,
+      seed: async (s) => {
+        id = await createNote(s, 'Plan', 'One')
+      },
+    })
     if (!engine) throw new Error('no engine')
-    // Parking takes three unexpected answers in a row; the count is what the screens show.
-    let parked = 2
-    let retried = 0
-    const call = engine.call as (method: string, ...args: unknown[]) => Promise<unknown>
-    engine.call = ((method: string, ...args: unknown[]) => {
-      if (method === 'parked') return Promise.resolve(parked)
-      if (method === 'retryParked') {
-        retried++
-        parked = 0
-        return Promise.resolve()
-      }
-      return call(method, ...args)
-    }) as Engine['call']
-    await engine.call('sync')
+    quietScheduler()
+    await openNote(user, 'Plan')
+    await typeAtEnd(user, ', two')
+    await saved()
 
-    const banner = (await within(list()).findByText('2 notes couldn’t sync. They’re kept on this device.')).closest('[role="status"]')
+    // A portal in front of the server: every push is redirected to its sign-in page.
+    const stop = interceptApi(
+      (method, path) => method !== 'GET' && path.startsWith('/api/v1/notes'),
+      () => new Response(null, { status: 302, headers: { Location: '/portal' } }),
+    )
+    for (let i = 0; i < 3; i++) {
+      // Cycles in turn: each counts once against the edit.
+      // oxlint-disable-next-line no-await-in-loop
+      expect(await engine.call('sync')).toBe('Failed')
+    }
+    expect(await engine.call('parked')).toBe(1)
+    const banner = (await screen.findByText('1 change couldn’t sync. It’s kept on this device.')).closest('[role="status"]')
     if (!(banner instanceof HTMLElement)) throw new Error('no banner')
+    // One message, one Retry: not "not synced" beside it.
+    expect(screen.queryByText(/not synced/)).toBeNull()
+    expect(screen.getAllByRole('button', { name: /^(Retry|Sync now)$/ })).toHaveLength(1)
+    expect((await getNote(server, id)).content).toBe('One')
+
+    stop()
     await user.click(within(banner).getByRole('button', { name: 'Retry' }))
-    expect(retried).toBe(1)
-    await engine.call('sync')
-    await waitFor(() => expect(within(list()).queryByText(/couldn’t sync/)).toBeNull())
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('One, two\n'))
+    await waitFor(() => expect(screen.queryByText(/couldn’t sync/)).toBeNull())
   })
 
-  it('stops syncing and says to update when the server needs a newer app', async () => {
-    const { engine, server } = await signedIn({ onDevice: true, seed: (s) => createNote(s, 'Plan', 'One').then(() => undefined) })
+  it('stops syncing and says to update when the server needs a newer app, keeping the edit', async () => {
+    let id = ''
+    const { engine, server, user } = await signedIn({
+      onDevice: true,
+      seed: async (s) => {
+        id = await createNote(s, 'Plan', 'One')
+      },
+    })
     if (!engine) throw new Error('no engine')
+    quietScheduler()
+    await openNote(user, 'Plan')
+    await typeAtEnd(user, ', two')
+    await saved()
+
     interceptApi(
       (_m, path) => path.startsWith('/api/v1/') && path !== '/api/v1/auth/status',
       () =>
@@ -313,8 +346,10 @@ describe('notes on this device', () => {
         ),
     )
     expect(await engine.call('sync')).toBe('UpgradeRequired')
-    expect((await within(list()).findByRole('alert')).textContent).toBe(UPGRADE_REQUIRED)
-    expect((await listNotes(server)).map((n) => n.title)).toEqual(['Plan'])
+    expect((await screen.findByRole('alert')).textContent).toBe(UPGRADE_REQUIRED)
+    expect((await getNote(server, id)).content).toBe('One')
+    expect(await engine.call('pendingNotes')).toBe(1)
+    expect((await engine.call('get', id))?.content).toBe('One, two\n')
   })
 
   it('moves a note to another space on this device', async () => {

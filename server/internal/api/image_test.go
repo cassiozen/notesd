@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -198,7 +199,9 @@ func TestEmailInlinesImages(t *testing.T) {
 	c.raw("PUT", "/api/v1/images/"+lockedID, "application/vnd.notesd.locked", locked)
 	newer := bytes.Repeat([]byte{8}, 40)
 	newerID := sha(newer)
-	c.raw("PUT", "/api/v1/images/"+newerID, "application/vnd.notesd.locked.v2", newer)
+	if r := c.raw("PUT", "/api/v1/images/"+newerID, "application/vnd.notesd.locked.v2", newer); r.status != 201 {
+		t.Fatalf("locked v2: %d %s", r.status, r.raw)
+	}
 	missing := sha([]byte("never uploaded"))
 
 	content := "![a dot](notesd:image/" + id + "?w=1&h=1)\n\n" +
@@ -271,7 +274,7 @@ func TestLockedNoteImageIDs(t *testing.T) {
 	if r.status != 200 || strings.Join(shows(), ",") != a {
 		t.Fatalf("v2: %d %s, shows %q", r.status, r.raw, shows())
 	}
-	if r := c.do("GET", "/api/v1/notes/n1", nil); r.body["imageIds"] == nil {
-		t.Fatalf("v2 imageIds: %s", r.raw)
+	if r := c.do("GET", "/api/v1/notes/n1", nil); r.status != 200 || !reflect.DeepEqual(r.body["imageIds"], []any{a}) {
+		t.Fatalf("v2 imageIds: %d %s", r.status, r.raw)
 	}
 }

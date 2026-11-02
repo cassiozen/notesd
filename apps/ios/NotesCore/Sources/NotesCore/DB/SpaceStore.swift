@@ -88,7 +88,8 @@ public final class SpaceStore: Sendable {
         let stored = try Spaces.checked(name)
         try await db.write { sql in
             try sql.exec(
-                "UPDATE spaces SET name = ?, icon = coalesce(?, icon), dirty = 1 WHERE id = ?", stored, icon, id)
+                "UPDATE spaces SET name = ?, icon = coalesce(?, icon), dirty = 1, attempts = 0, parked = 0 WHERE id = ?",
+                stored, icon, id)
         }
     }
 
@@ -146,9 +147,19 @@ public final class SpaceStore: Sendable {
     /// Counts an unexpected answer against `change`; the third parks it.
     func attempted(_ change: SpaceChange) async throws {
         try await db.write { sql in
-            try sql.exec(
-                "UPDATE spaces SET attempts = attempts + 1, parked = attempts + 1 >= ? WHERE id = ?", maxAttempts,
-                change.id)
+            // Only the version that went: one changed meanwhile is a new change, with its own tries.
+            if change.delete {
+                try sql.exec(
+                    "UPDATE spaces SET attempts = attempts + 1, parked = attempts + 1 >= ? WHERE id = ? AND pending_delete = 1",
+                    maxAttempts, change.id)
+            } else {
+                try sql.exec(
+                    """
+                    UPDATE spaces SET attempts = attempts + 1, parked = attempts + 1 >= ?
+                    WHERE id = ? AND name = ? AND icon = ? AND dirty = 1
+                    """,
+                    maxAttempts, change.id, change.name, change.icon)
+            }
         }
     }
 

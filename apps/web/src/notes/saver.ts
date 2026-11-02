@@ -524,11 +524,21 @@ export class NoteSaver extends SaverCore {
       p.operationId = crypto.randomUUID()
       result = await this.request(p, keepalive)
     }
-    // Something in front of notesd can answer 2xx with its own JSON.
-    if (typeof result !== 'object' || result === null || typeof result.revision !== 'number') {
-      throw new ApiError(200, { error: UNEXPECTED, message: unexpectedMessage(200) })
-    }
+    // Something in front of notesd can answer 2xx with its own JSON: committing that would lose the edit.
+    if (!this.isResult(result)) throw new ApiError(200, { error: UNEXPECTED, message: unexpectedMessage(200) })
     return result
+  }
+
+  private isResult(r: unknown): r is MutationResult {
+    if (typeof r !== 'object' || r === null) return false
+    const m = r as Partial<Record<keyof MutationResult, unknown>>
+    return (
+      m.id === this.id &&
+      (m.status === 'created' || m.status === 'updated' || m.status === 'unchanged') &&
+      typeof m.revision === 'number' &&
+      typeof m.changeSeq === 'number' &&
+      typeof m.updatedAt === 'number'
+    )
   }
 
   private request(p: Pending, keepalive: boolean): Promise<MutationResult> {

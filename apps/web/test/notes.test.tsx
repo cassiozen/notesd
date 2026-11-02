@@ -406,10 +406,9 @@ describe('failures', () => {
     )
     await typeAtEnd(user, 'B')
 
-    const banner = await within(list()).findByRole('alert')
-    expect(banner.textContent).toBe(UPGRADE_REQUIRED)
-    // The note says so too: on a phone the list isn't showing.
-    expect(within(screen.getByRole('region', { name: 'Note' })).getByText(UPGRADE_REQUIRED)).toBeTruthy()
+    // Above every screen, once: a phone showing the note sees it too.
+    expect((await screen.findByRole('alert')).textContent).toBe(UPGRADE_REQUIRED)
+    expect(screen.getByText('Couldn’t save')).toBeTruthy()
     expect(screen.queryByText(/didn’t accept this save/)).toBeNull()
     expect(bodyText()).toBe('AB')
     expect((await getNote(server, id)).content).toBe('A')
@@ -421,7 +420,7 @@ describe('failures', () => {
         await createNote(s, 'Plan', 'A')
       },
     })
-    expect(within(list()).queryByText(/notesd was updated/)).toBeNull()
+    expect(screen.queryByText(/notesd was updated/)).toBeNull()
     interceptApi(
       () => true,
       async (_m, _p, real) => {
@@ -432,9 +431,9 @@ describe('failures', () => {
       },
     )
     await openNote(user, 'Plan')
-    const banner = await within(list()).findByText('notesd was updated. Reload to get the new version.')
-    expect(banner.closest('[role="status"]')).toBeTruthy()
-    expect(within(list()).getByRole('button', { name: 'Reload' })).toBeTruthy()
+    const banner = (await screen.findByText('notesd was updated. Reload to get the new version.')).closest('[role="status"]')
+    if (!(banner instanceof HTMLElement)) throw new Error('no banner')
+    expect(within(banner).getByRole('button', { name: 'Reload' })).toBeTruthy()
   })
 
   it('asks to sign in again when the session ends mid-edit, then saves', async () => {

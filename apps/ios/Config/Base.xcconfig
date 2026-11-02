@@ -12,7 +12,7 @@ CODE_SIGN_STYLE = Automatic
 // Fallbacks: Version.xcconfig (gitignored) overrides both with the version from `git describe`.
 // It's written by scripts/version.sh, which the Notes scheme runs as a build pre-action, so
 // Xcode and `mise run build:ios` / `test:ios` get it; run it by hand for other schemes.
-MARKETING_VERSION = 0.0.0-dev
+MARKETING_VERSION = 0.0.0
 CURRENT_PROJECT_VERSION = 1
 #include? "Version.xcconfig"
 

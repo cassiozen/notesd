@@ -213,6 +213,13 @@ internal suspend fun Sql.rememberImages(noteId: String, content: String, imageId
     )
 }
 
+/** An image reference's destination in Markdown (`](notesd:image/<id>?w=…&h=…)`): the id is group 1. */
+internal val IMAGE_REFERENCE = Regex("\\]\\(notesd:image/([0-9a-f]{64})\\?w=[1-9]\\d{0,5}&h=[1-9]\\d{0,5}\\)")
+
+/** The images a plain body shows, by id; none for a locked one (its saves list them). */
+internal fun imageIdsIn(markdown: String): List<String> =
+    IMAGE_REFERENCE.findAll(markdown).map { it.groupValues[1] }.distinct().toList()
+
 /** A note gone from this device: its bodies' images aren't needed. */
 internal suspend fun Sql.forgetImages(noteId: String) = exec("DELETE FROM locked_images WHERE note_id = ?", noteId)
 

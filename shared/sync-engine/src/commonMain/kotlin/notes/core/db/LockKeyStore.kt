@@ -73,9 +73,12 @@ class LockKeyStore(private val db: Database) {
     }
 }
 
-/** A stored kdf; one that no longer parses is as good as none (implied by the kind). */
-private fun kdfOf(text: String): JsonObject? = try {
+/**
+ * A stored kdf. Text that isn't a JSON object reads as an empty one, which names no function: the entry
+ * stays malformed instead of passing for one from before 1.0 (SQL NULL).
+ */
+private fun kdfOf(text: String): JsonObject = try {
     Json.parseToJsonElement(text) as? JsonObject
 } catch (_: IllegalArgumentException) {
     null
-}
+} ?: JsonObject(emptyMap())
