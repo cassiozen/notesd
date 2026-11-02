@@ -2,6 +2,7 @@ import { screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Space } from '../src/api/types'
 import { timing } from '../src/notes/saver'
+import { UPGRADE_REQUIRED } from '../src/notes/sync-banners'
 import type { Engine } from '../src/offline/tab'
 import {
   bodyText,
@@ -9,6 +10,7 @@ import {
   deleteNote,
   editElsewhere,
   getNote,
+  interceptApi,
   list,
   listNotes,
   noteTitle,
@@ -271,6 +273,48 @@ describe('notes on this device', () => {
     await user.click(screen.getByRole('button', { name: 'Sync now' }))
     await waitFor(() => expect(screen.queryByText('1 note not synced')).toBeNull())
     expect((await listNotes(server)).map((n) => n.preview)).toEqual(['One, two'])
+  })
+
+  it('says how many notes couldn’t sync, and Retry puts them back in line', async () => {
+    const { engine, user } = await signedIn({ onDevice: true, seed: (s) => createNote(s, 'Plan', 'One').then(() => undefined) })
+    if (!engine) throw new Error('no engine')
+    // Parking takes three unexpected answers in a row; the count is what the screens show.
+    let parked = 2
+    let retried = 0
+    const call = engine.call as (method: string, ...args: unknown[]) => Promise<unknown>
+    engine.call = ((method: string, ...args: unknown[]) => {
+      if (method === 'parked') return Promise.resolve(parked)
+      if (method === 'retryParked') {
+        retried++
+        parked = 0
+        return Promise.resolve()
+      }
+      return call(method, ...args)
+    }) as Engine['call']
+    await engine.call('sync')
+
+    const banner = (await within(list()).findByText('2 notes couldn’t sync. They’re kept on this device.')).closest('[role="status"]')
+    if (!(banner instanceof HTMLElement)) throw new Error('no banner')
+    await user.click(within(banner).getByRole('button', { name: 'Retry' }))
+    expect(retried).toBe(1)
+    await engine.call('sync')
+    await waitFor(() => expect(within(list()).queryByText(/couldn’t sync/)).toBeNull())
+  })
+
+  it('stops syncing and says to update when the server needs a newer app', async () => {
+    const { engine, server } = await signedIn({ onDevice: true, seed: (s) => createNote(s, 'Plan', 'One').then(() => undefined) })
+    if (!engine) throw new Error('no engine')
+    interceptApi(
+      (_m, path) => path.startsWith('/api/v1/') && path !== '/api/v1/auth/status',
+      () =>
+        Response.json(
+          { error: 'upgrade_required', message: 'this app is too old for this server; update notesd', minVersion: '9.0.0' },
+          { status: 426 },
+        ),
+    )
+    expect(await engine.call('sync')).toBe('UpgradeRequired')
+    expect((await within(list()).findByRole('alert')).textContent).toBe(UPGRADE_REQUIRED)
+    expect((await listNotes(server)).map((n) => n.title)).toEqual(['Plan'])
   })
 
   it('moves a note to another space on this device', async () => {

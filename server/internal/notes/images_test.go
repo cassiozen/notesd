@@ -185,3 +185,15 @@ func TestLockedImageIDsRoundTrip(t *testing.T) {
 		t.Fatalf("a plain note lists %q", p.ImageIDs)
 	}
 }
+
+// check finds the images a later version's locked note lists, too.
+func TestMissingIncludesLaterLockVersions(t *testing.T) {
+	db, s := setup(t)
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op-1", ID: "n1", Title: "T", Content: locks.Family + "v2:opaque",
+		ImageIDs: []string{img('d')}}); err != nil {
+		t.Fatal(err)
+	}
+	if missing, err := images.NewStore(db).Missing(ctx); err != nil || !slices.Equal(missing, []string{img('d')}) {
+		t.Fatalf("missing = %v, %v", missing, err)
+	}
+}

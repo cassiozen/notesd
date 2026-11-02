@@ -177,6 +177,11 @@ func TestMirrorFollowsNotes(t *testing.T) {
 	f.update("a", "Groceries", locks.Prefix+"c2VjcmV0c2VjcmV0c2VjcmV0c2VjcmV0c2VjcmV0")
 	f.flush()
 	f.wantFiles("Notes/", "Notes/trip.md")
+
+	// Locked by a newer app: as unreadable here.
+	f.update("b", "trip", locks.Family+"v2:opaque")
+	f.flush()
+	f.wantFiles("Notes/")
 }
 
 func TestMirrorKeepsNumberedNames(t *testing.T) {

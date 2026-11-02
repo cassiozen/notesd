@@ -200,8 +200,9 @@ final class OnboardingModel {
         switch r {
         case .unreachable: "Can’t reach the server. Check your connection and try again."
         case .rateLimited: "Too many attempts. Wait a moment and try again."
-        case .rejected(let status, let error, _, _) where error == ApiClient.unexpectedResponse || status == 404:
+        case .unexpected, .rejected(404, _, _, _):
             "There’s no notes server at that address."
+        case .upgradeRequired: SyncMessages.upgradeRequired
         case .rejected(let status, _, let message, _):
             message.isEmpty ? "The server refused that (error \(status))." : message
         case .conflict(_, let message, _): message

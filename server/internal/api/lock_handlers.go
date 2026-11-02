@@ -20,7 +20,7 @@ func (s *Server) listLockKeys(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"keys": keys})
 }
 
-// PUT /api/v1/locks/keys/{id}  {"kind", "credentialId"?, "salt", "iterations", "wrapped", "verifier"}
+// PUT /api/v1/locks/keys/{id}  {"kind", "credentialId"?, "salt", "kdf", "iterations"?, "wrapped", "verifier"}
 func (s *Server) putLockKey(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	var req locks.PutInput

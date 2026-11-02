@@ -47,6 +47,7 @@ import notes.app.AppGraph
 import notes.app.account.Account
 import notes.app.account.OnboardingScreen
 import notes.app.account.OnboardingViewModel
+import notes.app.apiClient
 import notes.app.settings.NewSpaceDialog
 import notes.app.settings.SettingsScreen
 import notes.app.settings.SettingsSection
@@ -57,7 +58,6 @@ import notes.app.ui.LocalKeyboardBar
 import notes.app.ui.LocalReduceMotion
 import notes.app.ui.hideKeyboard
 import notes.app.ui.springSlide
-import notes.core.api.ApiClient
 import notes.core.db.NoteFilter
 import notes.core.text.Uuid7
 import notes.core.text.tagKey
@@ -406,7 +406,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         OnboardingViewModel(
                                             graph.accounts,
                                             graph.deviceName,
-                                            { ApiClient(it) },
+                                            { apiClient(it) },
                                             lockedServer = signedOut?.server?.takeIf { key.signInAgain },
                                             username = signedOut?.username.orEmpty()
                                         )

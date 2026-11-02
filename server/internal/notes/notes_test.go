@@ -711,3 +711,64 @@ func TestMovingBetweenSpaces(t *testing.T) {
 		t.Fatal("invalid space id accepted")
 	}
 }
+
+// Operations recorded before requests were fingerprinted by their body
+// replay on their id alone: their old hash can't be recomputed.
+func TestVersion1OperationReplays(t *testing.T) {
+	db, s := setup(t)
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op1", ID: "n1", Title: "T", Content: "C"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.W.ExecContext(ctx, `UPDATE applied_operations SET hash_version = 1, request_hash = 'old' WHERE operation_id = 'op1'`); err != nil {
+		t.Fatal(err)
+	}
+	r, err := s.Create(ctx, notes.CreateInput{OperationID: "op1", ID: "n1", Title: "T", Content: "C"})
+	if err != nil || !r.Replayed || r.HTTPStatus != 201 {
+		t.Fatalf("replay: %+v, %v", r, err)
+	}
+	var version int
+	if err := db.R.QueryRowContext(ctx, `SELECT hash_version FROM applied_operations WHERE operation_id = 'op1'`).Scan(&version); err != nil || version != 1 {
+		t.Fatalf("hash_version = %d, %v", version, err)
+	}
+	// New operations are recorded as version 2, and checked.
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op2", ID: "n2", Title: "T", Content: "C"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op2", ID: "n2", Title: "T", Content: "other"}); !errors.Is(err, notes.ErrOperationReuse) {
+		t.Fatalf("reuse: %v", err)
+	}
+}
+
+// A body locked by a newer app is stored as given and treated as locked.
+func TestLaterLockVersion(t *testing.T) {
+	db, s := setup(t)
+	opaque := locks.Family + "v2:c2VjcmV0c2VjcmV0"
+	create(t, s, "a", "Vault", opaque)
+	img := strings.Repeat("a", 64)
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "u", ID: "a", BaseRevision: 1, Title: "Vault", Content: opaque + "Zm9v", ImageIDs: []string{img}}); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := s.Get(ctx, "a"); err != nil || len(n.ImageIDs) != 1 || n.ImageIDs[0] != img {
+		t.Fatalf("get: %+v, %v", n, err)
+	}
+	items, _, err := s.List(ctx, search.Filter{}, 50, "")
+	if err != nil || len(items) != 1 || !items[0].Locked || items[0].Preview != "" {
+		t.Fatalf("list: %+v, %v", items, err)
+	}
+	if ids := listIDs(t, s, search.Filter{Locked: true}); fmt.Sprint(ids) != "[a]" {
+		t.Fatalf("locked = %v", ids)
+	}
+	if res, _ := search.Search(ctx, db, "c2VjcmV0c2VjcmV0", search.Filter{}, 10, 0); len(res) != 0 {
+		t.Fatalf("ciphertext searchable: %+v", res)
+	}
+	if res, _ := search.Search(ctx, db, "vault", search.Filter{Locked: true}, 10, 0); len(res) != 1 || !res[0].Locked {
+		t.Fatalf("title search: %+v", res)
+	}
+	for _, bad := range []string{locks.Family + "v2:not base64", locks.Family + "x:abc", locks.Family + "v2:abc\nmore"} {
+		_, err := s.Update(ctx, notes.UpdateInput{OperationID: "bad", ID: "a", BaseRevision: 2, Title: "Vault", Content: bad})
+		var verr *notes.ValidationError
+		if !errors.As(err, &verr) || verr.Field != "content" {
+			t.Errorf("%q: %v", bad, err)
+		}
+	}
+}

@@ -11,6 +11,11 @@ public enum ApiResult<T: Sendable>: Sendable {
     /// Any other error answer, e.g. a wrong password (401 on login) or invalid input (400).
     case rejected(status: Int, error: String, message: String, field: String?)
     case unreachable(String)
+    /// An answer notesd wouldn't give: a redirect, a 4xx without notesd's JSON error (a proxy or Wi-Fi
+    /// portal page), or a 2xx that isn't what the endpoint returns.
+    case unexpected(status: Int)
+    /// 426: the server needs a newer app. Nothing is wrong with the request; keep it.
+    case upgradeRequired(minVersion: String?)
 
     /// A non-ok result, retyped: none of them carry a value.
     func failure<U>() -> ApiResult<U> {
@@ -22,6 +27,8 @@ public enum ApiResult<T: Sendable>: Sendable {
         case .rejected(let status, let error, let message, let field):
             .rejected(status: status, error: error, message: message, field: field)
         case .unreachable(let cause): .unreachable(cause)
+        case .unexpected(let status): .unexpected(status: status)
+        case .upgradeRequired(let minVersion): .upgradeRequired(minVersion: minVersion)
         }
     }
 
@@ -30,6 +37,11 @@ public enum ApiResult<T: Sendable>: Sendable {
         return nil
     }
 }
+
+/// notesd error codes that mean a queued change can never succeed as sent: it's dropped, and the user told.
+let permanentErrors: Set<String> = [
+    "invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default",
+]
 
 /// Device tokens. `accessExpiresAt` is Unix ms.
 public struct Tokens: Hashable, Sendable, Codable {
@@ -56,6 +68,9 @@ public protocol Credentials: Sendable {
 
 public struct AuthStatus: Decodable, Sendable {
     public var setupRequired: Bool
+    /// Absent from servers before 1.0.
+    public var serverVersion: String?
+    public var apiVersion: Int?
 }
 
 public struct Session: Decodable, Sendable, Hashable {
@@ -239,10 +254,12 @@ public struct LockKey: Codable, Sendable, Hashable {
     public var iterations: Int
     public var wrapped: String
     public var createdAt: Int64
+    /// How the entry's key is derived from its secret; nil from servers before 1.0, implied by `kind`.
+    public var kdf: Kdf?
 
     public init(
         id: String, kind: String, credentialId: String? = nil, salt: String, iterations: Int = 0, wrapped: String,
-        createdAt: Int64 = 0
+        createdAt: Int64 = 0, kdf: Kdf? = nil
     ) {
         self.id = id
         self.kind = kind
@@ -251,6 +268,7 @@ public struct LockKey: Codable, Sendable, Hashable {
         self.iterations = iterations
         self.wrapped = wrapped
         self.createdAt = createdAt
+        self.kdf = kdf
     }
 
     public init(from decoder: any Decoder) throws {
@@ -262,9 +280,28 @@ public struct LockKey: Codable, Sendable, Hashable {
         iterations = try c.decodeIfPresent(Int.self, forKey: .iterations) ?? 0
         wrapped = try c.decode(String.self, forKey: .wrapped)
         createdAt = try c.decodeIfPresent(Int64.self, forKey: .createdAt) ?? 0
+        kdf = try c.decodeIfPresent(Kdf.self, forKey: .kdf)
     }
 
-    private enum CodingKeys: String, CodingKey { case id, kind, credentialId, salt, iterations, wrapped, createdAt }
+    private enum CodingKeys: String, CodingKey {
+        case id, kind, credentialId, salt, iterations, wrapped, createdAt, kdf
+    }
+}
+
+/// A keyring entry's key derivation (§10.1). Parameters of functions this app doesn't know are dropped:
+/// it can't use them anyway.
+public struct Kdf: Codable, Sendable, Hashable {
+    public static let pbkdf2 = "pbkdf2-sha256"
+    public static let hkdf = "hkdf-sha256"
+
+    public var name: String
+    /// pbkdf2-sha256 only.
+    public var iterations: Int?
+
+    public init(name: String, iterations: Int? = nil) {
+        self.name = name
+        self.iterations = iterations
+    }
 }
 
 /// An image as stored on the server: its type, as served, and its bytes.
@@ -280,6 +317,12 @@ public struct ImageFile: Sendable, Hashable {
 
 /// The type a locked note's encrypted image is uploaded and served as (§10.1).
 public let lockedImageType = "application/vnd.notesd.locked"
+
+/// Any version of a locked image: later ones are `lockedImageType` plus ".v<n>". Only `lockedImageType`
+/// opens here; others are never shown nor stored again.
+public func isLockedImageType(_ type: String) -> Bool {
+    type == lockedImageType || type.hasPrefix(lockedImageType + ".")
+}
 
 /// The server's email settings (Resend). The key itself never comes back, only its last characters.
 public struct EmailSettings: Decodable, Sendable, Hashable {

@@ -304,6 +304,10 @@
   font-size: 12px;
 }
 
+.unsynced + .unsynced {
+  margin-top: 6px;
+}
+
 .unsyncedWhy {
   color: var(--ink-3);
 }

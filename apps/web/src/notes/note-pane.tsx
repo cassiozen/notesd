@@ -9,7 +9,7 @@ import { insertImageAt, resealImages, storeImage } from '../images/store'
 import { Banner } from '../ui/banner'
 import { Button } from '../ui/button'
 import { ComposeIcon, LockIcon, TrashIcon } from '../ui/icons'
-import { LockedError } from '../locks/crypto'
+import { LockedError, UnsupportedLockError } from '../locks/crypto'
 import { lockSession, useLockStatus } from '../locks/session'
 import { UnlockForm } from '../locks/unlock'
 import { StatusPill } from '../ui/status-pill'
@@ -19,6 +19,7 @@ import { notesSource, type Saver } from './source'
 import { NoteMenu } from './share'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
+import { UPGRADE_REQUIRED } from './sync-banners'
 import { tagKey } from './tags'
 import styles from './note-pane.module.css'
 
@@ -53,6 +54,8 @@ type Load =
    * [keyFailed]: the key in memory didn't open it (the keyring was reset since).
    */
   | { kind: 'locked'; title: string; draft?: Saver; keyFailed: boolean }
+  /** Locked by a newer notesd: shown, never opened or saved. */
+  | { kind: 'unsupported'; title: string }
   | { kind: 'ready'; saver: Saver }
 
 export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDraft, onDelete, onMove, onGone, onNotice }: Props) {
@@ -104,9 +107,11 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
         } catch (err) {
           if (cancelled) return
           setLoad(
-            err instanceof LockedError
-              ? { kind: 'locked', title: stored.title, keyFailed: lockSession.key() !== null }
-              : { kind: 'failed' },
+            err instanceof UnsupportedLockError
+              ? { kind: 'unsupported', title: stored.title }
+              : err instanceof LockedError
+                ? { kind: 'locked', title: stored.title, keyFailed: lockSession.key() !== null }
+                : { kind: 'failed' },
           )
           return
         }
@@ -191,6 +196,15 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
                     <UnlockForm onUnlocked={() => undefined} autoFocus={!mobile} />
                   </>
                 )}
+              </>
+            )}
+            {load.kind === 'unsupported' && (
+              <>
+                <span className={styles.lockMark}>
+                  <LockIcon size={24} />
+                </span>
+                <h2 className={styles.placeholderTitle}>{load.title.trim() || 'Locked note'}</h2>
+                <span className={styles.muted}>{new UnsupportedLockError().message}</span>
               </>
             )}
             {load.kind === 'failed' && (
@@ -405,7 +419,11 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
         ? refusal
         : problem?.kind === 'unlock'
           ? 'Unlock locked notes to save'
-          : problem === null
+          : problem?.kind === 'upgrade'
+            ? 'Update notesd to save'
+            : problem?.kind === 'unexpected'
+              ? 'notesd didn’t get this save'
+              : problem === null
             ? 'Waiting for you to sign in again'
             : undefined
 
@@ -475,6 +493,23 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
           }
         >
           {refusal}: {problem.message}
+        </Notice>
+      )}
+      {problem?.kind === 'unexpected' && (
+        <Notice
+          tone="error"
+          actions={
+            <Button variant="solid" size="sm" onClick={() => saver.retryNow()}>
+              Retry
+            </Button>
+          }
+        >
+          {problem.message}
+        </Notice>
+      )}
+      {problem?.kind === 'upgrade' && (
+        <Notice tone="error" actions={null}>
+          {UPGRADE_REQUIRED}
         </Notice>
       )}
       {problem?.kind === 'conflict' && (

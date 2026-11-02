@@ -41,6 +41,7 @@ const host = engineHost(
     return { db, capi: sqlite3.capi }
   },
   (event) => scope.postMessage({ type: 'event', event }),
+  __NOTESD_VERSION__,
 )
 
 scope.addEventListener('message', async ({ data: { from, id, method, args } }) => {

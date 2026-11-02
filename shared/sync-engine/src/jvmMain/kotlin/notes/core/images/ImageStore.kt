@@ -14,6 +14,7 @@ import notes.core.api.SyncApi
 import notes.core.crypto.LockedException
 import notes.core.crypto.LockedNotes
 import notes.core.db.Database
+import notes.core.db.uploadPendingImages
 
 /** An image added on this device that the server doesn't have yet. */
 data class PendingImage(val id: String, val type: String)
@@ -57,7 +58,8 @@ class ImageStore(
         val result = client.getImage(id)
         if (result !is ApiResult.Ok) return null
         val file = result.value
-        // The id is the hash: anything else isn't this image.
+        // The id is the hash: anything else isn't this image. A locked type of a newer version
+        // (isLockedImageType) is in no TYPES: it can't be opened, nor resealed, here.
         if (ImageRef.sha256(file.bytes) != id || TYPES.none { it.second == file.type }) return null
         withContext(io) { write(File(cacheDir, fileName(id, file.type)), file.bytes) }
         return file
@@ -126,29 +128,19 @@ class ImageStore(
     /**
      * Uploads every pending image, oldest first. Called by sync before any
      * note operation goes out, so no device sees a reference before its bytes
-     * exist. Stops at the first failure that a retry might fix.
+     * exist. Stops at the first failure that a retry might fix. One refused for
+     * good (bytes not matching the id, too large, not an image) is let go:
+     * holding it back would stop every note from syncing.
      */
-    override suspend fun upload(client: SyncApi): ApiResult<Unit> {
-        for (image in pending()) {
-            val file = File(pendingDir, fileName(image.id, image.type))
-            val bytes = withContext(io) { if (file.isFile) file.readBytes() else null }
-            if (bytes == null) {
-                forget(image.id)
-                continue
-            }
-            when (val r = client.putImage(image.id, bytes, image.type)) {
-                is ApiResult.Ok -> uploaded(image)
-
-                // Refused for good (bytes not matching the id, too large, not an
-                // image): retrying won't change that, and holding it back would
-                // stop every note from syncing. Its notes show it as missing.
-                is ApiResult.Rejected if r.status in PendingImages.REFUSED -> uploaded(image)
-
-                else -> return r
-            }
-        }
-        return ApiResult.Ok(Unit)
-    }
+    override suspend fun upload(client: SyncApi): ApiResult<List<String>> = uploadPendingImages(
+        db,
+        client,
+        read = { id, type ->
+            val file = File(pendingDir, fileName(id, type))
+            withContext(io) { if (file.isFile) file.readBytes() else null }
+        },
+        uploaded = { id, type -> uploaded(PendingImage(id, type)) }
+    )
 
     private suspend fun uploaded(image: PendingImage) {
         withContext(io) {

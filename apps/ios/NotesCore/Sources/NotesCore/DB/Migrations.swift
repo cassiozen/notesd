@@ -6,7 +6,10 @@ import Foundation
 /// iOS starts at Android's schema as of its 0007, collapsed into one file
 /// (there were no iOS databases to upgrade). Add later changes as new files.
 enum Migrations {
-    static let files = ["0001_init", "0002_pending_images", "0003_lock_keys", "0004_spaces", "0005_space_icons"]
+    static let files = [
+        "0001_init", "0002_pending_images", "0003_lock_keys", "0004_spaces", "0005_space_icons", "0006_parking",
+        "0007_lock_key_kdf",
+    ]
 
     static func apply(_ conn: Connection) throws {
         let current = try Sql(conn).int64("PRAGMA user_version")

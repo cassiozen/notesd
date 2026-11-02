@@ -581,7 +581,7 @@ func TestHealthAndWeb(t *testing.T) {
 	if r := c.do("GET", "/missing.js", nil); r.status != 404 {
 		t.Errorf("missing asset: %d", r.status)
 	}
-	if r := c.do("GET", "/api/v1/nope", nil); r.status != 404 || r.body["error"] != "not_found" {
+	if r := c.do("GET", "/api/v1/nope", nil); r.status != 404 || r.body["error"] != "no_such_endpoint" {
 		t.Errorf("unknown API path: %d %s", r.status, r.raw)
 	}
 	if r := c.do("PATCH", "/api/v1/notes/x", nil); r.status != 405 && r.status != 404 {
@@ -631,5 +631,40 @@ func TestTagsOverHTTP(t *testing.T) {
 	}
 	if r := c.do("GET", "/api/v1/notes?tag=%23", nil); r.status != 400 {
 		t.Fatalf("bad tag: %d", r.status)
+	}
+}
+
+// A retry is recognized by its body as sent, however it's formatted.
+func TestRetryFingerprint(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c, _ := e.deviceClient()
+	if r := c.raw("POST", "/api/v1/notes", "application/json", []byte(`{"operationId":"c1","id":"n1","title":"T","content":"a"}`)); r.status != 201 {
+		t.Fatalf("create: %d %s", r.status, r.raw)
+	}
+	r := c.raw("POST", "/api/v1/notes", "application/json", []byte(`{ "content": "a", "title": "T",
+		"id": "n1", "operationId": "c1" }`))
+	if r.status != 201 || r.header.Get("Idempotent-Replayed") != "true" {
+		t.Fatalf("reformatted retry: %d %s", r.status, r.raw)
+	}
+	put := `{"operationId":"u1","baseRevision":1,"title":"T","content":"b","updatedAt":1700000000000}`
+	if r := c.raw("PUT", "/api/v1/notes/n1", "application/json", []byte(put)); r.status != 200 {
+		t.Fatalf("put: %d %s", r.status, r.raw)
+	}
+	for name, body := range map[string]string{
+		"a field this server ignores": `{"operationId":"u1","baseRevision":1,"title":"T","content":"b","updatedAt":1700000000000,"pinned":true}`,
+		"null for absent":             `{"operationId":"u1","baseRevision":1,"title":"T","content":"b","updatedAt":1700000000000,"spaceId":null}`,
+	} {
+		if r := c.raw("PUT", "/api/v1/notes/n1", "application/json", []byte(body)); r.status != 422 || r.body["error"] != "operation_id_reused" {
+			t.Errorf("%s: %d %s", name, r.status, r.raw)
+		}
+	}
+	// The note in the path is part of the request.
+	c.raw("POST", "/api/v1/notes", "application/json", []byte(`{"operationId":"c2","id":"n2","title":"T","content":"a"}`))
+	if r := c.raw("PUT", "/api/v1/notes/n2", "application/json", []byte(put)); r.status != 422 {
+		t.Fatalf("other note: %d %s", r.status, r.raw)
+	}
+	if r := c.raw("PUT", "/api/v1/notes/n1", "application/json", []byte(`{"operationId":"u1","baseRevision":1,"title":"T","content":"\u0062","updatedAt":1700000000000}`)); r.status != 200 || r.header.Get("Idempotent-Replayed") != "true" {
+		t.Fatalf("retry: %d %s", r.status, r.raw)
 	}
 }

@@ -48,6 +48,8 @@ import notes.app.ui.NotesField
 import notes.app.ui.PasswordMeter
 import notes.app.ui.Type
 import notes.core.crypto.LockSession
+import notes.core.crypto.UnsupportedKdfException
+import notes.core.crypto.UnsupportedVersionException
 
 /** For call sites without fingerprint unlock. */
 private val Off = MutableStateFlow(false)
@@ -59,6 +61,8 @@ const val MIN_LOCK_PASSWORD = 8
 fun LockSession.Outcome.message(): String? = when (this) {
     LockSession.Outcome.Done -> null
     LockSession.Outcome.WrongPassword -> "Wrong password."
+    LockSession.Outcome.UnsupportedKdf -> UnsupportedKdfException.UNSUPPORTED_KDF_MESSAGE
+    LockSession.Outcome.MalformedKey -> "The lock password on your server is damaged, so it can't unlock here."
     LockSession.Outcome.NotConnected -> "Connect to your server first: it keeps the lock password for every device."
     LockSession.Outcome.Offline -> "Can't reach the server. Try again when you're online."
     LockSession.Outcome.Failed -> "Something went wrong. Try again."
@@ -112,13 +116,13 @@ fun UnlockFields(
         if (password.isEmpty() || busy) return
         busy = true
         scope.launch {
-            val ok = locks.unlock(password)
+            val outcome = locks.unlock(password)
             busy = false
-            if (ok) {
+            if (outcome == LockSession.Outcome.Done) {
                 if (activity != null) fingerprint?.offer(activity)
                 onUnlocked()
             } else {
-                error = "Wrong password."
+                error = outcome.message()
             }
         }
     }
@@ -164,7 +168,9 @@ fun LockedNote(
     modifier: Modifier = Modifier,
     fingerprint: FingerprintUnlock? = null,
     /** Ask for the fingerprint at once: the note was just opened, not just locked. */
-    promptFingerprint: Boolean = true
+    promptFingerprint: Boolean = true,
+    /** Locked by a newer version of notesd: no unlocking here at all. */
+    unsupported: Boolean = false
 ) {
     val t = LocalTokens.current
     Box(modifier.fillMaxSize().padding(24.dp), contentAlignment = Alignment.Center) {
@@ -180,7 +186,14 @@ fun LockedNote(
                 Icon(Icons.Lock, null, Modifier.size(28.dp), tint = t.ink2)
             }
             Text(title.ifBlank { "Locked note" }, style = Type.title, color = t.ink, textAlign = TextAlign.Center)
-            if (unreadable) {
+            if (unsupported) {
+                Text(
+                    UnsupportedVersionException.UNSUPPORTED_VERSION_MESSAGE,
+                    style = Type.small,
+                    color = t.ink3,
+                    textAlign = TextAlign.Center
+                )
+            } else if (unreadable) {
                 Text(
                     "This note was locked with a password that was reset. It can't be opened.",
                     style = Type.small,

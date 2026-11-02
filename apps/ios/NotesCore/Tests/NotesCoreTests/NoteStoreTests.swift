@@ -289,6 +289,14 @@ struct NoteStoreTests {
         #expect(try await store.lockedCount() == 0)
     }
 
+    @Test func aBodyLockedByANewerVersionCountsAsLocked() async throws {
+        try await store.save("a", title: "Bank", content: "notesd:locked:v2:secretwords")
+        #expect(try await store.list(.locked).map(\.id) == ["a"])
+        #expect(try await store.list().first?.locked == true)
+        #expect(try await store.search("secretwords").isEmpty)
+        #expect(try await store.get("a")?.locked == true)
+    }
+
     @Test func envelopesCompareAsStoredNeverAsMarkdown() {
         let a = fakeEnvelope()
         let b = fakeEnvelope()

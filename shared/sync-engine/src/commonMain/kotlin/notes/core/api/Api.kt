@@ -21,7 +21,35 @@ sealed interface ApiResult<out T> {
         ApiResult<Nothing>
 
     data class Unreachable(val cause: Throwable) : ApiResult<Nothing>
+
+    /** 426: this app is older than the server accepts. [minVersion] when the server said. */
+    data class UpgradeRequired(val minVersion: String?) : ApiResult<Nothing>
+
+    /**
+     * Not an answer notesd gives: no notesd error body (a proxy's or portal's page), a redirect, or a
+     * success whose body isn't what the endpoint returns. [status] 0: a redirect the browser hid.
+     */
+    data class Unexpected(val status: Int) : ApiResult<Nothing>
 }
+
+/** What this app is, sent with every request so the server can ask for an upgrade (`android`/`ios`/`web`). */
+data class ClientInfo(val platform: String, val version: String) {
+    /** `X-Notesd-Client`. */
+    val header: String get() = "$platform/${version.removePrefix("v")}"
+
+    /** The native apps' `User-Agent`. */
+    val userAgent: String get() = "notesd-$header"
+}
+
+/** The words for [ApiResult.Unexpected], shown when sync stops on one. */
+fun unexpectedMessage(status: Int): String {
+    val http = if (status == 0) "a redirect" else "HTTP $status"
+    return "Your server answered something notesd didn't expect ($http). If you sign in to a proxy or Wi-Fi " +
+        "portal first, do that, then sync again."
+}
+
+const val UPGRADE_REQUIRED_MESSAGE =
+    "Your notesd server needs a newer version of this app. Update notesd to keep syncing; your changes are kept here."
 
 /** Device tokens. [accessExpiresAt] is Unix ms. */
 data class Tokens(val access: String, val accessExpiresAt: Long, val refresh: String)
@@ -37,8 +65,9 @@ interface Credentials {
     suspend fun revoked()
 }
 
+/** [serverVersion] and [apiVersion] are absent from servers before 1.0. */
 @Serializable
-data class AuthStatus(val setupRequired: Boolean)
+data class AuthStatus(val setupRequired: Boolean, val serverVersion: String? = null, val apiVersion: Int? = null)
 
 @Serializable
 data class Session(val id: String, val kind: String, val name: String, val createdAt: Long, val lastUsedAt: Long)
@@ -60,11 +89,9 @@ internal data class ErrorBody(
     val error: String = "",
     val message: String = "",
     val field: String? = null,
-    val current: JsonObject? = null
+    val current: JsonObject? = null,
+    val minVersion: String? = null
 )
-
-/** A 2xx answer that isn't the expected JSON: something other than notesd is at this address. */
-const val UNEXPECTED_RESPONSE = "unexpected_response"
 
 private const val DEFAULT_RETRY_AFTER_S = 60L
 private val errorJson = Json { ignoreUnknownKeys = true }
@@ -76,27 +103,36 @@ internal fun <T> apiResult(code: Int, retryAfter: String?, errorText: () -> Stri
         return try {
             ApiResult.Ok(decode())
         } catch (_: IllegalArgumentException) {
-            ApiResult.Rejected(code, UNEXPECTED_RESPONSE, "The server's answer wasn't understood.", null)
+            ApiResult.Unexpected(code)
         }
     }
+    // Before the body: a proxy's 429 or 502 page means the same as notesd's.
+    if (code == 429) return ApiResult.RateLimited(retryAfter?.trim()?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_S)
     val error = try {
         errorJson.decodeFromString<ErrorBody>(errorText())
     } catch (_: IllegalArgumentException) {
         ErrorBody()
     }
+    if (code >= 500) return ApiResult.Rejected(code, error.error.ifEmpty { "http_$code" }, error.message, error.field)
+    // A notesd error always names its code; anything else came from something in between.
+    if (code !in 400..499 || error.error.isEmpty()) return ApiResult.Unexpected(code)
     return when {
         code == 401 && error.error == "unauthenticated" -> ApiResult.Unauthenticated
 
         // Cookie sessions: a token from an older one. Signing in again gives a good one; the write waits for it.
         code == 403 && error.error == "csrf_failed" -> ApiResult.Unauthenticated
 
+        code == 426 && error.error == "upgrade_required" -> ApiResult.UpgradeRequired(error.minVersion)
+
         code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
 
-        code == 429 -> ApiResult.RateLimited(retryAfter?.trim()?.toLongOrNull() ?: DEFAULT_RETRY_AFTER_S)
-
-        else -> ApiResult.Rejected(code, error.error.ifEmpty { "http_$code" }, error.message, error.field)
+        else -> ApiResult.Rejected(code, error.error, error.message, error.field)
     }
 }
+
+/** Refusals of a queued change that a retry can't change: the change is dropped, and the user told why. */
+val PERMANENT_ERRORS =
+    setOf("invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default")
 
 /** The server's Resend settings for emailing notes. The key never comes back; [keyHint] is its last 4 characters. */
 @Serializable
@@ -111,7 +147,12 @@ data class LockKey(
     val salt: String,
     val iterations: Int = 0,
     val wrapped: String,
-    val createdAt: Long = 0
+    val createdAt: Long = 0,
+    /**
+     * How the entry's key is derived from its secret, e.g. `{"name":"pbkdf2-sha256","iterations":600000}`.
+     * Kept whole: a newer app's may carry parameters this one doesn't know. Null from servers before 1.0.
+     */
+    val kdf: JsonObject? = null
 )
 
 @Serializable
@@ -165,11 +206,23 @@ internal data class RemoteSpaces(val spaces: List<RemoteSpace> = emptyList())
 @Serializable
 data class SyncPage(val changes: List<RemoteNote>, val nextCursor: Long, val hasMore: Boolean, val generation: String)
 
+/** The answer to an image upload: what the server stored. */
+@Serializable
+internal data class StoredImage(val id: String, val contentType: String)
+
+/** An image upload's answer, checked: notesd's Image for [id], else not notesd. */
+internal fun checkStoredImage(id: String, body: String) {
+    require(errorJson.decodeFromString<StoredImage>(body).id == id) { "Not this image" }
+}
+
 /** An image's bytes as stored on the server (§7.6), with their type: an image type, or [LOCKED_IMAGE]. */
 class ImageFile(val type: String, val bytes: ByteArray)
 
-/** The type a locked note's images are stored as: ciphertext. */
+/** The type a locked note's images are stored as: ciphertext. Later versions add a suffix (`.v2`). */
 const val LOCKED_IMAGE = "application/vnd.notesd.locked"
+
+/** A locked image of any version; only [LOCKED_IMAGE] itself opens here. */
+fun isLockedImageType(type: String) = type == LOCKED_IMAGE || type.startsWith("$LOCKED_IMAGE.")
 
 /** The calls a sync cycle makes: the JVM's [ApiClient] with device tokens, the browser's with its session cookie. */
 interface SyncApi {
@@ -195,11 +248,14 @@ interface SyncApi {
 
 /** Images added on this device, uploaded before the notes that show them (§7.6). */
 interface PendingImages {
-    /** Uploads every waiting image; the first failure a retry might fix stops it. */
-    suspend fun upload(client: SyncApi): ApiResult<Unit>
+    /**
+     * Uploads every waiting image; the first failure a retry might fix stops it (an [ApiResult.Unexpected]
+     * counted against that image). Ok holds why any were refused for good.
+     */
+    suspend fun upload(client: SyncApi): ApiResult<List<String>>
 
     companion object {
-        /** hash_mismatch, image_too_large, unsupported_image: a retry won't change these. */
-        val REFUSED = setOf(400, 413, 415)
+        /** A retry won't change these; only notesd's own codes, not a bare 400/413/415 from something in between. */
+        val REFUSED = setOf("hash_mismatch", "image_too_large", "unsupported_image", "invalid_request")
     }
 }

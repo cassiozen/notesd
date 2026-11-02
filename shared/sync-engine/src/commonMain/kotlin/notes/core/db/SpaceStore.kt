@@ -97,15 +97,23 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
 
     internal suspend fun pending(): List<SpaceChange> = db.read { sql ->
         sql.query(
-            "SELECT id, name, icon, pending_delete FROM spaces WHERE dirty = 1 OR pending_delete = 1 ORDER BY rowid"
+            """
+            SELECT id, name, icon, pending_delete FROM spaces
+            WHERE (dirty = 1 OR pending_delete = 1) AND parked = 0 ORDER BY rowid
+            """
         ) { SpaceChange(it.getText(0), it.getText(1), it.getText(2), it.getLong(3) == 1L) }
+    }
+
+    /** [change] got an answer that wasn't notesd's: one more attempt, parked at the limit. */
+    internal suspend fun attempted(change: SpaceChange) {
+        db.write { sql -> sql.attempted("spaces", "id = ?", change.id) }
     }
 
     /** The server stored [change] as [stored] (maybe renamed to settle a clash). Changed again since: still waiting. */
     internal suspend fun sent(change: SpaceChange, stored: RemoteSpace) {
         db.write { sql ->
             sql.exec(
-                "UPDATE spaces SET name = ?, icon = ?, dirty = 0 WHERE id = ? AND name = ? AND icon = ?",
+                "UPDATE spaces SET name = ?, icon = ?, dirty = 0, attempts = 0 WHERE id = ? AND name = ? AND icon = ?",
                 stored.name,
                 stored.icon,
                 change.id,

@@ -77,7 +77,7 @@ private fun NoteFilter?.sql(): Pair<String, List<Any>> = when (this) {
 
     NoteFilter.Untagged -> "NOT EXISTS (SELECT 1 FROM note_tags t WHERE t.note_seq = n.seq)" to emptyList()
 
-    NoteFilter.Locked -> "substr(n.content, 1, ?) = ?" to listOf(LockedEnvelope.PREFIX.length, LockedEnvelope.PREFIX)
+    NoteFilter.Locked -> "substr(n.content, 1, ?) = ?" to listOf(LockedEnvelope.FAMILY.length, LockedEnvelope.FAMILY)
 
     // '0' sorts right after '/', so the range holds exactly the nested keys.
     is NoteFilter.Tag ->
@@ -125,8 +125,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
             WHERE n.deleted_at IS NULL AND $cond
             ORDER BY n.updated_at DESC, n.id DESC
             """,
-            LockedEnvelope.PREFIX.length,
-            LockedEnvelope.PREFIX,
+            LockedEnvelope.FAMILY.length,
+            LockedEnvelope.FAMILY,
             *args.toTypedArray()
         ) {
             NoteSummary(
@@ -173,8 +173,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 """,
                 Search.MARK_OPEN,
                 Search.MARK_CLOSE,
-                LockedEnvelope.PREFIX.length,
-                LockedEnvelope.PREFIX,
+                LockedEnvelope.FAMILY.length,
+                LockedEnvelope.FAMILY,
                 match,
                 *args.toTypedArray(),
                 Search.TITLE_WEIGHT,
@@ -453,8 +453,13 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         }
     }
 
-    /** How many notes have changes the server hasn't confirmed. */
-    suspend fun pendingNotes(): Int = db.read { it.long("SELECT count(DISTINCT note_id) FROM sync_outbox").toInt() }
+    /**
+     * How many notes have changes the server hasn't confirmed: changed here (a change it refused or
+     * that's parked included) or with one queued.
+     */
+    suspend fun pendingNotes(): Int = db.read {
+        it.long("SELECT count(*) FROM notes WHERE dirty = 1 OR id IN (SELECT note_id FROM sync_outbox)").toInt()
+    }
 
     /** For tests of coalescing without a server: pretend [operationId] went out. */
     internal suspend fun markSent(operationId: String) {

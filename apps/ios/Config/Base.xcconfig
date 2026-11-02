@@ -9,8 +9,12 @@ SWIFT_APPROACHABLE_CONCURRENCY = YES
 SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor
 ENABLE_USER_SCRIPT_SANDBOXING = YES
 CODE_SIGN_STYLE = Automatic
-MARKETING_VERSION = 0.1.0
+// Fallbacks: Version.xcconfig (gitignored) overrides both with the version from `git describe`.
+// It's written by scripts/version.sh, which the Notes scheme runs as a build pre-action, so
+// Xcode and `mise run build:ios` / `test:ios` get it; run it by hand for other schemes.
+MARKETING_VERSION = 0.0.0-dev
 CURRENT_PROJECT_VERSION = 1
+#include? "Version.xcconfig"
 
 // A bundle ID must be unique per Apple ID, so the prefix is yours.
 BUNDLE_ID_PREFIX = dev.notesd.local

@@ -6,6 +6,7 @@ import { groupByDate, listTime } from './list-time'
 import { useSearch } from './search'
 import { notesSource, type Unsynced } from './source'
 import { SpaceIcon } from './space-icon'
+import { SyncBanners } from './sync-banners'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import styles from './note-list.module.css'
@@ -211,6 +212,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
         )}
       </div>
 
+      <SyncBanners />
       {unsynced && (
         <div className={styles.unsynced} role="status">
           <span>

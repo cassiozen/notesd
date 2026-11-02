@@ -14,6 +14,25 @@ import javax.crypto.spec.SecretKeySpec
 /** The body failed to open: wrong key, tampering, or not an envelope at all. */
 class LockedException(message: String = "Could not open the locked note") : Exception(message)
 
+/** Locked by a newer version of notesd ([version], null when it names none): never a wrong password. */
+class UnsupportedVersionException(val version: String?) : Exception(UNSUPPORTED_VERSION_MESSAGE) {
+    companion object {
+        const val UNSUPPORTED_VERSION_MESSAGE =
+            "This note was locked by a newer version of notesd. Update notesd to open it."
+    }
+}
+
+/** A keyring entry derived with a function newer than this app ([name]): never a wrong password. */
+class UnsupportedKdfException(val name: String?) : Exception(UNSUPPORTED_KDF_MESSAGE) {
+    companion object {
+        const val UNSUPPORTED_KDF_MESSAGE =
+            "This lock was set up by a newer version of notesd. Update notesd to unlock."
+    }
+}
+
+/** A keyring entry that can't be right (no iterations, a function that doesn't go with its kind). */
+class MalformedKeyException(message: String) : Exception(message)
+
 /** Which secret a keyring entry is wrapped under (§10.1). */
 enum class WrapKind(val wire: String) {
     Password("password"),
@@ -72,9 +91,15 @@ object LockedNotes {
     /** Encrypts a note's Markdown body into its stored content. */
     fun encrypt(key: ByteArray, markdown: String): String = PREFIX + encode(seal(key, markdown.toByteArray(), BODY_AAD))
 
-    /** Decrypts stored content; throws [LockedException] unless it is an envelope [key] sealed. */
+    /**
+     * Decrypts stored content; throws [LockedException] unless it is an envelope [key] sealed, or
+     * [UnsupportedVersionException] for one of a version this app doesn't know.
+     */
     fun decrypt(key: ByteArray, content: String): String {
         if (!isLocked(content)) throw LockedException("Not a locked note")
+        if (LockedEnvelope.isUnsupported(content)) {
+            throw UnsupportedVersionException(LockedEnvelope.lockVersion(content))
+        }
         val plain = open(key, decode(content.substring(PREFIX.length)), BODY_AAD)
         val decoder = Charsets.UTF_8.newDecoder()
         return try {
@@ -92,6 +117,8 @@ object LockedNotes {
 
     /** PBKDF2-HMAC-SHA256 of the NFC-normalized password. */
     fun passwordKek(password: String, salt: ByteArray, iterations: Int): ByteArray {
+        // PBEKeySpec throws IllegalArgumentException for these; an entry saying so is malformed, not a crash.
+        if (iterations <= 0) throw MalformedKeyException("No iterations")
         val chars = Normalizer.normalize(password, Normalizer.Form.NFC).toCharArray()
         val spec = PBEKeySpec(chars, salt, iterations, KEY_BYTES * 8)
         return try {

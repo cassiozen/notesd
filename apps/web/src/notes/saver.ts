@@ -1,9 +1,9 @@
-import { ApiError, NetworkError } from '../api/client'
+import { ApiError, NetworkError, UNEXPECTED, unexpectedMessage } from '../api/client'
 import { notes } from '../api/notes'
 import { canonical, parse } from '../editor/markdown'
 import type { MutationResult, Note } from '../api/types'
 import { imageIds } from '../images/ref'
-import { LockedError, decryptBody, encryptBody, isLocked } from '../locks/crypto'
+import { LockedError, UnsupportedLockError, decryptBody, encryptBody, isLocked, isSupportedLock } from '../locks/crypto'
 import { lockSession } from '../locks/session'
 import type { SaveState } from '../ui/status-pill'
 import type { Saver, SaverHooks, SaverInit } from './source'
@@ -22,6 +22,10 @@ export type Problem =
   | { kind: 'rejected'; message: string; onDevice?: boolean }
   /** A locked note has edits, but locked notes were locked again before they could be encrypted. */
   | { kind: 'unlock' }
+  /** Something other than notesd answered (a proxy, a portal), or notesd said something unknown; kept, retried on Retry. */
+  | { kind: 'unexpected'; message: string }
+  /** The server needs a newer notesd: kept until this page is updated (or Retry). */
+  | { kind: 'upgrade' }
 
 export type Snapshot = {
   state: SaveState
@@ -61,11 +65,13 @@ type Pending = Save & { operationId: string; create: boolean; baseRevision: numb
 export type Opened<N = Note> = { note: N; locked: boolean; envelope: string | null }
 
 /**
- * Decrypts a locked note's body with the session key. Throws LockedError
- * when locked notes are locked (or the body doesn't open).
+ * Decrypts a locked note's body with the session key. Throws UnsupportedLockError when a newer
+ * notesd locked it (whether or not locked notes are unlocked), LockedError when locked notes are
+ * locked (or the body doesn't open).
  */
 export async function openNote<N extends { content: string } = Note>(note: N): Promise<Opened<N>> {
   if (!isLocked(note.content)) return { note, locked: false, envelope: null }
+  if (!isSupportedLock(note.content)) throw new UnsupportedLockError()
   const key = lockSession.key()
   if (!key) throw new LockedError('Locked notes are locked')
   return { note: { ...note, content: await decryptBody(key, note.content) }, locked: true, envelope: note.content }
@@ -81,6 +87,9 @@ export function canonicalFields(f: Fields): Fields {
 
 // Tests shorten these; nothing else should touch them.
 export const timing = { debounceMs: 1500, retryBaseMs: 2000, retryMaxMs: 30_000, undoDeleteMs: 5000, quietMs: 2000 }
+
+/** Codes for a save the server will never take as it is: retrying the same thing can't help. */
+const PERMANENT = new Set(['invalid_request', 'hash_mismatch', 'image_too_large', 'unsupported_image', 'space_default'])
 
 /** How many bytes a keepalive request may carry (browsers cap the total at 64 KB). */
 const KEEPALIVE_LIMIT = 60_000
@@ -458,14 +467,16 @@ export class NoteSaver extends SaverCore {
   retryNow() {
     clearTimeout(this.retryTimer)
     this.waitingForAuth = false
-    if (this.problem?.kind === 'rejected') this.problem = null
+    const k = this.problem?.kind
+    if (k === 'rejected' || k === 'unexpected' || k === 'upgrade') this.problem = null
     this.attempts = 0
     void this.flush()
   }
 
-  /** Signed in again after a 401, or locked notes unlocked again. */
+  /** Signed in again after a 401, locked notes unlocked again, or back from a portal's sign-in. */
   resume() {
-    if (this.waitingForAuth || this.problem?.kind === 'offline' || this.problem?.kind === 'unlock') {
+    const k = this.problem?.kind
+    if (this.waitingForAuth || k === 'offline' || k === 'unlock' || k === 'unexpected') {
       this.waitingForUnlock = false
       if (this.problem?.kind === 'unlock') this.problem = null
       this.retryNow()
@@ -487,14 +498,40 @@ export class NoteSaver extends SaverCore {
 
   protected blocked(): boolean {
     const k = this.problem?.kind
-    return k === 'conflict' || k === 'deleted' || k === 'rejected' || this.waitingForAuth || this.waitingForUnlock
+    return (
+      k === 'conflict' ||
+      k === 'deleted' ||
+      k === 'rejected' ||
+      k === 'unexpected' ||
+      k === 'upgrade' ||
+      this.waitingForAuth ||
+      this.waitingForUnlock
+    )
   }
 
   private toPending(s: Save | null): Pending | null {
     return s && { ...s, operationId: crypto.randomUUID(), create: !this.created, baseRevision: this.revision }
   }
 
-  private send(p: Pending, keepalive = false): Promise<MutationResult> {
+  private async send(p: Pending, keepalive = false): Promise<MutationResult> {
+    let result: MutationResult
+    try {
+      result = await this.request(p, keepalive)
+    } catch (err) {
+      if (!(err instanceof ApiError && err.code === 'operation_id_reused')) throw err
+      // The id was spent on something else (a reused id from an older app). A fresh one is safe: the base
+      // revision turns a duplicate into a conflict or a no-op. Once only.
+      p.operationId = crypto.randomUUID()
+      result = await this.request(p, keepalive)
+    }
+    // Something in front of notesd can answer 2xx with its own JSON.
+    if (typeof result !== 'object' || result === null || typeof result.revision !== 'number') {
+      throw new ApiError(200, { error: UNEXPECTED, message: unexpectedMessage(200) })
+    }
+    return result
+  }
+
+  private request(p: Pending, keepalive: boolean): Promise<MutationResult> {
     return p.create
       ? notes.create(
           {
@@ -579,30 +616,44 @@ export class NoteSaver extends SaverCore {
       this.set('conflict')
       return
     }
-    if (err instanceof ApiError && err.status === 401) {
+    if (err instanceof ApiError && err.status === 401 && err.code === 'unauthenticated') {
       // Same request again after sign-in, so a save that did land replays.
       this.waitingForAuth = true
       this.set('failed')
       return
     }
-    // Only transport failures and server errors are worth retrying. A 403
-    // (CSRF/origin check) won't fix itself: an ended session fails with 401
-    // before that check runs.
-    if (err instanceof NetworkError || (err instanceof ApiError && err.status >= 500)) {
+    if (err instanceof ApiError && err.code === 'upgrade_required') {
+      // Held like a sign-in: the same request goes once this page is a notesd the server takes.
+      this.problem = { kind: 'upgrade' }
+      this.set('failed')
+      return
+    }
+    // Only transport failures, server errors and rate limits are worth retrying on their own.
+    if (err instanceof NetworkError || (err instanceof ApiError && (err.status >= 500 || err.status === 429))) {
       this.problem = { kind: 'offline' }
       this.failures++
       this.set('failed')
-      const delay = Math.min(timing.retryBaseMs * 2 ** this.attempts, timing.retryMaxMs)
+      const backoff = Math.min(timing.retryBaseMs * 2 ** this.attempts, timing.retryMaxMs)
+      const delay = err instanceof ApiError && err.retryAfter ? Math.max(backoff, err.retryAfter * 1000) : backoff
       this.attempts++
       clearTimeout(this.retryTimer)
       this.retryTimer = setTimeout(() => void this.flush(), delay)
       return
     }
-    this.pending = null
+    // Refused for good. A 403 (CSRF/origin check) won't fix itself either: an ended session fails
+    // with 401 before that check runs.
+    if (err instanceof ApiError && (PERMANENT.has(err.code) || err.code === 'csrf_failed')) {
+      this.pending = null
+      this.dirty = true
+      this.problem = { kind: 'rejected', message: err.message }
+      this.set('failed')
+      return
+    }
+    // Anything else may not even be notesd talking (a portal's sign-in page): the save is kept, as it was.
     this.dirty = true
     this.problem = {
-      kind: 'rejected',
-      message: err instanceof ApiError ? err.message : 'The server rejected this save.',
+      kind: 'unexpected',
+      message: err instanceof ApiError ? unexpectedMessage(err.status) : 'The save didn’t go through. Try again.',
     }
     this.set('failed')
   }
@@ -612,7 +663,13 @@ export class NoteSaver extends SaverCore {
     let opened: Opened
     try {
       opened = await openNote(current)
-    } catch {
+    } catch (err) {
+      if (err instanceof UnsupportedLockError) {
+        // Locked by a newer notesd elsewhere: nothing here can merge into it, or should overwrite it.
+        this.problem = { kind: 'rejected', message: err.message }
+        this.set('failed')
+        return
+      }
       // Locked again meanwhile (or a body that won't open): wait for an unlock, then retry and conflict again.
       this.waitingForUnlock = true
       this.problem = { kind: 'unlock' }

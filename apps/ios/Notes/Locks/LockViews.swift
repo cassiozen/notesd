@@ -10,6 +10,7 @@ extension LockSession.Outcome {
         switch self {
         case .done: nil
         case .wrongPassword: "Wrong password."
+        case .unsupported: LockedError.unsupportedKdf.message
         case .notConnected: "Connect to your server first: it keeps the lock password for every device."
         case .offline: "Can’t reach the server. Try again when you’re online."
         case .failed: "Something went wrong. Try again."
@@ -29,6 +30,8 @@ struct LockedNoteView: View {
     let title: String
     /// Locked with a key that was reset: no password opens it.
     let unreadable: Bool
+    /// Why it's unreadable, when not a reset.
+    let reason: String?
     let locks: LockSession
     /// Ask for Face ID as soon as this shows: the note was opened, not just locked from its screen.
     let promptBiometrics: Bool
@@ -41,9 +44,10 @@ struct LockedNoteView: View {
     @State private var misses = 0
     @FocusState private var focused: Bool
 
-    init(title: String, unreadable: Bool, locks: LockSession, promptBiometrics: Bool = true) {
+    init(title: String, unreadable: Bool, locks: LockSession, promptBiometrics: Bool = true, reason: String? = nil) {
         self.title = title
         self.unreadable = unreadable
+        self.reason = reason
         self.locks = locks
         self.promptBiometrics = promptBiometrics
         _prompted = State(initialValue: !promptBiometrics)
@@ -58,7 +62,7 @@ struct LockedNoteView: View {
                 Text(title.isEmpty ? "Locked note" : title).font(.notesTitle).foregroundStyle(Color.ink)
                     .multilineTextAlignment(.center)
                 if unreadable {
-                    Text("This note was locked with a password that was reset. It can’t be opened.")
+                    Text(reason ?? "This note was locked with a password that was reset. It can’t be opened.")
                         .font(.notesBody).foregroundStyle(Color.ink2).multilineTextAlignment(.center)
                 } else {
                     Text("This note is locked.").font(.notesSmall).foregroundStyle(Color.ink2)
@@ -135,6 +139,7 @@ struct LockedNoteView: View {
                 error = "Wrong password."
                 password = ""
                 misses += 1
+            case .unsupported: error = outcome.message
             // The password may be right: it stays, to try again.
             default: error = LockSession.unreadKeyring
             }
@@ -279,6 +284,7 @@ struct LockSheet: View {
                     dismiss()
                     done(true)
                 case .wrongPassword: errors = ["password": "Wrong password."]
+                case .unsupported: errors = ["password": outcome.message ?? ""]
                 default: errors = ["password": LockSession.unreadKeyring]
                 }
             }

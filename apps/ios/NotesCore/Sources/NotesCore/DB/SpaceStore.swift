@@ -110,7 +110,10 @@ public final class SpaceStore: Sendable {
     func pending() async throws -> [SpaceChange] {
         try await db.read { sql in
             try sql.query(
-                "SELECT id, name, icon, pending_delete FROM spaces WHERE dirty = 1 OR pending_delete = 1 ORDER BY rowid"
+                """
+                SELECT id, name, icon, pending_delete FROM spaces
+                WHERE (dirty = 1 OR pending_delete = 1) AND parked = 0 ORDER BY rowid
+                """
             ) {
                 SpaceChange(id: $0.text(0), name: $0.text(1), icon: $0.text(2), delete: $0.int64(3) == 1)
             }
@@ -121,7 +124,7 @@ public final class SpaceStore: Sendable {
     func sent(_ change: SpaceChange, stored: RemoteSpace) async throws {
         try await db.write { sql in
             try sql.exec(
-                "UPDATE spaces SET name = ?, icon = ?, dirty = 0 WHERE id = ? AND name = ? AND icon = ?",
+                "UPDATE spaces SET name = ?, icon = ?, dirty = 0, attempts = 0 WHERE id = ? AND name = ? AND icon = ?",
                 stored.name, stored.icon, change.id, change.name, change.icon)
         }
     }
@@ -137,6 +140,15 @@ public final class SpaceStore: Sendable {
                     "UPDATE spaces SET dirty = 0 WHERE id = ? AND name = ? AND icon = ?", change.id, change.name,
                     change.icon)
             }
+        }
+    }
+
+    /// Counts an unexpected answer against `change`; the third parks it.
+    func attempted(_ change: SpaceChange) async throws {
+        try await db.write { sql in
+            try sql.exec(
+                "UPDATE spaces SET attempts = attempts + 1, parked = attempts + 1 >= ? WHERE id = ?", maxAttempts,
+                change.id)
         }
     }
 

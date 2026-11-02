@@ -4,7 +4,10 @@ import type { LockKey } from '../api/types'
 import {
   KeyringChangedError,
   LockedError,
+  MalformedKeyError,
+  entryKdf,
   kdfCost,
+  kdfFor,
   importKey,
   passkeyKek,
   passwordKek,
@@ -121,6 +124,7 @@ class LockSession {
       kind: 'password',
       salt: toBase64Url(salt),
       iterations: kdfCost.password,
+      kdf: kdfFor('password', kdfCost.password),
       wrapped: await wrap(kek, raw, 'password'),
       verifier: proof,
     })
@@ -137,6 +141,7 @@ class LockSession {
     const { credentialId, secret } = await signInWithPasskey(passkeys)
     const entry = passkeys.find((k) => k.credentialId === credentialId)
     if (!entry) throw new LockedError('That passkey can’t unlock notes')
+    if (entryKdf(entry).name !== 'hkdf-sha256') throw new MalformedKeyError()
     const raw = await unwrapRaw(await passkeyKek(secret, fromBase64Url(entry.salt)), entry.wrapped, 'passkey')
     // Reset meanwhile, this passkey's key may be the forgotten one.
     if (!(await this.adopt(raw, await verifierOf(raw), at, from))) throw new LockedError('That passkey can’t unlock notes')
@@ -161,6 +166,7 @@ class LockSession {
       credentialId,
       salt: toBase64Url(salt),
       iterations: 0,
+      kdf: kdfFor('passkey', 0),
       wrapped: await wrap(await passkeyKek(secret, salt), raw, 'passkey'),
       verifier: proof,
     })
@@ -216,6 +222,7 @@ class LockSession {
       kind: 'password',
       salt: toBase64Url(salt),
       iterations: kdfCost.password,
+      kdf: kdfFor('password', kdfCost.password),
       wrapped: await wrap(kek, raw, 'password'),
       verifier: proof,
     })
@@ -263,7 +270,10 @@ class LockSession {
   private async unwrapWithPassword(password: string): Promise<Uint8Array<ArrayBuffer>> {
     const entry = this.keyring.find((k) => k.kind === 'password')
     if (!entry) throw new LockedError('No lock password set')
-    const kek = await passwordKek(password, fromBase64Url(entry.salt), entry.iterations)
+    // Before any key is derived: a kdf this release doesn't know must never read as a wrong password.
+    const kdf = entryKdf(entry)
+    if (kdf.name !== 'pbkdf2-sha256') throw new MalformedKeyError()
+    const kek = await passwordKek(password, fromBase64Url(entry.salt), kdf.iterations)
     return unwrapRaw(kek, entry.wrapped, 'password')
   }
 

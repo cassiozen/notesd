@@ -1,3 +1,4 @@
+import { execFileSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
@@ -10,7 +11,18 @@ const sqliteNode = resolve(import.meta.dirname, 'node_modules/@sqlite.org/sqlite
 const server = process.env.NOTESD_SERVER ?? 'http://127.0.0.1:8080'
 const base = (path: string) => path.slice(path.lastIndexOf('/') + 1)
 
+// Same source as the server's -X main.version, so a matching build compares equal (less the "v").
+function buildVersion(): string {
+  try {
+    const v = execFileSync('git', ['describe', '--tags', '--always', '--dirty'], { cwd: import.meta.dirname, encoding: 'utf8' })
+    return v.trim().replace(/^v/, '') || '0.0.0-dev'
+  } catch {
+    return '0.0.0-dev'
+  }
+}
+
 export default defineConfig({
+  define: { __NOTESD_VERSION__: JSON.stringify(buildVersion()) },
   plugins: [
     react(),
     {

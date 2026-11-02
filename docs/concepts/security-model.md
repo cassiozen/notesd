@@ -76,7 +76,10 @@ Face ID set up that still opens your notes, they can't be recovered, by you or a
 The cryptography: each account has one 256-bit key that encrypts locked notes and their pictures
 with AES-256-GCM. The server keeps it only wrapped (encrypted) under the lock password
 (PBKDF2-SHA256, 600,000 iterations) and under each passkey (WebAuthn PRF). Fingerprint and Face ID
-keep a copy on the phone, sealed by the Android Keystore or iOS Keychain behind the biometric check. The full design is in
+keep a copy on the phone, sealed by the Android Keystore or iOS Keychain behind the biometric check.
+Each keyring entry records how its key is derived, and a locked note records its format version, so
+a later notesd can strengthen either without an older app mistaking the result for a wrong password
+or for plain text: older apps ask you to update instead. The full design is in
 [architecture §10.1](../contributing/architecture.md#101-locked-notes).
 
 ## What notesd connects to

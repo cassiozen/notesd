@@ -18,6 +18,14 @@
     "react/react-in-jsx-scope": "off",
     "typescript/no-explicit-any": "error",
     "typescript/no-non-null-assertion": "warn",
+    "no-underscore-dangle": [
+      "error",
+      {
+        "allow": [
+          "__NOTESD_VERSION__"
+        ]
+      }
+    ],
     "import/no-unassigned-import": [
       "error",
       {

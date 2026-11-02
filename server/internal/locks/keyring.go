@@ -7,6 +7,7 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"regexp"
 	"time"
@@ -21,24 +22,51 @@ const (
 	KindPasskey  = "passkey"
 )
 
+// Key derivation functions.
+const (
+	KDFPBKDF2 = "pbkdf2-sha256" // password and recovery entries
+	KDFHKDF   = "hkdf-sha256"   // passkeys
+)
+
+// KDF is how an entry's wrapping key is derived.
+type KDF struct {
+	Name       string `json:"name"`
+	Iterations int    `json:"iterations,omitempty"`
+}
+
+// legacyKDF is the KDF an entry from before KDFs were named used: implied by
+// its kind.
+func legacyKDF(kind string, iterations int) KDF {
+	if kind == KindPasskey {
+		return KDF{Name: KDFHKDF}
+	}
+	return KDF{Name: KDFPBKDF2, Iterations: iterations}
+}
+
 // Key is one wrapped copy of the locked-notes key.
 type Key struct {
 	ID           string `json:"id"`
 	Kind         string `json:"kind"`
 	CredentialID string `json:"credentialId,omitempty"`
 	Salt         string `json:"salt"`
-	Iterations   int    `json:"iterations"`
-	Wrapped      string `json:"wrapped"`
-	CreatedAt    int64  `json:"createdAt"`
+	// Iterations repeats KDF.Iterations (0 for passkeys) for apps from
+	// before KDF existed.
+	Iterations int    `json:"iterations"`
+	KDF        KDF    `json:"kdf"`
+	Wrapped    string `json:"wrapped"`
+	CreatedAt  int64  `json:"createdAt"`
 }
 
 // PutInput creates or replaces one entry. Verifier proves the caller holds
 // the locked-notes key; on the first entry it sets the verifier instead.
+// Apps from before KDF existed send only Iterations; newer ones send KDF,
+// and Iterations too, which must then agree.
 type PutInput struct {
 	Kind         string `json:"kind"`
 	CredentialID string `json:"credentialId"`
 	Salt         string `json:"salt"`
-	Iterations   int    `json:"iterations"`
+	Iterations   *int   `json:"iterations"`
+	KDF          *KDF   `json:"kdf"`
 	Wrapped      string `json:"wrapped"`
 	Verifier     string `json:"verifier"`
 }
@@ -67,6 +95,7 @@ const (
 	minSaltLen  = 16
 	maxField    = 1024
 	minPBKDF2   = 10_000
+	maxPBKDF2   = 10_000_000
 	verifierLen = 32
 )
 
@@ -82,7 +111,7 @@ func NewStore(db *database.DB) *Store { return &Store{db: db, now: time.Now} }
 // List returns the keyring, password entry first.
 func (s *Store) List(ctx context.Context) ([]Key, error) {
 	rows, err := s.db.R.QueryContext(ctx, `
-		SELECT id, kind, COALESCE(credential_id, ''), salt, iterations, wrapped, created_at
+		SELECT id, kind, COALESCE(credential_id, ''), salt, iterations, kdf, wrapped, created_at
 		FROM lock_keys ORDER BY kind != 'password', created_at, id`)
 	if err != nil {
 		return nil, err
@@ -91,8 +120,12 @@ func (s *Store) List(ctx context.Context) ([]Key, error) {
 	keys := []Key{}
 	for rows.Next() {
 		var k Key
-		if err := rows.Scan(&k.ID, &k.Kind, &k.CredentialID, &k.Salt, &k.Iterations, &k.Wrapped, &k.CreatedAt); err != nil {
+		var kdf string
+		if err := rows.Scan(&k.ID, &k.Kind, &k.CredentialID, &k.Salt, &k.Iterations, &kdf, &k.Wrapped, &k.CreatedAt); err != nil {
 			return nil, err
+		}
+		if kdf == "" || json.Unmarshal([]byte(kdf), &k.KDF) != nil {
+			k.KDF = legacyKDF(k.Kind, k.Iterations)
 		}
 		keys = append(keys, k)
 	}
@@ -102,15 +135,20 @@ func (s *Store) List(ctx context.Context) ([]Key, error) {
 // Put creates or replaces the entry id. The password and recovery entries
 // have those ids; passkeys use any other id.
 func (s *Store) Put(ctx context.Context, id string, in PutInput) (Key, error) {
-	if err := validate(id, in); err != nil {
+	kdf, err := validate(id, in)
+	if err != nil {
 		return Key{}, err
 	}
 	verifier, err := decodeVerifier(in.Verifier)
 	if err != nil {
 		return Key{}, err
 	}
+	kdfJSON, err := json.Marshal(kdf)
+	if err != nil {
+		return Key{}, err
+	}
 	k := Key{ID: id, Kind: in.Kind, CredentialID: in.CredentialID, Salt: in.Salt,
-		Iterations: in.Iterations, Wrapped: in.Wrapped, CreatedAt: s.now().UnixMilli()}
+		Iterations: kdf.Iterations, KDF: kdf, Wrapped: in.Wrapped, CreatedAt: s.now().UnixMilli()}
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		stored, err := verifierHash(ctx, tx)
 		switch {
@@ -128,12 +166,12 @@ func (s *Store) Put(ctx context.Context, id string, in PutInput) (Key, error) {
 			return ErrBadVerifier
 		}
 		_, err = tx.ExecContext(ctx, `
-			INSERT INTO lock_keys (id, kind, credential_id, salt, iterations, wrapped, created_at)
-			VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?)
+			INSERT INTO lock_keys (id, kind, credential_id, salt, iterations, kdf, wrapped, created_at)
+			VALUES (?, ?, NULLIF(?, ''), ?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO UPDATE SET kind = excluded.kind, credential_id = excluded.credential_id,
-				salt = excluded.salt, iterations = excluded.iterations, wrapped = excluded.wrapped,
-				created_at = excluded.created_at`,
-			k.ID, k.Kind, k.CredentialID, k.Salt, k.Iterations, k.Wrapped, k.CreatedAt)
+				salt = excluded.salt, iterations = excluded.iterations, kdf = excluded.kdf,
+				wrapped = excluded.wrapped, created_at = excluded.created_at`,
+			k.ID, k.Kind, k.CredentialID, k.Salt, k.Iterations, string(kdfJSON), k.Wrapped, k.CreatedAt)
 		return err
 	})
 	return k, err
@@ -210,36 +248,78 @@ func decodeVerifier(v string) ([]byte, error) {
 	return b, nil
 }
 
-func validate(id string, in PutInput) error {
+// validate checks an entry and returns its KDF: as sent, or implied by its
+// kind and iterations for an app from before KDF existed.
+func validate(id string, in PutInput) (KDF, error) {
+	if in.Kind != KindPassword && in.Kind != KindRecovery && in.Kind != KindPasskey {
+		return KDF{}, &InputError{"kind", "must be password, recovery or passkey"}
+	}
+	kdf, err := entryKDF(in)
+	if err != nil {
+		return KDF{}, err
+	}
 	switch in.Kind {
 	case KindPassword, KindRecovery:
 		if id != in.Kind {
-			return &InputError{"id", "must be " + in.Kind}
-		}
-		if in.Iterations < minPBKDF2 || in.Iterations > 10_000_000 {
-			return &InputError{"iterations", "out of range"}
+			return KDF{}, &InputError{"id", "must be " + in.Kind}
 		}
 		if in.CredentialID != "" {
-			return &InputError{"credentialId", "only passkeys have one"}
+			return KDF{}, &InputError{"credentialId", "only passkeys have one"}
 		}
 	case KindPasskey:
 		if id == KindPassword || id == KindRecovery || !idPattern.MatchString(id) {
-			return &InputError{"id", "must be 1-64 characters of [A-Za-z0-9_-], not password or recovery"}
-		}
-		if in.Iterations != 0 {
-			return &InputError{"iterations", "must be 0 for passkeys"}
+			return KDF{}, &InputError{"id", "must be 1-64 characters of [A-Za-z0-9_-], not password or recovery"}
 		}
 		if cred, ok := decode(in.CredentialID); !ok || len(cred) == 0 {
-			return &InputError{"credentialId", "required, base64url"}
+			return KDF{}, &InputError{"credentialId", "required, base64url"}
 		}
-	default:
-		return &InputError{"kind", "must be password, recovery or passkey"}
 	}
 	if salt, ok := decode(in.Salt); !ok || len(salt) < minSaltLen {
-		return &InputError{"salt", "must be at least 16 bytes, base64url"}
+		return KDF{}, &InputError{"salt", "must be at least 16 bytes, base64url"}
 	}
 	if wrapped, ok := decode(in.Wrapped); !ok || len(wrapped) != wrappedLen {
-		return &InputError{"wrapped", "must be a wrapped 32-byte key"}
+		return KDF{}, &InputError{"wrapped", "must be a wrapped 32-byte key"}
 	}
-	return nil
+	return kdf, nil
+}
+
+// entryKDF is the KDF an entry uses, checked against its kind.
+func entryKDF(in PutInput) (KDF, error) {
+	if in.KDF == nil {
+		iterations := 0
+		if in.Iterations != nil {
+			iterations = *in.Iterations
+		}
+		kdf := legacyKDF(in.Kind, iterations)
+		if in.Kind == KindPasskey && iterations != 0 {
+			return KDF{}, &InputError{"iterations", "must be 0 for passkeys"}
+		}
+		if kdf.Name == KDFPBKDF2 && (iterations < minPBKDF2 || iterations > maxPBKDF2) {
+			return KDF{}, &InputError{"iterations", "out of range"}
+		}
+		return kdf, nil
+	}
+	kdf := *in.KDF
+	switch kdf.Name {
+	case KDFPBKDF2:
+		if in.Kind != KindPassword && in.Kind != KindRecovery {
+			return KDF{}, &InputError{"kdf", "pbkdf2-sha256 is for password and recovery entries"}
+		}
+		if kdf.Iterations < minPBKDF2 || kdf.Iterations > maxPBKDF2 {
+			return KDF{}, &InputError{"kdf", "iterations out of range"}
+		}
+	case KDFHKDF:
+		if in.Kind != KindPasskey {
+			return KDF{}, &InputError{"kdf", "hkdf-sha256 is for passkey entries"}
+		}
+		if kdf.Iterations != 0 {
+			return KDF{}, &InputError{"kdf", "hkdf-sha256 takes no iterations"}
+		}
+	default:
+		return KDF{}, &InputError{"kdf", "unsupported key derivation function"}
+	}
+	if in.Iterations != nil && *in.Iterations != kdf.Iterations {
+		return KDF{}, &InputError{"iterations", "must match kdf"}
+	}
+	return kdf, nil
 }

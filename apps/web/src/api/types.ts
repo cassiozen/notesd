@@ -96,6 +96,8 @@ export type ErrorBody = {
   current?: Note
   /** space_not_empty: the notes still in the space. */
   count?: number
+  /** upgrade_required: the oldest app version the server takes. */
+  minVersion?: string
 }
 
 /** The server's Resend settings for emailing notes; the key itself is never sent back. */
@@ -114,13 +116,22 @@ export type UpdateStatus = {
   majorAvailable?: string
 }
 
+/**
+ * How a keyring entry's kek is derived from the password or passkey secret. Open-ended:
+ * a newer notesd may write a name this one doesn't know.
+ */
+export type Kdf = { name: string; iterations?: number; [param: string]: unknown }
+
 /** One wrapped copy of the locked-notes key (§10.1). The server can't open it. */
 export type LockKey = {
   id: string
   kind: 'password' | 'recovery' | 'passkey'
   credentialId?: string
   salt: string
+  /** pbkdf2-sha256's, repeated for apps before kdf; 0 for a passkey. */
   iterations: number
+  /** Null or absent: written before 1.0, implied by kind. */
+  kdf?: Kdf | null
   wrapped: string
   createdAt: number
 }

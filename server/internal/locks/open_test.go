@@ -91,6 +91,18 @@ func TestUnlockWithPassword(t *testing.T) {
 	if _, err := UnlockWithPassword(nil, "x"); !errors.Is(err, ErrNoPassword) {
 		t.Fatalf("no keyring: %v", err)
 	}
+	keys[0].KDF = KDF{Name: KDFPBKDF2, Iterations: 1000}
+	if got, err := UnlockWithPassword(keys, "pässwörd"); err != nil || !bytes.Equal(got, key) {
+		t.Fatalf("named kdf: %v", err)
+	}
+	keys[0].KDF = KDF{Name: "argon2id"}
+	if _, err := UnlockWithPassword(keys, "pässwörd"); !errors.Is(err, ErrUnsupported) {
+		t.Fatalf("unknown kdf: %v", err)
+	}
+	keys[0].KDF = KDF{Name: KDFPBKDF2}
+	if _, err := UnlockWithPassword(keys, "pässwörd"); !errors.Is(err, ErrCannotOpen) {
+		t.Fatalf("no iterations: %v", err)
+	}
 }
 
 func b64(b []byte) string { return base64.RawURLEncoding.EncodeToString(b) }

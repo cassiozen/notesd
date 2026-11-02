@@ -1,4 +1,5 @@
 import type { ErrorBody, Note } from './types'
+import { CLIENT_ID, versionState } from './version'
 
 export class ApiError extends Error {
   readonly status: number
@@ -7,6 +8,8 @@ export class ApiError extends Error {
   readonly current: Note | undefined
   /** Seconds, from Retry-After on 429. */
   readonly retryAfter: number | undefined
+  /** upgrade_required: the oldest app version the server takes. */
+  readonly minVersion: string | undefined
 
   constructor(status: number, body: ErrorBody, retryAfter?: number) {
     super(body.message ?? body.error)
@@ -16,7 +19,17 @@ export class ApiError extends Error {
     this.field = body.field
     this.current = body.current
     this.retryAfter = retryAfter
+    this.minVersion = body.minVersion
   }
+}
+
+/** Code of an answer notesd didn't give: a redirect, or a page without its JSON error (a proxy's, a portal's). */
+export const UNEXPECTED = 'unexpected_response'
+
+/** status 0: a redirect the browser hid (fetch's opaqueredirect). */
+export function unexpectedMessage(status: number): string {
+  const http = status === 0 ? 'a redirect' : `HTTP ${status}`
+  return `Your server answered something notesd didn’t expect (${http}). If you sign in to a proxy or Wi-Fi portal first, do that, then sync again.`
 }
 
 /** The request never got an HTTP response: server down, network gone. */
@@ -64,13 +77,23 @@ export async function request<T>(
   if (body !== undefined) headers['Content-Type'] = 'application/json'
   const res = await send(method, path, headers, body === undefined ? undefined : JSON.stringify(body), options)
   if (res.status === 204) return undefined as T
-  return (await res.json()) as T
+  return json<T>(res)
 }
 
 /** Sends bytes as the body, for endpoints that take a file rather than JSON (images). */
 export async function upload<T>(path: string, body: Uint8Array<ArrayBuffer>, contentType: string, options: Options = {}): Promise<T> {
   const res = await send('PUT', path, { Accept: 'application/json', 'Content-Type': contentType }, body, options)
-  return (await res.json()) as T
+  return json<T>(res)
+}
+
+// A 2xx that isn't JSON came from something in front of notesd, not from it.
+async function json<T>(res: Response): Promise<T> {
+  try {
+    return (await res.json()) as T
+  } catch (err) {
+    if (isAbort(err)) throw err
+    throw new ApiError(res.status, { error: UNEXPECTED, message: unexpectedMessage(res.status) })
+  }
 }
 
 /** Fetches a file the server stores as bytes (images), with its type. */
@@ -88,6 +111,7 @@ async function send(
   options: Options,
 ): Promise<Response> {
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken
+  headers['X-Notesd-Client'] = CLIENT_ID
 
   let res: Response
   try {
@@ -96,6 +120,9 @@ async function send(
       headers,
       ...(body !== undefined && { body }),
       credentials: 'same-origin',
+      // A redirect on the API is a proxy or portal answering, never notesd: following it would
+      // turn its sign-in page into a "successful" save.
+      redirect: 'manual',
       signal: options.signal,
       keepalive: options.keepalive,
     })
@@ -103,11 +130,16 @@ async function send(
     if (isAbort(err)) throw err
     throw new NetworkError(err)
   }
+  versionState.sawServer(res.headers.get('X-Notesd-Server'))
+  if (res.type === 'opaqueredirect' || (res.status >= 300 && res.status < 400)) {
+    throw new ApiError(res.status, { error: UNEXPECTED, message: unexpectedMessage(res.status) })
+  }
   if (res.ok) return res
 
   const error = new ApiError(res.status, await errorBody(res), parseRetryAfter(res))
   // invalid_credentials is also a 401 but means "wrong password", not "signed out".
   if (error.code === 'unauthenticated') sessionGone()
+  if (error.code === 'upgrade_required') versionState.upgradeRequired(error.minVersion ?? null)
   throw error
 }
 
@@ -124,7 +156,9 @@ async function errorBody(res: Response): Promise<ErrorBody> {
   } catch {
     // Proxies and crashes can answer with non-JSON bodies.
   }
-  return { error: res.status >= 500 ? 'server_error' : 'http_error', message: res.statusText }
+  // A 5xx is the server (or its proxy) failing, worth retrying; anything else didn't come from notesd.
+  if (res.status >= 500) return { error: 'server_error', message: res.statusText }
+  return { error: UNEXPECTED, message: unexpectedMessage(res.status) }
 }
 
 function parseRetryAfter(res: Response): number | undefined {

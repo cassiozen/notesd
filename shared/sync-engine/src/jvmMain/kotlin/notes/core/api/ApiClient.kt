@@ -24,15 +24,38 @@ import okhttp3.RequestBody.Companion.toRequestBody
  * calls send the device's bearer token, refresh it shortly before it expires,
  * and on a 401 refresh once and resend the identical request, so an
  * operationId inside it stays the same. Only one refresh runs at a time.
+ *
+ * Redirects aren't followed: notesd never sends one, so one comes from
+ * something in between (a portal's sign-in page) and is
+ * [ApiResult.Unexpected]. Every request says which app sent it ([client]),
+ * so the server can ask for an upgrade.
  */
 class ApiClient(
     val baseUrl: HttpUrl,
     private val credentials: Credentials? = null,
-    private val http: OkHttpClient = defaultHttp,
+    http: OkHttpClient = defaultHttp,
     private val clock: () -> Long = System::currentTimeMillis,
-    private val io: CoroutineDispatcher = Dispatchers.IO
+    private val io: CoroutineDispatcher = Dispatchers.IO,
+    client: ClientInfo? = null
 ) : SyncApi {
     private val refreshLock = Mutex()
+
+    private val http: OkHttpClient = http.newBuilder()
+        .followRedirects(false)
+        .followSslRedirects(false)
+        .apply {
+            if (client != null) {
+                addInterceptor { chain ->
+                    chain.proceed(
+                        chain.request().newBuilder()
+                            .header("X-Notesd-Client", client.header)
+                            .header("User-Agent", client.userAgent)
+                            .build()
+                    )
+                }
+            }
+        }
+        .build()
 
     /** `/healthz`: is a server answering at this address at all. */
     suspend fun health(): ApiResult<Unit> = send(get("healthz")) { }
@@ -131,6 +154,7 @@ class ApiClient(
                 key.credentialId?.let { id -> put("credentialId", id) }
                 put("salt", key.salt)
                 put("iterations", key.iterations)
+                key.kdf?.let { kdf -> put("kdf", kdf) }
                 put("wrapped", key.wrapped)
                 put("verifier", verifier)
             },
@@ -162,7 +186,7 @@ class ApiClient(
 
     /** Deletes an empty space: a Conflict (space_not_empty) while it holds notes. */
     override suspend fun deleteSpace(id: String): ApiResult<Unit> =
-        authed({ request("DELETE", spaceUrl(id), null, it) }) { }
+        authedReply({ request("DELETE", spaceUrl(id), null, it) }) { require(it.code == 204) { "Not a delete" } }
 
     /** Uploads an image (§7.6); [id] is the SHA-256 of [bytes], so a retry stores nothing new. */
     override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> = authed({ access ->
@@ -171,7 +195,7 @@ class ApiClient(
             .put(bytes.toRequestBody(type.toMediaType()))
             .header("Authorization", "Bearer $access")
             .build()
-    }) { }
+    }) { checkStoredImage(id, it) }
 
     /** Downloads an image with the type it is stored as. */
     suspend fun getImage(id: String): ApiResult<ImageFile> = authedReply({ access ->
@@ -269,8 +293,6 @@ class ApiClient(
     private fun spaceUrl(id: String) = url("api/v1/spaces").newBuilder().addPathSegment(id).build()
 
     companion object {
-        const val UNEXPECTED_RESPONSE = notes.core.api.UNEXPECTED_RESPONSE
-
         private const val REFRESH_EARLY_MS = 60_000L
         private val JSON = "application/json".toMediaType()
         private val json = Json { ignoreUnknownKeys = true }
@@ -290,4 +312,6 @@ private fun <T> ApiResult<*>.failure(): ApiResult<T> = when (this) {
     is ApiResult.RateLimited -> this
     is ApiResult.Rejected -> this
     is ApiResult.Unreachable -> this
+    is ApiResult.UpgradeRequired -> this
+    is ApiResult.Unexpected -> this
 }

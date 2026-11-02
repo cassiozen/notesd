@@ -120,6 +120,7 @@ import notes.app.ui.Type
 import notes.app.ui.glass
 import notes.app.ui.hairline
 import notes.app.ui.pressScale
+import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.db.NoteFilter
 import notes.core.db.Search
 import notes.core.db.Space
@@ -159,6 +160,8 @@ fun NotesListScreen(
     var elsewhereFor by remember { mutableStateOf<String?>(null) }
     val pending by vm.deletions.pending.collectAsStateWithLifecycle()
     val notSynced by vm.notSynced.collectAsStateWithLifecycle()
+    val parked by vm.parked.collectAsStateWithLifecycle()
+    val upgradeRequired by vm.upgradeRequired.collectAsStateWithLifecycle()
     var query by rememberSaveable { mutableStateOf("") }
     var sheetFor by remember { mutableStateOf<SheetFor?>(null) }
     var syncSheet by remember { mutableStateOf(false) }
@@ -183,6 +186,8 @@ fun NotesListScreen(
 
                 is SyncEvent.Restored ->
                     "“${event.title.ifBlank { "New note" }}” changed on another device and wasn't deleted."
+
+                is SyncEvent.Rejected -> event.message
             }
             toasts.showSnackbar(message, withDismissAction = true, duration = SnackbarDuration.Long)
         }
@@ -265,6 +270,26 @@ fun NotesListScreen(
                                 Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
                                 action = "Sign in",
                                 onAction = onSignIn
+                            )
+                        }
+                    }
+                    if (upgradeRequired) {
+                        item(key = "upgrade", contentType = "banner") {
+                            Banner(
+                                UPGRADE_REQUIRED_MESSAGE,
+                                BannerKind.Warn,
+                                Modifier.padding(horizontal = 16.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                    if (parked > 0) {
+                        item(key = "parked", contentType = "banner") {
+                            Banner(
+                                parkedMessage(parked),
+                                BannerKind.Warn,
+                                Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                action = "Retry",
+                                onAction = vm::retryParked
                             )
                         }
                     }
@@ -767,4 +792,13 @@ fun highlight(excerpt: String, style: SpanStyle): AnnotatedString = buildAnnotat
         withStyle(style) { append(rest.substring(open + 1, close)) }
         rest = if (close < rest.length) rest.substring(close + 1) else ""
     }
+}
+
+/** The parked banner's words. */
+internal fun parkedMessage(n: Int) = if (n ==
+    1
+) {
+    "1 note couldn't sync. It's kept on this device."
+} else {
+    "$n notes couldn't sync. They're kept on this device."
 }

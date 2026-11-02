@@ -34,6 +34,8 @@ import notes.app.notes.TagTreeState
 import notes.app.settings.Appearance
 import notes.app.sync.SyncScheduler
 import notes.core.api.ApiClient
+import notes.core.api.ClientInfo
+import notes.core.api.Credentials
 import notes.core.crypto.LockSession
 import notes.core.db.Database
 import notes.core.db.NoteFilter
@@ -43,6 +45,7 @@ import notes.core.db.Spaces
 import notes.core.images.ImageStore
 import notes.core.sync.NoteMailer
 import notes.core.sync.SyncEngine
+import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
 /** The app's long-lived objects, wired by hand. One per process, owned by [NotesApp]. */
@@ -148,7 +151,7 @@ class AppGraph(
             is Account.SignedOut -> a.server
         }
         return api?.takeIf { it.baseUrl.toString() == server }
-            ?: ApiClient(server.toHttpUrl(), accounts).also { api = it }
+            ?: apiClient(server.toHttpUrl(), accounts).also { api = it }
     }
 
     /**
@@ -226,6 +229,12 @@ class AppGraph(
         const val LOGOUT_WAIT_MS = 5_000L
     }
 }
+
+/** This app, as every request names it: the server may ask for a newer one. */
+val clientInfo = ClientInfo("android", BuildConfig.VERSION_NAME)
+
+/** Every client the app makes, signed in ([credentials]) or not. */
+fun apiClient(url: HttpUrl, credentials: Credentials? = null) = ApiClient(url, credentials, client = clientInfo)
 
 /** The list's filter in prefs: "untagged", "locked", or "tag:" + key + newline + name. */
 internal fun encodeFilter(f: NoteFilter?): String? = when (f) {

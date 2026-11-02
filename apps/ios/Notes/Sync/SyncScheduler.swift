@@ -17,6 +17,8 @@ final class SyncScheduler {
     private var foreground = false
     private var started = false
     private var requested = false
+    /// The server needs a newer app: nothing syncs on its own again until the app restarts; asking still does.
+    private var upgradeRequired = false
     private var waiter: CheckedContinuation<Void, Never>?
     private var afterEdit: Task<Void, Never>?
     private let monitor = NWPathMonitor()
@@ -86,7 +88,8 @@ final class SyncScheduler {
         self.online = online
     }
 
-    func request() {
+    func request(byUser: Bool = false) {
+        if upgradeRequired && !byUser { return }
         if let waiter {
             self.waiter = nil
             waiter.resume()
@@ -111,7 +114,7 @@ final class SyncScheduler {
             let task = BackgroundTask()
             task.id = UIApplication.shared.beginBackgroundTask(withName: "sync") { task.end() }
             defer { task.end() }
-            guard task.id != .invalid else { return }
+            guard task.id != .invalid, !upgradeRequired else { return }
             guard (try? await store.pendingNotes()) ?? 0 > 0 else { return }
             _ = await engine.sync()
         }
@@ -154,6 +157,7 @@ final class SyncScheduler {
             if foreground { await next(orAfter: Self.refreshInterval) } else { await next() }
             while true {
                 let outcome = await graph.engine.sync().outcome
+                upgradeRequired = outcome == .upgradeRequired
                 if outcome != .offline && outcome != .failed {
                     backoff = Self.firstRetry
                     break

@@ -88,7 +88,10 @@ public final class ImageStore: Sendable {
     public func move(_ ids: Set<String>, locked: Bool, key: Data) async -> [String: String]? {
         var next: [(id: String, bytes: Data, type: String)] = []
         for id in ids {
-            guard let file = await load(id) else { return nil }
+            // A locked image of a version this app can't open stays as it is: the lock can't change.
+            guard let file = await load(id), file.type == lockedImageType || !isLockedImageType(file.type) else {
+                return nil
+            }
             if (file.type == lockedImageType) == locked { continue }
             if locked {
                 next.append((id, LockedNotes.encryptImage(key, file.bytes), lockedImageType))
@@ -146,11 +149,18 @@ public final class ImageStore: Sendable {
         }
     }
 
-    /// Uploads every pending image, oldest first. Called by sync before any
+    /// Uploads every pending image that isn't parked, oldest first. Called by sync before any
     /// note operation goes out, so no device sees a reference before its bytes
-    /// exist. Stops at the first failure that a retry might fix.
+    /// exist. Stops at the first failure that a retry might fix; an answer
+    /// notesd wouldn't give counts against the image, and the third parks it
+    /// (the notes showing it wait with it).
     public func upload(_ client: ApiClient) async throws -> ApiResult<Void> {
-        for image in try await pending() {
+        let waiting = try await db.read { sql in
+            try sql.query("SELECT id, content_type FROM pending_images WHERE parked = 0 ORDER BY created_at, id") {
+                PendingImage(id: $0.text(0), type: $0.text(1))
+            }
+        }
+        for image in waiting {
             // A type that can't be stored can't be uploaded either: nothing to retry.
             guard let name = try? Self.fileName(image.id, image.type) else {
                 try await forget(image.id)
@@ -175,8 +185,12 @@ public final class ImageStore: Sendable {
             // Refused for good (bytes not matching the id, too large, not an
             // image): retrying won't change that, and holding it back would
             // stop every note from syncing. Its notes show it as missing.
-            case .rejected(let status, _, _, _) where Self.refused.contains(status):
+            case .rejected(_, let error, _, _) where permanentErrors.contains(error):
                 try await uploaded(image, name)
+            case .unexpected(let status),
+                .rejected(let status, _, _, _) where status < 500:
+                try await attempted(image)
+                return .unexpected(status: status)
             case let other:
                 return other
             }
@@ -193,6 +207,14 @@ public final class ImageStore: Sendable {
         try await forget(image.id)
     }
 
+    private func attempted(_ image: PendingImage) async throws {
+        try await db.write { sql in
+            try sql.exec(
+                "UPDATE pending_images SET attempts = attempts + 1, parked = attempts + 1 >= ? WHERE id = ?",
+                maxAttempts, image.id)
+        }
+    }
+
     private func forget(_ id: String) async throws {
         try await db.write { try $0.exec("DELETE FROM pending_images WHERE id = ?", id) }
     }
@@ -203,9 +225,6 @@ public final class ImageStore: Sendable {
         try? FileManager.default.removeItem(at: pendingDir)
         try? FileManager.default.removeItem(at: cacheDir)
     }
-
-    /// hash_mismatch, image_too_large, unsupported_image.
-    private static let refused: Set<Int> = [400, 413, 415]
 
     /// File extension by type: the type is kept in the name, so a cached file needs no row.
     static let types: [(String, String)] = [

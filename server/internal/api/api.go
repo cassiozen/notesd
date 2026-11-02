@@ -27,13 +27,18 @@ import (
 type Config struct {
 	// ResendURL overrides Resend's API base URL (tests).
 	ResendURL string
-	// Version is the server's build version, shown to signed-in clients.
+	// Version is the server's build version (v1.2.3), sent on every
+	// response; empty is a development build, sent as "dev".
 	Version string
 	// UpdateRequest is the file an admin's update request leaves for the
 	// notesd-update service; empty when the server can't update itself.
 	UpdateRequest string
-	// ReleasesURL overrides where the newest release is looked up (tests).
+	// ReleasesURL overrides where releases are listed (tests).
 	ReleasesURL string
+	// MinClient is the oldest app version, X.Y.Z, this server syncs with,
+	// by platform (android, ios, web). Raised only when a server change
+	// would break older apps; empty means every version is accepted.
+	MinClient map[string]string
 }
 
 // Server serves the API and web app.
@@ -108,12 +113,23 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/search", gzipped(s.authed(s.search)))
 	mux.Handle("GET /api/v1/filters", gzipped(s.authed(s.listFilters)))
 
+	// Not not_found: a client treats that as a missing note or image, which
+	// an older server lacking the endpoint isn't.
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
-		writeError(w, http.StatusNotFound, "not_found", "no such endpoint")
+		writeError(w, http.StatusNotFound, "no_such_endpoint", "no such endpoint")
 	})
 	mux.Handle("/", web.Handler())
 
-	return s.recoverer(s.logRequests(mux))
+	return s.serverHeader(s.recoverer(s.logRequests(s.checkClient(mux))))
+}
+
+// serverHeader names this server's version on every response, so the web
+// app can tell it was updated underneath it.
+func (s *Server) serverHeader(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Notesd-Server", s.version())
+		next.ServeHTTP(w, r)
+	})
 }
 
 // ---- health ----
@@ -341,9 +357,13 @@ func (s *Server) logRequests(next http.Handler) http.Handler {
 		if sw.status >= 500 {
 			level = slog.LevelError
 		}
+		client := "-"
+		if platform, version, ok := requestClient(r); ok {
+			client = platform + "/" + version
+		}
 		s.log.Log(r.Context(), level, "request",
 			"method", r.Method, "path", r.URL.Path, "status", sw.status,
-			"bytes", sw.bytes, "duration_ms", time.Since(start).Milliseconds())
+			"bytes", sw.bytes, "duration_ms", time.Since(start).Milliseconds(), "client", client)
 	})
 }
 

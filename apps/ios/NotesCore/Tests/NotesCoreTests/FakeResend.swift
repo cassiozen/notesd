@@ -9,6 +9,7 @@ final class FakeResend: Sendable {
     struct Reply: Sendable {
         var status: Int
         var body: String
+        var location: String?
     }
 
     private let socket: Int32
@@ -44,8 +45,8 @@ final class FakeResend: Sendable {
         thread.start()
     }
 
-    func enqueue(_ status: Int, _ body: String) {
-        state.withLock { $0.replies.append(Reply(status: status, body: body)) }
+    func enqueue(_ status: Int, _ body: String, location: String? = nil) {
+        state.withLock { $0.replies.append(Reply(status: status, body: body, location: location)) }
     }
 
     func accepted() { enqueue(200, #"{"id":"e1"}"#) }
@@ -66,7 +67,8 @@ final class FakeResend: Sendable {
         }
         let payload = Data(reply.body.utf8)
         let head =
-            "HTTP/1.1 \(reply.status) X\r\nContent-Type: application/json\r\nContent-Length: \(payload.count)\r\nConnection: close\r\n\r\n"
+            "HTTP/1.1 \(reply.status) X\r\nContent-Type: application/json\r\nContent-Length: \(payload.count)\r\n"
+            + (reply.location.map { "Location: \($0)\r\n" } ?? "") + "Connection: close\r\n\r\n"
         let out = Data(head.utf8) + payload
         _ = out.withUnsafeBytes { write(client, $0.baseAddress, out.count) }
     }

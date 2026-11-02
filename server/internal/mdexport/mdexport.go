@@ -124,8 +124,9 @@ func WriteImage(dir, id string, key []byte, get GetImage) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("image %s: %w", id, err)
 	}
-	if contentType == images.Locked {
-		if key == nil {
+	if images.IsLockedType(contentType) {
+		// A later version than this server knows can't be opened.
+		if key == nil || contentType != images.Locked {
 			return "", nil
 		}
 		if data, err = locks.DecryptImage(key, data); err != nil {

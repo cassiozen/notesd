@@ -125,6 +125,48 @@ final class ImagesTests {
         #expect(await try client().images.load(id) != nil)
     }
 
+    @Test func anUploadAnsweredByAPortalHoldsBackOnlyTheNotesShowingIt() async throws {
+        let a = try await client()
+        let id = try await a.images.add(png, type: "image/png")
+        try await a.save("pic", "Trip", ImageRef(id: id, width: 1, height: 1).markdown() + "\n")
+        try await a.save("plain", "Other", "words\n")
+        for _ in 1...3 {
+            a.answerNext({ $0.path.hasPrefix("/api/v1/images") }, status: 413, body: "<html>too big</html>")
+            #expect(await a.sync() == .failed)
+        }
+        #expect(try await a.note("plain")?.dirty == true, "nothing goes while the image is tried")
+        // Parked: the note showing it waits too, the other goes, and that gives both another try.
+        #expect(a.engine.parked.value == 1)
+        #expect(await a.sync() == .done)
+        #expect(try await a.note("plain")?.dirty == false)
+        #expect(await a.sync() == .done)
+        #expect(try await a.note("pic")?.dirty == false)
+        #expect(await Self.fetched(a, id))
+    }
+
+    @Test func anImageRefusedByNotesdIsDroppedNotRetried() async throws {
+        let a = try await client()
+        try await a.images.add(png, type: "image/png")
+        a.answerNext({ $0.path.hasPrefix("/api/v1/images") }, status: 413, body: #"{"error":"image_too_large"}"#)
+        #expect(await a.sync() == .done)
+        #expect(try await a.images.pending().isEmpty)
+    }
+
+    @Test func aLockedImageOfALaterVersionIsNeitherShownNorResealed() async throws {
+        let a = try await client()
+        let sealed = Data((0..<40).map { UInt8($0) })
+        let id = ImageRef.sha256(sealed)
+        guard case .ok = await a.api.putImage(id, bytes: sealed, type: lockedImageType + ".v2") else {
+            Issue.record(Comment(rawValue: "the server takes later locked versions"))
+            return
+        }
+        #expect(await a.images.load(id) == nil)
+        let key = LockedNotes.newKey()
+        #expect(await a.images.move([id], locked: false, key: key) == nil)
+        #expect(await a.images.move([id], locked: true, key: key) == nil)
+        #expect(try await a.images.pending().isEmpty)
+    }
+
     @Test func sniffingKnowsTheImageTypesTheServerAccepts() {
         #expect(ImageStore.sniff(png) == "image/png")
         #expect(ImageStore.sniff(Data([0xff, 0xd8, 0xff, 0])) == "image/jpeg")

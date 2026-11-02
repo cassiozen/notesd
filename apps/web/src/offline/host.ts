@@ -6,7 +6,7 @@ import {
   type LocalNote as EngineNote,
   type NotesEngine,
 } from '@notes/sync-engine'
-import type { LockKey, NoteFilter } from '../api/types'
+import type { Kdf, LockKey, NoteFilter } from '../api/types'
 import { canonical } from '../editor/markdown'
 import { deviceImages, type DeviceImages } from './images'
 import type { EngineApi, EngineEvent, LocalNote, SyncNotice, SyncOutcome, SyncStatus } from './protocol'
@@ -19,9 +19,14 @@ type Open = { user: string; engine: NotesEngine; images: DeviceImages; scheduler
 
 /**
  * The engine behind EngineApi, for the worker that owns the database, or
- * in-process in tests. [emit] gets every event, for every tab.
+ * in-process in tests. [emit] gets every event, for every tab. [version]: this
+ * build's, sent to the server as X-Notesd-Client web/<version>; none sends no header.
  */
-export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent) => void): EngineApi & { close(): void } {
+export function engineHost(
+  openDatabase: OpenDatabase,
+  emit: (event: EngineEvent) => void,
+  version?: string,
+): EngineApi & { close(): void } {
   // Opens chain, one at a time: two switching users at once would each stop the old engine, and one new one leak.
   let current: Promise<Open | null> = Promise.resolve(null)
 
@@ -36,13 +41,17 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
   async function start(user: string, csrfToken: string): Promise<Open> {
     const { db, capi } = await openDatabase(user)
     const images = deviceImages(user)
-    const e = openEngine(db, capi, canonical, images)
+    const e = openEngine(db, capi, canonical, images, version ?? null)
     e.setCsrfToken(csrfToken)
     const scheduler = new Scheduler(async () => (await e.sync()) as SyncOutcome)
     const unsubscribe = [
       e.onStatus((s) => emit({ type: 'status', status: status(s) })),
       e.onChange(() => emit({ type: 'change' })),
-      e.onNotice((n) => emit({ type: 'notice', notice: notice(n) })),
+      e.onNotice((n) => {
+        // Rejected (a change refused for good) has no SyncNotice kind yet; the engine records it as its last error.
+        const shown = notice(n)
+        if (shown) emit({ type: 'notice', notice: shown })
+      }),
       e.onLocalEdit(() => scheduler.edited()),
     ]
     return { user, engine: e, images, scheduler, unsubscribe }
@@ -79,6 +88,14 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
     },
     async status() {
       return status((await engine()).status())
+    },
+    async parked() {
+      return (await engine()).parked()
+    },
+    async retryParked() {
+      const o = await opened()
+      await o.engine.retryParked()
+      o.scheduler.request()
     },
     async lastSyncAt() {
       return (await (await engine()).lastSyncAt()) ?? null
@@ -174,12 +191,25 @@ export function engineHost(openDatabase: OpenDatabase, emit: (event: EngineEvent
           createdAt: k.createdAt,
         }
         if (k.credentialId != null) key.credentialId = k.credentialId
+        if (k.kdf != null) key.kdf = JSON.parse(k.kdf) as Kdf
         return key
       })
     },
     async replaceLockKeys(keys) {
       await (await engine()).replaceLockKeys(
-        keys.map((k) => new LocalLockKey(k.id, k.kind, k.credentialId, k.salt, k.iterations, k.wrapped, k.createdAt)),
+        keys.map(
+          (k) =>
+            new LocalLockKey(
+              k.id,
+              k.kind,
+              k.credentialId,
+              k.salt,
+              k.iterations,
+              k.wrapped,
+              k.createdAt,
+              k.kdf ? JSON.stringify(k.kdf) : null,
+            ),
+        ),
       )
     },
     async wipe() {
@@ -220,18 +250,22 @@ function status(s: EngineStatus): SyncStatus {
       return { kind: 'Synced', at: s.at ?? 0 }
     case 'Failed':
       return { kind: 'Failed', message: s.message ?? '' }
+    case 'UpgradeRequired':
+      return { kind: 'UpgradeRequired', minVersion: s.minVersion ?? null }
     default:
       return { kind: s.kind as 'NotConnected' | 'Syncing' | 'Offline' | 'SignedOut' }
   }
 }
 
-function notice(n: EngineNotice): SyncNotice {
+function notice(n: EngineNotice): SyncNotice | null {
   switch (n.kind) {
     case 'ConflictedCopy':
       return { kind: 'ConflictedCopy', noteId: n.noteId ?? '', copyId: n.copyId ?? '', title: n.title }
     case 'RecoveredCopy':
       return { kind: 'RecoveredCopy', copyId: n.copyId ?? '', title: n.title }
-    default:
+    case 'Restored':
       return { kind: 'Restored', noteId: n.noteId ?? '', title: n.title }
+    default:
+      return null
   }
 }

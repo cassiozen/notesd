@@ -17,11 +17,15 @@ describe('session names', () => {
     expect(sessionName(mac, 'web')).toBe('Chrome on macOS')
     expect(sessionName("Mara's iPhone", 'device')).toBe("Mara's iPhone")
     expect(sessionName('', 'device')).toBe('Device')
+    expect(sessionName('notesd-android/1.0.0', 'device')).toBe('Android')
+    expect(sessionName('notesd-ios/1.0.0', 'device')).toBe('iOS')
   })
 
   it('badges by platform', () => {
     expect(platformBadge('Safari on iPhone', 'web')).toBe('IOS')
     expect(platformBadge('Chrome on macOS', 'web')).toBe('MAC')
     expect(platformBadge('Kitchen tablet', 'device')).toBe('APP')
+    expect(platformBadge(sessionName('notesd-android/1.0.0', 'device'), 'device')).toBe('AND')
+    expect(platformBadge(sessionName('notesd-ios/1.0.0', 'device'), 'device')).toBe('IOS')
   })
 })

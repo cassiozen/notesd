@@ -47,8 +47,11 @@ class LockSession(
         Unlocked
     }
 
-    /** How a keyring change ended. */
-    enum class Outcome { Done, WrongPassword, NotConnected, Offline, Failed }
+    /**
+     * How an unlock or a keyring change ended. [UnsupportedKdf]: the lock password entry was made by a
+     * newer app; [MalformedKey]: it can't be right. Neither is the password's fault.
+     */
+    enum class Outcome { Done, WrongPassword, UnsupportedKdf, MalformedKey, NotConnected, Offline, Failed }
 
     private val _state = MutableStateFlow(State.None)
     val state: StateFlow<State> = _state
@@ -89,16 +92,28 @@ class LockSession(
         if (stale) lock(force = true)
     }
 
-    /** False on a wrong password. */
-    suspend fun unlock(password: String): Boolean = mutex.withLock {
+    /** Done, or why not: a wrong password, or an entry this app can't use. */
+    suspend fun unlock(password: String): Outcome = mutex.withLock {
         val stored = keys.keys()
-        val unlocked = try {
-            withContext(Dispatchers.Default) { Keyring.unlock(stored, password) }
-        } catch (_: LockedException) {
-            return@withLock false
-        }
+        val unlocked = unwrap(stored, password).getOrElse { return@withLock it.outcome() }
         adopt(unlocked, stored.passwordEntry())
-        true
+        Outcome.Done
+    }
+
+    private suspend fun unwrap(stored: List<LockKey>, password: String): Result<ByteArray> = try {
+        Result.success(withContext(Dispatchers.Default) { Keyring.unlock(stored, password) })
+    } catch (e: LockedException) {
+        Result.failure(e)
+    } catch (e: UnsupportedKdfException) {
+        Result.failure(e)
+    } catch (e: MalformedKeyException) {
+        Result.failure(e)
+    }
+
+    private fun Throwable.outcome(): Outcome = when (this) {
+        is UnsupportedKdfException -> Outcome.UnsupportedKdf
+        is MalformedKeyException -> Outcome.MalformedKey
+        else -> Outcome.WrongPassword
     }
 
     /**
@@ -134,11 +149,7 @@ class LockSession(
     suspend fun changePassword(current: String, next: String): Outcome = mutex.withLock {
         val client = api() ?: return@withLock Outcome.NotConnected
         val stored = keys.keys()
-        val unlocked = try {
-            withContext(Dispatchers.Default) { Keyring.unlock(stored, current) }
-        } catch (_: LockedException) {
-            return@withLock Outcome.WrongPassword
-        }
+        val unlocked = unwrap(stored, current).getOrElse { return@withLock it.outcome() }
         val entry = withContext(Dispatchers.Default) { Keyring.passwordEntry(unlocked, next, iterations) }
         when (val r = client.putLockKey(entry, LockedNotes.verifier(unlocked))) {
             is ApiResult.Ok -> {

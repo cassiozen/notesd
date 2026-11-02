@@ -367,7 +367,7 @@ func export(ctx context.Context, db *database.DB, o options) error {
 	if o.locked {
 		locked := 0
 		for _, n := range all {
-			if locks.IsLocked(n.Content) {
+			if locks.Supported(n.Content) {
 				locked++
 			}
 		}
@@ -398,7 +398,7 @@ func export(ctx context.Context, db *database.DB, o options) error {
 		fmt.Printf("skipped %d locked notes; --include-locked exports them with the lock password\n", res.Locked)
 	}
 	if res.Unreadable > 0 {
-		fmt.Printf("skipped %d locked notes that the lock password doesn't open (locked under an earlier keyring, or damaged)\n", res.Unreadable)
+		fmt.Printf("skipped %d locked notes that the lock password doesn't open (locked under an earlier keyring or by a newer notesd, or damaged)\n", res.Unreadable)
 	}
 	if res.MissingImages > 0 {
 		fmt.Printf("left %d images as notesd:image/ references: not on the server, or encrypted and not opened\n", res.MissingImages)

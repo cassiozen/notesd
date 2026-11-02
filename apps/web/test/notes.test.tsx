@@ -2,7 +2,9 @@ import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { App } from '../src/app'
+import { APP_VERSION } from '../src/api/version'
 import { timing } from '../src/notes/saver'
+import { UPGRADE_REQUIRED } from '../src/notes/sync-banners'
 import {
   body,
   bodyText,
@@ -10,6 +12,7 @@ import {
   deleteNote,
   editElsewhere,
   getNote,
+  interceptApi,
   list,
   listNotes,
   newNoteButton,
@@ -333,6 +336,105 @@ describe('failures', () => {
     await user.click(screen.getByRole('button', { name: 'Retry' }))
     await saved()
     expect((await getNote(server, id)).content).toBe('AB\n')
+  })
+
+  it('keeps a save a proxy redirected, and sends it on Retry', async () => {
+    let id = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        id = await createNote(s, 'Portal', 'A')
+      },
+    })
+    await openNote(user, 'Portal')
+    const stop = interceptApi(
+      (method, path) => method === 'PUT' && path.startsWith('/api/v1/notes/'),
+      () => new Response(null, { status: 302, headers: { Location: '/portal/login' } }),
+    )
+    await typeAtEnd(user, 'B')
+
+    expect(await screen.findByText(/Your server answered something notesd didn’t expect \(HTTP 302\)/)).toBeTruthy()
+    expect(screen.queryByText(/didn’t accept this save/)).toBeNull()
+    expect((await getNote(server, id)).content).toBe('A')
+    // Held, not retried on its own: the next edit doesn't go either.
+    await typeAtEnd(user, 'C')
+    await new Promise((r) => setTimeout(r, timing.debounceMs * 3))
+    expect((await getNote(server, id)).content).toBe('A')
+
+    stop()
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await saved()
+    expect((await getNote(server, id)).content).toBe('ABC\n')
+  })
+
+  it('keeps a save notesd answered with a code this version doesn’t know', async () => {
+    let id = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        id = await createNote(s, 'Newer', 'A')
+      },
+    })
+    await openNote(user, 'Newer')
+    const stop = interceptApi(
+      (method, path) => method === 'PUT' && path.startsWith('/api/v1/notes/'),
+      () => Response.json({ error: 'something_new', message: 'from a later notesd' }, { status: 409 }),
+    )
+    await typeAtEnd(user, 'B')
+    expect(await screen.findByText(/didn’t expect \(HTTP 409\)/)).toBeTruthy()
+    expect(screen.queryByText(/didn’t accept this save/)).toBeNull()
+
+    stop()
+    await user.click(screen.getByRole('button', { name: 'Retry' }))
+    await saved()
+    expect((await getNote(server, id)).content).toBe('AB\n')
+  })
+
+  it('holds a save the server turns down as too old an app, and says to update', async () => {
+    let id = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        id = await createNote(s, 'Old app', 'A')
+      },
+    })
+    await openNote(user, 'Old app')
+    interceptApi(
+      (method, path) => method === 'PUT' && path.startsWith('/api/v1/notes/'),
+      () =>
+        Response.json(
+          { error: 'upgrade_required', message: 'this app is too old for this server; update notesd', minVersion: '9.0.0' },
+          { status: 426 },
+        ),
+    )
+    await typeAtEnd(user, 'B')
+
+    const banner = await within(list()).findByRole('alert')
+    expect(banner.textContent).toBe(UPGRADE_REQUIRED)
+    // The note says so too: on a phone the list isn't showing.
+    expect(within(screen.getByRole('region', { name: 'Note' })).getByText(UPGRADE_REQUIRED)).toBeTruthy()
+    expect(screen.queryByText(/didn’t accept this save/)).toBeNull()
+    expect(bodyText()).toBe('AB')
+    expect((await getNote(server, id)).content).toBe('A')
+  })
+
+  it.skipIf(APP_VERSION === '0.0.0-dev')('offers a reload once the server runs another notesd', async () => {
+    const { user } = await signedIn({
+      seed: async (s) => {
+        await createNote(s, 'Plan', 'A')
+      },
+    })
+    expect(within(list()).queryByText(/notesd was updated/)).toBeNull()
+    interceptApi(
+      () => true,
+      async (_m, _p, real) => {
+        const res = await real()
+        const headers = new Headers(res.headers)
+        headers.set('X-Notesd-Server', 'v999.0.0')
+        return new Response(res.body, { status: res.status, headers })
+      },
+    )
+    await openNote(user, 'Plan')
+    const banner = await within(list()).findByText('notesd was updated. Reload to get the new version.')
+    expect(banner.closest('[role="status"]')).toBeTruthy()
+    expect(within(list()).getByRole('button', { name: 'Reload' })).toBeTruthy()
   })
 
   it('asks to sign in again when the session ends mid-edit, then saves', async () => {

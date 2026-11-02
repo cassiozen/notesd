@@ -28,8 +28,10 @@ import notes.app.images.Prepared
 import notes.app.images.prepareImage
 import notes.core.api.LOCKED_IMAGE
 import notes.core.crypto.LockSession
+import notes.core.crypto.LockedEnvelope
 import notes.core.crypto.LockedException
 import notes.core.crypto.LockedNotes
+import notes.core.crypto.UnsupportedVersionException
 import notes.core.db.Note
 import notes.core.db.NoteStore
 import notes.core.db.Spaces
@@ -109,9 +111,18 @@ class EditorViewModel(
     /** The note's body is (to be) encrypted. */
     val locked: StateFlow<Boolean> = _locked
 
+    private val _unsupported = MutableStateFlow(false)
+
+    /**
+     * Locked by a newer version of notesd: it can't be opened here. Read-only: never unlocked,
+     * relocked, unlocked for good, or saved over.
+     */
+    val unsupported: StateFlow<Boolean> = _unsupported
+
     /** Locked, and locked notes are locked: show the unlock prompt instead of the text. */
-    val needsUnlock: StateFlow<Boolean> = combine(_locked, locks.state) { l, s -> l && s != LockSession.State.Unlocked }
-        .stateIn(viewModelScope, SharingStarted.Eagerly, false)
+    val needsUnlock: StateFlow<Boolean> =
+        combine(_locked, locks.state, _unsupported) { l, s, u -> l && !u && s != LockSession.State.Unlocked }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     private val _unreadable = MutableStateFlow(false)
 
@@ -216,6 +227,7 @@ class EditorViewModel(
             note?.let { noteSpace = it.spaceId }
             known = note?.let { it.title to it.content }
             _locked.value = note != null && LockedNotes.isLocked(note.content)
+            _unsupported.value = note != null && LockedEnvelope.isUnsupported(note.content)
             _title.value = note?.title.orEmpty()
             _document.value = when {
                 note != null -> parse(note)
@@ -240,7 +252,7 @@ class EditorViewModel(
      * unlocked (the screen asks for the password or creates one first).
      */
     fun setLocked(doc: Document, locked: Boolean) {
-        if (_locked.value == locked) return
+        if (_locked.value == locked || _unsupported.value) return
         _locked.value = locked
         sealed = null
         edited()
@@ -272,7 +284,7 @@ class EditorViewModel(
 
     /** Stores [doc] if anything changed since the last save. Call with the editor's current document. */
     fun save(doc: Document) {
-        if (edits == saved) return
+        if (edits == saved || _unsupported.value) return
         val edit = edits
         saved = edit
         saving++
@@ -391,8 +403,10 @@ class EditorViewModel(
         }
     }
 
-    /** The note as the editor shows it; null for a locked note while locked notes are locked. */
+    /** The note as the editor shows it; null for a locked note while locked notes are locked, or one it can't open. */
     private suspend fun parse(note: Note): Document? {
+        _unsupported.value = LockedEnvelope.isUnsupported(note.content)
+        if (_unsupported.value) return null
         if (!LockedNotes.isLocked(note.content)) {
             _unreadable.value = false
             return withContext(Dispatchers.Default) { Document.forNote(note.title, Markdown.parse(note.content)) }
@@ -411,6 +425,9 @@ class EditorViewModel(
                 Document.forNote(note.title, Markdown.parse(plain))
             } catch (_: LockedException) {
                 _unreadable.value = true
+                null
+            } catch (_: UnsupportedVersionException) {
+                _unsupported.value = true
                 null
             }
         }

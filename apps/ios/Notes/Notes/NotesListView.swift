@@ -48,6 +48,18 @@ struct NotesListView: View {
                     .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
                     .plainRow()
             }
+            if case .upgradeRequired = graph.syncStatus {
+                Banner(text: SyncMessages.upgradeRequired)
+                    .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                    .plainRow()
+            }
+            if graph.parkedNotes > 0 {
+                Banner(text: SyncMessages.parked(graph.parkedNotes), action: "Retry") {
+                    Task { await graph.engine.retryParked() }
+                }
+                .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                .plainRow()
+            }
             if let all = hits {
                 // Notes waiting out the undo window are hidden, as in the list.
                 let hits = all.filter { pendingDeletes[$0.id] == nil }
@@ -315,6 +327,7 @@ struct NotesListView: View {
         case .notConnected: "On this iPhone only"
         case .offline: pendingNotes > 0 ? "Offline · \(pendingNotes) not synced" : "Offline"
         case .failed: pendingNotes > 0 ? "\(pendingNotes) not synced" : "Sync problem"
+        case .upgradeRequired: pendingNotes > 0 ? "\(pendingNotes) not synced · Update notesd" : "Update notesd"
         case .signedOut: nil
         case .syncing, .synced: nil
         }
@@ -584,6 +597,9 @@ private struct SyncSheet: View {
             if case .failed(let message) = status {
                 Text("The server said: \(message)").font(.notesSmall).foregroundStyle(Color.ink3)
             }
+            if case .upgradeRequired = status {
+                Text(SyncMessages.upgradeRequired).font(.notesSmall).foregroundStyle(Color.ink3)
+            }
             Button(action: syncNow) {
                 Text("Sync now").font(.notesButton).frame(maxWidth: .infinity, minHeight: 36)
             }
@@ -702,6 +718,26 @@ private struct SignedOutBanner: View {
     }
 }
 
+/// A sync problem the user should know about, with what they can do about it, if anything here.
+private struct Banner: View {
+    let text: String
+    var action: String?
+    var perform: () -> Void = {}
+
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(text).font(.notesSmall)
+            Spacer(minLength: 0)
+            if let action {
+                Button(action, action: perform).font(.notesButton)
+            }
+        }
+        .foregroundStyle(Color.warnInk)
+        .padding(12)
+        .background(Color.warnBg, in: .rect(cornerRadius: 12))
+    }
+}
+
 /// What sync is doing, in a word or two.
 struct SyncLabel: View {
     let status: SyncStatus
@@ -719,6 +755,7 @@ struct SyncLabel: View {
         case .offline: pending > 0 ? "Offline · \(pending) not synced" : "Offline"
         case .signedOut: "Signed out"
         case .failed: "Sync problem"
+        case .upgradeRequired: "Needs a newer app"
         }
     }
 }

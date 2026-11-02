@@ -23,6 +23,8 @@ final class AppGraph {
     /// The account as the screens show it, kept in step with the store.
     private(set) var account: Account
     private(set) var syncStatus: SyncStatus = .notConnected
+    /// Notes sync gave up on for now (the server kept answering unexpectedly): offered for a retry.
+    private(set) var parkedNotes = 0
     private(set) var lockState: LockSession.State = .none
 
     /// What the list shows. Kept so the app reopens on it, unless it was chosen in another space:
@@ -148,6 +150,9 @@ final class AppGraph {
                 // The keyring came with the cycle: a password changed or reset elsewhere locks here too.
                 if case .synced = status { await locks.refresh() }
             }
+        }
+        Task { [weak self, engine] in
+            for await count in engine.parked.stream() { self?.parkedNotes = count }
         }
         Task { [weak self, locks] in
             for await state in locks.state.stream() {

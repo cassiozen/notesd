@@ -2,8 +2,14 @@
 // shared/crypto-fixtures/locked.json. The Android core implements the same
 // rules in notes.core.crypto.LockedNotes; keep the two in step.
 
-/** A locked note's content starts with this; the rest is base64url(nonce ‖ ciphertext ‖ tag). */
-export const LOCKED_PREFIX = 'notesd:locked:v1:'
+import type { Kdf } from '../api/types'
+
+/** Every locked body, whatever its version, starts with this: the version, ':', then the payload. */
+export const LOCKED_FAMILY = 'notesd:locked:'
+/** The one version this release opens. */
+export const LOCK_VERSION = 'v1'
+/** A v1 locked note's content starts with this; the rest is base64url(nonce ‖ ciphertext ‖ tag). */
+export const LOCKED_PREFIX = `${LOCKED_FAMILY}${LOCK_VERSION}:`
 const BODY_AAD = 'notesd:locked:v1'
 const IMAGE_AAD = 'notesd:image:v1'
 const PASSKEY_INFO = 'notesd:passkey:v1'
@@ -30,12 +36,51 @@ export class LockedError extends Error {
   }
 }
 
+/** Locked by a newer notesd, in a format this one can't open: no key or password would help. */
+export class UnsupportedLockError extends Error {
+  constructor(message = 'This note was locked by a newer version of notesd. Update notesd to open it.') {
+    super(message)
+    this.name = 'UnsupportedLockError'
+  }
+}
+
+/** A keyring entry whose key derivation this notesd doesn't know: written by a newer one. */
+export class UnsupportedKdfError extends Error {
+  constructor(message = 'This lock was set up by a newer version of notesd. Update notesd to unlock.') {
+    super(message)
+    this.name = 'UnsupportedKdfError'
+  }
+}
+
+/** A keyring entry that can't be right (zero iterations, a passkey's kdf on a password). */
+export class MalformedKeyError extends Error {
+  constructor(message = 'This lock’s settings are damaged. It can’t be unlocked here.') {
+    super(message)
+    this.name = 'MalformedKeyError'
+  }
+}
+
 const enc = new TextEncoder()
 // ignoreBOM: a body may start with U+FEFF, and it must come back as it went in.
 const dec = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true })
 
+/** Any locked body, including versions this release can't open. */
 export function isLocked(content: string): boolean {
-  return content.startsWith(LOCKED_PREFIX)
+  return content.startsWith(LOCKED_FAMILY)
+}
+
+/** "v1", "v2"…: the version of a locked body; null when it isn't one, or the version can't be read. */
+export function lockVersion(content: string): string | null {
+  if (!isLocked(content)) return null
+  const rest = content.slice(LOCKED_FAMILY.length)
+  const end = rest.indexOf(':')
+  const v = end < 0 ? '' : rest.slice(0, end)
+  return /^v[1-9][0-9]*$/.test(v) ? v : null
+}
+
+/** Locked in a version this release can open. */
+export function isSupportedLock(content: string): boolean {
+  return lockVersion(content) === LOCK_VERSION
 }
 
 export function toBase64Url(bytes: Uint8Array): string {
@@ -92,9 +137,13 @@ export async function encryptBody(key: CryptoKey, markdown: string): Promise<str
   return LOCKED_PREFIX + toBase64Url(await seal(key, enc.encode(markdown), BODY_AAD))
 }
 
-/** Decrypts stored content; throws LockedError unless it is an envelope this key sealed. */
+/**
+ * Decrypts stored content; throws UnsupportedLockError for a newer version's body,
+ * LockedError unless it is an envelope this key sealed.
+ */
 export async function decryptBody(key: CryptoKey, content: string): Promise<string> {
   if (!isLocked(content)) throw new LockedError('Not a locked note')
+  if (!isSupportedLock(content)) throw new UnsupportedLockError()
   const plain = await open(key, fromBase64Url(content.slice(LOCKED_PREFIX.length)), BODY_AAD)
   try {
     return dec.decode(plain)
@@ -111,6 +160,38 @@ export function sealImage(key: CryptoKey, file: Uint8Array<ArrayBuffer>): Promis
 /** Decrypts a locked note's image; throws LockedError unless this key sealed it as an image. */
 export function openImage(key: CryptoKey, sealed: Uint8Array<ArrayBuffer>): Promise<Uint8Array<ArrayBuffer>> {
   return open(key, sealed, IMAGE_AAD)
+}
+
+/** How a keyring entry's kek is derived, once checked: the only ones this release knows. */
+export type KnownKdf = { name: 'pbkdf2-sha256'; iterations: number } | { name: 'hkdf-sha256' }
+
+/** The kdf written on new entries of [kind]. */
+export function kdfFor(kind: WrapKind, iterations: number): KnownKdf {
+  return kind === 'passkey' ? { name: 'hkdf-sha256' } : { name: 'pbkdf2-sha256', iterations }
+}
+
+/**
+ * An entry's kdf: its own, or, written before entries had one, the one its kind implies.
+ * Throws UnsupportedKdfError for one a newer notesd wrote, MalformedKeyError for one that can't be right.
+ */
+export function entryKdf(entry: { kind: WrapKind; iterations?: number; kdf?: Kdf | null }): KnownKdf {
+  const kdf = entry.kdf ?? kdfFor(entry.kind, entry.iterations ?? 0)
+  if (typeof kdf.name !== 'string') throw new MalformedKeyError()
+  const passkey = entry.kind === 'passkey'
+  switch (kdf.name) {
+    case 'pbkdf2-sha256': {
+      const { iterations } = kdf
+      if (passkey || typeof iterations !== 'number' || !Number.isSafeInteger(iterations) || iterations <= 0) {
+        throw new MalformedKeyError()
+      }
+      return { name: 'pbkdf2-sha256', iterations }
+    }
+    case 'hkdf-sha256':
+      if (!passkey) throw new MalformedKeyError()
+      return { name: 'hkdf-sha256' }
+    default:
+      throw new UnsupportedKdfError()
+  }
 }
 
 /** PBKDF2-HMAC-SHA256 of the NFC-normalized password: the key that wraps the locked-notes key. */

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +35,8 @@ type errorBody struct {
 	Generation string `json:"generation,omitempty"`
 	// Count is how many notes a space still holds, on space_not_empty.
 	Count *int `json:"count,omitempty"`
+	// MinVersion is the oldest app version this server accepts, on upgrade_required.
+	MinVersion string `json:"minVersion,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -53,13 +56,26 @@ func writeError(w http.ResponseWriter, status int, code, message string) {
 // decode reads a JSON request body into v. Unknown fields are ignored so
 // newer clients keep working against older servers.
 func decode(w http.ResponseWriter, r *http.Request, v any) error {
-	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(v); err != nil {
+	_, err := decodeBody(w, r, v)
+	return err
+}
+
+// decodeBody is decode that also returns the body as received.
+func decodeBody(w http.ResponseWriter, r *http.Request, v any) ([]byte, error) {
+	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	if err != nil {
 		var tooBig *http.MaxBytesError
 		if errors.As(err, &tooBig) {
-			return &notes.ValidationError{Field: "body", Message: "request body too large"}
+			return nil, &notes.ValidationError{Field: "body", Message: "request body too large"}
 		}
+		return nil, &notes.ValidationError{Field: "body", Message: "reading the request body: " + err.Error()}
+	}
+	return body, unmarshalBody(body, v)
+}
+
+func unmarshalBody(body []byte, v any) error {
+	dec := json.NewDecoder(bytes.NewReader(body))
+	if err := dec.Decode(v); err != nil {
 		if errors.Is(err, io.EOF) {
 			return &notes.ValidationError{Field: "body", Message: "request body is required"}
 		}

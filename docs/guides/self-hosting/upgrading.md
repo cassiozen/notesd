@@ -49,6 +49,19 @@ To stay on one release line, use its tag instead of `latest`, e.g.
 
 ## Changes that need action
 
+### 1.0: update the apps too
+
+1.0 changes how the apps handle sync errors, versions and locked notes, so update every phone and
+browser along with the server. 0.x apps keep working with a 1.0 server, but only 1.0 apps:
+
+- keep a change that a proxy or Wi-Fi portal answered instead of notesd, rather than dropping it;
+- recover changes that older apps dropped this way, the first time they open;
+- understand later versions of locked notes and lock passwords, instead of showing them as text or
+  saying "wrong password".
+
+If you update from Settings, install `notesd-update` again from 1.0: see
+[Updating from Settings](#updating-from-settings).
+
 ### 1.0: `NOTESD_PUBLIC_URL` and `NOTESD_LISTEN` removed
 
 notesd now works out where it's served from on its own. After upgrading:
@@ -97,8 +110,8 @@ Settings: Settings says when one is out, and you upgrade by hand after reading
 its notes on this page.
 
 > [!IMPORTANT]
-> A copy of `notesd-update` from before 0.15 installs whatever release is
-> newest, including a new major version. Install it again from 0.15 or later,
+> A copy of `notesd-update` from before 1.0 installs whatever release is
+> newest, including a new major version. Install it again from 1.0 or later,
 > as below.
 
 To set it up, download the script from the same release as your binary

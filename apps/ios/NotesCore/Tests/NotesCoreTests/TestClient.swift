@@ -15,12 +15,14 @@ struct NoteView: Hashable, CustomStringConvertible {
 
 /// The real network, with switches to make it misbehave.
 final class FaultyTransport: HTTPTransport {
-    enum Kind { case failBefore, loseResponse, before }
+    enum Kind { case failBefore, loseResponse, before, answer }
 
     struct Fault {
         var match: @Sendable (URLRequest) -> Bool
         var kind: Kind
         var action: (@Sendable () async -> Void)?
+        /// `answer`: what something in front of the server says instead (status, body).
+        var reply: (Int, String)?
     }
 
     private struct State {
@@ -55,6 +57,11 @@ final class FaultyTransport: HTTPTransport {
         }
         switch fault?.kind {
         case .failBefore: throw URLError(.networkConnectionLost)
+        case .answer:
+            let (status, body) = fault?.reply ?? (500, "")
+            let response = HTTPURLResponse(
+                url: request.url!, statusCode: status, httpVersion: nil, headerFields: ["Content-Type": "text/html"])!
+            return (Data(body.utf8), response)
         case .before: await fault?.action?()
         default: break
         }
@@ -141,6 +148,13 @@ final class TestClient: @unchecked Sendable {
     /// The next matching request reaches the server, but its response is lost.
     func loseNextResponse(_ match: @escaping @Sendable (URLRequest) -> Bool) {
         transport.add(.init(match: match, kind: .loseResponse))
+    }
+
+    /// The next matching request is answered by something that isn't notesd (a portal, a proxy).
+    func answerNext(
+        _ match: @escaping @Sendable (URLRequest) -> Bool, status: Int = 200, body: String = "<html>Sign in</html>"
+    ) {
+        transport.add(.init(match: match, kind: .answer, reply: (status, body)))
     }
 
     /// Runs `action` just before the next matching request goes out.

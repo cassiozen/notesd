@@ -63,6 +63,8 @@ nonisolated final class ImageLoader: @unchecked Sendable {
 
     private func decode(_ id: String, pixels: Int) async -> UIImage? {
         guard let file = await store.load(id) else { return nil }
+        // A locked image of a later version: no key here opens it, so it shows as missing.
+        if isLockedImageType(file.type) && file.type != lockedImageType { return nil }
         let bytes = file.type == lockedImageType ? decrypt(file.bytes) : file.bytes
         guard let bytes, let source = CGImageSourceCreateWithData(bytes as CFData, nil) else { return nil }
         let options: [CFString: Any] = [

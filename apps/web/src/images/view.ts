@@ -1,4 +1,4 @@
-import { LOCKED_IMAGE } from '../api/images'
+import { isLockedImageType } from '../api/images'
 import { NoteImage } from '../editor/extensions'
 import { notesSource } from '../notes/source'
 import { decryptedURL, knownLocked } from './store'
@@ -47,7 +47,8 @@ export const ImageView = NoteImage.extend({
           .then(
             (blob) => {
               if (gone) return
-              if (blob.type === LOCKED_IMAGE) return decrypt(blob)
+              // A newer version's too: decrypt turns that down, and it shows as missing.
+              if (isLockedImageType(blob.type)) return decrypt(blob)
               kept = URL.createObjectURL(blob)
               img.src = kept
             },

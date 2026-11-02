@@ -10,7 +10,8 @@ export const syncTiming = {
 
 /**
  * When to sync (§5.5): on start, after edits settle, when a tab asks, every minute. Failures back off
- * 2 s doubling to 5 min with jitter. Signed out, it waits to be asked: retrying can't restore a session.
+ * 2 s doubling to 5 min with jitter. Signed out, it waits to be asked: retrying can't restore a session. Told
+ * the app is too old (UpgradeRequired), it stops.
  */
 export class Scheduler {
   private requested = true
@@ -51,7 +52,8 @@ export class Scheduler {
       } catch {
         outcome = 'Failed'
       }
-      if (this.stopped) return
+      // Only an updated app helps, and that's a new worker: no retry until then, asked or not.
+      if (this.stopped || outcome === 'UpgradeRequired') return
       if (outcome === 'Offline' || outcome === 'Failed') {
         const backoff = syncTiming.firstRetryMs * 2 ** failures++
         wait = Math.min(backoff + Math.random() * (backoff / 2), syncTiming.maxRetryMs)

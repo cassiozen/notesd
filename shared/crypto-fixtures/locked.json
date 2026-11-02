@@ -1,5 +1,5 @@
 {
-  "description": "Locked notes crypto (architecture §10.1). Binary values are unpadded base64url. kdf: PBKDF2-HMAC-SHA256 of the NFC-normalized UTF-8 password, 32-byte key. hkdf: HKDF-SHA256 of a passkey PRF output. wraps: AES-256-GCM of the 32-byte locked-notes key under kek, nonce(12) ‖ ciphertext ‖ tag, AAD \"notesd:lnk:v1:<kind>\". envelopes: note content \"notesd:locked:v1:\" + base64url(nonce(12) ‖ ciphertext ‖ tag) of the UTF-8 Markdown body, AAD \"notesd:locked:v1\". invalid: envelopes every client must refuse to open with key. images: a locked note's image file, nonce(12) ‖ ciphertext ‖ tag, AAD \"notesd:image:v1\"; plain null means it must be refused. verifiers: HMAC-SHA256(key, \"notesd:verifier:v1\"), sent to change the keyring.",
+  "description": "Locked notes crypto (architecture §10.1). Binary values are unpadded base64url. kdf: PBKDF2-HMAC-SHA256 of the NFC-normalized UTF-8 password, 32-byte key. hkdf: HKDF-SHA256 of a passkey PRF output. wraps: AES-256-GCM of the 32-byte locked-notes key under kek, nonce(12) ‖ ciphertext ‖ tag, AAD \"notesd:lnk:v1:<kind>\". envelopes: note content \"notesd:locked:v1:\" + base64url(nonce(12) ‖ ciphertext ‖ tag) of the UTF-8 Markdown body, AAD \"notesd:locked:v1\". invalid: envelopes every client must refuse to open with key. unsupported: bodies starting \"notesd:locked:\" whose version (null: unparseable) this release can't open; locked, read-only, never saved over; serverAccepts: stored as opaque. imageTypes: image content types; locked: a locked note's image, supported: this release opens it. keyring: keyring entries' kdf (null: pre-1.0, implied by kind) and whether a client can unlock with it (ok), must say \"update notesd\" (unsupported), or must treat it as malformed (invalid). images: a locked note's image file, nonce(12) ‖ ciphertext ‖ tag, AAD \"notesd:image:v1\"; plain null means it must be refused. verifiers: HMAC-SHA256(key, \"notesd:verifier:v1\"), sent to change the keyring.",
   "kdf": [
     {
       "name": "ascii password",
@@ -97,11 +97,6 @@
       "key": "AQgPFh0kKzI5QEdOVVxjanF4f4aNlJuiqbC3vsXM09o"
     },
     {
-      "name": "unknown version",
-      "envelope": "notesd:locked:v2:KTA3PkVMU1phaG92-EduTRT6ksBB21a_AFBEJLpoy0cHrCdU4zkxTED2lLQAB6WZQlG-fFdYGft6v5kfYffAlVQOE4PhlcnL1Kp2",
-      "key": "AQgPFh0kKzI5QEdOVVxjanF4f4aNlJuiqbC3vsXM09o"
-    },
-    {
       "name": "too short",
       "envelope": "notesd:locked:v1:AAcOFRwjKjE4P0ZNVFtiaXB3foU",
       "key": "AQgPFh0kKzI5QEdOVVxjanF4f4aNlJuiqbC3vsXM09o"
@@ -115,6 +110,119 @@
       "name": "line break",
       "envelope": "notesd:locked:v1:KTA3PkVMU1phaG92-EduTRT\r\n6ksBB21a_AFBEJLpoy0cHrCdU4zkxTED2lLQAB6WZQlG-fFdYGft6v5kfYffAlVQOE4PhlcnL1Kp2",
       "key": "AQgPFh0kKzI5QEdOVVxjanF4f4aNlJuiqbC3vsXM09o"
+    }
+  ],
+  "unsupported": [
+    {
+      "name": "v2",
+      "envelope": "notesd:locked:v2:KTA3PkVMU1phaG92-EduTRT6ksBB21a_AFBEJLpoy0cHrCdU4zkxTED2lLQAB6WZQlG-fFdYGft6v5kfYffAlVQOE4PhlcnL1Kp2",
+      "version": "v2",
+      "serverAccepts": true
+    },
+    {
+      "name": "v10",
+      "envelope": "notesd:locked:v10:KTA3PkVMU1phaG92-EduTRT6ksBB21a_AFBEJLpoy0cHrCdU4zkxTED2lLQAB6WZQlG-fFdYGft6v5kfYffAlVQOE4PhlcnL1Kp2",
+      "version": "v10",
+      "serverAccepts": true
+    },
+    {
+      "name": "unparseable version",
+      "envelope": "notesd:locked:x:KTA3PkVMU1phaG92-EduTRT6ksBB21a_AFBEJLpoy0cHrCdU4zkxTED2lLQAB6WZQlG-fFdYGft6v5kfYffAlVQOE4PhlcnL1Kp2",
+      "version": null,
+      "serverAccepts": false
+    },
+    {
+      "name": "v2 not base64url",
+      "envelope": "notesd:locked:v2:abc+/=",
+      "version": "v2",
+      "serverAccepts": false
+    }
+  ],
+  "imageTypes": [
+    {
+      "type": "application/vnd.notesd.locked",
+      "locked": true,
+      "supported": true
+    },
+    {
+      "type": "application/vnd.notesd.locked.v2",
+      "locked": true,
+      "supported": false
+    },
+    {
+      "type": "image/png",
+      "locked": false,
+      "supported": true
+    }
+  ],
+  "keyring": [
+    {
+      "name": "pbkdf2",
+      "kind": "password",
+      "kdf": {
+        "name": "pbkdf2-sha256",
+        "iterations": 600000
+      },
+      "verdict": "ok"
+    },
+    {
+      "name": "recovery pbkdf2",
+      "kind": "recovery",
+      "kdf": {
+        "name": "pbkdf2-sha256",
+        "iterations": 600000
+      },
+      "verdict": "ok"
+    },
+    {
+      "name": "passkey hkdf",
+      "kind": "passkey",
+      "kdf": {
+        "name": "hkdf-sha256"
+      },
+      "verdict": "ok"
+    },
+    {
+      "name": "legacy password, no kdf",
+      "kind": "password",
+      "iterations": 600000,
+      "kdf": null,
+      "verdict": "ok"
+    },
+    {
+      "name": "legacy passkey, no kdf",
+      "kind": "passkey",
+      "iterations": 0,
+      "kdf": null,
+      "verdict": "ok"
+    },
+    {
+      "name": "argon2id",
+      "kind": "password",
+      "kdf": {
+        "name": "argon2id",
+        "m": 65536,
+        "t": 3,
+        "p": 1
+      },
+      "verdict": "unsupported"
+    },
+    {
+      "name": "pbkdf2 zero iterations",
+      "kind": "password",
+      "kdf": {
+        "name": "pbkdf2-sha256",
+        "iterations": 0
+      },
+      "verdict": "invalid"
+    },
+    {
+      "name": "hkdf for a password",
+      "kind": "password",
+      "kdf": {
+        "name": "hkdf-sha256"
+      },
+      "verdict": "invalid"
     }
   ],
   "images": [

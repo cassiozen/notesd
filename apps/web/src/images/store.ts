@@ -1,5 +1,5 @@
 import type { Editor } from '@tiptap/core'
-import { LOCKED_IMAGE } from '../api/images'
+import { LOCKED_IMAGE, isLockedImageType } from '../api/images'
 import { LockedError, openImage, sealImage } from '../locks/crypto'
 import { lockSession } from '../locks/session'
 import { notesSource } from '../notes/source'
@@ -59,9 +59,9 @@ export function knownLocked(id: string): boolean {
 
 /**
  * A blob: URL for an encrypted image, decrypted with the session key; null
- * when it isn't encrypted, locked notes are locked, or it won't download.
+ * when it isn't encrypted (or by a newer notesd), locked notes are locked, or it won't download.
+ * [blob]: the encrypted file, when the caller already has it.
  */
-/** [blob]: the encrypted file, when the caller already has it. */
 export function decryptedURL(id: string, blob?: Blob): Promise<string | null> {
   let url = decrypted.get(id)
   if (!url) {
@@ -123,6 +123,8 @@ async function moveImage(id: string, locked: boolean, key: CryptoKey): Promise<s
   const blob = await notesSource().images.get(id).catch(() => {
     throw new ImageError('A picture in this note couldn’t be downloaded. Try again when the connection is back.')
   })
+  // Sealed by a newer notesd: this one can't open it, and sealing it again would bury it for good.
+  if (isLockedImageType(blob.type) && blob.type !== LOCKED_IMAGE) return null
   if ((blob.type === LOCKED_IMAGE) === locked) return null
   const bytes = new Uint8Array(await blob.arrayBuffer())
   let file: Uint8Array<ArrayBuffer>

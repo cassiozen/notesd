@@ -133,6 +133,10 @@ export interface NotesSource {
     onState(listener: (state: SyncState) => void): () => void
     /** What sync did to keep both sides of a clash. Returns the unsubscribe function. */
     onNotice(listener: (notice: SyncNotice) => void): () => void
+    /** Notes whose change failed to sync again and again, set aside so others go through. Returns the unsubscribe function. */
+    onParked(listener: (count: number) => void): () => void
+    /** Puts set-aside changes back in line and syncs. */
+    retryParked(): Promise<void>
     now(): void
   }
 }

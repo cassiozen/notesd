@@ -179,7 +179,7 @@ func (s *Store) Missing(ctx context.Context) ([]string, error) {
 			return err
 		}
 		rows, err = tx.QueryContext(ctx, `SELECT r.image_id FROM note_images r JOIN notes n ON n.seq = r.note_seq
-			WHERE n.deleted_at IS NULL AND n.content LIKE ? || '%'`, locks.Prefix)
+			WHERE n.deleted_at IS NULL AND substr(n.content, 1, ?) = ?`, len(locks.Family), locks.Family)
 		if err != nil {
 			return err
 		}
@@ -209,11 +209,12 @@ func (s *Store) Missing(ctx context.Context) ([]string, error) {
 }
 
 // ReleaseUntracked starts the Grace of plain images from before references
-// were tracked that no note shows. Locked ones wait for their note's next
-// save: the server can't see which locked note shows them.
+// were tracked that no note shows. Locked ones, of any version, wait for
+// their note's next save: the server can't see which locked note shows them.
 func ReleaseUntracked(ctx context.Context, tx *sql.Tx, now int64) error {
 	_, err := tx.ExecContext(ctx, `UPDATE images SET released_at = ?
-		WHERE released_at IS NULL AND content_type != ?
-		AND NOT EXISTS (SELECT 1 FROM note_images r WHERE r.image_id = images.id)`, now, Locked)
+		WHERE released_at IS NULL AND content_type != ? AND substr(content_type, 1, ?) != ?
+		AND NOT EXISTS (SELECT 1 FROM note_images r WHERE r.image_id = images.id)`,
+		now, Locked, len(Locked)+1, Locked+".")
 	return err
 }

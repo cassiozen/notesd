@@ -19,13 +19,14 @@ public final class LockKeyStore: Sendable {
         try await db.read { sql in
             try sql.query(
                 """
-                SELECT id, kind, credential_id, salt, iterations, wrapped, created_at FROM lock_keys
+                SELECT id, kind, credential_id, salt, iterations, wrapped, created_at, kdf FROM lock_keys
                 ORDER BY kind != 'password', created_at, id
                 """
             ) {
                 LockKey(
                     id: $0.text(0), kind: $0.text(1), credentialId: $0.textOrNil(2), salt: $0.text(3),
-                    iterations: Int($0.int64(4)), wrapped: $0.text(5), createdAt: $0.int64(6))
+                    iterations: Int($0.int64(4)), wrapped: $0.text(5), createdAt: $0.int64(6),
+                    kdf: try $0.textOrNil(7).map { try JSONDecoder().decode(Kdf.self, from: Data($0.utf8)) })
             }
         }
     }
@@ -52,8 +53,12 @@ public final class LockKeyStore: Sendable {
         try sql.exec("DELETE FROM lock_keys")
         for k in keys {
             try sql.exec(
-                "INSERT INTO lock_keys (id, kind, credential_id, salt, iterations, wrapped, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                k.id, k.kind, k.credentialId, k.salt, Int64(k.iterations), k.wrapped, k.createdAt)
+                """
+                INSERT INTO lock_keys (id, kind, credential_id, salt, iterations, wrapped, created_at, kdf)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                k.id, k.kind, k.credentialId, k.salt, Int64(k.iterations), k.wrapped, k.createdAt,
+                try k.kdf.map { String(decoding: try jsonEncoder.encode($0), as: UTF8.self) })
         }
     }
 }
