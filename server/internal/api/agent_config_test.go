@@ -86,3 +86,21 @@ func TestAccountTimeZone(t *testing.T) {
 		t.Fatalf("set: %d %s", r.status, r.raw)
 	}
 }
+
+func TestAgentRunsEndpoints(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c, _ := e.deviceClient()
+	r := c.do("GET", "/api/v1/agent/runs", nil)
+	usage, _ := r.body["usage"].(map[string]any)
+	if r.status != 200 || len(r.body["runs"].([]any)) != 0 || r.body["hasMore"] != false ||
+		usage["tokens"] != float64(0) || usage["dailyTokenCap"] != float64(1_000_000) {
+		t.Fatalf("empty: %d %s", r.status, r.raw)
+	}
+	if r := c.do("GET", "/api/v1/agent/runs?cursor=nope", nil); r.status != 400 || r.body["field"] != "cursor" {
+		t.Fatalf("bad cursor: %d %s", r.status, r.raw)
+	}
+	if r := c.do("GET", "/api/v1/agent/runs/run_nope", nil); r.status != 404 || r.body["error"] != "not_found" {
+		t.Fatalf("unknown run: %d %s", r.status, r.raw)
+	}
+}

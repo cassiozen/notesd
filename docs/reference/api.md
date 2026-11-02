@@ -394,6 +394,8 @@ other accounts get `403 admin_only` when they change it.
 | `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
 | `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
+| `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore, usage}`, newest first |
+| `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
@@ -407,6 +409,22 @@ The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSou
 until a device says otherwise: any signed-in request, and sign-in itself, may carry `X-Notesd-Time-Zone` with an IANA
 name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
 a name that isn't a time zone is `400 invalid_request` on `timeZone`.
+
+The **activity log** lists every run: queued, running and finished, kept 30 days after it
+finishes. A **run** is `{id, trigger, status, spaceId, noteId, noteTitle, noteDeleted, outcome,
+failure, message, model, toolCalls, promptTokens, completionTokens, createdAt, startedAt,
+finishedAt, edits}`. `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
+why a run failed or was skipped, and `outcome` what a finished one did (`edited`, `created`,
+`no_change`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
+changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
+`create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked` or
+`changed` (the note changed since the run wrote it). `limit` is up to 100, 50 by default. `usage`
+is `{day, tokens, runs, dailyTokenCap}` for today in the account's time zone.
+
+`GET /agent/runs/{id}` adds `diffs`, one per note changed: `{noteId, kind, titleBefore, titleAfter,
+lines}`. `lines` compares the content before the run's first change with after its last: each is
+`{op, text}` with `op` `=` (kept), `-` (removed) or `+` (added), or `{op: "…", count}` for unchanged
+lines left out; three are kept around each change. An unknown run is `404 not_found`.
 
 ### AI
 

@@ -108,6 +108,8 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/agent/spaces/{id}", s.authed(s.agentConfig))
 	mux.Handle("PUT /api/v1/agent/spaces/{id}", s.authed(s.putAgentConfig))
 	mux.Handle("DELETE /api/v1/agent/spaces/{id}", s.authed(s.deleteAgentConfig))
+	mux.Handle("GET /api/v1/agent/runs", s.authed(s.agentRuns))
+	mux.Handle("GET /api/v1/agent/runs/{id}", s.authed(s.agentRun))
 	mux.Handle("GET /api/v1/settings/ai", s.authed(s.aiSettings))
 	mux.Handle("PUT /api/v1/settings/ai", s.authed(adminOnly(s.saveAISettings)))
 	mux.Handle("DELETE /api/v1/settings/ai", s.authed(adminOnly(s.deleteAISettings)))

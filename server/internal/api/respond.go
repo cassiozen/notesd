@@ -117,6 +117,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: agentIn.Message, Field: agentIn.Field})
 	case errors.Is(err, agent.ErrSpaceNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "space not found")
+	case errors.Is(err, agent.ErrRunNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "run not found")
 	case errors.As(err, &lerr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: lerr.Message, Field: lerr.Field})
 	case errors.As(err, &serr):
