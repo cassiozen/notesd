@@ -1,0 +1,25 @@
+docs/reference/api.md
+  s_f7b126b009a7df::t_c6e0ed26356789 108-109,205,207-208
+server/internal/notes/notes.go
+  s_f7b126b009a7df::t_c6e0ed26356789 383-385,476-478
+  s_f7b126b009a7df::t_088501e38a646d 444-446
+server/internal/notes/events_test.go
+  s_f7b126b009a7df::t_088501e38a646d 7,116-137
+  s_f7b126b009a7df::t_67a1bd04179560 138-139
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3027cc90e67e27b4500d442ad421ff3bf198de5f",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
