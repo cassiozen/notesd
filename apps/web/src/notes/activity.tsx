@@ -84,6 +84,8 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
     return state?.space ?? ''
   })
   const [open, setOpen] = useState<string | null>(null)
+  // Bumped by an undo: the list behind the run shows its new outcome.
+  const [listVersion, setListVersion] = useState(0)
   const heading = useRef<HTMLHeadingElement>(null)
   const was = useRef(open)
 
@@ -109,11 +111,11 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
           Done
         </Button>
       </div>
-      {open ? (
-        <RunView id={open} />
-      ) : (
-        <RunList key={space} space={space} onSpace={setSpace} spaces={spaces} onOpen={setOpen} />
-      )}
+      {open && <RunView id={open} onUndone={() => setListVersion((v) => v + 1)} />}
+      {/* Kept while a run is open, so Back returns to the same place in the list. */}
+      <div hidden={open !== null}>
+        <RunList key={`${space}:${listVersion}`} space={space} onSpace={setSpace} spaces={spaces} onOpen={setOpen} />
+      </div>
     </Sheet>
   )
 }
@@ -219,7 +221,7 @@ function RunList({
   )
 }
 
-function RunView({ id }: { id: string }) {
+function RunView({ id, onUndone }: { id: string; onUndone: () => void }) {
   const [run, setRun] = useState<AgentRunDetail | null>(null)
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
@@ -242,6 +244,7 @@ function RunView({ id }: { id: string }) {
     setDone(undefined)
     try {
       const res = await agent.undo(id)
+      onUndone()
       setDone(res.skipped.length ? `Undone ${res.undone.length} of ${res.undone.length + res.skipped.length}.` : 'Undone.')
     } catch (err) {
       // Nothing left to undo: the reasons are on each note, once reloaded.
