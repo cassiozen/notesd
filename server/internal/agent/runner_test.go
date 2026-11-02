@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"notes/server/internal/agent"
 	"notes/server/internal/llm"
@@ -250,13 +251,12 @@ func TestToolsRefuseAndExplain(t *testing.T) {
 		call("edit_note", `{"find": "zzz", "replace": "x"}`),
 		call("get_note", `{"id": "elsewhere"}`),
 		call("insert", `{"at": "cursor", "text": "x"}`),
-		call("get_cursor", `{}`),
 		call("delete_note", `{}`),
 		call("edit_note", `not json`),
 		final("No change."),
 	)
 	h.next()
-	wants := []string{"appears 2 times", "doesn't appear", "isn't in this space", "no cursor", "no cursor", `no tool called`, "aren't a JSON object"}
+	wants := []string{"appears 2 times", "doesn't appear", "isn't in this space", "at must be", `no tool called`, "aren't a JSON object"}
 	for i, want := range wants {
 		if got := lastToolResult(h.model.requests[i+1]); !strings.Contains(got, want) {
 			t.Errorf("call %d: want %q, got %s", i, want, got)
@@ -339,6 +339,58 @@ func TestLimits(t *testing.T) {
 	})
 }
 
+func TestDailyCapDuringARun(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.settings.DailyTokenCap = 150
+	h.model.steps = append(h.model.steps, call("get_note", `{}`), call("get_note", `{}`), final("No change."))
+	h.next()
+	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailDailyCap || h.model.calls() != 2 {
+		t.Fatalf("run: %+v, calls %d", r, h.model.calls())
+	}
+}
+
+func TestAgentSeesOnlyUnlockedNotes(t *testing.T) {
+	h := newHarness(t)
+	h.create("open", "work", "Readable")
+	for _, id := range []string{"l1", "l2", "l3"} {
+		h.advance(time.Second)
+		h.create(id, "work", "notesd:locked:v1:"+strings.Repeat("A", 60))
+	}
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.model.steps = append(h.model.steps, call("list_notes", `{"limit": 2}`), final("No change."))
+	h.next()
+	got := lastToolResult(h.model.requests[1])
+	if !strings.Contains(got, `"id":"n1"`) || !strings.Contains(got, `"id":"open"`) || strings.Contains(got, `"l1"`) {
+		t.Fatalf("list_notes: %s", got)
+	}
+}
+
+func TestInsertKeepsTheOtherEnd(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "\n\nBody\n\n")
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "start", "text": "# Title"}`),
+		call("insert", `{"at": "end", "text": "#tag"}`), final("ok"))
+	h.next()
+	if got := h.content("n1"); got != "# Title\n\nBody\n\n#tag\n" {
+		t.Fatalf("content: %q", got)
+	}
+}
+
+func TestLongMessageIsCutOnACharacter(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.model.steps = append(h.model.steps, final("a"+strings.Repeat("é", 3000)))
+	h.next()
+	if m := h.only().message; len(m) > 4<<10 || !utf8.ValidString(m) {
+		t.Fatalf("message: %d bytes, valid %v", len(m), utf8.ValidString(m))
+	}
+}
+
 func TestNoteChangedUnderTheRun(t *testing.T) {
 	userTypes := func(h *harness, text string) func(llm.ChatRequest) (*llm.ChatResponse, error) {
 		return func(llm.ChatRequest) (*llm.ChatResponse, error) {
@@ -385,9 +437,10 @@ func TestProviderFailureRetriesOnce(t *testing.T) {
 	down := func(llm.ChatRequest) (*llm.ChatResponse, error) {
 		return nil, &llm.ProviderError{Status: 503, Message: "overloaded"}
 	}
-	h.model.steps = append(h.model.steps, down, down)
+	h.model.steps = append(h.model.steps, call("get_note", `{}`), down, down)
 	h.next()
-	if r := h.only(); r.Status != agent.StatusQueued || r.message != "overloaded" {
+	// What the first attempt spent stays counted.
+	if r := h.only(); r.Status != agent.StatusQueued || r.message != "overloaded" || r.toolCalls != 1 || r.promptTokens != 100 {
 		t.Fatalf("after one failure: %+v", r)
 	}
 	// Not before the retry is due.
@@ -439,6 +492,11 @@ func TestDeletedAndMovedOutGetTheirSnapshot(t *testing.T) {
 	user = h.model.requests[2].Messages[1].Content
 	if !strings.Contains(user, `"content": "Leaving"`) || !strings.Contains(user, `"movedTo": "space home"`) {
 		t.Fatalf("moved out event: %s", user)
+	}
+	// Once run, a deleted note's text is gone from its event, as from the note.
+	runs := h.runs()
+	if runs[0].Event.Content != nil || runs[0].Event.Title != nil || runs[1].Event.Content == nil {
+		t.Fatalf("events kept: %+v", runs)
 	}
 }
 
@@ -505,6 +563,46 @@ func TestPurge(t *testing.T) {
 	var n int
 	if err := h.db.R.QueryRow(`SELECT count(*) FROM agent_run_edits`).Scan(&n); err != nil || n != 0 {
 		t.Fatalf("edits left: %d %v", n, err)
+	}
+}
+
+func TestRunnerRetriesListingAccounts(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.model.steps = append(h.model.steps, final("No change."))
+	defer func(d time.Duration) { agent.StartRetry = d }(agent.StartRetry)
+	agent.StartRetry = 10 * time.Millisecond
+	var mu sync.Mutex
+	fails := 2
+	runner := agent.NewRunner(agent.RunnerConfig{
+		Accounts: func(context.Context) ([]int64, error) {
+			mu.Lock()
+			defer mu.Unlock()
+			if fails > 0 {
+				fails--
+				return nil, io.ErrUnexpectedEOF
+			}
+			return []int64{1}, nil
+		},
+		Open: func(context.Context, int64) (agent.Account, error) {
+			return agent.Account{Notes: h.d.Notes, Agent: h.d.Agent, SpaceName: func(context.Context, string) string { return "" }}, nil
+		},
+		Settings: func(context.Context) (llm.Settings, error) { return h.settings, nil },
+		Provider: h.model,
+		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Now:      func() time.Time { h.mu.Lock(); defer h.mu.Unlock(); return h.clock },
+	})
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); runner.Run(runCtx) }()
+	defer func() { stop(); <-done }()
+	deadline := time.Now().Add(5 * time.Second)
+	for h.only().Status != agent.StatusDone {
+		if time.Now().After(deadline) {
+			t.Fatal("the runner never found the account")
+		}
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

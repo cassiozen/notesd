@@ -740,11 +740,12 @@ func agentAccount(d *userdata.Data) agent.Account {
 		Agent: d.Agent,
 		SpaceName: func(ctx context.Context, id string) string {
 			list, err := d.Spaces.List(ctx)
-			if err == nil {
-				for _, sp := range list {
-					if sp.ID == id {
-						return sp.Name
-					}
+			if err != nil {
+				slog.Warn("agent: list spaces for a name", "space", id, "err", err)
+			}
+			for _, sp := range list {
+				if sp.ID == id {
+					return sp.Name
 				}
 			}
 			return "another space"

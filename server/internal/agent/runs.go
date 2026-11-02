@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"notes/server/internal/notes"
 )
@@ -114,33 +115,68 @@ type finished struct {
 	RetryAt time.Time
 }
 
-// finish records how a run ended, and adds its tokens to the day's usage.
-func (s *Store) finish(ctx context.Context, id string, f finished, day string) error {
+// maxMessage bounds a run's stored message.
+const maxMessage = 4 << 10
+
+// finish records how a run ended, or puts it back in the queue for a retry.
+// Its tokens were counted as each call came back (addUsage). A deleted
+// note's text is dropped from the event once the run no longer needs it:
+// deleting a note clears its text everywhere else.
+func (s *Store) finish(ctx context.Context, id string, f finished) error {
 	now := s.now().UnixMilli()
-	if len(f.Message) > 4<<10 {
-		f.Message = f.Message[:4<<10]
-	}
+	f.Message = truncate(f.Message, maxMessage)
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if !f.RetryAt.IsZero() {
-			_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = 'queued', started_at = NULL, not_before = ?, message = ?
-				WHERE id = ?`, f.RetryAt.UnixMilli(), f.Message, id)
-			if err != nil {
-				return err
-			}
-		} else if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, outcome = ?, message = ?, model = ?,
-				tool_calls = tool_calls + ?, prompt_tokens = prompt_tokens + ?, completion_tokens = completion_tokens + ?, finished_at = ?
-			WHERE id = ?`, f.Status, f.Failure, f.Outcome, f.Message, f.Model, f.ToolCalls, f.PromptTokens, f.CompletionTokens, now, id); err != nil {
+			_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = 'queued', started_at = NULL, not_before = ?, message = ?,
+				tool_calls = tool_calls + ? WHERE id = ?`, f.RetryAt.UnixMilli(), f.Message, f.ToolCalls, id)
 			return err
 		}
-		if f.PromptTokens+f.CompletionTokens == 0 {
-			return nil
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, outcome = ?, message = ?,
+				tool_calls = tool_calls + ?, finished_at = ? WHERE id = ?`,
+			f.Status, f.Failure, f.Outcome, f.Message, f.ToolCalls, now, id); err != nil {
+			return err
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO agent_usage (day, prompt_tokens, completion_tokens, runs) VALUES (?, ?, ?, 1)
-			ON CONFLICT(day) DO UPDATE SET prompt_tokens = prompt_tokens + excluded.prompt_tokens,
-				completion_tokens = completion_tokens + excluded.completion_tokens, runs = runs + 1`,
-			day, f.PromptTokens, f.CompletionTokens)
+		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET event_json = json_remove(event_json, '$.title', '$.content')
+			WHERE id = ? AND trigger = ?`, id, string(NoteDeleted))
 		return err
 	})
+}
+
+// addUsage counts one model call's tokens, for the run and the day, as soon
+// as it comes back, so a crash mid-run can't spend tokens the cap never saw.
+func (s *Store) addUsage(ctx context.Context, id, day, model string, prompt, completion int64) error {
+	if prompt+completion == 0 {
+		return nil
+	}
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		var total int64
+		if err := tx.QueryRowContext(ctx, `UPDATE agent_runs SET model = ?, prompt_tokens = prompt_tokens + ?,
+				completion_tokens = completion_tokens + ? WHERE id = ? RETURNING prompt_tokens + completion_tokens`,
+			model, prompt, completion, id).Scan(&total); err != nil {
+			return err
+		}
+		// The run's first tokens count it as one of the day's runs.
+		first := 0
+		if total == prompt+completion {
+			first = 1
+		}
+		_, err := tx.ExecContext(ctx, `INSERT INTO agent_usage (day, prompt_tokens, completion_tokens, runs) VALUES (?, ?, ?, ?)
+			ON CONFLICT(day) DO UPDATE SET prompt_tokens = prompt_tokens + excluded.prompt_tokens,
+				completion_tokens = completion_tokens + excluded.completion_tokens, runs = runs + excluded.runs`,
+			day, prompt, completion, first)
+		return err
+	})
+}
+
+// truncate cuts s to at most n bytes, on a character boundary.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	for n > 0 && !utf8.RuneStart(s[n]) {
+		n--
+	}
+	return s[:n]
 }
 
 // usedOn is the tokens the account used on day.
@@ -153,28 +189,26 @@ func (s *Store) usedOn(ctx context.Context, day string) (int64, error) {
 	return n, err
 }
 
-// recordEdit notes that a run changed (or created) a note: before is kept
-// from its first change in the run, after replaced by each.
-func (s *Store) recordEdit(ctx context.Context, runID string, before *notes.Note, after notes.Note) error {
-	now := s.now().UnixMilli()
+// recordEdit notes that a run changed (or created) a note, inside the
+// write's transaction: before is kept from its first change in the run,
+// after replaced by each.
+func recordEdit(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) error {
 	kind := "edit"
 	var beforeRev any
 	var beforeTitle, beforeContent string
-	if before == nil {
+	if ev.Kind == notes.EventCreated {
 		kind = "create"
 	} else {
-		beforeRev, beforeTitle, beforeContent = before.Revision, before.Title, before.Content
+		beforeRev, beforeTitle, beforeContent = ev.Before.Revision, ev.Before.Title, ev.Before.Content
 	}
-	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO agent_run_edits (run_id, note_id, kind, before_revision, before_title, before_content,
-			                             after_revision, after_title, after_content, written_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-			ON CONFLICT(run_id, note_id) DO UPDATE SET after_revision = excluded.after_revision,
-				after_title = excluded.after_title, after_content = excluded.after_content, written_at = excluded.written_at`,
-			runID, after.ID, kind, beforeRev, beforeTitle, beforeContent, after.Revision, after.Title, after.Content, now)
-		return err
-	})
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO agent_run_edits (run_id, note_id, kind, before_revision, before_title, before_content,
+		                             after_revision, after_title, after_content, written_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(run_id, note_id) DO UPDATE SET after_revision = excluded.after_revision,
+			after_title = excluded.after_title, after_content = excluded.after_content, written_at = excluded.written_at`,
+		ev.Agent.RunID, ev.NoteID, kind, beforeRev, beforeTitle, beforeContent, ev.After.Revision, ev.After.Title, ev.After.Content, now)
+	return err
 }
 
 // edited reports what a run changed: notes it edited, and notes it created.

@@ -32,14 +32,14 @@ nothing.
 
 | Trigger | When |
 | --- | --- |
-| **Note created** | A new note is opened, before anything is typed |
-| **Started editing** | The first change to a note after it's opened, or after 3 minutes without changes |
+| **Note created** | A new note is opened, before anything is typed. *Not yet: comes with the editor work* |
+| **Started editing** | The first change to a note after it's opened, or after 3 minutes without changes. *Not yet* |
 | **New note done** | A new note is closed, or left for 2 minutes |
 | **Note edit done** | The same, for a note that already existed |
 | **Note deleted** | A note in the space is deleted |
 | **Note moved in** | A note is moved here from another space |
 | **Note moved out** | A note is moved from here to another space |
-| **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos* |
+| **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos*. *Not yet* |
 
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.

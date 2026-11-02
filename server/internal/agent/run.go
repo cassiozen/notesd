@@ -36,11 +36,14 @@ type Provider interface {
 
 // runState is one run in progress.
 type runState struct {
-	acct      Account
-	run       queuedRun
-	reads     map[string]notes.Note // as last read or written in this run
-	firstSeen map[string]notes.Note // as first seen, before the run changed them
-	ops       int                   // writes so far, for their operation ids
+	acct  Account
+	run   queuedRun
+	reads map[string]notes.Note // as last read or written in this run
+	ops   int                   // writes so far, for their operation ids
+	day   string                // in the account's time zone, for usage
+	// budget is the tokens the run may use: MaxRunTokens, or less when
+	// that's all the day has left.
+	budget int64
 }
 
 // execute runs r to its end and records how it went.
@@ -72,7 +75,7 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	// Recorded even as the server stops.
 	done, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 	defer cancel()
-	if err := acct.Agent.finish(done, r.ID, f, day); err != nil {
+	if err := acct.Agent.finish(done, r.ID, f); err != nil {
 		rn.log.Error("agent run: record", "run", r.ID, "err", err)
 	}
 	rn.log.Info("agent run", "run", r.ID, "trigger", r.Trigger, "status", f.Status, "failure", f.Failure,
@@ -116,13 +119,14 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	if used >= st.DailyTokenCap {
 		return skip(FailDailyCap, fmt.Sprintf("The account used its %d tokens for today.", st.DailyTokenCap))
 	}
+	budget := min(MaxRunTokens, st.DailyTokenCap-used)
 
 	runCtx, cancel := context.WithTimeout(ctx, RunTimeout)
 	defer cancel()
 	spaceName := func(id string) string { return acct.SpaceName(ctx, id) }
 	var f finished
 	for start := 0; start < 2; start++ {
-		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, firstSeen: map[string]notes.Note{}, ops: start * 1000}
+		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, ops: start * 1000, day: day, budget: budget}
 		if note != nil {
 			rs.reads[note.ID] = *note
 		}
@@ -143,7 +147,9 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		if note != nil {
 			n, err := acct.Notes.Get(ctx, r.NoteID)
 			if err != nil || n.DeletedAt != nil || n.SpaceID != r.SpaceID || locks.IsLocked(n.Content) {
-				return skip(FailNoteGone, "The note changed while the agent worked on it, and can't be read now.")
+				// f keeps what the first try spent.
+				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteGone, "The note changed while the agent worked on it, and can't be read now."
+				return f
 			}
 			note = &n
 		}
@@ -183,9 +189,16 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		f.Model = res.Model
 		f.PromptTokens += res.Usage.PromptTokens
 		f.CompletionTokens += res.Usage.CompletionTokens
-		if f.PromptTokens+f.CompletionTokens > MaxRunTokens {
+		if err := rs.acct.Agent.addUsage(ctx, rs.run.ID, rs.day, res.Model, res.Usage.PromptTokens, res.Usage.CompletionTokens); err != nil {
+			f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+			return err
+		}
+		if f.PromptTokens+f.CompletionTokens > rs.budget {
 			f.Status, f.Failure = StatusFailed, FailTokenCap
 			f.Message = fmt.Sprintf("The run used more than %d tokens.", MaxRunTokens)
+			if rs.budget < MaxRunTokens {
+				f.Failure, f.Message = FailDailyCap, "The account reached its tokens for today during the run."
+			}
 			return nil
 		}
 		if len(res.Message.ToolCalls) == 0 {

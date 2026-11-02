@@ -222,6 +222,9 @@ type AgentMark struct {
 	// Only is true when the save holds nothing but the agent's changes; a
 	// save that also has the user's typing counts as the user's.
 	Only bool `json:"only"`
+	// Runner is set by the server's agent runner itself, never by a request:
+	// its writes are recorded as the run's edits in the same transaction.
+	Runner bool `json:"-"`
 }
 
 // Store persists notes.

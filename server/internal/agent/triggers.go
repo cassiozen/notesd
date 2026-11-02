@@ -57,6 +57,12 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 			return err
 		}
 	}
+	if ev.Agent != nil && ev.Agent.Runner && ev.Kind != notes.EventDeleted {
+		// With the write, so a crash can't keep the change and lose its record.
+		if err := recordEdit(ctx, tx, ev, s.now().UnixMilli()); err != nil {
+			return err
+		}
+	}
 	if ev.Agent != nil && ev.Agent.Only {
 		// The agent's own change, or a save holding only that: never a trigger.
 		return nil

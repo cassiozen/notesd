@@ -140,11 +140,16 @@ type Filter struct {
 	Locked      bool
 	Space       string
 	ExceptSpace string
+	// Unlocked leaves locked notes out, on top of the rest: what agents see.
+	Unlocked bool
 }
 
 // SQL is a condition on the notes row aliased n, with its arguments.
 func (f Filter) SQL() (string, []any) {
 	cond, args := f.kind()
+	if f.Unlocked {
+		cond, args = cond+` AND substr(n.content, 1, ?) != ?`, append(args, len(locks.Family), locks.Family)
+	}
 	switch {
 	case f.Space != "":
 		return `n.space_id = ? AND ` + cond, append([]any{f.Space}, args...)

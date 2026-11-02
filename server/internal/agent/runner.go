@@ -69,13 +69,10 @@ func (rn *Runner) Run(ctx context.Context) {
 	rn.mu.Lock()
 	rn.ctx = ctx
 	rn.mu.Unlock()
-	if ids, err := rn.accounts(ctx); err != nil {
-		rn.log.Error("agent runner: accounts", "err", err)
-	} else {
-		for _, id := range ids {
-			rn.Wake(id)
-		}
-	}
+	// Until every account has a worker, queued runs wait for a note write to wake theirs.
+	started := rn.startWorkers(ctx)
+	retry := time.NewTicker(StartRetry)
+	defer retry.Stop()
 	purge := time.NewTicker(time.Hour)
 	defer purge.Stop()
 	for {
@@ -83,6 +80,10 @@ func (rn *Runner) Run(ctx context.Context) {
 		case <-ctx.Done():
 			rn.wg.Wait()
 			return
+		case <-retry.C:
+			if !started {
+				started = rn.startWorkers(ctx)
+			}
 		case <-purge.C:
 			rn.purge(ctx)
 		}
@@ -181,6 +182,26 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 	return true
 }
 
+// StartRetry is how soon the runner tries again to find the accounts, when
+// it couldn't at startup.
+var StartRetry = 30 * time.Second
+
+// startWorkers wakes every account's worker, and reports whether it could
+// list them.
+func (rn *Runner) startWorkers(ctx context.Context) bool {
+	ids, err := rn.accounts(ctx)
+	if err != nil {
+		if ctx.Err() == nil {
+			rn.log.Error("agent runner: accounts", "err", err)
+		}
+		return false
+	}
+	for _, id := range ids {
+		rn.Wake(id)
+	}
+	return true
+}
+
 func (rn *Runner) purge(ctx context.Context) {
 	ids, err := rn.accounts(ctx)
 	if err != nil {
@@ -196,18 +217,3 @@ func (rn *Runner) purge(ctx context.Context) {
 		}
 	}
 }
-
-// RunNext runs an account's next due run now, on the caller's goroutine,
-// and reports whether there was one. The workers do this on their own; it
-// exists for tests and tools.
-func (rn *Runner) RunNext(ctx context.Context, userID int64) (bool, error) {
-	acct, err := rn.open(ctx, userID)
-	if err != nil {
-		return false, err
-	}
-	return rn.step(ctx, userID, acct), nil
-}
-
-// RecoverRuns puts back the runs a stopped server left running; workers do
-// this when they start.
-func (s *Store) RecoverRuns(ctx context.Context) error { return s.recoverRuns(ctx) }

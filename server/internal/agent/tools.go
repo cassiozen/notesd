@@ -24,8 +24,6 @@ const noteIDParam = `"id": {"type": "string", "description": "The note's id. Lea
 var tools = []llm.Tool{
 	tool("get_note", "Read a note in this space: its title, Markdown content and times.",
 		`{"type": "object", "properties": {`+noteIDParam+`}, "additionalProperties": false}`),
-	tool("get_cursor", "Where the cursor is in the note this run is about, with the text around it. Only while it's open in an editor.",
-		`{"type": "object", "properties": {}, "additionalProperties": false}`),
 	tool("search_notes", "Full-text search in this space. Returns ids, titles and excerpts. Titles aren't unique: to open a note by name, search, then use its id.",
 		`{"type": "object", "properties": {"query": {"type": "string"}}, "required": ["query"], "additionalProperties": false}`),
 	tool("list_notes", "Notes in this space, most recently updated first, optionally with a tag.",
@@ -36,8 +34,8 @@ var tools = []llm.Tool{
 		`{"type": "object", "properties": {`+noteIDParam+`, "title": {"type": "string"}}, "required": ["title"], "additionalProperties": false}`),
 	tool("edit_note", "Replace text in a note's Markdown content. find must appear exactly once.",
 		`{"type": "object", "properties": {`+noteIDParam+`, "find": {"type": "string"}, "replace": {"type": "string"}}, "required": ["find", "replace"], "additionalProperties": false}`),
-	tool("insert", "Add text to a note's content: at its start, its end, or the cursor (only while the note is open in an editor).",
-		`{"type": "object", "properties": {`+noteIDParam+`, "at": {"type": "string", "enum": ["start", "end", "cursor"]}, "text": {"type": "string"}}, "required": ["at", "text"], "additionalProperties": false}`),
+	tool("insert", "Add text to a note's content: at its start or its end.",
+		`{"type": "object", "properties": {`+noteIDParam+`, "at": {"type": "string", "enum": ["start", "end"]}, "text": {"type": "string"}}, "required": ["at", "text"], "additionalProperties": false}`),
 	tool("create_note", "Create a note in this space.",
 		`{"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}}, "required": ["title", "content"], "additionalProperties": false}`),
 }
@@ -82,21 +80,16 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 			return "", err
 		}
 		return jsonString(noteView(n)), nil
-	case "get_cursor":
-		return "", refuse("the note isn't open in an editor, so there's no cursor")
 	case "search_notes":
 		if strings.TrimSpace(args.Query) == "" {
 			return "", refuse("query is required")
 		}
-		found, err := search.Search(ctx, rs.acct.Agent.db, args.Query, search.Filter{Space: rs.run.SpaceID}, 20, 0)
+		found, err := search.Search(ctx, rs.acct.Agent.db, args.Query, search.Filter{Space: rs.run.SpaceID, Unlocked: true}, 20, 0)
 		if err != nil {
 			return "", err
 		}
 		out := []map[string]any{}
 		for _, f := range found {
-			if f.Locked {
-				continue
-			}
 			out = append(out, map[string]any{"id": f.ID, "title": f.Title, "excerpt": plainExcerpt(f.Excerpt)})
 		}
 		return jsonString(out), nil
@@ -105,7 +98,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if limit <= 0 || limit > 50 {
 			limit = 20
 		}
-		filter := search.Filter{Space: rs.run.SpaceID}
+		filter := search.Filter{Space: rs.run.SpaceID, Unlocked: true}
 		if args.Tag != "" {
 			filter.Tag = search.TagKey(strings.TrimPrefix(strings.Trim(args.Tag, " "), "#"))
 		}
@@ -115,9 +108,6 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		}
 		out := []map[string]any{}
 		for _, it := range items {
-			if it.Locked {
-				continue
-			}
 			out = append(out, map[string]any{"id": it.ID, "title": it.Title, "preview": it.Preview})
 		}
 		return jsonString(out), nil
@@ -159,8 +149,6 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		text := strings.Trim(*args.Text, "\n")
 		switch args.At {
 		case "start", "end":
-		case "cursor":
-			return "", refuse("the note isn't open in an editor, so there's no cursor; use start or end")
 		default:
 			return "", refuse(`at must be "start" or "end"`)
 		}
@@ -177,16 +165,16 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 	return "", refuse("there's no tool called %q", tc.Function.Name)
 }
 
-// insertText adds text as its own block at the start or end of content.
+// insertText adds text as its own block at the start or end of content,
+// leaving the content's other end as it was.
 func insertText(content, text string, atStart bool) string {
-	body := strings.Trim(content, "\n")
 	switch {
-	case body == "":
+	case strings.Trim(content, "\n") == "":
 		return text + "\n"
 	case atStart:
-		return text + "\n\n" + body + "\n"
+		return text + "\n\n" + strings.TrimLeft(content, "\n")
 	default:
-		return body + "\n\n" + text + "\n"
+		return strings.TrimRight(content, "\n") + "\n\n" + text + "\n"
 	}
 }
 
@@ -230,7 +218,7 @@ func (rs *runState) write(ctx context.Context, id string, change func(*notes.Not
 	rs.ops++
 	res, err := rs.acct.Notes.Update(ctx, notes.UpdateInput{
 		OperationID: fmt.Sprintf("agent:%s:%d", rs.run.ID, rs.ops), ID: id, BaseRevision: cur.Revision,
-		Title: next.Title, Content: next.Content, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true},
+		Title: next.Title, Content: next.Content, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
 	})
 	var conflict *notes.ConflictError
 	if errors.As(err, &conflict) {
@@ -244,21 +232,8 @@ func (rs *runState) write(ctx context.Context, id string, change func(*notes.Not
 		return "", err
 	}
 	next.Revision, next.UpdatedAt = res.Revision, res.UpdatedAt
-	before := rs.before(id, cur)
-	if err := rs.acct.Agent.recordEdit(ctx, rs.run.ID, &before, next); err != nil {
-		return "", err
-	}
 	rs.reads[id] = next
 	return `{"ok": true, "changed": true}`, nil
-}
-
-// before is a note as it was before the run's first change to it.
-func (rs *runState) before(id string, cur notes.Note) notes.Note {
-	if b, ok := rs.firstSeen[id]; ok {
-		return b
-	}
-	rs.firstSeen[id] = cur
-	return cur
 }
 
 func (rs *runState) create(ctx context.Context, title, content string) (string, error) {
@@ -267,7 +242,7 @@ func (rs *runState) create(ctx context.Context, title, content string) (string, 
 	space := rs.run.SpaceID
 	res, err := rs.acct.Notes.Create(ctx, notes.CreateInput{
 		OperationID: fmt.Sprintf("agent:%s:%d", rs.run.ID, rs.ops), ID: id, Title: title, Content: content,
-		SpaceID: &space, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true},
+		SpaceID: &space, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
 	})
 	var invalid *notes.ValidationError
 	if errors.As(err, &invalid) {
@@ -278,9 +253,6 @@ func (rs *runState) create(ctx context.Context, title, content string) (string, 
 	}
 	n := notes.Note{ID: id, Title: title, Content: content, Revision: res.Revision, SpaceID: res.SpaceID,
 		CreatedAt: res.UpdatedAt, UpdatedAt: res.UpdatedAt}
-	if err := rs.acct.Agent.recordEdit(ctx, rs.run.ID, nil, n); err != nil {
-		return "", err
-	}
 	rs.reads[id] = n
 	return jsonString(map[string]any{"ok": true, "id": id}), nil
 }
