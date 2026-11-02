@@ -5,10 +5,70 @@
 #   notesd-update DATA_DIR [BINARY]
 #
 # notesd only leaves DATA_DIR/update-request; everything below is decided here: the release
-# comes from GitHub, is checked against its SHA256SUMS, and is never older than what runs.
+# comes from GitHub, is checked against its SHA256SUMS, is never older than what runs, and
+# never a new major version, whose upgrade notes an admin reads first and installs by hand.
 # The data directory and old binary are backed up to /var/backups/notesd first, and put back
 # if the new version doesn't start.
+#
+#   notesd-update --select-from RELEASES_JSON CURRENT
+#
+# only prints the release that would be installed over CURRENT, from a saved
+# /releases list, or nothing; for tests.
 set -euo pipefail
+
+# release_tags prints the tag of each published release (not a draft or prerelease) in a
+# GitHub /releases list on stdin. No jq on a bare server: each release's tag_name, draft and
+# prerelease are its only keys by those names (asset objects have none), and a quote
+# inside a string is escaped, so release notes can't fake one.
+release_tags() {
+  grep -oE '"(tag_name|draft|prerelease)": *("[^"]*"|true|false)' |
+    awk -F'": *' '
+      { key = substr($1, 2); val = $2; gsub(/"/, "", val); seen[key] = val; n++ }
+      n == 3 { if (seen["draft"] == "false" && seen["prerelease"] == "false") print seen["tag_name"]; n = 0; split("", seen) }'
+}
+
+# newer A B: whether release A (vX.Y.Z) is later than version B (vX.Y.Z, maybe with a suffix:
+# a build between releases has at least its release's code).
+newer() {
+  local a b i
+  IFS=. read -r -a a <<<"${1#v}"
+  IFS=. read -r -a b <<<"${2#v}"
+  b[2]=${b[2]%%[-+]*}
+  for i in 0 1 2; do
+    ((10#${a[i]} > 10#${b[i]})) && return 0
+    ((10#${a[i]} < 10#${b[i]})) && return 1
+  done
+  return 1
+}
+
+# select_release CURRENT: the newest release on stdin with CURRENT's major version.
+select_release() {
+  local major best="" tag
+  [[ $1 =~ ^v([0-9]+)\. ]] || return 0
+  major=${BASH_REMATCH[1]}
+  while read -r tag; do
+    [[ $tag =~ ^v([0-9]+)\.[0-9]+\.[0-9]+$ ]] || continue
+    ((10#${BASH_REMATCH[1]} == 10#$major)) || continue
+    if [ -z "$best" ] || newer "$tag" "$best"; then best=$tag; fi
+  done < <(release_tags)
+  echo "$best"
+}
+
+# fetch_releases prints every page of the repository's releases, up to 1,000: a server a
+# major version behind finds its own past the first page. A page short of 100 is the last.
+fetch_releases() {
+  local page body
+  for page in 1 2 3 4 5 6 7 8 9 10; do
+    body=$(curl -fsSL "https://api.github.com/repos/$repo/releases?per_page=100&page=$page")
+    printf '%s\n' "$body"
+    [ "$(grep -oE '"tag_name": *"' <<<"$body" | wc -l)" -ge 100 ] || return 0
+  done
+}
+
+if [ "${1:-}" = --select-from ]; then
+  select_release "${3:?usage: notesd-update --select-from RELEASES_JSON CURRENT}" <"${2:?}"
+  exit 0
+fi
 
 data=${1:?usage: notesd-update DATA_DIR [BINARY]}
 bin=${2:-/usr/local/bin/notesd}
@@ -26,15 +86,19 @@ case "$(uname -m)" in
 esac
 asset=notesd-linux-$arch
 
-latest=$(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
-  | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
 current=$("$bin" version | awk '{print $2}')
-if ! [[ $latest =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "unexpected latest release '$latest'" >&2
+# A dev build has no major version to stay within.
+if ! [[ $current =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-+].*)?$ ]]; then
+  echo "can't tell which release notesd $current is; update it by hand" >&2
   exit 1
 fi
-if [ "$latest" = "$current" ] || [ "$(printf '%s\n' "$latest" "$current" | sort -V | tail -1)" != "$latest" ]; then
-  echo "notesd $current is up to date (latest release $latest)"
+latest=$(fetch_releases | select_release "$current")
+if [ -z "$latest" ]; then
+  echo "no release of notesd ${current%%.*} found" >&2
+  exit 1
+fi
+if ! newer "$latest" "$current"; then
+  echo "notesd $current is up to date (latest ${current%%.*} release $latest)"
   exit 0
 fi
 

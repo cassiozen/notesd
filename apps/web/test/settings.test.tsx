@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { captureInstallPrompt } from '../src/install'
 import { navigate } from '../src/router'
 import { inProcessEngine } from './engine/helpers'
-import { createNote, noteTitle, openSettings, phoneLayout, signedIn, startEngines } from './helpers'
+import { createNote, interceptApi, noteTitle, openSettings, phoneLayout, signedIn, startEngines } from './helpers'
 
 /** Signed in, with Settings open at one of its categories. */
 async function inSettings(category?: string) {
@@ -108,6 +108,34 @@ describe('settings', () => {
     await user.click(other)
     await within(devices).findByText('1 device')
     expect((await server.api('GET', '/auth/session')).status).toBe(401)
+  })
+})
+
+describe('updates', () => {
+  it('points to the upgrade guide for a new major version, without offering to install it', async () => {
+    const { user } = await signedIn()
+    interceptApi(
+      (method, path) => method === 'GET' && path === '/api/v1/update',
+      () => Response.json({ current: 'v1.4.0', enabled: true, editable: true, latest: 'v1.4.0', newer: false, majorAvailable: 'v2.0.0' }),
+    )
+    await openSettings(user)
+    const card = (await screen.findByText(/notesd v2\.0\.0 is available\. Major versions are installed by hand: see/)).closest('section')
+    if (!card) throw new Error('no update card')
+    const link = within(card).getByRole('link', { name: 'Upgrading' })
+    expect(link.getAttribute('href')).toMatch(/\/docs\/guides\/self-hosting\/upgrading\.html$/)
+    expect(within(card).queryByRole('button')).toBeNull()
+  })
+
+  it('shows nothing when the server is on its newest version', async () => {
+    const { user } = await signedIn()
+    interceptApi(
+      (method, path) => method === 'GET' && path === '/api/v1/update',
+      () => Response.json({ current: 'v1.4.0', enabled: false, editable: true }),
+    )
+    await openSettings(user)
+    await screen.findByText(/Signed in as/)
+    expect(screen.queryByRole('region', { name: 'Update' })).toBeNull()
+    expect(screen.queryByText(/is available/)).toBeNull()
   })
 })
 

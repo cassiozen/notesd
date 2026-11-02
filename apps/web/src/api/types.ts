@@ -110,6 +110,8 @@ export type UpdateStatus = {
   latest?: string
   newer?: boolean
   requested?: boolean
+  /** A release of a newer major version: installed by hand, never by the server itself. */
+  majorAvailable?: string
 }
 
 /** One wrapped copy of the locked-notes key (§10.1). The server can't open it. */
