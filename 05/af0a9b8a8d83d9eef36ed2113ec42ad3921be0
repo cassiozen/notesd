@@ -1,0 +1,59 @@
+server/internal/api/events_test.go
+  s_f7b126b009a7df::t_49d0b9537ca81f 1-57
+docs/reference/api.md
+  s_f7b126b009a7df::t_6dcf6c639b593f 102-107
+  s_f7b126b009a7df::t_858df3ebaac6fe 16,387-409
+  s_f7b126b009a7df::t_a7a5683e3f251e 410
+server/internal/api/notes_handlers.go
+  s_f7b126b009a7df::t_a295b290dea076 69,90-92,118-119,128-130,147-148,153-165
+  s_f7b126b009a7df::t_c1426935bb5d8d 85-89
+  s_f7b126b009a7df::t_6a366e033fba33 166-167
+server/internal/notes/notes.go
+  s_f7b126b009a7df::t_fefbf744379a82 186-226,231-232,243-247,250-253,270-271,275-278,295-296,299-300,309-310,313-314,339-341,349-350,381-382,411-413,418-419,434-436,438,474-475,505-507,510-511,516-518,520,549-550,687-689,719-723,738-740,809-818
+  s_f7b126b009a7df::t_f817da3fea5f23 819
+server/internal/userdata/userdata.go
+  s_f7b126b009a7df::t_ec848c0cbd3ada 49-57,65-66,68-97,120-124
+  s_f7b126b009a7df::t_a73cbff4ed41a6 14,30,35-38
+server/internal/notes/events_test.go
+  s_f7b126b009a7df::t_5d4eb020a90739 1-6,8-42,44-115,140-177
+  s_f7b126b009a7df::t_1bd7eea43296c0 43
+server/internal/userdata/userdata_test.go
+  s_f7b126b009a7df::t_1bd7eea43296c0 39
+  s_f7b126b009a7df::t_5d4eb020a90739 1-38,40-51
+server/internal/agent/settings.go
+  s_f7b126b009a7df::t_e18e29101d8e1c 1-141
+server/internal/api/api.go
+  s_f7b126b009a7df::t_a73cbff4ed41a6 102-107,228-232
+  s_f7b126b009a7df::t_30b3b5a1badb77 233
+server/internal/agent/config.go
+  s_f7b126b009a7df::t_e18e29101d8e1c 1-224
+server/internal/api/agent_handlers.go
+  s_f7b126b009a7df::t_a73cbff4ed41a6 1-88
+server/migrations/0013_agents.sql
+  s_f7b126b009a7df::t_e18e29101d8e1c 1-24
+server/internal/agent/config_test.go
+  s_f7b126b009a7df::t_827709abf37edc 1-107,109-134,137-143
+  s_f7b126b009a7df::t_87e7a1f109693a 108,135-136
+server/internal/api/respond.go
+  s_f7b126b009a7df::t_a73cbff4ed41a6 13,103,116-119
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_858df3ebaac6fe 145-152,510-512
+server/internal/api/agent_config_test.go
+  s_f7b126b009a7df::t_827709abf37edc 1-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05af0a9b8a8d83d9eef36ed2113ec42ad3921be0",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
