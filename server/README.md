@@ -55,8 +55,9 @@ working on them:
   exists so tests can point email at a fake.
 - First-run setup has no token: `POST /api/v1/auth/setup` creates the first
   account, an admin, for whoever calls it first, then answers `already_set_up` (architecture
-  §10). While there's no owner, `serve` logs a warning with the app's `url`
-  (`--public-url` when set, otherwise the listen address).
+  §10). While there's no owner, `serve` logs a warning with the app's `url`.
+- Without `--listen`, `serve` listens on `:$PORT` when `PORT` is set (hosting
+  platforms), otherwise `127.0.0.1:8080`.
   `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create the owner at
   startup instead. They're env-only, so the password stays out of process arguments.
 

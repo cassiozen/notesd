@@ -8,8 +8,8 @@ description: Create the first account, add people, and reset passwords.
 ## Create your account
 
 > [!IMPORTANT]
-> Until the account exists, anyone who can reach the server can create it. Create it while notesd
-> listens on the machine only, before you put [HTTPS](https.md) in front.
+> Until the account exists, anyone who can reach the server can create it. Create it before you
+> put [HTTPS](https.md) in front, or right after deploying to a hosting platform.
 
 On the server, with [`create-owner`](../../reference/cli.md#create-owner):
 
@@ -19,9 +19,9 @@ docker exec -it notesd notesd create-owner --username me
 notesd-run create-owner --username me
 ```
 
-With systemd, define [`notesd-run`](../../reference/cli.md#with-systemd) first. On a server that
-serves plain HTTP to your LAN, you can also sign up from the web app or the Android or iPhone app
-directly.
+With systemd, define [`notesd-run`](../../reference/cli.md#with-systemd) first. You can also sign
+up from the web app or the Android or iPhone app directly: the first account created is the
+owner.
 
 To create it when the server first starts instead, set `NOTESD_OWNER_USERNAME` and
 `NOTESD_OWNER_PASSWORD` (with Docker, as `-e` flags). The password then stays in the container's

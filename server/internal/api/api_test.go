@@ -186,6 +186,45 @@ func TestFirstRunSetup(t *testing.T) {
 	}
 }
 
+func TestSessionCookieFollowsScheme(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	login := func(hdr ...string) *http.Cookie {
+		t.Helper()
+		r := e.client().do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": password}, hdr...)
+		cookies := (&http.Response{Header: r.header}).Cookies()
+		if r.status != 200 || len(cookies) != 1 {
+			t.Fatalf("login: %d %v", r.status, r.header)
+		}
+		return cookies[0]
+	}
+	if c := login(); c.Name != "notes_session" || c.Secure {
+		t.Errorf("over http: %+v", c)
+	}
+	c := login("X-Forwarded-Proto", "https")
+	if c.Name != "__Host-notes_session" || !c.Secure {
+		t.Fatalf("behind an https proxy: %+v", c)
+	}
+	// The secure cookie authenticates even if a hop drops the forwarded scheme.
+	r := e.client().do("GET", "/api/v1/auth/session", nil, "Cookie", c.Name+"="+c.Value)
+	if r.status != 200 {
+		t.Errorf("session with the secure cookie: %d %s", r.status, r.raw)
+	}
+}
+
+func TestOriginBehindHostRewritingProxy(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c := e.webClient()
+	note := map[string]any{"operationId": "op1", "id": "n1", "title": "Hello", "content": "World"}
+	if r := c.do("POST", "/api/v1/notes", note, "Origin", "https://notes.example.com"); r.status != 403 {
+		t.Fatalf("foreign origin: %d", r.status)
+	}
+	if r := c.do("POST", "/api/v1/notes", note, "Origin", "https://notes.example.com", "X-Forwarded-Host", "notes.example.com"); r.status != 201 {
+		t.Fatalf("origin matching X-Forwarded-Host: %d %s", r.status, r.raw)
+	}
+}
+
 func TestAuthRequired(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()

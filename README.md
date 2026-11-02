@@ -21,7 +21,6 @@ On the server:
 docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
-  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 
 # Create your account before anything else can reach the server

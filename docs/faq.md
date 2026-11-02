@@ -242,8 +242,8 @@ never deletes or replaces a damaged database by itself.
 
 ### Saving fails with 403 behind my proxy. Why?
 
-Check that `NOTESD_PUBLIC_URL` matches the address you open, and that your
-proxy forwards the `Host` header.
+Your proxy rewrites the `Host` header. Forward it unchanged, or send the
+original as `X-Forwarded-Host`.
 
 ## Under the hood
 

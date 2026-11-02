@@ -39,7 +39,7 @@ except `/auth/status`, `/auth/setup`, `/auth/login` and `/auth/refresh` needs on
 **Browsers** (`"client": "web"`) get an HttpOnly session cookie that expires after 30 days
 without use, and a `csrfToken`. Every request other than `GET`, `HEAD` and `OPTIONS` must send it
 as `X-CSRF-Token`, and is rejected if its `Origin` header names another host than the request's
-`Host` or `--public-url`.
+`Host` or `X-Forwarded-Host`.
 
 **Apps** (`"client": "device"`) get an `accessToken` that lasts 1 hour and a `refreshToken`
 that lasts 180 days from its last use. Send the access token as `Authorization: Bearer <token>`,

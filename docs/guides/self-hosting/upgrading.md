@@ -33,7 +33,7 @@ updated, so to go back, restore the backup too.
 To upgrade to the latest release, pull the image, then replace the container
 with the same flags you started it with. The command below uses the ones from
 [Run with Docker](docker.md#start-the-container); keep your own port binding and
-`NOTESD_PUBLIC_URL`:
+settings:
 
 ```bash
 docker pull ghcr.io/cassiozen/notesd:latest
@@ -41,7 +41,6 @@ docker rm -f notesd
 docker run -d --name notesd --restart unless-stopped \
   -p 127.0.0.1:8080:8080 \
   -v notesd-data:/data \
-  -e NOTESD_PUBLIC_URL=https://notes.example.com \
   ghcr.io/cassiozen/notesd:latest
 ```
 

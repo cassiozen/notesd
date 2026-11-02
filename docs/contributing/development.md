@@ -56,8 +56,8 @@ mise run build      # server/bin/notesd with the web app embedded
 
 `mise run dev` keeps its database in `server/data`. On a fresh data dir it
 creates the owner `dev` / `devpassword`, so there's no onboarding;
-`mise run dev:reset` deletes it. `NOTESD_DATA_DIR`, `NOTESD_LISTEN` and
-`NOTESD_SERVER` (Vite's proxy target) override the defaults, for example to
+`mise run dev:reset` deletes it. `NOTESD_DATA_DIR`, `PORT` (which also
+listens on every interface) and `NOTESD_SERVER` (Vite's proxy target) override the defaults, for example to
 run a second copy next to the first.
 
 To try the real first-run onboarding, run the server by hand on an empty
@@ -78,7 +78,7 @@ Install on a connected device with
 
 To point the app at your dev server:
 
-- **Phone on your Wi-Fi:** `NOTESD_LISTEN=0.0.0.0:8080 mise run dev:server`,
+- **Phone on your Wi-Fi:** `PORT=8080 mise run dev:server`,
   then connect to `http://<your computer's LAN address>:8080`.
 - **Emulator:** `mise run dev:server` and connect to `http://10.0.2.2:8080`,
   the emulator's address for the host.
@@ -103,7 +103,7 @@ iPhone with a free Apple ID, copy `apps/ios/Config/Local.xcconfig.example` to
 To point the app at your dev server: the simulator reaches the Mac at
 `http://localhost:8080`; a phone on your Wi-Fi connects to
 `http://<your computer's LAN address>:8080` with
-`NOTESD_LISTEN=0.0.0.0:8080 mise run dev:server`.
+`PORT=8080 mise run dev:server`.
 
 ## All tasks
 

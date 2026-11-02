@@ -27,10 +27,11 @@
 // reset-password and export, which need it once there is more than one.
 //
 // Flags may also be set through environment variables: NOTESD_DATA_DIR,
-// NOTESD_LISTEN, NOTESD_PUBLIC_URL, NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT,
-// NOTESD_RESEND_URL, NOTESD_MIRROR_DIR. serve creates the owner account from NOTESD_OWNER_USERNAME and
-// NOTESD_OWNER_PASSWORD when there is none yet; otherwise the first person to
-// open the web app creates it. Commands that take a password read it from
+// NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT, NOTESD_RESEND_URL, NOTESD_MIRROR_DIR.
+// Without --listen, serve listens on every interface at $PORT when it is set,
+// else on 127.0.0.1:8080. serve creates the owner account from
+// NOTESD_OWNER_USERNAME and NOTESD_OWNER_PASSWORD when there is none yet;
+// otherwise the first person to open the web app creates it. Commands that take a password read it from
 // NOTESD_PASSWORD or, failing that, from the first line of standard input.
 // export --include-locked asks for the lock password at the terminal, every time.
 package main
@@ -76,7 +77,6 @@ func main() {
 type options struct {
 	dataDir    string
 	listen     string
-	publicURL  string
 	logLevel   string
 	logFormat  string
 	resendURL  string
@@ -101,8 +101,7 @@ func run(args []string) error {
 	usernameFlag := func(usage string) { fs.StringVar(&o.username, "username", "", usage) }
 	switch cmd {
 	case "serve":
-		fs.StringVar(&o.listen, "listen", env("NOTESD_LISTEN", "127.0.0.1:8080"), "address to listen on")
-		fs.StringVar(&o.publicURL, "public-url", env("NOTESD_PUBLIC_URL", ""), "externally visible URL, e.g. https://notes.example.com (enables Secure cookies when https)")
+		fs.StringVar(&o.listen, "listen", defaultListen(), "address to listen on (default every interface at $PORT when set)")
 		fs.StringVar(&o.logLevel, "log-level", env("NOTESD_LOG_LEVEL", "info"), "debug, info, warn or error")
 		fs.StringVar(&o.logFormat, "log-format", env("NOTESD_LOG_FORMAT", "text"), "text or json")
 		fs.StringVar(&o.resendURL, "resend-url", env("NOTESD_RESEND_URL", ""), "Resend API base URL for emailing notes (default https://api.resend.com)")
@@ -411,14 +410,6 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	}
 	slog.SetDefault(log)
 
-	var public *url.URL
-	if o.publicURL != "" {
-		public, err = url.Parse(o.publicURL)
-		if err != nil || (public.Scheme != "http" && public.Scheme != "https") || public.Host == "" {
-			return fmt.Errorf("--public-url must be an absolute http(s) URL, got %q", o.publicURL)
-		}
-	}
-
 	// Before ownerFromEnv: a refused mirror mustn't leave an account behind.
 	var mirr *mirror.Mirror
 	if o.mirrorDir != "" {
@@ -461,7 +452,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			return fmt.Errorf("%s: %w", u.Username, err)
 		}
 	}
-	cfg := api.Config{PublicURL: public, ResendURL: o.resendURL, Version: version}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
@@ -482,7 +473,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	if !hasOwner {
 		log.Warn("no owner account yet: open url and create it before anyone else does, "+
 			"or set NOTESD_OWNER_USERNAME and NOTESD_OWNER_PASSWORD",
-			"url", appURL(public, ln.Addr()))
+			"url", appURL(ln.Addr()))
 	}
 	log.Info("notesd started", "version", version, "listen", ln.Addr().String(),
 		"data_dir", o.dataDir, "users", len(list), "schema_version", database.LatestVersion())
@@ -542,14 +533,22 @@ func ownerFromEnv(ctx context.Context, a *auth.Service, log *slog.Logger) (bool,
 }
 
 // appURL is where the web app is reached, for the first-run log line.
-func appURL(public *url.URL, addr net.Addr) string {
+func appURL(addr net.Addr) string {
 	base := url.URL{Scheme: "http", Host: addr.String(), Path: "/"}
-	if public != nil {
-		base = url.URL{Scheme: public.Scheme, Host: public.Host, Path: strings.TrimSuffix(public.Path, "/") + "/"}
-	} else if tcp, ok := addr.(*net.TCPAddr); ok && tcp.IP.IsUnspecified() {
+	if tcp, ok := addr.(*net.TCPAddr); ok && tcp.IP.IsUnspecified() {
 		base.Host = net.JoinHostPort("localhost", fmt.Sprint(tcp.Port))
 	}
 	return base.String()
+}
+
+// defaultListen follows the $PORT convention of hosting platforms (Railway,
+// Render, Fly.io, Cloud Run…), which route outside traffic to that port on
+// any interface.
+func defaultListen() string {
+	if port := os.Getenv("PORT"); port != "" {
+		return net.JoinHostPort("", port)
+	}
+	return "127.0.0.1:8080"
 }
 
 func newLogger(level, format string) (*slog.Logger, error) {

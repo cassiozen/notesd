@@ -93,7 +93,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 
 	resp := sessionResponse{Session: creds.Session, Username: creds.Session.Username, IsAdmin: creds.Session.IsAdmin}
 	if creds.Session.Kind == auth.KindWeb {
-		s.setSessionCookie(w, creds.AccessToken, time.UnixMilli(creds.AccessExpiresAt))
+		setSessionCookie(w, r, creds.AccessToken, time.UnixMilli(creds.AccessExpiresAt))
 		resp.CSRFToken = creds.CSRFToken
 	} else {
 		resp.AccessToken = creds.AccessToken
@@ -137,7 +137,7 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if sess.Kind == auth.KindWeb {
-		s.setSessionCookie(w, "", time.Unix(0, 0))
+		setSessionCookie(w, r, "", time.Unix(0, 0))
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -204,14 +204,14 @@ func (s *Server) allow(w http.ResponseWriter, key string) bool {
 	return ok
 }
 
-func (s *Server) setSessionCookie(w http.ResponseWriter, value string, expires time.Time) {
+func setSessionCookie(w http.ResponseWriter, r *http.Request, value string, expires time.Time) {
 	c := &http.Cookie{
-		Name:     s.cookieName(),
+		Name:     cookieName(r),
 		Value:    value,
 		Path:     "/",
 		Expires:  expires,
 		HttpOnly: true,
-		Secure:   s.secureCookies(),
+		Secure:   secureRequest(r),
 		SameSite: http.SameSiteLaxMode,
 	}
 	if value == "" {

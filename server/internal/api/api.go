@@ -25,9 +25,6 @@ import (
 
 // Config holds HTTP-layer settings.
 type Config struct {
-	// PublicURL is the externally visible base URL, if known. An https URL
-	// makes cookies Secure; its host is accepted as an Origin.
-	PublicURL *url.URL
 	// ResendURL overrides Resend's API base URL (tests).
 	ResendURL string
 	// Version is the server's build version, shown to signed-in clients.
@@ -167,13 +164,13 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 		var err error
 		if token, ok := bearerToken(r); ok {
 			sess, err = s.auth.Authenticate(r.Context(), token, auth.KindDevice)
-		} else if c, cerr := r.Cookie(s.cookieName()); cerr == nil {
+		} else if c, ok := sessionCookie(r); ok {
 			sess, err = s.auth.Authenticate(r.Context(), c.Value, auth.KindWeb)
 			if err == nil && sess.Renewed {
-				s.setSessionCookie(w, c.Value, time.UnixMilli(sess.ExpiresAt))
+				setSessionCookie(w, r, c.Value, time.UnixMilli(sess.ExpiresAt))
 			}
 			if err == nil && !safeMethod(r.Method) {
-				if !s.sameOrigin(r) {
+				if !sameOrigin(r) {
 					writeError(w, http.StatusForbidden, "csrf_failed", "cross-origin request rejected")
 					return
 				}
@@ -226,8 +223,10 @@ func safeMethod(m string) bool {
 
 // sameOrigin accepts requests without an Origin header (non-browser clients
 // and some same-origin requests) and those whose Origin host matches the
-// request host or the configured public URL.
-func (s *Server) sameOrigin(r *http.Request) bool {
+// request host, or X-Forwarded-Host for proxies that rewrite Host. Trusting
+// that header is safe here: a cross-site page can't add it to a victim's
+// request without a CORS preflight, which this server never grants.
+func sameOrigin(r *http.Request) bool {
 	origin := r.Header.Get("Origin")
 	if origin == "" {
 		return true
@@ -239,20 +238,45 @@ func (s *Server) sameOrigin(r *http.Request) bool {
 	if strings.EqualFold(u.Host, r.Host) {
 		return true
 	}
-	return s.cfg.PublicURL != nil && strings.EqualFold(u.Host, s.cfg.PublicURL.Host)
+	fwd, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Host"), ",")
+	fwd = strings.TrimSpace(fwd)
+	return fwd != "" && strings.EqualFold(u.Host, fwd)
 }
 
-func (s *Server) secureCookies() bool {
-	return s.cfg.PublicURL != nil && s.cfg.PublicURL.Scheme == "https"
-}
-
-// cookieName uses the __Host- prefix when cookies are Secure, which pins the
-// cookie to this exact host and path "/".
-func (s *Server) cookieName() string {
-	if s.secureCookies() {
-		return "__Host-notes_session"
+// secureRequest reports whether the browser reached this server over HTTPS,
+// directly or through a proxy. A client faking X-Forwarded-Proto only gets a
+// Secure cookie its own browser won't keep over plain HTTP.
+func secureRequest(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
 	}
-	return "notes_session"
+	proto, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Proto"), ",")
+	return strings.EqualFold(strings.TrimSpace(proto), "https")
+}
+
+// Over HTTPS the cookie is Secure with the __Host- prefix, which pins it to
+// this exact host and path "/".
+const (
+	secureCookieName = "__Host-notes_session"
+	plainCookieName  = "notes_session"
+)
+
+func cookieName(r *http.Request) string {
+	if secureRequest(r) {
+		return secureCookieName
+	}
+	return plainCookieName
+}
+
+// sessionCookie accepts either name, so a request that loses its forwarded
+// scheme on the way (a proxy hop that drops the header) still authenticates.
+func sessionCookie(r *http.Request) (*http.Cookie, bool) {
+	for _, name := range []string{secureCookieName, plainCookieName} {
+		if c, err := r.Cookie(name); err == nil {
+			return c, true
+		}
+	}
+	return nil, false
 }
 
 func clientKey(r *http.Request) string {

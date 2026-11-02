@@ -25,14 +25,16 @@ description: What the server can read, how accounts and sessions are protected, 
   from Settings. The first account is one. Admins can't see other accounts' notes.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
   reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
-  and create the account before putting HTTPS in front. To skip that window,
-  `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create it when the server starts.
+  and create the account before putting HTTPS in front. On a hosting platform, create it right
+  after deploying. To skip that window, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create
+  it when the server starts.
 
 ## Passwords and sessions
 
 - Passwords are hashed with Argon2id. After 10 failed sign-ins in 15 minutes from one address,
   sign-ins from it are refused for a while.
-- **Browsers** get an HttpOnly session cookie, `Secure` when `--public-url` is HTTPS, and must
+- **Browsers** get an HttpOnly session cookie, `Secure` when served over HTTPS (directly or
+  as reported by the proxy's `X-Forwarded-Proto`), and must
   send a CSRF token with every change; requests from other sites are refused. A session ends after
   30 days without use.
 - **Phones** get an access token that lasts an hour and a refresh token that lasts 180 days from
