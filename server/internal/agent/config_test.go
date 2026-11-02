@@ -70,8 +70,9 @@ func TestConfigRoundTrip(t *testing.T) {
 	if err := spaces.NewStore(db).Delete(ctx, "journal"); err != nil {
 		t.Fatal(err)
 	}
-	if all, _ := s.Configs(ctx); len(all) != 0 {
-		t.Fatalf("after space delete: %+v", all)
+	all, err = s.Configs(ctx)
+	if err != nil || len(all) != 0 {
+		t.Fatalf("after space delete: %+v %v", all, err)
 	}
 	var n int
 	if err := db.R.QueryRow(`SELECT count(*) FROM agent_triggers`).Scan(&n); err != nil || n != 0 {
@@ -86,6 +87,9 @@ func TestConfigValidation(t *testing.T) {
 	}
 	if _, err := s.Config(ctx, "nope"); !errors.Is(err, agent.ErrSpaceNotFound) {
 		t.Fatalf("unknown space: %v", err)
+	}
+	if err := s.Delete(ctx, "nope"); !errors.Is(err, agent.ErrSpaceNotFound) {
+		t.Fatalf("delete unknown space: %v", err)
 	}
 	for _, tc := range []struct {
 		c     agent.Config

@@ -90,7 +90,12 @@ func (s *Store) Configs(ctx context.Context) ([]Config, error) {
 
 // Config returns a space's agent: off and empty if none was set up.
 func (s *Store) Config(ctx context.Context, spaceID string) (Config, error) {
-	return configIn(ctx, s.db.R, spaceID)
+	var c Config
+	err := s.db.ReadTx(ctx, func(tx *sql.Tx) (err error) {
+		c, err = configIn(ctx, tx, spaceID)
+		return err
+	})
+	return c, err
 }
 
 type querier interface {
@@ -100,10 +105,7 @@ type querier interface {
 
 // configIn is Config inside a transaction, or on the read pool.
 func configIn(ctx context.Context, q querier, spaceID string) (Config, error) {
-	var one int
-	if err := q.QueryRowContext(ctx, `SELECT 1 FROM spaces WHERE id = ?`, spaceID).Scan(&one); errors.Is(err, sql.ErrNoRows) {
-		return Config{}, ErrSpaceNotFound
-	} else if err != nil {
+	if err := spaceExists(ctx, q, spaceID); err != nil {
 		return Config{}, err
 	}
 	cs, err := readConfigs(ctx, q, spaceID)
@@ -111,6 +113,16 @@ func configIn(ctx context.Context, q querier, spaceID string) (Config, error) {
 		return Config{SpaceID: spaceID, Triggers: map[Trigger]string{}}, err
 	}
 	return cs[0], nil
+}
+
+// spaceExists is nil for a space that exists, else ErrSpaceNotFound.
+func spaceExists(ctx context.Context, q querier, spaceID string) error {
+	var one int
+	err := q.QueryRowContext(ctx, `SELECT 1 FROM spaces WHERE id = ?`, spaceID).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return ErrSpaceNotFound
+	}
+	return err
 }
 
 func readConfigs(ctx context.Context, q querier, spaceID string) ([]Config, error) {
@@ -151,10 +163,7 @@ func (s *Store) Put(ctx context.Context, c Config) (Config, error) {
 	}
 	c.UpdatedAt = s.now().UnixMilli()
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		var one int
-		if err := tx.QueryRowContext(ctx, `SELECT 1 FROM spaces WHERE id = ?`, c.SpaceID).Scan(&one); errors.Is(err, sql.ErrNoRows) {
-			return ErrSpaceNotFound
-		} else if err != nil {
+		if err := spaceExists(ctx, tx, c.SpaceID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `
@@ -179,8 +188,12 @@ func (s *Store) Put(ctx context.Context, c Config) (Config, error) {
 }
 
 // Delete removes a space's agent and everything written for it.
+// ErrSpaceNotFound for a space that doesn't exist.
 func (s *Store) Delete(ctx context.Context, spaceID string) error {
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		if err := spaceExists(ctx, tx, spaceID); err != nil {
+			return err
+		}
 		_, err := tx.ExecContext(ctx, `DELETE FROM agent_spaces WHERE space_id = ?`, spaceID)
 		return err
 	})

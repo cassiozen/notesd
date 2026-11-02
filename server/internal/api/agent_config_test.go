@@ -16,6 +16,9 @@ func TestAgentConfigEndpoints(t *testing.T) {
 	if r := c.do("PUT", "/api/v1/agent/spaces/nope", map[string]any{"enabled": true}); r.status != 404 {
 		t.Fatalf("put unknown space: %d %s", r.status, r.raw)
 	}
+	if r := c.do("DELETE", "/api/v1/agent/spaces/nope", nil); r.status != 404 {
+		t.Fatalf("delete unknown space: %d %s", r.status, r.raw)
+	}
 	if r := c.do("GET", "/api/v1/agent/spaces/default", nil); r.status != 200 || r.body["enabled"] != false {
 		t.Fatalf("not set up: %d %s", r.status, r.raw)
 	}
