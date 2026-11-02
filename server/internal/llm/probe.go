@@ -46,9 +46,13 @@ func (c *Client) Test(ctx context.Context, s Settings) (TestResult, error) {
 		return TestResult{}, err
 	}
 	for _, tc := range res.Message.ToolCalls {
-		if tc.Function.Name == pingTool.Function.Name {
+		var args map[string]any
+		if tc.Function.Name == pingTool.Function.Name && json.Unmarshal([]byte(tc.Function.Arguments), &args) == nil && args != nil {
 			return TestResult{Model: res.Model, Latency: time.Since(start)}, nil
 		}
+	}
+	if len(res.Message.ToolCalls) > 0 {
+		return TestResult{}, &TestError{Message: res.Model + " called a tool with arguments that aren't a JSON object. Agents need a model that supports tool calls."}
 	}
 	return TestResult{}, &TestError{Message: res.Model + " answered without calling a tool. Agents need a model that supports tool calls."}
 }

@@ -7,7 +7,7 @@ import { platformBadge, sessionName } from '../api/user-agent'
 import { genericMessage } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
-import { setAiSettings, useAiSettings } from '../notes/ai-settings'
+import { DEFAULT_DAILY_TOKEN_CAP, setAiSettings, useAiSettings } from '../notes/ai-settings'
 import { setEmailSettings, useEmailSettings } from '../notes/email-settings'
 import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
@@ -814,7 +814,7 @@ function AiForm({ saved }: { saved: AiSettings }) {
     setDone(undefined)
     try {
       await settings.removeAi()
-      setAiSettings({ ...saved, configured: false, baseUrl: '', model: '', keyHint: '' })
+      setAiSettings({ ...saved, configured: false, baseUrl: '', model: '', keyHint: '', dailyTokenCap: DEFAULT_DAILY_TOKEN_CAP })
       setApiKey('')
       setBaseUrl(undefined)
       setModel(undefined)

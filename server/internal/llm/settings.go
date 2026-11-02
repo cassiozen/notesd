@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"net"
 	"net/url"
 	"strconv"
 	"strings"
@@ -175,6 +176,10 @@ func validate(in Input) (Settings, error) {
 	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return s, &InputError{Field: "baseUrl", Message: "enter the API's address, like https://api.openai.com/v1"}
 	}
+	// The key and notes go in every request: plain http only where it can't cross the internet.
+	if u.Scheme == "http" && !localHost(u.Hostname()) {
+		return s, &InputError{Field: "baseUrl", Message: "use https:// for a provider outside your local network"}
+	}
 	// Pasting the endpoint itself is the likeliest mistake.
 	s.BaseURL = strings.TrimSuffix(s.BaseURL, "/chat/completions")
 	if strings.ContainsAny(s.APIKey, " \t\r\n") {
@@ -190,6 +195,20 @@ func validate(in Input) (Settings, error) {
 		return s, &InputError{Field: "dailyTokenCap", Message: "enter a number of tokens up to 10 billion"}
 	}
 	return s, nil
+}
+
+// localHost is loopback, private or link-local addresses, mDNS names, and
+// names with no dot, like a Docker Compose service: reachable only on this
+// network. As the apps' ServerAddress.isPrivate, plus dotless names.
+func localHost(h string) bool {
+	h = strings.ToLower(h)
+	if h == "localhost" || strings.HasSuffix(h, ".local") {
+		return true
+	}
+	if ip := net.ParseIP(h); ip != nil {
+		return ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast()
+	}
+	return !strings.Contains(h, ".")
 }
 
 func put(ctx context.Context, tx *sql.Tx, k, v string) error {

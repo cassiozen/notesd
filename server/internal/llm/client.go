@@ -146,12 +146,17 @@ func (c *Client) Chat(ctx context.Context, s Settings, req ChatRequest) (*ChatRe
 			Message      Message `json:"message"`
 			FinishReason string  `json:"finish_reason"`
 		} `json:"choices"`
-		Usage Usage `json:"usage"`
+		Usage Usage           `json:"usage"`
+		Error json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal(raw, &out); err != nil {
 		return nil, &ProviderError{Status: res.StatusCode, Message: "the answer isn't a chat completion; check the address"}
 	}
 	if len(out.Choices) == 0 {
+		// Some proxies report a failure as a 200 carrying an error.
+		if len(out.Error) > 0 && string(out.Error) != "null" {
+			return nil, &ProviderError{Status: res.StatusCode, Message: errorMessage(res.StatusCode, raw)}
+		}
 		return nil, &ProviderError{Status: res.StatusCode, Message: "the answer has no choices"}
 	}
 	model := out.Model
@@ -190,7 +195,7 @@ func errorMessage(status int, raw []byte) string {
 		return http.StatusText(status)
 	}
 	if len(text) > 300 {
-		text = text[:300] + "…"
+		text = strings.ToValidUTF8(text[:300], "") + "…"
 	}
 	return text
 }

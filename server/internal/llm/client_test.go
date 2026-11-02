@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -19,6 +20,7 @@ func TestErrorMessage(t *testing.T) {
 		{502, `<html><body>Bad Gateway</body></html>`, "Bad Gateway"},
 		{500, ``, "Internal Server Error"},
 		{400, `plain words`, "plain words"},
+		{400, strings.Repeat("a", 299) + "é", strings.Repeat("a", 299) + "…"},
 	} {
 		if got := errorMessage(tc.status, []byte(tc.body)); got != tc.want {
 			t.Errorf("%d %s: got %q, want %q", tc.status, tc.body, got, tc.want)
@@ -56,5 +58,32 @@ func TestValidate(t *testing.T) {
 	}
 	if _, err := validate(Input{BaseURL: "https://api.example.com/v1?x=1", APIKey: "k", Model: "m"}); err == nil {
 		t.Fatal("a query string must be refused")
+	}
+	for url, ok := range map[string]bool{
+		"http://localhost:11434/v1":  true,
+		"http://127.0.0.1:8080/v1":   true,
+		"http://192.168.1.20/v1":     true,
+		"http://[fd00::1]/v1":        true,
+		"http://gpu.local/v1":        true,
+		"http://ollama:11434/v1":     true,
+		"http://api.example.com/v1":  false,
+		"http://8.8.8.8/v1":          false,
+		"https://api.example.com/v1": true,
+	} {
+		if _, err := validate(Input{BaseURL: url, APIKey: "k", Model: "m"}); (err == nil) != ok {
+			t.Errorf("%s: got %v, want ok=%v", url, err, ok)
+		}
+	}
+}
+
+func TestChatErrorInSuccess(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"error":{"message":"Quota exceeded"}}`))
+	}))
+	defer srv.Close()
+	_, err := NewClient().Chat(context.Background(), Settings{BaseURL: srv.URL, APIKey: "k", Model: "m"}, ChatRequest{})
+	var pe *ProviderError
+	if !errors.As(err, &pe) || pe.Message != "Quota exceeded" {
+		t.Fatalf("got %v", err)
 	}
 }

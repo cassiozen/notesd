@@ -199,6 +199,13 @@ func TestAITest(t *testing.T) {
 		t.Fatalf("no tool call: %d %s", r.status, r.raw)
 	}
 
+	// Arguments that aren't a JSON object would break every tool call.
+	f.script(toolCall("ping", `not json`))
+	r = c.do("POST", "/api/v1/settings/ai/test", nil)
+	if r.status != 502 || r.body["error"] != "ai_test_failed" || !strings.Contains(r.body["message"].(string), "JSON object") {
+		t.Fatalf("bad arguments: %d %s", r.status, r.raw)
+	}
+
 	// The provider's own explanation is passed on.
 	f.script(fakeReply{status: 401, body: `{"error":{"message":"Incorrect API key provided","type":"invalid_request_error"}}`})
 	r = c.do("POST", "/api/v1/settings/ai/test", nil)

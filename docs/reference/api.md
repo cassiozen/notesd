@@ -387,7 +387,8 @@ other accounts get `403 admin_only` when they change it.
 
 **Settings** are server-wide: one OpenAI-compatible provider for every account's
 [agents](../guides/using/agents.md). `baseUrl` is where requests go, without `/chat/completions`
-(a trailing one is removed). `apiKey` can be left out to keep the saved one; it's never returned,
+(a trailing one is removed); plain `http` is accepted only for a loopback, private or link-local
+address, a `.local` name or a name with no dot. `apiKey` can be left out to keep the saved one; it's never returned,
 and `keyHint` is its last 4 characters. `dailyTokenCap` is tokens per account per day, 1,000,000
 when left out or `0`. `editable` says whether this account is an admin; other accounts get
 `403 admin_only` when they change it.

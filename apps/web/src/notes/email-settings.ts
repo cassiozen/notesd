@@ -6,7 +6,16 @@ import type { EmailSettings } from '../api/types'
 // replaced when Settings saves.
 let current: EmailSettings | null = null
 let loading: Promise<void> | null = null
+// Bumped on reset: a fetch started before it is for the account signed out.
+let fetches = 0
 const listeners = new Set<() => void>()
+
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => {
+    listeners.delete(listener)
+  }
+}
 
 export function setEmailSettings(next: EmailSettings | null) {
   current = next
@@ -14,30 +23,29 @@ export function setEmailSettings(next: EmailSettings | null) {
 }
 
 function load() {
-  loading ??= settings.email().then(
-    (s) => setEmailSettings(s),
+  if (loading) return
+  const n = ++fetches
+  loading = settings.email().then(
+    (s) => {
+      if (n === fetches) setEmailSettings(s)
+    },
     () => {
       // Retried the next time something asks.
-      loading = null
+      if (n === fetches) loading = null
     },
   )
 }
 
 /** The email settings, or null until they've loaded. */
 export function useEmailSettings(): EmailSettings | null {
-  const value = useSyncExternalStore(
-    (l) => {
-      listeners.add(l)
-      return () => listeners.delete(l)
-    },
-    () => current,
-  )
+  const value = useSyncExternalStore(subscribe, () => current)
   useEffect(load, [])
   return value
 }
 
-/** For tests: forget what was loaded. */
+/** Forgets what was loaded, and any fetch on its way: another account may sign in next. */
 export function resetEmailSettings() {
   current = null
   loading = null
+  fetches++
 }

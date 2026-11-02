@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"time"
 
 	"notes/server/internal/llm"
 	"notes/server/internal/notes"
@@ -59,6 +60,8 @@ func (s *Server) deleteAISettings(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
+const testWriteDeadline = 2*time.Minute + 30*time.Second
+
 // POST /api/v1/settings/ai/test  [{"baseUrl", "apiKey"?, "model"}]
 //
 // Probes the provider with the settings in the body, before they're saved
@@ -82,6 +85,11 @@ func (s *Server) testAISettings(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
+	}
+	// The probe may take the client's whole timeout (a local model loading),
+	// longer than the server's default write deadline.
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Now().Add(testWriteDeadline)); err != nil {
+		s.log.WarnContext(r.Context(), "ai test: extend write deadline", "err", err)
 	}
 	res, err := s.ai.Test(r.Context(), st)
 	if err != nil {

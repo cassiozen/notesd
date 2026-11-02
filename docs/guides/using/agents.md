@@ -20,7 +20,9 @@ how an agent reads and changes notes.
 1. Open **Settings → Integrations**.
 2. Under **AI**, enter:
    - **API address**: the address requests go to, ending before `/chat/completions`, such as
-     `https://api.openai.com/v1` or `http://localhost:11434/v1` for Ollama.
+     `https://api.openai.com/v1` or `http://localhost:11434/v1` for Ollama. Plain `http://` is
+     only accepted for a provider on your own network: a private address, a `.local` name, or a
+     name with no dot, like a Docker Compose service.
    - **API key**: the provider's key. A local model that doesn't check keys still needs something
      here; any text will do.
    - **Model**: the model's name as the provider spells it.
@@ -31,7 +33,8 @@ how an agent reads and changes notes.
 4. Click **Save**.
 
 The key is stored on the server and never shown again; Settings shows its last four characters.
-No device ever has it. Every account on the server uses this provider, but only admins can change
+After saving, the server never returns or syncs it; only the admin's device has it, while entering
+or testing it. Every account on the server uses this provider, but only admins can change
 it. The first account is an admin; [`notesd add-user --admin`](../../reference/cli.md#add-user)
 makes more.
 

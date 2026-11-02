@@ -42,6 +42,20 @@ describe('AI settings', () => {
     expect((await server.api<{ configured: boolean }>('GET', '/settings/ai')).body.configured).toBe(false)
   })
 
+  it('shows the default daily tokens again after Remove', async () => {
+    const llm = await startFakeLLM()
+    const { user } = await signedIn({
+      seed: async (s) =>
+        void (await s.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: KEY, model: 'm', dailyTokenCap: 5000 })),
+    })
+    await openSettings(user, 'Integrations')
+    const card = await screen.findByRole('region', { name: 'AI' })
+    const cap = await within(card).findByLabelText<HTMLInputElement>('Daily tokens per account')
+    await waitFor(() => expect(cap.value).toBe('5000'))
+    await user.click(within(card).getByRole('button', { name: 'Remove' }))
+    await waitFor(() => expect(cap.value).toBe('1000000'))
+  })
+
   it('says why a test failed', async () => {
     const llm = await startFakeLLM()
     llm.textOnly = true
