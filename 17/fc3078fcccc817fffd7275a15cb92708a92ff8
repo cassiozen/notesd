@@ -1,0 +1,29 @@
+apps/ios/Notes/Settings/SettingsView.swift
+  s_5c7b55c45c6df4::t_d3754cbbe4300d 222-225
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_5c7b55c45c6df4::t_d3754cbbe4300d 116
+  s_5c7b55c45c6df4::t_444582610e6bcc 117-119
+  s_5c7b55c45c6df4::t_846e5b180dab77 120-121
+apps/android/app/src/main/kotlin/notes/app/settings/SyncSettings.kt
+  s_5c7b55c45c6df4::t_d3754cbbe4300d 26,48-57,70-72,75-76,78-79
+docs/contributing/settings-guidelines.md
+  s_5c7b55c45c6df4::t_d3754cbbe4300d 54,81-82
+apps/android/app/src/test/kotlin/notes/app/notes/SyncBannersTest.kt
+  s_5c7b55c45c6df4::t_2e0a7ebf33b465 24-25,145-168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17fc3078fcccc817fffd7275a15cb92708a92ff8",
+  "prompts": {},
+  "sessions": {
+    "s_5c7b55c45c6df4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7f6c92c-f1e0-492b-b92f-4cee1a0609c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
