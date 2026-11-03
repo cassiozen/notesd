@@ -177,6 +177,20 @@ func failed(why string, err error) finished {
 // It returns errRestart when a note changed under a write.
 func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, messages []llm.Message, f *finished) error {
 	for {
+		// Locked since the run began (its event may carry a copy of the
+		// note): nothing more of it is sent.
+		n, err := rs.acct.Notes.Get(ctx, rs.run.NoteID)
+		switch {
+		case err == nil && locks.IsLocked(n.Content):
+			f.Status, f.Failure, f.Message = StatusFailed, FailNoteLocked, "The note was locked, so the agent stopped."
+			if f.PromptTokens+f.CompletionTokens == 0 {
+				f.Status, f.Message = StatusSkipped, "The note is locked. Locked notes are never sent."
+			}
+			return nil
+		case err != nil && !errors.Is(err, notes.ErrNotFound):
+			f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+			return err
+		}
 		res, err := rn.chat(ctx, st, llm.ChatRequest{Messages: messages, Tools: tools})
 		if err != nil {
 			var pe *llm.ProviderError

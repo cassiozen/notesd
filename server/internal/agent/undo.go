@@ -106,7 +106,12 @@ func undoOne(ctx context.Context, ns *notes.Store, runID string, e undoEdit) (re
 	op := "agent-undo:" + runID + ":" + e.noteID
 	mark := &notes.AgentMark{RunID: runID, Only: true}
 	if e.kind == "create" {
-		_, err = ns.Delete(ctx, notes.DeleteInput{OperationID: op, ID: e.noteID, BaseRevision: e.afterRev.Int64, Agent: mark})
+		var res notes.Result
+		res, err = ns.Delete(ctx, notes.DeleteInput{OperationID: op, ID: e.noteID, BaseRevision: e.afterRev.Int64, Agent: mark})
+		if err == nil && res.Status == notes.StatusAlreadyDeleted {
+			// Someone else deleted it; a replay of this undo's own delete isn't this.
+			return BlockedDeleted, nil
+		}
 	} else {
 		_, err = ns.Update(ctx, notes.UpdateInput{OperationID: op, ID: e.noteID, BaseRevision: e.afterRev.Int64,
 			Title: e.title, Content: e.content, Agent: mark})

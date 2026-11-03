@@ -6,6 +6,8 @@ import (
 	"testing"
 
 	"notes/server/internal/agent"
+	"notes/server/internal/llm"
+	"notes/server/internal/notes"
 )
 
 func (h *harness) lastRunID() string {
@@ -170,6 +172,67 @@ func TestLockingOrDeletingRemovesTheAgentsCopies(t *testing.T) {
 		h.update("n1", sealed, nil)
 		if r := h.only(); r.Status != agent.StatusSkipped || r.Failure != agent.FailNoteLocked {
 			t.Fatalf("run: %+v", r)
+		}
+	})
+}
+
+func TestUndoACreatedNoteDeletedSince(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "Milk")
+	h.model.steps = append(h.model.steps, call("create_note", `{"title": "Digest", "content": "Milk"}`), final("Made it."))
+	h.next()
+	id := h.lastRunID()
+	d, _ := h.d.Agent.Run(ctx, id)
+	h.delete(d.Edits[0].NoteID)
+	if res, err := h.undo(id); !errors.Is(err, agent.ErrNothingToUndo) || res.Skipped[0].Reason != agent.BlockedDeleted {
+		t.Fatalf("undo: %+v %v", res, err)
+	}
+}
+
+func TestLockedDuringARunStopsIt(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.MovedOut)
+	h.create("n1", "work", "Leaving")
+	h.update("n1", "Leaving", func(in *notes.UpdateInput) { in.SpaceID = ptr("home") })
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		h.update("n1", "notesd:locked:v1:"+strings.Repeat("A", 60), nil)
+		return toolReply("list_tags", `{}`), nil
+	}, final("No change."))
+	h.next()
+	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailNoteLocked || h.model.calls() != 1 {
+		t.Fatalf("run: %+v, calls %d", r, h.model.calls())
+	}
+}
+
+func TestFinishedOrRecoveredRunsDropADeletedNotesText(t *testing.T) {
+	moved := func(h *harness) {
+		h.agent("work", agent.MovedOut)
+		h.create("n1", "work", "Leaving")
+		h.update("n1", "Leaving", func(in *notes.UpdateInput) { in.SpaceID = ptr("home") })
+	}
+	t.Run("finished", func(t *testing.T) {
+		h := newHarness(t)
+		moved(h)
+		h.delete("n1")
+		h.model.steps = append(h.model.steps, final("No change."))
+		h.next()
+		if runs := h.runs(); runs[0].Event.Title != nil || runs[0].Event.Content != nil {
+			t.Fatalf("event: %+v", runs[0].Event)
+		}
+	})
+	t.Run("recovered after a crash", func(t *testing.T) {
+		h := newHarness(t)
+		moved(h)
+		if _, err := h.db.W.Exec(`UPDATE agent_runs SET status = 'running', attempts = 2`); err != nil {
+			t.Fatal(err)
+		}
+		h.delete("n1")
+		if err := h.d.Agent.RecoverRuns(ctx); err != nil {
+			t.Fatal(err)
+		}
+		if runs := h.runs(); runs[0].Status != agent.StatusFailed || runs[0].Event.Title != nil || runs[0].Event.Content != nil {
+			t.Fatalf("run: %+v", runs[0])
 		}
 	})
 }

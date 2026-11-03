@@ -416,7 +416,7 @@ finishes. A **run** is `{id, trigger, status, spaceId, noteId, noteTitle, noteDe
 failure, message, model, toolCalls, promptTokens, completionTokens, createdAt, startedAt,
 finishedAt, edits}`. `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
 why a run failed or was skipped, and `outcome` what a finished one did (`edited`, `created`,
-`no_change`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
+`no_change`, or after undo `undone` or `partly_undone`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
 changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
 `create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked` or
 `changed` (the note changed since the run wrote it). `limit` is up to 100, 50 by default. `usage`
