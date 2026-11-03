@@ -1,4 +1,4 @@
-import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent } from 'react'
+import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent, type Ref } from 'react'
 import type { Space, TagCount } from '../api/types'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { SpaceMenu } from './space-menu'
@@ -21,6 +21,10 @@ type Props = {
   onNewSpace: () => void
   /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
   onHide?: () => void
+  /** Docked and hidden: kept in place, out of reach, so hiding and showing can animate. */
+  hidden?: boolean
+  /** The Hide button, for focus to land on when the sidebar comes back. */
+  hideRef?: Ref<HTMLButtonElement>
 }
 
 const EXPANDED_KEY = 'notes.tags.expanded'
@@ -46,7 +50,7 @@ function save(key: string, value: unknown) {
 }
 
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
-export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onHide }: Props) {
+export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onHide, hidden = false, hideRef }: Props) {
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
@@ -121,53 +125,35 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
   }
 
   return (
-    <nav className={[styles.panel, onHide ? styles.docked : ''].join(' ')} aria-label="Sidebar">
-      <div className={styles.header}>
-        {/* Before the list loads, the default space: the switcher keeps its place. */}
-        <h1 className={styles.title}>
-          <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} />
-        </h1>
-        {onHide && (
-          <button type="button" className={styles.tool} onClick={onHide} aria-label="Hide sidebar" title="Hide sidebar">
-            <SidebarIcon />
+    <nav
+      className={[styles.panel, onHide ? styles.docked : '', hidden ? styles.collapsed : ''].join(' ')}
+      aria-label="Sidebar"
+      inert={hidden}
+    >
+      <div className={styles.inner}>
+        <div className={styles.header}>
+          {/* Before the list loads, the default space: the switcher keeps its place. */}
+          <h1 className={styles.title}>
+            <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} />
+          </h1>
+          {onHide && (
+            <button
+              ref={hideRef}
+              type="button"
+              className={styles.tool}
+              onClick={onHide}
+              aria-label="Hide sidebar"
+              title="Hide sidebar"
+            >
+              <SidebarIcon />
+            </button>
+          )}
+          <button type="button" className={styles.tool} onClick={onSettings} aria-label="Settings" title="Settings">
+            <SettingsIcon size={onHide ? 16 : 17} />
           </button>
-        )}
-        <button type="button" className={styles.tool} onClick={onSettings} aria-label="Settings" title="Settings">
-          <SettingsIcon size={onHide ? 16 : 17} />
-        </button>
-      </div>
-      <div className={styles.scroll} onKeyDown={onKeyDown}>
-        <ul className={styles.list} aria-label="Show">
-          <li>
-            <div className={styles.item}>
-              <span className={styles.expander} aria-hidden="true" />
-              <button
-                type="button"
-                className={styles.row}
-                data-row=""
-                aria-current={selected === 'all' ? 'true' : undefined}
-                onClick={() => onFilter(null)}
-              >
-                <span className={styles.label}>All notes</span>
-              </button>
-            </div>
-          </li>
-          <li>
-            <div className={styles.item}>
-              <span className={styles.expander} aria-hidden="true" />
-              <button
-                type="button"
-                className={styles.row}
-                data-row=""
-                aria-current={selected === 'untagged' ? 'true' : undefined}
-                onClick={() => onFilter({ untagged: true })}
-              >
-                <span className={styles.label}>Untagged</span>
-              </button>
-            </div>
-          </li>
-          {/* Kept while selected, so the last note unlocked doesn't pull the row from under the list. */}
-          {(lockedCount > 0 || selected === 'locked') && (
+        </div>
+        <div className={styles.scroll} onKeyDown={onKeyDown}>
+          <ul className={styles.list} aria-label="Show">
             <li>
               <div className={styles.item}>
                 <span className={styles.expander} aria-hidden="true" />
@@ -175,28 +161,59 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
                   type="button"
                   className={styles.row}
                   data-row=""
-                  aria-current={selected === 'locked' ? 'true' : undefined}
-                  onClick={() => onFilter({ locked: true })}
+                  aria-current={selected === 'all' ? 'true' : undefined}
+                  onClick={() => onFilter(null)}
                 >
-                  <LockIcon />
-                  <span className={styles.label}>Locked</span>
+                  <span className={styles.label}>All notes</span>
                 </button>
               </div>
             </li>
-          )}
-        </ul>
-        <section aria-labelledby={tagsId}>
-          <h2 id={tagsId} className={styles.section}>
-            Tags
-          </h2>
-          {tree.length > 0 ? (
-            <ul className={styles.list}>{tree.map((n) => renderNode(n, 0))}</ul>
-          ) : (
-            <p className={styles.hint}>
-              Type <code>#tag</code> in a note to group it here. <code>#parent/child</code> nests.
-            </p>
-          )}
-        </section>
+            <li>
+              <div className={styles.item}>
+                <span className={styles.expander} aria-hidden="true" />
+                <button
+                  type="button"
+                  className={styles.row}
+                  data-row=""
+                  aria-current={selected === 'untagged' ? 'true' : undefined}
+                  onClick={() => onFilter({ untagged: true })}
+                >
+                  <span className={styles.label}>Untagged</span>
+                </button>
+              </div>
+            </li>
+            {/* Kept while selected, so the last note unlocked doesn't pull the row from under the list. */}
+            {(lockedCount > 0 || selected === 'locked') && (
+              <li>
+                <div className={styles.item}>
+                  <span className={styles.expander} aria-hidden="true" />
+                  <button
+                    type="button"
+                    className={styles.row}
+                    data-row=""
+                    aria-current={selected === 'locked' ? 'true' : undefined}
+                    onClick={() => onFilter({ locked: true })}
+                  >
+                    <LockIcon />
+                    <span className={styles.label}>Locked</span>
+                  </button>
+                </div>
+              </li>
+            )}
+          </ul>
+          <section aria-labelledby={tagsId}>
+            <h2 id={tagsId} className={styles.section}>
+              Tags
+            </h2>
+            {tree.length > 0 ? (
+              <ul className={styles.list}>{tree.map((n) => renderNode(n, 0))}</ul>
+            ) : (
+              <p className={styles.hint}>
+                Type <code>#tag</code> in a note to group it here. <code>#parent/child</code> nests.
+              </p>
+            )}
+          </section>
+        </div>
       </div>
     </nav>
   )

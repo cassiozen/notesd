@@ -78,6 +78,43 @@
   background: var(--hover);
 }
 
+/*
+ * In step with the docked sidebar: grows in as it goes, shrinks away as it comes back.
+ * Not clipped, so the Show button's focus ring isn't cut off; at width 0 it's invisible anyway.
+ */
+.reveal {
+  flex: none;
+  display: grid;
+  place-items: center;
+  transition:
+    width 0.34s var(--ease-out),
+    margin 0.34s var(--ease-out),
+    opacity 0.2s var(--ease-out) 0.1s,
+    transform 0.34s var(--spring) 0.04s;
+}
+
+/* Sized, as width can't transition from auto: the space icon's, at its desktop size. */
+.spaceMark {
+  width: 22px;
+}
+
+.reveal:not([data-shown]) {
+  width: 0;
+  /* Gives back the title row's gap. */
+  margin-inline-end: -8px;
+  opacity: 0;
+  transform: scale(0.6);
+  transition-duration: 0.28s, 0.28s, 0.12s, 0.2s;
+  transition-delay: 0s;
+  transition-timing-function: var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    transition: none;
+  }
+}
+
 /* Matches the note pane's back link on phones. */
 .back {
   align-self: flex-start;
