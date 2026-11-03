@@ -27,6 +27,21 @@ jobs:
       - run: mise run check
       - run: mise run test:android
 
+  desktop:
+    # The macOS app only: Windows and Linux builds aren't set up yet.
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      # rustup comes with the runner and installs what src-tauri/rust-toolchain.toml pins.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+      - run: mise run lint:desktop
+      - run: mise run test:desktop
+      - run: mise run build:desktop
+
   ios:
     # macOS runners cost 10× the minutes of Linux ones on a private repository.
     runs-on: macos-26

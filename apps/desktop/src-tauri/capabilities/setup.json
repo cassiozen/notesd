@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "setup",
+  "description": "The bundled setup page, which picks the server. Pages from the server get nothing.",
+  "windows": ["main"],
+  "permissions": ["allow-get-server", "allow-set-server", "allow-open-server"]
+}

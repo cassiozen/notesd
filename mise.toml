@@ -194,6 +194,28 @@ description = "Debug build of the iOS app for a simulator"
 dir = "apps/ios"
 run = "xcodebuild -project Notes.xcodeproj -scheme Notes -destination \"id=$(scripts/simulator.sh)\" -derivedDataPath build/DerivedData build"
 
+[tasks."dev:desktop"]
+description = "The macOS app against its bundled setup page (tauri dev)"
+dir = "apps/desktop"
+depends = ["install"]
+run = "pnpm tauri dev"
+
+[tasks."lint:desktop"]
+description = "rustfmt and clippy for the macOS app"
+dir = "apps/desktop/src-tauri"
+run = "cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings"
+
+[tasks."test:desktop"]
+description = "The macOS app's Rust tests"
+dir = "apps/desktop/src-tauri"
+run = "cargo test --locked"
+
+[tasks."build:desktop"]
+description = "The macOS app, unsigned, in apps/desktop/src-tauri/target/release/bundle/macos"
+dir = "apps/desktop"
+depends = ["install"]
+run = "pnpm tauri build --bundles app"
+
 [tasks."build:web"]
 description = "Build the web app into server/internal/web/dist"
 dir = "apps/web"

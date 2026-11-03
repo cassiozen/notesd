@@ -1,7 +1,7 @@
 """Generate every app icon from one master PNG.
 
     python3 -m venv /tmp/icons && /tmp/icons/bin/pip install pillow
-    /tmp/icons/bin/python scripts/icons.py docs/images/icon.png [web] [android] [ios]
+    /tmp/icons/bin/python scripts/icons.py docs/images/icon.png [web] [android] [ios] [macos]
 
 With no targets after the master, it writes them all.
 
@@ -12,6 +12,7 @@ cut away, the tile is cropped square, and then placed per target:
   android: adaptive launcher foreground + monochrome, splash icon, brand mark
   ios:     the 1024px app icon, full bleed (iOS masks it to its own shape and
            allows no transparency), and the in-app mark
+  macos:   the desktop app's icon.icns and icon.png, on Apple's icon grid
 """
 
 import sys
@@ -23,6 +24,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WEB = ROOT / "apps/web"
 RES = ROOT / "apps/android/app/src/main/res"
 IOS = ROOT / "apps/ios/Notes/Resources/Assets.xcassets"
+MACOS = ROOT / "apps/desktop/src-tauri/icons"
 PAPER = (246, 243, 238, 255)  # --paper / @color/paper
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
@@ -72,6 +74,8 @@ def main(src, targets):
         android(tile)
     if "ios" in targets:
         ios(tile)
+    if "macos" in targets:
+        macos(tile)
 
 
 def web(tile):
@@ -121,5 +125,13 @@ def ios(tile):
     save(place(tile, 312, 1), IOS / "BrandMark.imageset/brand-mark.png")
 
 
+def macos(tile):
+    # macOS doesn't mask: the icon keeps its own shape, inside the 824px of the 1024px grid that Apple's icons
+    # use, so it sits at the same size as theirs in the Dock.
+    icon = place(tile, 1024, 824 / 1024)
+    save(icon, MACOS / "icon.png")
+    save(icon, MACOS / "icon.icns")
+
+
 if __name__ == "__main__":
-    main(sys.argv[1], sys.argv[2:] or ["web", "android", "ios"])
+    main(sys.argv[1], sys.argv[2:] or ["web", "android", "ios", "macos"])
