@@ -11,7 +11,7 @@ what it does and when.
 
 Agents are being built. They act on **new note done**, **note edit done**, **note deleted** and the
 two **moved** triggers. Note created, started editing and the menu command come with the editor
-work; the activity log and undo come next.
+work.
 
 ## Give a space an agent
 
@@ -43,6 +43,28 @@ nothing.
 
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.
+
+## See what it did, and undo it
+
+Everything an agent does is in **Activity**: open the space's menu (its name, at the top of the
+sidebar) and pick **Activity…**, or **Activity…** in **Edit space**. On the web for now.
+
+Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
+changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it
+used, its last words, and each note it changed, line by line. Today's token use is at the top,
+against the daily limit.
+
+**Undo** puts each note the run changed back as it was, and deletes a note it made. A note you've
+changed since is left alone, so undo never loses your writing; Activity says which and why. Undo
+doesn't make the agent act again.
+
+If an agent's last run on a note failed, the note says so when you open it, with a link to the run
+in Activity. **Dismiss** hides it.
+
+When you lock or delete a note, Activity forgets its text too, as the note itself does. As with
+the note, backups made before still have it; see
+[what locking doesn't cover](../../concepts/security-model.md#locked-notes). Runs are kept for 30
+days.
 
 ## Time zone
 

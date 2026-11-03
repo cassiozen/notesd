@@ -2,6 +2,7 @@ import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent, type 
 import type { Space, TagCount } from '../api/types'
 import { dragRegion } from '../desktop'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
+import { useAgentConfigs } from './agent-config'
 import { SpaceMenu } from './space-menu'
 import { DEFAULT_SPACE } from './spaces'
 import type { ListFilter } from './store'
@@ -20,6 +21,8 @@ type Props = {
   space: string
   onSpace: (id: string) => void
   onNewSpace: () => void
+  /** What the space's agent did; offered only once the space has one. */
+  onActivity: () => void
   /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
   onHide?: () => void
   /** Docked and hidden: kept in place, out of reach, so hiding and showing can animate. */
@@ -51,7 +54,22 @@ function save(key: string, value: unknown) {
 }
 
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
-export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onHide, hidden = false, hideRef }: Props) {
+export function TagsPanel({
+  tags,
+  lockedCount,
+  filter,
+  onFilter,
+  onSettings,
+  spaces,
+  space,
+  onSpace,
+  onNewSpace,
+  onActivity,
+  onHide,
+  hidden = false,
+  hideRef,
+}: Props) {
+  const agents = useAgentConfigs()
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
@@ -136,7 +154,13 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
         <div className={styles.header} {...dragRegion('deep')}>
           {/* Before the list loads, the default space: the switcher keeps its place. */}
           <h1 className={styles.title}>
-            <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} />
+            <SpaceMenu
+              spaces={spaces ?? [DEFAULT]}
+              current={space}
+              onSwitch={onSpace}
+              onCreate={onNewSpace}
+              onActivity={agents?.has(space) ? onActivity : undefined}
+            />
           </h1>
           {onHide && (
             <button

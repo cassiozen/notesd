@@ -138,11 +138,13 @@ export type FakeLLM = {
   requests: { model: string; messages: unknown[]; tools?: unknown[] }[]
   /** When true, the model answers in text instead of calling a tool. */
   textOnly: boolean
+  /** An agent's turns, in order: a tool call, or its last words. Once done, agents get "No change." */
+  script: ({ tool: string; args: unknown } | { text: string })[]
 }
 
 /** Stands in for an OpenAI-compatible API: POST /v1/chat/completions, answering with a call to the first tool. */
 export async function startFakeLLM(): Promise<FakeLLM> {
-  const fake: FakeLLM = { url: '', requests: [], textOnly: false }
+  const fake: FakeLLM = { url: '', requests: [], textOnly: false, script: [] }
   const srv = createServer((req, res) => {
     let raw = ''
     req.on('data', (c: Buffer) => (raw += c.toString()))
@@ -156,8 +158,17 @@ export async function startFakeLLM(): Promise<FakeLLM> {
       const body = JSON.parse(raw) as FakeLLM['requests'][number] & { tools?: { function: { name: string } }[] }
       fake.requests.push(body)
       const tool = body.tools?.[0]
-      const message =
-        fake.textOnly || !tool
+      // An agent's run offers every tool; the AI settings' test only ping.
+      const agentRun = (body.tools?.length ?? 0) > 1
+      const step = agentRun ? (fake.script.shift() ?? { text: 'No change.' }) : undefined
+      const message = step
+        ? 'text' in step
+          ? { role: 'assistant', content: step.text }
+          : {
+              role: 'assistant',
+              tool_calls: [{ id: `call_${fake.requests.length}`, type: 'function', function: { name: step.tool, arguments: JSON.stringify(step.args) } }],
+            }
+        : fake.textOnly || !tool
           ? { role: 'assistant', content: 'pong' }
           : {
               role: 'assistant',

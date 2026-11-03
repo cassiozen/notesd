@@ -8,6 +8,7 @@ import { providerHost, useAiSettings } from '../notes/ai-settings'
 import { notesSource } from '../notes/source'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
+import { navigate } from '../router'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
@@ -213,6 +214,9 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const agent = useAgentSetup(space.id)
+  const activityHint = useId()
+  // Activity replaces this dialog, which would lose the changes.
+  const unsaved = name.trim() !== space.name || icon !== space.icon || agent.changed
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -263,6 +267,23 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
             isNew={false}
           />
         )}
+        {agent.saved && (
+          <div>
+            <Button
+              size="sm"
+              disabled={unsaved}
+              aria-describedby={unsaved ? activityHint : undefined}
+              onClick={() => navigate('/activity', { state: { space: space.id } })}
+            >
+              Activity…
+            </Button>
+            {unsaved && (
+              <p id={activityHint} className={styles.muted}>
+                Save or cancel to see Activity.
+              </p>
+            )}
+          </div>
+        )}
         {formError && (
           <p role="alert" className={styles.error}>
             {formError}
@@ -295,6 +316,8 @@ function useAgentSetup(spaceId: string | undefined) {
   const current = draft ?? initial
   return {
     shown: configs !== null && ai !== null && (ai.configured || (saved !== undefined && hasAgent(initial))),
+    /** The space has an agent set up already: it may have done something to see in Activity. */
+    saved: saved !== undefined,
     draft: current,
     setDraft,
     changed: draft !== null && !sameAgent(current, saved ? initial : emptyAgent),
