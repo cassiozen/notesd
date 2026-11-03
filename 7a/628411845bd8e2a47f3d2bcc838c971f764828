@@ -1,0 +1,27 @@
+apps/web/src/notes/agent-examples.ts
+  s_f7b126b009a7df::t_eccc7a1a9887fd 5,11,15,17,19-24,30,33-34,38-39,45,48-49,53-54,59-60,63,68-69
+apps/web/src/notes/agent-page.tsx
+  s_f7b126b009a7df::t_0aca1f301b6c8c 1,14-24,252-255,299,301-306,337
+apps/web/src/notes/agent-rules.ts
+  s_f7b126b009a7df::t_658d2855d20141 46,48,55,63,71,79,87,95-103,111,115-117
+apps/web/test/agent-config.test.tsx
+  s_f7b126b009a7df::t_a6b63b082dce8a 71-72,77-83,87
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_411cb274745129 24,34-35
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a628411845bd8e2a47f3d2bcc838c971f764828",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
