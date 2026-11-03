@@ -1,0 +1,77 @@
+server/internal/editors/hub.go
+  s_f7b126b009a7df::t_eab51afa213795 1-86
+server/go.mod
+  s_f7b126b009a7df::t_82fefc9f6ee5b1 6
+apps/web/test/server.ts
+  s_f7b126b009a7df::t_fa985e520bcefb 7
+  s_f7b126b009a7df::t_73715eb69b6853 9,50-54,219,239,264
+server/internal/api/api_test.go
+  s_f7b126b009a7df::t_0e3c9011dda60d 44-48,61-65
+  s_f7b126b009a7df::t_4c52e60559134c 43
+server/internal/api/agent_socket.go
+  s_f7b126b009a7df::t_5c943b1774964b 55
+  s_f7b126b009a7df::t_9e2d97aa887232 39
+  s_f7b126b009a7df::t_ef9ac45b35c3ba 4-6,8,11-14,16-22,24-35,41-42,45-46,49,56-63,65-87,89-102,104,106-110
+  s_f7b126b009a7df::t_82fefc9f6ee5b1 1-3,7,9-10,15,23,36-38,40,47-48,50-54,64,103,105,111-114
+  s_f7b126b009a7df::t_443e8eeb0d3ef7 43-44,88
+server/internal/api/agent_socket_test.go
+  s_f7b126b009a7df::t_474b1c05d22b19 17-18,62-63
+  s_f7b126b009a7df::t_5c943b1774964b 20-21,31,33-39,53,84-85
+  s_f7b126b009a7df::t_4fa018469b93e0 94,125-126,133
+  s_f7b126b009a7df::t_0e3c9011dda60d 91-93,96,146
+  s_f7b126b009a7df::t_9e2d97aa887232 1-6,8-11,15,19,23-30,32,88-89,102,119,157-158
+  s_f7b126b009a7df::t_cde9df65871601 7,12-14,16,22,40-52,54-61,64-83,86-87,90,95,97-101,103-118,120-124,127-132,134-145,147-156
+apps/web/vite.config.ts
+  s_f7b126b009a7df::t_316dd5dd6ab67c 94-95
+docs/reference/api.md
+  s_f7b126b009a7df::t_d8e5174df3f77c 400,441-452
+  s_f7b126b009a7df::t_b968cad6cc2718 453
+apps/web/src/notes/shell.tsx
+  s_f7b126b009a7df::t_316dd5dd6ab67c 1,48
+server/internal/api/api.go
+  s_f7b126b009a7df::t_ef9ac45b35c3ba 21,35-39,65
+  s_f7b126b009a7df::t_443e8eeb0d3ef7 70-73,80
+  s_f7b126b009a7df::t_82fefc9f6ee5b1 126
+server/internal/agent/triggers.go
+  s_f7b126b009a7df::t_c98a2c64bd4059 11,283-302
+  s_f7b126b009a7df::t_d8a011438ab429 303-304
+apps/web/src/agent/socket.ts
+  s_f7b126b009a7df::t_5cd7bcfc8ea0bb 68,76-77,84
+  s_f7b126b009a7df::t_70e1b68291b7b6 1-67,69-75,78-83,85-114
+apps/web/test/agent-socket.test.tsx
+  s_f7b126b009a7df::t_9e854d2be4f2e8 75-76,88-90
+  s_f7b126b009a7df::t_31ac74ec9a173b 2-3,34-74,77-87
+  s_f7b126b009a7df::t_49f2abd1cce9e1 1,4-33,91-92
+server/cmd/notesd/main.go
+  s_f7b126b009a7df::t_443e8eeb0d3ef7 486
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_0946858f48b157 66,482-483,486-491,581
+docs/guides/self-hosting/https.md
+  s_f7b126b009a7df::t_bb49cc31a8f384 53-57
+  s_f7b126b009a7df::t_d8e5174df3f77c 71-74
+apps/web/package.json
+  s_f7b126b009a7df::t_7fdaa36b307fbe 24
+  s_f7b126b009a7df::t_1a3df43d1d5f0c 57,63-64
+apps/web/src/notes/note-pane.tsx
+  s_f7b126b009a7df::t_316dd5dd6ab67c 18,151-152,155-161
+pnpm-lock.yaml
+  s_f7b126b009a7df::t_5f896528897acd 122-124,143-145,1326-1328,2380-2391,3286-3289,4339-4340
+server/go.sum
+  s_f7b126b009a7df::t_be79d019c6ed02 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5259a7ed538116560da1ff79e51f5247c4b6611",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
