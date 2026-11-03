@@ -1,12 +1,15 @@
 package notes.app.notes
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -61,6 +64,23 @@ class SpacesFlowTest {
         compose.waitUntilExactlyOneExists(hasText("New space"))
         compose.onNodeWithText("New space").performClick()
         compose.waitUntilExactlyOneExists(hasText("Create"))
+    }
+
+    @Test
+    @Config(qualifiers = "w320dp-h470dp")
+    fun `a name with control characters is refused in the dialog, not by the store`() {
+        runBlocking { graph.store.save("a", "Groceries", "Milk\n") }
+        launch("Groceries")
+        compose.onNodeWithContentDescription("Sidebar").performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
+        compose.onNodeWithContentDescription("Space: Notes").performClick()
+        compose.waitUntilExactlyOneExists(hasText("New space"))
+        compose.onNodeWithText("New space").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Create"))
+        compose.onNodeWithText("Name").performTextInput("Work\u0007")
+        compose.onNode(hasText("Create") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Remove the special characters from the name."))
+        assertEquals(1, runBlocking { graph.sync.spaces.list() }.size)
     }
 
     @Test

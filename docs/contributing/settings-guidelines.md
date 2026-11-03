@@ -30,7 +30,8 @@ The list works like the system's own settings:
 
 A category's page is made of lines: what a setting is, where it stands, and a button for what
 can be done ("Password · Change…"). A form opens in a dialog or sheet only once that button is
-pressed; a page never shows an empty form waiting to be filled. An on/off setting is a switch. A
+pressed; a page never shows an empty form waiting to be filled. On the phones, an on/off setting
+is a switch, as in the system's settings; the web uses a checkbox, as its sign-in screen does. A
 card's label never repeats the page's title.
 
 A row inside a synced category that applies to this device only says so in its footnote ("Only on

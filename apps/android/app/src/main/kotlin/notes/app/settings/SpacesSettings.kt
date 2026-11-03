@@ -160,18 +160,25 @@ fun NewSpaceDialog(graph: AppGraph, onDismiss: () -> Unit, onCreated: (String) -
     val scope = rememberCoroutineScope()
     // One create per dialog: a second tap mustn't make a twin before the list shows the first.
     var saving by remember { mutableStateOf(false) }
+    var failure by remember { mutableStateOf<String?>(null) }
     SpaceDialog(
         title = "New space",
         action = "Create",
         initial = "",
         initialIcon = null,
         taken = { name -> spaces.any { it.name.equals(name, ignoreCase = true) } },
-        onDismiss = onDismiss
+        onDismiss = onDismiss,
+        failure = failure
     ) { name, icon ->
         if (saving) return@SpaceDialog
         saving = true
+        failure = null
         scope.launch {
-            val id = graph.sync.spaces.create(name, icon)
+            val id = runCatching { graph.sync.spaces.create(name, icon) }.getOrElse {
+                failure = "The space couldn't be saved on this phone. Try again."
+                saving = false
+                return@launch
+            }
             graph.scheduler.request()
             // Shown once the list has it: switched to sooner, a list read before the insert would
             // look as if it were deleted and send the switch back to the default.
@@ -190,6 +197,8 @@ private fun SpaceDialog(
     initialIcon: String?,
     taken: (String) -> Boolean,
     onDismiss: () -> Unit,
+    /** Why the last [onDone] didn't save, shown under the buttons; the dialog stays, with what was chosen. */
+    failure: String? = null,
     onDone: (name: String, icon: String) -> Unit
 ) {
     var name by remember { mutableStateOf(initial) }
@@ -197,30 +206,46 @@ private fun SpaceDialog(
     var iconError by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     NotesDialog(onDismiss, title) {
-        NotesField(name, {
-            name = it
-            error = null
-        }, "Name", placeholder = "Work", error = error)
-        Spacer(Modifier.height(12.dp))
-        SpaceIconPicker(icon, {
-            icon = it
-            iconError = null
-        }, iconError)
-        Spacer(Modifier.height(20.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
-            NotesButton(action, {
-                val n = Spaces.normalize(name)
-                error = when {
-                    n == null -> "Enter a name."
-                    n.codePointCount(0, n.length) > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
-                    taken(n) -> "Another space has this name."
-                    else -> null
-                }
-                iconError = if (icon == null) "Choose an icon." else null
-                val chosen = icon
-                if (n != null && chosen != null && error == null) onDone(n, chosen)
-            }, Modifier.weight(1f))
+        ScrollingBody {
+            NotesField(name, {
+                name = it
+                error = null
+            }, "Name", placeholder = "Work", error = error)
+            Spacer(Modifier.height(12.dp))
+            SpaceIconPicker(icon, {
+                icon = it
+                iconError = null
+            }, iconError)
+            Spacer(Modifier.height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
+                NotesButton(action, {
+                    val n = Spaces.normalize(name)
+                    error = when {
+                        n == null -> "Enter a name."
+
+                        n.codePointCount(0, n.length) > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
+
+                        taken(n) -> "Another space has this name."
+
+                        // The server refuses them, so the store does too; a paste can bring them in.
+                        n.any { Character.isISOControl(it) } -> "Remove the special characters from the name."
+
+                        else -> null
+                    }
+                    iconError = if (icon == null) "Choose an icon." else null
+                    val chosen = icon
+                    if (n != null && chosen != null && error == null) onDone(n, chosen)
+                }, Modifier.weight(1f))
+            }
+            failure?.let {
+                Text(
+                    it,
+                    style = Type.small,
+                    color = LocalTokens.current.danger,
+                    modifier = Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                )
+            }
         }
     }
 }
