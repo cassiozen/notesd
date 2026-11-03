@@ -1,0 +1,57 @@
+apps/web/src/agent/socket.ts
+  s_f7b126b009a7df::t_b570390e4ca920 44-45,66-74,102-107,141-148,156,167-170,213,222
+apps/web/src/api/agent.ts
+  s_f7b126b009a7df::t_6cecddcd1b920a 21-22,26-27
+apps/web/test/agent-triggers.test.tsx
+  s_f7b126b009a7df::t_2a93d65735e67b 34-49,85-86,100
+apps/web/test/server.ts
+  s_f7b126b009a7df::t_0164eae3b234bf 148-149,184-187
+apps/web/test/setup.ts
+  s_f7b126b009a7df::t_4da7bec791057b 3,90
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_cb053919960a7e 149,497-503
+docs/reference/api.md
+  s_f7b126b009a7df::t_2ca229a36495a3 393,403,408-410
+server/internal/agent/config.go
+  s_f7b126b009a7df::t_cf9da45a169c73 8,10,47-50,61-64,120,137,148,150,155-157,180-194,196,198-199,249-265
+server/internal/agent/config_test.go
+  s_f7b126b009a7df::t_ad4061336a7277 7,103-104,151-175
+server/internal/agent/context.go
+  s_f7b126b009a7df::t_0664ce5aa959e6 1-66
+server/internal/agent/editors_test.go
+  s_f7b126b009a7df::t_462400329b25f8 5,7,181-230
+server/internal/agent/export_test.go
+  s_f7b126b009a7df::t_c2ee767c4549b5 10,16
+server/internal/agent/prompt.go
+  s_f7b126b009a7df::t_b9795eb873cb8b 19-20,25,64,70-85,100-109
+server/internal/agent/request.go
+  s_f7b126b009a7df::t_3105a707b00638 62
+server/internal/agent/run.go
+  s_f7b126b009a7df::t_4b133b9cc77fc8 175-183,186,188
+server/internal/agent/runner.go
+  s_f7b126b009a7df::t_c9f63f8010151d 34-36,48,56,94-96,105,107-108,112,115-119,136,148-158,160,179,188,200-201
+server/internal/agent/runner_test.go
+  s_f7b126b009a7df::t_b4fb2930d2bf9f 693-746
+server/internal/agent/runs.go
+  s_f7b126b009a7df::t_2d526cd3386d5c 60-62,64-66,68-71,76-77,79
+server/internal/agent/tools.go
+  s_f7b126b009a7df::t_adea773578371e 195
+server/migrations/0018_agent_reference_notes.sql
+  s_f7b126b009a7df::t_55dea1621946c5 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "967f6210fecb9ebf99f68feef48141990ed97e64",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
