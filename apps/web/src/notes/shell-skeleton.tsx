@@ -18,10 +18,13 @@ export function ShellSkeleton() {
       <div className={shell.app} aria-hidden="true" data-testid="shell-skeleton">
         {wide && !loadSidebarHidden() && (
           <div className={[tags.panel, tags.docked].join(' ')}>
-            <div className={styles.rows}>
-              <Bar width="60%" />
-              <Bar width="45%" />
-              <Bar width="52%" />
+            {/* The panel lays out its one child at the sidebar's width; without it, the bars shrink to nothing. */}
+            <div className={tags.inner}>
+              <div className={styles.rows}>
+                <Bar width="60%" />
+                <Bar width="45%" />
+                <Bar width="52%" />
+              </div>
             </div>
           </div>
         )}
