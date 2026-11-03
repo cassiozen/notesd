@@ -10,6 +10,7 @@ docs/reference/api.md
   s_f7b126b009a7df::t_ef9cf9ec7f4c1e 397-398,414-426
   s_f7b126b009a7df::t_fc769f2633318f 439
   s_f7b126b009a7df::t_5f6c06a293de72 399,432-438,499,514
+  s_f7b126b009a7df::t_3fbe3f3b375ea9 429-431
 server/internal/api/notes_handlers.go
   s_f7b126b009a7df::t_a295b290dea076 69,90-92,118-119,128-130,147-148,153-165
   s_f7b126b009a7df::t_c1426935bb5d8d 85-89
