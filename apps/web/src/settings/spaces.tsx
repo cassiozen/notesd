@@ -2,28 +2,20 @@ import { useEffect, useId, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { spaces as spacesApi } from '../api/spaces'
 import type { Space } from '../api/types'
+import auth from '../auth/auth.module.css'
 import { genericMessage } from '../auth/errors'
-import { saveAgentConfig, useAgentConfigs } from '../notes/agent-config'
-import { providerHost, useAiSettings } from '../notes/ai-settings'
+import { useAgentConfigs } from '../notes/agent-config'
+import { rulesOf, draftOf } from '../notes/agent-rules'
+import { useAiSettings } from '../notes/ai-settings'
 import { notesSource } from '../notes/source'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
-import { navigate } from '../router'
+import { agentPath, navigate } from '../router'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
 import { Surface } from '../ui/surface'
-import {
-  AgentSection,
-  agentFieldError,
-  draftOf,
-  emptyAgent,
-  hasAgent,
-  sameAgent,
-  type AgentDraft,
-  type AgentErrors,
-} from './agent-section'
 import styles from './settings.module.css'
 
 const notes = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`
@@ -127,10 +119,9 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
   const [icon, setIcon] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; icon?: string; form?: string }>({})
   const [busy, setBusy] = useState(false)
-  const agent = useAgentSetup(undefined)
-  // Once, so a failed agent save doesn't make a second space.
+  const offerAgent = useAgentRow(undefined).shown
+  const [agentNext, setAgentNext] = useState(false)
   const [id] = useState(() => crypto.randomUUID())
-  const [created, setCreated] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -139,25 +130,20 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
       ...(icon === null && { icon: 'Choose an icon.' }),
     }
     setErrors(found)
-    agent.setErrors({})
     if (Object.keys(found).length > 0 || icon === null) return
+    const withAgent = offerAgent && agentNext
     setBusy(true)
     try {
-      if (!created) {
-        if (hasAgent(agent.draft) && notesSource().sync) {
-          // Notes kept on this device create the space there and send it on the next sync; the agent's setup
-          // needs it on the server now. Same id and name, so that sync changes nothing.
-          await spacesApi.put(id, name.trim(), icon)
-        }
-        await putSpace(id, name.trim(), icon)
-        setCreated(true)
+      if (withAgent && notesSource().sync) {
+        // Notes kept on this device create the space there and send it on the next sync; the agent's setup
+        // needs it on the server now. Same id and name, so that sync changes nothing.
+        await spacesApi.put(id, name.trim(), icon)
       }
-      if (hasAgent(agent.draft)) await saveAgentConfig(id, agent.draft)
+      await putSpace(id, name.trim(), icon)
       onCreated(id)
+      if (withAgent) navigate(agentPath(id))
     } catch (err) {
-      const fields = agentFieldError(err)
-      if (fields) agent.setErrors(fields)
-      else setErrors({ form: genericMessage(err) })
+      setErrors({ form: genericMessage(err) })
       setBusy(false)
     }
   }
@@ -179,14 +165,14 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
           autoFocus
         />
         <SpaceIconPicker value={icon} onChange={setIcon} error={errors.icon} />
-        {agent.shown && (
-          <AgentSection
-            draft={agent.draft}
-            onChange={agent.setDraft}
-            errors={agent.errors}
-            provider={agent.provider}
-            isNew
-          />
+        {offerAgent && (
+          <label className={auth.keep}>
+            <input type="checkbox" checked={agentNext} onChange={(e) => setAgentNext(e.target.checked)} />
+            <span>
+              Set up an agent next
+              <span className={auth.keepWhy}>It can tag, title and tidy this space’s notes, as you ask it to.</span>
+            </span>
+          </label>
         )}
         {errors.form && (
           <p role="alert" className={styles.error}>
@@ -214,10 +200,10 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const [error, setError] = useState<string>()
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
-  const agent = useAgentSetup(space.id)
-  const activityHint = useId()
-  // Activity replaces this dialog, which would lose the changes.
-  const unsaved = name.trim() !== space.name || icon !== space.icon || agent.changed
+  const agent = useAgentRow(space.id)
+  const leaveHint = useId()
+  // The agent's page and Activity replace this dialog, which would lose the changes.
+  const unsaved = name.trim() !== space.name || icon !== space.icon
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -227,18 +213,12 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
     }
     setError(undefined)
     setFormError(undefined)
-    agent.setErrors({})
     setBusy(true)
     try {
-      if (name.trim() !== space.name || icon !== space.icon) await putSpace(space.id, name.trim(), icon)
-      if (agent.changed) await saveAgentConfig(space.id, agent.draft)
+      if (unsaved) await putSpace(space.id, name.trim(), icon)
       onClose()
     } catch (err) {
-      const fields = agentFieldError(err)
-      if (fields) agent.setErrors(fields)
-      else if (err instanceof ApiError && err.code === 'not_found')
-        setFormError('This space hasn’t reached the server yet. Try again once it has synced.')
-      else setFormError(genericMessage(err))
+      setFormError(genericMessage(err))
       setBusy(false)
     }
   }
@@ -260,27 +240,34 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
         />
         <SpaceIconPicker value={icon} onChange={setIcon} />
         {agent.shown && (
-          <AgentSection
-            draft={agent.draft}
-            onChange={agent.setDraft}
-            errors={agent.errors}
-            provider={agent.provider}
-            isNew={false}
-          />
-        )}
-        {agent.saved && (
-          <div>
-            <Button
-              size="sm"
-              disabled={unsaved}
-              aria-describedby={unsaved ? activityHint : undefined}
-              onClick={() => navigate('/activity', { state: { space: space.id } })}
-            >
-              Activity…
-            </Button>
+          <div className={styles.agentRow}>
+            <div>
+              <span className={styles.agentRowName}>Agent</span>
+              <span className={styles.muted}>{agent.status}</span>
+            </div>
+            <div className={styles.agentRowActions}>
+              {agent.saved && (
+                <Button
+                  size="sm"
+                  disabled={unsaved}
+                  aria-describedby={unsaved ? leaveHint : undefined}
+                  onClick={() => navigate('/activity', { state: { space: space.id } })}
+                >
+                  Activity…
+                </Button>
+              )}
+              <Button
+                size="sm"
+                disabled={unsaved}
+                aria-describedby={unsaved ? leaveHint : undefined}
+                onClick={() => navigate(agentPath(space.id))}
+              >
+                {agent.saved ? 'Edit agent…' : 'Set up an agent…'}
+              </Button>
+            </div>
             {unsaved && (
-              <p id={activityHint} className={styles.muted}>
-                Save or cancel to see Activity.
+              <p id={leaveHint} className={styles.muted}>
+                Save or cancel first.
               </p>
             )}
           </div>
@@ -304,26 +291,25 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
 }
 
 /**
- * A space's agent as a dialog edits it. Shown once the agents have loaded (they need the server) and either AI is
- * set up or the space already has an agent, which then shows as paused.
+ * A space's agent as its dialog sums it up. Shown once the agents have loaded (they need the server) and either AI
+ * is set up or the space already has an agent, which then shows as paused.
  */
-function useAgentSetup(spaceId: string | undefined) {
+function useAgentRow(spaceId: string | undefined) {
   const configs = useAgentConfigs()
   const ai = useAiSettings()
   const saved = spaceId ? configs?.get(spaceId) : undefined
-  const initial = draftOf(saved)
-  const [draft, setDraft] = useState<AgentDraft | null>(null)
-  const [errors, setErrors] = useState<AgentErrors>({})
-  const current = draft ?? initial
+  const rules = rulesOf(draftOf(saved)).length
+  const status = !saved
+    ? 'Not set up'
+    : !ai?.configured
+      ? 'Paused: AI isn’t set up on this server'
+      : !saved.enabled
+        ? 'Off'
+        : `On · ${rules} ${rules === 1 ? 'rule' : 'rules'}`
   return {
-    shown: configs !== null && ai !== null && (ai.configured || (saved !== undefined && hasAgent(initial))),
+    shown: configs !== null && ai !== null && (ai.configured || saved !== undefined),
     /** The space has an agent set up already: it may have done something to see in Activity. */
     saved: saved !== undefined,
-    draft: current,
-    setDraft,
-    changed: draft !== null && !sameAgent(current, saved ? initial : emptyAgent),
-    errors,
-    setErrors,
-    provider: ai?.configured ? providerHost(ai.baseUrl) : null,
+    status,
   }
 }

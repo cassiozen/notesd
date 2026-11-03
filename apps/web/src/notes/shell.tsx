@@ -1,13 +1,14 @@
 import { useAgentSocket } from '../agent/socket'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SyncNotice } from '../offline/protocol'
-import { navigate, parseRoute, usePathname } from '../router'
+import { agentPath, navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
 import { NewSpaceDialog } from '../settings/spaces'
 import { Backdrop } from '../ui/backdrop'
 import { PHONE, WIDE, useMediaQuery } from '../ui/media'
 import { Toast } from '../ui/toast'
 import { ActivitySheet } from './activity'
+import { AgentSheet } from './agent-page'
 import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
@@ -63,7 +64,7 @@ function ShellView({ username }: { username: string }) {
   const [newSpace, setNewSpace] = useState(false)
 
   // Settings and the tags screen open over the app; the note behind them stays open.
-  const over = route.name === 'settings' || route.name === 'tags' || route.name === 'activity'
+  const over = route.name === 'settings' || route.name === 'tags' || route.name === 'activity' || route.name === 'agent'
   const routeNote = route.name === 'note' ? route.id : null
   const [behind, setBehind] = useState(routeNote)
   if (!over && routeNote !== behind) setBehind(routeNote)
@@ -71,10 +72,13 @@ function ShellView({ username }: { username: string }) {
   const selectedId = draft?.id ?? noteId
   // Closing settings goes back to where it was opened, the tags screen included.
   const [settingsFrom, setSettingsFrom] = useState(pathname)
-  if (route.name !== 'settings' && pathname !== settingsFrom) setSettingsFrom(pathname)
+  if (route.name !== 'settings' && route.name !== 'agent' && route.name !== 'activity' && pathname !== settingsFrom) setSettingsFrom(pathname)
   // Activity, opened from Settings too, closes back to where Settings was opened.
   const [activityFrom, setActivityFrom] = useState(pathname)
   if (route.name !== 'settings' && route.name !== 'activity' && pathname !== activityFrom) setActivityFrom(pathname)
+  // The agent's page, opened from Settings or a space's menu, closes back there; Activity from it, back to it.
+  const [agentFrom, setAgentFrom] = useState(pathname)
+  if (route.name !== 'agent' && route.name !== 'activity' && pathname !== agentFrom) setAgentFrom(pathname)
   const listPath = behind ? `/notes/${behind}` : '/'
 
   // Grown wide enough for the sidebar: the tags screen has nothing left to show.
@@ -238,6 +242,7 @@ function ShellView({ username }: { username: string }) {
       onSpace={switchSpace}
       onNewSpace={() => setNewSpace(true)}
       onActivity={() => navigate('/activity', { state: { space } })}
+      onAgent={() => navigate(agentPath(space))}
       onHide={onHide}
     />
   )
@@ -303,6 +308,14 @@ function ShellView({ username }: { username: string }) {
           onSpaceCreated={switchSpace}
           // Opened straight from its address: there's nowhere to go back to but the list.
           onClose={() => navigate(parseRoute(settingsFrom).name === 'settings' ? listPath : settingsFrom)}
+        />
+      )}
+
+      {route.name === 'agent' && (
+        <AgentSheet
+          key={route.spaceId}
+          spaceId={route.spaceId}
+          onClose={() => navigate(parseRoute(agentFrom).name === 'agent' ? listPath : agentFrom, { replace: true })}
         />
       )}
 
