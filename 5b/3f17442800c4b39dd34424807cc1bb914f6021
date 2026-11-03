@@ -1,0 +1,59 @@
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_c48d7e71746e1d 12-14
+server/internal/agent/prompt.go
+  s_f7b126b009a7df::t_a1996ea1c68720 1-97
+server/internal/agent/run.go
+  s_f7b126b009a7df::t_a4af5bfd992c4d 1-231
+server/internal/api/ai_handlers.go
+  s_f7b126b009a7df::t_6095d3a05119f5 51,61,103-107
+  s_f7b126b009a7df::t_8e48f43697e77d 108
+server/internal/llm/settings.go
+  s_f7b126b009a7df::t_2e5424b93cf1b4 51-52,54
+server/cmd/notesd/main.go
+  s_f7b126b009a7df::t_0f61f91077e2d6 60,65,68
+  s_f7b126b009a7df::t_6095d3a05119f5 465-486,515-523,705,715-716,719-721,735-752
+  s_f7b126b009a7df::t_793f7f437aee36 753
+server/internal/api/ai_test.go
+  s_f7b126b009a7df::t_2e5424b93cf1b4 150-156,238
+server/internal/agent/runs.go
+  s_f7b126b009a7df::t_b47305b6be7c8a 1-59,61-199
+  s_f7b126b009a7df::t_66c7971bbd22b4 60
+server/internal/agent/runner_test.go
+  s_f7b126b009a7df::t_7075319e9d5a0d 177
+  s_f7b126b009a7df::t_06be5443e0472a 6-7,91
+  s_f7b126b009a7df::t_66c7971bbd22b4 130
+  s_f7b126b009a7df::t_5b5d7fb6469d0d 5
+  s_f7b126b009a7df::t_b9d0024ddc1fd1 1-4,8-90,92-129,131-176,178-527
+server/internal/agent/triggers_test.go
+  s_f7b126b009a7df::t_66c7971bbd22b4 114
+server/migrations/0015_agent_activity.sql
+  s_f7b126b009a7df::t_b47305b6be7c8a 1-36
+server/internal/agent/triggers.go
+  s_f7b126b009a7df::t_a1996ea1c68720 180
+server/internal/agent/runner.go
+  s_f7b126b009a7df::t_b9d0024ddc1fd1 199-213
+  s_f7b126b009a7df::t_a4af5bfd992c4d 1-198
+server/internal/api/api.go
+  s_f7b126b009a7df::t_6095d3a05119f5 31-33
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_c48d7e71746e1d 152,154-163,468-499
+  s_f7b126b009a7df::t_b7ed261a5fcccf 500
+server/internal/agent/tools.go
+  s_f7b126b009a7df::t_93fb66ee54cd07 1-297
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5b3f17442800c4b39dd34424807cc1bb914f6021",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

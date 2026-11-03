@@ -1,0 +1,33 @@
+server/README.md
+  s_c5efa23713fc29::t_17719a6a820344 52-53
+docs/guides/self-hosting/docker.md
+  s_c5efa23713fc29::t_0a1adde7c7489e 48
+server/cmd/notesd/volume_linux.go
+  s_c5efa23713fc29::t_5536cb14cb3524 1-23
+server/cmd/notesd/main.go
+  s_c5efa23713fc29::t_5536cb14cb3524 444-448
+  s_c5efa23713fc29::t_7f68fa82eddbe0 34-36
+  s_c5efa23713fc29::t_3b4dbb5f667200 58-59,581-614,616
+server/cmd/notesd/main_test.go
+  s_c5efa23713fc29::t_92b811948a41e7 204-223
+docs/reference/cli.md
+  s_c5efa23713fc29::t_17719a6a820344 90-92
+server/cmd/notesd/volume_other.go
+  s_c5efa23713fc29::t_5536cb14cb3524 1-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a70e311f80e0caa00c6f07adc146c078fa0dd485",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

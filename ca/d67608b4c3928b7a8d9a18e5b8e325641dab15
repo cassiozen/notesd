@@ -1,0 +1,37 @@
+apps/web/src/api/types.ts
+  s_c5efa23713fc29::t_50d61fbcd2de45 113-114
+apps/web/src/settings/settings.tsx
+  s_c5efa23713fc29::t_66297ac9d7ac54 208,281-282,297,314-323
+apps/web/test/helpers.tsx
+  s_c5efa23713fc29::t_db8627f4e51f8a 75-100
+apps/web/test/settings.test.tsx
+  s_c5efa23713fc29::t_97112976a02d9b 7,114-141
+docs/guides/self-hosting/upgrading.md
+  s_c5efa23713fc29::t_4016527563fbbc 66-67,73-81
+docs/reference/api.md
+  s_c5efa23713fc29::t_c1aa906a518414 342,346-349
+scripts/notesd-update
+  s_c5efa23713fc29::t_bbcd131ce9ee68 8-9,12-16,19-72,90-97,100-101
+server/internal/api/update_handlers.go
+  s_c5efa23713fc29::t_e24af160f9af2c 9,17-18,21-24,32,37-39,44-81,98-99,105,116-125,129,134-152,154,159,162-165,167-168,170-191,203-204,206,209,211
+server/internal/api/update_internal_test.go
+  s_c5efa23713fc29::t_9d40efdf003fe1 25-53
+server/internal/api/update_test.go
+  s_c5efa23713fc29::t_6af9bebecdeea2 7,9,15-35,40,51-52,83-155
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cad67608b4c3928b7a8d9a18e5b8e325641dab15",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,39 @@
+server/internal/api/agent_config_test.go
+  s_f7b126b009a7df::t_63f6eeaded00cd 89-106
+server/internal/api/respond.go
+  s_f7b126b009a7df::t_7c74220645a20e 120-121
+server/internal/agent/diff_test.go
+  s_f7b126b009a7df::t_1a4580cf7f5acb 1-63
+docs/reference/api.md
+  s_f7b126b009a7df::t_ef9cf9ec7f4c1e 397-398,413-427
+  s_f7b126b009a7df::t_fc769f2633318f 428
+server/internal/agent/diff.go
+  s_f7b126b009a7df::t_aa1c7738d04816 1-2,7-18,21-22,24-101,105-128
+  s_f7b126b009a7df::t_a6c1827e972524 19-20
+  s_f7b126b009a7df::t_ffb3d1988ac9b4 3-6,23,102-104
+server/internal/api/api.go
+  s_f7b126b009a7df::t_7c74220645a20e 111-112
+server/internal/api/agent_handlers.go
+  s_f7b126b009a7df::t_7c74220645a20e 4,8,91-136
+server/internal/agent/activity.go
+  s_f7b126b009a7df::t_e0b663455ec0ed 1-28,34-269
+  s_f7b126b009a7df::t_7c74220645a20e 29-33
+server/internal/agent/activity_test.go
+  s_f7b126b009a7df::t_8a21ab6e692461 1-109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "01d510a1944a7798e2972d74d87f15f6dd2d9a85",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

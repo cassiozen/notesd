@@ -1,0 +1,426 @@
+server/internal/api/respond.go
+  s_c5efa23713fc29::t_38e2a7139f0e96 4,59-66,69,72-78
+  s_c5efa23713fc29::t_cc6b6061a92130 38-39
+  s_c5efa23713fc29::t_9fa1fa31240020 71
+apps/ios/NotesCore/Tests/NotesCoreTests/SyncAnswerTests.swift
+  s_c5efa23713fc29::t_61cafe8586ac84 241-245
+  s_c5efa23713fc29::t_7bf315544a6d4b 18,22,42-49,52-60,62,66-73,109-110,115-240,246-273
+  s_c5efa23713fc29::t_d2d7193f224f00 19-21
+docs/concepts/security-model.md
+  s_c5efa23713fc29::t_e7c7137c133275 79-82
+apps/web/.oxlintrc.json
+  s_c5efa23713fc29::t_cb5fb8bed54fe0 21-28
+apps/ios/NotesCore/Tests/NotesCoreTests/SyncTests.swift
+  s_c5efa23713fc29::t_81c002306a3a1e 291-316
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_c5efa23713fc29::t_61cafe8586ac84 279,281
+  s_c5efa23713fc29::t_9e6a212d54dc40 2,4-6,15-30,56-58,86,88-91,95,107,113-131,140-144,150-152,158,168,187,192-193,204,209-210,248-249,255-256,262,270-278,280,285-306,308,361-363
+  s_c5efa23713fc29::t_78fdf394fa34bf 190-191,207-208
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_c5efa23713fc29::t_5415d53332d130 11-14,101-106,108-188
+  s_c5efa23713fc29::t_828d4d8c5eaf28 107
+apps/ios/NotesCore/Sources/NotesCore/Crypto/LockedNotes.swift
+  s_c5efa23713fc29::t_378cd90c3a463a 5-6,8-9,11-16,18-21,38-41,51,53-70,111
+  s_c5efa23713fc29::t_d7c570cdfe2832 125-128,137,141,145
+  s_c5efa23713fc29::t_f6f5221758957f 146
+server/internal/notes/notes_test.go
+  s_c5efa23713fc29::t_296edd69c9d358 741-774
+  s_c5efa23713fc29::t_d2935c129d427d 714-740
+shared/sync-engine/src/commonMain/kotlin/notes/core/crypto/LockedEnvelope.kt
+  s_c5efa23713fc29::t_92ea70f16b9010 5-6,8-26
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_c5efa23713fc29::t_1103cb230f2e9e 78-79
+apps/ios/NotesCore/Tests/NotesCoreTests/FakeResend.swift
+  s_c5efa23713fc29::t_1d91ae34d3aeb7 12,48-49,70-71
+server/internal/locks/envelope.go
+  s_c5efa23713fc29::t_5f4497519e0a76 10,14-21,26-30,36-38,40-63,65-69,71
+apps/web/src/env.d.ts
+  s_c5efa23713fc29::t_4930e6f25e05fa 1-2
+apps/web/src/api/images.ts
+  s_c5efa23713fc29::t_6bbc507cee0131 3,6-9
+  s_c5efa23713fc29::t_82b2909a12277b 10
+apps/ios/NotesCore/Sources/NotesCore/Crypto/LockSession.swift
+  s_c5efa23713fc29::t_41308b9d993a2b 25-26,112-116,153-157,258-263
+  s_c5efa23713fc29::t_6d4a4088bef2bd 264-265
+shared/sync-engine/src/jvmTest/kotlin/notes/core/images/ImagesTest.kt
+  s_c5efa23713fc29::t_412d414c46739e 3-4,20-22,24,26-27,29,249-274,276-315
+  s_c5efa23713fc29::t_7e1554d5ecf686 275
+apps/ios/Notes/Images/ImageLoader.swift
+  s_c5efa23713fc29::t_1103cb230f2e9e 66-67
+apps/web/test/notes.test.tsx
+  s_c5efa23713fc29::t_a609f8dff36159 5,7,15,341-438
+  s_c5efa23713fc29::t_fd67f93fd9ae71 439
+server/internal/notes/notes.go
+  s_c5efa23713fc29::t_38e2a7139f0e96 671-672
+  s_c5efa23713fc29::t_24d9e4afd63384 18,227-229,246-247,256-257,289,349,425,524,599,601-602,605-606,630-632,665-670,673-698
+server/internal/locks/envelope_test.go
+  s_c5efa23713fc29::t_09cfc1ceef86b4 5,17-23,40-56,75-94
+  s_c5efa23713fc29::t_f4605e111d1550 95
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListViewModel.kt
+  s_c5efa23713fc29::t_bd9c0bcbc8aea6 14,18,56,76-83,86-91
+  s_c5efa23713fc29::t_5e5e535d1fc65d 51,53,55
+  s_c5efa23713fc29::t_0420adf2a83254 92
+apps/ios/NotesCore/Sources/NotesCore/DB/SpaceStore.swift
+  s_c5efa23713fc29::t_0037927a2b8e7b 127
+  s_c5efa23713fc29::t_4663a483e451e4 113-116,146-151
+  s_c5efa23713fc29::t_29ef56ec58244b 152-154
+shared/sync-engine/src/jvmMain/kotlin/notes/core/crypto/Keyring.kt
+  s_c5efa23713fc29::t_14b5236729a6fd 3-7,10-64,87-88,92-95,99-100
+apps/ios/Notes/App/NotesApp.swift
+  s_c5efa23713fc29::t_101505c3c49dce 16-17
+docs/reference/api.md
+  s_c5efa23713fc29::t_cffd2daa28c6fc 91,413-414,433
+  s_c5efa23713fc29::t_3e8a1bb6928b10 9-11,13,24,34-64,162,164-165,308-310,323-325,334-335,342-346,382,386-389
+shared/sync-engine/src/jvmMain/kotlin/notes/core/crypto/LockSession.kt
+  s_c5efa23713fc29::t_68a4577c7e44a7 50-54,95-96,98,100-116,152
+apps/web/test/auth.test.tsx
+  s_c5efa23713fc29::t_986eaedbbb96c8 30-34
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_c5efa23713fc29::t_92ea70f16b9010 80,128-129,176-177,456-462
+docs/guides/self-hosting/upgrading.md
+  s_c5efa23713fc29::t_469f1361201409 52-61,64,101
+  s_c5efa23713fc29::t_c6ee6640b83e3e 62-63,113-114
+apps/android/app/src/main/kotlin/notes/app/sync/SyncWorker.kt
+  s_c5efa23713fc29::t_084446d495c4cb 9-12
+server/cmd/notesd/main.go
+  s_c5efa23713fc29::t_832f8dd9fb7159 370,401
+server/internal/api/lock_test.go
+  s_c5efa23713fc29::t_82be53dfbf8f0b 5-8,162-210,212
+  s_c5efa23713fc29::t_f9564bc54200bf 78-83,86-92
+  s_c5efa23713fc29::t_7b5da53145a72a 211,213
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_c5efa23713fc29::t_f0007d67cc9d42 1-66,70,78,80-81,83-85,87-143,145-220,222-245
+  s_c5efa23713fc29::t_c2f1cdc2c517c8 77
+  s_c5efa23713fc29::t_4b8f168afb0795 67-69,71-76,79,82,86,144,221
+apps/web/tsconfig.node.json
+  s_c5efa23713fc29::t_cd49e4e695d6e7 7
+server/migrations/0011_operation_hash_version.sql
+  s_c5efa23713fc29::t_bd7bc9c903ae32 1-4
+apps/ios/Notes/App/AppGraph.swift
+  s_c5efa23713fc29::t_88911ee874c088 26-27,154-155
+  s_c5efa23713fc29::t_69f109c00c69f0 156
+docs/guides/using/offline-and-sync.md
+  s_c5efa23713fc29::t_bca6eb04926073 27-37
+server/internal/api/update_handlers.go
+  s_c5efa23713fc29::t_35b33a8e38309f 17-18,21-24,32,37-39,44-81,98-99,105,121,125,129,162-165,167,170-171,173-174
+  s_c5efa23713fc29::t_03a1bc9ea17d36 9,203-204,206,209,211
+apps/ios/Notes/Notes/NotesListView.swift
+  s_c5efa23713fc29::t_ae05cabe93253e 51-62,330,600-602,721-740,758
+apps/web/vite.config.ts
+  s_c5efa23713fc29::t_4930e6f25e05fa 1,14-23,25
+apps/web/src/offline/scheduler.ts
+  s_c5efa23713fc29::t_a93db294cf8585 13-14,55-56
+apps/ios/Notes/Notes/EditorModel.swift
+  s_c5efa23713fc29::t_1103cb230f2e9e 49-50,65,178,235,352,357-359
+  s_c5efa23713fc29::t_453979f74bf1c1 360
+apps/ios/.gitignore
+  s_c5efa23713fc29::t_62f7d003f959c1 1
+server/internal/locks/keyring_test.go
+  s_c5efa23713fc29::t_09cfc1ceef86b4 1-175
+apps/web/test/helpers.tsx
+  s_c5efa23713fc29::t_98fdd42e6b11a1 75-76,79-85,87-91,94,96,99-100
+shared/sync-engine/src/jvmMain/kotlin/notes/core/crypto/LockedNotes.kt
+  s_c5efa23713fc29::t_c2f1cdc2c517c8 100
+  s_c5efa23713fc29::t_14b5236729a6fd 17-35,94-97,101-102,120-121
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/NoteStoreTest.kt
+  s_c5efa23713fc29::t_d8ddb3de49053b 275-291
+server/internal/locks/keyring.go
+  s_c5efa23713fc29::t_801aa17ad954fe 254-256
+  s_c5efa23713fc29::t_eb385995e1583a 10,25-45,52-57,62-63,68-69,98,114,123-124,127-129,138-139,146-149,151,169-170,172-174,251-253,257-260,264,267,271,274,278,281-322,324
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_c5efa23713fc29::t_644793dfc6c295 31,34,114-121,123-125,230,255,287,406,408-409,429-430
+  s_c5efa23713fc29::t_79a18047031ecb 431
+apps/web/src/api/types.ts
+  s_c5efa23713fc29::t_793038c0bcd9c8 99-100,115-116,119-122,124,131,133-134
+  s_c5efa23713fc29::t_1270fb8911afc0 123
+docs/contributing/architecture.md
+  s_c5efa23713fc29::t_cffd2daa28c6fc 142,149-150,179-182,550,559-565
+  s_c5efa23713fc29::t_799f47c3e310c2 217-219,282-288
+server/internal/api/notes_handlers.go
+  s_c5efa23713fc29::t_9fa1fa31240020 60-65,92-93,101-105,107,127-133,138
+server/internal/api/image_test.go
+  s_c5efa23713fc29::t_82be53dfbf8f0b 199-201,206,220-221,269-276
+  s_c5efa23713fc29::t_09ca762ebeecbe 118-126,144-149
+apps/ios/NotesCore/Tests/NotesCoreTests/TextTests.swift
+  s_c5efa23713fc29::t_1d91ae34d3aeb7 60
+shared/sync-engine/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_c5efa23713fc29::t_6968c05cbd0e58 10-11,14-15,21-22,24,54-55,58,60,66,71,80-86,96-102
+apps/ios/Notes/Settings/SettingsView.swift
+  s_c5efa23713fc29::t_8ab45f4bb44ff3 72,211-220
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_c5efa23713fc29::t_5e5e535d1fc65d 50
+  s_c5efa23713fc29::t_084446d495c4cb 409
+apps/ios/scripts/version.sh
+  s_c5efa23713fc29::t_62f7d003f959c1 1-26
+apps/web/test/locks.test.tsx
+  s_c5efa23713fc29::t_cb5fb8bed54fe0 236-237
+  s_c5efa23713fc29::t_7c1ed9d9ed8879 3,23,211-235,238-253
+  s_c5efa23713fc29::t_564873d537c117 254
+apps/ios/Notes/Sync/SyncScheduler.swift
+  s_c5efa23713fc29::t_101505c3c49dce 160
+  s_c5efa23713fc29::t_8ab45f4bb44ff3 20-21,91-92,117
+apps/web/src/locks/crypto.ts
+  s_c5efa23713fc29::t_ac91824866ef3a 7-12,39-62,67,69-83,140-143,146
+  s_c5efa23713fc29::t_077e6d3077e71e 5-6,165-195
+  s_c5efa23713fc29::t_f258a2c6b3d671 196
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_c5efa23713fc29::t_084446d495c4cb 37-38,48,154,233-237
+  s_c5efa23713fc29::t_e1c614d97798f0 238
+apps/ios/NotesCore/Sources/NotesCore/DB/Migrations.swift
+  s_c5efa23713fc29::t_d1ab42b64a32d1 9-12
+shared/sync-engine/src/jvmMain/kotlin/notes/core/sync/NoteMailer.kt
+  s_c5efa23713fc29::t_59e4200e9656a9 5-6,35,52-54
+  s_c5efa23713fc29::t_f0db1690c56add 55
+apps/web/src/images/view.ts
+  s_c5efa23713fc29::t_6bbc507cee0131 1,50-51
+apps/web/src/settings/settings.tsx
+  s_c5efa23713fc29::t_3f61963ae57a23 208,281-282,297,314-322
+  s_c5efa23713fc29::t_d152b45c2ab268 323
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Parking.kt
+  s_c5efa23713fc29::t_8669d7135f6761 55-56,58-59,61,63
+  s_c5efa23713fc29::t_8de7ca6ecc51e2 47
+  s_c5efa23713fc29::t_79581d058ba2d6 1-46,48-54,60,62,64,67-82
+  s_c5efa23713fc29::t_5de584bfa1f296 57,65-66
+shared/sync-engine/src/jvmMain/kotlin/notes/core/images/ImageStore.kt
+  s_c5efa23713fc29::t_6562257903e9ca 17,61-62,131-133,135-143
+apps/web/src/notes/note-list.tsx
+  s_c5efa23713fc29::t_b31bfcd7830b0e 9,215
+apps/android/app/src/main/kotlin/notes/app/locks/LockUi.kt
+  s_c5efa23713fc29::t_6a666678440095 51,64-65,119,121,125
+  s_c5efa23713fc29::t_644793dfc6c295 52,171-173,189-196
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_c5efa23713fc29::t_41308b9d993a2b 9-11,84-86,89-92,94,98-99,105,109,112-117,123,126-131,240-249,257-266,302-303,306-312,315-319,358,365
+server/internal/api/api_test.go
+  s_c5efa23713fc29::t_0a20940fbd4ce9 584
+  s_c5efa23713fc29::t_576cb48474af93 656
+  s_c5efa23713fc29::t_d2935c129d427d 636-655,657-666,668-670
+  s_c5efa23713fc29::t_934bb74656e7e1 667
+server/internal/locks/open.go
+  s_c5efa23713fc29::t_5364e4b2986ade 57-61,64,71
+  s_c5efa23713fc29::t_b423af5898754d 28-29,83-85
+  s_c5efa23713fc29::t_801aa17ad954fe 62-63,65-66
+server/internal/api/version.go
+  s_c5efa23713fc29::t_cc6b6061a92130 1-87,89-93
+  s_c5efa23713fc29::t_b7d815a43396de 88
+apps/ios/NotesCore/Sources/NotesCore/Images/ImageStore.swift
+  s_c5efa23713fc29::t_78fdf394fa34bf 190-191
+  s_c5efa23713fc29::t_98b681da89bf68 91-94,152,154-156,158-163,188,192-193,210-217
+apps/web/src/locks/session.ts
+  s_c5efa23713fc29::t_d977739829303c 7-8,10,127,144,169,225,273-276
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_c5efa23713fc29::t_d741072f5444b3 36-43,83-84,88-154,233-242
+  s_c5efa23713fc29::t_58ae04012aab05 243
+shared/crypto-fixtures/locked.json
+  s_c5efa23713fc29::t_df669f5df76767 2,115-227
+apps/web/src/notes/note-list.module.css
+  s_c5efa23713fc29::t_b31bfcd7830b0e 307-310
+server/migrations/0012_lock_key_kdf.sql
+  s_c5efa23713fc29::t_bd7bc9c903ae32 1-8
+apps/android/app/src/test/kotlin/notes/app/notes/NotSyncedTest.kt
+  s_c5efa23713fc29::t_fea506032d077e 44-48,51-59
+  s_c5efa23713fc29::t_5e5e535d1fc65d 49-50
+scripts/crypto-fixtures.mjs
+  s_c5efa23713fc29::t_df669f5df76767 83-117,147-149,157-159
+apps/web/src/notes/note-pane.tsx
+  s_c5efa23713fc29::t_8056345798bb0c 12,22,57-58,110-114,201-209,422-426,498-514
+apps/ios/NotesCore/Tests/NotesCoreTests/NoteStoreTests.swift
+  s_c5efa23713fc29::t_81c002306a3a1e 292-299
+apps/android/app/src/main/kotlin/notes/app/account/OnboardingViewModel.kt
+  s_c5efa23713fc29::t_084446d495c4cb 196-198
+  s_c5efa23713fc29::t_5e5e535d1fc65d 13
+apps/web/test/setup.ts
+  s_c5efa23713fc29::t_80cccf7d6ccfb5 5,86
+apps/web/src/notes/sync-banners.tsx
+  s_c5efa23713fc29::t_f6d0ece4947372 1-58
+apps/web/src/api/client.test.ts
+  s_c5efa23713fc29::t_80cccf7d6ccfb5 2-3,10,13-21,24,34-93
+server/cmd/notesd/export.go
+  s_c5efa23713fc29::t_c4721160287d0d 218-220
+  s_c5efa23713fc29::t_832f8dd9fb7159 100-104
+apps/ios/NotesCore/Tests/NotesCoreTests/SpacesSyncTests.swift
+  s_c5efa23713fc29::t_81c002306a3a1e 247-264
+server/internal/mirror/mirror_test.go
+  s_c5efa23713fc29::t_43bebba8c5ccf6 180-184
+apps/web/src/offline/protocol.ts
+  s_c5efa23713fc29::t_7432dd2f4b5b31 33,39-40,68-71
+server/internal/api/version_test.go
+  s_c5efa23713fc29::t_1fc03bdfe42ac2 1-89
+apps/ios/NotesCore/Tests/NotesCoreTests/TestClient.swift
+  s_c5efa23713fc29::t_cb5fb8bed54fe0 18,24-25,60-64,153-157
+  s_c5efa23713fc29::t_8a4e929118d4f1 158-159
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_c5efa23713fc29::t_d1ab42b64a32d1 250,254
+  s_c5efa23713fc29::t_78fdf394fa34bf 21-22
+  s_c5efa23713fc29::t_506fed20330f50 15-16,32-39,77-79,82,94,97,233-238,277-283,366,369,374-384,387-388,395,407-408
+apps/web/src/images/store.ts
+  s_c5efa23713fc29::t_6bbc507cee0131 2,62-63,126-127
+apps/ios/NotesCore/Sources/NotesCore/DB/LockKeyStore.swift
+  s_c5efa23713fc29::t_d1ab42b64a32d1 22,28-29,56-61
+shared/sync-engine/src/jvmTest/kotlin/notes/core/crypto/LockedNotesTest.kt
+  s_c5efa23713fc29::t_828d4d8c5eaf28 154
+  s_c5efa23713fc29::t_69b74e7d9ed755 11-14,42-56,64-66,126-153,155-163
+  s_c5efa23713fc29::t_16bdeda6adea92 164
+apps/ios/NotesCore/Tests/NotesCoreTests/LockedNotesTests.swift
+  s_c5efa23713fc29::t_4dc23bb86008b3 42,148-151
+  s_c5efa23713fc29::t_7e1554d5ecf686 102-105,152,169
+  s_c5efa23713fc29::t_a8720dc0df7f6c 32-41,43-44,52-54,65,68,106-147,156-168,170-183
+apps/web/src/api/version.ts
+  s_c5efa23713fc29::t_36e9787fb4f7db 1-47,49-54
+  s_c5efa23713fc29::t_d490705477d417 48
+shared/sync-engine/src/jvmTest/kotlin/notes/core/crypto/LockSessionTest.kt
+  s_c5efa23713fc29::t_69b74e7d9ed755 14-15,96-123
+  s_c5efa23713fc29::t_6203252e527921 56,67,79
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/WebImages.kt
+  s_c5efa23713fc29::t_6562257903e9ca 9,39-44
+apps/android/app/src/test/kotlin/notes/app/notes/SyncBannersTest.kt
+  s_c5efa23713fc29::t_fea506032d077e 1-123
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_c5efa23713fc29::t_92ea70f16b9010 100-103,107-111,116
+server/internal/locks/open_test.go
+  s_c5efa23713fc29::t_09cfc1ceef86b4 94-105
+apps/web/src/locks/crypto.test.ts
+  s_c5efa23713fc29::t_59e4200e9656a9 3-4,7-9,12,16-17,70-71,85-123,162-187
+server/internal/api/auth_handlers.go
+  s_c5efa23713fc29::t_cc6b6061a92130 33,94,129,150
+apps/android/app/src/main/kotlin/notes/app/sync/SyncScheduler.kt
+  s_c5efa23713fc29::t_084446d495c4cb 56-59,101-102
+  s_c5efa23713fc29::t_ee0ddc22f26057 55
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_c5efa23713fc29::t_644793dfc6c295 164,304,325,332-333,362
+apps/web/src/notes/saver.ts
+  s_c5efa23713fc29::t_57b246e6f47784 1,25-28,91-93,470-471,476,478-479,501-509,516-534,619,625-632,636-637,643-652,655-656
+  s_c5efa23713fc29::t_dbce0e2865bc36 6,68-70,74,666-672
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_c5efa23713fc29::t_cb2c8461cf4143 7,20-22,68,73-75,81-131,230-239,242-244
+scripts/notesd-update
+  s_c5efa23713fc29::t_a8a4f760109246 27,46-48
+  s_c5efa23713fc29::t_5af1d58cc88719 8-9,12-16,19-26,28-45,49-56,68-72,90-94,96-97,100-101
+server/cmd/notesd/export_test.go
+  s_c5efa23713fc29::t_8cc2b9a5bf11d5 207
+  s_c5efa23713fc29::t_c4721160287d0d 206,208,227,231,248-252,285-289,296,327-339,346-347
+apps/ios/Notes/Account/OnboardingModel.swift
+  s_c5efa23713fc29::t_88911ee874c088 203,205
+docs/guides/using/locked-notes.md
+  s_c5efa23713fc29::t_bca6eb04926073 45-48
+server/internal/api/api.go
+  s_c5efa23713fc29::t_b7d815a43396de 30-31
+  s_c5efa23713fc29::t_cc6b6061a92130 36,38-41,116-117,119,123-132,360-363,366
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_c5efa23713fc29::t_b4a16880959cff 47,128
+  s_c5efa23713fc29::t_78fdf394fa34bf 164-167
+  s_c5efa23713fc29::t_184fe1702c56be 408,410
+server/internal/api/update_internal_test.go
+  s_c5efa23713fc29::t_1fc03bdfe42ac2 25,26-41
+apps/ios/NotesCore/Tests/NotesCoreTests/ImagesTests.swift
+  s_c5efa23713fc29::t_81c002306a3a1e 128-169
+apps/ios/Notes/Locks/LockViews.swift
+  s_c5efa23713fc29::t_1103cb230f2e9e 13,33-34,47,50,65,142
+  s_c5efa23713fc29::t_41308b9d993a2b 287
+server/internal/notes/images_test.go
+  s_c5efa23713fc29::t_4dc23bb86008b3 188-199
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_c5efa23713fc29::t_5e5e535d1fc65d 798-804
+  s_c5efa23713fc29::t_bd9c0bcbc8aea6 123,163-164,189-190,276-295,796-797
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_c5efa23713fc29::t_e98444c7020098 27-31,36,38-39,43-59,157,189,198,315-316
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_c5efa23713fc29::t_5e5e535d1fc65d 25-26,34,121-130
+  s_c5efa23713fc29::t_2126a859594864 131-132
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/LockKeyStore.kt
+  s_c5efa23713fc29::t_14b5236729a6fd 5-6,23,34-35,59-62,69-70,75-80
+  s_c5efa23713fc29::t_4cfd5865287aac 81
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_c5efa23713fc29::t_1d91ae34d3aeb7 138-148
+  s_c5efa23713fc29::t_1f66708106ed85 114-137,149-216,299,302,311-312
+apps/web/src/api/auth.ts
+  s_c5efa23713fc29::t_f368c75831c82e 6-7
+apps/web/src/auth/errors.ts
+  s_c5efa23713fc29::t_d977739829303c 2,6-13
+server/internal/images/images_test.go
+  s_c5efa23713fc29::t_576cb48474af93 6,8-9,42-104
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_c5efa23713fc29::t_98b681da89bf68 41-45
+  s_c5efa23713fc29::t_9fa1fa31240020 14-18,30-31,71-73,257-258,262,271,283,286-304,321-325
+  s_c5efa23713fc29::t_4ce7db09871703 326
+docs/contributing/releasing.md
+  s_c5efa23713fc29::t_e7c7137c133275 57-62
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0007_lock_key_kdf.sql
+  s_c5efa23713fc29::t_d1ab42b64a32d1 1-3
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_c5efa23713fc29::t_e2628bef3ad121 24-41,44-53,68,70,92-93,106,109-110,116-118,125,127,129,133-136,150-155,221,224-226,251-255,258-259
+  s_c5efa23713fc29::t_e98444c7020098 209-217
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_c5efa23713fc29::t_644203287d2be6 18,22-23,32-36,50-52,63-67,86-95,110-128,130-133,140-141,144,155-156,169,176-182,210-213,218,221,223,226,234-237,239,241,244,282-286,296,304-312,314-317,320,322-326,329-331,334-340,345-358,427,429,431,433,435-442,451
+apps/web/test/on-device.test.tsx
+  s_c5efa23713fc29::t_d7846ae3f82f63 5,13,278-318
+  s_c5efa23713fc29::t_c0b07d616adc85 319
+apps/web/src/api/client.ts
+  s_c5efa23713fc29::t_712cd2828646bd 2,11-12,22,26-34,80,86-96,114,123-125,133-136,142,159-161
+apps/ios/NotesCore/Sources/NotesCore/Crypto/Keyring.swift
+  s_c5efa23713fc29::t_d7c570cdfe2832 24-25,28-29,32-58,63-65
+apps/web/src/settings/device.tsx
+  s_c5efa23713fc29::t_a93db294cf8585 141-142,164
+  s_c5efa23713fc29::t_2b9cf1f961f84d 8
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0006_parking.sql
+  s_c5efa23713fc29::t_d1ab42b64a32d1 1-9
+apps/ios/Config/Base.xcconfig
+  s_c5efa23713fc29::t_2f773b9fee9b04 12-15,17
+apps/ios/Notes.xcodeproj/xcshareddata/xcschemes/Notes.xcscheme
+  s_c5efa23713fc29::t_75f73410eb5076 4-13
+apps/ios/NotesCore/Sources/NotesCore/Sync/NoteMailer.swift
+  s_c5efa23713fc29::t_311461fb9f6ed2 34,48-49
+apps/web/src/api/user-agent.test.ts
+  s_c5efa23713fc29::t_fa0a9205bc4b02 20-21,28-29
+apps/web/src/api/user-agent.ts
+  s_c5efa23713fc29::t_3653854ce8b0b4 39,42-43
+apps/web/src/notes/local-source.ts
+  s_c5efa23713fc29::t_7a6bcfff25b6ee 131-150
+apps/web/src/notes/source.ts
+  s_c5efa23713fc29::t_a2c927e35fb2a7 136-139
+apps/web/src/offline/host.ts
+  s_c5efa23713fc29::t_f48a39446f1c49 9,22-23,25-29,44,50-54,92-99,194,200-212,253-254,260,266,268-269
+apps/web/src/offline/worker.ts
+  s_c5efa23713fc29::t_d53378cc20cd23 44
+apps/web/test/settings.test.tsx
+  s_c5efa23713fc29::t_1f4edf9473208e 7,114-141
+server/internal/api/email_handlers.go
+  s_c5efa23713fc29::t_690cc2103a49cb 158
+server/internal/api/image_handlers.go
+  s_c5efa23713fc29::t_5d837fe88ae6e2 19-22
+server/internal/api/lock_handlers.go
+  s_c5efa23713fc29::t_29d67cf29d974a 23
+server/internal/api/update_test.go
+  s_c5efa23713fc29::t_171a637fc54d3f 7,9,15-35,40,51-52,83-124
+server/internal/images/images.go
+  s_c5efa23713fc29::t_77798087c9ac42 17,28-30,33-45,254,260
+server/internal/images/refs.go
+  s_c5efa23713fc29::t_66bf614e0137ce 182,212-213,216-218
+server/internal/mdexport/mdexport.go
+  s_c5efa23713fc29::t_053a3b75dc1da3 127-129
+server/internal/search/search.go
+  s_c5efa23713fc29::t_f1aecbc472fb1c 89
+server/internal/search/tags.go
+  s_c5efa23713fc29::t_ffb1e409364ec4 162
+shared/sync-engine/src/commonMain/migrations/0010_parking.sql
+  s_c5efa23713fc29::t_73f6e61f850a35 1-9
+shared/sync-engine/src/commonMain/migrations/0011_lock_kdf.sql
+  s_c5efa23713fc29::t_ac84a115faa9f7 1-3
+shared/sync-engine/src/jvmTest/kotlin/notes/core/db/NoteStoreJvmTest.kt
+  s_c5efa23713fc29::t_582d307ba3241e 74-82
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf2e2e58efb763328c9f2e914c5e97e1834d56fd",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

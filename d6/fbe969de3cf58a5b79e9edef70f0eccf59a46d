@@ -1,0 +1,74 @@
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_da63c16061747d 165,502-503
+server/internal/llm/probe.go
+  s_f7b126b009a7df::t_2a0e797ad27611 1-5,7-41,44-54
+  s_f7b126b009a7df::t_6d8f59013fe495 42-43
+  s_f7b126b009a7df::t_e6ae551cadc350 6
+server/internal/api/api.go
+  s_f7b126b009a7df::t_f85ad6ed4634fb 21,52,64,102-105
+docs/guides/using/settings.md
+  s_f7b126b009a7df::t_b2f657ca6c6653 20
+docs/concepts/security-model.md
+  s_f7b126b009a7df::t_b2f657ca6c6653 88-89
+docs/contributing/settings-guidelines.md
+  s_f7b126b009a7df::t_b2f657ca6c6653 46
+website/.vitepress/config.mjs
+  s_f7b126b009a7df::t_c8938861a8e79f 103
+docs/reference/api.md
+  s_f7b126b009a7df::t_b2f657ca6c6653 16,379-401,451,462-463
+server/internal/llm/client.go
+  s_f7b126b009a7df::t_6d8f59013fe495 11,198-199,201-203
+  s_f7b126b009a7df::t_2a0e797ad27611 1-10,12-197,200,204-206
+apps/web/test/server.ts
+  s_f7b126b009a7df::t_a1de2efb436445 130-153,155,157-159,161-170
+  s_f7b126b009a7df::t_9c1769f098382a 154,156,160
+server/internal/api/ai_test.go
+  s_f7b126b009a7df::t_ec42f409b6b87e 87-93,196,203
+  s_f7b126b009a7df::t_00c41f756d7cc7 1-86,94-195,197-202,204-241
+server/internal/api/ai_handlers.go
+  s_f7b126b009a7df::t_f85ad6ed4634fb 1-92
+apps/web/test/ai-settings.test.tsx
+  s_f7b126b009a7df::t_a1de2efb436445 1-23,25-67
+  s_f7b126b009a7df::t_9c1769f098382a 24
+server/internal/llm/settings.go
+  s_f7b126b009a7df::t_a98e9e670839a7 1-199
+server/internal/api/respond.go
+  s_f7b126b009a7df::t_f85ad6ed4634fb 15,99-101,112-113,143-149
+apps/web/src/api/settings.ts
+  s_f7b126b009a7df::t_c4a381e2d05eea 2,10-14
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_b2f657ca6c6653 1-39
+docs/README.md
+  s_f7b126b009a7df::t_b2f657ca6c6653 40
+server/internal/llm/client_test.go
+  s_f7b126b009a7df::t_00c41f756d7cc7 1-60
+apps/web/src/settings/settings.tsx
+  s_f7b126b009a7df::t_3c0f12cbf61f2a 732-743
+  s_f7b126b009a7df::t_2917f9d0e3505d 10,196,203,388-393,706-731,744-751,753-816,818-894,896-897,899-918
+  s_f7b126b009a7df::t_d8764f80017fd6 752,817,895,898
+  s_f7b126b009a7df::t_4f786194679ccf 5
+  s_f7b126b009a7df::t_81a39c5ef501c9 919
+apps/web/src/notes/ai-settings.ts
+  s_f7b126b009a7df::t_c4a381e2d05eea 1-4,7-43
+  s_f7b126b009a7df::t_2917f9d0e3505d 5-6
+apps/web/src/api/types.ts
+  s_f7b126b009a7df::t_c4a381e2d05eea 106-121
+apps/web/test/setup.ts
+  s_f7b126b009a7df::t_2917f9d0e3505d 3,86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6fbe969de3cf58a5b79e9edef70f0eccf59a46d",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

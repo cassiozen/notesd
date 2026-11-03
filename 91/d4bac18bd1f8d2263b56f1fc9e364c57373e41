@@ -1,0 +1,135 @@
+apps/android/app/src/test/kotlin/notes/app/notes/SyncBannersTest.kt
+  s_c5efa23713fc29::t_cb233733a97360 84,86
+apps/android/app/src/test/kotlin/notes/app/notes/NotSyncedTest.kt
+  s_c5efa23713fc29::t_cb233733a97360 56-58
+apps/web/src/images/store.ts
+  s_c5efa23713fc29::t_0be8fb096b41ec 126-129
+apps/ios/Notes/Notes/NotesListView.swift
+  s_c5efa23713fc29::t_b0f90f5634b681 58-59
+  s_c5efa23713fc29::t_d1ad96650a1486 57,154,585-594
+apps/ios/NotesCore/Tests/NotesCoreTests/SyncAnswerTests.swift
+  s_c5efa23713fc29::t_e795c0fef25b68 242,244,248-251
+  s_c5efa23713fc29::t_b0f90f5634b681 330-331
+  s_c5efa23713fc29::t_d735c15658064b 236-241,243,245-247,252-253,284-329,332-338
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_c5efa23713fc29::t_cb233733a97360 797-800
+server/internal/api/version_test.go
+  s_c5efa23713fc29::t_71dc40ea8b6123 55-56,60-63,66-72
+  s_c5efa23713fc29::t_a2a3e757ae08d3 50-53,57-58,64-65,79
+  s_c5efa23713fc29::t_a9cd2e8df9af79 59
+shared/sync-engine/src/jvmTest/kotlin/notes/core/crypto/LockSessionTest.kt
+  s_c5efa23713fc29::t_1decac5f2a6c8a 111-115
+apps/web/src/notes/sync-banners.tsx
+  s_c5efa23713fc29::t_e24a2b293100d1 3-6,11,13,16-19,25,30,41-46,48-60,62-73,76-85,87
+apps/ios/Notes/App/AppGraph.swift
+  s_c5efa23713fc29::t_d1ad96650a1486 237
+  s_c5efa23713fc29::t_e795c0fef25b68 236,238
+apps/web/src/notes/shell.module.css
+  s_c5efa23713fc29::t_72fe644b26c64e 1,6-25,35-37
+  s_c5efa23713fc29::t_3b7a0b77957ff8 38
+apps/ios/scripts/version.sh
+  s_c5efa23713fc29::t_72fe644b26c64e 3-5,11-12
+apps/web/src/notes/saver.ts
+  s_c5efa23713fc29::t_c06fedd7590147 527-528,532-541
+  s_c5efa23713fc29::t_466a5051624df9 542-543
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_c5efa23713fc29::t_bd70a8b2d61cd3 212-217,271,352-357,378-382,390-392,395
+apps/ios/Config/Base.xcconfig
+  s_c5efa23713fc29::t_72fe644b26c64e 15
+docs/reference/api.md
+  s_c5efa23713fc29::t_3a31cbfc0c7b6e 185-186
+apps/ios/NotesCore/Sources/NotesCore/DB/SpaceStore.swift
+  s_c5efa23713fc29::t_39911866ebe93f 91
+  s_c5efa23713fc29::t_2f68068aede3cb 92
+  s_c5efa23713fc29::t_01904931677d2e 150-162
+scripts/notesd-update
+  s_c5efa23713fc29::t_84dece2953956a 57-67,95
+apps/web/test/notes.test.tsx
+  s_c5efa23713fc29::t_1c2b2ac8df4614 409-411
+  s_c5efa23713fc29::t_1836c05ce5ea71 423,434-436
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/LockKeyStore.kt
+  s_c5efa23713fc29::t_8f4f9ec6563e76 76-80,84
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_c5efa23713fc29::t_39911866ebe93f 4-5,63,83-86,116-118
+  s_c5efa23713fc29::t_e795c0fef25b68 61-62,134-136
+  s_c5efa23713fc29::t_8a3d304a97ede8 29-31,137-138
+apps/android/app/src/test/kotlin/notes/app/account/OnboardingFlowTest.kt
+  s_c5efa23713fc29::t_7a08a1f3b66c65 73-83
+  s_c5efa23713fc29::t_389a105d07971f 72
+shared/sync-engine/src/jvmMain/kotlin/notes/core/images/ImageRef.kt
+  s_c5efa23713fc29::t_8f4f9ec6563e76 3-4,39,46
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_c5efa23713fc29::t_b0f90f5634b681 48-49
+  s_c5efa23713fc29::t_b3ec092e6cd6ab 39-47,50-57,98,100-105,141
+server/internal/api/update_test.go
+  s_c5efa23713fc29::t_0be8fb096b41ec 125-155
+server/internal/api/update_internal_test.go
+  s_c5efa23713fc29::t_71dc40ea8b6123 57
+  s_c5efa23713fc29::t_0be8fb096b41ec 54-56,58-65
+  s_c5efa23713fc29::t_2169b4c1d0f46e 28-29
+apps/android/app/src/main/kotlin/notes/app/account/OnboardingViewModel.kt
+  s_c5efa23713fc29::t_bd70a8b2d61cd3 198-201
+  s_c5efa23713fc29::t_db9632b5ee08d7 195,197,202,204,206,208,210
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_c5efa23713fc29::t_b0f90f5634b681 269-270
+  s_c5efa23713fc29::t_1decac5f2a6c8a 22,246-268,271-283,286-288
+  s_c5efa23713fc29::t_a9d658ab82b2f8 284-285
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Rows.kt
+  s_c5efa23713fc29::t_8f4f9ec6563e76 216-222
+apps/ios/Notes/Settings/SettingsView.swift
+  s_c5efa23713fc29::t_d1ad96650a1486 218
+apps/web/src/notes/shell.tsx
+  s_c5efa23713fc29::t_a0653688c31fcb 324-325
+  s_c5efa23713fc29::t_72fe644b26c64e 15,241
+  s_c5efa23713fc29::t_1b04e6fdc19c5f 242-254,257-259,261-287
+docs/guides/using/offline-and-sync.md
+  s_c5efa23713fc29::t_3a31cbfc0c7b6e 28-32
+apps/web/test/on-device.test.tsx
+  s_c5efa23713fc29::t_e872d7f01626b9 2,6,36-44,288-295,297-300,302-313,315-320,322-323,326-333,335-339,349-352
+apps/web/test/helpers.tsx
+  s_c5efa23713fc29::t_1836c05ce5ea71 77-78,86,92-93,95,97-98
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_c5efa23713fc29::t_8f4f9ec6563e76 68-72,74-79,81-90
+apps/ios/Notes/Sync/SyncScheduler.swift
+  s_c5efa23713fc29::t_e795c0fef25b68 72,74-79
+  s_c5efa23713fc29::t_d1ad96650a1486 20-21,109-111
+  s_c5efa23713fc29::t_bdd4b12be63a11 112-113
+apps/ios/NotesCore/Sources/NotesCore/Crypto/Keyring.swift
+  s_c5efa23713fc29::t_b73d79187ee8b4 46-50
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_c5efa23713fc29::t_58f988edd7c580 175
+apps/ios/NotesCore/Tests/NotesCoreTests/ImagesTests.swift
+  s_c5efa23713fc29::t_c0743bb0977bed 142
+apps/ios/NotesCore/Tests/NotesCoreTests/LockedNotesTests.swift
+  s_c5efa23713fc29::t_4cf825e669b6b8 173-184
+apps/web/src/offline/host.ts
+  s_c5efa23713fc29::t_beda07438f8e6a 267-269
+apps/web/src/offline/protocol.ts
+  s_c5efa23713fc29::t_547503e3e4fbf5 42,47-48
+server/internal/api/image_test.go
+  s_c5efa23713fc29::t_646ef7f2727ead 11,202-204,277-278
+server/internal/api/lock_handlers.go
+  s_c5efa23713fc29::t_f7c99a8aa1b238 23-28
+server/internal/api/lock_test.go
+  s_c5efa23713fc29::t_0dd9bbf5158f51 188-190
+server/internal/api/update_handlers.go
+  s_c5efa23713fc29::t_e644f38bdb956e 116-120,122-124,134-152,154,159,168,172,175-191
+server/internal/api/version.go
+  s_c5efa23713fc29::t_49e7eba1d65c51 5,75-82,84-85,88,90,94
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "91d4bac18bd1f8d2263b56f1fc9e364c57373e41",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

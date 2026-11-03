@@ -1,0 +1,31 @@
+server/internal/api/api.go
+  s_c5efa23713fc29::t_edbfe7b4bb9745 279-281,283-286,288
+Dockerfile
+  s_c5efa23713fc29::t_74e45b75ec8a35 13-14
+docs/guides/self-hosting/upgrading.md
+  s_c5efa23713fc29::t_993686f4baab19 59,70
+  s_c5efa23713fc29::t_4906a6a8e0de69 64-69
+  s_c5efa23713fc29::t_8920a9062c6913 63
+docs/guides/self-hosting/docker.md
+  s_c5efa23713fc29::t_993686f4baab19 48
+server/internal/api/api_test.go
+  s_c5efa23713fc29::t_edbfe7b4bb9745 250-274
+server/README.md
+  s_c5efa23713fc29::t_993686f4baab19 52-56
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ead2777782fe1f1dd5ca4f8e55731e66c36a1c10",
+  "prompts": {},
+  "sessions": {
+    "s_c5efa23713fc29": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3579834e-e83a-4a21-8130-cd92718ede6d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

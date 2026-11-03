@@ -1,0 +1,97 @@
+server/internal/api/events_test.go
+  s_f7b126b009a7df::t_49d0b9537ca81f 1-57
+docs/reference/api.md
+  s_f7b126b009a7df::t_6dcf6c639b593f 102-109
+  s_f7b126b009a7df::t_858df3ebaac6fe 16,387-409
+  s_f7b126b009a7df::t_a7a5683e3f251e 410
+server/internal/api/notes_handlers.go
+  s_f7b126b009a7df::t_a295b290dea076 69,90-92,118-119,128-130,147-148,153-165
+  s_f7b126b009a7df::t_c1426935bb5d8d 85-89
+  s_f7b126b009a7df::t_6a366e033fba33 166-167
+server/internal/notes/notes.go
+  s_f7b126b009a7df::t_fefbf744379a82 186-226,231-232,243-247,250-253,270-271,275-278,295-296,299-300,309-310,313-314,339-341,349-350,381-382,408-410,415-416,431-433,435,468-469,496-498,501-502,507-509,511,540-541,678-680,710-714,729-731,800-809
+  s_f7b126b009a7df::t_f817da3fea5f23 810
+server/internal/userdata/userdata.go
+  s_f7b126b009a7df::t_ec848c0cbd3ada 49-57,65-66,68-97,120-124
+  s_f7b126b009a7df::t_a73cbff4ed41a6 14,30,35-38
+server/internal/notes/events_test.go
+  s_f7b126b009a7df::t_5d4eb020a90739 1-41,43-152
+  s_f7b126b009a7df::t_1bd7eea43296c0 42
+server/internal/userdata/userdata_test.go
+  s_f7b126b009a7df::t_1bd7eea43296c0 39
+  s_f7b126b009a7df::t_5d4eb020a90739 1-38,40-51
+server/internal/agent/settings.go
+  s_f7b126b009a7df::t_e18e29101d8e1c 1-141
+server/internal/api/api.go
+  s_f7b126b009a7df::t_a73cbff4ed41a6 102-107,228-232
+  s_f7b126b009a7df::t_30b3b5a1badb77 233
+server/internal/agent/config.go
+  s_f7b126b009a7df::t_e18e29101d8e1c 1-224
+server/internal/api/agent_handlers.go
+  s_f7b126b009a7df::t_a73cbff4ed41a6 1-88
+server/migrations/0013_agents.sql
+  s_f7b126b009a7df::t_e18e29101d8e1c 1-24
+server/internal/agent/config_test.go
+  s_f7b126b009a7df::t_827709abf37edc 1-107,109-134,137-143
+  s_f7b126b009a7df::t_87e7a1f109693a 108,135-136
+server/internal/api/respond.go
+  s_f7b126b009a7df::t_a73cbff4ed41a6 13,103,116-119
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_858df3ebaac6fe 145-152,510-512
+server/internal/api/agent_config_test.go
+  s_f7b126b009a7df::t_827709abf37edc 1-71
+apps/web/src/api/agent.ts
+  s_f7b126b009a7df::t_5056f636200372 1-38
+apps/web/test/setup.ts
+  s_f7b126b009a7df::t_5056f636200372 3,88
+apps/web/src/settings/time-zone.tsx
+  s_f7b126b009a7df::t_1cddfc6481cdd6 1-83
+apps/web/src/notes/agent-config.ts
+  s_f7b126b009a7df::t_5056f636200372 1-49
+apps/web/src/settings/spaces.tsx
+  s_f7b126b009a7df::t_4706c2be4fa4b0 7,304
+  s_f7b126b009a7df::t_e078384c2d8090 3,6,8,16-25,129-132,141,145-154,157-159,181-189,214,216,224-226,229-230,233-237,258-271,284-303,305
+  s_f7b126b009a7df::t_3a6da09f886208 306
+apps/web/src/ui/text-area.tsx
+  s_f7b126b009a7df::t_5056f636200372 1-39
+apps/web/src/settings/agent-section.tsx
+  s_f7b126b009a7df::t_9625aec42b2213 2-133,135-139,147-148,150-219
+  s_f7b126b009a7df::t_688c1717a3fd5d 1,134,140-146,149
+apps/web/src/settings/settings.tsx
+  s_f7b126b009a7df::t_4706c2be4fa4b0 728
+  s_f7b126b009a7df::t_1cddfc6481cdd6 28,377
+  s_f7b126b009a7df::t_bf23da246ae242 10
+apps/web/test/agent-config.test.tsx
+  s_f7b126b009a7df::t_7ecd92511e43af 1-29,31-38,40-50,52-56,58-74,76-113
+  s_f7b126b009a7df::t_db4b97bff2e426 51
+  s_f7b126b009a7df::t_688c1717a3fd5d 30,39,57,75
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_a00924004060de 12-47
+apps/web/src/ui/field.module.css
+  s_f7b126b009a7df::t_5056f636200372 66-74
+docs/guides/using/settings.md
+  s_f7b126b009a7df::t_a00924004060de 17,19
+apps/web/src/api/client.ts
+  s_f7b126b009a7df::t_5056f636200372 125-126
+  s_f7b126b009a7df::t_b837966f372e52 4-13
+apps/web/src/notes/ai-settings.ts
+  s_f7b126b009a7df::t_4706c2be4fa4b0 55-63
+apps/web/src/settings/settings.module.css
+  s_f7b126b009a7df::t_9625aec42b2213 530-589
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bf9dc15ff44a2bf9aaf4409cb45d2a78d4902baf",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
