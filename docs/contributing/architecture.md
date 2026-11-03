@@ -163,7 +163,7 @@ CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT, usernam
 CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, kind TEXT, name TEXT,
                        access_hash TEXT UNIQUE, access_expires_at INTEGER, refresh_hash TEXT UNIQUE, refresh_expires_at INTEGER,
                        csrf_token TEXT, created_at INTEGER, last_used_at INTEGER);
-CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);  -- email (Resend) key and sender
+CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);  -- email (Resend) key and sender; AI provider
 ```
 
 `notes` has an explicit `INTEGER PRIMARY KEY` rather than relying on the implicit rowid, because `VACUUM` can renumber implicit rowids and silently desynchronize the search index. Migrations are numbered SQL files applied at startup and tracked in `PRAGMA user_version`. The full schema is `server/migrations/` (system.db's in `server/migrations/system/`).
@@ -501,6 +501,8 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `DELETE` | `/api/v1/notes/:id` | Delete a note |
 | `POST` | `/api/v1/notes/:id/email` | Email the note as stored, through Resend |
 | `GET` `PUT` `DELETE` | `/api/v1/settings/email` | The Resend API key (write-only) and sender |
+| `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per account |
+| `POST` | `/api/v1/settings/ai/test` | Check the provider answers and the model calls tools |
 | `GET` | `/api/v1/sync` | Download changes |
 | `GET` | `/api/v1/search` | Search notes; same filters as listing, or `?exceptSpace=`; with `?space=` the first page counts `otherSpaces` |
 | `GET` | `/api/v1/filters` | What the list can filter by: tags in live notes with counts, and the locked notes' count; `?space=` for one space |

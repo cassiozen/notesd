@@ -18,6 +18,7 @@ import (
 
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
+	"notes/server/internal/llm"
 	"notes/server/internal/mail"
 	"notes/server/internal/userdata"
 	"notes/server/internal/web"
@@ -48,6 +49,7 @@ type Server struct {
 	auth     *auth.Service
 	limiter  *auth.Limiter
 	mailer   *mail.Client
+	ai       *llm.Client
 	log      *slog.Logger
 	cfg      Config
 	releases *releases
@@ -59,6 +61,7 @@ func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, l
 		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
 		limiter:  auth.NewLimiter(10, 15*time.Minute),
 		mailer:   mail.NewClient(cfg.ResendURL),
+		ai:       llm.NewClient(),
 		releases: newReleases(cfg.ReleasesURL),
 	}
 }
@@ -96,6 +99,10 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
 	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))
 	mux.Handle("DELETE /api/v1/settings/email", s.authed(adminOnly(s.deleteEmailSettings)))
+	mux.Handle("GET /api/v1/settings/ai", s.authed(s.aiSettings))
+	mux.Handle("PUT /api/v1/settings/ai", s.authed(adminOnly(s.saveAISettings)))
+	mux.Handle("DELETE /api/v1/settings/ai", s.authed(adminOnly(s.deleteAISettings)))
+	mux.Handle("POST /api/v1/settings/ai/test", s.authed(adminOnly(s.testAISettings)))
 
 	mux.Handle("GET /api/v1/locks", s.authed(s.listLockKeys))
 	mux.Handle("DELETE /api/v1/locks", s.authed(s.resetLocks))

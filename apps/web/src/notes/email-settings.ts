@@ -43,7 +43,10 @@ function subscribe(l: () => void) {
 /** The email settings, or null until they've loaded. */
 export function useEmailSettings(): EmailSettings | null {
   const value = useSyncExternalStore(subscribe, () => current)
-  useEffect(load, [])
+  // Again after a forget, so screens left open across a new sign-in fetch for it.
+  useEffect(() => {
+    if (value === null) load()
+  }, [value])
   return value
 }
 

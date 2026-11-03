@@ -49,7 +49,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 1 | (account row) | Server | `server` | initial | username and server; "Signed out"; "Not connected" |
 | 2 | Synced | Security | `security` | lock | "Off" (no lock password), "Locked", "Unlocked" |
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
-| 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many |
+| 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend", "AI"), or how many |
 | 5 | This device | Appearance | `appearance` | half-filled circle | "System", "Light", "Dark" ("Automatic" on iOS, as the system says) |
 | 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Syncing…", "Offline", "Sync problem", "Signed out", "Update notesd"; the web says some in its own words ("Couldn't sync", "Sign in again to sync") and "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |

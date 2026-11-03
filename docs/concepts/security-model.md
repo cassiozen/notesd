@@ -21,7 +21,7 @@ description: What the server can read, how accounts and sessions are protected, 
   account can't reach another's notes, even through a bug in a single check.
 - Accounts are added on the server with `notesd add-user`. There's no public sign-up and no email,
   so a forgotten password is reset on the server, with `notesd reset-password`.
-- **Admins** can change settings that apply to the whole server (email) and update the server
+- **Admins** can change settings that apply to the whole server (email and the AI provider) and update the server
   from Settings. The first account is one. Admins can't see other accounts' notes.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
   reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
@@ -85,5 +85,6 @@ or for plain text: older apps ask you to update instead. The full design is in
 ## What notesd connects to
 
 Nothing, unless you turn it on: there are no analytics. The server contacts
-[Resend](../guides/using/email.md) to email a note, and GitHub to look for new releases only when
+[Resend](../guides/using/email.md) to email a note, the AI provider an admin sets up for
+[agents](../guides/using/agents.md), and GitHub to look for new releases only when
 [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings) is on.

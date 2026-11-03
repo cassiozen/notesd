@@ -12,6 +12,7 @@ import (
 
 	"notes/server/internal/auth"
 	"notes/server/internal/images"
+	"notes/server/internal/llm"
 	"notes/server/internal/locks"
 	"notes/server/internal/mail"
 	"notes/server/internal/notes"
@@ -95,6 +96,9 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	var merr *mail.InputError
 	var lerr *locks.InputError
 	var send *mail.SendError
+	var aiIn *llm.InputError
+	var aiTest *llm.TestError
+	var aiErr *llm.ProviderError
 	var terr *images.TypeError
 	var serr *spaces.InputError
 	var full *spaces.NotEmptyError
@@ -105,6 +109,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: aerr.Message, Field: aerr.Field})
 	case errors.As(err, &merr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: merr.Message, Field: merr.Field})
+	case errors.As(err, &aiIn):
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: aiIn.Message, Field: aiIn.Field})
 	case errors.As(err, &lerr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: lerr.Message, Field: lerr.Field})
 	case errors.As(err, &serr):
@@ -134,6 +140,13 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	case errors.As(err, &send):
 		s.log.WarnContext(r.Context(), "email failed", "status", send.Status, "error", send.Message)
 		writeError(w, http.StatusBadGateway, "email_failed", send.Message)
+	case errors.Is(err, llm.ErrNotConfigured):
+		writeError(w, http.StatusConflict, "ai_not_configured", "set up AI in Settings first")
+	case errors.As(err, &aiTest):
+		writeError(w, http.StatusBadGateway, "ai_test_failed", aiTest.Message)
+	case errors.As(err, &aiErr):
+		s.log.WarnContext(r.Context(), "ai provider failed", "status", aiErr.Status, "error", aiErr.Message)
+		writeError(w, http.StatusBadGateway, "ai_failed", aiErr.Message)
 	case errors.As(err, &conflict):
 		cur := conflict.Current
 		writeJSON(w, http.StatusConflict, errorBody{Error: conflict.Code, Current: &cur})
