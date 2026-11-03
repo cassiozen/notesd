@@ -1,0 +1,33 @@
+apps/web/src/auth/auth-context.tsx
+  s_5c7b55c45c6df4::t_c56ba318bbac76 96
+  s_5c7b55c45c6df4::t_acf238c28e07b0 5
+apps/web/src/settings/integrations.tsx
+  s_5c7b55c45c6df4::t_55ee78d3e9b357 10,36,48-52,54,56-61,69-86
+  s_5c7b55c45c6df4::t_366d31a3e9092a 97,126
+  s_5c7b55c45c6df4::t_43f5308c8b7a30 1,53,55,62-65
+apps/web/src/notes/email-settings.ts
+  s_5c7b55c45c6df4::t_61b67b06bf00a4 5,8,10-11,14-15,18-19,23,25-27,29,32-33,38-42,45,50-62,64,66-67
+apps/web/test/setup.ts
+  s_5c7b55c45c6df4::t_c56ba318bbac76 4,85
+apps/web/test/share.test.tsx
+  s_5c7b55c45c6df4::t_61f64a85a2c8d3 3,5,50-51,101-135
+  s_5c7b55c45c6df4::t_3a3b4a16da26f2 136-137
+apps/web/src/settings/resend.tsx
+  s_5c7b55c45c6df4::t_55ee78d3e9b357 5,36-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8d9e64abf00c7b1caa35a5fa5a04fd30b118510b",
+  "prompts": {},
+  "sessions": {
+    "s_5c7b55c45c6df4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7f6c92c-f1e0-492b-b92f-4cee1a0609c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
