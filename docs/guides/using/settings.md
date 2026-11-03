@@ -19,7 +19,7 @@ At the top, the account row shows who you're signed in as, and on which server. 
 | **Spaces** | Create, rename, change the icon of, and delete [spaces](organize-and-find.md#spaces) | Account |
 | **Integrations** | What's connected and what can be: [email](email.md) through Resend. Only admins can connect or change them | The whole server |
 | **Appearance** | Theme: system (Automatic on iPhone), light or dark. On the web, the note font too | This device |
-| **Sync & data** | On the web: [keep notes on this device](offline-and-sync.md#the-web-app), and install the app. On the phones: sync status (iPhone) and removing all data from the device | This device |
+| **Sync & data** | On the web: [keep notes on this device](offline-and-sync.md#the-web-app), and install the app. On the phones: sync status and removing all data from the device | This device |
 | **About** | The app's version (phones only) | This device |
 
 Changing your account password signs out every other browser and device. If you've forgotten it,
