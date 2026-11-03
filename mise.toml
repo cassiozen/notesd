@@ -190,7 +190,8 @@ scripts/with-server.sh "$bin" scripts/xctest.sh build/test.log -project Notes.xc
 [tasks."lint:ios"]
 description = "swift-format (apps/ios/.swift-format), warnings fail"
 dir = "apps/ios"
-run = "swift format lint --strict --recursive Notes NotesTests NotesUITests NotesCore"
+# The shared package has no .swift-format of its own: the iOS one applies.
+run = "swift format lint --strict --recursive --configuration .swift-format Notes NotesTests NotesUITests NotesCore ../../shared/keychain-biometrics"
 
 [tasks."build:ios"]
 description = "Debug build of the iOS app for a simulator"

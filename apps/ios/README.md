@@ -108,7 +108,8 @@ those folders is in its target, with no project edit.
   on Lock now, saving open notes first. Face ID unlock (`BiometricUnlock`,
   a port of Android's `FingerprintUnlock`) keeps the key in a Keychain item
   behind `.biometryCurrentSet`, on this device only, bound to the password
-  entry it was made with (`KeychainBiometrics`). UI tests fake it with
+  entry it was made with (`KeychainBiometrics`, in `shared/keychain-biometrics`,
+  which the macOS app uses too). UI tests fake it with
   `--fake-biometrics=match|cancel`.
 - **Email**: the server renders and sends; `NoteMailer` syncs first and
   passes the revision. The tests fake Resend with a small HTTP listener

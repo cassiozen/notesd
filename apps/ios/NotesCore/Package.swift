@@ -11,9 +11,13 @@ let package = Package(
     products: [
         .library(name: "NotesCore", targets: ["NotesCore"])
     ],
+    dependencies: [
+        .package(path: "../../../shared/keychain-biometrics")
+    ],
     targets: [
         .target(
             name: "NotesCore",
+            dependencies: [.product(name: "NotesBiometrics", package: "keychain-biometrics")],
             resources: [
                 // markdown-it, exactly the build the web app uses, and the web's tokenizer rules.
                 .copy("Resources/markdown-it.min.js"),

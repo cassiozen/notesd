@@ -18,6 +18,8 @@ xcuserdata/
 /apps/ios/Config/Local.xcconfig
 /apps/ios/NotesCore/.build/
 /apps/ios/NotesCore/.swiftpm/
+/shared/keychain-biometrics/.build/
+/shared/keychain-biometrics/.swiftpm/
 /apps/ios/build/
 
 # Playwright (apps/web/e2e)
