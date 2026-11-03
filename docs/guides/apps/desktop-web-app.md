@@ -10,7 +10,7 @@ your dock or taskbar, keeps a full copy of your notes on the computer, and works
 the phone apps: writing, search and tags work with no connection, and it syncs with your server
 whenever it can.
 
-<img width="1000" height="592" alt="notesd installed as a desktop app" src="https://github.com/user-attachments/assets/d41a54a7-d7a5-483b-9f1c-73f3a973ff71" />
+<img width="4000" height="2368" alt="notesd installed as a desktop app" src="https://github.com/user-attachments/assets/cd45c640-262b-4ca5-88c6-bd4cf086622f" />
 
 ## Install it
 
