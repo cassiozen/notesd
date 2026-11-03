@@ -1,0 +1,47 @@
+apps/web/src/notes/activity.tsx
+  s_f7b126b009a7df::t_9d6f578a03aab7 13
+apps/web/src/notes/agent-examples.ts
+  s_f7b126b009a7df::t_6cc6d1408d8b01 1,3,8,11,17,28,33,43,48,57,62
+apps/web/src/notes/agent-page.module.css
+  s_f7b126b009a7df::t_8ba07a2706f968 1-292
+apps/web/src/notes/agent-page.tsx
+  s_f7b126b009a7df::t_2da283f3518f19 1-395
+apps/web/src/notes/agent-rules.ts
+  s_f7b126b009a7df::t_95300e2c29c771 1-104
+apps/web/src/notes/shell.tsx
+  s_f7b126b009a7df::t_358787d2001bba 4,11,67,75,79-81,245,314-321
+apps/web/src/notes/space-menu.tsx
+  s_f7b126b009a7df::t_9b54978a0d4b42 3,17,25-26,46,148,157-176
+apps/web/src/notes/tags-panel.tsx
+  s_f7b126b009a7df::t_aed3d3513b2677 5,26-27,66,70,155
+apps/web/src/router.ts
+  s_f7b126b009a7df::t_47001d10914b7e 13,55,68-70,80-81
+apps/web/src/settings/settings.module.css
+  s_f7b126b009a7df::t_bdeff262789daa 531-532,536-539,542,545,548-550,553,555
+apps/web/src/settings/spaces.tsx
+  s_f7b126b009a7df::t_cd0fef209b115b 5,7-9,13,122-123,134,137-140,142,144,146,168-175,203-206,218,221,243-267,269-270,294-295,297,301-308,310,313
+apps/web/src/ui/icons.tsx
+  s_f7b126b009a7df::t_b1735f4431b97e 68-76
+apps/web/test/activity.test.tsx
+  s_f7b126b009a7df::t_69d6485b76e3d5 103-104,114-128
+apps/web/test/agent-config.test.tsx
+  s_f7b126b009a7df::t_72df7c67abc329 34,37,42,45-52,60,63-65,67-76,78-83,85-92,95-100,112-116
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_02cd951f1739ae 18-25,28,33-34,36,38-50,67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6d388f923ee077864d7ee699f6a122f5c5a64969",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
