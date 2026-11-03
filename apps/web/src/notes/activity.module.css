@@ -74,6 +74,11 @@
   color: var(--ink-3);
 }
 
+/* display: flex would otherwise win over the attribute. */
+.page[hidden] {
+  display: none;
+}
+
 .page > .muted {
   padding: 0 6px;
 }
