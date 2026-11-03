@@ -33,10 +33,26 @@ struct LockedNotesSection: View {
                     )
                     .disabled(turningOn)
                     .tint(Color.accent)
+                    .sheet(isPresented: $unlocking) {
+                        LockSheet(locks: graph.locks, exists: true, unlockFor: "Unlock locked notes") { _ in enable() }
+                    }
                 }
+                // Sheets on the rows, not the section: a sheet on a Form's section doesn't present.
                 Button("Change lock password") { changing = true }
+                    .sheet(isPresented: $changing) {
+                        ChangeLockPassword(locks: graph.locks, biometrics: graph.biometrics) {
+                            message = "Lock password changed. Other devices use the new one once they sync."
+                        }
+                    }
                 Button("Forgot the lock password?", role: .destructive) { resetting = true }
                     .foregroundStyle(Color.danger)
+                    .sheet(isPresented: $resetting) {
+                        ResetLocks(locks: graph.locks) {
+                            // The kept key went with the keyring.
+                            graph.biometrics.disable()
+                            message = nil
+                        }
+                    }
                 if let message {
                     Text(message).font(.notesSmall).foregroundStyle(Color.ink2)
                 }
@@ -48,21 +64,6 @@ struct LockedNotesSection: View {
                 "Locked notes lock again when you leave the app or after five minutes without use."
                     + (graph.lockState != .none && graph.biometrics.available()
                         ? " \(graph.biometry.name) unlock is only on this iPhone." : ""))
-        }
-        .sheet(isPresented: $changing) {
-            ChangeLockPassword(locks: graph.locks, biometrics: graph.biometrics) {
-                message = "Lock password changed. Other devices use the new one once they sync."
-            }
-        }
-        .sheet(isPresented: $resetting) {
-            ResetLocks(locks: graph.locks) {
-                // The kept key went with the keyring.
-                graph.biometrics.disable()
-                message = nil
-            }
-        }
-        .sheet(isPresented: $unlocking) {
-            LockSheet(locks: graph.locks, exists: true, unlockFor: "Unlock locked notes") { _ in enable() }
         }
     }
 
@@ -89,7 +90,7 @@ struct LockedNotesSection: View {
     }
 }
 
-private struct PasswordField: View {
+struct PasswordField: View {
     let label: String
     @Binding var text: String
     var error: String?
@@ -105,7 +106,7 @@ private struct PasswordField: View {
 }
 
 /// A form sheet with Cancel and one action, its errors and a busy state.
-private struct KeyringSheet<Fields: View>: View {
+struct KeyringSheet<Fields: View>: View {
     let title: String
     let action: String
     var destructive = false

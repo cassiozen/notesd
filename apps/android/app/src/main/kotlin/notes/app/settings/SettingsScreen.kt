@@ -133,8 +133,7 @@ fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOp
             }
             CategoryRow(Icons.Spaces, SettingsSection.Spaces, "${spaces.size}", onOpen)
             if (account is Account.SignedIn) {
-                val value = email?.let { if (it.configured) "Email" else "Off" }.orEmpty()
-                CategoryRow(Icons.Mail, SettingsSection.Integrations, value, onOpen)
+                CategoryRow(Icons.Mail, SettingsSection.Integrations, integrationsValue(email), onOpen)
             }
             GroupHeader("This phone only")
             CategoryRow(Icons.Appearance, SettingsSection.Appearance, theme.label, onOpen)
@@ -162,6 +161,8 @@ fun SettingsSectionScreen(
     val canFingerprint = remember { graph.fingerprint.available() }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var changingPassword by remember { mutableStateOf(false) }
+    var passwordChanged by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun act(block: suspend () -> Unit) {
@@ -178,27 +179,37 @@ fun SettingsSectionScreen(
 
     SettingsFrame("Settings", onBack, section.title) {
         when (section) {
-            SettingsSection.Server -> Card {
-                when (val a = account) {
-                    Account.None -> {
-                        Info("Not connected", "Notes are kept on this phone only.")
-                        Divider()
-                        Action("Connect to a server", t.link, enabled = true, onClick = onConnect)
-                    }
+            SettingsSection.Server -> {
+                Card {
+                    when (val a = account) {
+                        Account.None -> {
+                            Info("Not connected", "Notes are kept on this phone only.")
+                            Divider()
+                            Action("Connect to a server", t.link, enabled = true, onClick = onConnect)
+                        }
 
-                    is Account.SignedIn -> {
-                        Who(a.username, a.server, null)
-                        Divider()
-                        Action(if (busy) "Signing out…" else "Sign out", t.link, enabled = !busy) {
-                            scope.launch { confirm = Confirm.SignOut(graph.store.pendingNotes()) }
+                        is Account.SignedIn -> {
+                            Who(a.username, a.server, null)
+                            Divider()
+                            Action("Change password", t.link, enabled = !busy) {
+                                passwordChanged = false
+                                changingPassword = true
+                            }
+                            Divider()
+                            Action(if (busy) "Signing out…" else "Sign out", t.link, enabled = !busy) {
+                                scope.launch { confirm = Confirm.SignOut(graph.store.pendingNotes()) }
+                            }
+                        }
+
+                        is Account.SignedOut -> {
+                            Who(a.username, a.server, "Signed out")
+                            Divider()
+                            Action("Sign in again", t.link, enabled = true, onClick = onSignIn)
                         }
                     }
-
-                    is Account.SignedOut -> {
-                        Who(a.username, a.server, "Signed out")
-                        Divider()
-                        Action("Sign in again", t.link, enabled = true, onClick = onSignIn)
-                    }
+                }
+                if (passwordChanged) {
+                    Footnote("Password changed. Every other browser and device was signed out and needs the new one.")
                 }
             }
 
@@ -211,7 +222,7 @@ fun SettingsSectionScreen(
 
             SettingsSection.Spaces -> SpacesCard(graph, onSpaceCreated)
 
-            SettingsSection.Integrations -> EmailCard(graph)
+            SettingsSection.Integrations -> IntegrationsPage(graph)
 
             SettingsSection.Appearance -> {
                 Segmented(Theme.entries, theme, { it.label }) { graph.appearance.set(it) }
@@ -242,6 +253,13 @@ fun SettingsSectionScreen(
                     )
                 }
             }
+        }
+    }
+
+    if (changingPassword) {
+        AccountPasswordDialog(graph, onDismiss = { changingPassword = false }) {
+            changingPassword = false
+            passwordChanged = true
         }
     }
 
@@ -387,128 +405,13 @@ private fun CategoryRow(icon: ImageVector, section: SettingsSection, value: Stri
 
 /** Below a card: what it applies to. */
 @Composable
-private fun Footnote(text: String) {
+internal fun Footnote(text: String) {
     Text(
         text,
         style = Type.small,
         color = LocalTokens.current.ink3,
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
     )
-}
-
-/** The server's Resend key and sender, for emailing notes from the share sheet. */
-@Composable
-private fun EmailCard(graph: AppGraph) {
-    val t = LocalTokens.current
-    val saved by graph.email.settings.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    var apiKey by remember { mutableStateOf("") }
-    var from by remember { mutableStateOf<String?>(null) }
-    var errors by remember { mutableStateOf(mapOf<String, String>()) }
-    var message by remember { mutableStateOf<String?>(null) }
-    var busy by remember { mutableStateOf(false) }
-    val fromValue = from ?: saved?.from.orEmpty()
-    val configured = saved?.configured == true
-
-    LaunchedEffect(Unit) { graph.email.refresh() }
-
-    fun failed(r: ApiResult<*>) {
-        val field = (r as? ApiResult.Rejected)?.takeIf { it.status == 400 }?.field
-        if (r is ApiResult.Rejected && (field == "apiKey" || field == "from")) {
-            val text = r.message.replaceFirstChar { it.uppercase() }
-            errors = mapOf(field to if (text.endsWith('.')) text else "$text.")
-        } else {
-            message = if (r is ApiResult.Unreachable) "Can't reach the server." else "Something went wrong. Try again."
-        }
-    }
-
-    fun save() {
-        val found = buildMap {
-            if (!configured && apiKey.isBlank()) put("apiKey", "Paste your Resend API key.")
-            if (fromValue.isBlank()) put("from", "Enter the address emails come from.")
-        }
-        errors = found
-        message = null
-        if (found.isNotEmpty()) return
-        busy = true
-        scope.launch {
-            val r = graph.email.save(fromValue.trim(), apiKey.trim().ifEmpty { null })
-            busy = false
-            if (r is ApiResult.Ok) {
-                apiKey = ""
-                from = null
-                message = "Saved. Share a note and choose Email."
-            } else {
-                failed(r)
-            }
-        }
-    }
-
-    Card {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Text(
-                "Email notes through Resend. Use an API key with sending access and an address on a verified domain.",
-                style = Type.small,
-                color = t.ink2
-            )
-            NotesField(
-                value = apiKey,
-                onValueChange = {
-                    apiKey = it
-                    errors = errors - "apiKey"
-                },
-                label = "Resend API key",
-                placeholder = saved?.takeIf { it.configured }?.let { "Saved · …${it.keyHint}" } ?: "re_…",
-                error = errors["apiKey"],
-                secret = true,
-                mono = true,
-                enabled = !busy
-            )
-            NotesField(
-                value = fromValue,
-                onValueChange = {
-                    from = it
-                    errors = errors - "from"
-                },
-                label = "From",
-                placeholder = "Your Name <notes@example.com>",
-                error = errors["from"],
-                enabled = !busy,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-            )
-            message?.let {
-                Text(
-                    it,
-                    style = Type.small,
-                    color = t.ink2,
-                    modifier = Modifier.semantics {
-                        liveRegion =
-                            LiveRegionMode.Polite
-                    }
-                )
-            }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                NotesButton(if (busy) "Saving…" else "Save", ::save, busy = busy, small = true)
-                if (configured) {
-                    NotesButton("Remove", {
-                        busy = true
-                        message = null
-                        scope.launch {
-                            val r = graph.email.remove()
-                            busy = false
-                            if (r is ApiResult.Ok) {
-                                apiKey = ""
-                                from = null
-                                errors = emptyMap()
-                            } else {
-                                failed(r)
-                            }
-                        }
-                    }, kind = ButtonKind.DangerText, enabled = !busy, small = true)
-                }
-            }
-        }
-    }
 }
 
 /** Locked notes (§10.1): change the lock password, lock now, or reset after forgetting it. */
@@ -716,7 +619,7 @@ private fun LockedNotesCard(locks: LockSession, state: LockSession.State, finger
 
 /** A rounded group on the chip colour, like the web's settings sheet. */
 @Composable
-private fun Card(content: @Composable ColumnScope.() -> Unit) {
+internal fun Card(content: @Composable ColumnScope.() -> Unit) {
     val t = LocalTokens.current
     val shape = RoundedCornerShape(20.dp)
     Column(
@@ -730,7 +633,7 @@ private fun Card(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun Divider() {
+internal fun Divider() {
     Box(Modifier.padding(start = 16.dp).fillMaxWidth().height(1.dp).background(LocalTokens.current.hair))
 }
 
@@ -781,7 +684,7 @@ private fun Who(username: String, server: String, note: String?) {
 }
 
 @Composable
-private fun Info(label: String, value: String) {
+internal fun Info(label: String, value: String) {
     val t = LocalTokens.current
     Column(Modifier.fillMaxWidth().padding(16.dp)) {
         Text(label, style = Type.rowTitle, color = t.ink)
@@ -790,7 +693,7 @@ private fun Info(label: String, value: String) {
 }
 
 @Composable
-private fun Action(label: String, color: Color, enabled: Boolean, onClick: () -> Unit) {
+internal fun Action(label: String, color: Color, enabled: Boolean, onClick: () -> Unit) {
     Text(
         label,
         style = Type.body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium),

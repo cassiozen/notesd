@@ -84,6 +84,7 @@ object Icons {
         "M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11z",
         fills = listOf("M8 2.5a5.5 5.5 0 0 1 0 11z")
     )
+    val Send = icon("M14 2L7 9", "M14 2l-4.5 12L7 9 2 6.5z")
     val Info = icon("M8 2.5a5.5 5.5 0 1 1 0 11a5.5 5.5 0 1 1 0-11z", "M8 7.3v3.7", dotsAt = listOf(8f to 5f))
     val Lock =
         icon("M5 7h6a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2z", "M5.5 7V5a2.5 2.5 0 0 1 5 0v2")

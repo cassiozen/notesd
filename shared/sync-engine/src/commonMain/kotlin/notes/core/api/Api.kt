@@ -134,9 +134,18 @@ internal fun <T> apiResult(code: Int, retryAfter: String?, errorText: () -> Stri
 val PERMANENT_ERRORS =
     setOf("invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default")
 
-/** The server's Resend settings for emailing notes. The key never comes back; [keyHint] is its last 4 characters. */
+/**
+ * The server's Resend settings for emailing notes. The key never comes back; [keyHint] is its last 4 characters.
+ * [editable]: whether this account may change them (admins). Servers from before accounts had roles leave it out;
+ * their one account is the owner.
+ */
 @Serializable
-data class EmailSettings(val configured: Boolean = false, val from: String = "", val keyHint: String = "")
+data class EmailSettings(
+    val configured: Boolean = false,
+    val from: String = "",
+    val keyHint: String = "",
+    val editable: Boolean = true
+)
 
 /** One wrapped copy of the locked-notes key (§10.1); nothing here opens without its secret. */
 @Serializable

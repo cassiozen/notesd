@@ -325,15 +325,19 @@ public func isLockedImageType(_ type: String) -> Bool {
 }
 
 /// The server's email settings (Resend). The key itself never comes back, only its last characters.
+/// `editable`: whether this account may change them (admins). Servers from before accounts had roles leave it
+/// out; their one account is the owner.
 public struct EmailSettings: Decodable, Sendable, Hashable {
     public var configured: Bool
     public var from: String
     public var keyHint: String
+    public var editable: Bool
 
-    public init(configured: Bool = false, from: String = "", keyHint: String = "") {
+    public init(configured: Bool = false, from: String = "", keyHint: String = "", editable: Bool = true) {
         self.configured = configured
         self.from = from
         self.keyHint = keyHint
+        self.editable = editable
     }
 
     public init(from decoder: any Decoder) throws {
@@ -341,9 +345,10 @@ public struct EmailSettings: Decodable, Sendable, Hashable {
         configured = try c.decodeIfPresent(Bool.self, forKey: .configured) ?? false
         from = try c.decodeIfPresent(String.self, forKey: .from) ?? ""
         keyHint = try c.decodeIfPresent(String.self, forKey: .keyHint) ?? ""
+        editable = try c.decodeIfPresent(Bool.self, forKey: .editable) ?? true
     }
 
-    private enum CodingKeys: String, CodingKey { case configured, from, keyHint }
+    private enum CodingKeys: String, CodingKey { case configured, from, keyHint, editable }
 }
 
 /// JSON as this package writes it: stable key order, "/" unescaped.

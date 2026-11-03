@@ -15,26 +15,35 @@ class EmailSetup(private val api: () -> ApiClient?) {
     private val _settings = MutableStateFlow<EmailSettings?>(null)
     val settings: StateFlow<EmailSettings?> = _settings
 
-    /** Re-reads them; they can change from another device. Failures keep what was known. */
-    suspend fun refresh() {
-        val r = api()?.emailSettings() ?: return
-        if (r is ApiResult.Ok) _settings.value = r.value
+    /** Moves on with each [forget]: an answer to a request made before it is for an account that's gone. */
+    @Volatile private var generation = 0
+
+    /** Re-reads them; they can change from another device. Failures keep what was known; false says one happened. */
+    suspend fun refresh(): Boolean {
+        val asked = generation
+        val r = api()?.emailSettings() ?: return false
+        if (r is ApiResult.Ok && asked == generation) _settings.value = r.value
+        return r is ApiResult.Ok
     }
 
     /** A null [apiKey] keeps the saved one. */
     suspend fun save(from: String, apiKey: String?): ApiResult<EmailSettings> {
+        val asked = generation
         val r = api()?.saveEmailSettings(from, apiKey) ?: ApiResult.Unauthenticated
-        if (r is ApiResult.Ok) _settings.value = r.value
+        if (r is ApiResult.Ok && asked == generation) _settings.value = r.value
         return r
     }
 
     suspend fun remove(): ApiResult<Unit> {
+        val asked = generation
         val r = api()?.deleteEmailSettings() ?: ApiResult.Unauthenticated
-        if (r is ApiResult.Ok) _settings.value = EmailSettings()
+        // Still an admin's: only they can remove them.
+        if (r is ApiResult.Ok && asked == generation) _settings.value = EmailSettings(editable = true)
         return r
     }
 
     fun forget() {
+        generation++
         _settings.value = null
     }
 }

@@ -506,6 +506,84 @@ final class FlowTests: XCTestCase {
         try audit("settings server", [.sufficientElementDescription, .hitRegion])
     }
 
+    /// Settings → Integrations, signed in.
+    private func openIntegrations() throws {
+        try signIn()
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let integrations = app.buttons["Integrations"]
+        XCTAssertTrue(integrations.waitForExistence(timeout: 5))
+        integrations.tap()
+    }
+
+    /// Resend connects in two steps, then is managed and disconnected. Server-wide: it ends disconnected again,
+    /// for the tests after it.
+    func testResendConnectsInTwoSteps() throws {
+        try openIntegrations()
+        let connect = app.buttons["Connect Resend"]
+        XCTAssertTrue(connect.waitForExistence(timeout: 10), app.debugDescription)
+        connect.tap()
+
+        let key = app.secureTextFields["API key"]
+        XCTAssertTrue(key.waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["Continue"].tap()
+        XCTAssertTrue(app.staticTexts["Paste your Resend API key."].waitForExistence(timeout: 5))
+        key.tap()
+        key.typeText("re_123456789")
+        app.buttons["Continue"].tap()
+
+        let address = app.textFields["Address"]
+        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        app.textFields["Name"].tap()
+        app.textFields["Name"].typeText("Notes")
+        address.tap()
+        address.typeText("notes@example.com")
+        screenshot("resend sender")
+        app.buttons["Connect"].tap()
+        XCTAssertTrue(app.staticTexts["Ready to Send"].waitForExistence(timeout: 10), app.debugDescription)
+        screenshot("resend connected")
+        app.buttons["Done"].tap()
+
+        let manage = app.buttons["Manage Resend"]
+        XCTAssertTrue(manage.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Sending as Notes <notes@example.com>"].exists)
+        manage.tap()
+        let disconnect = app.buttons["Disconnect Resend"]
+        XCTAssertTrue(disconnect.waitForExistence(timeout: 5))
+        disconnect.tap()
+        let confirm = app.buttons.matching(NSPredicate(format: "label == %@", "Disconnect")).firstMatch
+        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        confirm.tap()
+        XCTAssertTrue(app.buttons["Connect Resend"].waitForExistence(timeout: 10))
+    }
+
+    /// Only the refusal: the tests share the owner, and a real change signs out their sessions (NotesCore tests it).
+    func testChangePasswordRefusesAWrongCurrentOne() throws {
+        try signIn()
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
+        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        account.firstMatch.tap()
+        let change = app.buttons["Change Password"]
+        XCTAssertTrue(change.waitForExistence(timeout: 5))
+        change.tap()
+
+        let current = app.secureTextFields["Current password"]
+        XCTAssertTrue(current.waitForExistence(timeout: 5), app.debugDescription)
+        current.tap()
+        current.typeText("not it")
+        app.secureTextFields["New password"].tap()
+        app.secureTextFields["New password"].typeText("a brand new one")
+        app.secureTextFields["Confirm new password"].tap()
+        app.secureTextFields["Confirm new password"].typeText("a brand new one")
+        app.buttons["Change"].tap()
+        XCTAssertTrue(app.staticTexts["That isn’t your current password."].waitForExistence(timeout: 10))
+        // Still signed in: the refusal isn't a lost session.
+        app.buttons["Cancel"].tap()
+        XCTAssertTrue(app.staticTexts["Signed in as"].waitForExistence(timeout: 5))
+    }
+
     /// Signed out, the notes stay, so only their owner may sign in again: anyone else's first sync would take them.
     func testSignInAgainKeepsTheUsername() throws {
         try signIn()
@@ -716,6 +794,34 @@ final class FlowTests: XCTestCase {
             if !plain { try await Task.sleep(for: .seconds(1)) }
         }
         XCTAssertTrue(plain, "the unlocked note reached the server as text")
+    }
+
+    /// Security's forms open in sheets: changing the lock password, and resetting it.
+    func testLockPasswordSheetsOpenFromSecurity() throws {
+        try signIn()
+        writeNewNote("Secret plans\nMeet at noon")
+        tap(app.buttons["More"], until: app.buttons["Lock note"])
+        app.buttons["Lock note"].tap()
+        try enterLockPassword()
+        XCTAssertTrue(app.buttons["Lock now"].waitForExistence(timeout: 15))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let security = app.buttons["Security"]
+        XCTAssertTrue(security.waitForExistence(timeout: 5))
+        security.tap()
+
+        let change = app.buttons["Change lock password"]
+        XCTAssertTrue(change.waitForExistence(timeout: 5))
+        change.tap()
+        XCTAssertTrue(app.secureTextFields["Current lock password"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["Cancel"].tap()
+
+        let forgot = app.buttons["Forgot the lock password?"]
+        XCTAssertTrue(forgot.waitForExistence(timeout: 5))
+        forgot.tap()
+        XCTAssertTrue(app.secureTextFields["Account password"].waitForExistence(timeout: 5), app.debugDescription)
+        app.buttons["Cancel"].tap()
     }
 
     /// Screenshots of every main screen, for looking at by hand. Only with

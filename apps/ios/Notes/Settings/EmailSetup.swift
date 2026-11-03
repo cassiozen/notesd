@@ -16,11 +16,14 @@ final class EmailSetup {
         self.api = api
     }
 
-    /// Re-reads them; they can change from another device. Failures keep what was known.
-    func refresh() async {
-        guard let client = api() else { return }
+    /// Re-reads them; they can change from another device. Failures keep what was known; false says one happened.
+    @discardableResult
+    func refresh() async -> Bool {
+        guard let client = api() else { return false }
         let asked = generation
-        if let value = await client.emailSettings().value, asked == generation { settings = value }
+        guard let value = await client.emailSettings().value else { return false }
+        if asked == generation { settings = value }
+        return true
     }
 
     /// A nil `apiKey` keeps the saved one.
@@ -36,7 +39,8 @@ final class EmailSetup {
         guard let client = api() else { return .unauthenticated }
         let asked = generation
         let result = await client.deleteEmailSettings()
-        if case .ok = result, asked == generation { settings = EmailSettings() }
+        // Still an admin's: only they can remove them.
+        if case .ok = result, asked == generation { settings = EmailSettings(editable: true) }
         return result
     }
 
