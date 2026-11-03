@@ -1,30 +1,21 @@
 ---
-title: Web app
-description: Use notesd in a browser, keep your notes offline, and install it as an app.
+title: Desktop web app
+description: Install notesd on your computer as an app that keeps your notes and works offline.
 ---
 
-# Web app
+# Desktop web app
 
-The web app is built into the server: open the server's address in a browser and sign in.
-The last two versions of Chrome, Firefox and Safari are supported.
-There's nothing else to install.
+The notesd web app can be installed on your computer as an app. Installed, it opens in its own window from
+your dock or taskbar, keeps a full copy of your notes on the computer, and works offline, just like
+the phone apps: writing, search and tags work with no connection, and it syncs with your server
+whenever it can.
 
-By default it works directly on the server, so it needs a connection. Check **Keep my notes on this
-device** when you sign in (or later in **Settings → Sync & data**) and the browser keeps a full
-copy, so it opens, edits and searches your notes offline too. See
-[Offline and sync](../using/offline-and-sync.md#the-web-app).
-
-The web app also has a few things the phone apps don't: [passkeys](../using/locked-notes.md) for
-locked notes, the list of signed-in devices and changing your account password in
-**Settings → Security** and **Server**, and creating and editing code blocks.
+<img width="1000" height="592" alt="notesd installed as a desktop app" src="https://github.com/user-attachments/assets/d41a54a7-d7a5-483b-9f1c-73f3a973ff71" />
 
 ## Install it
 
-Installed, notesd opens in its own window from your dock or taskbar, and keeps your notes on the
-computer so it works without a connection.
-
-It needs notesd served over HTTPS (or from `localhost`), as set up in
-[Get started](../../get-started/03-set-up-https.md). On a plain-HTTP LAN address like
+Open your server's address in a browser and sign in. Installing needs notesd served over HTTPS (or
+from `localhost`), as set up in [Get started](../../get-started/03-set-up-https.md). On a plain-HTTP LAN address like
 `http://192.168.1.20:8080`, Chrome won't show its install offer, and no browser keeps notes on the
 computer.
 
@@ -34,6 +25,8 @@ In notesd, go to Settings → Sync & data and click **Install notesd**. Or
 click the install icon at the right of the address bar.
 
 <img width="471" height="163" alt="Install on Chrome" src="https://github.com/user-attachments/assets/fc8ba906-b7ec-4062-8aa9-d6ae1bd56def" />
+
+Firefox can't install it; use notesd in a tab there.
 
 ### Safari
 

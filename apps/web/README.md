@@ -5,7 +5,7 @@ TypeScript, Vite 8 and Tiptap 3. It builds into the server's
 `internal/web/dist` and is embedded in the Go binary, so a deployment is just
 that one binary; there is no separate frontend process. For using the web
 app, see the [README](../../README.md) and
-[installing the web app](../../docs/guides/apps/web.md).
+[installing the web app](../../docs/guides/apps/desktop-web-app.md).
 
 ## Dev loop
 

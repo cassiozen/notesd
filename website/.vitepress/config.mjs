@@ -107,7 +107,7 @@ export default defineConfig({
       {
         text: "Apps",
         items: [
-          { text: "Web app", link: "/guides/apps/web" },
+          { text: "Desktop web app", link: "/guides/apps/desktop-web-app" },
           { text: "Android", link: "/guides/apps/android" },
           { text: "iPhone", link: "/guides/apps/iphone" },
         ],

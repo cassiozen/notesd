@@ -47,7 +47,7 @@ By default the web app works directly on the server, and needs a connection.
 Choose **Keep my notes on this device** when you sign in, or later in **Settings → Sync & data**,
 and the browser keeps a full copy too. Then the web app works offline like the phones: it syncs
 when it starts, 2 seconds after an edit, when the tab or the network comes back, and every minute
-while a tab is open. It's on by default in the [installed web app](../apps/web.md).
+while a tab is open. It's on by default in the [installed web app](../apps/desktop-web-app.md).
 
 - It needs notesd served over HTTPS (or from `localhost`), and isn't offered in private windows.
 - Anyone using that browser profile can read the notes it keeps, except locked notes. Only turn

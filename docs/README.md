@@ -12,7 +12,7 @@ account, put HTTPS in front, write a note and sync your phone, in about fifteen 
 
 - **Run notesd:** [with Docker](guides/self-hosting/docker.md) or [as a binary with systemd](guides/self-hosting/binary-systemd.md)
 - **Reach it from my devices:** [Network access and HTTPS](guides/self-hosting/https.md)
-- **Install an app:** [web](guides/apps/web.md), [Android](guides/apps/android.md), [iPhone](guides/apps/iphone.md)
+- **Install an app:** [desktop web app](guides/apps/desktop-web-app.md), [Android](guides/apps/android.md), [iPhone](guides/apps/iphone.md)
 - **Keep a note private, even from the server:** [Locked notes](guides/using/locked-notes.md)
 - **Back up, or restore:** [Backups](guides/self-hosting/backups.md)
 - **Add someone, or reset a password:** [Accounts](guides/self-hosting/users.md)
@@ -42,7 +42,7 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 
 ## Apps
 
-- [Web app](guides/apps/web.md): keeping notes offline, installing it
+- [Desktop web app](guides/apps/desktop-web-app.md): install the Web App as a that works fully offline
 - [Android](guides/apps/android.md): installing, connecting
 - [iPhone](guides/apps/iphone.md): building, installing, connecting
 
