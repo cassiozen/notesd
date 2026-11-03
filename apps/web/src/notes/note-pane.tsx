@@ -1,7 +1,9 @@
 import type { Editor } from '@tiptap/core'
-import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
 import { ChecklistTool, ImageTool, IndentTools, LinkForm, LinkTool, MarkTools, NoteContent, TextStyles, Tool, replaceNote, useNoteEditor } from '../editor/editor'
+import { FindBar, findShortcut, seedFrom, type FindRequest } from '../editor/find-bar'
+import { step } from '../editor/find'
 import { noteFields, noteSummary, titleOf } from '../editor/note-doc'
 import { ImageError } from '../images/prepare'
 import { imageMarkdown } from '../images/ref'
@@ -151,7 +153,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   }, [saver, release])
 
   return (
-    <section className={styles.pane} aria-label="Note">
+    <section className={styles.pane} aria-label="Note" data-note-pane="">
       {saver ? (
         <NoteEditor
           saver={saver}
@@ -270,6 +272,9 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const [initial] = useState(() => saver.fields())
   const [linkOpen, setLinkOpen] = useState(false)
   const [stylesOpen, setStylesOpen] = useState(false)
+  const [find, setFind] = useState<{ request: FindRequest; replace: boolean } | null>(null)
+  // Phones have no find bar: widening the window again mustn't bring it back and take focus.
+  if (mobile && find) setFind(null)
   const touchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const stylesId = useId()
   const popover = useRef<HTMLDivElement>(null)
@@ -397,6 +402,43 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
     }
   }, [stylesOpen, stylesId, editor])
 
+  // replace: undefined keeps the bar as it is (⌘F with replace showing doesn't hide it).
+  const openFind = useCallback(
+    (replace?: boolean) => {
+      const seed = seedFrom(editor)
+      // A new request object each time, even with the bar up: it refocuses the field.
+      setFind((prev) => ({
+        request: { seed, field: replace ? 'replace' : 'find' },
+        replace: replace ?? prev?.replace ?? false,
+      }))
+    },
+    [editor],
+  )
+
+  // While the note has focus, or nothing does: anywhere else (the list, a dialog) keeps the browser's own find.
+  const findOpen = find !== null
+  useEffect(() => {
+    if (mobile) return
+    const onKey = (e: KeyboardEvent) => {
+      const command = findShortcut(e)
+      if (!command) return
+      const target = e.target as Element
+      // The note's dialogs open inside the pane.
+      if (target.closest?.('dialog')) return
+      if (target !== document.body && !target.closest?.('[data-note-pane]')) return
+      if (command === 'next' || command === 'prev') {
+        if (!findOpen) return
+        e.preventDefault()
+        step(editor, command === 'next' ? 1 : -1)
+        return
+      }
+      e.preventDefault()
+      openFind(command === 'replace' || undefined)
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [mobile, editor, findOpen, openFind])
+
   const toggleLink = () => {
     setStylesOpen(false)
     setLinkOpen((v) => !v)
@@ -446,7 +488,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
         {mobile ? (
           <NoteMenu saver={saver} mobile onMove={onMove} />
         ) : (
-          <NoteMenu saver={saver} mobile={false} onDelete={onDelete} onMove={onMove} />
+          <NoteMenu saver={saver} mobile={false} onDelete={onDelete} onMove={onMove} onFind={(replace) => openFind(replace)} />
         )}
         {mobile && <DeleteButton onClick={onDelete} />}
       </div>
@@ -550,7 +592,17 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
         </Notice>
       )}
 
-      <div className={styles.scroller}>
+      {find && !mobile && (
+        <FindBar
+          editor={editor}
+          request={find.request}
+          replace={find.replace}
+          onReplaceChange={(replace) => setFind((prev) => prev && { ...prev, replace })}
+          onClose={() => setFind(null)}
+        />
+      )}
+
+      <div className={styles.scroller} data-note-scroller="">
         <div className={styles.page}>
           <NoteContent editor={editor} />
         </div>

@@ -491,6 +491,20 @@
   -webkit-box-decoration-break: clone;
 }
 
+/* Find matches: a neutral wash, so they don't read as tags; the current one in the accent. */
+.prose [data-find] {
+  border-radius: 3px;
+  background: var(--hair-strong);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+}
+
+.prose [data-find='current'] {
+  background: var(--accent);
+  color: var(--on-accent);
+  box-shadow: 0 0 0 1.5px var(--accent-deep);
+}
+
 /* Suggestions while typing a tag; mounted on <body> by the suggestion plugin. */
 :global([data-tag-suggestions]) {
   position: absolute;

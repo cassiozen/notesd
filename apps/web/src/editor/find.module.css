@@ -1,0 +1,164 @@
+/* Floats under the note's bar, at the right where the More menu opened it. */
+.bar {
+  position: absolute;
+  z-index: 6;
+  top: 50px;
+  right: 14px;
+  width: min(400px, calc(100% - 28px));
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: var(--glass-hi);
+  backdrop-filter: blur(24px) saturate(1.4);
+  border: 1px solid var(--edge);
+  box-shadow:
+    var(--inset),
+    0 24px 50px -16px rgb(0 0 0 / 0.3);
+  animation: drop-in 0.3s var(--spring);
+}
+
+@keyframes drop-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Lines the replace field up under the find field. */
+.replaceRow {
+  gap: 6px;
+  padding-left: 30px;
+  animation: fade-in 0.15s;
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.field {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.input {
+  width: 100%;
+  height: 32px;
+  border-radius: 10px;
+  border: 1px solid var(--hair);
+  background: var(--field);
+  color: var(--ink);
+  /* Room on the right for the count. */
+  padding: 0 84px 0 10px;
+  font: 13.5px var(--font-sans);
+}
+
+.replaceRow .input {
+  padding-right: 10px;
+}
+
+.input::placeholder {
+  color: var(--ink-3);
+}
+
+.input:focus-visible {
+  outline: none;
+  border-color: var(--accent-deep);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.count {
+  position: absolute;
+  right: 10px;
+  font: 12px var(--font-sans);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-3);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.none {
+  color: var(--danger);
+}
+
+.icon {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-2);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.icon:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.toggle {
+  margin-right: 2px;
+}
+
+.toggle svg {
+  transition: transform 0.2s var(--ease-out);
+}
+
+.toggle[aria-expanded='true'] svg {
+  transform: rotate(90deg);
+}
+
+.up,
+.down {
+  display: inline-flex;
+}
+
+.up {
+  transform: rotate(-90deg);
+}
+
+.down {
+  transform: rotate(90deg);
+}
+
+.action {
+  flex: none;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--hover);
+  color: var(--ink);
+  font: 500 13px var(--font-sans);
+  cursor: pointer;
+}
+
+.action:hover:not(:disabled) {
+  background: var(--on);
+}
+
+.action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}

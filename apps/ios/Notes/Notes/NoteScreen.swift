@@ -106,7 +106,7 @@ struct NoteScreen: View {
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
-            if !model.needsUnlock && !model.unreadable && model.document != nil {
+            if showsText {
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     Button("Undo", systemImage: "arrow.uturn.backward") { controller.undo() }
                         .disabled(!controller.canUndo)
@@ -117,6 +117,14 @@ struct NoteScreen: View {
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
+                    if showsText {
+                        Section {
+                            Button("Find", systemImage: "magnifyingglass") { controller.find(replacing: false) }
+                            Button("Find and Replace", systemImage: "arrow.left.arrow.right") {
+                                controller.find(replacing: true)
+                            }
+                        }
+                    }
                     if !model.needsUnlock, let doc = controller.document() {
                         ShareLink(item: share(doc)) { Label("Share", systemImage: "square.and.arrow.up") }
                     }
@@ -212,6 +220,9 @@ struct NoteScreen: View {
         .padding(.horizontal, 16)
         .padding(.top, 8)
     }
+
+    /// The editor is showing the note's text, not the locked placeholder or nothing yet.
+    private var showsText: Bool { !model.needsUnlock && !model.unreadable && model.document != nil }
 
     /// The server sends email, so it needs a connection and settings, and it refuses locked notes.
     private var canEmail: Bool {

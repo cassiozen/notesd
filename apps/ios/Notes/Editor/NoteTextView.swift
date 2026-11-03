@@ -53,6 +53,11 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
     /// Marks toggled with a collapsed selection, applied to what's typed next.
     private var pending: (location: Int, on: Set<Mark>, off: Set<Mark>)?
     private lazy var taskTaps = TaskTaps(view: self)
+    /// The find session holds it weakly.
+    private(set) lazy var findTarget = FindTarget(view: self)
+    private var editingBeforeFind = false
+    private var resignedAt: CFTimeInterval = 0
+    private var replacingFound = false
 
     init() {
         super.init(frame: .zero, textContainer: nil)
@@ -68,6 +73,7 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
         smartQuotesType = .no
         alwaysBounceVertical = true
         keyboardDismissMode = .interactive
+        isFindInteractionEnabled = true
         // The editor sizes its own fonts from the text size, and restyles when it changes.
         registerForTraitChanges([UITraitPreferredContentSizeCategory.self]) { (view: NoteTextView, _) in
             view.style = EditorStyle(traits: view.traitCollection)
@@ -141,6 +147,7 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
         pending = nil
         updateTypingAttributes()
         publishState()
+        findResultsChanged()
     }
 
     /// The text without the final "\n": the cursor never goes past it.
@@ -214,6 +221,7 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
         pendingEdit = nil
         if sel != selectedRange { selectedRange = clamp(sel) }
         updateTypingAttributes()
+        findResultsChanged()
     }
 
     /// `.notesTag` where the shared extractor finds tags; unchanged ones stay put.
@@ -549,7 +557,16 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
     // MARK: keys, menus, pasteboard
 
     override var keyCommands: [UIKeyCommand]? {
-        [
+        // On iPad and Mac the main menu's Find commands have these keys; an iPhone has no main menu.
+        let find =
+            traitCollection.userInterfaceIdiom == .phone
+            ? [
+                UIKeyCommand(title: "Find", action: #selector(findKey), input: "f", modifierFlags: .command),
+                UIKeyCommand(
+                    title: "Find and Replace", action: #selector(findAndReplaceKey), input: "f",
+                    modifierFlags: [.command, .alternate]),
+            ] : []
+        return find + [
             UIKeyCommand(title: "Bold", action: #selector(boldKey), input: "b", modifierFlags: .command),
             UIKeyCommand(title: "Italic", action: #selector(italicKey), input: "i", modifierFlags: .command),
             UIKeyCommand(
@@ -566,6 +583,8 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
     @objc private func indentKey() { indent() }
     @objc private func outdentKey() { outdent() }
     @objc private func hardBreakKey() { insertHardBreak() }
+    @objc private func findKey() { showFind(replacing: false) }
+    @objc private func findAndReplaceKey() { showFind(replacing: true) }
 
     /// Pasted text is text: Markdown or rich text from the clipboard isn't parsed into formatting.
     override func paste(_ sender: Any?) {
@@ -632,6 +651,84 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
                 },
             ])
         return UIMenu(children: suggestedActions + [format])
+    }
+
+    // MARK: find and replace
+
+    // The built-in session would replace through UITextView's own path, around the normaliser and the
+    // editor's undo: this one searches and replaces through `FindTarget`, and keeps the platform's bar and keys.
+    override func findInteraction(_ interaction: UIFindInteraction, sessionFor view: UIView) -> UIFindSession? {
+        UITextSearchingFindSession(searchableObject: findTarget)
+    }
+
+    override func resignFirstResponder() -> Bool {
+        let resigned = super.resignFirstResponder()
+        if resigned { resignedAt = CACurrentMediaTime() }
+        return resigned
+    }
+
+    // The bar's field takes the keyboard just before a find begins: whether this view had it then
+    // says whether Done goes back to typing. Done itself leaves the keyboard down.
+    override func findInteraction(_ interaction: UIFindInteraction, didBegin session: UIFindSession) {
+        super.findInteraction(interaction, didBegin: session)
+        editingBeforeFind = isFirstResponder || CACurrentMediaTime() - resignedAt < 0.5
+    }
+
+    override func findInteraction(_ interaction: UIFindInteraction, didEnd session: UIFindSession) {
+        super.findInteraction(interaction, didEnd: session)
+        guard editingBeforeFind else { return }
+        editingBeforeFind = false
+        // Once the bar's field has let go of the keyboard.
+        DispatchQueue.main.async { self.becomeFirstResponder() }
+    }
+
+    /// The find bar's results are for the text before an undo, a sync or typing: it searches again.
+    /// Not for its own replacing, after which it searches again itself.
+    private func findResultsChanged() {
+        guard !replacingFound, let find = findInteraction, find.isFindNavigatorVisible,
+            let session = find.activeFindSession, let query = find.searchText, !query.isEmpty
+        else { return }
+        session.invalidateFoundResults()
+        session.performSearch(query: query, options: findTarget.lastOptions)
+    }
+
+    /// Opens the find bar, searching for the selection if it's on one line.
+    func showFind(replacing: Bool) {
+        guard let find = findInteraction else { return }
+        if selectedRange.length > 0 {
+            let selected = (textStorage.string as NSString).substring(with: selectedRange)
+            if !selected.contains(where: { $0.isNewline || $0 == Character(attachmentChar) }) {
+                find.searchText = selected
+            }
+        }
+        find.presentFindNavigator(showingReplace: replacing && isEditable)
+    }
+
+    /// Replaces each range, keeping the block and marks of its first character (a bold word stays bold).
+    /// One command: normalised, saved, and undone in one step however many it replaces.
+    func replaceFound(_ ranges: [NSRange], with replacement: String) {
+        let ranges = ranges.filter { $0.length > 0 && NSMaxRange($0) <= limit }
+        guard isEditable, !ranges.isEmpty else { return }
+        let length = (replacement as NSString).length
+        let kept: Set<NSAttributedString.Key> = [.notesBlock, .notesBold, .notesItalic, .notesStrike, .notesLink]
+        replacingFound = true
+        defer { replacingFound = false }
+        commandSelecting { text in
+            var selection = self.selectedRange
+            // Last first: the ranges before stay where they were.
+            for range in ranges.sorted(by: { $0.location > $1.location }) {
+                let attributes = text.attributes(at: range.location, effectiveRange: nil).filter {
+                    kept.contains($0.key)
+                }
+                text.replaceCharacters(in: range, with: NSAttributedString(string: replacement, attributes: attributes))
+                if selection.location >= NSMaxRange(range) {
+                    selection.location += length - range.length
+                } else if NSMaxRange(selection) > range.location {
+                    selection = NSRange(location: range.location + length, length: 0)
+                }
+            }
+            return selection
+        }
     }
 
     // MARK: taps

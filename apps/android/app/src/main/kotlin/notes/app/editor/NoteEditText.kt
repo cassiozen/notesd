@@ -11,6 +11,7 @@ import android.os.SystemClock
 import android.text.Editable
 import android.text.InputFilter
 import android.text.InputType
+import android.text.Layout
 import android.text.Selection
 import android.text.SpannableString
 import android.text.Spanned
@@ -160,47 +161,55 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     fun document(): Document = SpanCodec.toDocument(text!!)
 
     private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.tagBg }
-    private val tagMetrics = TextPaint()
-    private val tagRect = RectF()
+    private val findPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.findBg }
+    private val findCurrentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.findCurrentBg }
+    private val pillMetrics = TextPaint()
+    private val pillRect = RectF()
 
     override fun onDraw(canvas: Canvas) {
-        drawTagPills(canvas)
+        drawPills(canvas)
         super.onDraw(canvas)
     }
 
-    /** The web's tag pill: as tall as the letters, not the line, one per line a tag wraps across. */
-    private fun drawTagPills(canvas: Canvas) {
+    /** Tag and find pills, under the text. */
+    private fun drawPills(canvas: Canvas) {
         val t = text ?: return
         val layout = layout ?: return
         val tags = t.getSpans(0, t.length, TagSpan::class.java)
-        if (tags.isEmpty()) return
+        val found = t.getSpans(0, t.length, FindSpan::class.java)
+        if (tags.isEmpty() && found.isEmpty()) return
         canvas.withTranslation(totalPaddingLeft.toFloat(), totalPaddingTop.toFloat()) {
-            for (tag in tags) {
-                val start = t.getSpanStart(tag)
-                val end = t.getSpanEnd(tag)
-                if (start < 0 || end <= start) continue
-                // Headings scale their tags: measure with the spans that size this text.
-                tagMetrics.set(paint)
-                for (s in t.getSpans(start, end, MetricAffectingSpan::class.java)) s.updateMeasureState(tagMetrics)
-                val fm = tagMetrics.fontMetrics
-                for (line in layout.getLineForOffset(start)..layout.getLineForOffset(end)) {
-                    val from = maxOf(start, layout.getLineStart(line))
-                    val to = minOf(end, layout.getLineEnd(line))
-                    if (to <= from) continue
-                    val left = layout.getPrimaryHorizontal(from)
-                    // To the line's end means it wraps there, where that offset would measure at the next line's start.
-                    val wraps = to == layout.getLineEnd(line) && line < layout.lineCount - 1
-                    val right = if (wraps) layout.getLineRight(line) else layout.getPrimaryHorizontal(to)
-                    val baseline = layout.getLineBaseline(line).toFloat()
-                    tagRect.set(
-                        left - editorStyle.tagPadX,
-                        baseline + fm.ascent,
-                        right + editorStyle.tagPadX,
-                        baseline + fm.descent
-                    )
-                    canvas.drawRoundRect(tagRect, editorStyle.tagRadius, editorStyle.tagRadius, tagPaint)
-                }
+            for (tag in tags) drawPill(this, layout, t, t.getSpanStart(tag), t.getSpanEnd(tag), tagPaint)
+            for (f in found) {
+                val pill = if (f.current) findCurrentPaint else findPaint
+                drawPill(this, layout, t, t.getSpanStart(f), t.getSpanEnd(f), pill)
             }
+        }
+    }
+
+    /** The web's tag pill: as tall as the letters, not the line, one per line the range wraps across. */
+    private fun drawPill(canvas: Canvas, layout: Layout, t: Spanned, start: Int, end: Int, pill: Paint) {
+        if (start < 0 || end <= start) return
+        // Headings scale their text: measure with the spans that size it.
+        pillMetrics.set(paint)
+        for (s in t.getSpans(start, end, MetricAffectingSpan::class.java)) s.updateMeasureState(pillMetrics)
+        val fm = pillMetrics.fontMetrics
+        for (line in layout.getLineForOffset(start)..layout.getLineForOffset(end)) {
+            val from = maxOf(start, layout.getLineStart(line))
+            val to = minOf(end, layout.getLineEnd(line))
+            if (to <= from) continue
+            val left = layout.getPrimaryHorizontal(from)
+            // To the line's end means it wraps there, where that offset would measure at the next line's start.
+            val wraps = to == layout.getLineEnd(line) && line < layout.lineCount - 1
+            val right = if (wraps) layout.getLineRight(line) else layout.getPrimaryHorizontal(to)
+            val baseline = layout.getLineBaseline(line).toFloat()
+            pillRect.set(
+                left - editorStyle.tagPadX,
+                baseline + fm.ascent,
+                right + editorStyle.tagPadX,
+                baseline + fm.descent
+            )
+            canvas.drawRoundRect(pillRect, editorStyle.tagRadius, editorStyle.tagRadius, pill)
         }
     }
 
@@ -220,6 +229,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         if (keepSelection) setSelection(selStart.coerceIn(0, len), selEnd.coerceIn(0, len))
         if (!keepSelection) undoStack.clear()
         clearPending()
+        refreshFind()
         publishState()
     }
 
@@ -392,6 +402,11 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         } finally {
             guard--
         }
+        changed()
+    }
+
+    private fun changed() {
+        refreshFind()
         onChange?.invoke()
         publishState()
     }
@@ -415,8 +430,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         }
         clearPending()
         context.getSystemService(InputMethodManager::class.java)?.restartInput(this)
-        onChange?.invoke()
-        publishState()
+        changed()
     }
 
     private fun normalizeHref(href: String): String? {
@@ -425,6 +439,134 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         if (Regex("^(https?:|mailto:)", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)) return trimmed
         if (Regex("^[a-z][a-z0-9+.-]*:", RegexOption.IGNORE_CASE).containsMatchIn(trimmed)) return null
         return if ('@' in trimmed && '/' !in trimmed) "mailto:$trimmed" else "https://$trimmed"
+    }
+
+    // --- find ----------------------------------------------------------------
+
+    /** The find bar's query; null while not finding. */
+    private var findQuery: String? = null
+
+    /** Where the current match is looked for from: the cursor when finding started, then the last match moved to. */
+    private var findFrom = 0
+    private var matches = emptyList<FindMatch>()
+    private var current = -1
+
+    var onFindState: ((FindState) -> Unit)? = null
+
+    /** Ctrl+F on a hardware keyboard. */
+    var onFindRequest: (() -> Unit)? = null
+
+    val finding: Boolean get() = findQuery != null
+
+    /** The selection, when it's text on one line: what to find. */
+    fun selectedLine(): String? {
+        val t = text ?: return null
+        val s = minOf(selectionStart, selectionEnd)
+        val e = maxOf(selectionStart, selectionEnd)
+        if (s < 0 || s == e) return null
+        return t.substring(s, e).takeIf { it.isNotBlank() && '\n' !in it }
+    }
+
+    /** Highlights [query]'s matches; the current one is the first at or after where finding started. */
+    fun find(query: String) {
+        if (findQuery == null) findFrom = minOf(selectionStart, selectionEnd).coerceAtLeast(0)
+        findQuery = query
+        // Looked for from findFrom, not from where the last query's match was.
+        clearFindSpans()
+        refreshFind()
+        revealMatch()
+    }
+
+    fun findNext() = step(1)
+
+    fun findPrevious() = step(-1)
+
+    private fun step(by: Int) {
+        if (matches.isEmpty()) return
+        current = Math.floorMod(current + by, matches.size)
+        findFrom = matches[current].start
+        paintFind()
+        publishFind()
+        revealMatch()
+    }
+
+    /** Replaces the current match with [with], keeping its formatting, and moves to the next. */
+    fun replace(with: String) {
+        val t = text ?: return
+        val m = matches.getOrNull(current) ?: return
+        if (Find.readOnly(t, m)) return findNext()
+        clearFindSpans()
+        findFrom = m.start + with.length
+        command { replaceMatch(it, m, with) }
+        revealMatch()
+    }
+
+    /** Replaces every match that can be edited, as one undo step. Returns how many. */
+    fun replaceAll(with: String): Int {
+        val t = text ?: return 0
+        val editable = matches.filterNot { Find.readOnly(t, it) }
+        if (editable.isEmpty()) return 0
+        // From the end, so the offsets of the matches still to go don't move.
+        command { e -> editable.asReversed().forEach { replaceMatch(e, it, with) } }
+        publishFind(replaced = editable.size)
+        return editable.size
+    }
+
+    /** Stops finding: the highlights go and the current match is selected. */
+    fun endFind() {
+        if (findQuery == null) return
+        val m = matches.getOrNull(current)
+        findQuery = null
+        matches = emptyList()
+        current = -1
+        clearFindSpans()
+        if (m != null) setSelection(m.start, m.end)
+    }
+
+    /** The current match's range, for scrolling to it. */
+    internal fun currentMatch(): FindMatch? = matches.getOrNull(current)
+
+    /** Replaced text takes the formatting of the first character it replaces, as typing over a selection does. */
+    private fun replaceMatch(text: Editable, m: FindMatch, with: String) {
+        val marks = text.getSpans(m.start, m.start + 1, EditorSpan::class.java)
+            .filter { text.getSpanStart(it) <= m.start && text.getSpanEnd(it) > m.start }
+            .mapNotNull(SpanCodec::markOf)
+        text.replace(m.start, m.end, with)
+        val end = m.start + with.length
+        if (end == m.start) return
+        for (mark in listOf(Mark.Bold, Mark.Italic, Mark.Strike, Mark.Link("", null))) {
+            Marks.remove(text, mark, m.start, end, editorStyle)
+        }
+        for (mark in marks) Marks.add(text, mark, m.start, end, editorStyle)
+    }
+
+    /** Matches again after the text changed; the current match stays the one it was, or the next. */
+    private fun refreshFind() {
+        val query = findQuery ?: return
+        val t = text ?: return
+        val anchor = t.getSpans(0, t.length, FindSpan::class.java).firstOrNull { it.current }
+            ?.let(t::getSpanStart)?.takeIf { it >= 0 } ?: findFrom
+        matches = Find.matches(t, query)
+        current = matches.indexOfFirst { it.start >= anchor }.let { if (it < 0 && matches.isNotEmpty()) 0 else it }
+        paintFind()
+        publishFind()
+    }
+
+    private fun paintFind() {
+        val t = text ?: return
+        clearFindSpans()
+        matches.forEachIndexed { i, m ->
+            t.setSpan(FindSpan(i == current, editorStyle.onAccent), m.start, m.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+        }
+    }
+
+    private fun clearFindSpans() {
+        val t = text ?: return
+        for (span in t.getSpans(0, t.length, FindSpan::class.java)) t.removeSpan(span)
+    }
+
+    private fun publishFind(replaced: Int? = null) {
+        onFindState?.invoke(FindState(matches.size, current, replaced))
     }
 
     // --- state ---------------------------------------------------------------
@@ -521,8 +663,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
                 guard--
                 editing = false
             }
-            onChange?.invoke()
-            publishState()
+            changed()
         }
     }
 
@@ -625,8 +766,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         } finally {
             guard--
         }
-        onChange?.invoke()
-        publishState()
+        changed()
     }
 
     // --- keys, menus, IME ------------------------------------------------------
@@ -656,6 +796,8 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
                 KeyEvent.KEYCODE_Z -> if (event.isShiftPressed) redo() else undo()
 
                 KeyEvent.KEYCODE_Y -> redo()
+
+                KeyEvent.KEYCODE_F -> onFindRequest?.invoke() ?: return super.onKeyShortcut(keyCode, event)
 
                 KeyEvent.KEYCODE_X -> if (event.isShiftPressed) {
                     toggleStrike()

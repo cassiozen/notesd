@@ -7,6 +7,7 @@ import type { Fields } from '../notes/saver'
 import { ImageView } from '../images/view'
 import { ChecklistIcon, ImageIcon, IndentIcon, LinkIcon, OutdentIcon } from '../ui/icons'
 import { editorExtensions, isAllowedLink } from './extensions'
+import { Find } from './find'
 import { noteContent, pastedSlice } from './note-doc'
 import { Tags } from './tags'
 import styles from './editor.module.css'
@@ -46,7 +47,7 @@ export function useNoteEditor(options: Options): Editor {
   })
 
   const editor = useEditor({
-    extensions: [...editorExtensions.map((e) => (e.name === 'image' ? ImageView : e)), Tags],
+    extensions: [...editorExtensions.map((e) => (e.name === 'image' ? ImageView : e)), Tags, Find],
     content: noteContent(initial),
     // Toolbars subscribe to what they need (useEditorState).
     shouldRerenderOnTransaction: false,
