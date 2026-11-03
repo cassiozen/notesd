@@ -1,0 +1,19 @@
+apps/web/src/notes/shell-skeleton.tsx
+  s_d07b272ffd1f21::t_128abb0a379d94 21-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7a88121244104bbcf3b8089b285c25d0bf90b099",
+  "prompts": {},
+  "sessions": {
+    "s_d07b272ffd1f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41aa8e32-b930-499d-a3f1-a83935cab4e5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
