@@ -10,6 +10,7 @@ export type Route =
   | { name: 'settings'; section?: SettingsSection }
   | { name: 'tags' }
   | { name: 'activity' }
+  | { name: 'agent'; spaceId: string }
 
 const listeners = new Set<() => void>()
 
@@ -78,7 +79,7 @@ export function closeOver(fallback: string, { replace = false }: { replace?: boo
 }
 
 /** Phones: the tags, the list and a note stack like screens; deeper pushes, shallower pops. */
-const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null, activity: null })[route.name]
+const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null, activity: null, agent: null })[route.name]
 
 /**
  * How a user-initiated move animates (see base.css), or null for none.
@@ -95,6 +96,9 @@ export function transitionFor(from: string, to: string): 'forward' | 'back' | nu
   return db > da ? 'forward' : 'back'
 }
 
+/** Where a space's agent is set up. */
+export const agentPath = (spaceId: string) => `/spaces/${encodeURIComponent(spaceId)}/agent`
+
 export function parseRoute(pathname: string): Route {
   if (pathname === '/settings') return { name: 'settings' }
   const settings = /^\/settings\/([^/]+)$/.exec(pathname)?.[1]
@@ -104,6 +108,8 @@ export function parseRoute(pathname: string): Route {
   }
   if (pathname === '/tags') return { name: 'tags' }
   if (pathname === '/activity') return { name: 'activity' }
+  const agent = /^\/spaces\/([A-Za-z0-9_-]{1,64})\/agent$/.exec(pathname)?.[1]
+  if (agent) return { name: 'agent', spaceId: agent }
   const match = /^\/notes\/([A-Za-z0-9_-]{1,64})$/.exec(pathname)
   if (match?.[1]) return { name: 'note', id: match[1] }
   return { name: 'notes' }

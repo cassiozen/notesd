@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type KeyboardEvent as ReactKeyboardEvent } from 'react'
 import type { Space } from '../api/types'
-import { ActivityIcon, ChevronIcon, PlusIcon } from '../ui/icons'
+import { ActivityIcon, AgentIcon, ChevronIcon, PlusIcon } from '../ui/icons'
 import { SpaceIcon } from './space-icon'
 import styles from './space-menu.module.css'
 
@@ -14,6 +14,7 @@ export function SpaceMenu({
   onSwitch,
   onCreate,
   onActivity,
+  onAgent,
 }: {
   spaces: Space[]
   current: string
@@ -21,10 +22,13 @@ export function SpaceMenu({
   onCreate: () => void
   /** Activity…, for a space with an agent. */
   onActivity?: (() => void) | undefined
+  /** Agent…, once AI is set up. */
+  onAgent?: (() => void) | undefined
 }) {
   const [open, setOpen] = useState(false)
   const actions = [
     { label: 'New space…', icon: <PlusIcon />, run: onCreate },
+    ...(onAgent ? [{ label: 'Agent…', icon: <AgentIcon />, run: onAgent }] : []),
     ...(onActivity ? [{ label: 'Activity…', icon: <ActivityIcon />, run: onActivity }] : []),
   ]
   const menuId = useId()

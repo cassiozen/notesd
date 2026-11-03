@@ -3,13 +3,14 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { dragRegion } from '../desktop'
 import { TouchIdOffer } from '../locks/unlock'
 import type { SyncNotice } from '../offline/protocol'
-import { closeOver, navigate, openOver, parseRoute, usePathname } from '../router'
+import { agentPath, closeOver, navigate, openOver, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
 import { NewSpaceDialog } from '../settings/spaces'
 import { Backdrop } from '../ui/backdrop'
 import { PHONE, WIDE, useMediaQuery } from '../ui/media'
 import { Toast } from '../ui/toast'
 import { ActivitySheet } from './activity'
+import { AgentSheet } from './agent-page'
 import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
@@ -65,7 +66,7 @@ function ShellView({ username }: { username: string }) {
   const [newSpace, setNewSpace] = useState(false)
 
   // Settings and the tags screen open over the app; the note behind them stays open.
-  const over = route.name === 'settings' || route.name === 'tags' || route.name === 'activity'
+  const over = route.name === 'settings' || route.name === 'tags' || route.name === 'activity' || route.name === 'agent'
   const routeNote = route.name === 'note' ? route.id : null
   const [behind, setBehind] = useState(routeNote)
   if (!over && routeNote !== behind) setBehind(routeNote)
@@ -246,6 +247,7 @@ function ShellView({ username }: { username: string }) {
       onSpace={switchSpace}
       onNewSpace={() => setNewSpace(true)}
       onActivity={() => openOver('/activity', { space })}
+      onAgent={() => openOver(agentPath(space))}
       onHide={docked?.onHide}
       hidden={docked?.hidden}
       hideRef={hideButton}
@@ -315,6 +317,14 @@ function ShellView({ username }: { username: string }) {
           section={route.section}
           onSpaceCreated={switchSpace}
           onClose={() => closeOver(listPath)}
+        />
+      )}
+
+      {route.name === 'agent' && (
+        <AgentSheet
+          key={route.spaceId}
+          spaceId={route.spaceId}
+          onClose={() => closeOver(listPath, { replace: true })}
         />
       )}
 

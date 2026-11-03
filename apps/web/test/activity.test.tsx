@@ -103,7 +103,8 @@ describe('Activity', () => {
     expect((activity as HTMLButtonElement).disabled).toBe(false)
     await user.type(within(dialog).getByLabelText('Name'), '!')
     expect((activity as HTMLButtonElement).disabled).toBe(true)
-    expect(within(dialog).getByText('Save or cancel to see Activity.')).toBeTruthy()
+    expect(within(dialog).getByText('Save or cancel first.')).toBeTruthy()
+    expect((within(dialog).getByRole('button', { name: 'Edit agent…' }) as HTMLButtonElement).disabled).toBe(true)
   })
 
   it('isn’t in the menu of a space without an agent', async () => {
@@ -113,6 +114,21 @@ describe('Activity', () => {
     await user.click(await screen.findByRole('button', { name: /^Space:/ }))
     await screen.findByRole('menuitem', { name: 'New space…' })
     expect(screen.queryByRole('menuitem', { name: 'Activity…' })).toBeNull()
+    // Nor its agent, without AI to run one.
+    expect(screen.queryByRole('menuitem', { name: 'Agent…' })).toBeNull()
+  })
+
+  it('opens the space’s agent from its menu, and goes back there from Activity', async () => {
+    const llm = await startFakeLLM()
+    const { user } = await signedIn({ seed: (s) => withDigestAgent(s, llm) })
+    await user.click(await screen.findByRole('button', { name: /^Space:/ }))
+    await user.click(await screen.findByRole('menuitem', { name: 'Agent…' }))
+    const page = await screen.findByRole('dialog', { name: 'Notes agent' })
+    await user.click(within(page).getByRole('button', { name: 'Activity…' }))
+    const activity = await screen.findByRole('dialog', { name: 'Activity' })
+    await user.click(within(activity).getByRole('button', { name: 'Done' }))
+    await screen.findByRole('dialog', { name: 'Notes agent' })
+    expect(window.location.pathname).toBe('/spaces/default/agent')
   })
 })
 

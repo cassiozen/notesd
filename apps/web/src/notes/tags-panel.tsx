@@ -3,6 +3,7 @@ import type { Space, TagCount } from '../api/types'
 import { dragRegion } from '../desktop'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { useAgentConfigs } from './agent-config'
+import { useAiSettings } from './ai-settings'
 import { loadLocal, saveLocal } from './local-storage'
 import { SpaceMenu } from './space-menu'
 import { DEFAULT_SPACE } from './spaces'
@@ -24,6 +25,8 @@ type Props = {
   onNewSpace: () => void
   /** What the space's agent did; offered only once the space has one. */
   onActivity: () => void
+  /** The space's agent, offered once AI is set up. */
+  onAgent: () => void
   /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
   onHide?: () => void
   /** Docked and hidden: kept in place, out of reach, so hiding and showing can animate. */
@@ -48,11 +51,13 @@ export function TagsPanel({
   onSpace,
   onNewSpace,
   onActivity,
+  onAgent,
   onHide,
   hidden = false,
   hideRef,
 }: Props) {
   const agents = useAgentConfigs()
+  const ai = useAiSettings()
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(loadLocal<string[]>(EXPANDED_KEY, [])))
@@ -143,6 +148,7 @@ export function TagsPanel({
               onSwitch={onSpace}
               onCreate={onNewSpace}
               onActivity={agents?.has(space) ? onActivity : undefined}
+              onAgent={ai?.configured || agents?.has(space) ? onAgent : undefined}
             />
           </h1>
           {onHide && (
