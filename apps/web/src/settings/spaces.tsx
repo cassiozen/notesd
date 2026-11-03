@@ -7,7 +7,6 @@ import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '.
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
-import { Kicker } from '../ui/kicker'
 import { Surface } from '../ui/surface'
 import styles from './settings.module.css'
 
@@ -38,9 +37,9 @@ export function SpacesCard({ onCreated }: { onCreated: (id: string) => void }) {
   }
 
   return (
-    <Surface as="section" className={styles.devices} aria-labelledby="spaces-kicker">
+    <Surface as="section" className={styles.devices} aria-label="Spaces">
       <div className={styles.devicesHead}>
-        <Kicker id="spaces-kicker">Spaces</Kicker>
+        <span className={styles.muted}>{spaces && (spaces.length === 1 ? '1 space' : `${spaces.length} spaces`)}</span>
         <Button size="sm" onClick={() => setEditing('new')} disabled={!spaces}>
           New space
         </Button>

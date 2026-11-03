@@ -100,8 +100,8 @@ export type ErrorBody = {
   minVersion?: string
 }
 
-/** The server's Resend settings for emailing notes; the key itself is never sent back. */
-export type EmailSettings = { configured: boolean; from: string; keyHint: string }
+/** The server's Resend settings for emailing notes; the key itself is never sent back. Only admins may change them. */
+export type EmailSettings = { configured: boolean; from: string; keyHint: string; editable: boolean }
 
 /** GET /update. latest, newer and requested only when the server can update itself. */
 export type UpdateStatus = {

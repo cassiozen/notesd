@@ -28,6 +28,11 @@ The list works like the system's own settings:
    on the right ("Off", "3", "System"), like the system's own settings. On a phone, each row also
    ends in a chevron.
 
+On the web, a category's page is made of lines: what a setting is, where it stands, and a button
+for what can be done ("Password · Change…"). A form opens in a dialog only once that button is
+pressed; a page never shows an empty form waiting to be filled. A card's label never repeats the
+page's title.
+
 A row inside a synced category that applies to this device only says so in its footnote ("Only on
 this iPhone", "Only on this phone"). Biometric unlock (Face ID or Touch ID, as the iPhone has it;
 fingerprint on Android) is one example.
@@ -43,7 +48,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 1 | (account row) | Server | `server` | initial | username and server; "Signed out"; "Not connected" |
 | 2 | Synced | Security | `security` | lock | "Off" (no lock password), "Locked", "Unlocked" |
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
-| 4 | Synced | Integrations | `integrations` | envelope | "Email" when set up, else "Off" |
+| 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many. The phones still say "Email" |
 | 5 | This device | Appearance | `appearance` | half-filled circle | "System", "Light", "Dark" ("Automatic" on iOS, as the system says) |
 | 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Offline"; Android, with no sync status yet, shows only "N waiting"; web shows "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |
@@ -68,7 +73,7 @@ the list is its own screen and a category opens on top of it with a back button.
 | Unlock with Face ID / Touch ID / fingerprint | Security | **device** | – | ✓ | ✓ |
 | Signed-in devices (list, sign one out) | Security | account | ✓ | – | – |
 | Spaces: list, new, edit, delete | Spaces | account | ✓ | ✓ | ✓ |
-| Email via Resend (API key, From) | Integrations | **server** | ✓ | ✓ | ✓ |
+| Email via Resend (API key, From). On the web: listed as connected or available, connected in two steps (key, then sender) | Integrations | **server** | ✓ | ✓ | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |
 | Keep my notes on this device (also offered at sign-in; on by default in the installed app; off removes them) | Sync & data | device | ✓ | – | – |
@@ -78,8 +83,9 @@ the list is its own screen and a category opens on top of it with a back button.
 
 **server** means one value for every account on the server. Everyone signed in sees it and uses
 it, but only an admin can change it: the server refuses anyone else (403 `admin_only`), and
-`GET /api/v1/settings/email` says whether this account may (`editable`). The apps don't hide the
-edit controls for other users yet; they show the server's refusal.
+`GET /api/v1/settings/email` says whether this account may (`editable`). The web shows everyone
+else the state without the controls. The phones don't hide them yet; they show the server's
+refusal.
 
 The rules for when a category or row is visible don't change from before the split:
 
