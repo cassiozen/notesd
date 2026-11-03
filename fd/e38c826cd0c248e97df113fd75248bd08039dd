@@ -6,6 +6,20 @@ apps/web/src/notes/share.module.css
 apps/ios/Notes/Editor/NoteTextView.swift
   s_5bf4b39ab0b207::t_f1da8b70a002f2 56-60,76,150,224,560-569,586-587,656-732
   s_5bf4b39ab0b207::t_b52f1d9e1897ed 733
+  s_c69ba8cfbdd3c2::t_64995c4a2b8385 688-692
+  s_c69ba8cfbdd3c2::t_3fb6bc61626e3b 76,658-660,697-702,704
+  s_c69ba8cfbdd3c2::t_a4be62b34ffa4d 57
+  s_c69ba8cfbdd3c2::t_f6c89884431ae9 58,662-663,677-678
+  s_c69ba8cfbdd3c2::t_b5fe97931e9a5f 561,563,565-569
+  s_c69ba8cfbdd3c2::t_fb25bdb04c2d35 562
+  s_c69ba8cfbdd3c2::t_1c3484628852d8 56,695-696,703,708
+  s_c69ba8cfbdd3c2::t_7abbdc9e399d20 668-669,675-676
+  s_c69ba8cfbdd3c2::t_c5f55f643d9486 59,661,664-667,670-674,681
+  s_c69ba8cfbdd3c2::t_ecbe3152a4b2ba 679-680,682
+  s_c69ba8cfbdd3c2::t_0600732613e2d9 60,150,224,685-687,693-694,714-715
+  s_c69ba8cfbdd3c2::t_0c09c4fb3bc480 560,564,586-587
+  s_c69ba8cfbdd3c2::t_aaa1c25c08bedc 656-657,705-707,709-713,716-733
+  s_c69ba8cfbdd3c2::t_1f9f507c028eec 683-684
 apps/web/src/ui/icons.tsx
   s_5bf4b39ab0b207::t_7f689081c74aba 185-192
 apps/web/src/notes/share.tsx
@@ -38,6 +52,19 @@ apps/web/src/editor/editor.tsx
   s_5bf4b39ab0b207::t_d88a32bc07e7f7 10,50
 apps/ios/NotesUITests/FlowTests.swift
   s_5bf4b39ab0b207::t_f1da8b70a002f2 341-450
+  s_c69ba8cfbdd3c2::t_04062a1ce37aed 341-342,345-346,358-362,365-366,373,382,385-387,404-407,411-413,416,419-427,429-431,434-435,437-448
+  s_c69ba8cfbdd3c2::t_2c90e9716602b1 378-379
+  s_c69ba8cfbdd3c2::t_d948fc6260c5de 343-344,347-357,363-364,367,408-410,418
+  s_c69ba8cfbdd3c2::t_62742dfcd0a5ad 392-400
+  s_c69ba8cfbdd3c2::t_8ef56c4fc30981 402
+  s_c69ba8cfbdd3c2::t_0600732613e2d9 428,432-433,436
+  s_c69ba8cfbdd3c2::t_b8b2e6f27877cd 374-375,380-381,414
+  s_c69ba8cfbdd3c2::t_8924d21e0e795c 415
+  s_c69ba8cfbdd3c2::t_0d842d0876a592 417
+  s_c69ba8cfbdd3c2::t_47281811a38759 449-450
+  s_c69ba8cfbdd3c2::t_57f132a66bdec3 383-384
+  s_c69ba8cfbdd3c2::t_93f83569ba0cc9 368-372,388-391,401,403
+  s_c69ba8cfbdd3c2::t_47e5fdcbd1b020 376-377
 apps/web/src/notes/note-pane.tsx
   s_5bf4b39ab0b207::t_368134f516f878 2,404-406,408,410-414,432,436
   s_5bf4b39ab0b207::t_d88a32bc07e7f7 5-6,156,403,415-431,433-435,437,487,591-593,596-601
@@ -53,6 +80,7 @@ apps/web/src/editor/find.module.css
   s_5bf4b39ab0b207::t_c48b8557f259ae 1-164
 apps/ios/Notes/Editor/EditorView.swift
   s_5bf4b39ab0b207::t_f1da8b70a002f2 49-50
+  s_c69ba8cfbdd3c2::t_18f1c06473cddf 49-50
 apps/web/src/editor/find-bar.tsx
   s_5bf4b39ab0b207::t_79d41b05f00843 84-91
   s_5bf4b39ab0b207::t_68153abfa3df24 122,128-132,134,137,146,187,198,210,243
@@ -67,14 +95,24 @@ apps/web/test/find.test.tsx
   s_5bf4b39ab0b207::t_0fcf26352af14d 129-130,143
 apps/ios/NotesTests/FindReplaceTests.swift
   s_5bf4b39ab0b207::t_f1da8b70a002f2 1-133
+  s_c69ba8cfbdd3c2::t_a4be62b34ffa4d 10,12,18,26,33-39,42,80,115
+  s_c69ba8cfbdd3c2::t_360786a6dc5dd3 55-57,98-101
+  s_c69ba8cfbdd3c2::t_0efeb0de1b1f2e 61
+  s_c69ba8cfbdd3c2::t_3e557995123264 1-9,11,13-17,19-25,27-32,40-41,43-54,58-60,62-79,81-97,102-114,116-133
 apps/web/test/setup.ts
   s_5bf4b39ab0b207::t_887c8da1d4b03a 87
   s_5bf4b39ab0b207::t_45cce84d1426f2 3
 apps/ios/Notes/Editor/FindTarget.swift
   s_5bf4b39ab0b207::t_f1da8b70a002f2 1-102
+  s_c69ba8cfbdd3c2::t_0be9b4378b76c0 1-10,14-15,17-22,24-49,55-102
+  s_c69ba8cfbdd3c2::t_3fb6bc61626e3b 16
+  s_c69ba8cfbdd3c2::t_64995c4a2b8385 11-13,23
+  s_c69ba8cfbdd3c2::t_8924d21e0e795c 50-54
 apps/ios/Notes/Notes/NoteScreen.swift
   s_5bf4b39ab0b207::t_f1da8b70a002f2 109,120-127,224-225
   s_5bf4b39ab0b207::t_57b77b13f1e6bf 226
+  s_c69ba8cfbdd3c2::t_4d8fe10d8d41ff 109,120-127,224-225
+  s_c69ba8cfbdd3c2::t_a556b0a39c4f6e 226
 ---
 {
   "schema_version": "authorship/3.0.0",
@@ -86,6 +124,14 @@ apps/ios/Notes/Notes/NoteScreen.swift
       "agent_id": {
         "tool": "claude",
         "id": "05fffde2-cba5-449b-b4ab-80c5301dc043",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_c69ba8cfbdd3c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4902c90c-df74-4a7f-9b1d-4f2d38918a3c",
         "model": "claude-opus-5-5"
       },
       "human_author": "Cassio Zen <cassiozen@gmail.com>"
