@@ -68,14 +68,23 @@ describe('a space’s agent', () => {
     await user.type(within(page).getByLabelText('What this space is for'), 'My notes.')
     await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
     await user.click(within(page).getByRole('button', { name: /^When you ask, from the note’s menu/ }))
+    const added = document.activeElement as HTMLTextAreaElement
+    expect([added.value, added.selectionStart, added.selectionEnd]).toEqual(['Fix spelling and obvious typos only.', 0, added.value.length])
     // Taken: it isn't offered again.
     await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
     expect(within(page).queryByRole('button', { name: /^When you ask, from the note’s menu/ })).toBeNull()
     await user.click(within(page).getByRole('button', { name: 'Close' }))
-    await user.type(within(page).getByLabelText(/^When you ask, from the note’s menu: what the agent does/), 'Fix typos only.')
+    // It starts from a suggestion, selected: typing replaces it.
+    const prompt = within(page).getByLabelText(/^When you ask, from the note’s menu: what the agent does/) as HTMLTextAreaElement
+    expect(prompt.value).toBe('Fix spelling and obvious typos only.')
+    expect((within(page).getByLabelText('Command name, as the menu shows it') as HTMLInputElement).value).toBe('Fix typos')
+    prompt.focus()
+    prompt.select()
+    await user.keyboard('Fix typos only.')
     await user.type(within(page).getByLabelText('Note title'), 'Digest{Enter}')
 
     // A menu rule needs the command's name.
+    await user.clear(within(page).getByLabelText('Command name, as the menu shows it'))
     await user.click(within(page).getByRole('button', { name: 'Save' }))
     expect(await within(page).findByText('Name the command, such as Fix typos.')).toBeTruthy()
     await user.type(within(page).getByLabelText('Command name, as the menu shows it'), 'Fix typos')

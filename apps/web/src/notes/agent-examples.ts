@@ -2,68 +2,71 @@ import type { AgentDraft } from './agent-rules'
 
 export type AgentExample = { name: string; blurb: string; draft: AgentDraft }
 
-const DIGEST = 'Find the note titled "Digest"'
+const DIGEST_TRIM = 'Take out of the Digest anything that came only from this entry.'
 
 /** Starting points, from the agents guide. */
 export const EXAMPLES: AgentExample[] = [
   {
     name: 'Journal',
-    blurb: 'Asks a question to start each entry, and keeps a Digest of what you write about.',
+    blurb: 'Asks you a question to start each entry, and keeps a Digest of what’s on your mind.',
     draft: {
       enabled: true,
       prompt:
-        'A journal. Each note is part of an ongoing line of thought. Help me start writing. Never write content for me. You maintain a note called "Digest".',
+        'My journal. These words are mine: don’t rewrite or add to what I write unless a rule says so. Keep a note titled Digest that sums up my recent entries.',
       menuLabel: '',
-      referenceNotes: [],
+      referenceNotes: ['Digest'],
       triggers: {
-        noteCreated: `${DIGEST} and read it if it exists. Then insert one short, open question to get me writing, as a ## heading, followed by an empty line.`,
-        newNoteDone: `${DIGEST}, or create it with three sections: Themes, Open questions, Intentions. Update it with what this note adds. Keep each section short; merge, don’t append.`,
-        noteDeleted: 'Remove from "Digest" anything that came only from this note.',
-        movedOut: 'Remove from "Digest" anything that came only from this note.',
+        noteCreated:
+          'Ask me one short, open question to get me writing, drawing on the Digest. Put it at the top as a heading. With no Digest yet, ask about my day.',
+        newNoteDone:
+          'Update the Digest with what this entry adds, under Themes, Open questions and Intentions. Keep each to a few short lines, merging with what’s there rather than adding to the end. Create the Digest if there isn’t one.',
+        noteDeleted: DIGEST_TRIM,
+        movedOut: DIGEST_TRIM,
       },
     },
   },
   {
     name: 'Meeting notes',
-    blurb: 'Titles and tags each meeting, and lists its action items when you ask.',
+    blurb: 'Titles each meeting with its date, tags its projects, and lists action items when you ask.',
     draft: {
       enabled: true,
-      prompt: 'Meeting notes. One note per meeting. Keep my words; only add structure.',
-      menuLabel: 'List action items',
+      prompt: 'Notes from meetings, one per meeting. Keep my wording; only add structure.',
+      menuLabel: 'Action items',
       referenceNotes: [],
       triggers: {
         newNoteDone:
-          'If the note has no title, title it with the meeting’s subject and today’s date. Add a tag for each project it mentions, reusing existing tags. Don’t change anything else.',
-        menu: 'Add an "Action items" section at the end, as a task list of what people agreed to do, with who does it. Don’t change anything else.',
+          'With no title yet, title it with the meeting’s subject and today’s date, like "Roadmap review, 3 Nov". Tag the projects it mentions, reusing the space’s tags.',
+        menu: 'Add an "Action items" checklist at the end: what people agreed to do, each with who’s doing it. Leave the rest as it is.',
       },
     },
   },
   {
     name: 'Recipes',
-    blurb: 'Turns ingredients into a checklist in metric, and tags each recipe.',
+    blurb: 'Turns ingredients into a checklist in metric, tags each recipe, and scales it when you ask.',
     draft: {
       enabled: true,
-      prompt: 'Recipes. Metric quantities.',
-      menuLabel: '',
+      prompt: 'Recipes I cook. I measure in grams and millilitres.',
+      menuLabel: 'Scale to 2 servings',
       referenceNotes: [],
       triggers: {
         newNoteDone:
-          'Rewrite the ingredients as a task list with metric quantities. Add a tag for the cuisine and one for the main ingredient. Leave the method as written.',
+          'Turn the ingredients into a checklist, converting cups and ounces to metric. Tag the recipe with its cuisine and main ingredient. Leave the method as written.',
+        menu: 'Rewrite the quantities for 2 servings, with the originals in brackets.',
       },
     },
   },
   {
-    name: 'Auto-tags',
-    blurb: 'Tags new notes from a small, stable set, and fixes typos when you ask.',
+    name: 'Tidy tags',
+    blurb: 'Tags each new note from a small, consistent set, and fixes typos when you ask.',
     draft: {
       enabled: true,
-      prompt: 'Keep notes findable with a small, stable set of tags. Prefer existing tags.',
+      prompt: 'Everyday notes. Keep them findable with a small, consistent set of tags.',
       menuLabel: 'Fix typos',
       referenceNotes: [],
       triggers: {
         newNoteDone:
-          'Add one line of 1–3 tags at the end of the note. Check for existing tags in the space first and reuse them when they fit. Don’t change anything else.',
-        menu: 'Fix spelling and obvious typos only. Don’t change wording, punctuation style or formatting.',
+          'Add 1 to 3 tags on a line at the end, reusing the space’s tags whenever one fits. Change nothing else.',
+        menu: 'Fix spelling mistakes and obvious typos only. Keep the wording, punctuation and formatting.',
       },
     },
   },

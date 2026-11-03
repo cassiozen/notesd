@@ -21,7 +21,7 @@ an agent. Open its page from the space's menu (its name, at the top of the sideb
 you make a new space. Turning it on says where your notes will be sent.
 [Locked notes](locked-notes.md) never are.
 
-A new agent can start from an example (Journal, Meeting notes, Recipes, Auto-tags), which fills in
+A new agent can start from an example (Journal, Meeting notes, Recipes, Tidy tags), which fills in
 everything below for you to change.
 
 **What this space is for** describes the space and how the agent should behave. It goes with every
@@ -31,7 +31,8 @@ rule, and on its own does nothing:
 - *Recipes. I cook mostly vegetarian. Quantities in metric.*
 
 Then add **rules**. A rule is a moment and what the agent does then; **Add rule** offers the
-moments a space doesn't have a rule for yet. Without rules, the agent does nothing.
+moments a space doesn't have a rule for yet, and starts the rule from a suggestion you can change
+or type over. Without rules, the agent does nothing.
 
 | Rule | When |
 | --- | --- |

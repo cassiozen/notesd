@@ -43,15 +43,16 @@ export const GROUPS: { key: TriggerGroup; title: string }[] = [
 
 /**
  * label: the trigger's name, as Activity shows it. rule: a rule's heading.
- * when: exactly when it happens.
+ * when: exactly when it happens. suggestion: a new rule's prompt, to change or replace.
  */
-export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; rule: string; when: string }[] = [
+export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; rule: string; when: string; suggestion: string }[] = [
   {
     key: 'noteCreated',
     group: 'writing',
     label: 'Note created',
     rule: 'When a new note is opened',
     when: 'Before you type anything. Good for a prompt or a template to start from.',
+    suggestion: 'Ask me a question to get me started, as a heading at the top.',
   },
   {
     key: 'editStarted',
@@ -59,6 +60,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Started editing',
     rule: 'When you start editing a note',
     when: 'At your first change after opening a note, or after 3 minutes without changes.',
+    suggestion: 'If the note has no date, add today’s at the top.',
   },
   {
     key: 'menu',
@@ -66,6 +68,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Run from menu',
     rule: 'When you ask, from the note’s menu',
     when: 'A command in the note’s ⋯ menu. Also a handy way to try a prompt.',
+    suggestion: 'Fix spelling and obvious typos only.',
   },
   {
     key: 'newNoteDone',
@@ -73,6 +76,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'New note done',
     rule: 'When you finish a new note',
     when: 'When you close it, or leave it for 2 minutes.',
+    suggestion: 'Give the note a short title if it has none, and add 1–3 tags at the end.',
   },
   {
     key: 'editDone',
@@ -80,6 +84,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Note edit done',
     rule: 'When you finish editing a note',
     when: 'When you close a note you changed, or leave it for 2 minutes.',
+    suggestion: 'Move finished tasks to the end of their list.',
   },
   {
     key: 'noteDeleted',
@@ -87,16 +92,28 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Note deleted',
     rule: 'When a note is deleted',
     when: 'The agent gets what the note said, and can update other notes.',
+    suggestion: 'Take out of the Digest anything that came only from this note.',
   },
-  { key: 'movedIn', group: 'moved', label: 'Note moved in', rule: 'When a note is moved here', when: 'From another space.' },
+  {
+    key: 'movedIn',
+    group: 'moved',
+    label: 'Note moved in',
+    rule: 'When a note is moved here',
+    when: 'From another space.',
+    suggestion: 'Add the space’s tags that fit, at the end.',
+  },
   {
     key: 'movedOut',
     group: 'moved',
     label: 'Note moved out',
     rule: 'When a note is moved away',
     when: 'To another space. The agent gets it as it left, and can’t change it.',
+    suggestion: 'Take out of the Digest anything that came only from this note.',
   },
 ]
+
+/** The menu rule's command name, when a suggestion fills in its prompt. */
+export const SUGGESTED_MENU_LABEL = 'Fix typos'
 
 /** A trigger's name, as Activity shows it. */
 export function triggerLabel(key: AgentTrigger): string {

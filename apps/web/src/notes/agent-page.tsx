@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import type { AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
 import { genericMessage } from '../auth/errors'
@@ -11,7 +11,17 @@ import { Surface } from '../ui/surface'
 import field from '../ui/field.module.css'
 import { saveAgentConfig, useAgentConfigs } from './agent-config'
 import { EXAMPLES } from './agent-examples'
-import { GROUPS, TRIGGERS, agentFieldError, draftOf, rulesOf, sameAgent, type AgentDraft, type AgentErrors } from './agent-rules'
+import {
+  GROUPS,
+  SUGGESTED_MENU_LABEL,
+  TRIGGERS,
+  agentFieldError,
+  draftOf,
+  rulesOf,
+  sameAgent,
+  type AgentDraft,
+  type AgentErrors,
+} from './agent-rules'
 import { providerHost, useAiSettings } from './ai-settings'
 import { spaceName, useSpaces } from './spaces'
 import styles from './agent-page.module.css'
@@ -239,7 +249,10 @@ function Rules({ draft, errors, onChange }: { draft: AgentDraft; errors: AgentEr
                     type="button"
                     className={styles.pick}
                     onClick={() => {
-                      setPrompt(t.key, '')
+                      onChange({
+                        triggers: { ...draft.triggers, [t.key]: t.suggestion },
+                        ...(t.key === 'menu' && !draft.menuLabel.trim() ? { menuLabel: SUGGESTED_MENU_LABEL } : {}),
+                      })
                       setFocusOn(t.key)
                       setPicking(false)
                     }}
@@ -283,7 +296,14 @@ function Rule(props: {
   const { trigger, prompt, menuLabel, errors, autoFocus, onPrompt, onMenuLabel, onRemove } = props
   const t = TRIGGERS.find((x) => x.key === trigger)
   const id = useId()
+  const box = useRef<HTMLTextAreaElement>(null)
   const error = errors[`triggers.${trigger}`]
+  // A rule just added starts from a suggestion: selected, so typing replaces it.
+  useEffect(() => {
+    if (!autoFocus) return
+    box.current?.focus()
+    box.current?.select()
+  }, [autoFocus])
   if (!t) return null
   return (
     <Surface as="article" className={[styles.card, styles.rule].join(' ')} aria-labelledby={`${id}-title`}>
@@ -314,8 +334,7 @@ function Rule(props: {
       </label>
       <textarea
         id={id}
-        // A rule just added: the next thing to do is to write it.
-        autoFocus={autoFocus && trigger !== 'menu'}
+        ref={box}
         className={[field.input, field.area, styles.prompt].join(' ')}
         placeholder="What should the agent do?"
         value={prompt}
