@@ -132,6 +132,16 @@ public final class ApiClient: Sendable {
         }
     }
 
+    /// The account's password; the server signs out every other session, this one stays.
+    public func changePassword(current: String, new: String) async -> ApiResult<Void> {
+        struct Body: Encodable {
+            var currentPassword, newPassword: String
+        }
+        let body = Body(currentPassword: current, newPassword: new)
+        return await authed(
+            { self.request("POST", "api/v1/auth/password", body: body, access: $0) }, decode: { _ in () })
+    }
+
     /// Ends this device's session on the server.
     public func logout() async -> ApiResult<Void> {
         await authed(

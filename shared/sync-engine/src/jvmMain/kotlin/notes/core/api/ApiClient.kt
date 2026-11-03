@@ -85,6 +85,18 @@ class ApiClient(
         )
     ) { json.decodeFromString(it) }
 
+    /** The account's password; the server signs out every other session, this one stays. */
+    suspend fun changePassword(current: String, next: String): ApiResult<Unit> = authed({
+        post(
+            "api/v1/auth/password",
+            buildJsonObject {
+                put("currentPassword", current)
+                put("newPassword", next)
+            },
+            it
+        )
+    }) { }
+
     /** Ends this device's session on the server. */
     suspend fun logout(): ApiResult<Unit> = authed({ post("api/v1/auth/logout", JsonObject(emptyMap()), it) }) { }
 

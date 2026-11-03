@@ -48,7 +48,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 1 | (account row) | Server | `server` | initial | username and server; "Signed out"; "Not connected" |
 | 2 | Synced | Security | `security` | lock | "Off" (no lock password), "Locked", "Unlocked" |
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
-| 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many. The phones still say "Email" |
+| 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many |
 | 5 | This device | Appearance | `appearance` | half-filled circle | "System", "Light", "Dark" ("Automatic" on iOS, as the system says) |
 | 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Offline"; Android, with no sync status yet, shows only "N waiting"; web shows "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |
@@ -67,13 +67,13 @@ the list is its own screen and a category opens on top of it with a back button.
 | Update to the newest release (admins; needs `NOTESD_SELF_UPDATE`) | Server | – | ✓ | – | – |
 | Connect to a server / Sign in again | Server | – | – | ✓ | ✓ |
 | Sign out | Server | – | ✓ | ✓ | ✓ |
-| Change password (+ `notesd reset-password` hint) | Server | account | ✓ | – | – |
+| Change password (+ `notesd reset-password` hint on the web) | Server | account | ✓ | ✓ | ✓ |
 | Lock password: create hint, lock now, change, forgot/reset | Security | account | ✓ | ✓ | ✓ |
 | Passkeys for locked notes | Security | account | ✓ | – | – |
 | Unlock with Face ID / Touch ID / fingerprint | Security | **device** | – | ✓ | ✓ |
 | Signed-in devices (list, sign one out) | Security | account | ✓ | – | – |
 | Spaces: list, new, edit, delete | Spaces | account | ✓ | ✓ | ✓ |
-| Email via Resend (API key, From). On the web: listed as connected or available, connected in two steps (key, then sender) | Integrations | **server** | ✓ | ✓ | ✓ |
+| Email via Resend (API key, From): listed as connected or available, connected in two steps (key, then sender) | Integrations | **server** | ✓ | ✓ | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |
 | Keep my notes on this device (also offered at sign-in; on by default in the installed app; off removes them) | Sync & data | device | ✓ | – | – |
@@ -83,9 +83,8 @@ the list is its own screen and a category opens on top of it with a back button.
 
 **server** means one value for every account on the server. Everyone signed in sees it and uses
 it, but only an admin can change it: the server refuses anyone else (403 `admin_only`), and
-`GET /api/v1/settings/email` says whether this account may (`editable`). The web shows everyone
-else the state without the controls. The phones don't hide them yet; they show the server's
-refusal.
+`GET /api/v1/settings/email` says whether this account may (`editable`). Every app shows everyone
+else the state without the controls.
 
 The rules for when a category or row is visible don't change from before the split:
 

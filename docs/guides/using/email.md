@@ -12,12 +12,10 @@ once, for everyone on the server.
 
 1. In Resend, [verify a domain](https://resend.com/docs/dashboard/domains/introduction) you'll
    send from, and create an API key with sending access.
-2. In notesd, open **Settings → Integrations**.
-   - On the web, choose **Connect** beside Resend. Paste the API key, then enter the name and
-     address emails come from, on the domain you verified, such as `notes@example.com`. A preview
-     shows how it looks in a recipient's inbox. **Manage** changes the sender or the key later, or
-     disconnects Resend.
-   - On a phone, paste the API key and enter the address emails come from.
+2. In notesd, open **Settings → Integrations** and choose **Connect** beside Resend. Paste the API
+   key, then enter the name and address emails come from, on the domain you verified, such as
+   `notes@example.com`. A preview shows how it looks in a recipient's inbox. **Manage** changes the
+   sender or the key later, or disconnects Resend.
 
 The key is stored on the server and never shown again; Settings shows its last four characters.
 Every account on the server sends with it, but only admins can change it. The first account is an

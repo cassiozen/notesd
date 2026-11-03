@@ -12,6 +12,7 @@ import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -20,6 +21,11 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
@@ -27,6 +33,7 @@ import mockwebserver3.RecordedRequest
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.settings.Sender
 import notes.core.api.Session
 import notes.core.api.SignIn
 import org.junit.After
@@ -92,25 +99,31 @@ class EmailTest {
         )
     }
 
-    @Test
-    fun `settings save the Resend key and sender, and remove them`() {
-        var settings = """{"configured":false,"from":"","keyHint":""}"""
-        val puts = ArrayList<String>()
+    /** Settings → Integrations, signed in to a server whose email settings are [settings] until changed. */
+    private fun openIntegrations(settings: String, puts: MutableList<String> = ArrayList()) {
+        var current = settings
         server.dispatcher = object : Dispatcher() {
             override fun dispatch(request: RecordedRequest): MockResponse {
                 if (request.url.encodedPath != "/api/v1/settings/email") return MockResponse.Builder().code(404).build()
                 when (request.method) {
                     "PUT" -> {
-                        puts += request.body!!.utf8()
-                        settings = """{"configured":true,"from":"Me <notes@example.com>","keyHint":"6789"}"""
+                        val body = request.body!!.utf8()
+                        puts += body
+                        val from = Json.parseToJsonElement(body).jsonObject["from"]!!.jsonPrimitive.content
+                        current = buildJsonObject {
+                            put("configured", true)
+                            put("from", from)
+                            put("keyHint", "6789")
+                            put("editable", true)
+                        }.toString()
                     }
 
                     "DELETE" -> {
-                        settings = """{"configured":false,"from":"","keyHint":""}"""
+                        current = """{"configured":false,"from":"","keyHint":"","editable":true}"""
                         return MockResponse.Builder().code(204).build()
                     }
                 }
-                return MockResponse.Builder().code(200).addHeader("Content-Type", "application/json").body(settings)
+                return MockResponse.Builder().code(200).addHeader("Content-Type", "application/json").body(current)
                     .build()
             }
         }
@@ -127,25 +140,83 @@ class EmailTest {
         compose.onNode(hasContentDescription("Settings")).performClick()
         compose.waitUntilExactlyOneExists(hasText("Integrations"))
         compose.onNodeWithText("Integrations").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Resend API key"))
+    }
 
-        button("Save").performClick()
+    /** A dialog's button: the row behind it can have one with the same text. */
+    private fun dialogButton(label: String) = compose.onNode(
+        hasText(label) and hasClickAction() and !hasContentDescription("$label Resend")
+    ).performScrollTo()
+
+    @Test
+    fun `Resend connects in two steps, the key checked before the sender`() {
+        val puts = ArrayList<String>()
+        openIntegrations("""{"configured":false,"from":"","keyHint":"","editable":true}""", puts)
+        compose.waitUntilExactlyOneExists(hasContentDescription("Connect Resend"))
+        compose.onNode(hasContentDescription("Connect Resend")).performClick()
+
+        dialogButton("Continue").performClick()
         compose.waitUntilExactlyOneExists(hasText("Paste your Resend API key."))
+        compose.onNodeWithText("API key").performTextInput("sk_wrong")
+        dialogButton("Continue").performClick()
+        compose.waitUntilExactlyOneExists(hasText("A Resend API key starts with re_."))
+        compose.onNodeWithText("API key").performTextClearance()
+        compose.onNodeWithText("API key").performTextInput("re_123456789")
 
-        compose.onNodeWithText("Resend API key").performTextInput("re_123456789")
-        compose.onNodeWithText("From").performTextInput("Me <notes@example.com>")
-        button("Save").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Saved. Share a note and choose Email."))
-        compose.waitUntilExactlyOneExists(hasText("Saved · …6789"))
+        // Typed in one go, as a paste is: no Continue needed.
+        compose.waitUntilExactlyOneExists(hasText("Who it's from"))
+        dialogButton("Connect").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Enter the address emails come from."))
+        compose.onNodeWithText("Name").performTextInput("Me, Myself")
+        compose.onNodeWithText("Address").performTextInput("notes@example.com")
+        dialogButton("Connect").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Ready to send"))
+
         assertEquals(1, puts.size)
-        assertTrue(
-            "\"apiKey\":\"re_123456789\"" in puts[0] && "\"from\":\"Me <notes@example.com>\"" in puts[0],
-            puts[0]
-        )
-        assertEquals("Me <notes@example.com>", graph.email.settings.value?.from)
+        val sent = Json.parseToJsonElement(puts[0]).jsonObject
+        assertEquals("re_123456789", sent["apiKey"]?.jsonPrimitive?.content)
+        assertEquals("\"Me, Myself\" <notes@example.com>", sent["from"]?.jsonPrimitive?.content)
+        dialogButton("Done").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Sending as \"Me, Myself\" <notes@example.com>"))
+    }
 
-        button("Remove").performClick()
-        compose.waitUntilDoesNotExist(hasText("Remove") and hasClickAction())
+    @Test
+    fun `Resend's sender changes, keeping the key, and it disconnects`() {
+        val puts = ArrayList<String>()
+        openIntegrations(
+            """{"configured":true,"from":"Me <notes@example.com>","keyHint":"6789","editable":true}""",
+            puts
+        )
+        compose.waitUntilExactlyOneExists(hasContentDescription("Manage Resend"))
+        compose.onNode(hasContentDescription("Manage Resend")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Saved · …6789"))
+        compose.onNodeWithText("Name").performTextClearance()
+        compose.onNodeWithText("Name").performTextInput("Notes")
+        dialogButton("Save").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Sending as Notes <notes@example.com>"))
+        val sent = Json.parseToJsonElement(puts.single()).jsonObject
+        assertNull(sent["apiKey"])
+
+        compose.onNode(hasContentDescription("Manage Resend")).performClick()
+        dialogButton("Disconnect…").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Disconnect Resend?"))
+        compose.onNode(hasText("Disconnect") and hasClickAction()).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Connect Resend"))
         assertEquals(false, graph.email.settings.value?.configured)
+    }
+
+    @Test
+    fun `someone who isn't an admin sees Resend without a way to connect it`() {
+        openIntegrations("""{"configured":false,"from":"","keyHint":"","editable":false}""")
+        compose.waitUntilExactlyOneExists(hasText("An admin can connect it.", substring = true))
+        compose.onNode(hasContentDescription("Connect Resend")).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a sender's name is quoted when the server would refuse it bare, and read back`() {
+        assertEquals("Me <a@b.c>", Sender.format("Me", "a@b.c"))
+        assertEquals("a@b.c", Sender.format(" ", " a@b.c "))
+        assertEquals("\"Doe, J. \\\"Jo\\\"\" <a@b.c>", Sender.format("Doe, J. \"Jo\"", "a@b.c"))
+        assertEquals("Doe, J. \"Jo\"" to "a@b.c", Sender.parse("\"Doe, J. \\\"Jo\\\"\" <a@b.c>"))
+        assertEquals("" to "a@b.c", Sender.parse("a@b.c"))
     }
 }

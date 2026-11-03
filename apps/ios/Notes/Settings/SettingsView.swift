@@ -19,7 +19,7 @@ struct SettingsView: View {
                 }
                 row(.spaces, "\(graph.spaces.count)")
                 if graph.account.isSignedIn {
-                    row(.integrations, graph.email.settings.map { $0.configured ? "Email" : "Off" } ?? "")
+                    row(.integrations, integrationsValue(graph.email.settings))
                 }
             } header: {
                 SectionHeader(graph.account == .none ? "Synced once you connect" : "Synced to your account")
@@ -123,6 +123,8 @@ struct SettingsSectionView: View {
     @Environment(Navigator.self) private var nav
     @Environment(AppGraph.self) private var graph
     @State private var connecting = false
+    @State private var changingPassword = false
+    @State private var passwordChanged = false
     @State private var confirmSignOut = false
     @State private var confirmRemove = false
     @State private var pendingNotes = 0
@@ -137,7 +139,7 @@ struct SettingsSectionView: View {
             case .security: LockedNotesSection()
             // Back to the list, to show the new space.
             case .spaces: SpacesSection { nav.closeAll() }
-            case .integrations: EmailSection()
+            case .integrations: IntegrationsSection()
             case .appearance:
                 Section {
                     Picker("Theme", selection: $graph.appearance) {
@@ -194,11 +196,23 @@ struct SettingsSectionView: View {
             case .signedIn(let server, let username):
                 LabeledContent("Server") { Text(server).font(.notesMono).lineLimit(1) }
                 LabeledContent("Signed in as", value: username)
+                Button("Change Password") {
+                    passwordChanged = false
+                    changingPassword = true
+                }
+                // On the row, not the section: a sheet on a Form's section doesn't present.
+                .sheet(isPresented: $changingPassword) {
+                    ChangeAccountPassword(api: { graph.accounts.client() }) { passwordChanged = true }
+                }
                 Button("Sign out", role: .destructive) { confirmSignOut = true }.foregroundStyle(Color.danger)
             case .signedOut(let server, let username):
                 LabeledContent("Server") { Text(server).font(.notesMono).lineLimit(1) }
                 LabeledContent("Account", value: username)
                 Button("Sign in again") { connecting = true }
+            }
+        } footer: {
+            if passwordChanged {
+                Footnote("Password changed. Every other browser and device was signed out and needs the new one.")
             }
         }
     }
