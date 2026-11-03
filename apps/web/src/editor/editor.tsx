@@ -1,4 +1,5 @@
 import { AGENT_EDIT } from './agent-edit'
+import { AgentPresence } from './agent-presence'
 import type { Editor } from '@tiptap/core'
 import type { Slice } from '@tiptap/pm/model'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
@@ -48,7 +49,7 @@ export function useNoteEditor(options: Options): Editor {
   })
 
   const editor = useEditor({
-    extensions: [...editorExtensions.map((e) => (e.name === 'image' ? ImageView : e)), Tags],
+    extensions: [...editorExtensions.map((e) => (e.name === 'image' ? ImageView : e)), Tags, AgentPresence],
     content: noteContent(initial),
     // Toolbars subscribe to what they need (useEditorState).
     shouldRerenderOnTransaction: false,

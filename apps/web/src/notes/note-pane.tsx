@@ -18,6 +18,7 @@ import { failureText } from './activity'
 import { agentSocket, useAgentWriting } from '../agent/socket'
 import { requestRun, triggerTiming } from '../agent/triggers'
 import { applyForAgent, composed, readForAgent } from '../editor/agent-edit'
+import { setAgentWaiting } from '../editor/agent-presence'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -354,6 +355,13 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
     },
   })
 
+  // In the note, where the user is looking: who's writing and where.
+  const spaces = useSpaces()
+  const agentLabel = `${spaceName(spaces, saver.spaceId())} agent`
+  useEffect(() => {
+    setAgentWaiting(editor, agentWriting ? agentLabel : null)
+  }, [editor, agentWriting, agentLabel])
+
   // Layout effect: its cleanup runs before useEditor destroys the editor,
   // so detaching can still read the final text.
   useLayoutEffect(() => {
@@ -482,11 +490,10 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       <div className={styles.bar}>
         {mobile && <BackButton onClick={onBack} />}
         <span className={styles.spacer} />
-        {agentWriting && (
-          <span className={styles.agentWriting} role="status">
-            Agent is writing…
-          </span>
-        )}
+        {/* The note shows it; this tells screen readers. */}
+        <span className="visually-hidden" role="status">
+          {agentWriting ? 'Agent is writing…' : ''}
+        </span>
         <StatusPill state={snap.imagesBusy ? 'saving' : snap.state} shown={statusShown || snap.imagesBusy} detail={statusDetail} />
         {snap.locked && (
           <button

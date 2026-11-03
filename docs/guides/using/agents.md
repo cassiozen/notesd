@@ -47,9 +47,10 @@ the server: offline, they're skipped.
 ## While you write
 
 When an agent works on the note you have open, it works on what you see: what you've typed but
-not yet saved, and where your cursor is. **Agent is writing…** shows beside the save status while
-it does. Its change appears in the note as one step: **Undo** (Ctrl+Z, or ⌘Z on a Mac) takes it
-back and leaves your typing alone.
+not yet saved, and where your cursor is. While it works, a marker with the space's name shows where
+it's likely to write: at your cursor, or at the top of a new note. You can keep typing. Its change
+appears highlighted for a moment, with an **Undo** button beside it until you type again. It's one
+step: **Undo**, or Ctrl+Z (⌘Z on a Mac) right away, takes it back and leaves your typing alone.
 
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.

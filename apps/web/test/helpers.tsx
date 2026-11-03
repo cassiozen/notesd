@@ -134,11 +134,15 @@ export const list = () => screen.getByRole('complementary', { name: 'Notes' })
 export const body = () => screen.getByRole('textbox', { name: 'Note' })
 /** The note's first line. */
 export const noteTitle = () => body().querySelector('[data-title]')?.textContent
-/** Everything after the first line. */
+/** Everything after the first line, without what shows the agent at work. */
 export const bodyText = () =>
   [...body().children]
     .slice(1)
-    .map((el) => el.textContent)
+    .map((el) => {
+      const copy = el.cloneNode(true) as Element
+      copy.querySelectorAll('[data-agent-widget]').forEach((w) => w.remove())
+      return copy.textContent
+    })
     .join('')
 
 /** Puts the caret at the end of el (jsdom has no layout, so a click can't place it). */
