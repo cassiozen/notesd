@@ -1,0 +1,49 @@
+server/internal/search/tags.go
+  s_f7b126b009a7df::t_b4aa8208c97a33 143-144,150-152
+server/internal/agent/tools.go
+  s_f7b126b009a7df::t_b4aa8208c97a33 87,101
+  s_f7b126b009a7df::t_0341b3a549723b 37-38,168-169,172,175,177,221,245
+server/internal/agent/runner_test.go
+  s_f7b126b009a7df::t_4d3ebd1c7fd6bc 259,361
+  s_f7b126b009a7df::t_f340422d6fb2d3 498
+  s_f7b126b009a7df::t_ce8e7907f19dd4 12,342-360,362-393,440,442-443,496-497,499-500,569-607
+  s_f7b126b009a7df::t_d12c0716d3643c 608
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_92e8c3dbb74948 35-36,42
+server/internal/agent/runs.go
+  s_f7b126b009a7df::t_22d2494e97f346 118-125,127,130-155,158-161,163,165-166,171-181,192-195,199,202,204-211
+  s_f7b126b009a7df::t_0341b3a549723b 9
+server/internal/agent/triggers.go
+  s_f7b126b009a7df::t_22d2494e97f346 60-65
+server/internal/agent/export_test.go
+  s_f7b126b009a7df::t_5b945ca67b4f9a 1-18
+server/internal/notes/notes.go
+  s_f7b126b009a7df::t_22d2494e97f346 225-227
+server/internal/agent/run.go
+  s_f7b126b009a7df::t_0341b3a549723b 39-46,78,122,129,150-152,192-196,199-201
+docs/reference/api.md
+  s_f7b126b009a7df::t_92e8c3dbb74948 424
+server/cmd/notesd/main.go
+  s_f7b126b009a7df::t_0f32435814f48b 743-748
+server/internal/agent/runner.go
+  s_f7b126b009a7df::t_5b945ca67b4f9a 72-75,83-86,185-201
+  s_f7b126b009a7df::t_5bb0757c95a33c 202-204
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_92e8c3dbb74948 491-493,497-498,501-503
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bfba93c5433d223287795228a49c860fb887fdb5",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
