@@ -59,12 +59,15 @@ import (
 
 	"golang.org/x/term"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
 	"notes/server/internal/images"
+	"notes/server/internal/llm"
 	"notes/server/internal/locks"
 	"notes/server/internal/mirror"
+	"notes/server/internal/notes"
 	"notes/server/internal/search"
 	"notes/server/internal/userdata"
 )
@@ -479,7 +482,28 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			return fmt.Errorf("%s: %w", u.Username, err)
 		}
 	}
-	cfg := api.Config{ResendURL: o.resendURL, Version: version}
+	runner := agent.NewRunner(agent.RunnerConfig{
+		Accounts: func(ctx context.Context) ([]int64, error) {
+			list, err := authSvc.ListUsers(ctx)
+			ids := make([]int64, len(list))
+			for i, u := range list {
+				ids[i] = u.ID
+			}
+			return ids, err
+		},
+		Open: func(ctx context.Context, userID int64) (agent.Account, error) {
+			d, err := users.Open(ctx, userID)
+			if err != nil {
+				return agent.Account{}, err
+			}
+			return agentAccount(d), nil
+		},
+		Settings: func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) },
+		Provider: llm.NewClient(),
+		Log:      log,
+	})
+	users.OnNote(func(userID int64, _ notes.Event) { runner.Wake(userID) })
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, OnAIChanged: runner.WakeAll}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
@@ -508,6 +532,15 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
 	go collectImages(ctx, authSvc, users, log)
+	go endWritingSessions(ctx, users, runner, log)
+	runnerCtx, stopRunner := context.WithCancel(ctx)
+	runnerDone := make(chan struct{})
+	go func() {
+		defer close(runnerDone)
+		runner.Run(runnerCtx)
+	}()
+	// Runs in progress are recorded in the databases the caller closes next.
+	defer func() { stopRunner(); <-runnerDone }()
 	if mirr != nil {
 		mirrorCtx, stopMirror := context.WithCancel(ctx)
 		done := make(chan struct{})
@@ -649,6 +682,10 @@ const (
 	collectEvery = 6 * time.Hour
 )
 
+// A writing session ends 2 minutes after its last change; this is how late
+// that can be noticed.
+const sessionSweepEvery = 15 * time.Second
+
 // collectImages deletes images no note has shown for images.Grace, from
 // every user's database, until ctx ends (§7.6).
 func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registry, log *slog.Logger) {
@@ -682,6 +719,30 @@ func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registr
 	}
 }
 
+// endWritingSessions ends agents' writing sessions that have gone idle,
+// queuing their "done" triggers. Every account's database is open by now
+// (serve opens them at startup), and a session only starts on a write.
+func endWritingSessions(ctx context.Context, users *userdata.Registry, runner *agent.Runner, log *slog.Logger) {
+	t := time.NewTicker(sessionSweepEvery)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+		users.Each(func(id int64, d *userdata.Data) {
+			n, err := d.Agent.CloseIdleSessions(ctx)
+			if err != nil && ctx.Err() == nil {
+				log.Error("end writing sessions", "user", id, "err", err)
+			}
+			if n > 0 {
+				runner.Wake(id)
+			}
+		})
+	}
+}
+
 func humanBytes(n int64) string {
 	switch {
 	case n >= 1<<20:
@@ -690,4 +751,24 @@ func humanBytes(n int64) string {
 		return fmt.Sprintf("%.1f KiB", float64(n)/(1<<10))
 	}
 	return fmt.Sprintf("%d bytes", n)
+}
+
+// agentAccount is what agents need of an account's data.
+func agentAccount(d *userdata.Data) agent.Account {
+	return agent.Account{
+		Notes: d.Notes,
+		Agent: d.Agent,
+		SpaceName: func(ctx context.Context, id string) string {
+			list, err := d.Spaces.List(ctx)
+			if err != nil {
+				slog.Warn("agent: list spaces for a name", "space", id, "err", err)
+			}
+			for _, sp := range list {
+				if sp.ID == id {
+					return sp.Name
+				}
+			}
+			return "another space"
+		},
+	}
 }

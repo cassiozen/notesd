@@ -28,6 +28,9 @@ import (
 type Config struct {
 	// ResendURL overrides Resend's API base URL (tests).
 	ResendURL string
+	// OnAIChanged is called after the AI settings are saved or removed, so
+	// agents waiting for them resume or pause.
+	OnAIChanged func()
 	// Version is the server's build version (v1.2.3), sent on every
 	// response; empty is a development build, sent as "dev".
 	Version string

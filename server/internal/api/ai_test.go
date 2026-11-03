@@ -147,6 +147,13 @@ func TestAISettings(t *testing.T) {
 	if r := c.do("GET", "/api/v1/settings/ai", nil); r.body["configured"] != false || r.body["keyHint"] != "" {
 		t.Fatalf("after delete: %s", r.raw)
 	}
+	// A short key gets no hint: its last four would give much of it away.
+	if r := c.do("PUT", "/api/v1/settings/ai", map[string]any{"baseUrl": "https://api.example.com/v1", "apiKey": "abcd", "model": "m"}); r.status != 200 || r.body["keyHint"] != "" {
+		t.Fatalf("short key: %d %s", r.status, r.raw)
+	}
+	if r := c.do("DELETE", "/api/v1/settings/ai", nil); r.status != 204 {
+		t.Fatalf("delete: %d %s", r.status, r.raw)
+	}
 	// The key went with it: saving again needs one.
 	if r := c.do("PUT", "/api/v1/settings/ai", map[string]any{"baseUrl": "https://api.example.com/v1", "model": "m"}); r.status != 400 || r.body["field"] != "apiKey" {
 		t.Fatalf("save after delete without key: %d %s", r.status, r.raw)
@@ -228,7 +235,7 @@ func TestOnlyAdminsChangeAISettings(t *testing.T) {
 	a := e.loginAs(owner, password)
 	b := e.loginAs(kid, kidPassword)
 
-	settings := map[string]any{"baseUrl": f.baseURL(), "apiKey": "sk-1234", "model": "m"}
+	settings := map[string]any{"baseUrl": f.baseURL(), "apiKey": "sk-test-1234", "model": "m"}
 	if r := b.do("PUT", "/api/v1/settings/ai", settings); r.status != 403 || r.body["error"] != "admin_only" {
 		t.Fatalf("non-admin save: %d %s", r.status, r.raw)
 	}

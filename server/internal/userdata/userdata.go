@@ -32,10 +32,12 @@ type Data struct {
 
 // New wraps an open notes database.
 func New(db *database.DB) *Data {
-	return &Data{
+	d := &Data{
 		DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db),
 		Spaces: spaces.NewStore(db), Agent: agent.NewStore(db),
 	}
+	d.Notes.OnWrite(d.Agent.OnWrite)
+	return d
 }
 
 // Path is where a user's notes database lives.

@@ -204,6 +204,8 @@ type Event struct {
 	Before *Note
 	// After is the note as written: a tombstone for a delete.
 	After Note
+	// Agent marks a write an agent made, or a save holding its changes.
+	Agent *AgentMark
 	// Origin is "" for a write made as someone edits, or what the client
 	// said otherwise (see CreateInput.Origin).
 	Origin string
@@ -212,6 +214,18 @@ type Event struct {
 // SpaceChanged reports whether the write moved the note between spaces.
 func (e Event) SpaceChanged() bool {
 	return e.Before != nil && e.Kind == EventUpdated && e.Before.SpaceID != e.After.SpaceID
+}
+
+// AgentMark is carried by a write an agent made, and by a client's save
+// holding an agent's edit to an open note.
+type AgentMark struct {
+	RunID string `json:"runId"`
+	// Only is true when the save holds nothing but the agent's changes; a
+	// save that also has the user's typing counts as the user's.
+	Only bool `json:"only"`
+	// Runner is set by the server's agent runner itself, never by a request:
+	// its writes are recorded as the run's edits in the same transaction.
+	Runner bool `json:"-"`
 }
 
 // Store persists notes.
@@ -257,6 +271,8 @@ type CreateInput struct {
 	// ciphertext (§7.6). Ignored for a plain note. Not omitempty: the
 	// request hash must tell absent (nil) from none ([]).
 	ImageIDs []string `json:"imageIds"`
+	// Agent marks an agent's write; see AgentMark.
+	Agent *AgentMark `json:"agent,omitempty"`
 	// Fingerprint identifies the request as received (see Fingerprint);
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
@@ -280,6 +296,8 @@ type UpdateInput struct {
 	// As CreateInput.ImageIDs; nil (absent) keeps the images recorded, for
 	// a client that sends a locked body it can't read, such as a merge's.
 	ImageIDs []string `json:"imageIds"`
+	// As CreateInput.Agent.
+	Agent *AgentMark `json:"agent,omitempty"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 	// As CreateInput.Origin.
@@ -292,6 +310,8 @@ type DeleteInput struct {
 	OperationID  string `json:"operationId"`
 	ID           string `json:"id"`
 	BaseRevision int64  `json:"baseRevision"`
+	// As CreateInput.Agent.
+	Agent *AgentMark `json:"agent,omitempty"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 	// As CreateInput.Origin.
@@ -320,6 +340,9 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 	if err := validateSpace(in.SpaceID); err != nil {
 		return Result{}, err
 	}
+	if err := validateAgent(in.Agent); err != nil {
+		return Result{}, err
+	}
 	now := s.now().UnixMilli()
 	created := s.clientTime(in.CreatedAt, now)
 	updated := s.clientTime(in.UpdatedAt, now)
@@ -327,7 +350,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		updated = created
 	}
 
-	ev := Event{Kind: EventCreated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	ev := Event{Kind: EventCreated, NoteID: in.ID, OpID: in.OperationID, Agent: in.Agent, Origin: in.Origin}
 	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "create", "", in), &ev, func(tx *sql.Tx) (Result, error) {
 		if cur, err := loadForUpdate(ctx, tx, in.ID); err == nil {
 			return Result{}, &ConflictError{Code: CodeNoteExists, Current: cur.Note}
@@ -389,11 +412,14 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	if err := validateSpace(in.SpaceID); err != nil {
 		return Result{}, err
 	}
+	if err := validateAgent(in.Agent); err != nil {
+		return Result{}, err
+	}
 	now := s.now().UnixMilli()
 	updated := s.clientTime(in.UpdatedAt, now)
 
 	locking := false
-	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Agent: in.Agent, Origin: in.Origin}
 	res, err := s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "update", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
@@ -480,9 +506,12 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 	if in.BaseRevision < 1 {
 		return Result{}, &ValidationError{"baseRevision", "must be a positive revision"}
 	}
+	if err := validateAgent(in.Agent); err != nil {
+		return Result{}, err
+	}
 	now := s.now().UnixMilli()
 
-	ev := Event{Kind: EventDeleted, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	ev := Event{Kind: EventDeleted, NoteID: in.ID, OpID: in.OperationID, Agent: in.Agent, Origin: in.Origin}
 	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "delete", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
@@ -779,6 +808,17 @@ func (s *Store) clientTime(t *int64, now int64) int64 {
 		return now
 	}
 	return *t
+}
+
+// validateAgent checks an agent mark, if any.
+func validateAgent(m *AgentMark) error {
+	if m == nil {
+		return nil
+	}
+	if !opPattern.MatchString(m.RunID) {
+		return &ValidationError{"agent.runId", "must be 1-128 letters, digits or . _ : -"}
+	}
+	return nil
 }
 
 // validateSpace checks a space id the client named, if any.
