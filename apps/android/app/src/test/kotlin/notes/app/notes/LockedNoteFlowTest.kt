@@ -4,6 +4,7 @@ import android.os.Looper
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -114,7 +115,8 @@ class LockedNoteFlowTest {
     }
 
     private fun unlock(password: String) {
-        compose.onNodeWithText("Lock password").performTextInput(password)
+        // The field, not Security's line of the same name behind the dialog.
+        compose.onNode(hasText("Lock password") and hasSetTextAction()).performTextInput(password)
         compose.onNode(hasText("Unlock") and hasClickAction()).performClick()
     }
 
@@ -279,6 +281,36 @@ class LockedNoteFlowTest {
         compose.waitUntilExactlyOneExists(hasText("Fingerprint unlock is off", substring = true))
         assertEquals(false, graph.fingerprint.enabled.value)
         compose.onNodeWithText("Use fingerprint").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Security opens the lock password forms in dialogs, only once asked`() {
+        onMain { graph.locks.unlock(PASSWORD) }
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.waitUntilExactlyOneExists(hasText("Bank"))
+        compose.onNodeWithContentDescription("Sidebar").performClick()
+        compose.onNodeWithContentDescription("Settings").performClick()
+        compose.onNodeWithText("Security").performClick()
+        // A line, not a form: nothing to type until asked.
+        compose.waitUntilExactlyOneExists(hasText("Unlocked on this phone"))
+        compose.onNodeWithText("Current lock password").assertDoesNotExist()
+
+        compose.onNodeWithContentDescription("Change lock password").performClick()
+        compose.onNodeWithText("Current lock password").performTextInput(PASSWORD)
+        compose.onNodeWithText("New lock password").performTextInput("a newer lock pass")
+        compose.onNodeWithText("Confirm new lock password").performTextInput("a newer lock pass")
+        compose.onNode(hasText("Change") and hasClickAction()).performScrollTo().performClick()
+        // No server here: the change can't be kept, and the dialog says so with what was typed still in it.
+        compose.waitUntilExactlyOneExists(hasText("Connect to your server first", substring = true))
+        compose.onNodeWithText("Current lock password").assertExists()
+        compose.onNode(hasText("Cancel") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilDoesNotExist(hasText("Current lock password"))
+
+        compose.onNode(hasText("Forgot the lock password?")).performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Reset locked notes?"))
+        compose.onNodeWithText("Account password").assertExists()
+        compose.onNode(hasText("Cancel") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilDoesNotExist(hasText("Reset locked notes?"))
     }
 
     private companion object {
