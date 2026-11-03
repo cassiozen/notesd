@@ -1,0 +1,109 @@
+apps/ios/README.md
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 111-112
+apps/ios/Notes/Locks/FakeBiometrics.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-30
+shared/keychain-biometrics/Sources/NotesBiometrics/KeychainBiometrics.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-117
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/description.json
+  s_f377e8ab9cbb1b::t_4b01ae758d93f0 1-238
+apps/ios/NotesCore/Package.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 14-16,20
+mise.toml
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 189-190
+shared/keychain-biometrics/Sources/NotesBiometrics/Biometrics.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-24
+apps/ios/NotesCore/Sources/NotesCore/Crypto/BiometricUnlock.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 2-3
+shared/keychain-biometrics/Package.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-16
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/Combine-2A40KIJVCBO21.swiftmodule
+  s_d07b272ffd1f21::t_396b8d0b0bcbb3 1-48
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/CoreFoundation-3TWO3FBM5M6BS.swiftmodule
+  s_d07b272ffd1f21::t_c808d758c21fa7 1-68
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/Darwin-BBN6U2E33CZ3.swiftmodule
+  s_d07b272ffd1f21::t_6a3024dc46258b 1-36
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/Dispatch-W4QHN5HBDIGQ.swiftmodule
+  s_d07b272ffd1f21::t_ea8f61e9f7d9be 1-64
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/Foundation-BFO080QD9M5G.swiftmodule
+  s_d07b272ffd1f21::t_a2d89b3db94324 1-100
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/IOKit-1VZPOCZR7Q945.swiftmodule
+  s_d07b272ffd1f21::t_0a0ebc8ef3ed9a 1-72
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/LocalAuthentication-2K2I24YQ6WLAK.swiftmodule
+  s_d07b272ffd1f21::t_eddba8f6082297 1-108
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/ObjectiveC-2RNN5ZSSNZJ6T.swiftmodule
+  s_d07b272ffd1f21::t_83d68113a91e4c 1-52
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/Observation-UN58LRM051O9.swiftmodule
+  s_d07b272ffd1f21::t_b06847dcf4123d 1-44
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/Swift-BF86GRDXI25I.swiftmodule
+  s_d07b272ffd1f21::t_f95ce001317c8f 1-12
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/SwiftOnoneSupport-3SZSRL9NIXBOB.swiftmodule
+  s_d07b272ffd1f21::t_ccdcec0ecd79dd 1-16
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/System-3228FFXNAQN6Y.swiftmodule
+  s_d07b272ffd1f21::t_9d0821a8157b9b 1-48
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/XPC-UOYPCMU7R7BB.swiftmodule
+  s_d07b272ffd1f21::t_92a56d3f74b7d4 1-72
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/_Builtin_float-1XFQGC84GPL52.swiftmodule
+  s_d07b272ffd1f21::t_391152f8de58bb 1-16
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/_Concurrency-26KC2E8PBCSJQ.swiftmodule
+  s_d07b272ffd1f21::t_99f601c41cacca 1-16
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/_DarwinFoundation1-39M6CKVLD1AV7.swiftmodule
+  s_d07b272ffd1f21::t_3cfa8463816f52 1-16
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/_DarwinFoundation2-1NF8AZT49ZTBD.swiftmodule
+  s_d07b272ffd1f21::t_e1373e9cde6bb8 1-24
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/_DarwinFoundation3-XAO90498WTC6.swiftmodule
+  s_d07b272ffd1f21::t_9984a14451e9ea 1-28
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/ModuleCache/_StringProcessing-Y69ERUCONEPW.swiftmodule
+  s_d07b272ffd1f21::t_cb283ac58eb486 1-16
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/Modules/NotesBiometrics.abi.json
+  s_d07b272ffd1f21::t_823eaf478c6dd7 1-9
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/Biometrics.d
+  s_d07b272ffd1f21::t_0080e0503dc76c 1
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/KeychainBiometrics.d
+  s_d07b272ffd1f21::t_4e5f2279026019 1
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/NotesBiometrics.emit-module.d
+  s_d07b272ffd1f21::t_b5a0174af3d68f 1-4
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/include/NotesBiometrics-Swift.h
+  s_d07b272ffd1f21::t_9560a5b5764e16 1-376
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/include/module.modulemap
+  s_d07b272ffd1f21::t_bd904e325e6a16 1-3
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/output-file-map.json
+  s_d07b272ffd1f21::t_0b532204bdac02 1-19
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/NotesBiometrics.build/sources
+  s_d07b272ffd1f21::t_679eee2a17965b 1-2
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/plugin-tools-description.json
+  s_d07b272ffd1f21::t_1287eef132a92c 1-238
+shared/keychain-biometrics/.build/arm64-apple-macosx/debug/swift-version--58304C5D6DBC2206.txt
+  s_d07b272ffd1f21::t_f5f2f90481e6f2 1-2
+shared/keychain-biometrics/.build/debug
+  s_d07b272ffd1f21::t_0bef68551f9879 1
+shared/keychain-biometrics/.build/debug.yaml
+  s_d07b272ffd1f21::t_e1cbfb53b643af 1-47
+shared/keychain-biometrics/.build/plugin-tools.yaml
+  s_d07b272ffd1f21::t_d28d11015a41ac 1-47
+shared/keychain-biometrics/.build/workspace-state.json
+  s_d07b272ffd1f21::t_fea9cdd60a658d 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "17249278e299cf57a2393d722c2714e92a29c821",
+  "prompts": {},
+  "sessions": {
+    "s_d07b272ffd1f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41aa8e32-b930-499d-a3f1-a83935cab4e5",
+        "model": "unknown"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
