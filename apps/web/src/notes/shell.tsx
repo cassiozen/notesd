@@ -304,7 +304,7 @@ function ShellView({ username }: { username: string }) {
         />
       )}
 
-      {route.name === 'activity' && <ActivitySheet onClose={() => navigate(activityFrom === '/activity' ? listPath : activityFrom)} />}
+      {route.name === 'activity' && <ActivitySheet onClose={() => navigate(activityFrom === '/activity' ? listPath : activityFrom, { replace: true })} />}
 
       {newSpace && (
         <NewSpaceDialog

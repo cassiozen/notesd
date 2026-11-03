@@ -58,8 +58,10 @@ against the daily limit.
 changed since is left alone, so undo never loses your writing; Activity says which and why. Undo
 doesn't make the agent act again.
 
-When you lock or delete a note, Activity forgets its text too, as the note itself does. Runs are
-kept for 30 days.
+When you lock or delete a note, Activity forgets its text too, as the note itself does. As with
+the note, backups made before still have it; see
+[what locking doesn't cover](../../concepts/security-model.md#locked-notes). Runs are kept for 30
+days.
 
 ## Time zone
 

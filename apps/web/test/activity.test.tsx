@@ -1,7 +1,7 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
 import type { AgentRun } from '../src/api/agent'
-import { signedIn } from './helpers'
+import { openSettings, signedIn } from './helpers'
 import { startFakeLLM, type FakeLLM, type TestServer } from './server'
 
 const DIGEST = 'Items\n'
@@ -73,6 +73,34 @@ describe('Activity', () => {
     expect(await within(sheet).findByText(/^Can’t undo: The note changed since/)).toBeTruthy()
     expect(within(sheet).queryByRole('button', { name: 'Undo' })).toBeNull()
     expect((await server.api<{ content: string }>('GET', '/notes/digest')).body.content).toBe('Mine')
+  })
+
+  it('keeps focus on the space filter, and Done leaves no way Back into it', async () => {
+    const llm = await startFakeLLM()
+    const { user } = await signedIn({ seed: (s) => withDigestAgent(s, llm) })
+    const before = window.history.length
+    const sheet = await openActivity(user)
+    const select = within(sheet).getByRole('combobox', { name: 'Space' })
+    await user.selectOptions(select, '')
+    await within(sheet).findByRole('list', { name: 'Runs' })
+    expect(document.activeElement).toBe(within(sheet).getByRole('combobox', { name: 'Space' }))
+    await user.click(within(sheet).getByRole('button', { name: 'Done' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Activity' })).toBeNull())
+    expect(window.history.length).toBe(before + 1)
+  })
+
+  it('waits for Edit space’s changes to be saved or dropped', async () => {
+    const llm = await startFakeLLM()
+    const { user } = await signedIn({ seed: (s) => withDigestAgent(s, llm) })
+    await openSettings(user, 'Spaces')
+    const card = await screen.findByRole('region', { name: 'Spaces' })
+    await user.click(await within(card).findByRole('button', { name: 'Edit Notes' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
+    const activity = await within(dialog).findByRole('button', { name: 'Activity…' })
+    expect((activity as HTMLButtonElement).disabled).toBe(false)
+    await user.type(within(dialog).getByLabelText('Name'), '!')
+    expect((activity as HTMLButtonElement).disabled).toBe(true)
+    expect(within(dialog).getByText('Save or cancel to see Activity.')).toBeTruthy()
   })
 
   it('isn’t in the menu of a space without an agent', async () => {

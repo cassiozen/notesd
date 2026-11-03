@@ -86,6 +86,8 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
   const [open, setOpen] = useState<string | null>(null)
   // Bumped by an undo: the list behind the run shows its new outcome.
   const [listVersion, setListVersion] = useState(0)
+  const [usage, setUsage] = useState<AgentUsage | null>(null)
+  const selectId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   const was = useRef(open)
 
@@ -113,8 +115,27 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
       </div>
       {open && <RunView id={open} onUndone={() => setListVersion((v) => v + 1)} />}
       {/* Kept while a run is open, so Back returns to the same place in the list. */}
-      <div hidden={open !== null}>
-        <RunList key={`${space}:${listVersion}`} space={space} onSpace={setSpace} spaces={spaces} onOpen={setOpen} />
+      <div hidden={open !== null} className={styles.page}>
+        {/* Outside the keyed list, so the select keeps focus as it changes. */}
+        <div className={styles.controls}>
+          <label htmlFor={selectId} className={styles.label}>
+            Space
+          </label>
+          <select id={selectId} className={styles.select} value={space} onChange={(e) => setSpace(e.target.value)}>
+            <option value="">All spaces</option>
+            {spaces?.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </select>
+          {usage && (
+            <p className={styles.usage}>
+              Today: {tokens(usage.tokens)} of {tokens(usage.dailyTokenCap)} tokens
+            </p>
+          )}
+        </div>
+        <RunList key={`${space}:${listVersion}`} space={space} spaces={spaces} onUsage={setUsage} onOpen={setOpen} />
       </div>
     </Sheet>
   )
@@ -122,18 +143,16 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
 
 function RunList({
   space,
-  onSpace,
   spaces,
+  onUsage,
   onOpen,
 }: {
   space: string
-  onSpace: (id: string) => void
   spaces: ReturnType<typeof useSpaces>
+  onUsage: (u: AgentUsage) => void
   onOpen: (id: string) => void
 }) {
-  const selectId = useId()
   const [runs, setRuns] = useState<AgentRun[] | null>(null)
-  const [usage, setUsage] = useState<AgentUsage | null>(null)
   const [next, setNext] = useState('')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
@@ -143,7 +162,7 @@ function RunList({
     agent.runs({ space }, abort.signal).then(
       (page) => {
         setRuns(page.runs)
-        setUsage(page.usage)
+        onUsage(page.usage)
         setNext(page.nextCursor)
       },
       (err: unknown) => {
@@ -151,7 +170,7 @@ function RunList({
       },
     )
     return () => abort.abort()
-  }, [space])
+  }, [space, onUsage])
 
   async function more() {
     setBusy(true)
@@ -167,25 +186,7 @@ function RunList({
   }
 
   return (
-    <div className={styles.page}>
-      <div className={styles.controls}>
-        <label htmlFor={selectId} className={styles.label}>
-          Space
-        </label>
-        <select id={selectId} className={styles.select} value={space} onChange={(e) => onSpace(e.target.value)}>
-          <option value="">All spaces</option>
-          {spaces?.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-        {usage && (
-          <p className={styles.usage}>
-            Today: {tokens(usage.tokens)} of {tokens(usage.dailyTokenCap)} tokens
-          </p>
-        )}
-      </div>
+    <>
       {error && <Banner tone="error">{error}</Banner>}
       {runs === null && !error && <p className={styles.muted}>Loading…</p>}
       {runs?.length === 0 && (
@@ -217,7 +218,7 @@ function RunList({
           {busy ? 'Loading…' : 'Show more'}
         </Button>
       )}
-    </div>
+    </>
   )
 }
 
@@ -245,7 +246,9 @@ function RunView({ id, onUndone }: { id: string; onUndone: () => void }) {
     try {
       const res = await agent.undo(id)
       onUndone()
-      setDone(res.skipped.length ? `Undone ${res.undone.length} of ${res.undone.length + res.skipped.length}.` : 'Undone.')
+      // Notes an earlier undo put back aren't left over.
+      const left = res.skipped.filter((sk) => sk.reason !== 'undone').length
+      setDone(left ? `Undone ${res.undone.length} of ${res.undone.length + left}.` : 'Undone.')
     } catch (err) {
       // Nothing left to undo: the reasons are on each note, once reloaded.
       if (!(err instanceof ApiError && err.code === 'nothing_to_undo')) setError(genericMessage(err))

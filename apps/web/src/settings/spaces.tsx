@@ -215,6 +215,9 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const agent = useAgentSetup(space.id)
+  const activityHint = useId()
+  // Activity replaces this dialog, which would lose the changes.
+  const unsaved = name.trim() !== space.name || icon !== space.icon || agent.changed
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -267,9 +270,19 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
         )}
         {agent.saved && (
           <div>
-            <Button size="sm" onClick={() => navigate('/activity', { state: { space: space.id } })}>
+            <Button
+              size="sm"
+              disabled={unsaved}
+              aria-describedby={unsaved ? activityHint : undefined}
+              onClick={() => navigate('/activity', { state: { space: space.id } })}
+            >
               Activity…
             </Button>
+            {unsaved && (
+              <p id={activityHint} className={styles.muted}>
+                Save or cancel to see Activity.
+              </p>
+            )}
           </div>
         )}
         {formError && (
