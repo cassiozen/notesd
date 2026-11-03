@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type Ref } from 'react'
 import type { SearchResult } from '../api/types'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
@@ -23,10 +23,12 @@ type Props = {
    */
   tags: 'back' | 'show' | null
   onTags: () => void
+  /** The Show sidebar button, for focus to land on when the sidebar goes. */
+  showTagsRef?: Ref<HTMLButtonElement>
   mobile: boolean
 }
 
-export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onNew, tags, onTags, mobile }: Props) {
+export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onNew, tags, onTags, showTagsRef, mobile }: Props) {
   const { items, status, hasMore, total, loadMore, refresh, version, filter, setFilter, space } = useNotes()
   const spaces = useSpaces()
   const many = (spaces?.length ?? 0) > 1
@@ -43,6 +45,9 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   // With two spaces, the other one by name.
   const others = spaces?.filter((s) => s.id !== space) ?? []
   const elsewhere = others.length === 1 && others[0] ? others[0].name : 'other spaces'
+  const current = spaces?.find((s) => s.id === space) ?? { icon: '' }
+  // The sidebar beside the list, showing.
+  const docked = tags === null
 
   const count = searching
     ? search.status === 'loading' && n === 0
@@ -64,7 +69,14 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
         )}
         <div className={styles.titleRow}>
           {/* The space's icon, so the space shows with the sidebar away; beside it, the sidebar's shows it. */}
-          {tags !== null && <SpaceIcon space={spaces?.find((s) => s.id === space) ?? { icon: '' }} size={mobile ? 28 : 22} />}
+          {tags === 'back' ? (
+            <SpaceIcon space={current} size={mobile ? 28 : 22} />
+          ) : (
+            // Docked sidebar: always here, grown in as the sidebar goes, so the title slides over instead of jumping.
+            <span className={[styles.spaceMark, styles.reveal].join(' ')} data-shown={docked ? undefined : ''}>
+              <SpaceIcon space={current} size={22} />
+            </span>
+          )}
           {/* What the list shows: All Notes, or the filter, which × clears. */}
           <h1 className={[styles.heading, styles.scoped].join(' ')}>
             <span className={styles.scope} title={scope ?? undefined}>
@@ -76,8 +88,17 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               </button>
             )}
           </h1>
-          {tags === 'show' && (
-            <button type="button" className={styles.showTags} onClick={onTags} aria-label="Show sidebar" title="Show sidebar">
+          {tags !== 'back' && (
+            <button
+              ref={showTagsRef}
+              type="button"
+              className={[styles.showTags, styles.reveal].join(' ')}
+              data-shown={docked ? undefined : ''}
+              inert={docked}
+              onClick={onTags}
+              aria-label="Show sidebar"
+              title="Show sidebar"
+            >
               <SidebarIcon />
             </button>
           )}

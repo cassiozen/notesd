@@ -201,7 +201,20 @@ function ShellView({ username }: { username: string }) {
     select(id)
   }
 
+  const hideButton = useRef<HTMLButtonElement>(null)
+  const showButton = useRef<HTMLButtonElement>(null)
+  // The toggle pressed had focus: it goes out of reach, so focus follows to the one that brings it back.
+  const refocus = useRef(false)
+  useEffect(() => {
+    if (!refocus.current) return
+    refocus.current = false
+    const next = sidebarHidden ? showButton : hideButton
+    next.current?.focus()
+  }, [sidebarHidden])
+
   const hideSidebar = (hidden: boolean) => {
+    const pressed = (hidden ? hideButton : showButton).current
+    refocus.current = pressed !== null && document.activeElement === pressed
     setSidebarHidden(hidden)
     try {
       localStorage.setItem(SIDEBAR_KEY, String(hidden))
@@ -217,10 +230,9 @@ function ShellView({ username }: { username: string }) {
   }
 
   const tagsScreen = !wide && route.name === 'tags'
-  const sidebar = wide && !sidebarHidden
   const showList = !tagsScreen && (!mobile || selectedId === null)
   const showPane = !mobile || (!tagsScreen && selectedId !== null)
-  const tagsPanel = (onHide?: () => void) => (
+  const tagsPanel = (docked?: { onHide: () => void; hidden: boolean }) => (
     <TagsPanel
       tags={tags}
       lockedCount={lockedCount}
@@ -231,7 +243,9 @@ function ShellView({ username }: { username: string }) {
       space={space}
       onSpace={switchSpace}
       onNewSpace={() => setNewSpace(true)}
-      onHide={onHide}
+      onHide={docked?.onHide}
+      hidden={docked?.hidden}
+      hideRef={hideButton}
     />
   )
 
@@ -241,7 +255,7 @@ function ShellView({ username }: { username: string }) {
       <div className={styles.frame}>
         <SyncBanners />
         <div className={styles.app}>
-          {sidebar && tagsPanel(() => hideSidebar(true))}
+          {wide && tagsPanel({ onHide: () => hideSidebar(true), hidden: sidebarHidden })}
           {tagsScreen && tagsPanel()}
           {showList && (
             <NoteList
@@ -256,6 +270,7 @@ function ShellView({ username }: { username: string }) {
               onNew={startNote}
               tags={!wide ? 'back' : sidebarHidden ? 'show' : null}
               onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
+              showTagsRef={showButton}
               mobile={mobile}
             />
           )}

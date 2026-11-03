@@ -132,13 +132,40 @@ describe('typing a tag', () => {
 describe('tags sidebar', () => {
   it('hides and comes back, and stays as left', async () => {
     const { user } = await withTags()
-    await user.click(within(panel()).getByRole('button', { name: 'Hide sidebar' }))
-    expect(screen.queryByRole('navigation', { name: 'Sidebar' })).toBeNull()
+    const hide = within(panel()).getByRole('button', { name: 'Hide sidebar' })
+    const show = within(list()).getByRole('button', { name: 'Show sidebar' })
+    // Both stay in the page so the change can animate; only one is in reach at a time.
+    expect(show.closest('[inert]')).not.toBeNull()
 
-    await user.click(within(list()).getByRole('button', { name: 'Show sidebar' }))
-    expect(panel()).toBeTruthy()
-    expect(within(list()).queryByRole('button', { name: 'Show sidebar' })).toBeNull()
+    await user.click(hide)
+    expect(panel().hasAttribute('inert')).toBe(true)
+    expect(show.closest('[inert]')).toBeNull()
+    expect(localStorage.getItem('notes.sidebar.hidden')).toBe('true')
+
+    await user.click(show)
+    expect(panel().hasAttribute('inert')).toBe(false)
+    expect(show.closest('[inert]')).not.toBeNull()
     expect(localStorage.getItem('notes.sidebar.hidden')).toBe('false')
+  })
+
+  it('hands focus between its Hide and Show buttons', async () => {
+    const { user } = await withTags()
+    const hide = within(panel()).getByRole('button', { name: 'Hide sidebar' })
+    const show = within(list()).getByRole('button', { name: 'Show sidebar' })
+
+    hide.focus()
+    await user.keyboard('{Enter}')
+    expect(document.activeElement).toBe(show)
+
+    await user.keyboard('{Enter}')
+    expect(document.activeElement).toBe(hide)
+  })
+
+  it('starts hidden as it was left', async () => {
+    localStorage.setItem('notes.sidebar.hidden', 'true')
+    await withTags()
+    expect(panel().hasAttribute('inert')).toBe(true)
+    expect(within(list()).getByRole('button', { name: 'Show sidebar' }).closest('[inert]')).toBeNull()
   })
 
   it('reopens on the list last shown', async () => {

@@ -4,14 +4,51 @@
   width: 300px;
   min-width: 0;
   display: flex;
-  flex-direction: column;
+  /* Pinned to the trailing edge: as a docked panel narrows, its contents slide out rather than get cropped. */
+  justify-content: flex-end;
   overflow: hidden;
-  /* The space menu keeps within it. */
+}
+
+.inner {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  /* Here, not on the panel: the space menu keeps to the sidebar's full width while it narrows. */
   container-type: inline-size;
 }
 
+/* Hidden by width, not by removal, so the list and the note glide over instead of jumping. */
 .docked {
   width: 220px;
+  transition: width 0.34s var(--ease-out), margin 0.34s var(--ease-out);
+}
+
+.docked .inner {
+  flex: none;
+  width: 220px;
+  /* Coming back: fades in behind the opening edge. */
+  transition: opacity 0.26s var(--ease-out) 0.06s;
+}
+
+/* The negative margin gives back the gap the app keeps after it. */
+.collapsed {
+  width: 0;
+  margin-inline-end: -12px;
+  transition-duration: 0.28s;
+}
+
+/* Going: gone before the edge closes over it. */
+.collapsed .inner {
+  opacity: 0;
+  transition: opacity 0.16s var(--ease-out);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .docked,
+  .docked .inner {
+    transition: none;
+  }
 }
 
 .header {
