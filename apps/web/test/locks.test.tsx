@@ -151,10 +151,12 @@ describe('locked notes', () => {
     await lockOpenNote(s)
     await openSettings(s.user, 'Security')
     const card = await screen.findByRole('region', { name: 'Locked notes' })
-    await s.user.type(within(card).getByLabelText('Current lock password'), LOCK_PASSWORD)
-    await s.user.type(within(card).getByLabelText('New lock password'), 'brand new pass')
-    await s.user.type(within(card).getByLabelText('Confirm new lock password'), 'brand new pass')
     await s.user.click(within(card).getByRole('button', { name: 'Change lock password' }))
+    const dialog = screen.getByRole('dialog', { name: 'Change lock password' })
+    await s.user.type(within(dialog).getByLabelText('Current lock password'), LOCK_PASSWORD)
+    await s.user.type(within(dialog).getByLabelText('New lock password'), 'brand new pass')
+    await s.user.type(within(dialog).getByLabelText('Confirm new lock password'), 'brand new pass')
+    await s.user.click(within(dialog).getByRole('button', { name: 'Change lock password' }))
     expect(await within(card).findByText(/^Lock password changed\./)).toBeTruthy()
     expect(await readLocked(s.server, s.id, 'brand new pass')).toBe('PIN 1234 #money\n')
   })
@@ -195,13 +197,15 @@ describe('locked notes', () => {
   })
 })
 
+/** The dialog, still open if adding failed. */
 async function addPasskey(s: Session) {
   await openSettings(s.user, 'Security')
-  const group = await screen.findByRole('group', { name: 'Passkeys' })
-  await s.user.click(within(group).getByRole('button', { name: 'Add a passkey' }))
-  await s.user.type(within(group).getByLabelText('Lock password'), LOCK_PASSWORD)
-  await s.user.click(within(group).getByRole('button', { name: 'Continue' }))
-  return group
+  const card = await screen.findByRole('region', { name: 'Locked notes' })
+  await s.user.click(within(card).getByRole('button', { name: 'Add a passkey' }))
+  const dialog = screen.getByRole('dialog', { name: 'Add a passkey' })
+  await s.user.type(within(dialog).getByLabelText('Lock password'), LOCK_PASSWORD)
+  await s.user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+  return dialog
 }
 
 async function closeSettings(s: Session) {
@@ -257,8 +261,8 @@ describe('passkeys for locked notes', () => {
     fakeAuthenticator()
     const s = await seeded()
     await lockOpenNote(s)
-    const group = await addPasskey(s)
-    expect(await within(group).findByText(/^Passkey added\./)).toBeTruthy()
+    await addPasskey(s)
+    expect(await within(screen.getByRole('region', { name: 'Locked notes' })).findByText(/^Passkey added\./)).toBeTruthy()
     const { keys } = (await s.server.api<{ keys: LockKey[] }>('GET', '/locks')).body
     expect(keys.map((k) => k.kind)).toEqual(['password', 'passkey'])
 
@@ -316,18 +320,19 @@ describe('passkeys for locked notes', () => {
     const s = await seeded()
     await lockOpenNote(s)
     await openSettings(s.user, 'Security')
-    const group = await screen.findByRole('group', { name: 'Passkeys' })
-    await s.user.click(within(group).getByRole('button', { name: 'Add a passkey' }))
-    await s.user.type(within(group).getByLabelText('Lock password'), 'not it')
-    await s.user.click(within(group).getByRole('button', { name: 'Continue' }))
-    expect(await within(group).findByText('That isn’t your lock password.')).toBeTruthy()
+    const card = await screen.findByRole('region', { name: 'Locked notes' })
+    await s.user.click(within(card).getByRole('button', { name: 'Add a passkey' }))
+    const dialog = screen.getByRole('dialog', { name: 'Add a passkey' })
+    await s.user.type(within(dialog).getByLabelText('Lock password'), 'not it')
+    await s.user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+    expect(await within(dialog).findByText('That isn’t your lock password.')).toBeTruthy()
 
-    await s.user.clear(within(group).getByLabelText('Lock password'))
-    await s.user.type(within(group).getByLabelText('Lock password'), LOCK_PASSWORD)
-    await s.user.click(within(group).getByRole('button', { name: 'Continue' }))
-    await within(group).findByText(/^Passkey added\./)
-    await s.user.click(within(group).getByRole('button', { name: /^Remove passkey/ }))
-    await waitFor(() => expect(within(group).queryByRole('button', { name: /^Remove passkey/ })).toBeNull())
+    await s.user.clear(within(dialog).getByLabelText('Lock password'))
+    await s.user.type(within(dialog).getByLabelText('Lock password'), LOCK_PASSWORD)
+    await s.user.click(within(dialog).getByRole('button', { name: 'Continue' }))
+    await within(card).findByText(/^Passkey added\./)
+    await s.user.click(within(card).getByRole('button', { name: /^Remove passkey/ }))
+    await waitFor(() => expect(within(card).queryByRole('button', { name: /^Remove passkey/ })).toBeNull())
     const { keys } = (await s.server.api<{ keys: LockKey[] }>('GET', '/locks')).body
     expect(keys.map((k) => k.kind)).toEqual(['password'])
   })

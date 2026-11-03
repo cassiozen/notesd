@@ -43,7 +43,7 @@ describe('settings', () => {
     })
     const colors = () => metas.map((m) => m.content)
     const { user } = await inSettings('Appearance')
-    const group = screen.getByRole('radiogroup', { name: 'Appearance' })
+    const group = screen.getByRole('radiogroup', { name: 'Theme' })
     expect(within(group).getByRole('radio', { name: 'System' }).getAttribute('aria-checked')).toBe('true')
 
     await user.click(within(group).getByRole('radio', { name: 'Dark' }))
@@ -79,16 +79,19 @@ describe('settings', () => {
   it('changes the password and signs out every other session', async () => {
     const { server, user, password } = await inSettings()
 
-    await user.type(screen.getByLabelText('Current password'), 'not it')
-    await user.type(screen.getByLabelText('New password'), 'a brand new one')
-    await user.type(screen.getByLabelText('Confirm new password'), 'a brand new one')
     await user.click(screen.getByRole('button', { name: 'Change password' }))
-    expect(await screen.findByText('That isn’t your current password.')).toBeTruthy()
+    const dialog = screen.getByRole('dialog', { name: 'Change password' })
+    await user.type(within(dialog).getByLabelText('Current password'), 'not it')
+    await user.type(within(dialog).getByLabelText('New password'), 'a brand new one')
+    await user.type(within(dialog).getByLabelText('Confirm new password'), 'a brand new one')
+    await user.click(within(dialog).getByRole('button', { name: 'Change password' }))
+    expect(await within(dialog).findByText('That isn’t your current password.')).toBeTruthy()
 
-    await user.clear(screen.getByLabelText('Current password'))
-    await user.type(screen.getByLabelText('Current password'), password)
-    await user.click(screen.getByRole('button', { name: 'Change password' }))
+    await user.clear(within(dialog).getByLabelText('Current password'))
+    await user.type(within(dialog).getByLabelText('Current password'), password)
+    await user.click(within(dialog).getByRole('button', { name: 'Change password' }))
     expect(await screen.findByText(/Password changed\. Every other browser and device was signed out/)).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Change password' })).toBeNull()
 
     // The other client was signed out; the new password works.
     expect((await server.api('GET', '/auth/session')).status).toBe(401)
@@ -153,7 +156,7 @@ describe('settings categories', () => {
     expect(screen.getByRole('heading', { name: 'Server', level: 3 })).toBeTruthy()
     await waitFor(() => expect(category('Security').textContent).toBe('SecurityOff'))
     await waitFor(() => expect(category('Spaces').textContent).toBe('Spaces1'))
-    await waitFor(() => expect(category('Integrations').textContent).toBe('IntegrationsEmail'))
+    await waitFor(() => expect(category('Integrations').textContent).toBe('IntegrationsResend'))
     expect(category('Appearance').textContent).toBe('AppearanceSystem')
     expect(category('Sync & data').textContent).toBe('Sync & dataOff')
     // Each group says where its settings are kept.
@@ -166,14 +169,14 @@ describe('settings categories', () => {
     await openSettings(user, 'Security')
     expect(window.location.pathname).toBe('/settings/security')
     expect(await screen.findByRole('region', { name: 'Signed-in devices' })).toBeTruthy()
-    expect(screen.queryByRole('region', { name: 'Password' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Change password' })).toBeNull()
 
     const entries = window.history.length
     await user.click(category('Appearance'))
     expect(window.location.pathname).toBe('/settings/appearance')
     expect(window.history.length).toBe(entries)
     expect(category('Appearance').getAttribute('aria-current')).toBe('page')
-    expect(screen.getByRole('radiogroup', { name: 'Appearance' })).toBeTruthy()
+    expect(screen.getByRole('radiogroup', { name: 'Theme' })).toBeTruthy()
 
     await user.click(screen.getByRole('button', { name: 'Done' }))
     expect(window.location.pathname).toBe('/')
@@ -182,7 +185,7 @@ describe('settings categories', () => {
   it('opens a category from its address, and Server for one it doesn’t know', async () => {
     await signedIn()
     act(() => navigate('/settings/integrations'))
-    expect(await screen.findByRole('region', { name: 'Email' })).toBeTruthy()
+    expect(await screen.findByRole('region', { name: 'Available' })).toBeTruthy()
     act(() => navigate('/settings/nope'))
     expect(await screen.findByText('Signed in as me')).toBeTruthy()
   })

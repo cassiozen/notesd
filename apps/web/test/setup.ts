@@ -1,7 +1,7 @@
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { forgetFind } from '../src/editor/find-bar'
-import { resetEmailSettings } from '../src/notes/email-settings'
+import { forgetEmailSettings } from '../src/notes/email-settings'
 import { forgetSpaces } from '../src/notes/spaces'
 import { versionState } from '../src/api/version'
 import { kdfCost } from '../src/locks/crypto'
@@ -82,7 +82,7 @@ afterEach(() => {
 
 afterEach(() => {
   cleanup()
-  resetEmailSettings()
+  forgetEmailSettings()
   forgetSpaces()
   forgetFind()
   versionState.reset()

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type MouseEvent, type ReactNode } from 'react'
 import { auth } from '../api/auth'
 import { settings } from '../api/settings'
 import { ApiError } from '../api/client'
@@ -7,20 +7,21 @@ import { platformBadge, sessionName } from '../api/user-agent'
 import { genericMessage } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
-import { setEmailSettings, useEmailSettings } from '../notes/email-settings'
 import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
 import { navigate } from '../router'
 import { applyTheme, readTheme, type ThemeChoice } from '../theme'
 import { Button } from '../ui/button'
 import { Command } from '../ui/code'
+import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { AppearanceIcon, ChevronIcon, CloudIcon, LockIcon, MailIcon, SpacesIcon } from '../ui/icons'
 import { Kicker } from '../ui/kicker'
 import { PHONE, useMediaQuery } from '../ui/media'
 import { Sheet } from '../ui/sheet'
 import { Surface } from '../ui/surface'
-import { DeviceCard, InstallCard, SignOutCard, syncSummary, useKeptHere, useSyncState } from './device'
+import { DeviceCard, InstallCard, SignOutItem, syncSummary, useKeptHere, useSyncState } from './device'
+import { IntegrationsPage, integrationsValue, useIntegrationStatuses } from './integrations'
 import { LockedNotesCard } from './locked-notes'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
@@ -191,14 +192,14 @@ function SettingsNav({
 function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
   const locks = useLockStatus()
   const spaces = useSpaces()
-  const email = useEmailSettings()
+  const integrations = useIntegrationStatuses()
   const kept = useKeptHere()
   const sync = useSyncState()
   return {
     server: window.location.host,
     security: { unknown: '', none: 'Off', locked: 'Locked', unlocked: 'Unlocked' }[locks],
     spaces: spaces ? String(spaces.length) : '',
-    integrations: !email ? '' : email.configured ? 'Email' : 'Off',
+    integrations: integrationsValue(integrations),
     appearance: themes.find((t) => t.value === theme)?.label ?? '',
     device: kept ? syncSummary(sync) : 'Off',
   }
@@ -358,19 +359,18 @@ function SettingsPage({
     case 'server':
       return (
         <>
-          <div className={styles.row}>
-            <Surface as="section" className={[styles.card, styles.wide].join(' ')} aria-labelledby="server-kicker">
-              <Kicker id="server-kicker">Server</Kicker>
-              <div className={styles.who}>
-                <span className={styles.host}>{window.location.host}</span>
-                <span className={styles.muted}>Signed in as {username}</span>
-                <ServerVersion />
-              </div>
-            </Surface>
-            <SignOutCard />
-          </div>
+          <Surface as="section" className={styles.card} aria-label="Server">
+            <div className={styles.who}>
+              <span className={styles.host}>{window.location.host}</span>
+              <span className={styles.muted}>Signed in as {username}</span>
+              <ServerVersion />
+            </div>
+            <ul className={styles.items}>
+              <PasswordItem />
+              <SignOutItem />
+            </ul>
+          </Surface>
           <UpdateCard />
-          <PasswordCard />
         </>
       )
     case 'security':
@@ -383,7 +383,7 @@ function SettingsPage({
     case 'spaces':
       return <SpacesCard onCreated={onSpaceCreated} />
     case 'integrations':
-      return <EmailCard />
+      return <IntegrationsPage />
     case 'appearance':
       return (
         <>
@@ -409,9 +409,9 @@ const themes: { value: ThemeChoice; label: string }[] = [
 
 function Appearance({ theme, onChange }: { theme: ThemeChoice; onChange: (theme: ThemeChoice) => void }) {
   return (
-    <Surface as="section" className={styles.card} aria-labelledby="appearance-kicker">
-      <Kicker id="appearance-kicker">Appearance</Kicker>
-      <div className={styles.segmented} role="radiogroup" aria-labelledby="appearance-kicker">
+    <Surface as="section" className={styles.card} aria-labelledby="theme-kicker">
+      <Kicker id="theme-kicker">Theme</Kicker>
+      <div className={styles.segmented} role="radiogroup" aria-labelledby="theme-kicker">
         {themes.map((t) => (
           <button
             key={t.value}
@@ -480,15 +480,54 @@ function FontCard() {
   )
 }
 
+/** The account password: a line saying what changing it does; the form only once asked for. */
+function PasswordItem() {
+  const [open, setOpen] = useState(false)
+  const [done, setDone] = useState(false)
+  return (
+    <li className={styles.item}>
+      <span className={styles.itemText}>
+        <span className={styles.itemTitle}>Password</span>
+        {done ? (
+          <span role="status" className={styles.good}>
+            Password changed. Every other browser and device was signed out and needs the new password.
+          </span>
+        ) : (
+          <span className={styles.muted}>Changing it signs out every other browser and device.</span>
+        )}
+      </span>
+      <Button
+        size="sm"
+        onClick={() => {
+          setDone(false)
+          setOpen(true)
+        }}
+        aria-label="Change password"
+      >
+        Change…
+      </Button>
+      {open && (
+        <PasswordDialog
+          onClose={() => setOpen(false)}
+          onChanged={() => {
+            setOpen(false)
+            setDone(true)
+          }}
+        />
+      )}
+    </li>
+  )
+}
+
 type PasswordErrors = Partial<Record<'current' | 'next' | 'confirm', string>>
 
-function PasswordCard() {
+function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged: () => void }) {
+  const titleId = useId()
   const [current, setCurrent] = useState('')
   const [next, setNext] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<PasswordErrors>({})
   const [formError, setFormError] = useState<string>()
-  const [done, setDone] = useState(false)
   const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
@@ -499,16 +538,12 @@ function PasswordCard() {
     else if (confirm !== next) found.confirm = "The passwords don't match."
     setErrors(found)
     setFormError(undefined)
-    setDone(false)
     if (Object.keys(found).length > 0) return
 
     setBusy(true)
     try {
       await auth.changePassword(current, next)
-      setCurrent('')
-      setNext('')
-      setConfirm('')
-      setDone(true)
+      onChanged()
     } catch (err) {
       if (err instanceof ApiError && err.code === 'invalid_credentials') {
         setErrors({ current: 'That isn’t your current password.' })
@@ -517,15 +552,16 @@ function PasswordCard() {
       } else {
         setFormError(genericMessage(err))
       }
-    } finally {
       setBusy(false)
     }
   }
 
   return (
-    <Surface as="section" className={[styles.card, styles.password].join(' ')} aria-labelledby="password-kicker">
-      <Kicker id="password-kicker">Password</Kicker>
-      <form className={styles.form} onSubmit={(e) => void submit(e)} noValidate>
+    <Dialog labelledBy={titleId} onClose={busy ? undefined : onClose}>
+      <form className={styles.dialog} onSubmit={(e) => void submit(e)} noValidate>
+        <h2 id={titleId} className={styles.dialogTitle}>
+          Change password
+        </h2>
         <Field
           label="Current password"
           type="password"
@@ -533,172 +569,48 @@ function PasswordCard() {
           value={current}
           onChange={(e) => setCurrent(e.target.value)}
           error={errors.current}
+          readOnly={busy}
+          autoFocus
         />
-        <div className={styles.pair}>
-          <Field
-            label="New password"
-            type="password"
-            autoComplete="new-password"
-            placeholder="At least 8 characters"
-            value={next}
-            onChange={(e) => setNext(e.target.value)}
-            error={errors.next}
-          />
-          <Field
-            label="Confirm new password"
-            type="password"
-            autoComplete="new-password"
-            value={confirm}
-            onChange={(e) => setConfirm(e.target.value)}
-            error={errors.confirm}
-          />
-        </div>
+        <Field
+          label="New password"
+          type="password"
+          autoComplete="new-password"
+          placeholder="At least 8 characters"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          error={errors.next}
+          readOnly={busy}
+        />
+        <Field
+          label="Confirm new password"
+          type="password"
+          autoComplete="new-password"
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          error={errors.confirm}
+          readOnly={busy}
+        />
         {formError && (
           <p role="alert" className={styles.error}>
             {formError}
           </p>
         )}
-        {done && (
-          <p role="status" className={styles.success}>
-            Password changed. Every other browser and device was signed out and needs the new password.
-          </p>
-        )}
-        <div>
+        <div className={styles.forgot}>
+          <span className={styles.muted}>Forgot it? Reset it on the server:</span>
+          <Command command="notesd reset-password" tone="dark" />
+        </div>
+        <div className={styles.dialogActions}>
+          <Button size="md" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
           <Button variant="solid" size="md" type="submit" busy={busy}>
             {busy ? 'Changing…' : 'Change password'}
           </Button>
         </div>
       </form>
-      <div className={styles.forgot}>
-        <span className={styles.muted}>Forgot it? Reset it on the server:</span>
-        <Command command="notesd reset-password" tone="dark" />
-      </div>
-    </Surface>
+    </Dialog>
   )
-}
-
-type EmailErrors = Partial<Record<'apiKey' | 'from', string>>
-
-function EmailCard() {
-  const saved = useEmailSettings()
-  const [apiKey, setApiKey] = useState('')
-  const [from, setFrom] = useState<string>()
-  const [errors, setErrors] = useState<EmailErrors>({})
-  const [formError, setFormError] = useState<string>()
-  const [done, setDone] = useState<string>()
-  const [busy, setBusy] = useState(false)
-  const fromValue = from ?? saved?.from ?? ''
-
-  async function submit(e: FormEvent) {
-    e.preventDefault()
-    const found: EmailErrors = {}
-    if (!saved?.configured && !apiKey.trim()) found.apiKey = 'Paste your Resend API key.'
-    if (!fromValue.trim()) found.from = 'Enter the address emails come from.'
-    setErrors(found)
-    setFormError(undefined)
-    setDone(undefined)
-    if (Object.keys(found).length > 0) return
-
-    setBusy(true)
-    try {
-      setEmailSettings(await settings.saveEmail(fromValue.trim(), apiKey.trim() || undefined))
-      setApiKey('')
-      setFrom(undefined)
-      setDone('Saved. Notes can be emailed from the Share menu.')
-    } catch (err) {
-      if (err instanceof ApiError && err.status === 400 && (err.field === 'apiKey' || err.field === 'from')) {
-        setErrors({ [err.field]: sentence(err.message) })
-      } else {
-        setFormError(genericMessage(err))
-      }
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  async function remove() {
-    setBusy(true)
-    setFormError(undefined)
-    setDone(undefined)
-    try {
-      await settings.removeEmail()
-      setEmailSettings({ configured: false, from: '', keyHint: '' })
-      setApiKey('')
-      setFrom(undefined)
-      setErrors({})
-    } catch (err) {
-      setFormError(genericMessage(err))
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  return (
-    <Surface as="section" className={[styles.card, styles.email].join(' ')} aria-labelledby="email-kicker">
-      <Kicker id="email-kicker">Email</Kicker>
-      <span className={styles.text}>
-        Send notes by email through{' '}
-        <a href="https://resend.com" target="_blank" rel="noreferrer">
-          Resend
-        </a>
-        . Use an API key with sending access and an address on a{' '}
-        <a href="https://resend.com/domains" target="_blank" rel="noreferrer">
-          verified domain
-        </a>
-        .
-      </span>
-      <form className={styles.form} onSubmit={(e) => void submit(e)} noValidate>
-        <div className={styles.pair}>
-          <Field
-            label="Resend API key"
-            type="password"
-            mono
-            autoComplete="off"
-            spellCheck={false}
-            placeholder={saved?.configured ? `Saved · …${saved.keyHint}` : 're_…'}
-            value={apiKey}
-            onChange={(e) => setApiKey(e.target.value)}
-            error={errors.apiKey}
-          />
-          <Field
-            label="From"
-            type="text"
-            autoComplete="off"
-            spellCheck={false}
-            placeholder="Your Name <notes@example.com>"
-            value={fromValue}
-            onChange={(e) => setFrom(e.target.value)}
-            error={errors.from}
-          />
-        </div>
-        {formError && (
-          <p role="alert" className={styles.error}>
-            {formError}
-          </p>
-        )}
-        {done && (
-          <p role="status" className={styles.success}>
-            {done}
-          </p>
-        )}
-        <div className={styles.buttons}>
-          <Button variant="solid" size="md" type="submit" busy={busy}>
-            Save
-          </Button>
-          {saved?.configured && (
-            <Button variant="danger-text" size="md" onClick={() => void remove()} disabled={busy}>
-              Remove
-            </Button>
-          )}
-        </div>
-      </form>
-    </Surface>
-  )
-}
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
 }
 
 type DevicesState = { status: 'loading' | 'ready' | 'error'; sessions: Session[]; currentId: string }

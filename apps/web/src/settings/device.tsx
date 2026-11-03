@@ -175,7 +175,7 @@ function SyncRow() {
 }
 
 /** Sign out; with notes kept here, removing them, and asking first if some haven't reached the server. */
-export function SignOutCard() {
+export function SignOutItem() {
   const { signOut } = useAuth()
   const kept = useKeptHere()
   const [unsynced, setUnsynced] = useState<number | null>(null)
@@ -195,13 +195,14 @@ export function SignOutCard() {
   }
 
   return (
-    <Surface as="section" className={styles.card} aria-label="Sign out">
-      <span className={styles.text}>
-        {kept
-          ? 'Sign out of this browser. The notes kept here are removed; they stay on the server.'
-          : 'Sign out of this browser. Your notes stay on the server.'}
+    <li className={styles.item}>
+      <span className={styles.itemText}>
+        <span className={styles.itemTitle}>Sign out of this browser</span>
+        <span className={styles.muted}>
+          {kept ? 'The notes kept here are removed; they stay on the server.' : 'Your notes stay on the server.'}
+        </span>
       </span>
-      <Button variant="danger" size="md" busy={busy} onClick={() => void start()}>
+      <Button variant="danger" size="sm" busy={busy} onClick={() => void start()}>
         Sign out
       </Button>
       {unsynced !== null && (
@@ -213,7 +214,7 @@ export function SignOutCard() {
           onClose={() => setUnsynced(null)}
         />
       )}
-    </Surface>
+    </li>
   )
 }
 

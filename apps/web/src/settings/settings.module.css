@@ -169,12 +169,6 @@
   font: 400 26px/1.1 var(--font-serif);
 }
 
-.row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-}
-
 .card {
   flex: 1 1 220px;
   padding: 22px;
@@ -184,14 +178,54 @@
   gap: 20px;
 }
 
-.wide {
-  flex: 1.4 1 260px;
+/* A setting on one line: what it is and where it stands, then what can be done. Forms open in dialogs. */
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.password {
-  flex: 2 1 340px;
-  justify-content: flex-start;
-  gap: 16px;
+.item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid var(--hair);
+}
+
+.item:last-child {
+  padding-bottom: 0;
+}
+
+/* Belongs to the line above it, as one of its things. */
+.subItem {
+  padding-left: 16px;
+  border-top-style: dashed;
+}
+
+.itemText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.itemTitle {
+  font-size: 14.5px;
+  font-weight: 500;
+}
+
+.itemActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.good {
+  font-size: 13px;
+  color: var(--good);
 }
 
 .who {
@@ -489,15 +523,6 @@
   }
 }
 
-.email {
-  justify-content: flex-start;
-  gap: 14px;
-}
-
-.email a {
-  color: var(--link);
-}
-
 .buttons {
   display: flex;
   align-items: center;
@@ -526,4 +551,148 @@
   display: flex;
   justify-content: flex-end;
   gap: 8px;
+}
+
+/* Pushes the rest of the actions to the right: a destructive one, kept apart. */
+.leading {
+  margin-right: auto;
+}
+
+.dialog a {
+  color: var(--link);
+}
+
+.centered {
+  text-align: center;
+}
+
+/* An integration's tile, as a list row's badge. */
+.mark {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* The sender as a recipient's inbox will show it, kept current as it's typed. */
+.inbox {
+  display: flex;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  border: 1px solid var(--hair);
+  background: var(--paper);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
+}
+
+.inboxAvatar {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--accent);
+  color: var(--ink);
+  font: 400 18px/1 var(--font-serif);
+}
+
+.inboxBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.inboxFrom {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+}
+
+.inboxName {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxAddress {
+  min-width: 0;
+  font-size: 12.5px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.inboxTime {
+  margin-left: auto;
+  flex: none;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.inboxSubject {
+  font-size: 13.5px;
+  font-weight: 500;
+}
+
+.inboxSnippet {
+  font-size: 13px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Connected: the plane lands in its circle. */
+.sent {
+  align-self: center;
+  width: 76px;
+  height: 76px;
+  margin-top: 6px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--good-bg);
+  color: var(--good);
+  animation: sent-pop 0.6s var(--spring);
+}
+
+.sent svg {
+  animation: sent-fly 0.9s var(--ease-out) 0.1s both;
+}
+
+@keyframes sent-pop {
+  from {
+    transform: scale(0.4);
+    opacity: 0;
+  }
+}
+
+@keyframes sent-fly {
+  0% {
+    transform: translate(-22px, 18px) rotate(-18deg) scale(0.6);
+    opacity: 0;
+  }
+
+  55% {
+    transform: translate(4px, -4px) rotate(4deg);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sent,
+  .sent svg {
+    animation: none;
+  }
 }

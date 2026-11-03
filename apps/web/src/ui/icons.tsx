@@ -190,3 +190,11 @@ export function CloseIcon({ size = 14 }: Props) {
     </svg>
   )
 }
+
+export function SendIcon({ size = 16 }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M14 2L7 9M14 2l-4.5 12L7 9 2 6.5z" />
+    </svg>
+  )
+}
