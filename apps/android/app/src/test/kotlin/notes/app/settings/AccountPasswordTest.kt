@@ -53,6 +53,39 @@ class AccountPasswordTest {
     }
 
     @Test
+    fun `too many tries says to wait, not to try again now`() {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse =
+                MockResponse.Builder().code(429).addHeader("Retry-After", "30").build()
+        }
+        openServer()
+        compose.onNodeWithText("Current password").performTextInput("whatever it is")
+        compose.onNodeWithText("New password").performTextInput("a brand new one")
+        compose.onNodeWithText("Confirm new password").performTextInput("a brand new one")
+        compose.onNode(hasText("Change") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Too many attempts. Wait a moment and try again."))
+    }
+
+    /** Signed in to [server], with Server's Change password dialog open. */
+    private fun openServer() {
+        server.start()
+        graph.setOnboardingDismissed(true)
+        runBlocking {
+            graph.accounts.signedIn(
+                server.url("/").toString(),
+                SignIn(Session("s", "device", "P", 1, 1), "me", "a", Long.MAX_VALUE, "r", Long.MAX_VALUE)
+            )
+        }
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.onNode(hasContentDescription("Settings")).performClick()
+        compose.waitUntilAtLeastOneExists(hasText("me"))
+        compose.onNodeWithText("me").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Change password") and hasClickAction())
+        compose.onNode(hasText("Change password") and hasClickAction()).performClick()
+    }
+
+    @Test
     fun `the account password changes from Server, after a wrong current one is refused`() {
         val sent = ArrayList<String>()
         server.dispatcher = object : Dispatcher() {
@@ -69,22 +102,7 @@ class AccountPasswordTest {
                 }
             }
         }
-        server.start()
-        graph.setOnboardingDismissed(true)
-        runBlocking {
-            graph.accounts.signedIn(
-                server.url("/").toString(),
-                SignIn(Session("s", "device", "P", 1, 1), "me", "a", Long.MAX_VALUE, "r", Long.MAX_VALUE)
-            )
-        }
-        scenario = ActivityScenario.launch(MainActivity::class.java)
-        compose.onNode(hasContentDescription("Sidebar")).performClick()
-        compose.onNode(hasContentDescription("Settings")).performClick()
-        compose.waitUntilAtLeastOneExists(hasText("me"))
-        compose.onNodeWithText("me").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Change password") and hasClickAction())
-        compose.onNode(hasText("Change password") and hasClickAction()).performClick()
-
+        openServer()
         compose.onNodeWithText("Current password").performTextInput("not it")
         compose.onNodeWithText("New password").performTextInput("a brand new one")
         compose.onNodeWithText("Confirm new password").performTextInput("a brand new one")

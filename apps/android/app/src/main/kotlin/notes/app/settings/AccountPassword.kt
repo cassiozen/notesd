@@ -64,6 +64,9 @@ internal fun AccountPasswordDialog(graph: AppGraph, onDismiss: () -> Unit, onCha
                 r is ApiResult.Rejected && r.status == 400 && r.field == "password" ->
                     mapOf("next" to r.message.replaceFirstChar { it.uppercase() } + ".")
 
+                // The server limits attempts, as at sign-in.
+                r is ApiResult.RateLimited -> mapOf("form" to "Too many attempts. Wait a moment and try again.")
+
                 r is ApiResult.Unreachable -> mapOf("form" to "Can't reach the server.")
 
                 else -> mapOf("form" to "Something went wrong. Try again.")

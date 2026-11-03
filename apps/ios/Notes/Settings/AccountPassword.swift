@@ -49,6 +49,8 @@ struct ChangeAccountPassword: View {
             case .rejected(_, "invalid_credentials", _, _): errors = ["current": "That isn’t your current password."]
             case .rejected(400, _, let text, "password"?):
                 errors = ["next": text.prefix(1).uppercased() + text.dropFirst() + "."]
+            // The server limits attempts, as at sign-in.
+            case .rateLimited: errors = ["form": "Too many attempts. Wait a moment and try again."]
             case .unreachable: errors = ["form": "Can’t reach the server."]
             default: errors = ["form": "Something went wrong. Try again."]
             }

@@ -21,8 +21,9 @@ final class EmailSetup {
     func refresh() async -> Bool {
         guard let client = api() else { return false }
         let asked = generation
-        guard let value = await client.emailSettings().value else { return false }
-        if asked == generation { settings = value }
+        // An answer for an account that's gone isn't one for this account.
+        guard let value = await client.emailSettings().value, asked == generation else { return false }
+        settings = value
         return true
     }
 

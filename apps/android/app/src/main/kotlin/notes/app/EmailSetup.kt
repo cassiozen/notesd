@@ -22,8 +22,10 @@ class EmailSetup(private val api: () -> ApiClient?) {
     suspend fun refresh(): Boolean {
         val asked = generation
         val r = api()?.emailSettings() ?: return false
-        if (r is ApiResult.Ok && asked == generation) _settings.value = r.value
-        return r is ApiResult.Ok
+        // An answer for an account that's gone isn't one for this account.
+        if (r !is ApiResult.Ok || asked != generation) return false
+        _settings.value = r.value
+        return true
     }
 
     /** A null [apiKey] keeps the saved one. */
