@@ -63,7 +63,7 @@ The web app offers full note management, editing and search. By default it works
 
 | Excluded | Reason |
 | --- | --- |
-| Real-time collaboration, CRDTs, WebSockets | One active editor per note; HTTP sync is sufficient |
+| Real-time collaboration, CRDTs | One active editor per note; HTTP sync is sufficient. The one WebSocket is for agents and editors (§7.8), not for syncing notes |
 | Full version history, automatic Markdown merge | Not needed to preserve conflicts; formatting-aware merging is complex |
 | File attachments | Need their own storage and sync design; images are the exception (§7.6) |
 | Sharing or collaborating on notes between accounts, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
@@ -481,8 +481,16 @@ The user guide is [agents](../guides/using/agents.md).
   title and content, since the tombstone has neither; a move queues *moved out* (as it left) and
   *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); the runner
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
-  for the space the note is in then. Never a trigger: the agent's own writes, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
+  for the space the note is in then, or at once when an editor closes the note and the server has
+  what it last saved (`editor.closed` on the socket below). Never a trigger: the agent's own writes and saves holding
+  only its change, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
   locked notes, and conflicted or recovered copies.
+- **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
+  authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
+  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while some space's
+  agent is on, and says which notes its editor opens and closes. The server pings every 25 seconds,
+  under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
+  connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
 - **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
   time, so one at a time per note. It sleeps until a write queues a run or starts a session, or
   the next of those is due. At most 4 provider calls run at once across accounts. With AI
@@ -490,18 +498,30 @@ The user guide is [agents](../guides/using/agents.md).
   prompt, which stay the same from run to run so the provider can cache them, then the event: the
   time in the account's time zone and the note. Each run logs where its time went: waiting, getting
   ready, the model's calls and the tools'.
-- **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`. Write: `set_title`,
-  `edit_note` (find must match exactly once), `insert` (start or end),
+- **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
+  `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a
-  note changed since), `create_note`. A write
-  can carry `done`, the run's summary: the run ends with it, without a model call just to say so. Nothing
-  deletes, moves or locks a note, or leaves the space; locked notes are left out of every listing
-  and search, not only hidden from reads. `get_cursor` and inserting at the cursor come with
-  the editor connection. Writes go through the store as ordinary
-  updates marked `agent: {runId, only: true}`, based on the revision the run read. If the note
+  note changed since), `create_note`. A write can carry `done`, the run's summary: the run ends with it, without a model call just
+  to say so. Nothing deletes, moves or locks a note, or leaves the space; locked notes are left
+  out of every listing and search, not only hidden from reads. Writes go through the store as
+  ordinary updates marked `agent: {runId, only: true}`, based on the revision the run read. If the note
   changed since, the change is made to it as it is now, without starting over; one that no longer
   fits (a find the user changed) comes back to the model with the note as it is now. The run's own
   note deleted, moved or locked meanwhile stops the run.
+- **In the editor.** A note an editor has open on the socket is read from it instead: unsaved
+  typing and the cursor included (`internal/editors`; the run's own editor first, else the one that
+  opened it last). A write to it is worked out on the server as above, then sent as before and
+  after; the editor applies it if it still shows before (else it's read again and the change made to
+  it as it is now), as one step
+  the user can undo there, and saves it as any edit, with the text its Markdown writes (which the
+  run then records). The edit is recorded with no `after_revision` until a save holding exactly
+  what the run left arrives. That save is the agent's alone, and fires nothing, if the server held
+  exactly what the editor showed before the run's first unsaved change (kept as a hash,
+  `applied_from`, not text); otherwise the user's unsaved typing went out with it, and it counts
+  as theirs too. A save with typing after the change isn't linked, so undo can't take that
+  typing; the edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
+  seconds counts as gone: a read falls back to the store, a write fails the run
+  (`editor_disconnected`).
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the
@@ -581,6 +601,7 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `GET` `PUT` `DELETE` | `/api/v1/settings/email` | The Resend API key (write-only) and sender |
 | `GET` | `/api/v1/agent/spaces` | Every space's agent that has been set up |
 | `GET` `PUT` `DELETE` | `/api/v1/agent/spaces/:id` | A space's agent: on or off, its prompt, a prompt per trigger, the menu command's name |
+| `GET` | `/api/v1/agent/socket` | WebSocket: editors say which notes they have open (§7.8) |
 | `GET` `PUT` | `/api/v1/settings/account` | The account's time zone; devices send theirs as `X-Notesd-Time-Zone` |
 | `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per account |
 | `POST` | `/api/v1/settings/ai/test` | Check the provider answers and the model calls tools |

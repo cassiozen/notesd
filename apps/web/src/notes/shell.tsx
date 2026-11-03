@@ -1,3 +1,4 @@
+import { useAgentSocket } from '../agent/socket'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { dragRegion } from '../desktop'
 import { TouchIdOffer } from '../locks/unlock'
@@ -46,6 +47,7 @@ export function loadSidebarHidden(): boolean {
 }
 
 function ShellView({ username }: { username: string }) {
+  useAgentSocket()
   const pathname = usePathname()
   const route = parseRoute(pathname)
   const mobile = useMediaQuery(PHONE)

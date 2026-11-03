@@ -18,6 +18,7 @@ import (
 
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
+	"notes/server/internal/editors"
 	"notes/server/internal/llm"
 	"notes/server/internal/mail"
 	"notes/server/internal/userdata"
@@ -31,6 +32,11 @@ type Config struct {
 	// OnAIChanged is called after the AI settings are saved or removed, so
 	// agents waiting for them resume or pause.
 	OnAIChanged func()
+	// OnRunQueued is called when a request queued an agent run for the user.
+	OnRunQueued func(userID int64)
+	// Editors are the connected note editors, shared with the agent runner;
+	// nil gets a hub of the server's own.
+	Editors *editors.Hub
 	// Version is the server's build version (v1.2.3), sent on every
 	// response; empty is a development build, sent as "dev".
 	Version string
@@ -56,16 +62,22 @@ type Server struct {
 	log      *slog.Logger
 	cfg      Config
 	releases *releases
+	editors  *editors.Hub
 }
 
 // New returns a server over the system database and users' notes databases.
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
+	hub := cfg.Editors
+	if hub == nil {
+		hub = editors.NewHub()
+	}
 	return &Server{
 		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
 		limiter:  auth.NewLimiter(10, 15*time.Minute),
 		mailer:   mail.NewClient(cfg.ResendURL),
 		ai:       llm.NewClient(),
 		releases: newReleases(cfg.ReleasesURL),
+		editors:  hub,
 	}
 }
 
@@ -112,6 +124,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/agent/usage", s.authed(s.agentUsage))
 	mux.Handle("GET /api/v1/agent/runs/{id}", s.authed(s.agentRun))
 	mux.Handle("POST /api/v1/agent/runs/{id}/undo", s.authed(s.undoAgentRun))
+	mux.Handle("GET /api/v1/agent/socket", s.authed(s.agentSocket))
 	mux.Handle("GET /api/v1/settings/ai", s.authed(s.aiSettings))
 	mux.Handle("PUT /api/v1/settings/ai", s.authed(adminOnly(s.saveAISettings)))
 	mux.Handle("DELETE /api/v1/settings/ai", s.authed(adminOnly(s.deleteAISettings)))

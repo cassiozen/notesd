@@ -50,6 +50,11 @@ The address is `https://<machine>.<tailnet>.ts.net`.
 With a certificate from certbot:
 
 ```nginx
+map $http_upgrade $connection_upgrade {
+    default upgrade;
+    ''      close;
+}
+
 server {
     listen 443 ssl;
     server_name notes.example.com;
@@ -63,6 +68,10 @@ server {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
+        # Agents' connection to the editor is a WebSocket.
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $connection_upgrade;
     }
 }
 ```

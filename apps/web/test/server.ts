@@ -4,7 +4,9 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import NodeWebSocket from 'ws'
 import { inject, onTestFinished } from 'vitest'
+import { socketFactory } from '../src/agent/socket'
 
 export type TestServer = {
   url: string
@@ -45,6 +47,11 @@ export async function startServer({ resendUrl }: { resendUrl?: string } = {}): P
 
   const browser = cookieFetch(url)
   globalThis.fetch = browser
+  // jsdom's WebSocket can't carry the jar; Node's can, as the browser would.
+  socketFactory.make = (path) =>
+    new NodeWebSocket(new URL(path, url.replace(/^http/, 'ws')), {
+      headers: { Cookie: browser.cookie(), Origin: browser.origin ?? url },
+    }) as unknown as WebSocket
 
   const other = cookieFetch(url)
   const server: TestServer = {
@@ -209,6 +216,7 @@ function readStartup(proc: ChildProcess): Promise<string> {
 }
 
 type CookieFetch = typeof fetch & {
+  cookie: () => string
   csrf?: string
   offline?: boolean
   origin?: string
@@ -228,7 +236,7 @@ function cookieFetch(base: string): CookieFetch {
     const headers = new Headers(init.headers)
     // Same-origin browser requests carry Origin on mutations.
     headers.set('Origin', fn.origin ?? base)
-    if (jar.size > 0) headers.set('Cookie', [...jar].map(([k, v]) => `${k}=${v}`).join('; '))
+    if (jar.size > 0) headers.set('Cookie', fn.cookie())
 
     // jsdom's AbortSignal isn't Node's; bridge it so aborts still reach fetch.
     const controller = new AbortController()
@@ -253,5 +261,6 @@ function cookieFetch(base: string): CookieFetch {
   }) as CookieFetch
   fn.log = []
   fn.answered = []
+  fn.cookie = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ')
   return fn
 }

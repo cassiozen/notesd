@@ -18,6 +18,8 @@ import { UnlockForm } from '../locks/unlock'
 import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
+import { agentSocket } from '../agent/socket'
+import { applyForAgent, composed, readForAgent } from '../editor/agent-edit'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -150,10 +152,17 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   }, [id, load.kind, saverFor, removed, space, setSpace])
 
   const saver = load.kind === 'ready' ? load.saver : null
-  // Leaving the note: save what's left, then let the store forget it.
+  // Leaving the note: save what's left, then let the store forget it. Agents
+  // hear of both, so closing a note ends its writing session at once.
   useEffect(() => {
     if (!saver) return
-    return () => void saver.flush().finally(() => release(saver.id))
+    agentSocket.noteOpened(saver.id)
+    return () =>
+      void saver
+        .savedRevision()
+        .catch(() => null)
+        .then((revision) => agentSocket.noteClosed(saver.id, revision))
+        .finally(() => release(saver.id))
   }, [saver, release])
 
   return (
@@ -349,6 +358,27 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       detach()
     }
   }, [saver, editor, touch])
+
+  // Agents' runs read and change the note here, where the user sees it and can undo it.
+  useEffect(
+    () =>
+      agentSocket.serve(saver.id, {
+        read: () => {
+          if (saver.isLocked()) return { error: 'locked' }
+          const { fields, cursor } = readForAgent(editor.state)
+          return { spaceId: saver.spaceId(), ...fields, cursor, revision: saver.knownRevision() }
+        },
+        apply: async (before, after) => {
+          if (saver.isLocked()) return { error: 'locked' }
+          await composed(editor)
+          const now = noteFields(editor.state.doc)
+          if (now.title !== before.title || now.content !== before.content) return { error: 'changed' }
+          applyForAgent(editor, after)
+          return { shows: noteFields(editor.state.doc) }
+        },
+      }),
+    [saver, editor],
+  )
 
   useEffect(() => () => clearTimeout(touchTimer.current), [])
 

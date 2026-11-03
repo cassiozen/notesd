@@ -38,10 +38,12 @@ var tools = []llm.Tool{
 		`{"type": "object", "properties": {`+noteIDParam+`, "title": {"type": "string"}, `+doneParam+`}, "required": ["title"], "additionalProperties": false}`),
 	tool("edit_note", "Replace text in a note's Markdown content. find must appear exactly once; on an empty note, use insert.",
 		`{"type": "object", "properties": {`+noteIDParam+`, "find": {"type": "string"}, "replace": {"type": "string"}, `+doneParam+`}, "required": ["find", "replace"], "additionalProperties": false}`),
-	tool("insert", "Add text to a note's content: at its start or its end. The way to write in an empty note.",
-		`{"type": "object", "properties": {`+noteIDParam+`, "at": {"type": "string", "enum": ["start", "end"]}, "text": {"type": "string"}, `+doneParam+`}, "required": ["at", "text"], "additionalProperties": false}`),
+	tool("insert", "Add text to a note's content: at its start or its end as a block of its own, or exactly at the cursor (this run's note, while the user has it open). The way to write in an empty note.",
+		`{"type": "object", "properties": {`+noteIDParam+`, "at": {"type": "string", "enum": ["start", "end", "cursor"]}, "text": {"type": "string"}, `+doneParam+`}, "required": ["at", "text"], "additionalProperties": false}`),
 	tool("set_content", "Replace a note's whole Markdown content. For a note you keep yourself, like a digest: for the user's writing, use edit_note or insert.",
 		`{"type": "object", "properties": {`+noteIDParam+`, "content": {"type": "string"}, `+doneParam+`}, "required": ["content"], "additionalProperties": false}`),
+	tool("get_cursor", "Where the user's cursor is in this run's note, while they have it open: the text just before and just after it.",
+		`{"type": "object", "properties": {}, "additionalProperties": false}`),
 	tool("create_note", "Create a note in this space.",
 		`{"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}, `+doneParam+`}, "required": ["title", "content"], "additionalProperties": false}`),
 }
@@ -89,6 +91,19 @@ func refuse(format string, a ...any) error { return &toolError{msg: fmt.Sprintf(
 type stopError struct{ f finished }
 
 func (e *stopError) Error() string { return e.f.Message }
+
+// errEditorGone means the editor went away while the run was changing the
+// note in it: the change may or may not have landed, so the run stops.
+var errEditorGone = errors.New("the editor went away")
+
+// editorRead is a note as an editor showed it.
+type editorRead struct {
+	revision *int64 // the server's, if the editor had saved everything
+	cursor   *int   // code points into the content
+}
+
+// cursorContext is how much text get_cursor shows on either side.
+const cursorContext = 200
 
 // call runs one tool call and returns its result as JSON for the model.
 func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
@@ -176,13 +191,31 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if args.Text == nil || strings.TrimSpace(*args.Text) == "" {
 			return "", refuse("text is required")
 		}
-		text := strings.Trim(*args.Text, "\n")
 		switch args.At {
 		case "start", "end":
+			return rs.write(ctx, id, edit{Kind: "insert", At: args.At, Text: strings.Trim(*args.Text, "\n")})
+		case "cursor":
+			if id != rs.run.NoteID {
+				return "", refuse("only this run's note has a cursor")
+			}
+			if _, err := rs.cursor(ctx); err != nil {
+				return "", err
+			}
+			return rs.write(ctx, id, edit{Kind: "insert", At: "cursor", Text: *args.Text})
 		default:
-			return "", refuse(`at must be "start" or "end"`)
+			return "", refuse(`at must be "start", "end" or "cursor"`)
 		}
-		return rs.write(ctx, id, edit{Kind: "insert", At: args.At, Text: text})
+	case "get_cursor":
+		n, err := rs.cursor(ctx)
+		if err != nil {
+			return "", err
+		}
+		at := *rs.inEditor[n.ID].cursor
+		runes := []rune(n.Content)
+		return jsonString(map[string]any{
+			"before": string(runes[max(0, at-cursorContext):at]),
+			"after":  string(runes[at:min(len(runes), at+cursorContext)]),
+		}), nil
 	case "set_content":
 		if args.Content == nil {
 			return "", refuse("content is required")
@@ -204,11 +237,12 @@ type edit struct {
 	Kind          string // "title", "replace", "insert" or "content"
 	Title         string
 	Find, Replace string
-	At, Text      string // At: "start" or "end"; Text: the whole content, for "content"
+	At, Text      string // At: "start", "end" or "cursor"; Text: the whole content, for "content"
 }
 
-// apply makes e to n, or refuses: find must appear exactly once.
-func (e edit) apply(n *notes.Note) error {
+// apply makes e to n, or refuses: find must appear exactly once, and an
+// insert at the cursor needs one (code points into the content).
+func (e edit) apply(n *notes.Note, cursor *int) error {
 	switch e.Kind {
 	case "title":
 		n.Title = e.Title
@@ -222,7 +256,14 @@ func (e edit) apply(n *notes.Note) error {
 			return refuse("find appears %d times; include more of the text around it", c)
 		}
 	case "insert":
-		n.Content = insertText(n.Content, e.Text, e.At == "start")
+		if e.At != "cursor" {
+			n.Content = insertText(n.Content, e.Text, e.At == "start")
+			break
+		}
+		if cursor == nil {
+			return refuse("the note isn't open in an editor, so there's no cursor")
+		}
+		n.Content = insertAt(n.Content, *cursor, e.Text)
 	case "content":
 		n.Content = e.Text
 	}
@@ -257,9 +298,17 @@ func insertText(content, text string, atStart bool) string {
 	}
 }
 
+// insertAt puts text at a code point offset into content.
+func insertAt(content string, at int, text string) string {
+	runes := []rune(content)
+	at = min(max(at, 0), len(runes))
+	return string(runes[:at]) + text + string(runes[at:])
+}
+
 // read returns a note in the run's space, as last read in this run if it
-// was: a write must be based on what the agent saw. The run's own note
-// deleted, moved or locked since stops the run, unless its trigger was that.
+// was: a write must be based on what the agent saw. A note open in an editor
+// is read from there, unsaved typing included. The run's own note deleted,
+// moved or locked since stops the run, unless its trigger was that.
 func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
 	if n, ok := rs.reads[id]; ok {
 		return n, nil
@@ -273,28 +322,68 @@ func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
 			return n, &stopError{f}
 		}
 	}
-	if errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil) {
-		return n, refuse("there's no note with id %q", id)
-	}
-	if err != nil {
+	missing := errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil)
+	switch {
+	case err != nil && !missing:
 		return n, err
-	}
-	if n.SpaceID != rs.run.SpaceID {
+	case missing && id != rs.run.NoteID:
+		return n, refuse("there's no note with id %q", id)
+	case missing:
+	case n.SpaceID != rs.run.SpaceID:
 		return n, refuse("that note isn't in this space")
-	}
-	if locks.IsLocked(n.Content) {
+	case locks.IsLocked(n.Content):
 		return n, refuse("that note is locked: its content is encrypted, and agents never see it")
+	}
+	if rs.acct.Editors != nil {
+		en, err := rs.acct.Editors.Read(ctx, id, rs.prefer())
+		switch {
+		case err == nil && en.SpaceID != rs.run.SpaceID:
+			return n, refuse("that note isn't in this space")
+		case err == nil:
+			n.ID, n.SpaceID, n.Title, n.Content = id, en.SpaceID, en.Title, en.Content
+			rs.reads[id] = n
+			rs.inEditor[id] = &editorRead{revision: en.Revision, cursor: en.Cursor}
+			return n, nil
+		case !errors.Is(err, ErrNotOpen) && !errors.Is(err, ErrEditorGone):
+			return n, err
+		}
+	}
+	if missing {
+		return n, refuse("there's no note with id %q", id)
 	}
 	rs.reads[id] = n
 	return n, nil
 }
 
+// cursor reads the run's note again, for where the user's cursor is now.
+func (rs *runState) cursor(ctx context.Context) (notes.Note, error) {
+	id := rs.run.NoteID
+	delete(rs.reads, id)
+	delete(rs.inEditor, id)
+	n, err := rs.read(ctx, id)
+	if err != nil {
+		return n, err
+	}
+	if er := rs.inEditor[id]; er == nil || er.cursor == nil {
+		return n, refuse("the note isn't open in an editor, so there's no cursor")
+	}
+	return n, nil
+}
+
+// prefer is the editor this run talks to first: the one that asked for it.
+func (rs *runState) prefer() string { return rs.run.ConnectionID }
+
 // writeTries bounds how often a write is made again to a note that keeps
 // changing under it.
 const writeTries = 3
 
-// write makes e to a note through the store, as the agent, based on the
-// revision the run read; changed since, to the note as it is now.
+// errChanged means a write found the note changed since the run read it:
+// it's read again, and the change made to it as it is now.
+var errChanged = errors.New("note changed since it was read")
+
+// write makes e to a note, as the agent: in the editor that has it open, or
+// through the store, based on what the run read; changed since, to the note
+// as it is now.
 func (rs *runState) write(ctx context.Context, id string, e edit) (string, error) {
 	for try := 1; ; try++ {
 		cur, err := rs.read(ctx, id)
@@ -306,7 +395,11 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 			return "", &toolError{msg: "the note changed since you read it, so its content wasn't replaced; here it is now", note: &cur}
 		}
 		next := cur
-		if err := e.apply(&next); err != nil {
+		var cursor *int
+		if er := rs.inEditor[id]; er != nil {
+			cursor = er.cursor
+		}
+		if err := e.apply(&next, cursor); err != nil {
 			var te *toolError
 			if try > 1 && errors.As(err, &te) {
 				te.note = &cur // not what the model read: it needs this to try again
@@ -319,28 +412,70 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 		if next.Title == cur.Title && next.Content == cur.Content {
 			return `{"ok": true, "changed": false}`, nil
 		}
-		rs.ops++
-		res, err := rs.acct.Notes.Update(ctx, notes.UpdateInput{
-			OperationID: fmt.Sprintf("agent:%s:%d", rs.run.ID, rs.ops), ID: id, BaseRevision: cur.Revision,
-			Title: next.Title, Content: next.Content, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
-		})
-		var conflict *notes.ConflictError
-		var invalid *notes.ValidationError
+		if er, ok := rs.inEditor[id]; ok {
+			err = rs.writeInEditor(ctx, id, er, cur, next)
+		} else {
+			err = rs.writeStore(ctx, id, cur, next)
+		}
 		switch {
-		case errors.As(err, &conflict) && try < writeTries:
+		case errors.Is(err, errChanged) && try < writeTries:
 			delete(rs.reads, id)
+			delete(rs.inEditor, id)
 			continue
-		case errors.As(err, &conflict):
+		case errors.Is(err, errChanged):
 			return "", refuse("the note kept changing as you wrote; try again")
-		case errors.As(err, &invalid):
-			return "", refuse("%s %s", invalid.Field, invalid.Message)
 		case err != nil:
 			return "", err
 		}
-		next.Revision, next.UpdatedAt = res.Revision, res.UpdatedAt
-		rs.reads[id] = next
 		return `{"ok": true, "changed": true}`, nil
 	}
+}
+
+// writeStore makes a change through the store, based on cur's revision.
+func (rs *runState) writeStore(ctx context.Context, id string, cur, next notes.Note) error {
+	rs.ops++
+	res, err := rs.acct.Notes.Update(ctx, notes.UpdateInput{
+		OperationID: fmt.Sprintf("agent:%s:%d", rs.run.ID, rs.ops), ID: id, BaseRevision: cur.Revision,
+		Title: next.Title, Content: next.Content, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
+	})
+	var conflict *notes.ConflictError
+	var invalid *notes.ValidationError
+	switch {
+	case errors.As(err, &conflict):
+		return errChanged
+	case errors.As(err, &invalid):
+		return refuse("%s %s", invalid.Field, invalid.Message)
+	case err != nil:
+		return err
+	}
+	next.Revision, next.UpdatedAt = res.Revision, res.UpdatedAt
+	rs.reads[id] = next
+	return nil
+}
+
+// writeInEditor makes the change in the editor that has the note open,
+// where the user sees it and can undo it; the editor saves it.
+func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead, cur, next notes.Note) error {
+	before, after := Fields{cur.Title, cur.Content}, Fields{next.Title, next.Content}
+	after, err := rs.acct.Editors.Apply(ctx, id, rs.prefer(), EditorChange{RunID: rs.run.ID, Before: before, After: after})
+	switch {
+	case errors.Is(err, ErrEditorChanged), errors.Is(err, ErrNotOpen):
+		// The user typed meanwhile, or closed it: read it again, from the store if need be.
+		return errChanged
+	case errors.Is(err, ErrEditorGone):
+		return errEditorGone
+	case err != nil:
+		return err
+	}
+	if err := rs.acct.Agent.recordEditorEdit(ctx, rs.run.ID, id, er.revision, before, after); err != nil {
+		return err
+	}
+	next.Title, next.Content = after.Title, after.Content
+	rs.reads[id] = next
+	// Unsaved now; the cursor stays where the user left it, which this
+	// change may have moved: read it again to know.
+	rs.inEditor[id] = &editorRead{}
+	return nil
 }
 
 func (rs *runState) create(ctx context.Context, title, content string) (string, error) {
