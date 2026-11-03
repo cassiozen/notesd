@@ -1,4 +1,5 @@
 import { useId, useState, type FormEvent } from 'react'
+import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -8,6 +9,7 @@ import { useShake } from '../ui/shake'
 import { LockedError } from './crypto'
 import { PasskeyError, passkeysAvailable } from './passkey'
 import { lockSession, useLockKeys } from './session'
+import { unlockWithTouchId, useTouchId } from './touch-id'
 import styles from './locks.module.css'
 
 /** Shortest lock password accepted; it's the only thing between the server and the notes. */
@@ -15,12 +17,22 @@ export const MIN_LOCK_PASSWORD = 8
 
 const UNLOCK: [string, string] = ['Unlock', 'Unlocking…']
 const UNLOCK_PASSKEY: [string, string] = ['Unlock with passkey', 'Waiting for the passkey…']
+const UNLOCK_TOUCH_ID: [string, string] = ['Unlock with Touch ID', 'Waiting for Touch ID…']
+
+/** Touch ID when it's on here (the macOS app), otherwise a passkey when there is one: asked for before the password. */
+function useQuickUnlock(): { kind: 'touch-id' | 'passkey' | null; user: string | null } {
+  const { state } = useAuth()
+  const user = 'username' in state ? state.username : null
+  const touchId = useTouchId(user)
+  const passkey = useLockKeys().some((k) => k.kind === 'passkey') && passkeysAvailable()
+  return { kind: touchId.enabled ? 'touch-id' : passkey ? 'passkey' : null, user }
+}
 
 /**
  * The way into locked notes; inline in the note pane or inside
- * LockNoteDialog. With a passkey set up, that's the one button, and the
- * lock password field waits behind "Use password instead". [action] and
- * [passkeyAction] name the buttons (idle, busy).
+ * LockNoteDialog. With Touch ID on or a passkey set up, that's the one
+ * button, and the lock password field waits behind "Use password instead".
+ * [action], [passkeyAction] and [touchIdAction] name the buttons (idle, busy).
  */
 export function UnlockForm({
   onUnlocked,
@@ -28,19 +40,37 @@ export function UnlockForm({
   autoFocus = true,
   action = UNLOCK,
   passkeyAction = UNLOCK_PASSKEY,
+  touchIdAction = UNLOCK_TOUCH_ID,
 }: {
   onUnlocked: () => void
   onCancel?: () => void
   autoFocus?: boolean
   action?: [string, string]
   passkeyAction?: [string, string]
+  touchIdAction?: [string, string]
 }) {
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [ref, shake] = useShake<HTMLFormElement>()
   const [usePassword, setUsePassword] = useState(false)
-  const canPasskey = useLockKeys().some((k) => k.kind === 'passkey') && passkeysAvailable()
+  const quick = useQuickUnlock()
+
+  async function touchId(user: string) {
+    setBusy(true)
+    setError(undefined)
+    try {
+      const outcome = await unlockWithTouchId(user)
+      if (outcome === 'done') onUnlocked()
+      // Turned off now: the password form takes its place.
+      else if (outcome === 'stale') setError('Touch ID was turned off: the lock password or your fingerprints changed.')
+      else if (outcome === 'failed') setError('Touch ID didn’t unlock notes. Use the lock password instead.')
+    } catch (err) {
+      setError(genericMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
 
   async function passkey() {
     setBusy(true)
@@ -76,7 +106,9 @@ export function UnlockForm({
     }
   }
 
-  if (canPasskey && !usePassword) {
+  if (quick.kind && !usePassword) {
+    const [idle, waiting] = quick.kind === 'touch-id' ? touchIdAction : passkeyAction
+    const user = quick.user
     return (
       <div className={onCancel ? styles.stack : styles.inline}>
         <div className={styles.actions}>
@@ -85,8 +117,15 @@ export function UnlockForm({
               Cancel
             </Button>
           )}
-          <Button variant="solid" size="md" onClick={() => void passkey()} busy={busy} grow={!onCancel} autoFocus={autoFocus}>
-            {busy ? passkeyAction[1] : passkeyAction[0]}
+          <Button
+            variant="solid"
+            size="md"
+            onClick={() => void (quick.kind === 'touch-id' && user ? touchId(user) : passkey())}
+            busy={busy}
+            grow={!onCancel}
+            autoFocus={autoFocus}
+          >
+            {busy ? waiting : idle}
           </Button>
         </div>
         {error && (
@@ -136,7 +175,7 @@ export function UnlockForm({
           {busy ? action[1] : action[0]}
         </Button>
       </div>
-      {canPasskey && (
+      {quick.kind && (
         <button
           type="button"
           className={styles.link}
@@ -146,7 +185,7 @@ export function UnlockForm({
           }}
           disabled={busy}
         >
-          Use passkey instead
+          {quick.kind === 'touch-id' ? 'Use Touch ID instead' : 'Use passkey instead'}
         </button>
       )}
     </form>
@@ -155,6 +194,7 @@ export function UnlockForm({
 
 const LOCK: [string, string] = ['Lock', 'Locking…']
 const LOCK_PASSKEY: [string, string] = ['Lock with passkey', 'Waiting for the passkey…']
+const LOCK_TOUCH_ID: [string, string] = ['Lock with Touch ID', 'Waiting for Touch ID…']
 
 /**
  * Lock note, when a lock password already exists (made on any device) but
@@ -163,7 +203,7 @@ const LOCK_PASSKEY: [string, string] = ['Lock with passkey', 'Waiting for the pa
  */
 export function LockNoteDialog({ onUnlocked, onClose }: { onUnlocked: () => void; onClose: () => void }) {
   const titleId = useId()
-  const canPasskey = useLockKeys().some((k) => k.kind === 'passkey') && passkeysAvailable()
+  const quick = useQuickUnlock().kind
   return (
     <Dialog labelledBy={titleId} onClose={onClose}>
       <div className={styles.stack}>
@@ -171,11 +211,17 @@ export function LockNoteDialog({ onUnlocked, onClose }: { onUnlocked: () => void
           Lock this note
         </h2>
         <p className={styles.text}>
-          {canPasskey
-            ? 'Locked notes are opened with your passkey or the lock password. Use one to lock this note.'
+          {quick
+            ? `Locked notes are opened with ${quick === 'touch-id' ? 'Touch ID' : 'your passkey'} or the lock password. Use one to lock this note.`
             : 'Locked notes share one lock password, made the first time a note was locked on any of your devices. Enter it to lock this note.'}
         </p>
-        <UnlockForm onUnlocked={onUnlocked} onCancel={onClose} action={LOCK} passkeyAction={LOCK_PASSKEY} />
+        <UnlockForm
+          onUnlocked={onUnlocked}
+          onCancel={onClose}
+          action={LOCK}
+          passkeyAction={LOCK_PASSKEY}
+          touchIdAction={LOCK_TOUCH_ID}
+        />
       </div>
     </Dialog>
   )

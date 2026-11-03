@@ -205,9 +205,9 @@ depends = ["install"]
 run = "pnpm tauri dev"
 
 [tasks."lint:desktop"]
-description = "rustfmt and clippy for the macOS app"
+description = "rustfmt and clippy for the macOS app; swift-format (the iOS app's config) for its Swift bridge"
 dir = "apps/desktop/src-tauri"
-run = "cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings"
+run = "cargo fmt --check && cargo clippy --locked --all-targets -- -D warnings && swift format lint --strict --recursive --configuration ../../ios/.swift-format swift"
 
 [tasks."test:desktop"]
 description = "The macOS app's Rust tests"

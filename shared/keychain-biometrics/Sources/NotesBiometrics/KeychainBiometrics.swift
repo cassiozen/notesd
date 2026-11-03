@@ -38,7 +38,7 @@ public final class KeychainBiometrics: Biometrics {
     public func seal(_ key: Data) async -> BiometricResult {
         let context = LAContext()
         context.localizedCancelTitle = "Not Now"
-        if let refused = await evaluate(context, reason: "Turn on \(kind.name) unlock for locked notes.") {
+        if let refused = await evaluate(context, reason: Self.reason("Turn on \(kind.name) unlock for locked notes")) {
             return refused
         }
         guard
@@ -68,7 +68,7 @@ public final class KeychainBiometrics: Biometrics {
 
         let context = LAContext()
         context.localizedFallbackTitle = "Use Password"
-        if let refused = await evaluate(context, reason: "Open your locked notes.") { return refused }
+        if let refused = await evaluate(context, reason: Self.reason("Open your locked notes")) { return refused }
         // Already confirmed: the read doesn't ask again.
         context.interactionNotAllowed = true
         var read = query
@@ -100,6 +100,15 @@ public final class KeychainBiometrics: Biometrics {
             query[kSecUseDataProtectionKeychain as String] = true
         #endif
         return query
+    }
+
+    /// The prompt's line. The Mac puts "<app> is trying to" before it; iOS shows it as it is.
+    private static func reason(_ text: String) -> String {
+        #if os(macOS)
+            text.prefix(1).lowercased() + text.dropFirst()
+        #else
+            text + "."
+        #endif
     }
 
     /// Nil once Face ID matched; otherwise what stopped it. Only the user's own

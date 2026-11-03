@@ -7,6 +7,7 @@
 mod downloads;
 mod server;
 mod store;
+mod touch_id;
 
 use std::path::PathBuf;
 use std::sync::Mutex;
@@ -14,7 +15,7 @@ use std::sync::Mutex;
 use tauri::ipc::CapabilityBuilder;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::{DownloadEvent, NewWindowResponse, PageLoadEvent};
-use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry};
+use tauri::{AppHandle, Manager, Url, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry};
 use tauri_plugin_opener::OpenerExt;
 
 const MAIN: &str = "main";
@@ -63,9 +64,37 @@ async fn set_server(app: AppHandle, address: String) -> Result<String, String> {
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     store::save(&app, &url)?;
-    allow_window_moves(&app, &url).map_err(|e| e.to_string())?;
+    allow_server(&app, &url).map_err(|e| e.to_string())?;
     *app.state::<State>().server.lock().unwrap() = Some(url.clone());
     Ok(url.to_string())
+}
+
+#[tauri::command]
+fn touch_id_available() -> bool {
+    touch_id::available()
+}
+
+/// Keeps `key`, the locked-notes key of `user` on the page's server, behind Touch ID.
+#[tauri::command]
+async fn touch_id_seal(webview: Webview, user: String, key: Vec<u8>) -> Result<touch_id::Outcome, String> {
+    let service = touch_id::service(&webview.url().map_err(|e| e.to_string())?, &user);
+    tauri::async_runtime::spawn_blocking(move || touch_id::seal(&service, key))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+async fn touch_id_open(webview: Webview, user: String) -> Result<touch_id::Outcome, String> {
+    let service = touch_id::service(&webview.url().map_err(|e| e.to_string())?, &user);
+    tauri::async_runtime::spawn_blocking(move || touch_id::open(&service))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn touch_id_forget(webview: Webview, user: String) -> Result<(), String> {
+    touch_id::forget(&touch_id::service(&webview.url().map_err(|e| e.to_string())?, &user));
+    Ok(())
 }
 
 fn main() {
@@ -73,7 +102,15 @@ fn main() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_window_state::Builder::default().build())
         .manage(State::default())
-        .invoke_handler(tauri::generate_handler![get_server, set_server, open_server])
+        .invoke_handler(tauri::generate_handler![
+            get_server,
+            set_server,
+            open_server,
+            touch_id_available,
+            touch_id_seal,
+            touch_id_open,
+            touch_id_forget
+        ])
         .menu(menu)
         .on_menu_event(|app, event| {
             let Some(window) = app.get_webview_window(MAIN) else {
@@ -97,7 +134,7 @@ fn main() {
         .setup(|app| {
             let server = store::load(app.handle());
             if let Some(server) = &server {
-                allow_window_moves(app.handle(), server)?;
+                allow_server(app.handle(), server)?;
             }
             *app.state::<State>().server.lock().unwrap() = server;
             let window = main_window(app.handle())?;
@@ -224,16 +261,20 @@ fn tell_fullscreen(window: &WebviewWindow, always: bool) {
     }
 }
 
-/// Lets the server's pages move the window from their drag regions and zoom it with a double-click, the only
-/// part of the app's API they get. Granted while the app runs; a server changed to adds its own.
-fn allow_window_moves(app: &AppHandle, server: &Url) -> tauri::Result<()> {
+/// What the server's pages may call: moving the window from their drag regions and zooming it with a
+/// double-click, and Touch ID for locked notes. Granted while the app runs; a server changed to adds its own.
+fn allow_server(app: &AppHandle, server: &Url) -> tauri::Result<()> {
     app.add_capability(
         CapabilityBuilder::new("server")
             .remote(format!("{server}*"))
             .local(false)
             .window(MAIN)
             .permission("core:window:allow-start-dragging")
-            .permission("core:window:allow-internal-toggle-maximize"),
+            .permission("core:window:allow-internal-toggle-maximize")
+            .permission("allow-touch-id-available")
+            .permission("allow-touch-id-seal")
+            .permission("allow-touch-id-open")
+            .permission("allow-touch-id-forget"),
     )
 }
 

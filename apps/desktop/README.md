@@ -14,6 +14,11 @@ drags from, offers no passkeys (this WebKit refuses them), and names its
 session "notesd for macOS". Full screen, which hides the buttons, adds
 `data-fullscreen`.
 
+Touch ID stands in for passkeys: it unlocks locked notes, as Face ID does on
+the iPhone, with the same Keychain code (`shared/keychain-biometrics`). It
+needs a signed app (the Keychain item lives in the data protection keychain,
+which wants an application identifier), so unsigned builds don't offer it.
+
 Built with [Tauri 2](https://tauri.app) on the system's WKWebView. macOS only
 for now.
 
@@ -29,11 +34,16 @@ for now.
   server is one the app asks for (`navigate`): a load the page starts itself
   is first offered to whatever app claims the address, and a Safari web app
   made with Add to Dock claims its site, so the server would open there.
+- `src-tauri/src/touch_id.rs` and `src-tauri/swift/`: Touch ID. The Swift
+  package wraps the shared Keychain code in C functions; swift-rs builds and
+  links it from `build.rs`. One Keychain item per server and account. The web
+  app (`apps/web/src/locks/touch-id.ts`) decides when to use it.
 - `src-tauri/src/server.rs`: turns what was typed into an origin (https://
   unless it's this Mac) and checks it.
 - `src-tauri/capabilities/`: which pages may call the app's commands. Only
-  the setup page. The server's pages may only move and zoom the window, a
-  capability added while the app runs, as their address is the user's.
+  the setup page. The server's pages may only move and zoom the window and
+  use Touch ID, a capability added while the app runs, as their address is
+  the user's.
 
 The chosen server is kept in `~/Library/Application Support/app.notesd.desktop/settings.json`.
 Notes kept for offline use live in the window's WebKit storage for that
@@ -44,7 +54,7 @@ server's origin, as a browser keeps them.
 ```bash
 mise run dev:desktop     # the app, starting at its setup page
 mise run test:desktop    # Rust tests
-mise run lint:desktop    # rustfmt and clippy
+mise run lint:desktop    # rustfmt, clippy, swift-format
 mise run build:desktop   # unsigned .app in src-tauri/target/release/bundle/macos
 ```
 
