@@ -142,7 +142,7 @@ and what to do when you restore.
 - **Web:** if you choose **Keep my notes on this device** (at sign-in or in
   **Settings → Sync & data**), the browser keeps a full copy and works
   offline too. It's on by default in the
-  [installed web app](guides/apps/web.md). It needs HTTPS, and isn't
+  [installed web app](guides/apps/desktop-web-app.md). It needs HTTPS, and isn't
   offered in private windows.
 
 ### When does it sync?
