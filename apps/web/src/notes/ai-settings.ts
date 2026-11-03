@@ -42,7 +42,10 @@ function load() {
 /** The AI settings, or null until they've loaded. */
 export function useAiSettings(): AiSettings | null {
   const value = useSyncExternalStore(subscribe, () => current)
-  useEffect(load, [])
+  // Again after a reset, so screens left open across a new sign-in fetch for it.
+  useEffect(() => {
+    if (value === null) load()
+  }, [value])
   return value
 }
 
@@ -51,4 +54,5 @@ export function resetAiSettings() {
   current = null
   loading = null
   fetches++
+  listeners.forEach((l) => l())
 }
