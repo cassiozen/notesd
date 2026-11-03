@@ -1,4 +1,4 @@
-import { useState, type ComponentType, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 'react'
 import { Button } from '../ui/button'
 import { Kicker } from '../ui/kicker'
 import { Surface } from '../ui/surface'
@@ -7,6 +7,7 @@ import styles from './settings.module.css'
 
 export type IntegrationStatus =
   | { state: 'loading' }
+  | { state: 'failed'; retry: () => void }
   /** editable: whether this account may connect, change or disconnect it (server-wide ones are admins'). */
   | { state: 'off'; editable: boolean }
   | { state: 'on'; editable: boolean; detail: string }
@@ -32,7 +33,7 @@ export function useIntegrationStatuses(): Record<IntegrationId, IntegrationStatu
 
 /** Off, the one connected by name, or how many are. */
 export function integrationsValue(statuses: Record<IntegrationId, IntegrationStatus>): string {
-  if (INTEGRATIONS.some((i) => statuses[i.id].state === 'loading')) return ''
+  if (INTEGRATIONS.some((i) => statuses[i.id].state === 'loading' || statuses[i.id].state === 'failed')) return ''
   const on = INTEGRATIONS.filter((i) => statuses[i.id].state === 'on')
   if (on.length === 0) return 'Off'
   return on.length === 1 ? (on[0]?.name ?? '') : String(on.length)
@@ -44,10 +45,45 @@ export function IntegrationsPage() {
   const [open, setOpen] = useState<{ integration: Integration; mode: 'connect' | 'manage' } | null>(null)
   const connected = INTEGRATIONS.filter((i) => statuses[i.id].state === 'on')
   const available = INTEGRATIONS.filter((i) => statuses[i.id].state === 'off')
-  const close = () => setOpen(null)
+  const failed = INTEGRATIONS.flatMap((i) => {
+    const status = statuses[i.id]
+    return status.state === 'failed' ? [status] : []
+  })
+  const loading = connected.length + available.length + failed.length === 0
+  const refocus = useRef<IntegrationId | null>(null)
+  const close = () => {
+    refocus.current = open?.integration.id ?? null
+    setOpen(null)
+  }
+
+  // Connecting or disconnecting moves the row to the other list, and the button that opened the dialog with it:
+  // the browser has nowhere to put focus back.
+  useEffect(() => {
+    if (open || !refocus.current) return
+    document.querySelector<HTMLElement>(`[data-integration="${refocus.current}"] button`)?.focus()
+    refocus.current = null
+  }, [open])
 
   return (
     <>
+      {(loading || failed.length > 0) && (
+        <Surface as="section" className={styles.card} aria-label="Integrations">
+          {failed.length > 0 ? (
+            <>
+              <p role="alert" className={styles.error}>
+                Couldn’t load integrations.
+              </p>
+              <div>
+                <Button size="sm" onClick={() => failed.forEach((f) => f.retry())}>
+                  Try again
+                </Button>
+              </div>
+            </>
+          ) : (
+            <span className={styles.muted}>Loading…</span>
+          )}
+        </Surface>
+      )}
       {connected.length > 0 && (
         <Surface as="section" className={styles.devices} aria-labelledby="connected-kicker">
           <div className={styles.devicesHead}>
@@ -58,7 +94,7 @@ export function IntegrationsPage() {
               const status = statuses[i.id]
               if (status.state !== 'on') return null
               return (
-                <li key={i.id} className={styles.device}>
+                <li key={i.id} data-integration={i.id} className={styles.device}>
                   {i.mark}
                   <span className={styles.deviceText}>
                     <span className={styles.deviceName}>{i.name}</span>
@@ -87,7 +123,7 @@ export function IntegrationsPage() {
               const status = statuses[i.id]
               const editable = status.state === 'off' && status.editable
               return (
-                <li key={i.id} className={styles.device}>
+                <li key={i.id} data-integration={i.id} className={styles.device}>
                   {i.mark}
                   <span className={styles.deviceText}>
                     <span className={styles.deviceName}>{i.name}</span>

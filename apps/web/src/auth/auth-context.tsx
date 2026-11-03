@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useState, type Rea
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
+import { forgetEmailSettings } from '../notes/email-settings'
 import { forgetSpaces } from '../notes/spaces'
 import { closeNotes, forgetNotesHere, keepIfInstalledApp, openNotes } from '../offline/device'
 import { deviceUser, rememberSession } from './session-hint'
@@ -92,6 +93,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       void forgetNotesHere().catch(() => undefined)
       // Already on the server's notes, the source doesn't change: the next account would get these.
       forgetSpaces()
+      forgetEmailSettings()
       setState({ status: 'signed-out' })
     }
   }, [])

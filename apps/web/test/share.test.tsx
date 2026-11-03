@@ -1,8 +1,8 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it } from 'vitest'
-import { setEmailSettings } from '../src/notes/email-settings'
+import { forgetEmailSettings, setEmailSettings } from '../src/notes/email-settings'
 import { formatFrom, parseFrom } from '../src/settings/resend'
-import { createNote, openSettings, signedIn, typeAtEnd } from './helpers'
+import { createNote, interceptApi, openSettings, signedIn, typeAtEnd } from './helpers'
 import { startFakeResend, type TestServer } from './server'
 
 const KEY = 're_test_123456789'
@@ -47,6 +47,8 @@ describe('email settings', () => {
     })
     await user.click(within(dialog).getByRole('button', { name: 'Done' }))
     const connected = screen.getByRole('region', { name: 'Connected' })
+    // The Connect button went with the row; focus lands on the row's new one.
+    await waitFor(() => expect(document.activeElement).toBe(within(connected).getByRole('button', { name: 'Manage Resend' })))
     expect(within(connected).getByText('Sending as "Me, Myself" <notes@example.com>')).toBeTruthy()
     expect(screen.queryByRole('region', { name: 'Available' })).toBeNull()
   })
@@ -93,6 +95,43 @@ describe('email settings', () => {
     act(() => setEmailSettings({ configured: false, from: '', keyHint: '', editable: false }))
     expect(within(available).getByText(/An admin can connect it\.$/)).toBeTruthy()
     expect(within(available).queryByRole('button')).toBeNull()
+  })
+})
+
+describe('email settings across accounts and failures', () => {
+  it('asks the server again after signing out: the next account may not be an admin', async () => {
+    const { user, password } = await signedIn()
+    await openSettings(user, 'Integrations')
+    expect(await screen.findByRole('button', { name: 'Connect Resend' })).toBeTruthy()
+    await user.click(screen.getByRole('link', { name: /^Server/ }))
+    await user.click(screen.getByRole('button', { name: 'Sign out' }))
+
+    interceptApi(
+      (method, path) => method === 'GET' && path === '/api/v1/settings/email',
+      () => Response.json({ configured: false, from: '', keyHint: '', editable: false }),
+    )
+    await user.type(await screen.findByLabelText('Username'), 'me')
+    await user.type(screen.getByLabelText('Password'), `${password}{Enter}`)
+    await within(await screen.findByRole('complementary', { name: 'Notes' })).findByText(/^\d+ notes?$/)
+    await openSettings(user, 'Integrations')
+    expect(await screen.findByText(/An admin can connect it\.$/)).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Connect Resend' })).toBeNull()
+  })
+
+  it('says when integrations couldn’t be loaded, and tries again when asked', async () => {
+    const { user } = await signedIn()
+    act(() => forgetEmailSettings())
+    const stop = interceptApi(
+      (method, path) => method === 'GET' && path === '/api/v1/settings/email',
+      () => Response.json({ code: 'internal', message: 'boom' }, { status: 500 }),
+    )
+    await openSettings(user, 'Integrations')
+    expect(await screen.findByText('Couldn’t load integrations.')).toBeTruthy()
+
+    stop()
+    await user.click(screen.getByRole('button', { name: 'Try again' }))
+    expect(await screen.findByRole('button', { name: 'Connect Resend' })).toBeTruthy()
+    expect(screen.queryByText('Couldn’t load integrations.')).toBeNull()
   })
 })
 

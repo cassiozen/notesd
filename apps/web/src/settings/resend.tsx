@@ -2,7 +2,7 @@ import { useId, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { settings } from '../api/settings'
 import { genericMessage } from '../auth/errors'
-import { setEmailSettings, useEmailSettings } from '../notes/email-settings'
+import { retryEmailSettings, setEmailSettings, useEmailSettings, useEmailSettingsFailed } from '../notes/email-settings'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
@@ -33,7 +33,8 @@ export const resend: Integration = {
 
 export function useResendStatus(): IntegrationStatus {
   const saved = useEmailSettings()
-  if (!saved) return { state: 'loading' }
+  const failed = useEmailSettingsFailed()
+  if (!saved) return failed ? { state: 'failed', retry: retryEmailSettings } : { state: 'loading' }
   return saved.configured
     ? { state: 'on', editable: saved.editable, detail: `Sending as ${saved.from}` }
     : { state: 'off', editable: saved.editable }
