@@ -34,6 +34,7 @@ Then:
 
 1. Uncheck "Show Navigation Controls"
   <img width="886" height="460" alt="Uncheck Show Navigation controls" src="https://github.com/user-attachments/assets/13d526c5-a68c-4259-990a-8ab385e5fe83" />
+
 2. Disable extensions for this app (unless there are some specific extensions you need in notesd)
 
 ### Chrome
