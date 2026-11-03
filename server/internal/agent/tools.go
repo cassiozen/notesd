@@ -329,7 +329,7 @@ func (rs *runState) write(ctx context.Context, id string, change func(*notes.Not
 // where the user sees it and can undo it; the editor saves it.
 func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead, cur, next notes.Note) (string, error) {
 	before, after := Fields{cur.Title, cur.Content}, Fields{next.Title, next.Content}
-	err := rs.acct.Editors.Apply(ctx, id, rs.prefer(), EditorChange{RunID: rs.run.ID, Before: before, After: after})
+	after, err := rs.acct.Editors.Apply(ctx, id, rs.prefer(), EditorChange{RunID: rs.run.ID, Before: before, After: after})
 	switch {
 	case errors.Is(err, ErrEditorChanged), errors.Is(err, ErrNotOpen):
 		return "", errRestart
@@ -341,6 +341,7 @@ func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead
 	if err := rs.acct.Agent.recordEditorEdit(ctx, rs.run.ID, id, er.revision, before, after); err != nil {
 		return "", err
 	}
+	next.Title, next.Content = after.Title, after.Content
 	rs.reads[id] = next
 	// Unsaved now; the cursor stays where the user left it, which this
 	// change may have moved: read it again to know.

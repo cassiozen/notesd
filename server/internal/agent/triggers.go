@@ -68,12 +68,12 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 		}
 	}
 	if (ev.Agent == nil || !ev.Agent.Runner) && ev.Kind != notes.EventDeleted {
-		linked, err := linkEditorEdit(ctx, tx, ev)
+		_, agentOnly, err := linkEditorEdit(ctx, tx, ev)
 		if err != nil {
 			return err
 		}
-		if linked && !ev.SpaceChanged() {
-			// An editor saving a run's change: whatever flag the save has, never a trigger.
+		if agentOnly && !ev.SpaceChanged() {
+			// An editor saving just a run's change: not the user writing.
 			return nil
 		}
 	}

@@ -8,6 +8,7 @@ import (
 
 	"notes/server/internal/agent"
 	"notes/server/internal/llm"
+	"notes/server/internal/notes"
 )
 
 // fakeEditor is an editor with notes open, as the socket's would answer.
@@ -15,6 +16,8 @@ type fakeEditor struct {
 	notes   map[string]*agent.EditorNote
 	gone    bool
 	changes []agent.EditorChange
+	// rewrite is the editor's Markdown writing some text its own way.
+	rewrite func(string) string
 }
 
 func (h *harness) openInEditor(id, content string, cursor *int) *agent.EditorNote {
@@ -37,20 +40,23 @@ func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, er
 	return *n, nil
 }
 
-func (e *fakeEditor) Apply(_ context.Context, id, _ string, ch agent.EditorChange) error {
+func (e *fakeEditor) Apply(_ context.Context, id, _ string, ch agent.EditorChange) (agent.Fields, error) {
 	if e.gone {
-		return agent.ErrEditorGone
+		return agent.Fields{}, agent.ErrEditorGone
 	}
 	n, ok := e.notes[id]
 	switch {
 	case !ok:
-		return agent.ErrNotOpen
+		return agent.Fields{}, agent.ErrNotOpen
 	case n.Title != ch.Before.Title || n.Content != ch.Before.Content:
-		return agent.ErrEditorChanged
+		return agent.Fields{}, agent.ErrEditorChanged
 	}
 	n.Title, n.Content, n.Revision = ch.After.Title, ch.After.Content, nil
+	if e.rewrite != nil {
+		n.Content = e.rewrite(n.Content)
+	}
 	e.changes = append(e.changes, ch)
-	return nil
+	return agent.Fields{Title: n.Title, Content: n.Content}, nil
 }
 
 func ip(n int) *int { return &n }
@@ -76,10 +82,11 @@ func TestEditsLandInTheOpenEditor(t *testing.T) {
 		t.Fatalf("before the save: %+v", d.Run)
 	}
 
-	// The editor saves exactly the change: linked, and not the user writing.
+	// The editor saves exactly the change: linked. With the user's unsaved
+	// line in it, it's their writing too.
 	h.update("n1", after, nil)
-	if h.sessions() != 0 {
-		t.Fatal("the editor's save of the agent's change started a session")
+	if h.sessions() != 1 {
+		t.Fatal("the user's line didn't count")
 	}
 	if _, err := h.undo(id); err != nil {
 		t.Fatal(err)
@@ -147,5 +154,25 @@ func TestInsertAtTheCursor(t *testing.T) {
 	}
 	if got := h.editor.notes["n1"].Content; got != "Dear Sam,\nHello!\nBest\n" {
 		t.Fatalf("editor: %q", got)
+	}
+}
+
+func TestEditorSaveOfOnlyTheAgentsChange(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone, agent.EditDone)
+	h.done("n1", "Milk")
+	h.openInEditor("n1", "Milk", nil)
+	h.model.steps = append(h.model.steps,
+		call("insert", `{"at": "end", "text": "#groceries"}`),
+		call("set_title", `{"title": "Shopping"}`),
+		final("Tagged."))
+	h.next()
+	// Two changes, one save: the agent's alone, so no writing session.
+	h.update("n1", "Milk\n\n#groceries\n", func(in *notes.UpdateInput) { in.Title = "Shopping" })
+	if h.sessions() != 0 {
+		t.Fatal("the editor's save of the agent's change started a session")
+	}
+	if _, err := h.undo(h.lastRunID()); err != nil || h.content("n1") != "Milk" {
+		t.Fatalf("undo: %v %q", err, h.content("n1"))
 	}
 }

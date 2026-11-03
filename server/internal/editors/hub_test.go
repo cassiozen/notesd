@@ -88,7 +88,7 @@ func TestEditorAnswers(t *testing.T) {
 		t.Fatalf("a refusal reads from the store instead: %v", err)
 	}
 	ch := agent.EditorChange{RunID: "run_1", Before: agent.Fields{Content: "a"}, After: agent.Fields{Content: "b"}}
-	if err := ed.Apply(ctx, "n1", "", ch); !errors.Is(err, agent.ErrEditorChanged) {
+	if _, err := ed.Apply(ctx, "n1", "", ch); !errors.Is(err, agent.ErrEditorChanged) {
 		t.Fatalf("apply: %v", err)
 	}
 	if got := tb.asked[1]; got["runId"] != "run_1" || got["noteId"] != "n1" || got["type"] != "apply" {

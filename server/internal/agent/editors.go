@@ -11,8 +11,10 @@ import (
 type Editors interface {
 	// Read returns the note as an editor that has it open shows it.
 	Read(ctx context.Context, noteID, prefer string) (EditorNote, error)
-	// Apply changes the note in that editor from before to after.
-	Apply(ctx context.Context, noteID, prefer string, change EditorChange) error
+	// Apply changes the note in that editor from before to after, and
+	// returns it as the editor then shows it: after, unless the editor's
+	// Markdown writes some of it differently.
+	Apply(ctx context.Context, noteID, prefer string, change EditorChange) (Fields, error)
 }
 
 // Errors from Editors.

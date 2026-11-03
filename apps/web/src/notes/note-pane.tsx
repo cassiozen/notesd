@@ -16,6 +16,7 @@ import { navigate } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
 import { agentSocket } from '../agent/socket'
+import { applyForAgent, composed, readForAgent } from '../editor/agent-edit'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -351,6 +352,27 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       detach()
     }
   }, [saver, editor, touch])
+
+  // Agents' runs read and change the note here, where the user sees it and can undo it.
+  useEffect(
+    () =>
+      agentSocket.serve(saver.id, {
+        read: () => {
+          if (saver.isLocked()) return { error: 'locked' }
+          const { fields, cursor } = readForAgent(editor.state)
+          return { spaceId: saver.spaceId(), ...fields, cursor, revision: saver.knownRevision() }
+        },
+        apply: async (before, after) => {
+          if (saver.isLocked()) return { error: 'locked' }
+          await composed(editor)
+          const now = noteFields(editor.state.doc)
+          if (now.title !== before.title || now.content !== before.content) return { error: 'changed' }
+          applyForAgent(editor, after)
+          return { shows: noteFields(editor.state.doc) }
+        },
+      }),
+    [saver, editor],
+  )
 
   useEffect(() => () => clearTimeout(touchTimer.current), [])
 

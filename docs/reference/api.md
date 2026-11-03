@@ -450,7 +450,7 @@ ignored, so either may add some.
 | Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
-| Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}}` | A run changes the note. If the editor shows `before`, it changes it to `after` as one undoable step, saves it, and answers `{type: "result", id}` |
+| Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}}` | A run changes the note. If the editor shows `before`, it changes it to `after` as one undoable step, saves it as any edit, and answers `{type: "result", id, shows: {title, content}}`: the note as it then saves it |
 
 An editor that can't do a request answers `{type: "result", id, error}`: `changed` (it no longer
 shows `before`), `not_open` or `locked`. Ten seconds without an answer counts as gone. The server

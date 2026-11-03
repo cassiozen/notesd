@@ -2,7 +2,7 @@ import { waitFor } from '@testing-library/react'
 import { describe, expect, it, onTestFinished } from 'vitest'
 import { agentSocket, socketFactory, socketTiming } from '../src/agent/socket'
 import type { AgentRun } from '../src/api/agent'
-import { createNote, getNote, openNote, signedIn, typeAtEnd } from './helpers'
+import { bodyText, createNote, getNote, openNote, signedIn, typeAtEnd } from './helpers'
 import { startFakeLLM } from './server'
 
 describe('the agent socket', () => {
@@ -31,6 +31,37 @@ describe('the agent socket', () => {
       },
       { timeout: 5000 },
     )
+  })
+})
+
+describe('a run on an open note', () => {
+  it('changes it in the editor, where Undo takes it back', async () => {
+    const llm = await startFakeLLM()
+    let digest = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await s.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
+        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'p', triggers: { noteDeleted: 'Add it to Digest.' } })
+        digest = await createNote(s, 'Digest', 'Items')
+        await s.api('POST', '/notes', { operationId: 'op-milk', id: 'milk', title: 'Milk', content: 'Milk' })
+      },
+    })
+    await openNote(user, 'Digest')
+    // Typed, not saved yet: the run sees it.
+    await typeAtEnd(user, ' and more')
+    llm.script.push({ tool: 'edit_note', args: { id: digest, find: 'more', replace: 'more\n\n- Milk' } }, { text: 'Added Milk.' })
+    await server.api('DELETE', '/notes/milk', { operationId: 'op-del', baseRevision: 1 })
+
+    await waitFor(() => expect(bodyText()).toBe('Items and moreMilk'), { timeout: 5000 })
+    await waitFor(async () => expect((await getNote(server, digest)).content).toBe('Items and more\n\n- Milk\n'))
+    await waitFor(async () => {
+      const { runs } = (await server.api<{ runs: AgentRun[] }>('GET', '/agent/runs')).body
+      expect(runs[0]?.edits[0]?.blocked).toBe(undefined)
+    })
+
+    // One step of its own: the user's typing stays.
+    await user.keyboard('{Control>}z{/Control}')
+    expect(bodyText()).toBe('Items and more')
   })
 })
 
@@ -84,7 +115,7 @@ describe('the agent socket, connecting', () => {
     ])
 
     first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
-    expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' })
+    await waitFor(() => expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' }))
 
     first.drop()
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))

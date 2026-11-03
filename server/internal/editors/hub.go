@@ -177,6 +177,8 @@ type account struct {
 type reply struct {
 	Error string `json:"error"`
 	agent.EditorNote
+	// Shows is, after an apply, the note as the editor then shows it.
+	Shows *agent.Fields `json:"shows"`
 }
 
 func (a account) Read(ctx context.Context, noteID, prefer string) (agent.EditorNote, error) {
@@ -188,13 +190,19 @@ func (a account) Read(ctx context.Context, noteID, prefer string) (agent.EditorN
 	return r.EditorNote, err
 }
 
-func (a account) Apply(ctx context.Context, noteID, prefer string, ch agent.EditorChange) error {
+func (a account) Apply(ctx context.Context, noteID, prefer string, ch agent.EditorChange) (agent.Fields, error) {
 	c := a.h.owner(a.userID, noteID, prefer)
 	if c == nil {
-		return agent.ErrNotOpen
+		return agent.Fields{}, agent.ErrNotOpen
 	}
-	_, err := a.do(ctx, c, map[string]any{"type": "apply", "noteId": noteID, "runId": ch.RunID, "before": ch.Before, "after": ch.After})
-	return err
+	r, err := a.do(ctx, c, map[string]any{"type": "apply", "noteId": noteID, "runId": ch.RunID, "before": ch.Before, "after": ch.After})
+	if err != nil {
+		return agent.Fields{}, err
+	}
+	if r.Shows == nil {
+		return ch.After, nil
+	}
+	return *r.Shows, nil
 }
 
 func (a account) do(ctx context.Context, c *Conn, msg map[string]any) (reply, error) {

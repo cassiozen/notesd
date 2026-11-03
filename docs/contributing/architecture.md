@@ -503,10 +503,13 @@ The user guide is [agents](../guides/using/agents.md).
   typing and the cursor included (`internal/editors`; the run's own editor first, else the one that
   opened it last). A write to it is worked out on the server as above, then sent as before and
   after; the editor applies it if it still shows before (else the run starts over), as one step
-  the user can undo there, and saves it. The edit is recorded with no `after_revision` until a save
-  holding exactly what the run left arrives, whatever the save says of itself; that save fires
-  nothing. A save with the user's typing in it isn't linked, so undo can't take their typing; the
-  edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
+  the user can undo there, and saves it as any edit, with the text its Markdown writes (which the
+  run then records). The edit is recorded with no `after_revision` until a save holding exactly
+  what the run left arrives. That save is the agent's alone, and fires nothing, if the server held
+  exactly what the editor showed before the run's first unsaved change (kept as a hash,
+  `applied_from`, not text); otherwise the user's unsaved typing went out with it, and it counts
+  as theirs too. A save with typing after the change isn't linked, so undo can't take that
+  typing; the edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
   seconds counts as gone: a read falls back to the store, a write fails the run
   (`editor_disconnected`).
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
