@@ -175,10 +175,6 @@ func (s *Store) queueIfActs(ctx context.Context, tx *sql.Tx, spaceID string, e E
 
 // queue adds a run. Beyond MaxQueued it's recorded as skipped instead.
 func queue(ctx context.Context, tx *sql.Tx, spaceID string, e Event, priority int, now int64) (string, error) {
-	body, err := json.Marshal(e)
-	if err != nil {
-		return "", err
-	}
 	var queued int
 	if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM agent_runs WHERE status = 'queued'`).Scan(&queued); err != nil {
 		return "", err
@@ -187,6 +183,12 @@ func queue(ctx context.Context, tx *sql.Tx, spaceID string, e Event, priority in
 	var finished any
 	if queued >= MaxQueued {
 		status, failure, finished = StatusSkipped, FailQueueFull, now
+		// Never run, so nothing needs the note's text.
+		e.Title, e.Content = nil, nil
+	}
+	body, err := json.Marshal(e)
+	if err != nil {
+		return "", err
 	}
 	id := newRunID(now)
 	_, err = tx.ExecContext(ctx, `INSERT INTO agent_runs (id, status, trigger, space_id, note_id, priority, event_json, created_at, finished_at, failure)

@@ -47,6 +47,9 @@ type queuedRun struct {
 	NoteID   string
 	Event    Event
 	Attempts int
+	// What earlier attempts used, counted against this one's caps.
+	PriorToolCalls int
+	PriorTokens    int64
 }
 
 // claim takes the next run that's due, editor triggers first, and marks it
@@ -59,8 +62,8 @@ func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
 			UPDATE agent_runs SET status = 'running', started_at = ?, attempts = attempts + 1
 			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ?
 			            ORDER BY priority DESC, created_at, rowid LIMIT 1)
-			RETURNING id, trigger, space_id, note_id, event_json, attempts`, now, now).
-			Scan(&r.ID, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts)
+			RETURNING id, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now).
+			Scan(&r.ID, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts, &r.PriorToolCalls, &r.PriorTokens)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, false, nil
@@ -91,7 +94,7 @@ func (s *Store) nextDue(ctx context.Context) (time.Time, error) {
 func (s *Store) recoverRuns(ctx context.Context) error {
 	now := s.now().UnixMilli()
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = 'failed', failure = ?, finished_at = ?
+		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = 'failed', failure = ?, finished_at = ?, event_json = `+doneEvent+`
 			WHERE status = 'running' AND (attempts >= 2 OR EXISTS (SELECT 1 FROM agent_run_edits e WHERE e.run_id = agent_runs.id))`,
 			FailInterrupted, now); err != nil {
 			return err
@@ -118,10 +121,12 @@ type finished struct {
 // maxMessage bounds a run's stored message.
 const maxMessage = 4 << 10
 
+// doneEvent is a finished run's event_json: a deleted note's text dropped
+// once the run no longer needs it, as deleting a note clears it everywhere else.
+const doneEvent = `CASE WHEN trigger = 'noteDeleted' THEN json_remove(event_json, '$.title', '$.content') ELSE event_json END`
+
 // finish records how a run ended, or puts it back in the queue for a retry.
-// Its tokens were counted as each call came back (addUsage). A deleted
-// note's text is dropped from the event once the run no longer needs it:
-// deleting a note clears its text everywhere else.
+// Its tokens were counted as each call came back (addUsage).
 func (s *Store) finish(ctx context.Context, id string, f finished) error {
 	now := s.now().UnixMilli()
 	f.Message = truncate(f.Message, maxMessage)
@@ -131,13 +136,9 @@ func (s *Store) finish(ctx context.Context, id string, f finished) error {
 				tool_calls = tool_calls + ? WHERE id = ?`, f.RetryAt.UnixMilli(), f.Message, f.ToolCalls, id)
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, outcome = ?, message = ?,
-				tool_calls = tool_calls + ?, finished_at = ? WHERE id = ?`,
-			f.Status, f.Failure, f.Outcome, f.Message, f.ToolCalls, now, id); err != nil {
-			return err
-		}
-		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET event_json = json_remove(event_json, '$.title', '$.content')
-			WHERE id = ? AND trigger = ?`, id, string(NoteDeleted))
+		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, outcome = ?, message = ?,
+				tool_calls = tool_calls + ?, finished_at = ?, event_json = `+doneEvent+` WHERE id = ?`,
+			f.Status, f.Failure, f.Outcome, f.Message, f.ToolCalls, now, id)
 		return err
 	})
 }

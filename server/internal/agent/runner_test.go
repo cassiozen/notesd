@@ -454,6 +454,27 @@ func TestProviderFailureRetriesOnce(t *testing.T) {
 	}
 }
 
+func TestRetryKeepsCountingTowardTheCaps(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	for range agent.MaxToolCalls - 2 {
+		h.model.steps = append(h.model.steps, call("get_note", `{}`))
+	}
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		return nil, &llm.ProviderError{Status: 503, Message: "overloaded"}
+	})
+	h.next()
+	h.advance(agent.RetryProvider)
+	for range 5 {
+		h.model.steps = append(h.model.steps, call("get_note", `{}`))
+	}
+	h.next()
+	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailToolCap || r.toolCalls != agent.MaxToolCalls+1 {
+		t.Fatalf("run: %+v", r)
+	}
+}
+
 func TestPausedWithoutAI(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NewNoteDone)
@@ -546,6 +567,22 @@ func TestInterruptedRunsGoBackOnce(t *testing.T) {
 	}
 }
 
+func TestInterruptedRunDropsADeletedNotesText(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NoteDeleted)
+	h.create("n1", "work", "Secret")
+	h.delete("n1")
+	if _, err := h.db.W.Exec(`UPDATE agent_runs SET status = 'running', attempts = 2`); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.d.Agent.RecoverRuns(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if runs := h.runs(); len(runs) != 1 || runs[0].Status != agent.StatusFailed || runs[0].Event.Content != nil || runs[0].Event.Title != nil {
+		t.Fatalf("runs: %+v", runs)
+	}
+}
+
 func TestPurge(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NewNoteDone)
@@ -571,8 +608,7 @@ func TestRunnerRetriesListingAccounts(t *testing.T) {
 	h.agent("work", agent.NewNoteDone)
 	h.done("n1", "a")
 	h.model.steps = append(h.model.steps, final("No change."))
-	defer func(d time.Duration) { agent.StartRetry = d }(agent.StartRetry)
-	agent.StartRetry = 10 * time.Millisecond
+	agent.SetStartRetry(t, 10*time.Millisecond)
 	var mu sync.Mutex
 	fails := 2
 	runner := agent.NewRunner(agent.RunnerConfig{
@@ -621,5 +657,21 @@ func TestWorkersRunTheQueue(t *testing.T) {
 			t.Fatal("the worker didn't run the queue")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestListTagsLeavesLockedNotesOut(t *testing.T) {
+	h := newHarness(t)
+	space := "work"
+	if _, err := h.d.Notes.Create(ctx, notes.CreateInput{OperationID: h.op(), ID: "l1", Title: "Plans #secret", SpaceID: &space,
+		Content: "notesd:locked:v1:" + strings.Repeat("A", 60)}); err != nil {
+		t.Fatal(err)
+	}
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a #open")
+	h.model.steps = append(h.model.steps, call("list_tags", `{}`), final("No change."))
+	h.next()
+	if got := lastToolResult(h.model.requests[1]); !strings.Contains(got, "open") || strings.Contains(got, "secret") {
+		t.Fatalf("list_tags: %s", got)
 	}
 }

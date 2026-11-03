@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -361,6 +362,10 @@ func TestQueueIsBounded(t *testing.T) {
 	}
 	if status != agent.StatusSkipped || failure != "queue_full" {
 		t.Fatalf("got %s %s", status, failure)
+	}
+	var ev string
+	if err := f.db.R.QueryRow(`SELECT event_json FROM agent_runs WHERE note_id = 'n1'`).Scan(&ev); err != nil || strings.Contains(ev, `"content"`) || strings.Contains(ev, `"title"`) {
+		t.Fatalf("skipped run kept the note's text: %s %v", ev, err)
 	}
 }
 

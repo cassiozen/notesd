@@ -183,15 +183,16 @@ type TagCount struct {
 	Count int    `json:"count"`
 }
 
-// ListTags returns every tag in live notes, in one space unless space is "",
+// ListTags returns every tag in the live notes f matches,
 // sorted by key. A tag's name is its spelling in the most recently updated note.
-func ListTags(ctx context.Context, db *database.DB, space string) ([]TagCount, error) {
+func ListTags(ctx context.Context, db *database.DB, f Filter) ([]TagCount, error) {
+	cond, args := f.SQL()
 	rows, err := db.R.QueryContext(ctx, `
 		SELECT t.key, t.name, t.note_seq
 		FROM note_tags t
 		JOIN notes n ON n.seq = t.note_seq
-		WHERE n.deleted_at IS NULL AND (? = '' OR n.space_id = ?)
-		ORDER BY n.updated_at DESC, n.id DESC`, space, space)
+		WHERE n.deleted_at IS NULL AND `+cond+`
+		ORDER BY n.updated_at DESC, n.id DESC`, args...)
 	if err != nil {
 		return nil, err
 	}

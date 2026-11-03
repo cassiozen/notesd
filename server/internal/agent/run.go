@@ -41,9 +41,12 @@ type runState struct {
 	reads map[string]notes.Note // as last read or written in this run
 	ops   int                   // writes so far, for their operation ids
 	day   string                // in the account's time zone, for usage
-	// budget is the tokens the run may use: MaxRunTokens, or less when
-	// that's all the day has left.
-	budget int64
+	// budget is the tokens this attempt may use: what's left of MaxRunTokens,
+	// or less when that's all the day has left (dailyLimited).
+	budget       int64
+	dailyLimited bool
+	// maxTools is the tool calls this attempt may make.
+	maxTools int
 }
 
 // execute runs r to its end and records how it went.
@@ -119,14 +122,15 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	if used >= st.DailyTokenCap {
 		return skip(FailDailyCap, fmt.Sprintf("The account used its %d tokens for today.", st.DailyTokenCap))
 	}
-	budget := min(MaxRunTokens, st.DailyTokenCap-used)
+	left, today := MaxRunTokens-r.PriorTokens, st.DailyTokenCap-used
 
 	runCtx, cancel := context.WithTimeout(ctx, RunTimeout)
 	defer cancel()
 	spaceName := func(id string) string { return acct.SpaceName(ctx, id) }
 	var f finished
 	for start := 0; start < 2; start++ {
-		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, ops: start * 1000, day: day, budget: budget}
+		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, ops: start * 1000, day: day,
+			budget: min(left, today), dailyLimited: today < left, maxTools: MaxToolCalls - r.PriorToolCalls}
 		if note != nil {
 			rs.reads[note.ID] = *note
 		}
@@ -196,7 +200,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		if f.PromptTokens+f.CompletionTokens > rs.budget {
 			f.Status, f.Failure = StatusFailed, FailTokenCap
 			f.Message = fmt.Sprintf("The run used more than %d tokens.", MaxRunTokens)
-			if rs.budget < MaxRunTokens {
+			if rs.dailyLimited {
 				f.Failure, f.Message = FailDailyCap, "The account reached its tokens for today during the run."
 			}
 			return nil
@@ -208,7 +212,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		messages = append(messages, llm.Message{Role: "assistant", Content: res.Message.Content, ToolCalls: res.Message.ToolCalls})
 		for _, tc := range res.Message.ToolCalls {
 			f.ToolCalls++
-			if f.ToolCalls > MaxToolCalls {
+			if f.ToolCalls > rs.maxTools {
 				f.Status, f.Failure = StatusFailed, FailToolCap
 				f.Message = fmt.Sprintf("The run made more than %d tool calls.", MaxToolCalls)
 				return nil

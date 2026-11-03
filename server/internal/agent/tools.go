@@ -112,7 +112,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		}
 		return jsonString(out), nil
 	case "list_tags":
-		tags, err := search.ListTags(ctx, rs.acct.Agent.db, rs.run.SpaceID)
+		tags, err := search.ListTags(ctx, rs.acct.Agent.db, search.Filter{Space: rs.run.SpaceID, Unlocked: true})
 		if err != nil {
 			return "", err
 		}

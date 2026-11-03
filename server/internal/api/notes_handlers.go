@@ -266,7 +266,7 @@ func (s *Server) listFilters(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	tags, err := search.ListTags(r.Context(), u.DB, filter.Space)
+	tags, err := search.ListTags(r.Context(), u.DB, search.Filter{Space: filter.Space})
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

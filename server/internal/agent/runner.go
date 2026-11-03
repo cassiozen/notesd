@@ -71,7 +71,7 @@ func (rn *Runner) Run(ctx context.Context) {
 	rn.mu.Unlock()
 	// Until every account has a worker, queued runs wait for a note write to wake theirs.
 	started := rn.startWorkers(ctx)
-	retry := time.NewTicker(StartRetry)
+	retry := time.NewTicker(startRetry)
 	defer retry.Stop()
 	purge := time.NewTicker(time.Hour)
 	defer purge.Stop()
@@ -182,9 +182,9 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 	return true
 }
 
-// StartRetry is how soon the runner tries again to find the accounts, when
+// startRetry is how soon the runner tries again to find the accounts, when
 // it couldn't at startup.
-var StartRetry = 30 * time.Second
+var startRetry = 30 * time.Second
 
 // startWorkers wakes every account's worker, and reports whether it could
 // list them.
