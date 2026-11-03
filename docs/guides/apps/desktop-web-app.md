@@ -19,16 +19,7 @@ from `localhost`), as set up in [Get started](../../get-started/03-set-up-https.
 `http://192.168.1.20:8080`, Chrome won't show its install offer, and no browser keeps notes on the
 computer.
 
-### Chrome
-
-In notesd, go to Settings → Sync & data and click **Install notesd**. Or
-click the install icon at the right of the address bar.
-
-<img width="471" height="163" alt="Install on Chrome" src="https://github.com/user-attachments/assets/fc8ba906-b7ec-4062-8aa9-d6ae1bd56def" />
-
-Firefox can't install it; use notesd in a tab there.
-
-### Safari
+### Safari (Recommended on Mac)
 
 On macOS 14 or later, choose File → **Add to Dock**.
 
@@ -44,6 +35,14 @@ Then:
 1. Uncheck "Show Navigation Controls"
   <img width="886" height="460" alt="Uncheck Show Navigation controls" src="https://github.com/user-attachments/assets/13d526c5-a68c-4259-990a-8ab385e5fe83" />
 2. Disable extensions for this app (unless there are some specific extensions you need in notesd)
+
+### Chrome
+
+Click the install icon at the right of the address bar. Or, In notesd, go to Settings → Sync & data and click **Install notesd**.
+
+<img width="471" height="163" alt="Install on Chrome" src="https://github.com/user-attachments/assets/fc8ba906-b7ec-4062-8aa9-d6ae1bd56def" />
+
+Firefox can't install it; use notesd in a tab there.
 
 ## Using notesd
 
