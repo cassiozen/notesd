@@ -1,0 +1,63 @@
+server/internal/api/agent_socket.go
+  s_f7b126b009a7df::t_7df39bd4b1ce8f 27,34,36,45-47,54,59-60,69,71-75,78-81
+server/internal/api/agent_socket_test.go
+  s_f7b126b009a7df::t_3d9d6a51608cd5 5,15,17,45-46,48-55,169-200
+server/internal/agent/triggers.go
+  s_f7b126b009a7df::t_d9009ddbdd2522 70-79
+server/internal/editors/hub_test.go
+  s_f7b126b009a7df::t_79c938857c580a 1-65,71-130
+  s_f7b126b009a7df::t_ec02d267d51ab6 66-70
+apps/web/src/api/agent.ts
+  s_f7b126b009a7df::t_266058ae7bb2f5 27
+apps/web/src/notes/activity.tsx
+  s_f7b126b009a7df::t_266058ae7bb2f5 37,54
+server/internal/agent/editors.go
+  s_f7b126b009a7df::t_89d18d8f5b8046 1-47
+apps/web/test/agent-socket.test.tsx
+  s_f7b126b009a7df::t_83762d4ae4a386 86-88
+server/cmd/notesd/main.go
+  s_f7b126b009a7df::t_79c938857c580a 64,466,481-483,490
+server/internal/agent/run.go
+  s_f7b126b009a7df::t_e06e212c0bc8dc 47-48
+  s_f7b126b009a7df::t_128f49a816819e 30-32,45-46,137,140-146,252-254
+server/internal/agent/runs.go
+  s_f7b126b009a7df::t_d9009ddbdd2522 221-250
+  s_f7b126b009a7df::t_128f49a816819e 40
+  s_f7b126b009a7df::t_e06e212c0bc8dc 51-52
+server/internal/agent/runner_test.go
+  s_f7b126b009a7df::t_d8484ccd6c3415 78,88-93
+  s_f7b126b009a7df::t_2566a4023a3f30 258,265
+server/internal/agent/editors_test.go
+  s_f7b126b009a7df::t_d8484ccd6c3415 1-151
+server/internal/editors/hub.go
+  s_f7b126b009a7df::t_22b43371f51b5d 2-3,7,10,12,15-16,22-24,39-44,52-53,56-59,74-75,83,106-218
+server/internal/agent/activity.go
+  s_f7b126b009a7df::t_961d7b7d4ba096 25-27,234-236
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_3583bdc642c4db 496-511
+apps/web/src/agent/socket.ts
+  s_f7b126b009a7df::t_83762d4ae4a386 75-77
+docs/reference/api.md
+  s_f7b126b009a7df::t_3583bdc642c4db 422-424,452-453,455-457
+server/internal/agent/tools.go
+  s_f7b126b009a7df::t_e06e212c0bc8dc 37-40,55-67,166-186,188,190-200,223-229,231-233,239-265,268-277,281-282,287-289,304-306,328-347,349
+  s_f7b126b009a7df::t_1e7ab84afcd00e 348,350
+server/internal/agent/undo.go
+  s_f7b126b009a7df::t_961d7b7d4ba096 63
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35de7b9cd2c21a1502c7dc579f49063731331c68",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
