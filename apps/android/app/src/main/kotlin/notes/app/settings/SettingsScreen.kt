@@ -88,6 +88,7 @@ fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOp
     val spaces by graph.spaces.collectAsStateWithLifecycle()
     val email by graph.email.settings.collectAsStateWithLifecycle()
     var pending by remember { mutableIntStateOf(0) }
+    val syncStatus by graph.sync.status.collectAsStateWithLifecycle()
     LaunchedEffect(account) { if (account is Account.SignedIn) graph.email.refresh() }
     LaunchedEffect(Unit) {
         graph.store.changes.onSubscription { emit(Unit) }.collect { pending = graph.store.pendingNotes() }
@@ -112,7 +113,7 @@ fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOp
             }
             GroupHeader("This phone only")
             CategoryRow(Icons.Appearance, SettingsSection.Appearance, theme.label, onOpen)
-            CategoryRow(Icons.Cloud, SettingsSection.Device, if (pending > 0) "$pending waiting" else "", onOpen)
+            CategoryRow(Icons.Cloud, SettingsSection.Device, syncSummary(syncStatus, pending), onOpen)
             CategoryRow(Icons.Info, SettingsSection.About, BuildConfig.VERSION_NAME, onOpen)
         }
     }
@@ -205,6 +206,10 @@ fun SettingsSectionScreen(
             }
 
             SettingsSection.Device -> {
+                if (account != Account.None) {
+                    SyncCard(graph)
+                    Spacer(Modifier.height(16.dp))
+                }
                 Card {
                     Action("Remove all data from this device", t.danger, enabled = !busy) {
                         confirm = Confirm.RemoveAll

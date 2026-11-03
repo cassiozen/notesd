@@ -7,6 +7,7 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -20,11 +21,13 @@ import notes.app.BuildConfig
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.settings.syncSummary
 import notes.core.api.Session
 import notes.core.api.SignIn
 import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.crypto.UnsupportedVersionException
 import notes.core.sync.SyncOutcome
+import notes.core.sync.SyncStatus
 import org.junit.After
 import org.junit.Rule
 import org.junit.Test
@@ -105,6 +108,36 @@ class SyncBannersTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntilExactlyOneExists(hasText(UPGRADE_REQUIRED_MESSAGE))
         assertEquals(1, runBlocking { graph.store.pendingNotes() })
+    }
+
+    @Test
+    fun `Sync & data says how sync is doing, and what's waiting`() {
+        signedIn {
+            MockResponse.Builder().code(426).addHeader("Content-Type", "application/json")
+                .body("""{"error":"upgrade_required","message":"update notesd","minVersion":"9.0.0"}""").build()
+        }
+        runBlocking {
+            graph.store.save("n1", "Plans", "Bike\n")
+            assertEquals(SyncOutcome.UpgradeRequired, graph.sync.sync())
+        }
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.onNode(hasContentDescription("Settings")).performClick()
+        // The list says it in a word or two.
+        compose.waitUntilExactlyOneExists(hasText("Update notesd"))
+        compose.onNodeWithText("Sync & data").performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Update notesd · 1 waiting"))
+        compose.onNode(hasText(UPGRADE_REQUIRED_MESSAGE)).assertExists()
+        compose.onNode(hasText("Sync now") and hasClickAction()).assertExists()
+    }
+
+    @Test
+    fun `sync's state in a word or two, as on iOS`() {
+        assertEquals("Up to date", syncSummary(SyncStatus.Synced(1), 0))
+        assertEquals("2 waiting", syncSummary(SyncStatus.Synced(1), 2))
+        assertEquals("Offline", syncSummary(SyncStatus.Offline, 2))
+        assertEquals("", syncSummary(SyncStatus.NotConnected, 0))
+        assertEquals("Sync problem", syncSummary(SyncStatus.Failed("x"), 0))
     }
 
     @Test
