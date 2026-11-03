@@ -1,0 +1,28 @@
+apps/android/app/src/main/kotlin/notes/app/settings/AccountPassword.kt
+  s_5c7b55c45c6df4::t_c72e33f2beff10 67-68
+  s_5c7b55c45c6df4::t_e09e561c698dd4 69
+apps/android/app/src/main/kotlin/notes/app/EmailSetup.kt
+  s_5c7b55c45c6df4::t_c72e33f2beff10 25-28
+apps/ios/Notes/Settings/EmailSetup.swift
+  s_5c7b55c45c6df4::t_c72e33f2beff10 24-26
+apps/ios/Notes/Settings/AccountPassword.swift
+  s_5c7b55c45c6df4::t_c72e33f2beff10 52-53
+apps/android/app/src/test/kotlin/notes/app/settings/AccountPasswordTest.kt
+  s_5c7b55c45c6df4::t_ac643bc855ea88 56,58-59,61-70,86,88-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "72b6bd1778b2e84b6c2296b687c94da7fe17ea60",
+  "prompts": {},
+  "sessions": {
+    "s_5c7b55c45c6df4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7f6c92c-f1e0-492b-b92f-4cee1a0609c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
