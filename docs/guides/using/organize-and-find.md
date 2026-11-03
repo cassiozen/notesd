@@ -76,7 +76,8 @@ If you've selected a few words, they're what's searched for.
 - Replaced text keeps the formatting of the text it replaces.
 - Code and other Markdown the editor shows as-is is never replaced. Android still finds matches
   in it; the web app and iPhone skip it.
-- In the web app on a computer: ⌘F / Ctrl+F finds, ⌥⌘F / Ctrl+H finds and replaces, Enter and
-  ⇧Enter (or ⌘G / F3) step through matches, and Escape closes the bar with the match selected.
-  The web app on a phone doesn't offer it; use the apps.
+- In the web app on a computer: ⌘F / Ctrl+F finds, ⌥⌘F / Ctrl+H finds and replaces, Enter in
+  the find field (or ⌘G / F3) steps through matches, with ⇧ going back, and Escape closes the bar
+  with the match selected. In the replace field, Enter replaces and ⌘Enter / Ctrl+Enter replaces
+  all. The web app on a phone doesn't offer it; use the apps.
 - With a hardware keyboard, ⌘F / ⌥⌘F work on iPhone, and Ctrl+F on Android.

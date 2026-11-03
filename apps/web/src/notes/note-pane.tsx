@@ -273,6 +273,8 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const [linkOpen, setLinkOpen] = useState(false)
   const [stylesOpen, setStylesOpen] = useState(false)
   const [find, setFind] = useState<{ request: FindRequest; replace: boolean } | null>(null)
+  // Phones have no find bar: widening the window again mustn't bring it back and take focus.
+  if (mobile && find) setFind(null)
   const touchTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
   const stylesId = useId()
   const popover = useRef<HTMLDivElement>(null)
@@ -421,6 +423,8 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       const command = findShortcut(e)
       if (!command) return
       const target = e.target as Element
+      // The note's dialogs open inside the pane.
+      if (target.closest?.('dialog')) return
       if (target !== document.body && !target.closest?.('[data-note-pane]')) return
       if (command === 'next' || command === 'prev') {
         if (!findOpen) return

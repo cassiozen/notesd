@@ -21,9 +21,17 @@ const key = new PluginKey<FindState>('find')
 
 const closed: FindState = { query: '', matches: [], current: -1, anchor: 0, decorations: DecorationSet.empty }
 
-// Per character, so offsets in the folded text stay offsets in the document
-// (a few characters, like İ, lowercase to two).
-const fold = (s: string) => Array.from(s, (c) => (c.toLowerCase().length === c.length ? c.toLowerCase() : c)).join('')
+/**
+ * Lowercase, one character for one, so offsets in the folded text are offsets
+ * in the document. İ is the one letter whose lowercase is longer (i + a
+ * combining dot): it folds to i, which is what people type. ς and σ are one
+ * letter.
+ */
+function fold(s: string): string {
+  let out = ''
+  for (const c of s) out += c === 'İ' ? 'i' : c === 'ς' ? 'σ' : c.toLowerCase()
+  return out
+}
 
 /**
  * Case-insensitive plain-text matches, each inside one textblock. Inline atoms

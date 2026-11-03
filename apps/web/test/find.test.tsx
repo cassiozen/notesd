@@ -71,6 +71,18 @@ describe('find', () => {
     expect(window.getSelection()?.toString()).toBe('cat')
   })
 
+  it('folds İ to i, and final ς to σ', async () => {
+    const { user } = await openNote('Notes', 'İstanbul and istanbul, ΟΔΟΣ and οδος\n')
+    selectInBody('and')
+    await user.keyboard('{Control>}f{/Control}')
+    await user.clear(findField())
+    await user.type(findField(), 'istanbul')
+    expect(highlighted()).toEqual(['İstanbul', 'istanbul'])
+    await user.clear(findField())
+    await user.type(findField(), 'οδος')
+    expect(highlighted()).toEqual(['ΟΔΟΣ', 'οδος'])
+  })
+
   it('remembers the last search', async () => {
     const { user } = await openNote('Notes', 'apple pie\n')
     selectInBody('pie')
@@ -134,6 +146,16 @@ describe('find and replace', () => {
     await waitFor(() => expect(document.activeElement).toBe(body()))
     await user.keyboard('{Control>}z{/Control}')
     await waitFor(async () => expect((await getNote(server, id)).content).toBe('cat, cat and cat\n'))
+  })
+
+  it('leaves Enter on a button to the button', async () => {
+    const { user } = await openNote('Pets', 'cat and cat\n')
+    selectInBody('cat')
+    await user.keyboard('{Control>}h{/Control}')
+    await user.type(replaceField(), 'dog')
+    within(findBar()).getByRole('button', { name: 'Replace all' }).focus()
+    await user.keyboard('{Enter}')
+    expect(count()).toBe('Replaced 2')
   })
 
   it('toggles the replace row from the bar', async () => {

@@ -27,7 +27,9 @@ import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -98,6 +100,14 @@ fun FindBar(
         findFocus.requestFocus()
         keyboard?.show()
     }
+    // After the toggle's recomposition: the replace field isn't there to focus until then.
+    var focusReplace by remember { mutableStateOf(false) }
+    LaunchedEffect(focusReplace) {
+        if (focusReplace) {
+            replaceFocus.requestFocus()
+            focusReplace = false
+        }
+    }
     // Hardware keys; Enter is the field's own action, with Shift the previous match.
     fun keys(onEnter: () -> Unit) = Modifier.onPreviewKeyEvent {
         if (it.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -134,7 +144,7 @@ fun FindBar(
                     if (!on) {
                         findFocus.requestFocus()
                     } else if (query.text.isNotEmpty()) {
-                        replaceFocus.requestFocus()
+                        focusReplace = true
                     }
                 }
             }

@@ -428,7 +428,8 @@ final class FlowTests: XCTestCase {
         // One Undo takes the whole Replace All back, not the single replace before it; the bar finds them again.
         app.buttons["Undo"].tap()
         let undone = editor.value as? String ?? ""
-        XCTAssertTrue(undone.contains("Plain pears.") && undone.contains("apples in a list"), undone)
+        // Which match the single replace took depends on where the tap left the cursor: only that there was one.
+        XCTAssertEqual(undone.components(separatedBy: "pears").count, 2, undone)
         XCTAssertTrue(counted(5), "searched again after Undo: \(count.label)")
         screenshot("undone with the bar open")
         app.buttons["Redo"].tap()

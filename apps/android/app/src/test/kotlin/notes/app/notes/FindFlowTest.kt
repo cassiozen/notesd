@@ -5,6 +5,7 @@ import android.view.ViewGroup
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isFocused
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -151,5 +152,14 @@ class FindFlowTest {
         compose.waitUntilExactlyOneExists(hasContentDescription("Replace with"))
         compose.onNodeWithContentDescription("Replace").performClick()
         compose.waitUntilDoesNotExist(hasContentDescription("Replace with"))
+    }
+
+    @Test
+    fun `turning replace on with a query focuses the replace field`() {
+        open()
+        menu("Find")
+        compose.onNodeWithContentDescription("Find in note").performTextInput("roof")
+        compose.onNodeWithContentDescription("Replace").performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Replace with") and isFocused())
     }
 }

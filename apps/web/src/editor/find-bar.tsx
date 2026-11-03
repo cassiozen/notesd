@@ -115,7 +115,8 @@ export function FindBar({
       close()
       return
     }
-    if (e.key !== 'Enter' || e.nativeEvent.isComposing) return
+    // Buttons keep Enter as a click.
+    if (e.key !== 'Enter' || e.nativeEvent.isComposing || !(e.target instanceof HTMLInputElement)) return
     e.preventDefault()
     if (e.target === replaceInput.current) {
       if (isMac ? e.metaKey : e.ctrlKey) doReplaceAll()

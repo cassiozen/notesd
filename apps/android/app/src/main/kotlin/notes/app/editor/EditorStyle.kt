@@ -44,7 +44,7 @@ class EditorStyle(
      * Behind find matches: neutral, so they don't read as tags; the current
      * one solid accent with [onAccent] text.
      */
-    val findBg = tokens.ink.copy(alpha = if (tokens.dark) 0.2f else 0.13f).toArgb()
+    val findBg = hairStrong
     val findCurrentBg = accent
 
     // Under half a space: two tags in a row keep a gap between their pills.
