@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/database"
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
@@ -26,11 +27,15 @@ type Data struct {
 	Locks  *locks.Store
 	Images *images.Store
 	Spaces *spaces.Store
+	Agent  *agent.Store
 }
 
 // New wraps an open notes database.
 func New(db *database.DB) *Data {
-	return &Data{DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db), Spaces: spaces.NewStore(db)}
+	return &Data{
+		DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db),
+		Spaces: spaces.NewStore(db), Agent: agent.NewStore(db),
+	}
 }
 
 // Path is where a user's notes database lives.
@@ -41,10 +46,15 @@ func Path(dataDir string, userID int64) string {
 // Registry opens users' databases on first use and keeps them open. There
 // are only ever a few users, so nothing is closed until Close.
 type Registry struct {
-	dir      string
-	mu       sync.Mutex
-	open     map[int64]*Data
-	onChange func(userID int64)
+	dir  string
+	mu   sync.Mutex
+	open map[int64]*Data
+
+	// Apart from mu, which is held while a database opens and migrates, so
+	// a write elsewhere never waits on that to notify.
+	hooksMu  sync.RWMutex
+	onChange []func(userID int64)
+	onNote   []func(userID int64, ev notes.Event)
 }
 
 // NewRegistry returns a registry for the users in dataDir.
@@ -52,12 +62,39 @@ func NewRegistry(dataDir string) *Registry {
 	return &Registry{dir: dataDir, open: map[int64]*Data{}}
 }
 
-// OnChange has fn called after a write to a user's notes, spaces or images
-// commits, for databases opened from now on. fn must not block.
+// OnChange adds fn, called after a write to a user's notes, spaces or images
+// commits. fn must not block.
 func (r *Registry) OnChange(fn func(userID int64)) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.onChange = fn
+	r.hooksMu.Lock()
+	defer r.hooksMu.Unlock()
+	r.onChange = append(r.onChange, fn)
+}
+
+// OnNote adds fn, called with each write to a user's notes after it commits.
+// fn must not block.
+func (r *Registry) OnNote(fn func(userID int64, ev notes.Event)) {
+	r.hooksMu.Lock()
+	defer r.hooksMu.Unlock()
+	r.onNote = append(r.onNote, fn)
+}
+
+func (r *Registry) changed(userID int64) {
+	r.hooksMu.RLock()
+	fns := r.onChange
+	r.hooksMu.RUnlock()
+	for _, fn := range fns {
+		fn(userID)
+	}
+}
+
+func (r *Registry) noteWritten(userID int64, ev notes.Event) {
+	r.hooksMu.RLock()
+	fns := r.onNote
+	r.hooksMu.RUnlock()
+	for _, fn := range fns {
+		fn(userID, ev)
+	}
+	r.changed(userID)
 }
 
 // Open returns a user's data, opening (and creating, for a new user) their
@@ -80,12 +117,11 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 		return nil, fmt.Errorf("rebuild search index of %s: %w", path, err)
 	}
 	d := New(db)
-	if fn := r.onChange; fn != nil {
-		changed := func() { fn(userID) }
-		d.Notes.OnCommit(changed)
-		d.Spaces.OnCommit(changed)
-		d.Images.OnCommit(changed)
-	}
+	// Hooks are looked up when a write commits, so one added after this
+	// database opened still hears about it.
+	d.Notes.OnCommit(func(ev notes.Event) { r.noteWritten(userID, ev) })
+	d.Spaces.OnCommit(func() { r.changed(userID) })
+	d.Images.OnCommit(func() { r.changed(userID) })
 	r.open[userID] = d
 	return d, nil
 }

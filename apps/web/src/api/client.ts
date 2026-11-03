@@ -1,6 +1,16 @@
 import type { ErrorBody, Note } from './types'
 import { CLIENT_ID, versionState } from './version'
 
+// The browser's IANA time zone, such as Europe/Lisbon. The server keeps the
+// first one an account's devices send, for agents' "today".
+const TIME_ZONE = (() => {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {
+    return ''
+  }
+})()
+
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
@@ -112,6 +122,8 @@ async function send(
 ): Promise<Response> {
   if (method !== 'GET' && csrfToken) headers['X-CSRF-Token'] = csrfToken
   headers['X-Notesd-Client'] = CLIENT_ID
+  // The account's time zone, until one is known: agents need "today".
+  if (TIME_ZONE) headers['X-Notesd-Time-Zone'] = TIME_ZONE
 
   let res: Response
   try {

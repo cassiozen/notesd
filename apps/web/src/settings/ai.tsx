@@ -3,7 +3,14 @@ import { ApiError } from '../api/client'
 import { settings } from '../api/settings'
 import type { AiSettings, AiSettingsInput } from '../api/types'
 import { genericMessage, sentence } from '../auth/errors'
-import { DEFAULT_DAILY_TOKEN_CAP, retryAiSettings, setAiSettings, useAiSettings, useAiSettingsFailed } from '../notes/ai-settings'
+import {
+  DEFAULT_DAILY_TOKEN_CAP,
+  providerHost,
+  retryAiSettings,
+  setAiSettings,
+  useAiSettings,
+  useAiSettingsFailed,
+} from '../notes/ai-settings'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
@@ -34,21 +41,13 @@ export function useAiStatus(): IntegrationStatus {
   const failed = useAiSettingsFailed()
   if (!saved) return failed ? { state: 'failed', retry: retryAiSettings } : { state: 'loading' }
   return saved.configured
-    ? { state: 'on', editable: saved.editable, detail: `${saved.model} at ${hostOf(saved.baseUrl)}` }
+    ? { state: 'on', editable: saved.editable, detail: `${saved.model} at ${providerHost(saved.baseUrl)}` }
     : { state: 'off', editable: saved.editable }
 }
 
 type AiField = 'baseUrl' | 'apiKey' | 'model' | 'dailyTokenCap'
 type Errors = Partial<Record<AiField | 'form', string>>
 const aiFields: readonly string[] = ['baseUrl', 'apiKey', 'model', 'dailyTokenCap'] satisfies AiField[]
-
-function hostOf(url: string): string {
-  try {
-    return new URL(url).host
-  } catch {
-    return url
-  }
-}
 
 /** The server's refusal, on the field it's about. */
 function serverErrors(err: unknown, prefix = ''): Errors {

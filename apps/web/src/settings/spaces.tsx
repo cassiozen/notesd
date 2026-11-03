@@ -1,13 +1,27 @@
 import { useEffect, useId, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
+import { spaces as spacesApi } from '../api/spaces'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
+import { saveAgentConfig, useAgentConfigs } from '../notes/agent-config'
+import { providerHost, useAiSettings } from '../notes/ai-settings'
+import { notesSource } from '../notes/source'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { Surface } from '../ui/surface'
+import {
+  AgentSection,
+  agentFieldError,
+  draftOf,
+  emptyAgent,
+  hasAgent,
+  sameAgent,
+  type AgentDraft,
+  type AgentErrors,
+} from './agent-section'
 import styles from './settings.module.css'
 
 const notes = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`
@@ -111,6 +125,10 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
   const [icon, setIcon] = useState<string | null>(null)
   const [errors, setErrors] = useState<{ name?: string; icon?: string; form?: string }>({})
   const [busy, setBusy] = useState(false)
+  const agent = useAgentSetup(undefined)
+  // Once, so a failed agent save doesn't make a second space.
+  const [id] = useState(() => crypto.randomUUID())
+  const [created, setCreated] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -119,14 +137,25 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
       ...(icon === null && { icon: 'Choose an icon.' }),
     }
     setErrors(found)
+    agent.setErrors({})
     if (Object.keys(found).length > 0 || icon === null) return
     setBusy(true)
     try {
-      const id = crypto.randomUUID()
-      await putSpace(id, name.trim(), icon)
+      if (!created) {
+        if (hasAgent(agent.draft) && notesSource().sync) {
+          // Notes kept on this device create the space there and send it on the next sync; the agent's setup
+          // needs it on the server now. Same id and name, so that sync changes nothing.
+          await spacesApi.put(id, name.trim(), icon)
+        }
+        await putSpace(id, name.trim(), icon)
+        setCreated(true)
+      }
+      if (hasAgent(agent.draft)) await saveAgentConfig(id, agent.draft)
       onCreated(id)
     } catch (err) {
-      setErrors({ form: genericMessage(err) })
+      const fields = agentFieldError(err)
+      if (fields) agent.setErrors(fields)
+      else setErrors({ form: genericMessage(err) })
       setBusy(false)
     }
   }
@@ -148,6 +177,15 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
           autoFocus
         />
         <SpaceIconPicker value={icon} onChange={setIcon} error={errors.icon} />
+        {agent.shown && (
+          <AgentSection
+            draft={agent.draft}
+            onChange={agent.setDraft}
+            errors={agent.errors}
+            provider={agent.provider}
+            isNew
+          />
+        )}
         {errors.form && (
           <p role="alert" className={styles.error}>
             {errors.form}
@@ -172,7 +210,9 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   const [name, setName] = useState(space.name)
   const [icon, setIcon] = useState(space.icon)
   const [error, setError] = useState<string>()
+  const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
+  const agent = useAgentSetup(space.id)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -180,12 +220,20 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
       setError('Enter a name.')
       return
     }
+    setError(undefined)
+    setFormError(undefined)
+    agent.setErrors({})
     setBusy(true)
     try {
-      await putSpace(space.id, name.trim(), icon)
+      if (name.trim() !== space.name || icon !== space.icon) await putSpace(space.id, name.trim(), icon)
+      if (agent.changed) await saveAgentConfig(space.id, agent.draft)
       onClose()
     } catch (err) {
-      setError(genericMessage(err))
+      const fields = agentFieldError(err)
+      if (fields) agent.setErrors(fields)
+      else if (err instanceof ApiError && err.code === 'not_found')
+        setFormError('This space hasn’t reached the server yet. Try again once it has synced.')
+      else setFormError(genericMessage(err))
       setBusy(false)
     }
   }
@@ -206,6 +254,20 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
           autoFocus
         />
         <SpaceIconPicker value={icon} onChange={setIcon} />
+        {agent.shown && (
+          <AgentSection
+            draft={agent.draft}
+            onChange={agent.setDraft}
+            errors={agent.errors}
+            provider={agent.provider}
+            isNew={false}
+          />
+        )}
+        {formError && (
+          <p role="alert" className={styles.error}>
+            {formError}
+          </p>
+        )}
         <div className={styles.dialogActions}>
           <Button size="md" onClick={onClose} disabled={busy}>
             Cancel
@@ -217,4 +279,27 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
       </form>
     </Dialog>
   )
+}
+
+/**
+ * A space's agent as a dialog edits it. Shown once the agents have loaded (they need the server) and either AI is
+ * set up or the space already has an agent, which then shows as paused.
+ */
+function useAgentSetup(spaceId: string | undefined) {
+  const configs = useAgentConfigs()
+  const ai = useAiSettings()
+  const saved = spaceId ? configs?.get(spaceId) : undefined
+  const initial = draftOf(saved)
+  const [draft, setDraft] = useState<AgentDraft | null>(null)
+  const [errors, setErrors] = useState<AgentErrors>({})
+  const current = draft ?? initial
+  return {
+    shown: configs !== null && ai !== null && (ai.configured || (saved !== undefined && hasAgent(initial))),
+    draft: current,
+    setDraft,
+    changed: draft !== null && !sameAgent(current, saved ? initial : emptyAgent),
+    errors,
+    setErrors,
+    provider: ai?.configured ? providerHost(ai.baseUrl) : null,
+  }
 }

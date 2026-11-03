@@ -13,7 +13,7 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 - [Basics](#basics): requests, compatibility, authentication, writing notes, errors
 - [Endpoints](#endpoints): [auth](#auth), [notes](#notes), [sync](#sync),
   [search and filters](#search-and-filters), [spaces](#spaces), [images](#images),
-  [locked notes](#locked-notes), [email](#email), [AI](#ai), [updates](#updates), [health](#health)
+  [locked notes](#locked-notes), [email](#email), [agents](#agents), [AI](#ai), [updates](#updates), [health](#health)
 - [Error codes](#error-codes)
 
 ## Basics
@@ -99,6 +99,14 @@ Creating, updating and deleting a note are idempotent and checked against the no
   encrypted `content` can be somewhat longer.
 - **`createdAt` and `updatedAt`** may be sent, so edits made offline show when they happened. They
   are informational only, and a time more than a day in the future is replaced with the server's.
+- **`agent`**, optional, marks a write that holds an [agent's](../guides/using/agents.md) edit:
+  `{"runId": "…", "only": true}`. `runId` is the run that made it, with the same characters as an
+  operation ID. `only` is `true` when the save holds nothing but the agent's changes, and `false`
+  once the user has typed too. A save marked `only` doesn't count as the user's own editing. Part
+  of the body, so of the request hash.
+- **`X-Notesd-Sync`**, an optional header, says a write isn't someone editing: `initial` while a
+  device makes its first sync, `import` for an import. Any other value also means that, so a later
+  client can send a new reason. Agents don't react to these. It isn't part of the request hash.
 
 Every write answers with the result:
 
@@ -194,10 +202,10 @@ Browsers get `csrfToken` instead of the four token fields, and the cookie.
 | Method | Path | Body → response |
 | --- | --- | --- |
 | `GET` | `/notes` | → `{notes: [summary], nextCursor, hasMore, total}`. Live notes, newest first |
-| `POST` | `/notes` | `{operationId, id, title, content, spaceId?, conflictOf?, imageIds?, createdAt?, updatedAt?}` → `201` [result](#writing-notes) |
+| `POST` | `/notes` | `{operationId, id, title, content, spaceId?, conflictOf?, imageIds?, createdAt?, updatedAt?, agent?}` → `201` [result](#writing-notes) |
 | `GET` | `/notes/{id}` | → the note. A deleted note is `410 note_deleted`, with the tombstone in `current` |
-| `PUT` | `/notes/{id}` | `{operationId, baseRevision, title, content, spaceId?, imageIds?, updatedAt?}` → [result](#writing-notes) |
-| `DELETE` | `/notes/{id}` | `{operationId, baseRevision}` → [result](#writing-notes) |
+| `PUT` | `/notes/{id}` | `{operationId, baseRevision, title, content, spaceId?, imageIds?, updatedAt?, agent?}` → [result](#writing-notes) |
+| `DELETE` | `/notes/{id}` | `{operationId, baseRevision, agent?}` → [result](#writing-notes) |
 
 A note:
 
@@ -375,6 +383,30 @@ for an unverified domain, `502 email_failed` with Resend's message.
 account. `apiKey` starts with `re_`, and can be left out to keep the saved one. It's never
 returned: `keyHint` is its last 4 characters. `editable` says whether this account is an admin;
 other accounts get `403 admin_only` when they change it.
+
+### Agents
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `GET` | `/agent/spaces` | → `{spaces: [config, …]}`, every space whose agent has been set up |
+| `GET` | `/agent/spaces/{id}` | → the space's config; off and empty if none was set up |
+| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers}` → the config as stored |
+| `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
+| `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
+| `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
+
+A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
+space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
+`noteCreated`, `editStarted`, `newNoteDone`, `editDone`, `noteDeleted`, `movedIn`, `movedOut` and
+`menu`. A trigger with an empty prompt is dropped, and so is one the server doesn't know.
+`menuLabel` names the `menu` command in a note's menu, up to 40 characters, and is required with a
+`menu` prompt. Prompts can be up to 16 KiB. `PUT` replaces the whole config. A space that doesn't
+exist is `404 not_found`. Deleting a space deletes its agent.
+
+The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)
+until a device says otherwise: any signed-in request, and sign-in itself, may carry `X-Notesd-Time-Zone` with an IANA
+name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
+a name that isn't a time zone is `400 invalid_request` on `timeZone`.
 
 ### AI
 

@@ -25,6 +25,7 @@ import { IntegrationsPage, integrationsValue, useIntegrationStatuses } from './i
 import { LockedNotesCard } from './locked-notes'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
+import { TimeZoneCard } from './time-zone'
 import styles from './settings.module.css'
 
 /** On a phone. Opened from the list, a page's entry is popped, so browser Back won't reopen the page. */
@@ -371,6 +372,7 @@ function SettingsPage({
             </ul>
           </Surface>
           <UpdateCard />
+          <TimeZoneCard />
         </>
       )
     case 'security':
