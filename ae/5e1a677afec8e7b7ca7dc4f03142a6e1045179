@@ -1,0 +1,41 @@
+apps/ios/NotesUITests/FlowTests.swift
+  s_5bf4b39ab0b207::t_75af5257bea38e 431-432
+apps/web/test/find.test.tsx
+  s_5bf4b39ab0b207::t_e0e520e2ccf3c9 74-75,81-83
+  s_5bf4b39ab0b207::t_060a0251d0a0d1 76-80,84-85,151-159
+  s_5bf4b39ab0b207::t_a56c8aadf53035 160
+apps/android/app/src/main/kotlin/notes/app/editor/EditorStyle.kt
+  s_5bf4b39ab0b207::t_f3717c7cddd53a 47
+apps/android/app/src/main/kotlin/notes/app/notes/FindBar.kt
+  s_5bf4b39ab0b207::t_9871c7bb99b8c6 30,32
+  s_5bf4b39ab0b207::t_603bfd04c4d739 103-110,147
+apps/android/app/src/test/kotlin/notes/app/notes/FindFlowTest.kt
+  s_5bf4b39ab0b207::t_9871c7bb99b8c6 8,156-163
+  s_5bf4b39ab0b207::t_82cb4ec479d193 164
+docs/guides/using/organize-and-find.md
+  s_5bf4b39ab0b207::t_bc74806bbc632c 79-82
+apps/web/src/editor/find-bar.tsx
+  s_5bf4b39ab0b207::t_7b1b1dfc356b9b 118-119
+apps/web/src/editor/find.ts
+  s_5bf4b39ab0b207::t_e0e520e2ccf3c9 25-28,30-33
+  s_5bf4b39ab0b207::t_c5b6ae64e78b16 24,29,34
+apps/web/src/notes/note-pane.tsx
+  s_5bf4b39ab0b207::t_63cf27b47efe02 276-277
+  s_5bf4b39ab0b207::t_62ed13f5185ad6 426-427
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ae5e1a677afec8e7b7ca7dc4f03142a6e1045179",
+  "prompts": {},
+  "sessions": {
+    "s_5bf4b39ab0b207": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "05fffde2-cba5-449b-b4ab-80c5301dc043",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

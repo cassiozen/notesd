@@ -1,0 +1,53 @@
+apps/web/src/api/types.ts
+  s_5c7b55c45c6df4::t_e7ca6e6715daf7 103-104
+apps/web/src/ui/icons.tsx
+  s_5c7b55c45c6df4::t_e7ca6e6715daf7 185-192
+apps/web/test/settings.test.tsx
+  s_5c7b55c45c6df4::t_191458c67aabfe 94,179,188
+  s_5c7b55c45c6df4::t_77c44392e5a6f8 172
+  s_5c7b55c45c6df4::t_3d31719492df20 46,83-92,159
+apps/web/src/settings/settings.tsx
+  s_5c7b55c45c6df4::t_0edbb74544d259 1,16,23-24,195,202,362-372,386,412-414,483-521,524-525,546,560-564,572-592,599-601,603-606,608,612
+apps/web/src/settings/spaces.tsx
+  s_5c7b55c45c6df4::t_e84abc30833c19 40,42
+docs/guides/using/email.md
+  s_5c7b55c45c6df4::t_bf0ee9d27e4751 15-20
+docs/guides/using/settings.md
+  s_5c7b55c45c6df4::t_bf0ee9d27e4751 20
+apps/web/src/settings/resend.tsx
+  s_5c7b55c45c6df4::t_392cba4237bf6c 136,151-158
+  s_5c7b55c45c6df4::t_9dc9ef2d2f876c 1-135,137-150,159-412
+apps/web/src/settings/settings.module.css
+  s_5c7b55c45c6df4::t_2bb1ad2d64c3e1 181-203,206-228,555-698
+apps/web/src/settings/integrations.tsx
+  s_5c7b55c45c6df4::t_305418c87afe32 1-116
+apps/web/test/locks.test.tsx
+  s_5c7b55c45c6df4::t_3d31719492df20 155-159,200,203-208,323-335
+  s_5c7b55c45c6df4::t_fc09b1edf2112a 264-265
+apps/web/src/settings/locked-notes.tsx
+  s_5c7b55c45c6df4::t_d7e5251387a176 1,9,17,28,58,64-193,213,222-226,235-254,261-264,270,274-276,288-289,291-293,297,300-344,346,348-349,351-352,358-390,393-394
+apps/web/src/settings/device.tsx
+  s_5c7b55c45c6df4::t_6c80d380fb1d5a 178,198-203,205,217
+apps/web/test/share.test.tsx
+  s_5c7b55c45c6df4::t_9be70ea67a7ed6 92-93
+  s_5c7b55c45c6df4::t_2adadd4aae8f6c 4,18,21-22,24-29,31-39,44,49-61,63-74,76-81,83-84,87-91,94-107
+  s_5c7b55c45c6df4::t_191458c67aabfe 1,3,41,48,75,82
+docs/contributing/settings-guidelines.md
+  s_5c7b55c45c6df4::t_bf0ee9d27e4751 31-35,51,76,86-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0f04c3572da5b563f8a18315d8b43e0e43fbe9c1",
+  "prompts": {},
+  "sessions": {
+    "s_5c7b55c45c6df4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a7f6c92c-f1e0-492b-b92f-4cee1a0609c4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

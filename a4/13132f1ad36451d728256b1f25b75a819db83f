@@ -1,0 +1,63 @@
+apps/android/app/src/main/kotlin/notes/app/ui/Icons.kt
+  s_d0bad8e81dcc3b::t_37666b2da6b46f 42-51
+apps/android/app/src/test/kotlin/notes/app/AccessibilityTest.kt
+  s_d0bad8e81dcc3b::t_279a10b55f1d1d 3,14,18,146-161
+  s_d0bad8e81dcc3b::t_2b3ccae3d8a770 162-163
+apps/android/app/src/main/kotlin/notes/app/editor/CursorInView.kt
+  s_d0bad8e81dcc3b::t_9223d84d851567 4,9-11,15-20,34-49
+  s_c69ba8cfbdd3c2::t_5226e4ad52fbe3 50
+apps/android/app/src/main/kotlin/notes/app/editor/EditorStyle.kt
+  s_d0bad8e81dcc3b::t_67e573de96d4fd 43-49
+apps/android/app/src/main/kotlin/notes/app/editor/NoteEditText.kt
+  s_d0bad8e81dcc3b::t_6571a6f437479f 444-571,800
+  s_d0bad8e81dcc3b::t_eab40dd574ecdd 14,164-167,170,174-175,179-180,182-183,190-215,232,405-409,433,666,769
+  s_d0bad8e81dcc3b::t_5e2c4a23a1266d 184-185
+  s_d0bad8e81dcc3b::t_e5d76ced01dd41 801
+apps/android/app/src/test/kotlin/notes/app/editor/FindTest.kt
+  s_d0bad8e81dcc3b::t_4f7c53b740b6dd 137-138,140,142-143
+  s_d0bad8e81dcc3b::t_76dc15571262ad 1-78,80-136,139,141,144-215
+  s_d0bad8e81dcc3b::t_c3f46e2fba8be4 79
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_d0bad8e81dcc3b::t_43843cd0e9dd28 374-377,393,399
+  s_d0bad8e81dcc3b::t_2d71996268c03a 462,493-502
+  s_d0bad8e81dcc3b::t_5be4b3b95d88c8 16,22,24,75-76,93,113,195-204,260-285,337,339-373
+  s_d0bad8e81dcc3b::t_e31d9f6199e44b 123,378-392,394,396-398,463
+apps/android/app/src/test/kotlin/notes/app/notes/FindFlowTest.kt
+  s_d0bad8e81dcc3b::t_7ac5992d396ce4 1-125,127-138,144-155
+  s_d0bad8e81dcc3b::t_1e9d6943a74c21 141,143
+  s_d0bad8e81dcc3b::t_4f7c53b740b6dd 139-140,142
+  s_d0bad8e81dcc3b::t_33a49fb6d8f4bb 126
+apps/android/app/src/main/kotlin/notes/app/editor/Find.kt
+  s_d0bad8e81dcc3b::t_9b9ca5f337713d 1-72
+apps/android/app/src/main/kotlin/notes/app/notes/FindBar.kt
+  s_d0bad8e81dcc3b::t_87a15612e2d86d 1-17,19-100,103-105,107-123,125-155,157-163,165-258,260-264
+  s_d0bad8e81dcc3b::t_d50a8cb1bac8ab 101-102,106,124,156,259
+  s_d0bad8e81dcc3b::t_e31d9f6199e44b 18
+  s_d0bad8e81dcc3b::t_917994a8b28c88 164
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_d0bad8e81dcc3b::t_279a10b55f1d1d 196-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a413132f1ad36451d728256b1f25b75a819db83f",
+  "prompts": {},
+  "sessions": {
+    "s_c69ba8cfbdd3c2": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4902c90c-df74-4a7f-9b1d-4f2d38918a3c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_d0bad8e81dcc3b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d41411a3-03d6-4a7c-807f-e5675fd87e68",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

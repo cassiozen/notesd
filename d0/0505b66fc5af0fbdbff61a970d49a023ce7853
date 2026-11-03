@@ -1,0 +1,35 @@
+apps/web/src/notes/note-list.module.css
+  s_d07b272ffd1f21::t_182f67b8a6b5cc 96-100
+  s_d07b272ffd1f21::t_a6810a84862f24 81-95,101-117
+apps/web/src/notes/shell.tsx
+  s_d07b272ffd1f21::t_bcb2724bc858b9 235,248,258
+  s_d07b272ffd1f21::t_be39c89ca1567b 204-210,213-214,216-217,246-247,273
+  s_d07b272ffd1f21::t_7eb9ba050df3a1 211-212
+apps/web/src/notes/note-list.tsx
+  s_d07b272ffd1f21::t_0ab927802c2c39 1,26-27,31,48-50,72-75,77-79,91-101
+  s_d07b272ffd1f21::t_182f67b8a6b5cc 76
+apps/web/src/notes/tags-panel.tsx
+  s_d07b272ffd1f21::t_d5a7603810d687 1,24-27,53,128-133
+  s_d07b272ffd1f21::t_7bc3845bd70123 134-152,154-156,164-165,167,171-216
+apps/web/src/notes/tags-panel.module.css
+  s_d07b272ffd1f21::t_5afa47d8770691 7-8,10-17,21,24-51
+apps/web/test/tags.test.tsx
+  s_d07b272ffd1f21::t_6a07bebbbe096f 135-147,151-169
+  s_d07b272ffd1f21::t_d383c14809d6fa 170
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d00505b66fc5af0fbdbff61a970d49a023ce7853",
+  "prompts": {},
+  "sessions": {
+    "s_d07b272ffd1f21": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "41aa8e32-b930-499d-a3f1-a83935cab4e5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
