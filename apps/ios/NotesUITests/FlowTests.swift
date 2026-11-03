@@ -338,6 +338,116 @@ final class FlowTests: XCTestCase {
         app.typeText(text)
     }
 
+    /// The More menu's Find and Find and Replace open the system find bar; replacing is an edit like
+    /// typing: it keeps the formatting, undoes in one step, and syncs.
+    func testFindAndReplace() async throws {
+        let content =
+            "## Fruit apples\n\n- apples in a list\n- **apples** to buy\n\n> apples quoted\n\n`apples code`\n\n"
+            + "Plain apples.\n"
+        let note = try JSONSerialization.data(withJSONObject: [
+            "operationId": UUID().uuidString.lowercased(), "id": UUID().uuidString.lowercased(), "title": "Apples",
+            "content": content,
+        ])
+        _ = try await api("POST", "api/v1/notes", body: note)
+        try signIn()
+        let row = app.staticTexts["Apples"]
+        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        row.tap()
+        let editor = app.textViews.firstMatch
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+
+        // Find alone: no replace field. The search field has the keyboard straight away.
+        tap(app.buttons["More"], until: app.buttons["Find"])
+        XCTAssertTrue(app.buttons["Find and Replace"].exists)
+        app.buttons["Find"].tap()
+        let search = app.searchFields["find.searchField"]
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.textFields["find.replaceField"].exists)
+        XCTAssertEqual(search.value(forKey: "hasKeyboardFocus") as? Bool, true)
+        search.typeText("apples")
+        func waitForFocus(_ element: XCUIElement) -> Bool {
+            let focused = NSPredicate(format: "hasKeyboardFocus == true")
+            return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: focused, object: element)], timeout: 5)
+                == .completed
+        }
+        let count = app.staticTexts["find.resultLabel"]
+        // The bar counts a moment after typing stops.
+        func counted(_ n: Int) -> Bool {
+            // "1 of 6", "5/5", or just "5" with none highlighted.
+            let shown = NSPredicate(format: "label MATCHES %@", "(.*( of |/))?\(n)")
+            return XCTWaiter().wait(for: [XCTNSPredicateExpectation(predicate: shown, object: count)], timeout: 5)
+                == .completed
+        }
+        XCTAssertTrue(counted(6), "title, heading, list, bold, quote, paragraph: \(count.label)")
+        screenshot("find")
+        // Not the hit regions: the system bar's clear button is small.
+        try audit("find", .sufficientElementDescription)
+        app.buttons["find.doneButton"].tap()
+        XCTAssertFalse(search.waitForExistence(timeout: 1))
+
+        // Opened while reading, Done leaves the keyboard down; opened while typing, it goes back to typing.
+        XCTAssertNotEqual(editor.value(forKey: "hasKeyboardFocus") as? Bool, true)
+        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).tap()
+        XCTAssertTrue(waitForFocus(editor))
+        // ⌘F, on the last search. The simulator sometimes drops a hardware key after the on-screen
+        // keyboard was in use: a few tries.
+        for _ in 0..<3 where !search.exists {
+            app.typeKey(XCUIKeyboardKey.leftArrow.rawValue, modifierFlags: [])
+            sleep(1)
+            app.typeKey("f", modifierFlags: .command)
+            _ = search.waitForExistence(timeout: 3)
+        }
+        XCTAssertTrue(search.exists, "⌘F")
+        XCTAssertEqual(search.value as? String, "apples")
+        app.buttons["find.doneButton"].tap()
+        XCTAssertTrue(waitForFocus(editor), "back to typing")
+
+        tap(app.buttons["More"], until: app.buttons["Find and Replace"])
+        app.buttons["Find and Replace"].tap()
+        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        let replace = app.textFields["find.replaceField"]
+        replace.tap()
+        replace.typeText("pears")
+        let button = app.buttons["find.replaceButton"]
+        XCTAssertTrue(button.isEnabled)
+        button.tap()
+        XCTAssertTrue(counted(5), count.label)
+        screenshot("replaced one")
+        defer { XCUIDevice.shared.appearance = .light }
+        XCUIDevice.shared.appearance = .dark
+        sleep(1)
+        screenshot("replaced one, dark")
+        XCUIDevice.shared.appearance = .light
+        button.press(forDuration: 1)
+        let all = app.buttons["Replace All"]
+        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        all.tap()
+        let replaced = editor.value as? String ?? ""
+        XCTAssertFalse(replaced.lowercased().contains("apples"), replaced)
+
+        // One Undo takes the whole Replace All back, not the single replace before it; the bar finds them again.
+        app.buttons["Undo"].tap()
+        let undone = editor.value as? String ?? ""
+        XCTAssertTrue(undone.contains("Plain pears.") && undone.contains("apples in a list"), undone)
+        XCTAssertTrue(counted(5), "searched again after Undo: \(count.label)")
+        screenshot("undone with the bar open")
+        app.buttons["Redo"].tap()
+        XCTAssertEqual(editor.value as? String, replaced)
+        app.buttons["find.doneButton"].tap()
+
+        // Saved and synced with its formatting; nothing of the find bar's in it.
+        var synced: String?
+        for _ in 0..<30 where synced == nil {
+            let changes = try await api("GET", "api/v1/sync", query: "since=0&limit=100")["changes"] as? [[String: Any]]
+            synced = changes?.compactMap { $0["content"] as? String }.first { $0.contains("pears in a list") }
+            if synced == nil { try await Task.sleep(for: .seconds(1)) }
+        }
+        XCTAssertEqual(
+            synced,
+            "## Fruit pears\n\n- pears in a list\n- **pears** to buy\n\n> pears quoted\n\n`apples code`\n\n"
+                + "Plain pears.\n")
+    }
+
     func testSignInWriteAndSync() async throws {
         try signIn(screenshotted: true)
 

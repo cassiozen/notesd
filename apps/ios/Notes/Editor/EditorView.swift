@@ -46,6 +46,8 @@ final class EditorController {
 
     func focus() { view?.becomeFirstResponder() }
 
+    func find(replacing: Bool) { view?.showFind(replacing: replacing) }
+
     func editLink() {
         guard let view else { return }
         let context = view.linkContext()

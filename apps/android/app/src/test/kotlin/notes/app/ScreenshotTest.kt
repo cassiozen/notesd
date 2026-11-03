@@ -193,6 +193,33 @@ class ScreenshotTest {
         shoot("editor-code-$suffix")
     }
 
+    /** The find bar over the sample note, replacing, with a match on screen and others below. */
+    private fun find(suffix: String, qualifiers: String?) {
+        graph.setOnboardingDismissed(true)
+        seed()
+        launch(qualifiers)
+        compose.waitUntilExactlyOneExists(hasText(SAMPLE_TITLE))
+        compose.onNode(hasText(SAMPLE_TITLE)).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("More"))
+        waitForEditor()
+        compose.onNode(hasContentDescription("More")).performClick()
+        compose.onNode(hasText("Find and replace")).performClick()
+        compose.onNode(hasContentDescription("Find in note")).performTextInput("the")
+        compose.onNode(hasContentDescription("Next match")).performClick()
+        compose.onNode(hasContentDescription("Replace with")).performTextInput("a")
+        shoot("editor-find-$suffix")
+    }
+
+    @Test fun editorFindLight() = find("light", null)
+
+    @Test fun editorFindDark() = find("dark", "+night")
+
+    @Test
+    fun editorFindLargeText() {
+        RuntimeEnvironment.setFontScale(2f)
+        find("text200", null)
+    }
+
     @Test fun editorCodeLight() = code("light", null)
 
     @Test fun editorCodeDark() = code("dark", "+night")

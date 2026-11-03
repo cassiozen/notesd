@@ -69,6 +69,20 @@
   background: var(--hover);
 }
 
+.withKeys {
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+
+.keys {
+  font-size: 12.5px;
+  color: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+
 .danger {
   color: var(--danger);
 }

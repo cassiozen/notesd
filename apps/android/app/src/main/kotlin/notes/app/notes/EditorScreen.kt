@@ -13,12 +13,15 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.Window
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -69,6 +72,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -85,6 +90,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import notes.app.MainActivity
 import notes.app.R
+import notes.app.editor.FindState
 import notes.app.editor.FormatState
 import notes.app.editor.FormattingBar
 import notes.app.editor.ImageSource
@@ -104,6 +110,7 @@ import notes.app.ui.IconAction
 import notes.app.ui.Icons
 import notes.app.ui.KeyboardBarContent
 import notes.app.ui.LocalKeyboardBar
+import notes.app.ui.LocalReduceMotion
 import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
 import notes.app.ui.NotesDialog
@@ -113,6 +120,7 @@ import notes.app.ui.SheetItem
 import notes.app.ui.Type
 import notes.app.ui.hairline
 import notes.app.ui.pressScale
+import notes.app.ui.springPop
 import notes.app.ui.windowInsetsController
 import notes.core.crypto.LockSession
 import notes.core.db.Space
@@ -184,6 +192,16 @@ fun EditorScreen(
     var moving by remember { mutableStateOf(false) }
     var emailing by remember { mutableStateOf(false) }
 
+    /** Null while the find bar is closed. The queries stay for this note while it's open. */
+    var findMode by remember { mutableStateOf<FindMode?>(null) }
+    var findQuery by remember { mutableStateOf(TextFieldValue()) }
+    var replacement by remember { mutableStateOf(TextFieldValue()) }
+    var findState by remember { mutableStateOf(FindState()) }
+    var findOpened by remember { mutableIntStateOf(0) }
+
+    // Locked notes and ones from a newer version show no text to find in.
+    val contentShown = loaded != null && !needsUnlock && !unsupported
+
     fun save() {
         editor?.let { vm.save(it.document()) }
     }
@@ -239,6 +257,32 @@ fun EditorScreen(
         }
     }
 
+    fun openFind(mode: FindMode) {
+        val e = editor ?: return
+        val q = e.selectedLine() ?: findQuery.text
+        findQuery = TextFieldValue(q, TextRange(0, q.length))
+        findMode = mode
+        findOpened++
+        e.find(q)
+    }
+
+    /** Back to the note, with the match find was on selected. */
+    fun closeFind() {
+        findMode = null
+        editor?.let {
+            it.requestFocus()
+            it.endFind()
+        }
+    }
+
+    BackHandler(enabled = findMode != null) { closeFind() }
+    LaunchedEffect(contentShown) {
+        if (!contentShown) {
+            findMode = null
+            editor?.endFind()
+        }
+    }
+
     val pickImage = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         scope.launch { vm.addImage(context.contentResolver, uri)?.let { editor?.insertImage(it) } }
@@ -290,36 +334,70 @@ fun EditorScreen(
         }
     }
     if (keyboardBar != null) KeyboardBarContent(keyboardBar, toolbars)
+    val reduce = LocalReduceMotion.current
     Column(Modifier.fillMaxSize().background(t.bg).statusBarsPadding().imePadding()) {
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .height(56.dp)
-                .then(if (scrolled) Modifier.hairline(t.hair) else Modifier)
-                .padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            if (showBack) BackLink(onBack) else Spacer(Modifier.width(12.dp))
-            Spacer(Modifier.weight(1f))
-            if (!needsUnlock && !unsupported) {
-                if (locked) {
-                    IconAction(Icons.Lock, "Lock now", {
-                        // Typing from the last moments saves (encrypted) before the key goes.
-                        save()
-                        lockedHere = true
-                        lockFailed = false
-                        scope.launch {
-                            if (!locks.lock()) {
-                                // Still unlocked: a later lock (idle, leaving the app) asks for the fingerprint again.
-                                lockedHere = false
-                                lockFailed = true
-                            }
-                        }
-                    })
+        AnimatedContent(
+            findMode != null && contentShown,
+            Modifier.fillMaxWidth().then(if (scrolled) Modifier.hairline(t.hair) else Modifier),
+            transitionSpec = {
+                if (reduce) {
+                    (fadeIn(snap()) togetherWith fadeOut(snap())).using(SizeTransform { _, _ -> snap() })
+                } else {
+                    (fadeIn(tween(200, delayMillis = 60)) togetherWith fadeOut(tween(120)))
+                        .using(SizeTransform(clip = true) { _, _ -> springPop() })
                 }
-                IconAction(Icons.Undo, "Undo", { editor?.undo() }, enabled = state.canUndo)
-                IconAction(Icons.Redo, "Redo", { editor?.redo() }, enabled = state.canRedo)
-                IconAction(Icons.More, "More", { menu = true })
+            },
+            label = "topBar"
+        ) { finding ->
+            if (finding) {
+                FindBar(
+                    findMode ?: FindMode.Find,
+                    findQuery,
+                    onQuery = { v ->
+                        val changed = v.text != findQuery.text
+                        findQuery = v
+                        if (changed) editor?.find(v.text)
+                    },
+                    replacement,
+                    onReplacement = { replacement = it },
+                    findState,
+                    canReplace = contentShown,
+                    onMode = { findMode = it },
+                    onPrevious = { editor?.findPrevious() },
+                    onNext = { editor?.findNext() },
+                    onReplace = { editor?.replace(replacement.text) },
+                    onReplaceAll = { editor?.replaceAll(replacement.text) },
+                    onClose = ::closeFind,
+                    opened = findOpened
+                )
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (showBack) BackLink(onBack) else Spacer(Modifier.width(12.dp))
+                    Spacer(Modifier.weight(1f))
+                    if (!needsUnlock && !unsupported) {
+                        if (locked) {
+                            IconAction(Icons.Lock, "Lock now", {
+                                // Typing from the last moments saves (encrypted) before the key goes.
+                                save()
+                                lockedHere = true
+                                lockFailed = false
+                                scope.launch {
+                                    if (!locks.lock()) {
+                                        // Still unlocked: a later lock (idle, leaving the app) asks for the fingerprint again.
+                                        lockedHere = false
+                                        lockFailed = true
+                                    }
+                                }
+                            })
+                        }
+                        IconAction(Icons.Undo, "Undo", { editor?.undo() }, enabled = state.canUndo)
+                        IconAction(Icons.Redo, "Redo", { editor?.redo() }, enabled = state.canRedo)
+                        IconAction(Icons.More, "More", { menu = true })
+                    }
+                }
             }
         }
         if (needsUnlock || unreadable || unsupported) {
@@ -381,6 +459,8 @@ fun EditorScreen(
                             edits++
                         }
                         onFormatState = { state = it }
+                        onFindState = { findState = it }
+                        onFindRequest = { openFind(FindMode.Find) }
                         onLinkTap = { linkTap = it }
                         setOnFocusChangeListener { _, has -> focused = has }
                         editor = this
@@ -410,6 +490,16 @@ fun EditorScreen(
 
     if (menu) {
         Sheet(onDismiss = { menu = false }, title = editor?.document()?.title?.trim()?.ifEmpty { null } ?: "New note") {
+            if (contentShown) {
+                SheetItem(Icons.Search, "Find", {
+                    menu = false
+                    openFind(FindMode.Find)
+                })
+                SheetItem(Icons.Replace, "Find and replace", {
+                    menu = false
+                    openFind(FindMode.Replace)
+                })
+            }
             SheetItem(Icons.Share, "Share", {
                 menu = false
                 save()

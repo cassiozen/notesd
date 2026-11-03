@@ -1,5 +1,6 @@
 package notes.app
 
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -10,9 +11,11 @@ import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 import notes.core.api.RemoteNote
@@ -138,6 +141,24 @@ class AccessibilityTest {
         compose.onNode(hasText("Trip")).performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Undo"))
         audit("editor")
+    }
+
+    @Test
+    fun find() {
+        graph.setOnboardingDismissed(true)
+        seed()
+        launch()
+        compose.waitUntilExactlyOneExists(hasText("Trip"))
+        compose.onNode(hasText("Trip")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("More"))
+        compose.onNode(hasContentDescription("More")).performClick()
+        compose.onNode(hasText("Find and replace")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Replace with"))
+        compose.onNode(hasContentDescription("Find in note")).performTextInput("book")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Match 1 of 1"))
+        val counter = compose.onNode(hasContentDescription("Match 1 of 1")).fetchSemanticsNode()
+        assertEquals(LiveRegionMode.Polite, counter.config.getOrNull(SemanticsProperties.LiveRegion))
+        audit("find")
     }
 
     @Test

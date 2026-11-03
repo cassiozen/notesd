@@ -6,6 +6,7 @@ import { genericMessage } from '../auth/errors'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
+import { findKeys } from '../editor/find-bar'
 import { MoreIcon, ShareIcon } from '../ui/icons'
 import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
@@ -28,17 +29,20 @@ function exportMarkdown(saver: Saver): string {
  * one "More" menu and ends with Delete; phones keep Delete as its own button.
  * Lock note / Remove lock sit there too; a locked note can't be emailed, since
  * the server only has its ciphertext. With more than one space, Move to space.
+ * [onFind] (desktop) leads with Find and Find and replace.
  */
 export function NoteMenu({
   saver,
   mobile,
   onDelete,
   onMove,
+  onFind,
 }: {
   saver: Saver
   mobile: boolean
   onDelete?: () => void
   onMove: (spaceId: string) => void
+  onFind?: (replace: boolean) => void
 }) {
   const name = onDelete ? 'More' : 'Share'
   const email = useEmailSettings()
@@ -95,6 +99,41 @@ export function NoteMenu({
       </button>
       {open && (
         <div id={menuId} role="menu" aria-label={name} className={styles.menu}>
+          {onFind && (
+            <>
+              <button
+                type="button"
+                role="menuitem"
+                className={[styles.item, styles.withKeys].join(' ')}
+                aria-keyshortcuts={findKeys.find.aria}
+                onClick={() => {
+                  setOpen(false)
+                  onFind(false)
+                }}
+              >
+                Find…
+                <span className={styles.keys} aria-hidden="true">
+                  {findKeys.find.label}
+                </span>
+              </button>
+              <button
+                type="button"
+                role="menuitem"
+                className={[styles.item, styles.withKeys].join(' ')}
+                aria-keyshortcuts={findKeys.replace.aria}
+                onClick={() => {
+                  setOpen(false)
+                  onFind(true)
+                }}
+              >
+                Find and replace…
+                <span className={styles.keys} aria-hidden="true">
+                  {findKeys.replace.label}
+                </span>
+              </button>
+              <div role="separator" className={styles.separator} />
+            </>
+          )}
           {email?.configured && !locked && (
             <button
               type="button"
