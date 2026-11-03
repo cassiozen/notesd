@@ -2,6 +2,7 @@ package agent_test
 
 import (
 	"fmt"
+	"math/rand/v2"
 	"slices"
 	"strings"
 	"testing"
@@ -49,15 +50,79 @@ func TestDiff(t *testing.T) {
 
 func TestDiffOfALongRewrite(t *testing.T) {
 	var a, b []string
+	var want []agent.DiffLine
 	for i := range 3000 {
 		a, b = append(a, fmt.Sprint("a", i)), append(b, fmt.Sprint("b", i))
+		want = append(want, agent.DiffLine{Op: "-", Text: a[i]})
 	}
-	lines := agent.Diff(strings.Join(a, "\n"), strings.Join(b, "\n"))
-	ops := map[string]int{}
-	for _, l := range lines {
-		ops[l.Op]++
+	for _, l := range b {
+		want = append(want, agent.DiffLine{Op: "+", Text: l})
 	}
-	if ops["-"] != 3000 || ops["+"] != 3000 || !slices.ContainsFunc(lines, func(l agent.DiffLine) bool { return l.Op == "-" }) {
-		t.Fatalf("ops: %v", ops)
+	if got := agent.Diff(strings.Join(a, "\n"), strings.Join(b, "\n")); !slices.Equal(got, want) {
+		t.Fatalf("got %d lines, starting %v", len(got), got[:min(len(got), 4)])
 	}
+}
+
+func TestDiffOfTwoEditsFarApart(t *testing.T) {
+	var a []string
+	for i := range 5000 {
+		a = append(a, fmt.Sprint("line ", i))
+	}
+	b := slices.Clone(a)
+	b[0] = "# Title"
+	b = append(b, "", "## Added")
+	want := "- line 0\n+ # Title\n= line 1\n= line 2\n= line 3\n… 4993\n= line 4997\n= line 4998\n= line 4999\n+ \n+ ## Added\n"
+	if got := render(agent.Diff(strings.Join(a, "\n"), strings.Join(b, "\n"))); got != want {
+		t.Fatalf("got:\n%s", got)
+	}
+}
+
+// Every diff, read one side at a time, gives back that text, and changes as
+// few lines as an LCS would.
+func TestDiffRebuildsBothSides(t *testing.T) {
+	rng := rand.New(rand.NewPCG(1, 2))
+	words := []string{"a", "b", "c", "d", ""}
+	pick := func() []string {
+		ls := make([]string, 1+rng.IntN(30))
+		for i := range ls {
+			ls[i] = words[rng.IntN(len(words))]
+		}
+		return ls
+	}
+	for range 3000 {
+		a, b := pick(), pick()
+		var gotA, gotB []string
+		kept := 0
+		for _, l := range agent.DiffLines(strings.Join(a, "\n")+"\n", strings.Join(b, "\n")+"\n") {
+			if l.Op != "+" {
+				gotA = append(gotA, l.Text)
+			}
+			if l.Op != "-" {
+				gotB = append(gotB, l.Text)
+			}
+			if l.Op == "=" {
+				kept++
+			}
+		}
+		if !slices.Equal(gotA, a) || !slices.Equal(gotB, b) || kept != lcs(a, b) {
+			t.Fatalf("%q -> %q: got %q, %q, kept %d of %d", a, b, gotA, gotB, kept, lcs(a, b))
+		}
+	}
+}
+
+func lcs(a, b []string) int {
+	t := make([][]int, len(a)+1)
+	for i := range t {
+		t[i] = make([]int, len(b)+1)
+	}
+	for i := len(a) - 1; i >= 0; i-- {
+		for j := len(b) - 1; j >= 0; j-- {
+			if a[i] == b[j] {
+				t[i][j] = t[i+1][j+1] + 1
+			} else {
+				t[i][j] = max(t[i+1][j], t[i][j+1])
+			}
+		}
+	}
+	return t[0][0]
 }
