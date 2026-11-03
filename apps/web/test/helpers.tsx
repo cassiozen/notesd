@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, onTestFinished } from 'vitest'
@@ -32,7 +33,8 @@ export async function signedIn({
   seed,
   resendUrl,
   onDevice = false,
-}: { path?: string; seed?: (server: TestServer) => Promise<void>; resendUrl?: string; onDevice?: boolean } = {}) {
+  strict = false,
+}: { path?: string; seed?: (server: TestServer) => Promise<void>; resendUrl?: string; onDevice?: boolean; strict?: boolean } = {}) {
   const server = await startServer({ ...(resendUrl && { resendUrl }) })
   const { username, password } = await createOwner(server)
   // The other client (curl, a phone) signs in too, for edits from "another device".
@@ -50,7 +52,7 @@ export async function signedIn({
     keepOnDevice(username)
     startEngines(() => e)
   }
-  render(<App />)
+  render(strict ? <StrictMode><App /></StrictMode> : <App />)
   if (!onDevice) {
     await user.type(await screen.findByLabelText('Username'), username)
     await user.type(screen.getByLabelText('Password'), `${password}{Enter}`)

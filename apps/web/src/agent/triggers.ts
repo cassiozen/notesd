@@ -5,6 +5,8 @@ import { agentSocket } from './socket'
 /** How long without a change before the next one counts as starting to edit again. */
 export const triggerTiming = { idleMs: 3 * 60_000 }
 
+const created = new Set<string>()
+
 /**
  * Asks for a run the open editor fires, if the space's agent acts on it.
  * Note created and started editing need this tab's editor, so they're
@@ -15,8 +17,11 @@ export async function requestRun(trigger: 'noteCreated' | 'editStarted' | 'menu'
   if (!c?.enabled || !c.triggers[trigger]) return false
   const connectionId = agentSocket.connectionId ?? undefined
   if (!connectionId && trigger !== 'menu') return false
-  // Before the request: the run reads the note from this editor.
-  if (trigger !== 'menu') agentSocket.noteOpened(noteId)
+  if (trigger === 'noteCreated') {
+    // Once per note, however often its editor mounts.
+    if (created.has(noteId)) return false
+    created.add(noteId)
+  }
   try {
     await agent.request({ trigger, noteId, spaceId, connectionId })
     return true

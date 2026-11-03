@@ -150,9 +150,9 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   }, [id, load.kind, saverFor, removed, space, setSpace])
 
   const saver = load.kind === 'ready' ? load.saver : null
-  // Leaving the note: save what's left, then let the store forget it. Agents
-  // hear of both, so closing a note ends its writing session at once.
-  useEffect(() => {
+  // Leaving: save what's left, then the store forgets it; agents hear of both.
+  // Layout effect: open before the editor's effects ask for a run that reads it.
+  useLayoutEffect(() => {
     if (!saver) return
     agentSocket.noteOpened(saver.id)
     return () =>

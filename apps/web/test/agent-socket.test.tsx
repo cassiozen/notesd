@@ -113,6 +113,13 @@ describe('the agent socket, connecting', () => {
       { type: 'editor.opened', noteId: 'n2' },
       { type: 'editor.closed', noteId: 'n2', revision: 3 },
     ])
+    // Reopened before the close (it waits on the save) lands: still open.
+    agentSocket.noteOpened('n2')
+    agentSocket.noteOpened('n2')
+    agentSocket.noteClosed('n2', 3)
+    expect(first.sent.slice(3).map((m) => (m as { type: string }).type)).toEqual(['editor.opened', 'editor.opened'])
+    agentSocket.noteClosed('n2', 4)
+    expect(first.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n2', revision: 4 })
 
     first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
     await waitFor(() => expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' }))

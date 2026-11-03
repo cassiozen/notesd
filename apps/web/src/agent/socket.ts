@@ -34,7 +34,8 @@ class AgentSocket {
   private wanted = false
   private failures = 0
   private timer: ReturnType<typeof setTimeout> | undefined
-  private readonly open = new Set<string>()
+  /** Notes open here, each with how many opens haven't closed yet. */
+  private readonly open = new Map<string, number>()
   private readonly editors = new Map<string, EditorHandler>()
   private readonly runListeners = new Set<(u: RunUpdate) => void>()
   readonly runningListeners = new Set<() => void>()
@@ -61,7 +62,7 @@ class AgentSocket {
   }
 
   noteOpened(noteId: string) {
-    this.open.add(noteId)
+    this.open.set(noteId, (this.open.get(noteId) ?? 0) + 1)
     this.send({ type: 'editor.opened', noteId })
   }
 
@@ -89,6 +90,12 @@ class AgentSocket {
 
   /** revision: the server's revision of what the editor last showed, if it has it. */
   noteClosed(noteId: string, revision: number | null) {
+    // A close lands after its save, so the note may have been opened again meanwhile.
+    const left = (this.open.get(noteId) ?? 0) - 1
+    if (left > 0) {
+      this.open.set(noteId, left)
+      return
+    }
     this.open.delete(noteId)
     this.send({ type: 'editor.closed', noteId, revision })
   }
@@ -110,7 +117,7 @@ class AgentSocket {
       if (m?.type === 'hello' && typeof m.connectionId === 'string') {
         this.failures = 0
         this.connectionId = m.connectionId
-        for (const noteId of this.open) this.send({ type: 'editor.opened', noteId })
+        for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId })
       } else if (m?.type === 'run' && typeof m.runId === 'string' && typeof m.noteId === 'string') {
         this.heard(m as unknown as RunUpdate)
       } else if (m && typeof m.id === 'string') {

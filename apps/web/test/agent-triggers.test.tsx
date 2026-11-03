@@ -31,6 +31,20 @@ describe('editor triggers', () => {
     expect(bodyText()).toBe('')
   })
 
+  it('note created, as dev builds mount effects twice', async () => {
+    const llm = await startFakeLLM()
+    const { server, user } = await signedIn({ strict: true, seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
+    await connected()
+    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?' } }, { text: 'Asked.' })
+    await user.click(newNoteButton())
+    await waitFor(() => expect(bodyText()).toBe('What went well today?'), { timeout: 5000 })
+    // The text shows before the run ends.
+    await waitFor(async () => expect((await runs(server)).map((r) => [r.trigger, r.status])).toEqual([['noteCreated', 'done']]), {
+      timeout: 5000,
+    })
+    expect(server.answered('POST', '/agent/runs')).toBe(1)
+  })
+
   it('started editing fires once, on the first change', async () => {
     const llm = await startFakeLLM()
     const { server, user } = await signedIn({
