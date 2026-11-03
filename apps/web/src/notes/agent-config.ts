@@ -38,7 +38,13 @@ function load() {
 /** Every space's agent, or null until they've loaded (or while offline). */
 export function useAgentConfigs(): ReadonlyMap<string, AgentConfig> | null {
   const value = useSyncExternalStore(subscribe, () => current)
-  useEffect(load, [])
+  // Again after a reset (screens left open across a new sign-in), or once back online after a failed fetch.
+  useEffect(() => {
+    if (value !== null) return
+    load()
+    window.addEventListener('online', load)
+    return () => window.removeEventListener('online', load)
+  }, [value])
   return value
 }
 
@@ -54,4 +60,5 @@ export function resetAgentConfigs() {
   current = null
   loading = null
   fetches++
+  listeners.forEach((l) => l())
 }
