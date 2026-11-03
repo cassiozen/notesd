@@ -1,0 +1,22 @@
+docs/README.md
+  s_7d553df107843d::t_63bd19111e7291 45
+website/.vitepress/config.mjs
+  s_7d553df107843d::t_63bd19111e7291 1,37-44,46-57,70
+  s_7d553df107843d::t_a5c232329b5c13 45
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2e368a57568e0812b9352f432440973ef2469070",
+  "prompts": {},
+  "sessions": {
+    "s_7d553df107843d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f20a640d-7817-40a5-b63a-4aa0268822b2",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

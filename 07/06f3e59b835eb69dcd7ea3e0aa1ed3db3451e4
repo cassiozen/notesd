@@ -1,0 +1,14 @@
+docs/guides/apps/desktop-web-app.md
+  h_506d0d833c777f 37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0706f3e59b835eb69dcd7ea3e0aa1ed3db3451e4",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
