@@ -192,12 +192,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		at := *rs.inEditor[n.ID].cursor
-		runes := []rune(n.Content)
-		return jsonString(map[string]any{
-			"before": string(runes[max(0, at-cursorContext):at]),
-			"after":  string(runes[at:min(len(runes), at+cursorContext)]),
-		}), nil
+		return jsonString(cursorView(n.Content, *rs.inEditor[n.ID].cursor)), nil
 	case "create_note":
 		if args.Title == nil || args.Content == nil {
 			return "", refuse("title and content are required")

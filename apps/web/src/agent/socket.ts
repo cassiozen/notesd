@@ -41,6 +41,8 @@ class AgentSocket {
   readonly runningListeners = new Set<() => void>()
   /** Runs going now, by id: their notes. */
   private running = new Map<string, string>()
+  /** Runs whose change already shows in this tab's editor. */
+  private readonly landed = new Set<string>()
   /** The server's id for this connection, once it said hello. */
   connectionId: string | null = null
 
@@ -59,6 +61,15 @@ class AgentSocket {
     this.ws = null
     this.connectionId = null
     ws?.close()
+  }
+
+  /** Disconnects and forgets every note and run: another account may sign in next. */
+  reset() {
+    this.stop()
+    this.open.clear()
+    this.editors.clear()
+    this.landed.clear()
+    this.setRunning(new Map())
   }
 
   noteOpened(noteId: string) {
@@ -85,6 +96,12 @@ class AgentSocket {
   /** Whether a run is going on the note, as far as this tab heard. */
   isRunning(noteId: string): boolean {
     for (const n of this.running.values()) if (n === noteId) return true
+    return false
+  }
+
+  /** Whether a run on the note is going and its change isn't in the editor yet. */
+  isWriting(noteId: string): boolean {
+    for (const [run, n] of this.running) if (n === noteId && !this.landed.has(run)) return true
     return false
   }
 
@@ -121,7 +138,14 @@ class AgentSocket {
       } else if (m?.type === 'run' && typeof m.runId === 'string' && typeof m.noteId === 'string') {
         this.heard(m as unknown as RunUpdate)
       } else if (m && typeof m.id === 'string') {
-        void this.answer(m).then((reply) => this.send({ type: 'result', id: m.id, ...reply }))
+        void this.answer(m).then((reply) => {
+          this.send({ type: 'result', id: m.id, ...reply })
+          // Its summary still to come, the run is done as far as the user can tell.
+          if (m.type === 'apply' && typeof m.runId === 'string' && !('error' in reply) && this.running.has(m.runId)) {
+            this.landed.add(m.runId)
+            this.setRunning(this.running)
+          }
+        })
       }
     })
     ws.addEventListener('close', () => {
@@ -129,6 +153,7 @@ class AgentSocket {
       this.ws = null
       this.connectionId = null
       // What's still going is unknown until the server says again.
+      this.landed.clear()
       this.setRunning(new Map())
       if (!this.wanted) return
       const wait = Math.min(socketTiming.retryMaxMs, socketTiming.retryBaseMs * 2 ** this.failures++)
@@ -139,7 +164,10 @@ class AgentSocket {
   private heard(u: RunUpdate) {
     const next = new Map(this.running)
     if (u.status === 'running') next.set(u.runId, u.noteId)
-    else next.delete(u.runId)
+    else {
+      next.delete(u.runId)
+      this.landed.delete(u.runId)
+    }
     this.setRunning(next)
     for (const l of this.runListeners) l(u)
   }
@@ -182,7 +210,7 @@ function parse(data: string): Record<string, unknown> | null {
 
 export const agentSocket = new AgentSocket()
 
-/** Whether an agent's run is going on the note: "Agent is writing…". */
+/** Whether an agent's run on the note hasn't changed it yet: "Agent is writing…". */
 export function useAgentWriting(noteId: string): boolean {
   return useSyncExternalStore(
     (l) => {
@@ -191,7 +219,7 @@ export function useAgentWriting(noteId: string): boolean {
         agentSocket.runningListeners.delete(l)
       }
     },
-    () => agentSocket.isRunning(noteId),
+    () => agentSocket.isWriting(noteId),
   )
 }
 

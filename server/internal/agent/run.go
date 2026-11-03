@@ -172,11 +172,20 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 			}
 			note = &n
 		}
+		var cursor *int
+		if note != nil && rs.inEditor[note.ID] != nil {
+			cursor = rs.inEditor[note.ID].cursor
+		}
+		rc, err := rs.gather(runCtx, c)
+		if err != nil {
+			f = failed(FailInterrupted, err)
+			break
+		}
 		messages := []llm.Message{
 			{Role: "system", Content: systemPrompt(c, r.Trigger, now)},
-			{Role: "user", Content: eventMessage(r, note, spaceName)},
+			{Role: "user", Content: eventMessage(r, note, cursor, rc, spaceName)},
 		}
-		err := rn.converse(runCtx, rs, st, messages, &f)
+		err = rn.converse(runCtx, rs, st, messages, &f)
 		if !errors.Is(err, errRestart) {
 			break
 		}

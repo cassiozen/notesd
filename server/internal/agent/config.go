@@ -5,7 +5,9 @@ package agent
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -42,8 +44,10 @@ func (t Trigger) valid() bool {
 
 // Limits on what a user writes.
 const (
-	MaxPromptBytes = 16 << 10
-	MaxMenuLabel   = 40 // characters
+	MaxPromptBytes    = 16 << 10
+	MaxMenuLabel      = 40 // characters
+	MaxReferenceNotes = 5
+	MaxReferenceTitle = 200 // characters
 )
 
 // Config is a space's agent. Triggers holds a prompt for each trigger it
@@ -54,7 +58,10 @@ type Config struct {
 	Prompt    string             `json:"prompt"`
 	MenuLabel string             `json:"menuLabel"`
 	Triggers  map[Trigger]string `json:"triggers"`
-	UpdatedAt int64              `json:"updatedAt"`
+	// ReferenceNotes are titles of notes in the space that go with every
+	// run, so the agent needn't look for them. Nil in a Put keeps them.
+	ReferenceNotes []string `json:"referenceNotes"`
+	UpdatedAt      int64    `json:"updatedAt"`
 }
 
 // Acts reports whether the agent is on and has a prompt for t.
@@ -110,7 +117,7 @@ func configIn(ctx context.Context, q querier, spaceID string) (Config, error) {
 	}
 	cs, err := readConfigs(ctx, q, spaceID)
 	if err != nil || len(cs) == 0 {
-		return Config{SpaceID: spaceID, Triggers: map[Trigger]string{}}, err
+		return Config{SpaceID: spaceID, Triggers: map[Trigger]string{}, ReferenceNotes: []string{}}, err
 	}
 	return cs[0], nil
 }
@@ -127,7 +134,7 @@ func spaceExists(ctx context.Context, q querier, spaceID string) error {
 
 func readConfigs(ctx context.Context, q querier, spaceID string) ([]Config, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT a.space_id, a.enabled, a.prompt, a.menu_label, a.updated_at, t.trigger, t.prompt
+		SELECT a.space_id, a.enabled, a.prompt, a.menu_label, a.reference_notes, a.updated_at, t.trigger, t.prompt
 		FROM agent_spaces a LEFT JOIN agent_triggers t ON t.space_id = a.space_id
 		WHERE ? = '' OR a.space_id = ?
 		ORDER BY a.space_id`, spaceID, spaceID)
@@ -138,12 +145,16 @@ func readConfigs(ctx context.Context, q querier, spaceID string) ([]Config, erro
 	var out []Config
 	for rows.Next() {
 		var c Config
+		var refs string
 		var trigger, prompt sql.NullString
-		if err := rows.Scan(&c.SpaceID, &c.Enabled, &c.Prompt, &c.MenuLabel, &c.UpdatedAt, &trigger, &prompt); err != nil {
+		if err := rows.Scan(&c.SpaceID, &c.Enabled, &c.Prompt, &c.MenuLabel, &refs, &c.UpdatedAt, &trigger, &prompt); err != nil {
 			return nil, err
 		}
 		if len(out) == 0 || out[len(out)-1].SpaceID != c.SpaceID {
 			c.Triggers = map[Trigger]string{}
+			if err := json.Unmarshal([]byte(refs), &c.ReferenceNotes); err != nil {
+				return nil, err
+			}
 			out = append(out, c)
 		}
 		if trigger.Valid {
@@ -166,11 +177,26 @@ func (s *Store) Put(ctx context.Context, c Config) (Config, error) {
 		if err := spaceExists(ctx, tx, c.SpaceID); err != nil {
 			return err
 		}
+		if c.ReferenceNotes == nil {
+			// From a client that doesn't know them.
+			old, err := readConfigs(ctx, tx, c.SpaceID)
+			if err != nil {
+				return err
+			}
+			c.ReferenceNotes = []string{}
+			if len(old) > 0 {
+				c.ReferenceNotes = old[0].ReferenceNotes
+			}
+		}
+		refs, err := json.Marshal(c.ReferenceNotes)
+		if err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `
-			INSERT INTO agent_spaces (space_id, enabled, prompt, menu_label, updated_at) VALUES (?, ?, ?, ?, ?)
+			INSERT INTO agent_spaces (space_id, enabled, prompt, menu_label, reference_notes, updated_at) VALUES (?, ?, ?, ?, ?, ?)
 			ON CONFLICT(space_id) DO UPDATE SET enabled = excluded.enabled, prompt = excluded.prompt,
-				menu_label = excluded.menu_label, updated_at = excluded.updated_at`,
-			c.SpaceID, c.Enabled, c.Prompt, c.MenuLabel, c.UpdatedAt); err != nil {
+				menu_label = excluded.menu_label, reference_notes = excluded.reference_notes, updated_at = excluded.updated_at`,
+			c.SpaceID, c.Enabled, c.Prompt, c.MenuLabel, string(refs), c.UpdatedAt); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `DELETE FROM agent_triggers WHERE space_id = ?`, c.SpaceID); err != nil {
@@ -220,6 +246,23 @@ func clean(c Config) (Config, error) {
 		triggers[t] = p
 	}
 	c.Triggers = triggers
+	if c.ReferenceNotes != nil {
+		refs := []string{}
+		for _, t := range c.ReferenceNotes {
+			t = strings.Join(strings.Fields(t), " ")
+			switch {
+			case t == "" || slices.Contains(refs, t):
+				continue
+			case utf8.RuneCountInString(t) > MaxReferenceTitle || !utf8.ValidString(t):
+				return c, &InputError{Field: "referenceNotes", Message: "a note's title, of up to 200 characters"}
+			}
+			refs = append(refs, t)
+		}
+		if len(refs) > MaxReferenceNotes {
+			return c, &InputError{Field: "referenceNotes", Message: "up to 5 notes"}
+		}
+		c.ReferenceNotes = refs
+	}
 	if triggers[Menu] != "" && c.MenuLabel == "" {
 		return c, &InputError{Field: "menuLabel", Message: "name the command, such as Fix typos"}
 	}

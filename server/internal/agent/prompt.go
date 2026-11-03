@@ -16,12 +16,13 @@ Rules:
 - Make the smallest change that does the job. Leave the user's words, formatting and order alone, unless a prompt asks you to rewrite them.
 - Never write notes for the user beyond what a prompt asks.
 - You can only see and change notes in this space.
-- Read a note before you change it. edit_note's find must match exactly once, so include enough of the text around what you change.
+- The message tells you what happened, with the note, the cursor, the space's tags and its reference notes as they are now: use them as they are, without reading them again. Read any other note before you change it.
+- edit_note's find must match exactly once, so include enough of the text around what you change.
 - When you're done, answer with one short line saying what you did, or "No change" and why.
 
 Notes are Markdown: headings (#, ##, ###), **bold**, *italic*, ~~strikethrough~~, lists (- item, 1. item), task lists (- [ ] to do, - [x] done), > quotes and [links](https://example.com). A note's title is separate from its content: change it with set_title, never as a heading in the content.
 
-Tags are part of the text: #tag, or #multi word tag# closed by a #, nested with / as in #home/garden. A tag starts a line or follows a space. Before adding tags, call list_tags and reuse the space's tags when they fit.`
+Tags are part of the text: #tag, or #multi word tag# closed by a #, nested with / as in #home/garden. A tag starts a line or follows a space. Reuse the space's tags when they fit.`
 
 var triggerNames = map[Trigger]string{
 	NoteCreated: "A new note was just opened, before anything was typed",
@@ -60,13 +61,28 @@ func systemPrompt(c Config, t Trigger, now time.Time) string {
 
 // eventMessage tells the agent what happened, with the note when it can
 // still read it.
-func eventMessage(r queuedRun, n *notes.Note, spaceName func(string) string) string {
+func eventMessage(r queuedRun, n *notes.Note, cursor *int, rc runContext, spaceName func(string) string) string {
 	m := map[string]any{"trigger": r.Trigger, "noteId": r.NoteID}
 	switch {
 	case r.Event.Title != nil:
 		m["note"] = map[string]any{"id": r.NoteID, "title": *r.Event.Title, "content": deref(r.Event.Content)}
 	case n != nil:
-		m["note"] = noteView(*n)
+		v := noteView(*n)
+		if cursor != nil {
+			v["cursor"] = cursorView(n.Content, *cursor)
+			v["open"] = "in the user's editor: they see your changes as you make them"
+		}
+		m["note"] = v
+	}
+	m["spaceTags"] = rc.Tags
+	if rc.Tags == nil {
+		m["spaceTags"] = []any{}
+	}
+	if len(rc.References) > 0 {
+		m["referenceNotes"] = rc.References
+	}
+	if len(rc.Missing) > 0 {
+		m["referenceNotesMissing"] = rc.Missing
 	}
 	switch r.Trigger {
 	case NoteDeleted:
@@ -79,6 +95,16 @@ func eventMessage(r queuedRun, n *notes.Note, spaceName func(string) string) str
 	}
 	b, _ := json.MarshalIndent(m, "", "  ")
 	return string(b)
+}
+
+// cursorView is the text on either side of a cursor, as get_cursor gives it.
+func cursorView(content string, at int) map[string]any {
+	runes := []rune(content)
+	at = min(max(at, 0), len(runes))
+	return map[string]any{
+		"before": string(runes[max(0, at-cursorContext):at]),
+		"after":  string(runes[at:min(len(runes), at+cursorContext)]),
+	}
 }
 
 func noteView(n notes.Note) map[string]any {

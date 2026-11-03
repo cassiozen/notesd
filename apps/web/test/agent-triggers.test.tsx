@@ -31,6 +31,22 @@ describe('editor triggers', () => {
     expect(bodyText()).toBe('')
   })
 
+  it('Agent is writing… ends once the change shows, before the run does', async () => {
+    const llm = await startFakeLLM()
+    const { server, user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
+    await connected()
+    const finished: { resolve?: () => void } = {}
+    const wait = new Promise<void>((resolve) => (finished.resolve = resolve))
+    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?' } }, { text: 'Asked.', wait })
+    await user.click(newNoteButton())
+    await screen.findByText('Agent is writing…')
+    await waitFor(() => expect(bodyText()).toBe('What went well today?'), { timeout: 5000 })
+    await waitFor(() => expect(screen.queryByText('Agent is writing…')).toBeNull())
+    expect((await runs(server)).map((r) => r.status)).toEqual(['running'])
+    finished.resolve?.()
+    await waitFor(async () => expect((await runs(server)).map((r) => r.status)).toEqual(['done']), { timeout: 5000 })
+  })
+
   it('note created, as dev builds mount effects twice', async () => {
     const llm = await startFakeLLM()
     const { server, user } = await signedIn({ strict: true, seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
@@ -66,7 +82,8 @@ describe('editor triggers', () => {
   it('started editing fires again after a pause', async () => {
     const { triggerTiming } = await import('../src/agent/triggers')
     const idle = triggerTiming.idleMs
-    triggerTiming.idleMs = 50
+    // Longer than a keystroke takes under load.
+    triggerTiming.idleMs = 600
     onTestFinished(() => {
       triggerTiming.idleMs = idle
     })
@@ -80,7 +97,7 @@ describe('editor triggers', () => {
     await connected()
     await openNote(user, 'Plan')
     await typeAtEnd(user, ', two')
-    await new Promise((r) => setTimeout(r, 100))
+    await new Promise((r) => setTimeout(r, 700))
     await typeAtEnd(user, ', three')
     expect(server.answered('POST', '/agent/runs')).toBe(2)
   })

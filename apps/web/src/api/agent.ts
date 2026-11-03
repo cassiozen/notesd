@@ -18,10 +18,13 @@ export type AgentConfig = {
   prompt: string
   menuLabel: string
   triggers: Partial<Record<AgentTrigger, string>>
+  /** Titles of notes in the space that go with every run. */
+  referenceNotes: string[]
   updatedAt: number
 }
 
-export type AgentConfigInput = Pick<AgentConfig, 'enabled' | 'prompt' | 'menuLabel' | 'triggers'>
+/** Without referenceNotes, the server keeps them. */
+export type AgentConfigInput = Pick<AgentConfig, 'enabled' | 'prompt' | 'menuLabel' | 'triggers'> & { referenceNotes?: string[] }
 
 /** Why an edit can't be undone. */
 export type UndoBlock = 'undone' | 'running' | 'deleted' | 'locked' | 'changed' | 'not_saved'

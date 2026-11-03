@@ -390,7 +390,7 @@ other accounts get `403 admin_only` when they change it.
 | --- | --- | --- |
 | `GET` | `/agent/spaces` | → `{spaces: [config, …]}`, every space whose agent has been set up |
 | `GET` | `/agent/spaces/{id}` | → the space's config; off and empty if none was set up |
-| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers}` → the config as stored |
+| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers, referenceNotes?}` → the config as stored |
 | `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
 | `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
@@ -400,12 +400,14 @@ other accounts get `403 admin_only` when they change it.
 | `POST` | `/agent/runs` | `{trigger, noteId, spaceId?, connectionId?}` → `202 {runId}`; see below |
 | `GET` | `/agent/socket` | WebSocket; see below |
 
-A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
+A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, referenceNotes, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
 `noteCreated`, `editStarted`, `newNoteDone`, `editDone`, `noteDeleted`, `movedIn`, `movedOut` and
 `menu`. A trigger with an empty prompt is dropped, and so is one the server doesn't know.
 `menuLabel` names the `menu` command in a note's menu, up to 40 characters, and is required with a
-`menu` prompt. Prompts can be up to 16 KiB. `PUT` replaces the whole config. A space that doesn't
+`menu` prompt. Prompts can be up to 16 KiB. `referenceNotes` are up to 5 titles of notes in the
+space, each up to 200 characters, sent with every run: the newest unlocked note with that title, if
+any. `PUT` replaces the whole config, except that leaving out `referenceNotes` keeps them. A space that doesn't
 exist is `404 not_found`. Deleting a space deletes its agent.
 
 The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)

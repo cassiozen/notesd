@@ -146,7 +146,7 @@ CREATE TABLE lock_state (id INTEGER PRIMARY KEY CHECK (id = 1), verifier_hash TE
 CREATE TABLE account_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 -- Each space's agent (kept when turned off) and its prompt per trigger; both go with the space.
 CREATE TABLE agent_spaces (space_id TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE, enabled INTEGER,
-                           prompt TEXT, menu_label TEXT, updated_at INTEGER);
+                           prompt TEXT, menu_label TEXT, reference_notes TEXT, updated_at INTEGER);
 CREATE TABLE agent_triggers (space_id TEXT REFERENCES agent_spaces(space_id) ON DELETE CASCADE, trigger TEXT,
                              prompt TEXT, PRIMARY KEY (space_id, trigger));
 -- Agents' runs: queued and running ones are the queue, finished ones the activity log (§7.8).
@@ -494,10 +494,13 @@ The user guide is [agents](../guides/using/agents.md).
   the account when a run starts and ends ("Agent is writing…", a failure on the note). The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
-- **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
-  time, so one at a time per note. At most 4 provider calls run at once across accounts. With AI
-  removed the queue waits. A run is told notesd's instructions and the date in the account's time
-  zone, the space's prompt, the trigger's prompt, and the event with the note.
+- **Runner.** Each account has two slots: one runs its queue in order, editor triggers first; the
+  other runs only editor triggers, so a new note's run never waits behind a finished note's. A run
+  waits while another on its note runs. At most 4 provider calls run at once across accounts. With
+  AI removed the queue waits. A run is told notesd's instructions and the date in the account's time
+  zone, the space's prompt, the trigger's prompt, and the event with the note. So the model can act
+  in its first call, the event also carries the cursor (in an editor), the space's tags, and the
+  space's reference notes.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
   `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `create_note`. Nothing deletes, moves or locks a note, or leaves the space; locked notes are left

@@ -1,5 +1,6 @@
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
+import { agentSocket } from '../src/agent/socket'
 import { resetAgentConfigs } from '../src/notes/agent-config'
 import { resetAiSettings } from '../src/notes/ai-settings'
 import { resetEmailSettings } from '../src/notes/email-settings'
@@ -86,6 +87,7 @@ afterEach(() => {
   resetEmailSettings()
   resetAiSettings()
   resetAgentConfigs()
+  agentSocket.reset()
   forgetSpaces()
   versionState.reset()
   globalThis.layout = 'wide'

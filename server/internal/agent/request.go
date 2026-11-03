@@ -59,7 +59,7 @@ func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) 
 			return err
 		}
 		id, err = queue(ctx, tx, space, Event{Trigger: req.Trigger, NoteID: req.NoteID, ConnectionID: req.ConnectionID},
-			1, s.now().UnixMilli())
+			editorPriority, s.now().UnixMilli())
 		return err
 	})
 	return id, err

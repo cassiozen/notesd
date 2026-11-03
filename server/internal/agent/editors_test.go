@@ -2,7 +2,9 @@ package agent_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
@@ -174,5 +176,55 @@ func TestEditorSaveOfOnlyTheAgentsChange(t *testing.T) {
 	}
 	if _, err := h.undo(h.lastRunID()); err != nil || h.content("n1") != "Milk" {
 		t.Fatalf("undo: %v %q", err, h.content("n1"))
+	}
+}
+
+func TestFirstMessageHasWhatTheAgentNeeds(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NoteCreated)
+	c, _ := h.d.Agent.Config(ctx, "work")
+	c.ReferenceNotes = []string{"Digest", "Secret", "Nowhere"}
+	if _, err := h.d.Agent.Put(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	space := "work"
+	for _, n := range []notes.CreateInput{
+		{ID: "digest", Title: "Digest", Content: "## Themes\n- rest\n"},
+		{ID: "secret", Title: "Secret", Content: "notesd:locked:v1:" + strings.Repeat("A", 60)},
+		{ID: "tagged", Title: "Old", Content: "#mood/calm"},
+	} {
+		n.OperationID, n.SpaceID = h.op(), &space
+		if _, err := h.d.Notes.Create(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.openInEditor("draft", "", ip(0))
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.NoteCreated, NoteID: "draft", SpaceID: "work"}); err != nil {
+		t.Fatal(err)
+	}
+	// Straight to the change: no reading first.
+	h.model.steps = append(h.model.steps,
+		call("edit_note", `{"id": "digest", "find": "- rest", "replace": "- rest\n- walks"}`), final("Done."))
+	h.next()
+
+	var first struct {
+		Note struct {
+			Cursor map[string]string `json:"cursor"`
+		} `json:"note"`
+		SpaceTags      []map[string]any `json:"spaceTags"`
+		ReferenceNotes []map[string]any `json:"referenceNotes"`
+		Missing        []string         `json:"referenceNotesMissing"`
+	}
+	if err := json.Unmarshal([]byte(h.model.requests[0].Messages[1].Content), &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Note.Cursor == nil || len(first.SpaceTags) != 2 || first.SpaceTags[1]["tag"] != "#mood/calm" {
+		t.Fatalf("cursor and tags: %+v", first)
+	}
+	if len(first.ReferenceNotes) != 1 || first.ReferenceNotes[0]["id"] != "digest" || !slices.Equal(first.Missing, []string{"Nowhere"}) {
+		t.Fatalf("reference notes (the locked one never sent): %+v", first)
+	}
+	if got := h.content("digest"); got != "## Themes\n- rest\n- walks\n" {
+		t.Fatalf("digest: %q (%s)", got, lastToolResult(h.model.requests[1]))
 	}
 }

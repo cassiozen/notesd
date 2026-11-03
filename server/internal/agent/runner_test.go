@@ -690,3 +690,57 @@ func TestListTagsLeavesLockedNotesOut(t *testing.T) {
 		t.Fatalf("list_tags: %s", got)
 	}
 }
+
+func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone, agent.EditStarted, agent.Menu)
+	h.done("n1", "a")
+	h.create("n2", "work", "b")
+	release := make(chan struct{})
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		<-release
+		return say("No change."), nil
+	})
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); h.runner.Run(runCtx) }()
+	defer func() { stop(); <-done }()
+	status := func(trigger agent.Trigger, note string) string {
+		for _, r := range h.runs() {
+			if r.Trigger == string(trigger) && r.Note == note {
+				return r.Status
+			}
+		}
+		return ""
+	}
+	waitFor := func(what string, ok func() bool) {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		for !ok() {
+			if time.Now().After(deadline) {
+				t.Fatalf("waiting for %s: %+v", what, h.runs())
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	waitFor("n1's run to start", func() bool { return status(agent.NewNoteDone, "n1") == agent.StatusRunning })
+
+	// The other note's: done while n1's still runs.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n2"}); err != nil {
+		t.Fatal(err)
+	}
+	h.runner.Wake(1)
+	waitFor("n2's run", func() bool { return status(agent.EditStarted, "n2") == agent.StatusDone })
+
+	// The same note's: it waits for n1's to end.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: "n1"}); err != nil {
+		t.Fatal(err)
+	}
+	h.runner.Wake(1)
+	time.Sleep(50 * time.Millisecond)
+	if s := status(agent.Menu, "n1"); s != agent.StatusQueued {
+		t.Fatalf("ran beside another run on its note: %s", s)
+	}
+	close(release)
+	waitFor("n1's menu run", func() bool { return status(agent.Menu, "n1") == agent.StatusDone })
+}

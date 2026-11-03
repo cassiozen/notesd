@@ -31,8 +31,9 @@ const MaxConcurrentCalls = 4
 // it: for retries, and for AI coming back.
 var idleCheck = time.Minute
 
-// Runner runs every account's queued agent runs: one at a time per
-// account, which is also one at a time per note.
+// Runner runs every account's queued agent runs, one at a time per note.
+// Each account has two slots: one for any run, and one only for runs an
+// open editor asked for, so those never wait behind the others.
 type Runner struct {
 	accounts func(ctx context.Context) ([]int64, error)
 	open     func(ctx context.Context, userID int64) (Account, error)
@@ -44,7 +45,7 @@ type Runner struct {
 
 	mu      sync.Mutex
 	ctx     context.Context // set by Run
-	workers map[int64]chan struct{}
+	workers map[int64]*worker
 	wg      sync.WaitGroup
 }
 
@@ -52,7 +53,7 @@ type Runner struct {
 func NewRunner(c RunnerConfig) *Runner {
 	r := &Runner{
 		accounts: c.Accounts, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
-		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[int64]chan struct{}{},
+		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[int64]*worker{},
 	}
 	if r.now == nil {
 		r.now = time.Now
@@ -90,6 +91,9 @@ func (rn *Runner) Run(ctx context.Context) {
 	}
 }
 
+// worker is an account's two slots' wake-ups.
+type worker struct{ any, editor chan struct{} }
+
 // Wake has an account's worker look at its queue, starting the worker if
 // there's none yet. It never blocks.
 func (rn *Runner) Wake(userID int64) {
@@ -98,19 +102,21 @@ func (rn *Runner) Wake(userID int64) {
 	if rn.ctx == nil || rn.ctx.Err() != nil {
 		return
 	}
-	wake, ok := rn.workers[userID]
+	w, ok := rn.workers[userID]
 	if !ok {
-		wake = make(chan struct{}, 1)
-		rn.workers[userID] = wake
+		w = &worker{any: make(chan struct{}, 1), editor: make(chan struct{}, 1)}
+		rn.workers[userID] = w
 		rn.wg.Add(1)
 		go func() {
 			defer rn.wg.Done()
-			rn.work(rn.ctx, userID, wake)
+			rn.work(rn.ctx, userID, w)
 		}()
 	}
-	select {
-	case wake <- struct{}{}:
-	default:
+	for _, c := range []chan struct{}{w.any, w.editor} {
+		select {
+		case c <- struct{}{}:
+		default:
+		}
 	}
 }
 
@@ -127,7 +133,7 @@ func (rn *Runner) WakeAll() {
 	}
 }
 
-func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) {
+func (rn *Runner) work(ctx context.Context, userID int64, w *worker) {
 	acct, err := rn.open(ctx, userID)
 	if err != nil {
 		rn.log.Error("agent runner: open account", "user", userID, "err", err)
@@ -139,8 +145,19 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 	if err := acct.Agent.recoverRuns(ctx); err != nil {
 		rn.log.Error("agent runner: recover runs", "user", userID, "err", err)
 	}
+	rn.wg.Add(1)
+	go func() {
+		defer rn.wg.Done()
+		rn.slot(ctx, userID, acct, true, w.editor)
+	}()
+	rn.slot(ctx, userID, acct, false, w.any)
+}
+
+// slot runs an account's runs one after another; editorOnly, only the
+// ones an open editor asked for.
+func (rn *Runner) slot(ctx context.Context, userID int64, acct Account, editorOnly bool, wake <-chan struct{}) {
 	for ctx.Err() == nil {
-		if rn.step(ctx, userID, acct) {
+		if rn.step(ctx, userID, acct, editorOnly) {
 			continue
 		}
 		wait := idleCheck
@@ -159,7 +176,7 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 
 // step runs the next due run, if AI is set up and there is one, and
 // reports whether it did.
-func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
+func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOnly bool) bool {
 	st, err := rn.settings(ctx)
 	if errors.Is(err, llm.ErrNotConfigured) {
 		return false // paused: the queue waits for AI to come back
@@ -168,7 +185,7 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 		rn.log.Error("agent runner: AI settings", "err", err)
 		return false
 	}
-	r, ok, err := acct.Agent.claim(ctx)
+	r, ok, err := acct.Agent.claim(ctx, editorOnly)
 	if err != nil {
 		if ctx.Err() == nil {
 			rn.log.Error("agent runner: claim", "user", userID, "err", err)
@@ -180,6 +197,8 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 	}
 	acct.notify(RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: StatusRunning})
 	rn.execute(ctx, acct, st, r)
+	// The other slot may have passed over a run on this note.
+	rn.Wake(userID)
 	return true
 }
 
