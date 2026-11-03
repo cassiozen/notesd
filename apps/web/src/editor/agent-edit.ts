@@ -4,6 +4,9 @@ import type { EditorState } from '@tiptap/pm/state'
 import type { Fields } from '../notes/saver'
 import { noteContent, noteFields } from './note-doc'
 
+/** Marks the transaction of an agent's change: not the user editing. */
+export const AGENT_EDIT = 'agentEdit'
+
 // A private-use character, which Markdown writes as itself: where it lands
 // in the saved text is where the cursor is.
 const MARK = ''
@@ -43,7 +46,7 @@ export function applyForAgent(editor: Editor, after: Fields) {
     endA += overlap
     endB += overlap
   }
-  editor.view.dispatch(closeHistory(state.tr.replace(start, endA, next.slice(start, endB))))
+  editor.view.dispatch(closeHistory(state.tr.replace(start, endA, next.slice(start, endB))).setMeta(AGENT_EDIT, true))
   // And the user's next keystroke starts a step of its own.
   editor.view.dispatch(closeHistory(editor.state.tr))
 }

@@ -76,6 +76,7 @@ type harness struct {
 	settings llm.Settings
 	setupErr error
 	editor   *fakeEditor
+	onRun    func(agent.RunUpdate)
 }
 
 func newHarness(t *testing.T) *harness {
@@ -89,6 +90,11 @@ func newHarness(t *testing.T) *harness {
 				SpaceName: func(_ context.Context, id string) string { return "space " + id }}
 			if h.editor != nil {
 				a.Editors = h.editor
+			}
+			a.OnRun = func(u agent.RunUpdate) {
+				if h.onRun != nil {
+					h.onRun(u)
+				}
 			}
 			return a, nil
 		},

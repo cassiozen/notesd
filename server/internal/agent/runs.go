@@ -79,6 +79,7 @@ func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
 	if err := json.Unmarshal([]byte(ev), &r.Event); err != nil {
 		return r, true, err
 	}
+	r.ConnectionID = r.Event.ConnectionID
 	return r, true, nil
 }
 

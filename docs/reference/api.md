@@ -397,6 +397,7 @@ other accounts get `403 admin_only` when they change it.
 | `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore, usage}`, newest first |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
+| `POST` | `/agent/runs` | `{trigger, noteId, spaceId?, connectionId?}` → `202 {runId}`; see below |
 | `GET` | `/agent/socket` | WebSocket; see below |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
@@ -439,6 +440,13 @@ note is undone on its own, so one changed note doesn't stop the rest; `skipped` 
 undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
 `partly_undone` while some of its changes stand. Undo fires no triggers.
 
+**Asking for a run.** An editor asks for `noteCreated`, `editStarted` or `menu` runs; the others
+come from writes. `spaceId` is needed only for a new note the server hasn't got yet (`noteCreated`),
+and `connectionId` is the asking tab's socket, whose editor the run reads first. It's queued ahead of
+other runs, and asked again before it starts, it's the same run. `409 agent_disabled` when the
+space's agent is off, `trigger_off` when it doesn't act on that trigger, `note_locked`; `404
+not_found` for a note that's gone.
+
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
 account is `429 rate_limited`. Messages are JSON text with a `type`; a type a side doesn't know is
@@ -449,6 +457,7 @@ ignored, so either may add some.
 | Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
 | Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
+| Server | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | A run started (`running`) or ended; to every editor of the account |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
 | Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}}` | A run changes the note. If the editor shows `before`, it changes it to `after` as one undoable step, saves it as any edit, and answers `{type: "result", id, shows: {title, content}}`: the note as it then saves it |
 

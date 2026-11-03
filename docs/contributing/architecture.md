@@ -480,13 +480,18 @@ The user guide is [agents](../guides/using/agents.md).
   *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); a sweep
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
   for the space the note is in then, or at once when an editor closes the note and the server has
-  what it last saved (`editor.closed` on the socket below). Never a trigger: the agent's own writes and saves marked
+  what it last saved (`editor.closed` on the socket below). The editor asks for *note created*,
+  *started editing* and the menu command (`POST /agent/runs`), queued ahead of the rest; a
+  *note created* run may start before the note is saved, reading it from that editor. A new note
+  whose first save holds only an agent's change starts its session at that revision, so only the
+  user's writing ends it with a trigger. Never a trigger: the agent's own writes and saves marked
   `agent.only`, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
   locked notes, and conflicted or recovered copies.
 - **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
   authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
   open a WebSocket with the cookie and no preflight. Each web tab keeps one open while some space's
-  agent is on, and says which notes its editor opens and closes. The server pings every 25 seconds,
+  agent is on, and says which notes its editor opens and closes; the server tells every editor of
+  the account when a run starts and ends ("Agent is writing…", a failure on the note). The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
 - **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a

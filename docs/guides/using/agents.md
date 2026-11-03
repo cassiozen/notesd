@@ -9,9 +9,9 @@ A space can have an agent. It isn't a chatbot, and it doesn't write notes for yo
 notes when you ask it to: it tags new notes, titles them, or keeps a digest up to date. You decide
 what it does and when.
 
-Agents are being built. They act on **new note done**, **note edit done**, **note deleted** and the
-two **moved** triggers. Note created, started editing and the menu command come with the editor
-work.
+Agents are being built. Every trigger works on the web; the Android and iOS apps don't open
+notes for an agent yet, so there it acts only after you're done (new note done, note edit done)
+and on deletes and moves.
 
 ## Give a space an agent
 
@@ -32,14 +32,24 @@ nothing.
 
 | Trigger | When |
 | --- | --- |
-| **Note created** | A new note is opened, before anything is typed. *Not yet: comes with the editor work* |
-| **Started editing** | The first change to a note after it's opened, or after 3 minutes without changes. *Not yet* |
+| **Note created** | A new note is opened, before anything is typed |
+| **Started editing** | The first change to a note after it's opened, or after 3 minutes without changes |
 | **New note done** | A new note is closed, or left for 2 minutes |
 | **Note edit done** | The same, for a note that already existed |
 | **Note deleted** | A note in the space is deleted |
 | **Note moved in** | A note is moved here from another space |
 | **Note moved out** | A note is moved from here to another space |
-| **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos*. *Not yet* |
+| **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos* |
+
+Note created, started editing and the menu command happen in the editor, and need a connection to
+the server: offline, they're skipped.
+
+## While you write
+
+When an agent works on the note you have open, it works on what you see: what you've typed but
+not yet saved, and where your cursor is. **Agent is writing…** shows beside the save status while
+it does. Its change appears in the note as one step: **Undo** (Ctrl+Z, or ⌘Z on a Mac) takes it
+back and leaves your typing alone.
 
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.
@@ -58,8 +68,11 @@ against the daily limit.
 changed since is left alone, so undo never loses your writing; Activity says which and why. Undo
 doesn't make the agent act again.
 
-If an agent's last run on a note failed, the note says so when you open it, with a link to the run
-in Activity. **Dismiss** hides it.
+If an agent's last run on a note failed, the note says so, when you open it or as it happens, with a
+link to the run in Activity. **Dismiss** hides it.
+
+A change the agent made in your open note can be undone from Activity once the note has saved just
+that change. If you typed on before it saved, use Undo in the note instead.
 
 When you lock or delete a note, Activity forgets its text too, as the note itself does. As with
 the note, backups made before still have it; see

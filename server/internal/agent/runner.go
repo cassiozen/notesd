@@ -178,6 +178,7 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 	if !ok {
 		return false
 	}
+	acct.notify(RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: StatusRunning})
 	rn.execute(ctx, acct, st, r)
 	return true
 }

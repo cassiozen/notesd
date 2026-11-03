@@ -1,4 +1,5 @@
-import { useEffect } from 'react'
+import { useEffect, useSyncExternalStore } from 'react'
+import type { AgentTrigger, RunStatus } from '../api/agent'
 import type { Fields } from '../notes/saver'
 import { useAgentConfigs } from '../notes/agent-config'
 import { useAiSettings } from '../notes/ai-settings'
@@ -12,6 +13,9 @@ export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000 }
 export const socketFactory = {
   make: (path: string): WebSocket => new WebSocket(new URL(path, window.location.href.replace(/^http/, 'ws'))),
 }
+
+/** A run starting or ending, as the server tells the editors. */
+export type RunUpdate = { runId: string; noteId: string; trigger: AgentTrigger; status: RunStatus; failure?: string; outcome?: string }
 
 /** What an open note's editor does for a run; each answer goes back as is, or { error }. */
 export type EditorHandler = {
@@ -32,6 +36,10 @@ class AgentSocket {
   private timer: ReturnType<typeof setTimeout> | undefined
   private readonly open = new Set<string>()
   private readonly editors = new Map<string, EditorHandler>()
+  private readonly runListeners = new Set<(u: RunUpdate) => void>()
+  readonly runningListeners = new Set<() => void>()
+  /** Runs going now, by id: their notes. */
+  private running = new Map<string, string>()
   /** The server's id for this connection, once it said hello. */
   connectionId: string | null = null
 
@@ -65,6 +73,20 @@ class AgentSocket {
     }
   }
 
+  /** Hears of runs starting and ending while connected. */
+  onRun(listener: (u: RunUpdate) => void): () => void {
+    this.runListeners.add(listener)
+    return () => {
+      this.runListeners.delete(listener)
+    }
+  }
+
+  /** Whether a run is going on the note, as far as this tab heard. */
+  isRunning(noteId: string): boolean {
+    for (const n of this.running.values()) if (n === noteId) return true
+    return false
+  }
+
   /** revision: the server's revision of what the editor last showed, if it has it. */
   noteClosed(noteId: string, revision: number | null) {
     this.open.delete(noteId)
@@ -89,6 +111,8 @@ class AgentSocket {
         this.failures = 0
         this.connectionId = m.connectionId
         for (const noteId of this.open) this.send({ type: 'editor.opened', noteId })
+      } else if (m?.type === 'run' && typeof m.runId === 'string' && typeof m.noteId === 'string') {
+        this.heard(m as unknown as RunUpdate)
       } else if (m && typeof m.id === 'string') {
         void this.answer(m).then((reply) => this.send({ type: 'result', id: m.id, ...reply }))
       }
@@ -97,10 +121,25 @@ class AgentSocket {
       if (ws !== this.ws) return
       this.ws = null
       this.connectionId = null
+      // What's still going is unknown until the server says again.
+      this.setRunning(new Map())
       if (!this.wanted) return
       const wait = Math.min(socketTiming.retryMaxMs, socketTiming.retryBaseMs * 2 ** this.failures++)
       this.timer = setTimeout(() => this.connect(), wait * (0.5 + Math.random() / 2))
     })
+  }
+
+  private heard(u: RunUpdate) {
+    const next = new Map(this.running)
+    if (u.status === 'running') next.set(u.runId, u.noteId)
+    else next.delete(u.runId)
+    this.setRunning(next)
+    for (const l of this.runListeners) l(u)
+  }
+
+  private setRunning(next: Map<string, string>) {
+    this.running = next
+    for (const l of this.runningListeners) l()
   }
 
   private async answer(m: Record<string, unknown>): Promise<object> {
@@ -135,6 +174,19 @@ function parse(data: string): Record<string, unknown> | null {
 }
 
 export const agentSocket = new AgentSocket()
+
+/** Whether an agent's run is going on the note: "Agent is writing…". */
+export function useAgentWriting(noteId: string): boolean {
+  return useSyncExternalStore(
+    (l) => {
+      agentSocket.runningListeners.add(l)
+      return () => {
+        agentSocket.runningListeners.delete(l)
+      }
+    },
+    () => agentSocket.isRunning(noteId),
+  )
+}
 
 /** Keeps the socket open while AI is set up and some space's agent is on. */
 export function useAgentSocket() {

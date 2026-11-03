@@ -71,6 +71,13 @@ func (h *Hub) Add(userID int64, send func(ctx context.Context, msg any) error) (
 	return c, nil
 }
 
+// Full reports whether the user has MaxConns connections already.
+func (h *Hub) Full(userID int64) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.users[userID]) >= MaxConns
+}
+
 // Remove forgets a connection that ended, with the notes it had open; calls
 // waiting on it fail with agent.ErrEditorGone.
 func (h *Hub) Remove(c *Conn) {
@@ -102,6 +109,24 @@ func (h *Hub) Closed(c *Conn, noteID string) (last bool) {
 		}
 	}
 	return true
+}
+
+// Broadcast sends msg to each of the user's editors, without waiting:
+// one that's slow or gone misses it.
+func (h *Hub) Broadcast(userID int64, msg any) {
+	h.mu.Lock()
+	conns := make([]*Conn, 0, len(h.users[userID]))
+	for c := range h.users[userID] {
+		conns = append(conns, c)
+	}
+	h.mu.Unlock()
+	for _, c := range conns {
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), CallTimeout)
+			defer cancel()
+			_ = c.send(ctx, msg)
+		}()
+	}
 }
 
 // Answer hands an editor's reply to the call waiting for it.

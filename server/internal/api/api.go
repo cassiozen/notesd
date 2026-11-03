@@ -122,6 +122,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("DELETE /api/v1/agent/spaces/{id}", s.authed(s.deleteAgentConfig))
 	mux.Handle("GET /api/v1/agent/runs", s.authed(s.agentRuns))
 	mux.Handle("GET /api/v1/agent/runs/{id}", s.authed(s.agentRun))
+	mux.Handle("POST /api/v1/agent/runs", s.authed(s.requestAgentRun))
 	mux.Handle("POST /api/v1/agent/runs/{id}/undo", s.authed(s.undoAgentRun))
 	mux.Handle("GET /api/v1/agent/socket", s.authed(s.agentSocket))
 	mux.Handle("GET /api/v1/settings/ai", s.authed(s.aiSettings))

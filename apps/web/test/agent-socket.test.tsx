@@ -117,9 +117,18 @@ describe('the agent socket, connecting', () => {
     first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
     await waitFor(() => expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' }))
 
+    const run = (status: string) =>
+      first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'run', runId: 'r1', noteId: 'n1', trigger: 'menu', status }) }))
+    run('running')
+    expect(agentSocket.isRunning('n1')).toBe(true)
+    run('done')
+    expect(agentSocket.isRunning('n1')).toBe(false)
+    run('running')
     first.drop()
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
     const second = FakeSocket.all[1]
+    // What was going is unknown once the connection drops.
+    expect(agentSocket.isRunning('n1')).toBe(false)
     second?.hello()
     expect(second?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
   })

@@ -198,3 +198,35 @@ func TestRunsReadThroughTheSocket(t *testing.T) {
 		t.Fatalf("read: %+v %v", n, err)
 	}
 }
+
+func TestRequestAgentRun(t *testing.T) {
+	var woken atomic.Int32
+	e := newEnvWith(t, api.Config{OnRunQueued: func(int64) { woken.Add(1) }})
+	e.setupOwner()
+	c := e.webClient()
+	if r := c.do("PUT", "/api/v1/agent/spaces/default", map[string]any{
+		"enabled": true, "prompt": "p", "triggers": map[string]any{"noteCreated": "Ask a question."},
+	}); r.status != 200 {
+		t.Fatalf("agent: %d %s", r.status, r.raw)
+	}
+	if r := c.do("POST", "/api/v1/notes", map[string]any{"operationId": "o1", "id": "n1", "title": "T"}); r.status != 201 {
+		t.Fatalf("create: %d %s", r.status, r.raw)
+	}
+	for _, tc := range []struct {
+		body   map[string]any
+		status int
+		code   string
+	}{
+		{map[string]any{"trigger": "editStarted", "noteId": "n1"}, 409, "trigger_off"},
+		{map[string]any{"trigger": "noteDeleted", "noteId": "n1"}, 400, "invalid_request"},
+		{map[string]any{"trigger": "editStarted", "noteId": "nope"}, 404, "not_found"},
+	} {
+		if r := c.do("POST", "/api/v1/agent/runs", tc.body); r.status != tc.status || r.body["error"] != tc.code {
+			t.Errorf("%v: %d %s", tc.body, r.status, r.raw)
+		}
+	}
+	r := c.do("POST", "/api/v1/agent/runs", map[string]any{"trigger": "noteCreated", "noteId": "draft", "spaceId": "default", "connectionId": "c_1"})
+	if r.status != 202 || r.body["runId"] == "" || woken.Load() != 1 {
+		t.Fatalf("draft: %d %s", r.status, r.raw)
+	}
+}

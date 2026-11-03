@@ -1,3 +1,4 @@
+import { AGENT_EDIT } from './agent-edit'
 import type { Editor } from '@tiptap/core'
 import type { Slice } from '@tiptap/pm/model'
 import { EditorContent, useEditor, useEditorState } from '@tiptap/react'
@@ -14,7 +15,8 @@ import styles from './editor.module.css'
 type Options = {
   initial: Fields
   /** The document changed (typing, formatting). Not called for replaceNote(). */
-  onChange: (editor: Editor) => void
+  /** byAgent: an agent's run changed it, not the user. */
+  onChange: (editor: Editor, byAgent: boolean) => void
   /** ⌘K. */
   onLinkShortcut: () => void
   /** Existing tags, suggested while typing one. */
@@ -95,7 +97,7 @@ export function useNoteEditor(options: Options): Editor {
       },
     },
     onUpdate: ({ editor: e, transaction }) => {
-      if (transaction.docChanged) handlers.current.onChange(e)
+      if (transaction.docChanged) handlers.current.onChange(e, transaction.getMeta(AGENT_EDIT) === true)
     },
   })
 

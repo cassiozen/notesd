@@ -30,6 +30,24 @@ type Account struct {
 	// Editors are the account's open note editors; nil reads and writes
 	// only the store.
 	Editors Editors
+	// OnRun hears of each run starting and ending, for the user's editors.
+	OnRun func(RunUpdate)
+}
+
+// RunUpdate is a run starting or ending.
+type RunUpdate struct {
+	RunID   string  `json:"runId"`
+	NoteID  string  `json:"noteId"`
+	Trigger Trigger `json:"trigger"`
+	Status  string  `json:"status"`
+	Failure string  `json:"failure,omitempty"`
+	Outcome string  `json:"outcome,omitempty"`
+}
+
+func (a Account) notify(u RunUpdate) {
+	if a.OnRun != nil {
+		a.OnRun(u)
+	}
 }
 
 // Provider is the model: llm.Client, or a fake in tests.
@@ -86,6 +104,11 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	if err := acct.Agent.finish(done, r.ID, f); err != nil {
 		rn.log.Error("agent run: record", "run", r.ID, "err", err)
 	}
+	u := RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: f.Status, Failure: f.Failure, Outcome: f.Outcome}
+	if !f.RetryAt.IsZero() {
+		u.Status, u.Failure = StatusQueued, ""
+	}
+	acct.notify(u)
 	rn.log.Info("agent run", "run", r.ID, "trigger", r.Trigger, "status", f.Status, "failure", f.Failure,
 		"tools", f.ToolCalls, "tokens", f.PromptTokens+f.CompletionTokens)
 }
@@ -107,6 +130,10 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	var note *notes.Note
 	if r.Event.Title == nil {
 		n, err := acct.Notes.Get(ctx, r.NoteID)
+		if errors.Is(err, notes.ErrNotFound) && r.Trigger == NoteCreated {
+			// A new note the editor hasn't saved yet.
+			n, err = draftInEditor(ctx, acct, r)
+		}
 		switch {
 		case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
 			return skip(FailNoteGone, "The note was deleted before the agent got to it.")
@@ -178,6 +205,18 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		}
 	}
 	return f
+}
+
+// draftInEditor is a new note as its editor shows it, or notes.ErrNotFound.
+func draftInEditor(ctx context.Context, acct Account, r queuedRun) (notes.Note, error) {
+	if acct.Editors == nil {
+		return notes.Note{}, notes.ErrNotFound
+	}
+	en, err := acct.Editors.Read(ctx, r.NoteID, r.ConnectionID)
+	if err != nil {
+		return notes.Note{}, notes.ErrNotFound
+	}
+	return notes.Note{ID: r.NoteID, SpaceID: en.SpaceID, Title: en.Title, Content: en.Content}, nil
 }
 
 func failed(why string, err error) finished {

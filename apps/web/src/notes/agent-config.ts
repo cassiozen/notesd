@@ -35,6 +35,11 @@ function load() {
   )
 }
 
+/** A space's agent, as last loaded; outside React. */
+export function agentConfigFor(spaceId: string): AgentConfig | undefined {
+  return current?.get(spaceId)
+}
+
 /** Every space's agent, or null until they've loaded (or while offline). */
 export function useAgentConfigs(): ReadonlyMap<string, AgentConfig> | null {
   const value = useSyncExternalStore(subscribe, () => current)

@@ -15,7 +15,8 @@ import { UnlockForm } from '../locks/unlock'
 import { navigate } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
-import { agentSocket } from '../agent/socket'
+import { agentSocket, useAgentWriting } from '../agent/socket'
+import { requestRun, triggerTiming } from '../agent/triggers'
 import { applyForAgent, composed, readForAgent } from '../editor/agent-edit'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
@@ -280,6 +281,21 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const snap = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
   const { touch, tags, setFilter, space } = useNotes()
   const failed = useFailedRun(isDraft ? null : saver.id)
+  const agentWriting = useAgentWriting(saver.id)
+  // Opened new: note created, not started editing, fires for it.
+  const [openedNew] = useState(isDraft)
+  const lastEdit = useRef<number | null>(null)
+  const startedEditing = () => {
+    const now = Date.now()
+    if (!openedNew && (lastEdit.current === null || now - lastEdit.current > triggerTiming.idleMs)) {
+      void requestRun('editStarted', saver.id, saver.spaceId())
+    }
+    lastEdit.current = now
+  }
+
+  useEffect(() => {
+    if (openedNew) void requestRun('noteCreated', saver.id, saver.spaceId())
+  }, [openedNew, saver])
   const [initial] = useState(() => saver.fields())
   const [linkOpen, setLinkOpen] = useState(false)
   const [stylesOpen, setStylesOpen] = useState(false)
@@ -317,8 +333,9 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const editor = useNoteEditor({
     initial,
     onImages: (files, at) => addImages(files, at),
-    onChange: (ed) => {
+    onChange: (ed, byAgent) => {
       saver.edit()
+      if (!byAgent) startedEditing()
       touchTimer.current ??= setTimeout(() => {
         touchTimer.current = undefined
         if (!ed.isDestroyed) touch(saver.id, summary(saver, ed.state.doc))
@@ -465,6 +482,11 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       <div className={styles.bar}>
         {mobile && <BackButton onClick={onBack} />}
         <span className={styles.spacer} />
+        {agentWriting && (
+          <span className={styles.agentWriting} role="status">
+            Agent is writing…
+          </span>
+        )}
         <StatusPill state={snap.imagesBusy ? 'saving' : snap.state} shown={statusShown || snap.imagesBusy} detail={statusDetail} />
         {snap.locked && (
           <button

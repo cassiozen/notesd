@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { agentSocket } from '../agent/socket'
 import { agent, type AgentRun } from '../api/agent'
 import { useAgentConfigs } from './agent-config'
 
@@ -14,8 +15,8 @@ function dismissed(): string[] {
 }
 
 /**
- * The note's latest agent run, if it failed and wasn't dismissed. Fetched when the note opens; from
- * the editor milestone it arrives live.
+ * The note's latest agent run, if it failed and wasn't dismissed. Fetched when the note opens, and
+ * again as each run on it ends.
  */
 export function useFailedRun(noteId: string | null): { run: AgentRun | null; dismiss: () => void } {
   const configs = useAgentConfigs()
@@ -24,17 +25,31 @@ export function useFailedRun(noteId: string | null): { run: AgentRun | null; dis
 
   useEffect(() => {
     if (!noteId || !any) return
-    const abort = new AbortController()
-    agent.runs({ note: noteId, limit: 1 }, abort.signal).then(
-      ({ runs }) => {
-        const run = runs[0]
-        if (run?.status === 'failed' && !dismissed().includes(run.id)) setFound({ noteId, run })
-      },
-      () => {
-        // Offline or no server: nothing to say.
-      },
-    )
-    return () => abort.abort()
+    let abort = new AbortController()
+    const look = () => {
+      abort.abort()
+      abort = new AbortController()
+      agent.runs({ note: noteId, limit: 1 }, abort.signal).then(
+        ({ runs }) => {
+          const run = runs[0]
+          if (run?.status === 'failed' && !dismissed().includes(run.id)) setFound({ noteId, run })
+        },
+        () => {
+          // Offline or no server: nothing to say.
+        },
+      )
+    }
+    look()
+    const off = agentSocket.onRun((u) => {
+      if (u.noteId !== noteId) return
+      // A newer run replaces an old failure.
+      if (u.status === 'running') setFound(null)
+      else look()
+    })
+    return () => {
+      off()
+      abort.abort()
+    }
   }, [noteId, any])
 
   const run = found && found.noteId === noteId ? found.run : null
