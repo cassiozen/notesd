@@ -51,7 +51,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
 | 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many |
 | 5 | This device | Appearance | `appearance` | half-filled circle | "System", "Light", "Dark" ("Automatic" on iOS, as the system says) |
-| 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Offline"; web shows "Off" unless it keeps the notes |
+| 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Syncing…", "Offline", "Sync problem", "Signed out", "Update notesd"; the web says some in its own words ("Couldn't sync", "Sign in again to sync") and "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |
 
 On a wide web window, the category list sits beside the selected category's page, and Server is
@@ -78,7 +78,8 @@ the list is its own screen and a category opens on top of it with a back button.
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |
 | Keep my notes on this device (also offered at sign-in; on by default in the installed app; off removes them) | Sync & data | device | ✓ | – | – |
-| Sync status, last synced, last error, changes that couldn't sync (Retry), Sync now | Sync & data | device | ✓ (while kept) | ✓ | ✓ |
+| Sync status, last synced, last error, Sync now | Sync & data | device | ✓ (while kept) | ✓ | ✓ |
+| Changes that couldn't sync, with Retry (the web: in its app-wide banner instead) | Sync & data | device | – | ✓ | ✓ |
 | Remove all data from this device | Sync & data | device | – | ✓ | ✓ |
 | App version | About | device | – | ✓ | ✓ |
 

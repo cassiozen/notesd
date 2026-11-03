@@ -21,6 +21,8 @@ import notes.app.BuildConfig
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.account.Account
+import notes.app.settings.shownStatus
 import notes.app.settings.syncSummary
 import notes.core.api.Session
 import notes.core.api.SignIn
@@ -138,6 +140,30 @@ class SyncBannersTest {
         assertEquals("Offline", syncSummary(SyncStatus.Offline, 2))
         assertEquals("", syncSummary(SyncStatus.NotConnected, 0))
         assertEquals("Sync problem", syncSummary(SyncStatus.Failed("x"), 0))
+    }
+
+    @Test
+    fun `signed out or with nothing kept, the last cycle's state isn't what's shown`() {
+        val synced = SyncStatus.Synced(1)
+        assertEquals(SyncStatus.SignedOut, shownStatus(Account.SignedOut("https://n.example", "me"), synced))
+        assertEquals(SyncStatus.NotConnected, shownStatus(Account.None, synced))
+        assertEquals(synced, shownStatus(Account.SignedIn("https://n.example", "me"), synced))
+    }
+
+    @Test
+    fun `a failed cycle doesn't count as the last sync`() {
+        signedIn { MockResponse.Builder().code(200).body("<html>Sign in to the Wi-Fi</html>").build() }
+        runBlocking {
+            graph.store.save("n1", "Plans", "Bike\n")
+            assertEquals(SyncOutcome.Failed, graph.sync.sync())
+        }
+        scenario = ActivityScenario.launch(MainActivity::class.java)
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.onNode(hasContentDescription("Settings")).performClick()
+        compose.waitUntilAtLeastOneExists(hasText("Sync & data", substring = true))
+        compose.onNodeWithText("Sync & data").performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Sync now") and hasClickAction())
+        compose.onNodeWithText("Last synced").assertDoesNotExist()
     }
 
     @Test

@@ -113,7 +113,12 @@ fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOp
             }
             GroupHeader("This phone only")
             CategoryRow(Icons.Appearance, SettingsSection.Appearance, theme.label, onOpen)
-            CategoryRow(Icons.Cloud, SettingsSection.Device, syncSummary(syncStatus, pending), onOpen)
+            CategoryRow(
+                Icons.Cloud,
+                SettingsSection.Device,
+                syncSummary(shownStatus(account, syncStatus), pending),
+                onOpen
+            )
             CategoryRow(Icons.Info, SettingsSection.About, BuildConfig.VERSION_NAME, onOpen)
         }
     }

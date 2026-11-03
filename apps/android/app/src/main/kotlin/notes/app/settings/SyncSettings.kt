@@ -10,7 +10,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -24,6 +23,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
+import notes.app.account.Account
 import notes.app.notes.listTime
 import notes.app.notes.parkedMessage
 import notes.app.ui.LocalTokens
@@ -45,6 +45,16 @@ internal fun syncSummary(status: SyncStatus, pending: Int): String {
     }
 }
 
+/**
+ * What sync's state is for [account]: the engine's says nothing of signing out or removing all data, and keeps
+ * its last cycle's.
+ */
+internal fun shownStatus(account: Account, status: SyncStatus): SyncStatus = when (account) {
+    Account.None -> SyncStatus.NotConnected
+    is Account.SignedOut -> SyncStatus.SignedOut
+    is Account.SignedIn -> status
+}
+
 /** The page's status line: the summary, with what's waiting when that isn't already what it says. */
 private fun statusLine(status: SyncStatus, pending: Int): String {
     val summary = syncSummary(status, pending)
@@ -57,17 +67,19 @@ private fun statusLine(status: SyncStatus, pending: Int): String {
 internal fun SyncCard(graph: AppGraph) {
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
-    val status by graph.sync.status.collectAsStateWithLifecycle()
+    val account by graph.accounts.account.collectAsStateWithLifecycle()
+    val engineStatus by graph.sync.status.collectAsStateWithLifecycle()
+    val status = shownStatus(account, engineStatus)
     var pending by remember { mutableIntStateOf(0) }
     var parked by remember { mutableIntStateOf(0) }
-    var lastSyncAt by remember { mutableStateOf<Long?>(null) }
+    // From the status, not the store: the store's time moves on with failed cycles too.
+    val lastSyncAt = (status as? SyncStatus.Synced)?.at
 
-    // Each change here, and each cycle's end, can change all three.
-    LaunchedEffect(status) {
+    // Each change here, and each cycle's end, can change both.
+    LaunchedEffect(engineStatus) {
         graph.store.changes.onSubscription { emit(Unit) }.collect {
             pending = graph.store.pendingNotes()
             parked = graph.sync.parked()
-            lastSyncAt = graph.sync.store.state().lastSyncAt
         }
     }
 

@@ -129,7 +129,6 @@ struct SettingsSectionView: View {
     @State private var confirmRemove = false
     @State private var pendingNotes = 0
     @State private var lastError: String?
-    @State private var lastSync: Int64?
 
     var body: some View {
         @Bindable var graph = graph
@@ -160,7 +159,6 @@ struct SettingsSectionView: View {
         .task(id: graph.syncStatus) {
             pendingNotes = (try? await graph.store.pendingNotes()) ?? 0
             let state = try? await graph.engine.store.state()
-            lastSync = state?.lastSyncAt
             lastError = state?.lastError
         }
         .sheet(isPresented: $connecting) {
@@ -221,7 +219,10 @@ struct SettingsSectionView: View {
         if graph.account != .none {
             Section {
                 LabeledContent("Status") { SyncLabel(status: graph.syncStatus, pending: pendingNotes) }
-                if let lastSync { LabeledContent("Last synced", value: listTime(lastSync)) }
+                // From the status, not the store: the store's time moves on with failed cycles too.
+                if case .synced(let at) = graph.syncStatus, at > 0 {
+                    LabeledContent("Last synced", value: listTime(at))
+                }
                 if case .upgradeRequired = graph.syncStatus {
                     Text(SyncMessages.upgradeRequired).font(.notesSmall).foregroundStyle(Color.errInk)
                 } else if let lastError {
