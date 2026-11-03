@@ -44,7 +44,11 @@ at Android Studio's default location on macOS; set `ANDROID_HOME` or
 For iOS you need Xcode 26 or later, selected with `xcode-select`, and an
 iPhone simulator (`xcodebuild -downloadPlatform iOS`).
 
-The repo root is a pnpm workspace (`apps/web` and `shared/sync-engine`), with one lockfile.
+For the macOS app you need Xcode (or its command line tools) and
+[rustup](https://rustup.rs): `apps/desktop/src-tauri/rust-toolchain.toml` pins
+the Rust version, which rustup installs on first use.
+
+The repo root is a pnpm workspace (`apps/web`, `apps/desktop`, `shared/sync-engine` and `website`), with one lockfile.
 
 ## Server and web app
 
@@ -105,6 +109,19 @@ To point the app at your dev server: the simulator reaches the Mac at
 `http://<your computer's LAN address>:8080` with
 `PORT=8080 mise run dev:server`.
 
+## macOS app
+
+```bash
+mise run dev:desktop     # the app, starting at its setup page
+mise run test:desktop    # Rust tests
+mise run lint:desktop    # rustfmt and clippy
+mise run build:desktop   # unsigned .app in apps/desktop/src-tauri/target/release/bundle/macos
+```
+
+The app is a window on a notesd server, so its setup page takes your dev
+server at `http://localhost:8080` (start it with `mise run dev:server`).
+See [`apps/desktop/README.md`](../../apps/desktop/README.md).
+
 ## All tasks
 
 | Task | What it does |
@@ -118,17 +135,19 @@ To point the app at your dev server: the simulator reaches the Mac at
 | `test:go`, `test:web`, `test:sync-engine` | Go tests (with the race detector), Vitest, the sync engine on JVM and JS |
 | `test:android`, `lint:android`, `screenshots:android` | Android checks |
 | `test:ios:core`, `test:ios`, `lint:ios` | iOS checks |
+| `dev:desktop`, `test:desktop`, `lint:desktop` | macOS app checks, and the app in development |
 | `build:deps`, `dev:deps` | The web app's workspace dependencies (the sync engine), once or on change |
 | `build:web` | Web app into `server/internal/web/dist` |
 | `build` | `server/bin/notesd` with the web app embedded |
 | `build:android` | Debug APK |
 | `build:ios` | Debug build of the iOS app for a simulator |
+| `build:desktop` | Unsigned macOS app |
 | `release` | Server binaries for linux/amd64, linux/arm64 and darwin/arm64 in `server/bin` |
 | `release:android` | Release APK in `server/bin` ([releasing.md](releasing.md)) |
 | `clean` | Remove `server/bin` |
 
 CI (`.github/workflows/ci.yml`) runs `check` and `test:android` on every
-push to `main` and every pull request, and the iOS checks on a macOS runner.
+push to `main` and every pull request, and the iOS and macOS app checks on macOS runners.
 
 ## Conventions
 

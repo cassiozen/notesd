@@ -92,6 +92,7 @@ Every client reaches the server over HTTPS/JSON; the Go binary also serves the w
 | Backend | Go, `net/http`, SQLite (WAL) + FTS5, JSON over HTTPS, structured logging, web assets via `embed`, systemd or equivalent |
 | iOS | Swift, SwiftUI with a `NavigationSplitView` (list and note side by side on a wide window, such as an unfolded iPhone Duo, split at its fold), `UITextView`/TextKit editor via `UIViewRepresentable`, SQLite + FTS5, URLSession, iOS background tasks |
 | Android | Kotlin, Jetpack Compose with Navigation 3 (list and note side by side from 600dp, split around a foldable's hinge), `EditText`/`Spannable` editor via `AndroidView`, bundled SQLite + FTS5 (`androidx.sqlite`), OkHttp, WorkManager |
+| macOS | Tauri 2 (Rust): a WKWebView window on the server's web app, which keeps its notes there as in Safari (service worker, OPFS); a bundled page picks the server; native menus, links opening in the browser, downloads |
 | Web | TypeScript, React, Tiptap/ProseMirror, Vite, lightweight CSS; for the offline copy, the Kotlin core compiled to JavaScript, sqlite-wasm on OPFS, Cache Storage for images and a service worker for the app shell; Node.js only for building |
 
 Native apps use platform controls for selection, keyboard, context menus and formatting. Pick the server's SQLite driver for portability, transaction behaviour and build simplicity, and avoid unnecessary frameworks.
