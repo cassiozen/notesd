@@ -1,6 +1,6 @@
 //! notesd for macOS: a window on the user's notesd server. The web app runs there as it does in Safari, offline
 //! included (its service worker and the notes kept in OPFS); this side only picks the server and gives the window
-//! what a Mac app has: menus, links that open in the browser, downloads.
+//! what a Mac app has: menus, window buttons in the app's own top bars, links that open in the browser, downloads.
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
@@ -10,9 +10,10 @@ mod store;
 
 use std::sync::Mutex;
 
+use tauri::ipc::CapabilityBuilder;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::{DownloadEvent, NewWindowResponse, PageLoadEvent};
-use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, Wry};
+use tauri::{AppHandle, Manager, Url, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry};
 use tauri_plugin_opener::OpenerExt;
 
 const MAIN: &str = "main";
@@ -30,6 +31,8 @@ struct State {
     current: Mutex<Option<Url>>,
     /// A load of the server's this side asked for, let through when it comes back to `on_navigation`.
     issued: Mutex<Option<Url>>,
+    /// Last told to the page; a resize that doesn't change it needn't tell it again.
+    fullscreen: Mutex<bool>,
 }
 
 #[tauri::command]
@@ -56,6 +59,7 @@ async fn set_server(app: AppHandle, address: String) -> Result<String, String> {
         .map_err(|e| e.to_string())?
         .map_err(|e| e.to_string())?;
     store::save(&app, &url)?;
+    allow_window_moves(&app, &url).map_err(|e| e.to_string())?;
     *app.state::<State>().server.lock().unwrap() = Some(url.clone());
     Ok(url.to_string())
 }
@@ -79,8 +83,19 @@ fn main() {
                 _ => {}
             }
         })
+        .on_window_event(|window, event| {
+            if let WindowEvent::Resized(_) = event
+                && let Some(webview) = window.get_webview_window(MAIN)
+            {
+                tell_fullscreen(&webview, false);
+            }
+        })
         .setup(|app| {
-            *app.state::<State>().server.lock().unwrap() = store::load(app.handle());
+            let server = store::load(app.handle());
+            if let Some(server) = &server {
+                allow_window_moves(app.handle(), server)?;
+            }
+            *app.state::<State>().server.lock().unwrap() = server;
             let window = main_window(app.handle())?;
             *app.state::<State>().setup.lock().unwrap() = Some(window.url()?);
             Ok(())
@@ -93,10 +108,11 @@ fn main() {
 /// has nothing, a failed load leaves the setup page showing, with a way to retry, instead of a blank window.
 fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
     let (navigating, popups, downloading) = (app.clone(), app.clone(), app.clone());
-    WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
+    let builder = WebviewWindowBuilder::new(app, MAIN, WebviewUrl::App("index.html".into()))
         .title("notesd")
         .inner_size(1200.0, 800.0)
-        .min_inner_size(900.0, 560.0)
+        .min_inner_size(900.0, 560.0);
+    title_bar(builder)
         .on_navigation(move |url| {
             let state = navigating.state::<State>();
             let issued = state
@@ -126,9 +142,15 @@ fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
                 }
             }
         })
-        .on_page_load(|webview, payload| {
-            if payload.event() == PageLoadEvent::Started {
+        .on_page_load(|webview, payload| match payload.event() {
+            PageLoadEvent::Started => {
                 *webview.state::<State>().current.lock().unwrap() = Some(payload.url().clone());
+            }
+            // A new page knows nothing of it.
+            PageLoadEvent::Finished => {
+                if let Some(window) = webview.get_webview_window(MAIN) {
+                    tell_fullscreen(&window, true);
+                }
             }
         })
         .on_new_window(move |url, _| {
@@ -159,6 +181,48 @@ fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
             true
         })
         .build()
+}
+
+/// The web app's own top bars hold the window buttons (and are where the window drags from): it lays them out
+/// around the buttons when the page is marked `data-desktop="macos"`. The buttons' position lines them up with its
+/// top row.
+#[cfg(target_os = "macos")]
+fn title_bar(builder: WebviewWindowBuilder<'_, Wry, AppHandle>) -> WebviewWindowBuilder<'_, Wry, AppHandle> {
+    builder
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+        .traffic_light_position(tauri::LogicalPosition::new(22.0, 43.5))
+        .initialization_script("document.documentElement.dataset.desktop = 'macos'")
+}
+
+#[cfg(not(target_os = "macos"))]
+fn title_bar(builder: WebviewWindowBuilder<'_, Wry, AppHandle>) -> WebviewWindowBuilder<'_, Wry, AppHandle> {
+    builder
+}
+
+/// Full screen hides the window buttons, so the page drops the room it keeps for them (`data-fullscreen`).
+/// `always`: a page just loaded, which hasn't been told yet.
+fn tell_fullscreen(window: &WebviewWindow, always: bool) {
+    let full = window.is_fullscreen().unwrap_or(false);
+    let told = std::mem::replace(&mut *window.state::<State>().fullscreen.lock().unwrap(), full);
+    if always || told != full {
+        let _ = window.eval(format!(
+            "document.documentElement.toggleAttribute('data-fullscreen', {full})"
+        ));
+    }
+}
+
+/// Lets the server's pages move the window from their drag regions and zoom it with a double-click, the only
+/// part of the app's API they get. Granted while the app runs; a server changed to adds its own.
+fn allow_window_moves(app: &AppHandle, server: &Url) -> tauri::Result<()> {
+    app.add_capability(
+        CapabilityBuilder::new("server")
+            .remote(format!("{server}*"))
+            .local(false)
+            .window(MAIN)
+            .permission("core:window:allow-start-dragging")
+            .permission("core:window:allow-internal-toggle-maximize"),
+    )
 }
 
 #[derive(Debug, PartialEq)]

@@ -3,6 +3,7 @@ import { useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalSto
 import { ApiError } from '../api/client'
 import { ChecklistTool, ImageTool, IndentTools, LinkForm, LinkTool, MarkTools, NoteContent, TextStyles, Tool, replaceNote, useNoteEditor } from '../editor/editor'
 import { noteFields, noteSummary, titleOf } from '../editor/note-doc'
+import { dragRegion } from '../desktop'
 import { ImageError } from '../images/prepare'
 import { imageMarkdown } from '../images/ref'
 import { insertImageAt, resealImages, storeImage } from '../images/store'
@@ -168,7 +169,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
         />
       ) : (
         <>
-          <div className={styles.bar}>
+          <div className={styles.bar} {...dragRegion('deep')}>
             {mobile && <BackButton onClick={onBack} />}
           </div>
           <div className={styles.placeholder}>
@@ -428,7 +429,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
 
   return (
     <>
-      <div className={styles.bar}>
+      <div className={styles.bar} {...dragRegion('deep')}>
         {mobile && <BackButton onClick={onBack} />}
         <span className={styles.spacer} />
         <StatusPill state={snap.imagesBusy ? 'saving' : snap.state} shown={statusShown || snap.imagesBusy} detail={statusDetail} />

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { dragRegion } from '../desktop'
 import type { SyncNotice } from '../offline/protocol'
 import { navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
@@ -252,9 +253,9 @@ function ShellView({ username }: { username: string }) {
   return (
     <>
       <Backdrop />
-      <div className={styles.frame}>
+      <div className={styles.frame} {...dragRegion('self')}>
         <SyncBanners />
-        <div className={styles.app}>
+        <div className={styles.app} {...dragRegion('self')}>
           {wide && tagsPanel({ onHide: () => hideSidebar(true), hidden: sidebarHidden })}
           {tagsScreen && tagsPanel()}
           {showList && (

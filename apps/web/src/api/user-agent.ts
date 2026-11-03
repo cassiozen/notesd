@@ -1,4 +1,11 @@
-/** "Chrome on macOS" from a user agent string; the server stores it as the session's name. */
+import { inDesktopApp } from '../desktop'
+
+/** This session's name, which the server stores: the browser's, or the macOS app's. */
+export function deviceName(): string {
+  return inDesktopApp() ? 'notesd for macOS' : browserName()
+}
+
+/** "Chrome on macOS" from a user agent string; older sessions stored the raw string. */
 export function browserName(ua = typeof navigator === 'undefined' ? '' : navigator.userAgent): string {
   const browser = /Edg\//.test(ua)
     ? 'Edge'
