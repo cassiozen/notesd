@@ -1,0 +1,35 @@
+apps/web/src/editor/agent-edit.ts
+  s_f7b126b009a7df::t_f92338c30b46ec 5,50-51
+apps/web/src/editor/agent-presence.test.ts
+  s_f7b126b009a7df::t_941a9dc866362c 1-68
+apps/web/src/editor/agent-presence.ts
+  s_f7b126b009a7df::t_de8d7d770a8ed2 1-140
+apps/web/src/editor/editor.module.css
+  s_f7b126b009a7df::t_2c0f930d8fa252 548-634
+apps/web/src/editor/editor.tsx
+  s_f7b126b009a7df::t_d4cffad2cddda7 2,52
+apps/web/src/notes/note-pane.tsx
+  s_f7b126b009a7df::t_1bff86de9bc672 21,358-364,493-496
+apps/web/test/helpers.tsx
+  s_f7b126b009a7df::t_26f2b160c06121 137,141-145
+docs/contributing/architecture.md
+  s_f7b126b009a7df::t_e7881dd4eda732 494
+docs/guides/using/agents.md
+  s_f7b126b009a7df::t_22cb4669b52642 50-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba6fba7f13e492d42a670fde5dde9931079e1043",
+  "prompts": {},
+  "sessions": {
+    "s_f7b126b009a7df": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "01831c3f-3735-475a-a275-171492177473",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
