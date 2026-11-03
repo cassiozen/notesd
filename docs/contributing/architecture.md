@@ -63,7 +63,7 @@ The web app offers full note management, editing and search. By default it works
 
 | Excluded | Reason |
 | --- | --- |
-| Real-time collaboration, CRDTs, WebSockets | One active editor per note; HTTP sync is sufficient |
+| Real-time collaboration, CRDTs | One active editor per note; HTTP sync is sufficient. The one WebSocket is for agents and editors (§7.8), not for syncing notes |
 | Full version history, automatic Markdown merge | Not needed to preserve conflicts; formatting-aware merging is complex |
 | File attachments | Need their own storage and sync design; images are the exception (§7.6) |
 | Sharing or collaborating on notes between accounts, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
@@ -479,9 +479,16 @@ The user guide is [agents](../guides/using/agents.md).
   title and content, since the tombstone has neither; a move queues *moved out* (as it left) and
   *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); a sweep
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
-  for the space the note is in then. Never a trigger: the agent's own writes and saves marked
+  for the space the note is in then, or at once when an editor closes the note and the server has
+  what it last saved (`editor.closed` on the socket below). Never a trigger: the agent's own writes and saves marked
   `agent.only`, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
   locked notes, and conflicted or recovered copies.
+- **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
+  authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
+  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while some space's
+  agent is on, and says which notes its editor opens and closes. The server pings every 25 seconds,
+  under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
+  connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
 - **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
   time, so one at a time per note. At most 4 provider calls run at once across accounts. With AI
   removed the queue waits. A run is told notesd's instructions and the date in the account's time
@@ -571,6 +578,7 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `GET` `PUT` `DELETE` | `/api/v1/settings/email` | The Resend API key (write-only) and sender |
 | `GET` | `/api/v1/agent/spaces` | Every space's agent that has been set up |
 | `GET` `PUT` `DELETE` | `/api/v1/agent/spaces/:id` | A space's agent: on or off, its prompt, a prompt per trigger, the menu command's name |
+| `GET` | `/api/v1/agent/socket` | WebSocket: editors say which notes they have open (§7.8) |
 | `GET` `PUT` | `/api/v1/settings/account` | The account's time zone; devices send theirs as `X-Notesd-Time-Zone` |
 | `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per account |
 | `POST` | `/api/v1/settings/ai/test` | Check the provider answers and the model calls tools |

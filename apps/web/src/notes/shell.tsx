@@ -1,3 +1,4 @@
+import { useAgentSocket } from '../agent/socket'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { SyncNotice } from '../offline/protocol'
 import { navigate, parseRoute, usePathname } from '../router'
@@ -44,6 +45,7 @@ export function loadSidebarHidden(): boolean {
 }
 
 function ShellView({ username }: { username: string }) {
+  useAgentSocket()
   const pathname = usePathname()
   const route = parseRoute(pathname)
   const mobile = useMediaQuery(PHONE)

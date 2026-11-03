@@ -483,7 +483,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		Log:      log,
 	})
 	users.OnNote(func(userID int64, _ notes.Event) { runner.Wake(userID) })
-	cfg := api.Config{ResendURL: o.resendURL, Version: version, OnAIChanged: runner.WakeAll}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, OnAIChanged: runner.WakeAll, OnRunQueued: runner.Wake}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}

@@ -91,7 +91,8 @@ export default defineConfig({
     // server rejects mutations whose Origin host differs from Host, and the
     // browser's Origin is the Vite dev server.
     proxy: Object.fromEntries(
-      ['/api', '/healthz', '/readyz'].map((path) => [path, { target: server, changeOrigin: false }]),
+      // ws: the agent socket (/api/v1/agent/socket) goes through too.
+      ['/api', '/healthz', '/readyz'].map((path) => [path, { target: server, changeOrigin: false, ws: path === '/api' }]),
     ),
   },
   test: {

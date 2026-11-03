@@ -397,6 +397,7 @@ other accounts get `403 admin_only` when they change it.
 | `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore, usage}`, newest first |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
+| `GET` | `/agent/socket` | WebSocket; see below |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
@@ -436,6 +437,19 @@ note is undone on its own, so one changed note doesn't stop the rest; `skipped` 
 `reason`, as `blocked` above. Undoing again retries only what was skipped. When nothing can be
 undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
 `partly_undone` while some of its changes stand. Undo fires no triggers.
+
+**The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
+browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
+account is `429 rate_limited`. Messages are JSON text with a `type`; a type a side doesn't know is
+ignored, so either may add some.
+
+| From | Message | Meaning |
+| --- | --- | --- |
+| Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
+| Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
+| Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
+
+The server pings every 25 seconds; a proxy in front must pass WebSocket upgrades.
 
 ### AI
 

@@ -15,6 +15,7 @@ import { UnlockForm } from '../locks/unlock'
 import { navigate } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
+import { agentSocket } from '../agent/socket'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -147,10 +148,17 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   }, [id, load.kind, saverFor, removed, space, setSpace])
 
   const saver = load.kind === 'ready' ? load.saver : null
-  // Leaving the note: save what's left, then let the store forget it.
+  // Leaving the note: save what's left, then let the store forget it. Agents
+  // hear of both, so closing a note ends its writing session at once.
   useEffect(() => {
     if (!saver) return
-    return () => void saver.flush().finally(() => release(saver.id))
+    agentSocket.noteOpened(saver.id)
+    return () =>
+      void saver
+        .savedRevision()
+        .catch(() => null)
+        .then((revision) => agentSocket.noteClosed(saver.id, revision))
+        .finally(() => release(saver.id))
   }, [saver, release])
 
   return (

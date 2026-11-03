@@ -41,6 +41,12 @@ func newEnv(t *testing.T) *env {
 
 func newEnvWith(t *testing.T, cfg api.Config) *env {
 	t.Helper()
+	return newEnvServer(t, cfg, nil)
+}
+
+// newEnvServer also lets the test set up the HTTP server before it starts.
+func newEnvServer(t *testing.T, cfg api.Config, setup func(*http.Server)) *env {
+	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
 	system, err := database.OpenSystem(ctx, filepath.Join(dir, "system.db"))
@@ -52,7 +58,11 @@ func newEnvWith(t *testing.T, cfg api.Config) *env {
 	t.Cleanup(func() { users.Close() })
 	a := auth.NewService(system)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(api.New(system, users, a, log, cfg).Handler())
+	srv := httptest.NewUnstartedServer(api.New(system, users, a, log, cfg).Handler())
+	if setup != nil {
+		setup(srv.Config)
+	}
+	srv.Start()
 	t.Cleanup(srv.Close)
 	return &env{t: t, srv: srv, auth: a, users: users}
 }
