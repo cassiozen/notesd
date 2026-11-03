@@ -7,6 +7,13 @@ storage (OPFS). This side adds what a Mac app has and a browser tab doesn't:
 its own window and Dock icon, menus, links that open in your browser, and
 downloads to the Downloads folder.
 
+The window has no title bar: its buttons sit in the web app's top bars, as in
+most Mac apps. The page is marked `data-desktop="macos"` before it loads; the
+web app then lays its bars out around the buttons, marks where the window
+drags from, offers no passkeys (this WebKit refuses them), and names its
+session "notesd for macOS". Full screen, which hides the buttons, adds
+`data-fullscreen`.
+
 Built with [Tauri 2](https://tauri.app) on the system's WKWebView. macOS only
 for now.
 
@@ -25,7 +32,8 @@ for now.
 - `src-tauri/src/server.rs`: turns what was typed into an origin (https://
   unless it's this Mac) and checks it.
 - `src-tauri/capabilities/`: which pages may call the app's commands. Only
-  the setup page; the server's pages get nothing.
+  the setup page. The server's pages may only move and zoom the window, a
+  capability added while the app runs, as their address is the user's.
 
 The chosen server is kept in `~/Library/Application Support/app.notesd.desktop/settings.json`.
 Notes kept for offline use live in the window's WebKit storage for that

@@ -5,6 +5,7 @@ import { ChecklistTool, ImageTool, IndentTools, LinkForm, LinkTool, MarkTools, N
 import { FindBar, findShortcut, seedFrom, type FindRequest } from '../editor/find-bar'
 import { step } from '../editor/find'
 import { noteFields, noteSummary, titleOf } from '../editor/note-doc'
+import { dragRegion } from '../desktop'
 import { ImageError } from '../images/prepare'
 import { imageMarkdown } from '../images/ref'
 import { insertImageAt, resealImages, storeImage } from '../images/store'
@@ -170,7 +171,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
         />
       ) : (
         <>
-          <div className={styles.bar}>
+          <div className={styles.bar} {...dragRegion('deep')}>
             {mobile && <BackButton onClick={onBack} />}
           </div>
           <div className={styles.placeholder}>
@@ -470,7 +471,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
 
   return (
     <>
-      <div className={styles.bar}>
+      <div className={styles.bar} {...dragRegion('deep')}>
         {mobile && <BackButton onClick={onBack} />}
         <span className={styles.spacer} />
         <StatusPill state={snap.imagesBusy ? 'saving' : snap.state} shown={statusShown || snap.imagesBusy} detail={statusDetail} />

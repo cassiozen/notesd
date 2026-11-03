@@ -1,5 +1,6 @@
 import { useEffect, useState, useSyncExternalStore } from 'react'
 import { versionState } from '../api/version'
+import { dragRegion } from '../desktop'
 import { Banner } from '../ui/banner'
 import { Button } from '../ui/button'
 import { useNotesSource, type Unsynced } from './source'
@@ -45,7 +46,7 @@ export function SyncBanners() {
   if (!upgrade && !showParked && !showUnsynced && !version.reload) return null
 
   return (
-    <div className={styles.banners}>
+    <div className={styles.banners} {...dragRegion('self')}>
       {upgrade && <Banner tone="error">{UPGRADE_REQUIRED}</Banner>}
       {showParked && (
         <Banner
