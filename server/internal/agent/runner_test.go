@@ -75,6 +75,7 @@ type harness struct {
 	runner   *agent.Runner
 	settings llm.Settings
 	setupErr error
+	editor   *fakeEditor
 }
 
 func newHarness(t *testing.T) *harness {
@@ -84,8 +85,12 @@ func newHarness(t *testing.T) *harness {
 	h.runner = agent.NewRunner(agent.RunnerConfig{
 		Accounts: func(context.Context) ([]int64, error) { return []int64{1}, nil },
 		Open: func(context.Context, int64) (agent.Account, error) {
-			return agent.Account{Notes: f.d.Notes, Agent: f.d.Agent,
-				SpaceName: func(_ context.Context, id string) string { return "space " + id }}, nil
+			a := agent.Account{Notes: f.d.Notes, Agent: f.d.Agent,
+				SpaceName: func(_ context.Context, id string) string { return "space " + id }}
+			if h.editor != nil {
+				a.Editors = h.editor
+			}
+			return a, nil
 		},
 		Settings: func(context.Context) (llm.Settings, error) { return h.settings, h.setupErr },
 		Provider: h.model,
@@ -250,13 +255,14 @@ func TestToolsRefuseAndExplain(t *testing.T) {
 		call("edit_note", `{"find": "a", "replace": "x"}`),
 		call("edit_note", `{"find": "zzz", "replace": "x"}`),
 		call("get_note", `{"id": "elsewhere"}`),
+		call("insert", `{"at": "middle", "text": "x"}`),
 		call("insert", `{"at": "cursor", "text": "x"}`),
 		call("delete_note", `{}`),
 		call("edit_note", `not json`),
 		final("No change."),
 	)
 	h.next()
-	wants := []string{"appears 2 times", "doesn't appear", "isn't in this space", "at must be", `no tool called`, "aren't a JSON object"}
+	wants := []string{"appears 2 times", "doesn't appear", "isn't in this space", "at must be", "no cursor", `no tool called`, "aren't a JSON object"}
 	for i, want := range wants {
 		if got := lastToolResult(h.model.requests[i+1]); !strings.Contains(got, want) {
 			t.Errorf("call %d: want %q, got %s", i, want, got)

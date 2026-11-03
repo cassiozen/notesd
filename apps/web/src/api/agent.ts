@@ -24,7 +24,7 @@ export type AgentConfig = {
 export type AgentConfigInput = Pick<AgentConfig, 'enabled' | 'prompt' | 'menuLabel' | 'triggers'>
 
 /** Why an edit can't be undone. */
-export type UndoBlock = 'undone' | 'running' | 'deleted' | 'locked' | 'changed'
+export type UndoBlock = 'undone' | 'running' | 'deleted' | 'locked' | 'changed' | 'not_saved'
 
 /** A note a run changed or created. */
 export type RunEdit = {

@@ -37,6 +37,7 @@ const (
 	FailNotSetUp     = "ai_not_set_up" // AI was removed
 	FailQueueFull    = "queue_full"
 	FailUnknownEvent = "unknown_trigger"
+	FailEditorGone   = "editor_disconnected" // the editor went away while the run changed the note in it
 )
 
 // queuedRun is a run as the runner takes it from the queue.
@@ -47,6 +48,8 @@ type queuedRun struct {
 	NoteID   string
 	Event    Event
 	Attempts int
+	// ConnectionID is the editor that asked for the run, if one did.
+	ConnectionID string
 	// What earlier attempts used, counted against this one's caps.
 	PriorToolCalls int
 	PriorTokens    int64
@@ -213,6 +216,36 @@ func recordEdit(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 			after_title = excluded.after_title, after_content = excluded.after_content, written_at = excluded.written_at`,
 		ev.Agent.RunID, ev.NoteID, kind, beforeRev, beforeTitle, beforeContent, ev.After.Revision, ev.After.Title, ev.After.Content, now)
 	return err
+}
+
+// recordEditorEdit notes a change a run made in an editor. The editor saves
+// it later: linkEditorEdit fills in after_revision then. beforeRev is nil
+// when the editor had unsaved changes.
+func (s *Store) recordEditorEdit(ctx context.Context, runID, noteID string, beforeRev *int64, before, after Fields) error {
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO agent_run_edits (run_id, note_id, kind, before_revision, before_title, before_content,
+			                             after_revision, after_title, after_content, written_at)
+			VALUES (?, ?, 'edit', ?, ?, ?, NULL, ?, ?, ?)
+			ON CONFLICT(run_id, note_id) DO UPDATE SET after_revision = NULL,
+				after_title = excluded.after_title, after_content = excluded.after_content, written_at = excluded.written_at`,
+			runID, noteID, beforeRev, before.Title, before.Content, after.Title, after.Content, s.now().UnixMilli())
+		return err
+	})
+}
+
+// linkEditorEdit matches a save to a run's change made in an editor that
+// hadn't been saved: the same title and content. A save holding more than
+// that (the user typed too) isn't linked, so undo never takes their typing.
+func linkEditorEdit(ctx context.Context, tx *sql.Tx, ev notes.Event) (bool, error) {
+	res, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET after_revision = ?
+		WHERE note_id = ? AND after_revision IS NULL AND after_title = ? AND after_content = ?`,
+		ev.After.Revision, ev.NoteID, ev.After.Title, ev.After.Content)
+	if err != nil {
+		return false, err
+	}
+	n, err := res.RowsAffected()
+	return n > 0, err
 }
 
 // edited reports what a run changed: notes it edited, and notes it created.

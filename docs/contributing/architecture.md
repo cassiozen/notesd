@@ -493,13 +493,22 @@ The user guide is [agents](../guides/using/agents.md).
   time, so one at a time per note. At most 4 provider calls run at once across accounts. With AI
   removed the queue waits. A run is told notesd's instructions and the date in the account's time
   zone, the space's prompt, the trigger's prompt, and the event with the note.
-- **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`. Write: `set_title`,
-  `edit_note` (find must match exactly once), `insert` (start or end), `create_note`. Nothing
-  deletes, moves or locks a note, or leaves the space; locked notes are left out of every listing
-  and search, not only hidden from reads. `get_cursor` and inserting at the cursor come with
-  the editor connection. Writes go through the store as ordinary
-  updates marked `agent: {runId, only: true}`, based on the revision the run read. If the note
-  changed since, the run starts over once, then gives up.
+- **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
+  `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
+  `create_note`. Nothing deletes, moves or locks a note, or leaves the space; locked notes are left
+  out of every listing and search, not only hidden from reads. Writes go through the store as
+  ordinary updates marked `agent: {runId, only: true}`, based on the revision the run read. If the
+  note changed since, the run starts over once, then gives up.
+- **In the editor.** A note an editor has open on the socket is read from it instead: unsaved
+  typing and the cursor included (`internal/editors`; the run's own editor first, else the one that
+  opened it last). A write to it is worked out on the server as above, then sent as before and
+  after; the editor applies it if it still shows before (else the run starts over), as one step
+  the user can undo there, and saves it. The edit is recorded with no `after_revision` until a save
+  holding exactly what the run left arrives, whatever the save says of itself; that save fires
+  nothing. A save with the user's typing in it isn't linked, so undo can't take their typing; the
+  edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
+  seconds counts as gone: a read falls back to the store, a write fails the run
+  (`editor_disconnected`).
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the

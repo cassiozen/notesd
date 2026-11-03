@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"strings"
 	"sync/atomic"
@@ -11,7 +12,9 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/api"
+	"notes/server/internal/editors"
 )
 
 // Bounds every socket call, so a missed reply fails the test instead of hanging it.
@@ -39,8 +42,17 @@ func (e *env) dialSocket(c *client, origin string) (conn *websocket.Conn, status
 	return conn, status, err
 }
 
-// socket connects and reads the server's hello.
+// socket connects and reads the server's hello, then keeps reading so
+// pings are answered.
 func (e *env) socket(c *client) (*websocket.Conn, string) {
+	e.t.Helper()
+	conn, id := e.editorSocket(c)
+	conn.CloseRead(ctx)
+	return conn, id
+}
+
+// editorSocket connects and reads the hello; the test reads what follows.
+func (e *env) editorSocket(c *client) (*websocket.Conn, string) {
 	e.t.Helper()
 	origin := e.srv.URL
 	if c.bearer != "" {
@@ -59,8 +71,6 @@ func (e *env) socket(c *client) (*websocket.Conn, string) {
 	if err := wsjson.Read(ctx, conn, &hello); err != nil || hello.Type != "hello" || hello.ConnectionID == "" || hello.Protocol != api.SocketProtocol {
 		e.t.Fatalf("hello: %+v %v", hello, err)
 	}
-	// Reads on, so pongs (and the server's pings) are answered.
-	conn.CloseRead(ctx)
 	return conn, hello.ConnectionID
 }
 
@@ -154,5 +164,37 @@ func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
 	settle(tab2)
 	if n := queued(); n != 1 || woken.Load() != 1 {
 		t.Fatalf("runs %d, woken %d", n, woken.Load())
+	}
+}
+
+func TestRunsReadThroughTheSocket(t *testing.T) {
+	hub := editors.NewHub()
+	e := newEnvWith(t, api.Config{Editors: hub})
+	e.setupOwner()
+	conn, connID := e.editorSocket(e.webClient())
+	if err := wsjson.Write(ctx, conn, map[string]any{"type": "editor.opened", "noteId": "n1"}); err != nil {
+		t.Fatal(err)
+	}
+	// The editor answers the one request it gets.
+	go func() {
+		var req map[string]any
+		if err := wsjson.Read(ctx, conn, &req); err != nil || req["type"] != "read" || req["noteId"] != "n1" {
+			t.Errorf("request: %v %v", req, err)
+			return
+		}
+		_ = wsjson.Write(ctx, conn, map[string]any{"type": "result", "id": req["id"], "spaceId": "default",
+			"title": "Draft", "content": "Typed, not saved", "cursor": 5, "revision": nil})
+	}()
+	var n agent.EditorNote
+	var err error
+	// editor.opened may not have reached the hub yet.
+	for range 100 {
+		if n, err = hub.For(1).Read(ctx, "n1", connID); !errors.Is(err, agent.ErrNotOpen) {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if err != nil || n.Content != "Typed, not saved" || n.Cursor == nil || *n.Cursor != 5 || n.Revision != nil {
+		t.Fatalf("read: %+v %v", n, err)
 	}
 }

@@ -83,6 +83,9 @@ describe('the agent socket, connecting', () => {
       { type: 'editor.closed', noteId: 'n2', revision: 3 },
     ])
 
+    first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
+    expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' })
+
     first.drop()
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
     const second = FakeSocket.all[1]

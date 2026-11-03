@@ -72,6 +72,9 @@ class AgentSocket {
         this.failures = 0
         this.connectionId = m.connectionId
         for (const noteId of this.open) this.send({ type: 'editor.opened', noteId })
+      } else if (typeof m?.id === 'string') {
+        // A request this tab can't do: the server reads the store instead of waiting.
+        this.send({ type: 'result', id: m.id, error: 'not_open' })
       }
     })
     ws.addEventListener('close', () => {
