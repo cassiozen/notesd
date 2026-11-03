@@ -42,7 +42,7 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 
 ## Apps
 
-- [Desktop web app](guides/apps/desktop-web-app.md): install the Web App as a that works fully offline
+- [Desktop web app](guides/apps/desktop-web-app.md): install notesd as a desktop app that works fully offline
 - [Android](guides/apps/android.md): installing, connecting
 - [iPhone](guides/apps/iphone.md): building, installing, connecting
 

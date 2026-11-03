@@ -1,3 +1,4 @@
+import fs from "node:fs/promises";
 import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
@@ -33,6 +34,27 @@ function rewriteLinks(md) {
   };
 }
 
+// Moved pages: old path → new path, both without base or extension. The host isn't configured
+// from this repo, so old URLs get a static page that forwards to the new one (keeping the #hash).
+const redirects = {
+  "guides/apps/web": "guides/apps/desktop-web-app",
+};
+
+async function writeRedirects(outDir, base) {
+  for (const [from, to] of Object.entries(redirects)) {
+    const url = `${base}${to}.html`;
+    const html = `<!doctype html><meta charset="utf-8"><title>Moved</title>
+<meta name="robots" content="noindex"><link rel="canonical" href="${url}">
+<meta http-equiv="refresh" content="0; url=${url}">
+<script>location.replace(${JSON.stringify(url)} + location.hash)</script>
+<p>This page moved to <a href="${url}">${url}</a>.</p>
+`;
+    const file = path.join(outDir, `${from}.html`);
+    await fs.mkdir(path.dirname(file), { recursive: true });
+    await fs.writeFile(file, html);
+  }
+}
+
 export default defineConfig({
   srcDir: "../docs",
   srcExclude: ["contributing/**"],
@@ -45,6 +67,7 @@ export default defineConfig({
   appearance: "force-dark",
   lastUpdated: true,
   ignoreDeadLinks: "localhostLinks",
+  buildEnd: (siteConfig) => writeRedirects(siteConfig.outDir, siteConfig.site.base),
   head: [
     ["link", { rel: "icon", href: "/docs/icon.png" }],
     ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
