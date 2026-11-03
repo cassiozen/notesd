@@ -559,3 +559,90 @@
 .prose [data-image-view][data-state='missing'] img {
   border: 1px dashed var(--hair-strong);
 }
+
+/* An agent at work on the note: a marker where it's expected to write. */
+.agentMark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-inline: 2px;
+  padding: 1px 9px 1px 7px;
+  border-radius: 999px;
+  background: color-mix(in oklch, var(--accent) 22%, transparent);
+  color: var(--ink-2);
+  font: 500 12.5px/1.6 var(--font-sans);
+  vertical-align: 0.1em;
+  user-select: none;
+  animation: agent-mark-in 0.25s var(--ease-out);
+}
+
+.agentDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  animation: agent-pulse 1.2s ease-in-out infinite;
+}
+
+/* What it wrote: warm for a moment, then plain text like the rest. */
+.agentLanded {
+  border-radius: 3px;
+  animation: agent-landed 3s var(--ease-out) forwards;
+}
+
+.agentUndo {
+  margin-inline-start: 8px;
+  padding: 1px 9px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--ink-2);
+  font: 500 12px/1.6 var(--font-sans);
+  vertical-align: 0.1em;
+  cursor: pointer;
+  animation: agent-mark-in 0.25s var(--ease-out);
+}
+
+.agentUndo:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+
+@keyframes agent-mark-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+}
+
+@keyframes agent-pulse {
+  50% {
+    opacity: 0.35;
+    transform: scale(0.75);
+  }
+}
+
+@keyframes agent-landed {
+  from {
+    background: color-mix(in oklch, var(--accent) 38%, transparent);
+  }
+  to {
+    background: transparent;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agentMark,
+  .agentUndo {
+    animation: none;
+  }
+
+  .agentDot {
+    animation: none;
+  }
+
+  .agentLanded {
+    animation: none;
+    background: color-mix(in oklch, var(--accent) 22%, transparent);
+  }
+}

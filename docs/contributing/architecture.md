@@ -147,7 +147,7 @@ CREATE TABLE lock_state (id INTEGER PRIMARY KEY CHECK (id = 1), verifier_hash TE
 CREATE TABLE account_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 -- Each space's agent (kept when turned off) and its prompt per trigger; both go with the space.
 CREATE TABLE agent_spaces (space_id TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE, enabled INTEGER,
-                           prompt TEXT, menu_label TEXT, updated_at INTEGER);
+                           prompt TEXT, menu_label TEXT, reference_notes TEXT, updated_at INTEGER);
 CREATE TABLE agent_triggers (space_id TEXT REFERENCES agent_spaces(space_id) ON DELETE CASCADE, trigger TEXT,
                              prompt TEXT, PRIMARY KEY (space_id, trigger));
 -- Agents' runs: queued and running ones are the queue, finished ones the activity log (§7.8).
@@ -482,23 +482,31 @@ The user guide is [agents](../guides/using/agents.md).
   *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); the runner
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
   for the space the note is in then, or at once when an editor closes the note and the server has
-  what it last saved (`editor.closed` on the socket below). Never a trigger: the agent's own writes and saves holding
+  what it last saved (`editor.closed` on the socket below). The editor asks for *note created*,
+  *started editing* and the menu command (`POST /agent/runs`), queued ahead of the rest; a
+  *note created* run may start before the note is saved, reading it from that editor. A new note
+  whose first save holds only an agent's change starts its session at that revision, so only the
+  user's writing ends it with a trigger. Never a trigger: the agent's own writes and saves holding
   only its change, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
   locked notes, and conflicted or recovered copies.
 - **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
   authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
-  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it shows has its
-  agent on, and says which notes its editor opens and closes; leaving for a space without one, it
-  closes once the open note has said it closed. The server pings every 25 seconds,
+  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it
+  shows has its agent on, and says which notes its editor opens and closes; leaving for a space
+  without one, it closes once the open note has said it closed. The server tells every editor of
+  the account when a run starts and ends (a marker in the note where the agent is likely to write, a failure on the note). The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
-- **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
-  time, so one at a time per note. It sleeps until a write queues a run or starts a session, or
-  the next of those is due. At most 4 provider calls run at once across accounts. With AI
-  removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
+- **Runner.** Each account has two slots: one runs its queue in order, editor triggers first; the
+  other runs only editor triggers, so a new note's run never waits behind a finished note's. A run
+  waits while another on its note runs. A slot sleeps until a write queues a run or starts a
+  session, or the next of those is due. At most 4 provider calls run at once across accounts. With
+  AI removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
   prompt, which stay the same from run to run so the provider can cache them, then the event: the
   time in the account's time zone and the note. Each run logs where its time went: waiting, getting
-  ready, the model's calls and the tools'.
+  ready, the model's calls and the tools'. So the model can act
+  in its first call, the event also carries the cursor (in an editor), the space's tags, and the
+  space's reference notes.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
   `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a

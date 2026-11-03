@@ -3,7 +3,6 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"regexp"
 	"time"
@@ -12,7 +11,6 @@ import (
 	"github.com/coder/websocket/wsjson"
 
 	"notes/server/internal/auth"
-	"notes/server/internal/editors"
 )
 
 // noteIDPattern is a note id, as the notes API takes one.
@@ -47,20 +45,23 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	data, userID := userFrom(r.Context()), sessionFrom(r.Context()).UserID
-	var c *websocket.Conn
-	// Calls come only for notes the editor said it opened, so after Accept.
-	ec, err := s.editors.Add(userID, func(ctx context.Context, msg any) error { return wsjson.Write(ctx, c, msg) })
-	if errors.Is(err, editors.ErrTooMany) {
+	if s.editors.Full(userID) {
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many open connections")
 		return
 	}
-	defer s.editors.Remove(ec)
 	// Origin checked above, with the proxy headers Accept doesn't know.
-	c, err = websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
+	c, err := websocket.Accept(w, r, &websocket.AcceptOptions{InsecureSkipVerify: true})
 	if err != nil {
 		return
 	}
 	defer func() { _ = c.CloseNow() }()
+	ec, err := s.editors.Add(userID, func(ctx context.Context, msg any) error { return wsjson.Write(ctx, c, msg) })
+	if err != nil {
+		// Others connected meanwhile.
+		_ = c.Close(websocket.StatusTryAgainLater, "too many open connections")
+		return
+	}
+	defer s.editors.Remove(ec)
 	// A read's reply carries a whole note.
 	c.SetReadLimit(4 << 20)
 	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))

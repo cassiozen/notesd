@@ -145,9 +145,24 @@ describe('the agent socket, connecting', () => {
       { type: 'editor.opened', noteId: 'n2' },
       { type: 'editor.closed', noteId: 'n2', revision: 3 },
     ])
+    // Reopened before the close (it waits on the save) lands: still open.
+    agentSocket.noteOpened('n2')
+    agentSocket.noteOpened('n2')
+    agentSocket.noteClosed('n2', 3)
+    expect(first.sent.slice(3).map((m) => (m as { type: string }).type)).toEqual(['editor.opened', 'editor.opened'])
+    agentSocket.noteClosed('n2', 4)
+    expect(first.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n2', revision: 4 })
 
     first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
     await waitFor(() => expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' }))
+
+    const run = (status: string) =>
+      first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'run', runId: 'r1', noteId: 'n1', trigger: 'menu', status }) }))
+    run('running')
+    expect(agentSocket.isRunning('n1')).toBe(true)
+    run('done')
+    expect(agentSocket.isRunning('n1')).toBe(false)
+    run('running')
 
     // Asked just before the drop: its answer must not reach the next connection.
     let answer: ((v: object) => void) | undefined
@@ -160,6 +175,8 @@ describe('the agent socket, connecting', () => {
     first.drop()
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
     const second = FakeSocket.all[1]
+    // What was going is unknown once the connection drops.
+    expect(agentSocket.isRunning('n1')).toBe(false)
     second?.hello()
     answer?.({})
     await new Promise((r) => setTimeout(r, 0))
@@ -217,5 +234,25 @@ describe('the agent socket, connecting', () => {
     await new Promise((r) => setTimeout(r, 60))
     expect(third?.readyState).toBe(WebSocket.OPEN)
     agentSocket.noteClosed('n3', null)
+  })
+
+  it('sends nothing for a note closed after a reset', () => {
+    const make = socketFactory.make
+    socketFactory.make = () => new FakeSocket() as unknown as WebSocket
+    onTestFinished(() => {
+      agentSocket.stop()
+      socketFactory.make = make
+      FakeSocket.all = []
+    })
+    agentSocket.start()
+    agentSocket.noteOpened('n1')
+    agentSocket.reset()
+    agentSocket.start()
+    const socket = FakeSocket.all.at(-1)
+    if (!socket) throw new Error('no socket')
+    socket.hello()
+    // The editor's close waits on its save, so it can land once the next account's socket is up.
+    agentSocket.noteClosed('n1', 2)
+    expect(socket.sent).toEqual([])
   })
 })

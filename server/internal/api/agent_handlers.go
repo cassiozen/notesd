@@ -126,6 +126,27 @@ func (s *Server) agentUsage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"day": usage.Day, "tokens": usage.Tokens, "runs": usage.Runs, "dailyTokenCap": limitCap})
 }
 
+// POST /api/v1/agent/runs — an editor asks for a run: a new note opened,
+// editing started, or the menu command. 202 with the run's id.
+func (s *Server) requestAgentRun(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		Trigger      agent.Trigger `json:"trigger"`
+		NoteID       string        `json:"noteId"`
+		SpaceID      string        `json:"spaceId"`
+		ConnectionID string        `json:"connectionId"`
+	}
+	if err := decode(w, r, &req); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	id, err := userFrom(r.Context()).Agent.RequestRun(r.Context(), agent.RunRequest(req))
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusAccepted, map[string]string{"runId": id})
+}
+
 // POST /api/v1/agent/runs/{id}/undo — puts back what a run changed, where
 // nobody has changed it since. 409 nothing_to_undo when nothing could be.
 func (s *Server) undoAgentRun(w http.ResponseWriter, r *http.Request) {

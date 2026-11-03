@@ -56,17 +56,26 @@ type queuedRun struct {
 	PriorTokens    int64
 }
 
+// editorPriority is the queue priority of runs an open editor asked for.
+const editorPriority = 1
+
 // claim takes the next run that's due, editor triggers first, and marks it
-// running. ok is false when none is due.
-func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
+// running; editorOnly, only one an editor asked for. A note's run waits
+// while another on it runs. ok is false when none is due.
+func (s *Store) claim(ctx context.Context, editorOnly bool) (r queuedRun, ok bool, err error) {
 	now := s.now().UnixMilli()
+	minPriority := 0
+	if editorOnly {
+		minPriority = editorPriority
+	}
 	var ev string
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		return tx.QueryRowContext(ctx, `
 			UPDATE agent_runs SET status = 'running', started_at = ?, attempts = attempts + 1
-			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ?
+			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ? AND priority >= ?
+			              AND note_id NOT IN (SELECT note_id FROM agent_runs WHERE status = 'running')
 			            ORDER BY priority DESC, created_at, rowid LIMIT 1)
-			RETURNING id, created_at, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now).
+			RETURNING id, created_at, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now, minPriority).
 			Scan(&r.ID, &r.CreatedAt, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts, &r.PriorToolCalls, &r.PriorTokens)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
@@ -78,6 +87,7 @@ func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
 	if err := json.Unmarshal([]byte(ev), &r.Event); err != nil {
 		return r, true, err
 	}
+	r.ConnectionID = r.Event.ConnectionID
 	return r, true, nil
 }
 

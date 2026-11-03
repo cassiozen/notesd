@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -100,6 +101,8 @@ func TestConfigValidation(t *testing.T) {
 		{agent.Config{Triggers: map[agent.Trigger]string{agent.Menu: "Fix typos."}}, "menuLabel"},
 		{agent.Config{MenuLabel: strings.Repeat("x", 41)}, "menuLabel"},
 		{agent.Config{MenuLabel: "Fix\x00"}, "menuLabel"},
+		{agent.Config{ReferenceNotes: []string{"a", "b", "c", "d", "e", "f"}}, "referenceNotes"},
+		{agent.Config{ReferenceNotes: []string{strings.Repeat("x", 201)}}, "referenceNotes"},
 	} {
 		tc.c.SpaceID = spaces.Default
 		var ie *agent.InputError
@@ -144,5 +147,30 @@ func TestTimeZone(t *testing.T) {
 	}
 	if st, _ = s.Settings(ctx); st.TimeZone != "Asia/Tokyo" {
 		t.Fatalf("device overrode the user's choice: %+v", st)
+	}
+}
+
+func TestReferenceNotes(t *testing.T) {
+	_, s := setup(t)
+	put := func(refs []string) agent.Config {
+		t.Helper()
+		c, err := s.Put(ctx, agent.Config{SpaceID: spaces.Default, Enabled: true, ReferenceNotes: refs})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+	if c := put([]string{" Digest ", "", "Digest", "Reading  list"}); !slices.Equal(c.ReferenceNotes, []string{"Digest", "Reading list"}) {
+		t.Fatalf("cleaned: %q", c.ReferenceNotes)
+	}
+	// A client that doesn't know them keeps them.
+	if c := put(nil); !slices.Equal(c.ReferenceNotes, []string{"Digest", "Reading list"}) {
+		t.Fatalf("kept: %q", c.ReferenceNotes)
+	}
+	if c, _ := s.Config(ctx, spaces.Default); !slices.Equal(c.ReferenceNotes, []string{"Digest", "Reading list"}) {
+		t.Fatalf("read back: %q", c.ReferenceNotes)
+	}
+	if c := put([]string{}); len(c.ReferenceNotes) != 0 {
+		t.Fatalf("cleared: %q", c.ReferenceNotes)
 	}
 }
