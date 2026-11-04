@@ -28,8 +28,10 @@ storage, along with the server address and your sign-in details.
 - Signing out keeps your notes on the device so that you can sign in again later. To delete
   everything, use **Settings → Remove all data**, or uninstall the app.
 
-Locked notes are encrypted on your device before they're sent to the server. The server stores
-only the encrypted version.
+Locked notes are encrypted on your device before they're sent to the server, and the server stores only
+the encrypted text and pictures. Titles, dates, sizes and tags written in titles stay visible to the server.
+Plain copies of pictures from before a note was locked can stay on the server for 30 days, or longer while
+another note still shows them. Backups made before locking keep the earlier text and pictures.
 
 ## Permissions
 
