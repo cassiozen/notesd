@@ -1,0 +1,26 @@
+apps/desktop/src-tauri/signing/notesd.entitlements
+  s_f377e8ab9cbb1b::t_ddca3711bee03d 1-10
+apps/desktop/README.md
+  s_f377e8ab9cbb1b::t_b90d84e509d604 59,62-68
+  s_f377e8ab9cbb1b::t_c0178ac50ca52c 69
+mise.toml
+  s_f377e8ab9cbb1b::t_57cb85f20262d6 219-224
+apps/desktop/src-tauri/tauri.signed.conf.json
+  s_f377e8ab9cbb1b::t_ddca3711bee03d 1-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d99bfedf2519f54e181bd061c165a6d7f9f7b53c",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "unknown"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
