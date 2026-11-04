@@ -14,8 +14,7 @@ To hear about them, choose **Watch → Custom → Releases** on GitHub, or
 subscribe to its feed: `https://github.com/cassiozen/notesd/releases.atom`.
 
 To upgrade the binary ([systemd setup](binary-systemd.md#keep-it-running-with-systemd)),
-back up the data directory, then replace the binary and restart. If your unit still has
-`DynamicUser=yes`, [switch it first](#systemd-the-service-runs-as-you).
+back up the data directory, then replace the binary and restart:
 
 ```bash
 sudo systemctl stop notesd
@@ -49,34 +48,6 @@ To stay on one release line, use its tag instead of `latest`, e.g.
 `ghcr.io/cassiozen/notesd:0.2`.
 
 ## Changes that need action
-
-### systemd: the service runs as you
-
-The [systemd setup](binary-systemd.md#keep-it-running-with-systemd) used to have
-`DynamicUser=yes`, which kept the data in `/var/lib/private/notesd` and meant every `notesd`
-command had to go through a `notesd-run` shell function. It now runs as your own user, so you can
-run commands directly. The rest of these docs (backups, upgrading) assume the new setup, so switch
-before following them:
-
-1. Stop the server: `sudo systemctl stop notesd`
-2. In `/etc/systemd/system/notesd.service`, replace `DynamicUser=yes` with
-   `User=YOUR_USERNAME`.
-3. If you [update from Settings](#updating-from-settings), change `/var/lib/private/notesd` to
-   `/var/lib/notesd` in `notesd-update.service` and `notesd-update.path`.
-4. Move the data out of `/var/lib/private` and make it yours, then start again:
-
-   ```bash
-   sudo rm /var/lib/notesd   # only a link to the private directory
-   sudo mv /var/lib/private/notesd /var/lib/notesd
-   sudo chown -R YOUR_USERNAME: /var/lib/notesd
-   sudo systemctl daemon-reload
-   sudo systemctl start notesd
-   sudo systemctl restart notesd-update.path   # only if you update from Settings
-   ```
-
-5. Set `NOTESD_DATA_DIR` in your shell, as in the
-   [setup](binary-systemd.md#keep-it-running-with-systemd), and delete `notesd-run` if you
-   defined it.
 
 ### 1.0: update the apps too
 
