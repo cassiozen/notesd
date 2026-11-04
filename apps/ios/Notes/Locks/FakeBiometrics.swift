@@ -10,7 +10,9 @@ nonisolated final class FakeBiometrics: Biometrics {
     private let kept = Mutex<Data?>(nil)
 
     init(arguments: [String]) {
-        mode = arguments.first { $0.hasPrefix("--fake-biometrics=") }?.split(separator: "=").last.map(String.init)
+        let flag = "--fake-biometrics="
+        let value = arguments.first { $0.hasPrefix(flag) }.map { String($0.dropFirst(flag.count)) }
+        mode = value?.isEmpty == false ? value : nil
     }
 
     func available() -> Bool { mode != nil }
