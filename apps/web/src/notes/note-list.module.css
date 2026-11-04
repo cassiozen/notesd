@@ -126,6 +126,13 @@
     padding 0.34s var(--ease-out);
 }
 
+/* The title row's middle level with the buttons', which sit as far from the window's top as from its side. */
+@media (min-width: 760px) {
+  :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
+    padding-top: 2px;
+  }
+}
+
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden {
   width: 366px;
 }

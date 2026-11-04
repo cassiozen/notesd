@@ -69,6 +69,13 @@
   gap: 13px 0;
 }
 
+/* The row's middle level with the buttons', which sit as far from the window's top as from its side. */
+@media (min-width: 760px) {
+  :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
+    padding-top: 2px;
+  }
+}
+
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .title {
   grid-row: 2;
   grid-column: 1 / -1;

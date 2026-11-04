@@ -197,13 +197,13 @@ fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
 
 /// The web app's own top bars hold the window buttons (and are where the window drags from): it lays them out
 /// around the buttons when the page is marked `data-desktop="macos"`. The buttons' position lines them up with its
-/// top row.
+/// top row. y isn't the buttons' top: 31.5 puts them 22pt from the top, as far as from the side.
 #[cfg(target_os = "macos")]
 fn title_bar(builder: WebviewWindowBuilder<'_, Wry, AppHandle>) -> WebviewWindowBuilder<'_, Wry, AppHandle> {
     builder
         .title_bar_style(tauri::TitleBarStyle::Overlay)
         .hidden_title(true)
-        .traffic_light_position(tauri::LogicalPosition::new(22.0, 43.5))
+        .traffic_light_position(tauri::LogicalPosition::new(22.0, 31.5))
         .initialization_script("document.documentElement.dataset.desktop = 'macos'")
 }
 
