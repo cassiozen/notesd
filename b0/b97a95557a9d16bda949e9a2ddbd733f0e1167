@@ -246,6 +246,7 @@ docs/guides/apps/mac.md
 docs/contributing/releasing.md
   s_f377e8ab9cbb1b::t_192aa097261f6b 3,16,31-35,37,42,44,49-57,81-82,133-148,152-172,179,186-191
   s_f377e8ab9cbb1b::t_365ef3d1f55153 149-151
+  s_f377e8ab9cbb1b::t_c6f1e05265459c 39
 ---
 {
   "schema_version": "authorship/3.0.0",
