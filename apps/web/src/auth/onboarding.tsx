@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState, type FormEvent } from 'react'
 import { auth } from '../api/auth'
 import { ApiError } from '../api/client'
+import { keepIfInstalledApp } from '../offline/device'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
@@ -77,7 +78,10 @@ export function Onboarding() {
     }
 
     try {
-      signedIn(await auth.login(username.trim(), password), { firstRun: true })
+      const info = await auth.login(username.trim(), password)
+      // As on opening the installed app: the first account's notes are kept from the start.
+      await keepIfInstalledApp(info.username)
+      signedIn(info, { firstRun: true })
     } catch {
       // The account exists now; the regular sign-in screen takes it from here.
       retry()

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, it, vi } from 'vitest'
 import { captureInstallPrompt } from '../src/install'
 import { navigate } from '../src/router'
+import { syncSummary } from '../src/settings/device'
 import { inProcessEngine } from './engine/helpers'
 import { createNote, interceptApi, noteTitle, openSettings, phoneLayout, signedIn, startEngines } from './helpers'
 
@@ -295,5 +296,12 @@ describe('connection', () => {
       window.dispatchEvent(new Event('appinstalled'))
     })
     expect(installButton()).toBeNull()
+  })
+})
+
+describe('the sync summary', () => {
+  it('counts changes waiting before sync has connected, as the phones do', () => {
+    expect(syncSummary({ status: { kind: 'NotConnected' }, pending: 2, lastSyncAt: null })).toBe('2 waiting')
+    expect(syncSummary({ status: { kind: 'NotConnected' }, pending: 0, lastSyncAt: null })).toBe('')
   })
 })

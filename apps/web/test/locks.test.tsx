@@ -281,7 +281,8 @@ describe('passkeys for locked notes', () => {
     await lockOpenNote(s)
     await openSettings(s.user, 'Security')
     await screen.findByRole('button', { name: 'Change lock password' })
-    expect(screen.queryByRole('group', { name: 'Passkeys' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Add a passkey' })).toBeNull()
+    expect(screen.queryByText('Passkeys')).toBeNull()
   })
 
   it('with a passkey, the lock password waits behind "Use password instead"', async () => {

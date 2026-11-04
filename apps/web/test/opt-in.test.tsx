@@ -308,11 +308,27 @@ describe('the macOS app', () => {
     render(<App />)
     await user.type(await screen.findByLabelText('Username'), username)
     await user.type(screen.getByLabelText('Password'), password)
+    // By now a browser would show the box (its storage check is done): see signInFromScratch.
+    expect(keepBox()).toBeNull()
     await user.click(screen.getByRole('button', { name: 'Sign in' }))
     await planListed()
     expect(deviceUser()).toBe(username)
     expect(started).toHaveLength(1)
-    expect(keepBox()).toBeNull()
+  })
+
+  it('keeps the first account’s notes from the start, made in the app', async () => {
+    const started = engines()
+    inMacApp()
+    await startServer()
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Get started' }))
+    await user.type(screen.getByLabelText('Username'), 'cassio')
+    await user.type(screen.getByLabelText('Password'), 'correct horse')
+    await user.type(screen.getByLabelText('Confirm password'), 'correct horse{Enter}')
+    await screen.findByRole('heading', { name: 'All Notes', level: 1 })
+    expect(deviceUser()).toBe('cassio')
+    expect(started).toHaveLength(1)
   })
 
   it('keeps them on opening even if turned off before, and Settings only says so', async () => {

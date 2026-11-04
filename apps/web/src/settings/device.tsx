@@ -157,7 +157,7 @@ export function syncSummary(state: SyncState | null): string {
     case 'UpgradeRequired':
       return 'Update notesd to sync'
     case 'NotConnected':
-      return ''
+      return waiting
   }
 }
 
@@ -196,7 +196,7 @@ function SyncItem() {
     <li className={styles.item}>
       <span className={[styles.syncDot, styles[syncTone(state)]].join(' ')} aria-hidden="true" />
       <span className={styles.itemText}>
-        <span className={styles.itemTitle}>{syncSummary(state) || 'Not synced yet'}</span>
+        <span className={styles.itemTitle}>{state ? syncSummary(state) || 'Not synced yet' : 'Checking…'}</span>
         {status?.kind === 'Failed' && <span className={styles.muted}>{status.message}</span>}
         {status?.kind === 'UpgradeRequired' && <span className={styles.muted}>{UPGRADE_REQUIRED}</span>}
         {state?.lastSyncAt != null && (
