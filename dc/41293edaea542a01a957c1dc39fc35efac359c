@@ -1,0 +1,21 @@
+apps/android/app/build.gradle.kts
+  s_12df40f33dbbfd::t_1ce81c98cde89a 42
+apps/android/app/src/main/res/xml/shortcuts.xml
+  s_12df40f33dbbfd::t_1ce81c98cde89a 11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "dc41293edaea542a01a957c1dc39fc35efac359c",
+  "prompts": {},
+  "sessions": {
+    "s_12df40f33dbbfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edc3d4e2-7375-4ba5-a019-d9d4ee6a04bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
