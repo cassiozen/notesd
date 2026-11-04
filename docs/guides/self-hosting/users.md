@@ -16,10 +16,10 @@ On the server, with [`create-owner`](../../reference/cli.md#create-owner):
 ```bash
 docker exec -it notesd notesd create-owner --username me
 # systemd
-notesd-run create-owner --username me
+notesd create-owner --username me
 ```
 
-With systemd, define [`notesd-run`](../../reference/cli.md#with-systemd) first. You can also sign
+With systemd, set [`NOTESD_DATA_DIR`](../../reference/cli.md#with-systemd) first. You can also sign
 up from the web app or the Android or iPhone app directly: the first account created is the
 owner.
 
@@ -36,7 +36,7 @@ notesd can hold a few accounts, such as for family or friends. Each has its own 
 ```bash
 docker exec -it notesd notesd add-user --username sam
 # systemd
-notesd-run add-user --username sam
+notesd add-user --username sam
 ```
 
 It asks for the new account's password (or reads `NOTESD_PASSWORD`). Add `--admin` to let them change server-wide settings too. They can then sign in from the web app or a phone.
@@ -46,7 +46,7 @@ notesd doesn't send password-reset emails. If someone forgets their password, se
 ```bash
 docker exec -it notesd notesd reset-password --username sam
 # systemd
-notesd-run reset-password --username sam
+notesd reset-password --username sam
 ```
 
 `list-users` and `remove-user` are in the [command line reference](../../reference/cli.md#account-commands).

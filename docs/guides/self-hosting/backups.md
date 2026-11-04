@@ -19,11 +19,11 @@ database and folds them in over time, so a copy taken while it runs can catch th
 and be inconsistent. A `notesd backup` command that copies safely while the server runs is
 planned, but not built yet.
 
-**systemd**, where `DynamicUser` keeps the directory in `/var/lib/private/notesd`:
+**systemd**, with the directory in `/var/lib/notesd`:
 
 ```bash
 sudo systemctl stop notesd
-sudo tar czf ~/notesd-backup-$(date +%F).tgz -C /var/lib/private/notesd .
+tar czf ~/notesd-backup-$(date +%F).tgz -C /var/lib/notesd .
 sudo systemctl start notesd
 ```
 
@@ -76,13 +76,13 @@ notesd check --data-dir /tmp/notesd-restore-test
 
 ```bash
 sudo systemctl stop notesd
-sudo mv /var/lib/private/notesd /var/lib/private/notesd.before-restore
-sudo mkdir -m 700 /var/lib/private/notesd
-sudo tar xzf notesd-backup-2026-11-01.tgz -C /var/lib/private/notesd && sudo systemctl start notesd
+sudo mv /var/lib/notesd /var/lib/notesd.before-restore
+sudo install -d -m 700 -o "$USER" /var/lib/notesd
+tar xzf notesd-backup-2026-11-01.tgz -C /var/lib/notesd && sudo systemctl start notesd
 ```
 
 If `tar` fails, the server stays stopped. Put the old data back with
-`sudo rm -rf /var/lib/private/notesd && sudo mv /var/lib/private/notesd.before-restore /var/lib/private/notesd`.
+`sudo rm -rf /var/lib/notesd && sudo mv /var/lib/notesd.before-restore /var/lib/notesd`.
 Once the restored server works, delete `notesd.before-restore`.
 
 **Docker:**

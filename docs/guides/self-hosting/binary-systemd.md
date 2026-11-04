@@ -38,15 +38,16 @@ To start notesd on boot and restart it if it crashes, install the binary you dow
 sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd   # notesd-linux-arm64 on ARM64
 ```
 
-Then create `/etc/systemd/system/notesd.service`:
+Then create `/etc/systemd/system/notesd.service`, with your own username in `User=` (`whoami`
+prints it):
 
 ```ini
 [Unit]
 Description=notesd
 
 [Service]
+User=YOUR_USERNAME
 ExecStart=/usr/local/bin/notesd serve --data-dir /var/lib/notesd
-DynamicUser=yes
 StateDirectory=notesd
 StateDirectoryMode=0700
 Restart=on-failure
@@ -55,11 +56,19 @@ Restart=on-failure
 WantedBy=multi-user.target
 ```
 
-Then enable it:
+systemd creates `/var/lib/notesd` for the notes, owned by you. Then enable it:
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable --now notesd
+```
+
+So that [`notesd` commands](../../reference/cli.md) such as `add-user` find the same data, tell
+your shell where it is (this adds it to `~/.bashrc`, or `~/.zshrc` with zsh):
+
+```bash
+echo 'export NOTESD_DATA_DIR=/var/lib/notesd' >> ~/."$(basename "$SHELL")"rc
+export NOTESD_DATA_DIR=/var/lib/notesd
 ```
 
 Check on it with `sudo systemctl status notesd`, or follow the logs with `sudo journalctl -u notesd -f`.

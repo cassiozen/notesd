@@ -611,8 +611,8 @@ systemd is recommended; the unit users install is in `docs/guides/self-hosting/b
 
 ```ini
 [Service]
+User=YOUR_USERNAME
 ExecStart=/usr/local/bin/notesd serve --listen 0.0.0.0:8080 --data-dir /var/lib/notesd
-DynamicUser=yes
 StateDirectory=notesd
 StateDirectoryMode=0700
 Restart=on-failure

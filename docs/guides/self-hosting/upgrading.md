@@ -18,7 +18,7 @@ back up the data directory, then replace the binary and restart:
 
 ```bash
 sudo systemctl stop notesd
-sudo cp -a /var/lib/private/notesd ~/notesd-backup-$(date +%Y%m%d-%H%M%S)   # DynamicUser keeps it here
+cp -a /var/lib/notesd ~/notesd-backup-$(date +%Y%m%d-%H%M%S)
 sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd   # notesd-linux-arm64 on ARM64
 sudo systemctl start notesd
 notesd version
@@ -142,7 +142,7 @@ Description=Update notesd to the newest release
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/notesd-update /var/lib/private/notesd
+ExecStart=/usr/local/sbin/notesd-update /var/lib/notesd
 ```
 
 Create `/etc/systemd/system/notesd-update.path`:
@@ -152,7 +152,7 @@ Create `/etc/systemd/system/notesd-update.path`:
 Description=Update notesd when an admin asks in Settings
 
 [Path]
-PathExists=/var/lib/private/notesd/update-request
+PathExists=/var/lib/notesd/update-request
 
 [Install]
 WantedBy=multi-user.target
