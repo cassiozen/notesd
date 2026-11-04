@@ -1,0 +1,29 @@
+apps/desktop/setup/setup.js
+  s_f377e8ab9cbb1b::t_b4dc2ac3763b88 43-44,49-50
+apps/desktop/src-tauri/src/main.rs
+  s_f377e8ab9cbb1b::t_b4dc2ac3763b88 11,37-39,144,161,166,174-178,180-189,240-250
+  s_f377e8ab9cbb1b::t_7754da30afa3f8 445-448,454-457
+  s_f377e8ab9cbb1b::t_2c55a2443b9d17 449-453
+  s_f377e8ab9cbb1b::t_8484ef456ef271 251,444
+apps/desktop/src-tauri/src/downloads.rs
+  s_f377e8ab9cbb1b::t_2c55a2443b9d17 46-49
+  s_f377e8ab9cbb1b::t_b4dc2ac3763b88 6-9,11,27,40-41,43,45,51
+apps/web/src/notes/sync-banners.tsx
+  s_f377e8ab9cbb1b::t_2c55a2443b9d17 49
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "981f579d502a12b64a8a7b26f300b6f19a027ef4",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
