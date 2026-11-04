@@ -1,0 +1,19 @@
+docs/privacy.md
+  s_e20762207068e1::t_8273179ae5b01d 29-34
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "612f17ff37a8fd00b2902e4dab85a49fd389d49f",
+  "prompts": {},
+  "sessions": {
+    "s_e20762207068e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "496bc3dd-e36b-4e4c-a8c8-53753824c781",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
