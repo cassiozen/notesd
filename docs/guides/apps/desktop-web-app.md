@@ -5,6 +5,8 @@ description: Install notesd on your computer as an app that keeps your notes and
 
 # Desktop web app
 
+On a Mac with Apple silicon, the [Mac app](mac.md) does the same, with Touch ID for locked notes.
+
 The notesd web app can be installed on your computer as an app. Installed, it opens in its own window from
 your dock or taskbar, keeps a full copy of your notes on the computer, and works offline, just like
 the phone apps: writing, search and tags work with no connection, and it syncs with your server

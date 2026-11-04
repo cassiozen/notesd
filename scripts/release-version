@@ -1,0 +1,27 @@
+#!/bin/sh
+# Prints a release's version (its tag without the v) and a build number that sorts as releases do, for the
+# apps that need one (Android's versionCode, the Mac app's CFBundleVersion). [tag] defaults to git describe.
+#
+#   vX.Y.Z      → X.Y.Z      XXYYZZ99
+#   vX.Y.Z-rcN  → X.Y.Z-rcN  XXYYZZNN   so release candidates sort before the release
+#
+# Minor and patch numbers must stay below 100, rc numbers between 1 and 98; a tag outside that is refused, as
+# its build number would equal another release's.
+set -e
+tag=${1:-$(git describe --tags --match 'v[0-9]*' 2>/dev/null || echo v0.1.0-dev)}
+version=${tag#v}
+base=${version%%-*}
+IFS=. read -r major minor patch <<EOF
+$base
+EOF
+case "$version" in
+  *-rc*) suffix=$(printf '%s' "${version#*-rc}" | sed 's/[^0-9].*//') ;;
+  *) suffix=99 ;;
+esac
+in_range() { case "$1" in '' | *[!0-9]*) return 1 ;; esac; [ "$1" -ge "$2" ] && [ "$1" -le "$3" ]; }
+if ! in_range "$major" 0 2099 || ! in_range "$minor" 0 99 || ! in_range "$patch" 0 99 || ! in_range "${suffix:-0}" 1 99 ||
+  { [ "$suffix" = 99 ] && [ "${version#*-rc}" != "$version" ]; }; then
+  echo "release-version: $tag is outside what a build number can tell apart (see the top of this script)" >&2
+  exit 1
+fi
+echo "$version $(( ((major * 100 + minor) * 100 + patch) * 100 + ${suffix:-0} ))"
