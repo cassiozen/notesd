@@ -19,6 +19,19 @@ url = { version = "2", features = ["serde"] }
 # exactly as it does in the window.
 ureq = { version = "3", default-features = false, features = ["native-tls"] }
 
+# Already in the build through Tauri; here for the window's leaving full screen (src/close.rs).
+[target.'cfg(target_os = "macos")'.dependencies]
+block2 = "0.6"
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSResponder", "NSWindow"] }
+objc2-foundation = { version = "0.3", default-features = false, features = [
+  "std",
+  "block2",
+  "NSNotification",
+  "NSOperation",
+  "NSString",
+] }
+
 [profile.release]
 codegen-units = 1
 lto = true
