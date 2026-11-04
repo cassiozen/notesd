@@ -1,0 +1,23 @@
+apps/web/src/locks/touch-id.ts
+  s_f377e8ab9cbb1b::t_fac1bdea202682 158-162
+apps/web/test/locks.test.tsx
+  s_f377e8ab9cbb1b::t_552cc5c7e92bda 936-952
+apps/desktop/README.md
+  s_f377e8ab9cbb1b::t_fac1bdea202682 67-71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e6c09a411a2154fa990f05b9a8c31c5855b3c19",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
