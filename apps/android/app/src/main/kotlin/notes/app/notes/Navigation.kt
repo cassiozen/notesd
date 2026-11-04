@@ -340,6 +340,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                             entry<EditorKey>(metadata = ListDetailSceneStrategy.detailPane()) { key ->
                                 // Email can be set up from another device; check before the share sheet needs it.
                                 LaunchedEffect(key.id) { graph.email.refresh() }
+                                LaunchedEffect(key.id) { graph.scheduler.noteOpened() }
                                 EditorScreen(
                                     vm = viewModel(key = key.id) {
                                         EditorViewModel(

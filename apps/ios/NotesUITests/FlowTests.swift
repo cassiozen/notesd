@@ -461,7 +461,7 @@ final class FlowTests: XCTestCase {
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["Weekend"].waitForExistence(timeout: 5))
-        // Pushed 5 s after the last edit; while sync is fine the list says nothing about it.
+        // Pushed 2 s after the last edit; while sync is fine the list says nothing about it.
         var pushed = false
         for _ in 0..<30 where !pushed {
             let changes = try await api("GET", "api/v1/sync", query: "since=0&limit=100")["changes"] as? [[String: Any]]

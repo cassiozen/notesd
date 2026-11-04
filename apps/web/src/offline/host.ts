@@ -78,9 +78,9 @@ export function engineHost(
         })
       await current
     },
-    async requestSync() {
+    async requestSync(ifOlderThanMs) {
       const o = await current
-      o?.scheduler.request()
+      o?.scheduler.request(ifOlderThanMs)
     },
     async sync() {
       return (await (await engine()).sync()) as SyncOutcome

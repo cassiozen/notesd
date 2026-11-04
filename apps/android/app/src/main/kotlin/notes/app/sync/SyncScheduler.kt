@@ -3,6 +3,7 @@ package notes.app.sync
 import android.content.Context
 import android.net.ConnectivityManager
 import android.net.Network
+import android.os.SystemClock
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -31,9 +32,10 @@ import notes.core.sync.SyncEngine
 import notes.core.sync.SyncOutcome
 
 /**
- * When to sync (§4.7). In the foreground: on start and return, 5 s after the
- * last local edit, when the network comes back, and right after signing in,
- * retrying failures with backoff (2 s doubling to 5 min, with jitter). In the
+ * When to sync (§4.7). In the foreground: on start and return, every 30 s to
+ * pick up remote edits, 2 s after the last local edit, on opening a note, when
+ * the network comes back, and right after signing in, retrying failures with
+ * backoff (2 s doubling to 5 min, with jitter). In the
  * background: WorkManager, every 15 min and once after leaving with changes
  * unsent. Correctness never depends on any of these running.
  */
@@ -45,10 +47,22 @@ class SyncScheduler(
     private val scope: CoroutineScope
 ) {
     private val requests = Channel<Unit>(Channel.CONFLATED)
-    private var foreground = false
+
+    @Volatile private var foreground = false
+
+    @Volatile private var syncing = false
+
+    /** When the last cycle that went through ended; null after one that didn't, whose backoff owns the timing. */
+    @Volatile private var lastSynced: Long? = null
 
     fun request() {
         requests.trySend(Unit)
+    }
+
+    /** Opening a note is when a stale copy shows; an open note takes the newer text when it arrives. */
+    fun noteOpened() {
+        val last = lastSynced ?: return
+        if (!syncing && SystemClock.elapsedRealtime() - last >= OPEN_FRESH_MS) request()
     }
 
     fun start() {
@@ -95,9 +109,15 @@ class SyncScheduler(
     private suspend fun loop() {
         var backoff = FIRST_RETRY_MS
         while (true) {
-            requests.receive()
+            next()
             while (true) {
-                val outcome = engine.sync()
+                syncing = true
+                val outcome = try {
+                    engine.sync()
+                } finally {
+                    syncing = false
+                }
+                lastSynced = if (outcome == SyncOutcome.Done) SystemClock.elapsedRealtime() else null
                 // Only an updated app helps, and that's a new process: nothing more until then.
                 if (outcome == SyncOutcome.UpgradeRequired) return
                 if (outcome != SyncOutcome.Offline && outcome != SyncOutcome.Failed) {
@@ -110,6 +130,17 @@ class SyncScheduler(
                 backoff = minOf(backoff * 2, MAX_RETRY_MS)
                 withTimeoutOrNull(wait) { requests.receive() }
             }
+        }
+    }
+
+    /** A request, or in the foreground [REFRESH_MS] without one. A stopped app doesn't wake itself: WorkManager does. */
+    private suspend fun next() {
+        while (true) {
+            if (!foreground) {
+                requests.receive()
+                return
+            }
+            if (withTimeoutOrNull(REFRESH_MS) { requests.receive() } != null || foreground) return
         }
     }
 
@@ -126,7 +157,9 @@ class SyncScheduler(
     private companion object {
         const val PERIODIC = "sync"
         const val AFTER_EDIT = "sync-after-edit"
-        const val AFTER_EDIT_MS = 5_000L
+        const val AFTER_EDIT_MS = 2_000L
+        const val REFRESH_MS = 30_000L
+        const val OPEN_FRESH_MS = 10_000L
         const val FIRST_RETRY_MS = 2_000L
         const val MAX_RETRY_MS = 300_000L
     }

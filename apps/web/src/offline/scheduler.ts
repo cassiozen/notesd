@@ -3,18 +3,27 @@ import type { SyncOutcome } from './protocol'
 /** Tests shorten these. */
 export const syncTiming = {
   afterEditMs: 2_000,
-  intervalMs: 60_000,
+  /** The worker's own pace, when no tab is looking. */
+  intervalMs: 300_000,
+  /** How often a visible tab asks. */
+  visibleIntervalMs: 30_000,
+  /** Opening a note asks for a sync unless one finished this recently. */
+  openFreshMs: 10_000,
   firstRetryMs: 2_000,
   maxRetryMs: 300_000,
 }
 
 /**
- * When to sync (§5.5): on start, after edits settle, when a tab asks, every minute. Failures back off
- * 2 s doubling to 5 min with jitter. Signed out, it waits to be asked: retrying can't restore a session. Told
- * the app is too old (UpgradeRequired), it stops.
+ * When to sync (§5.5): on start, after edits settle, when a tab asks, every 5 min (visible tabs ask every 30 s).
+ * Failures back off 2 s doubling to 5 min with jitter. Signed out, it waits to be asked: retrying can't restore a
+ * session. Told the app is too old (UpgradeRequired), it stops.
  */
 export class Scheduler {
   private requested = true
+  private running = false
+  private lastEnded = 0
+  /** The last cycle went through: polls only add to that. Backoff and sign-in own the timing otherwise. */
+  private healthy = false
   private wake: (() => void) | null = null
   private editTimer: ReturnType<typeof setTimeout> | undefined
   private stopped = false
@@ -23,7 +32,13 @@ export class Scheduler {
     void this.loop()
   }
 
-  request() {
+  /**
+   * [ifOlderThanMs]: a poll, only if the last cycle went through and none is running or ended that recently.
+   * Several visible tabs each poll on their own timer; this keeps them to about one cycle per interval between them.
+   */
+  request(ifOlderThanMs?: number) {
+    const fresh = !this.healthy || this.running || Date.now() - this.lastEnded < (ifOlderThanMs ?? 0)
+    if (ifOlderThanMs !== undefined && fresh) return
     this.requested = true
     this.wake?.()
   }
@@ -46,14 +61,19 @@ export class Scheduler {
       await this.until(wait)
       if (this.stopped) return
       this.requested = false
+      this.running = true
       let outcome: SyncOutcome
       try {
         outcome = await this.sync()
       } catch {
         outcome = 'Failed'
+      } finally {
+        this.running = false
+        this.lastEnded = Date.now()
       }
       // Only an updated app helps, and that's a new worker: no retry until then, asked or not.
       if (this.stopped || outcome === 'UpgradeRequired') return
+      this.healthy = outcome === 'Done'
       if (outcome === 'Offline' || outcome === 'Failed') {
         const backoff = syncTiming.firstRetryMs * 2 ** failures++
         wait = Math.min(backoff + Math.random() * (backoff / 2), syncTiming.maxRetryMs)

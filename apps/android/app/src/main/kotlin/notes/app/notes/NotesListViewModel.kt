@@ -83,6 +83,23 @@ class NotesListViewModel(
 
     fun syncNow() = requestSync()
 
+    private val _refreshing = MutableStateFlow(false)
+
+    /** A pull to refresh's sync, until it ends. */
+    val refreshing: StateFlow<Boolean> = _refreshing
+
+    fun refresh() {
+        if (_refreshing.value) return
+        _refreshing.value = true
+        viewModelScope.launch {
+            try {
+                engine.sync()
+            } finally {
+                _refreshing.value = false
+            }
+        }
+    }
+
     fun retryParked() {
         viewModelScope.launch {
             engine.retryParked()

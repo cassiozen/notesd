@@ -62,8 +62,8 @@ export type SaveNote = {
 export type EngineApi = {
   /** First call from every tab. Switches databases when the user differs from the open one. */
   open(user: string, csrfToken: string): Promise<void>
-  /** Sync soon: the tab came back, or the network did. */
-  requestSync(): Promise<void>
+  /** Sync soon: the tab came back, or the network did. [ifOlderThanMs]: a poll, skipped unless sync is healthy and stale. */
+  requestSync(ifOlderThanMs?: number): Promise<void>
   /** One cycle now. */
   sync(): Promise<SyncOutcome>
   status(): Promise<SyncStatus>

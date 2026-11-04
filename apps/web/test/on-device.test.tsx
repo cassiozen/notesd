@@ -36,7 +36,7 @@ afterEach(() => {
 /** Sync runs only when a test calls it, not after edits settle. */
 function quietScheduler() {
   const before = { ...syncTiming }
-  Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, firstRetryMs: 60_000 })
+  Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, visibleIntervalMs: 60_000, openFreshMs: 60_000, firstRetryMs: 60_000 })
   onTestFinished(() => {
     Object.assign(syncTiming, before)
   })
