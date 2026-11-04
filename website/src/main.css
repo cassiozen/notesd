@@ -862,6 +862,11 @@ a:hover .arrow {
   color: var(--subtle);
 }
 
+.footer-links {
+  display: flex;
+  gap: 20px;
+}
+
 /* Motion. Everything here is opt-in via no-preference so reduced-motion gets the static page */
 
 @keyframes rise {

@@ -162,6 +162,7 @@ export default defineConfig({
           { text: "Command line", link: "/reference/cli" },
           { text: "HTTP API", link: "/reference/api" },
           { text: "FAQ", link: "/faq" },
+          { text: "Privacy policy", link: "/privacy" },
         ],
       },
     ],
