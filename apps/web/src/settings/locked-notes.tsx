@@ -4,7 +4,7 @@ import { genericMessage } from '../auth/errors'
 import { LockedError } from '../locks/crypto'
 import { PasskeyError, passkeysAvailable } from '../locks/passkey'
 import { lockSession, useLockKeys, useLockStatus } from '../locks/session'
-import { touchIdPasswordChanged, turnOffTouchId, turnOnTouchId, useTouchId } from '../locks/touch-id'
+import { forgetTouchId, touchIdPasswordChanged, turnOffTouchId, turnOnTouchId, useTouchId } from '../locks/touch-id'
 import { MIN_LOCK_PASSWORD } from '../locks/unlock'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -466,7 +466,7 @@ function ResetDialog({ username, onClose }: { username: string; onClose: () => v
     try {
       // Status goes to none, and this dialog with it.
       await lockSession.reset(account)
-      turnOffTouchId(username)
+      forgetTouchId(username)
     } catch (err) {
       if (err instanceof ApiError && err.code === 'invalid_credentials') setErrors({ account: 'That isn’t your account password.' })
       else setFormError(genericMessage(err))

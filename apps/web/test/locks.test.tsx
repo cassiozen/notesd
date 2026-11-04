@@ -61,7 +61,8 @@ async function lockOpenNote({ user }: Session) {
   await user.type(within(dialog).getByLabelText('Lock password'), LOCK_PASSWORD)
   await user.type(within(dialog).getByLabelText('Confirm'), LOCK_PASSWORD)
   await user.click(within(dialog).getByRole('button', { name: 'Create and lock' }))
-  await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+  // Only this one: in the macOS app, Touch ID may be offered next.
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Create a lock password' })).toBeNull())
   await saved()
 }
 
@@ -671,6 +672,33 @@ function fakeTouchId({ available = true } = {}) {
   return touch
 }
 
+const OFFER = 'Use Touch ID for locked notes?'
+
+/** Answers the offer after the lock password. */
+async function answerOffer(s: Session, button: 'Use Touch ID' | 'Not now') {
+  const dialog = await screen.findByRole('dialog', { name: OFFER })
+  await s.user.click(within(dialog).getByRole('button', { name: button }))
+  await waitFor(() => expect(screen.queryByRole('dialog', { name: OFFER })).toBeNull())
+}
+
+/** Whether Touch ID was offered, once what follows the password has run. */
+async function offered() {
+  await act(() => new Promise((r) => setTimeout(r, 0)))
+  return screen.queryByRole('dialog', { name: OFFER }) !== null
+}
+
+/** Unlocks with the lock password, as typed in the note pane. */
+async function unlockWithPassword(s: Session, password = LOCK_PASSWORD) {
+  await s.user.type(screen.getByLabelText('Lock password'), `${password}{Enter}`)
+  await waitFor(() => expect(bodyText()).toBe('PIN 1234 #money'))
+}
+
+/** Locks the open note, creating the lock password, and takes Touch ID when it's offered. */
+async function lockWithTouchId(s: Session) {
+  await lockOpenNote(s)
+  await answerOffer(s, 'Use Touch ID')
+}
+
 /** Turns Touch ID on in Settings with [password], then closes Settings. */
 async function turnOnTouchId(s: Session, password = LOCK_PASSWORD) {
   await openSettings(s.user, 'Security')
@@ -691,6 +719,7 @@ describe('Touch ID in the macOS app', () => {
     const touch = fakeTouchId()
     const s = await seeded()
     await lockOpenNote(s)
+    await answerOffer(s, 'Not now')
     await turnOnTouchId(s)
     expect(await screen.findByText(/^Touch ID is on\./)).toBeTruthy()
     expect([...touch.kept.values()][0]).toHaveLength(32)
@@ -706,6 +735,7 @@ describe('Touch ID in the macOS app', () => {
     const touch = fakeTouchId()
     const s = await seeded()
     await lockOpenNote(s)
+    await answerOffer(s, 'Not now')
     const dialog = await turnOnTouchId(s, 'not it')
     expect(await within(dialog).findByText('That isn’t your lock password.')).toBeTruthy()
     expect(touch.prompts).toBe(0)
@@ -715,9 +745,7 @@ describe('Touch ID in the macOS app', () => {
   it('dismissed, nothing changes; the password is a click away', async () => {
     const touch = fakeTouchId()
     const s = await seeded()
-    await lockOpenNote(s)
-    await turnOnTouchId(s)
-    await closeSettings(s)
+    await lockWithTouchId(s)
     await lockNow(s)
 
     touch.answer = 'cancelled'
@@ -734,9 +762,7 @@ describe('Touch ID in the macOS app', () => {
   it('a lockout says to use the password, and stays on', async () => {
     const touch = fakeTouchId()
     const s = await seeded()
-    await lockOpenNote(s)
-    await turnOnTouchId(s)
-    await closeSettings(s)
+    await lockWithTouchId(s)
     await lockNow(s)
 
     touch.answer = 'failed'
@@ -748,9 +774,7 @@ describe('Touch ID in the macOS app', () => {
   it('the lock password changed on another device: turned off, without asking for a finger', async () => {
     const touch = fakeTouchId()
     const s = await seeded()
-    await lockOpenNote(s)
-    await turnOnTouchId(s)
-    await closeSettings(s)
+    await lockWithTouchId(s)
     await lockNow(s)
     const prompts = touch.prompts
 
@@ -766,9 +790,7 @@ describe('Touch ID in the macOS app', () => {
   it('fingers enrolled since: turned off', async () => {
     const touch = fakeTouchId()
     const s = await seeded()
-    await lockOpenNote(s)
-    await turnOnTouchId(s)
-    await closeSettings(s)
+    await lockWithTouchId(s)
     await lockNow(s)
 
     touch.kept.clear()
@@ -781,6 +803,7 @@ describe('Touch ID in the macOS app', () => {
     fakeTouchId()
     const s = await seeded()
     await lockOpenNote(s)
+    await answerOffer(s, 'Not now')
     await turnOnTouchId(s)
     const card = screen.getByRole('region', { name: 'Locked notes' })
     await within(card).findByText(/Touch ID is on/)
@@ -798,35 +821,123 @@ describe('Touch ID in the macOS app', () => {
     await waitFor(() => expect(bodyText()).toBe('PIN 1234 #money'))
   })
 
-  it('turned off in Settings, the key is forgotten', async () => {
+  it('turned off in Settings, the key is forgotten, and it isn’t offered after the password again', async () => {
     const touch = fakeTouchId()
     const s = await seeded()
-    await lockOpenNote(s)
-    await turnOnTouchId(s)
+    await lockWithTouchId(s)
+    await openSettings(s.user, 'Security')
     await s.user.click(await screen.findByRole('button', { name: 'Turn off Touch ID' }))
     expect(touch.kept.size).toBe(0)
     await closeSettings(s)
     await lockNow(s)
     expect(screen.queryByRole('button', { name: 'Unlock with Touch ID' })).toBeNull()
+    await unlockWithPassword(s)
+    expect(await offered()).toBe(false)
   })
 
   it('signing out forgets the key', async () => {
     const touch = fakeTouchId()
     const s = await seeded()
-    await lockOpenNote(s)
-    await turnOnTouchId(s)
-    await closeSettings(s)
+    await lockWithTouchId(s)
     await openSettings(s.user)
     await s.user.click(await screen.findByRole('button', { name: 'Sign out' }))
     await screen.findByRole('button', { name: 'Sign in' })
     expect(touch.kept.size).toBe(0)
-    expect(Object.keys(localStorage).filter((k) => k.startsWith('notes.touchid.'))).toEqual([])
+    expect(Object.keys(localStorage).filter((k) => k.startsWith('notes.touchid'))).toEqual([])
+  })
+
+  describe('offered after the lock password', () => {
+    it('taken when the lock password is made, it unlocks locked notes', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockWithTouchId(s)
+      expect(touch.kept.size).toBe(1)
+      await lockNow(s)
+      await s.user.click(screen.getByRole('button', { name: 'Unlock with Touch ID' }))
+      await waitFor(() => expect(bodyText()).toBe('PIN 1234 #money'))
+      expect(await offered()).toBe(false)
+    })
+
+    it('a failure offers it again after the next password, here unlocking', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockOpenNote(s)
+      touch.answer = 'failed'
+      await answerOffer(s, 'Use Touch ID')
+      expect(touch.kept.size).toBe(0)
+      await lockNow(s)
+
+      touch.answer = 'ok'
+      await unlockWithPassword(s)
+      await answerOffer(s, 'Use Touch ID')
+      expect(touch.kept.size).toBe(1)
+    })
+
+    it('a password typed to lock another note offers it too', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockOpenNote(s)
+      touch.answer = 'failed'
+      await answerOffer(s, 'Use Touch ID')
+      await lockNow(s)
+      touch.answer = 'ok'
+
+      await s.user.click(newNoteButton())
+      await typeInTitle(s.user, 'Diary{Enter}secret words')
+      await s.user.click(await screen.findByRole('button', { name: 'More' }))
+      await s.user.click(within(moreMenu()).getByRole('menuitem', { name: 'Lock note' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Lock this note' })
+      await s.user.type(within(dialog).getByLabelText('Lock password'), `${LOCK_PASSWORD}{Enter}`)
+      await answerOffer(s, 'Use Touch ID')
+      expect(touch.kept.size).toBe(1)
+    })
+
+    it('“Not now” isn’t asked again; Settings still turns it on', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockOpenNote(s)
+      await answerOffer(s, 'Not now')
+      expect(touch.prompts).toBe(0)
+      await lockNow(s)
+      await unlockWithPassword(s)
+      expect(await offered()).toBe(false)
+
+      await turnOnTouchId(s)
+      expect(await screen.findByText(/^Touch ID is on\./)).toBeTruthy()
+    })
+
+    it('Cancel at Touch ID isn’t asked again', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockOpenNote(s)
+      touch.answer = 'cancelled'
+      await answerOffer(s, 'Use Touch ID')
+      expect(touch.kept.size).toBe(0)
+      await lockNow(s)
+      await unlockWithPassword(s)
+      expect(await offered()).toBe(false)
+    })
+
+    it('offered again once Touch ID went stale', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockWithTouchId(s)
+      await lockNow(s)
+      await changePasswordElsewhere(s.server, 'brand new pass')
+      await s.user.click(screen.getByRole('button', { name: 'Unlock with Touch ID' }))
+      await screen.findByText(/Touch ID was turned off/)
+
+      await unlockWithPassword(s, 'brand new pass')
+      await answerOffer(s, 'Use Touch ID')
+      expect(touch.kept.size).toBe(1)
+    })
   })
 
   it('not offered on a Mac without it', async () => {
     fakeTouchId({ available: false })
     const s = await seeded()
     await lockOpenNote(s)
+    expect(await offered()).toBe(false)
     await openSettings(s.user, 'Security')
     await screen.findByRole('button', { name: 'Change lock password' })
     expect(screen.queryByRole('button', { name: 'Turn on Touch ID' })).toBeNull()

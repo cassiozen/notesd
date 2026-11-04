@@ -9,7 +9,7 @@ import { useShake } from '../ui/shake'
 import { LockedError } from './crypto'
 import { PasskeyError, passkeysAvailable } from './passkey'
 import { lockSession, useLockKeys } from './session'
-import { unlockWithTouchId, useTouchId } from './touch-id'
+import { answerTouchIdOffer, offerTouchId, unlockWithTouchId, useTouchId, useTouchIdOffer } from './touch-id'
 import styles from './locks.module.css'
 
 /** Shortest lock password accepted; it's the only thing between the server and the notes. */
@@ -98,6 +98,7 @@ export function UnlockForm({
     try {
       await lockSession.unlock(password)
       onUnlocked()
+      if (quick.user) void offerTouchId(quick.user, password)
     } catch (err) {
       setError(err instanceof LockedError ? 'Wrong password.' : genericMessage(err))
       shake()
@@ -230,6 +231,7 @@ export function LockNoteDialog({ onUnlocked, onClose }: { onUnlocked: () => void
 /** First lock: choose the password every locked note will share. */
 export function SetupDialog({ onDone, onClose }: { onDone: () => void; onClose: () => void }) {
   const titleId = useId()
+  const { state } = useAuth()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [error, setError] = useState<{ field: 'password' | 'confirm'; message: string }>()
@@ -249,6 +251,7 @@ export function SetupDialog({ onDone, onClose }: { onDone: () => void; onClose: 
     try {
       await lockSession.setup(password)
       onDone()
+      if ('username' in state) void offerTouchId(state.username, password)
     } catch (err) {
       setError({ field: 'password', message: genericMessage(err) })
     } finally {
@@ -303,6 +306,42 @@ export function SetupDialog({ onDone, onClose }: { onDone: () => void; onClose: 
           </Button>
         </div>
       </form>
+    </Dialog>
+  )
+}
+
+/**
+ * Touch ID, offered once the lock password has been typed (offerTouchId). Asked here, not by the form the
+ * password was typed in: that goes as soon as notes unlock.
+ */
+export function TouchIdOffer({ username }: { username: string }) {
+  const titleId = useId()
+  const [busy, setBusy] = useState(false)
+  const offered = useTouchIdOffer() === username
+
+  async function answer(yes: boolean) {
+    setBusy(yes)
+    await answerTouchIdOffer(yes)
+    setBusy(false)
+  }
+
+  if (!offered) return null
+  return (
+    <Dialog labelledBy={titleId} onClose={busy ? undefined : () => void answer(false)}>
+      <div className={styles.stack}>
+        <h2 id={titleId} className={styles.title}>
+          Use Touch ID for locked notes?
+        </h2>
+        <p className={styles.text}>Open locked notes with Touch ID instead of the lock password on this Mac.</p>
+        <div className={styles.actions}>
+          <Button size="md" onClick={() => void answer(false)} disabled={busy}>
+            Not now
+          </Button>
+          <Button variant="solid" size="md" onClick={() => void answer(true)} busy={busy} autoFocus>
+            {busy ? 'Waiting for Touch ID…' : 'Use Touch ID'}
+          </Button>
+        </div>
+      </div>
     </Dialog>
   )
 }

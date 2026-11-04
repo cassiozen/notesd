@@ -46,6 +46,7 @@ export function setTouchIdBridge(next: TouchIdBridge | null) {
   bridge = next
   available = null
   checking = null
+  offer = null
   notify()
 }
 
@@ -63,12 +64,12 @@ function notify() {
   for (const l of listeners) l()
 }
 
-function checkAvailable() {
-  if (checking) return
+function checkAvailable(): Promise<void> {
+  if (checking) return checking
   const b = current()
   if (!b) {
     available = false
-    return
+    return Promise.resolve()
   }
   checking = b.available().then(
     (yes) => {
@@ -80,28 +81,40 @@ function checkAvailable() {
       notify()
     },
   )
+  return checking
 }
 
 // The password entry the kept key goes with, per account. Not a secret: the server has it too.
 const boundKey = (user: string) => `notes.touchid.${user}`
+// Declined, per account: "Not now", Cancel at Touch ID, or turned off in Settings.
+const declinedKey = (user: string) => `notes.touchid-declined.${user}`
 
-function bound(user: string): string | null {
+function read(key: string): string | null {
   try {
-    return localStorage.getItem(boundKey(user))
+    return localStorage.getItem(key)
   } catch {
     return null
   }
 }
 
-function setBound(user: string, entry: string | null) {
+function write(key: string, value: string | null) {
   try {
-    if (entry === null) localStorage.removeItem(boundKey(user))
-    else localStorage.setItem(boundKey(user), entry)
+    if (value === null) localStorage.removeItem(key)
+    else localStorage.setItem(key, value)
   } catch {
-    // Not kept: Touch ID stays off.
+    // Not kept: Touch ID stays off, or is offered again.
   }
+}
+
+const bound = (user: string) => read(boundKey(user))
+const declined = (user: string) => read(declinedKey(user)) !== null
+
+function setBound(user: string, entry: string | null) {
+  write(boundKey(user), entry)
   notify()
 }
+
+const setDeclined = (user: string, yes: boolean) => write(declinedKey(user), yes ? '1' : null)
 
 function subscribe(onChange: () => void) {
   listeners.add(onChange)
@@ -110,7 +123,7 @@ function subscribe(onChange: () => void) {
 
 /** Whether Touch ID can be offered, and whether it's on for [user] here. */
 export function useTouchId(user: string | null): { available: boolean; enabled: boolean } {
-  useEffect(checkAvailable, [])
+  useEffect(() => void checkAvailable(), [])
   const can = useSyncExternalStore(subscribe, () => available === true)
   const on = useSyncExternalStore(subscribe, () => user !== null && bound(user) !== null)
   return { available: can, enabled: can && on }
@@ -142,7 +155,43 @@ export async function turnOnTouchId(user: string, password: string): Promise<Exc
     return 'failed'
   }
   setBound(user, entry)
+  setDeclined(user, false)
   return 'done'
+}
+
+/** The offer after the lock password, until it's answered: whose, and the password that turns Touch ID on. */
+let offer: { user: string; password: string } | null = null
+
+/**
+ * The lock password was just typed for [user]: unless Touch ID is on, was declined or isn't here, offer it, so
+ * it's the last time the password is needed on this Mac. useTouchIdOffer shows the question.
+ */
+export async function offerTouchId(user: string, password: string) {
+  await checkAvailable()
+  if (offer || available !== true || bound(user) !== null || declined(user)) return
+  offer = { user, password }
+  notify()
+}
+
+/** Whose offer is waiting for an answer. */
+export function useTouchIdOffer(): string | null {
+  return useSyncExternalStore(subscribe, () => offer?.user ?? null)
+}
+
+/** No is remembered, as is Cancel at Touch ID; a failure (a lockout, the keyring moved on) offers again next time. */
+export async function answerTouchIdOffer(yes: boolean) {
+  const asked = offer
+  if (!asked) return
+  let outcome: TouchIdOutcome = 'cancelled'
+  try {
+    if (yes) outcome = await turnOnTouchId(asked.user, asked.password)
+  } catch {
+    outcome = 'failed'
+  }
+  if (offer !== asked) return
+  offer = null
+  if (outcome === 'cancelled') setDeclined(asked.user, true)
+  notify()
 }
 
 export async function unlockWithTouchId(user: string): Promise<TouchIdOutcome> {
@@ -179,11 +228,19 @@ export function touchIdPasswordChanged(user: string, rewrapped: string | null) {
   if (!kept) return
   const next = lockSession.passwordEntry()
   if (rewrapped && next && kept === rewrapped) setBound(user, next)
-  else turnOffTouchId(user)
+  else forgetTouchId(user)
 }
 
-/** Off: turned off in Settings, gone stale, the lock password reset, or signed out. */
+/** Turned off in Settings: not offered again after the password, only turned on from there. */
 export function turnOffTouchId(user: string) {
+  forgetTouchId(user)
+  setDeclined(user, true)
+}
+
+/** Off, and offered again: gone stale, the lock password reset, or signed out. */
+export function forgetTouchId(user: string) {
+  if (offer?.user === user) offer = null
+  setDeclined(user, false)
   setBound(user, null)
   void current()
     ?.forget(user)
@@ -191,6 +248,6 @@ export function turnOffTouchId(user: string) {
 }
 
 function stale(user: string): 'stale' {
-  turnOffTouchId(user)
+  forgetTouchId(user)
   return 'stale'
 }
