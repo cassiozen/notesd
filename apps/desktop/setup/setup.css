@@ -1,10 +1,15 @@
-/* The web app's palette (apps/web/src/styles/tokens.css), with the system's own serif and sans: this page ships
-   with the app and loads no fonts. */
+/* The web app's palette, surfaces and motion (apps/web/src/styles/tokens.css), with the system's own serif, sans
+   and mono: this page ships with the app and loads no fonts. Its sign-in page comes next, so this one looks like it. */
 :root {
   color-scheme: light dark;
   --bg: oklch(0.965 0.0035 80);
+  --paper: oklch(0.988 0.002 80);
   --ink: oklch(0.24 0.006 60);
   --ink-2: oklch(0.42 0.006 60);
+  --edge: rgb(255 255 255 / 0.85);
+  --inset: inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --shadow-lg: 0 40px 90px -34px rgb(48 40 33 / 0.35);
+  --mark-shadow: drop-shadow(0 14px 22px rgb(150 105 20 / 0.22));
   --field: rgb(255 255 255 / 0.78);
   --hair-strong: rgb(45 40 35 / 0.16);
   --chip: rgb(255 255 255 / 0.62);
@@ -16,13 +21,22 @@
   --focus: oklch(0.72 0.15 72 / 0.55);
   --blob-1: oklch(0.895 0.07 82);
   --blob-opacity: 0.18;
+
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  /* A damped spring, slight overshoot: things that appear settle into place. */
+  --spring: linear(0, 0.084, 0.266, 0.471, 0.657, 0.805, 0.911, 0.979, 1.017, 1.035, 1.038, 1.034, 1.027, 1.019, 1.012, 1.007, 1.003, 1);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: oklch(0.19 0.005 250);
+    --paper: oklch(0.225 0.005 250);
     --ink: oklch(0.94 0.004 250);
     --ink-2: oklch(0.77 0.005 250);
+    --edge: rgb(255 255 255 / 0.08);
+    --inset: inset 0 1px 0 rgb(255 255 255 / 0.06);
+    --shadow-lg: 0 40px 90px -30px rgb(0 0 0 / 0.75);
+    --mark-shadow: drop-shadow(0 14px 24px rgb(0 0 0 / 0.45));
     --field: rgb(255 255 255 / 0.06);
     --hair-strong: rgb(255 255 255 / 0.16);
     --chip: rgb(255 255 255 / 0.07);
@@ -35,6 +49,11 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* Above any display rule below (buttons are flex). */
+[hidden] {
+  display: none !important;
 }
 
 html,
@@ -52,11 +71,12 @@ body {
   font: 400 15px/1.5 system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  cursor: default;
+  user-select: none;
 }
 
-/* The web app's backdrop wash, so going from here to the server isn't a jump. */
-body::before {
-  content: '';
+/* The web app's backdrop wash, so going from here to the server isn't a jump. It drifts, slowly enough to miss. */
+.wash {
   position: fixed;
   width: 620px;
   height: 620px;
@@ -67,16 +87,77 @@ body::before {
   opacity: var(--blob-opacity);
   filter: blur(100px);
   pointer-events: none;
+  animation: drift 36s ease-in-out infinite alternate;
 }
 
 main {
   position: relative;
-  width: min(100%, 380px);
+  width: min(100%, 400px);
+}
+
+/* ---- Brand */
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 28px;
 }
 
 .mark {
   display: block;
-  margin-bottom: 20px;
+  filter: var(--mark-shadow);
+  animation: mark-in 0.7s var(--spring) both;
+  -webkit-user-drag: none;
+}
+
+/* Waiting on the server: the mark breathes. */
+body[data-state='opening'] .mark {
+  animation:
+    mark-in 0.7s var(--spring) both,
+    breathe 2.8s ease-in-out 0.7s infinite;
+}
+
+/* Lowercase and monospaced, like the daemon it's named after. */
+.word {
+  font: 500 22px/1 ui-monospace, 'SF Mono', Menlo, monospace;
+  letter-spacing: -0.02em;
+  animation: rise 0.5s var(--ease-out) 0.1s both;
+}
+
+/* ---- Opening */
+
+.opening {
+  text-align: center;
+}
+
+.opening h1 {
+  font-size: 26px;
+  animation: rise 0.5s var(--ease-out) 0.15s both;
+}
+
+.unreachable {
+  max-width: 340px;
+  margin: 12px auto 0;
+  animation: rise 0.45s var(--ease-out) both;
+}
+
+.unreachable .actions {
+  justify-content: center;
+}
+
+/* ---- Setup */
+
+.card {
+  padding: 30px 30px 26px;
+  border: 1px solid var(--edge);
+  border-radius: 28px;
+  background: var(--paper);
+  box-shadow: var(--inset), var(--shadow-lg);
+  cursor: auto;
+  user-select: text;
+  animation: sheet-in 0.55s var(--spring) 0.12s both;
 }
 
 h1 {
@@ -101,6 +182,7 @@ input {
   background: var(--field);
   color: var(--ink);
   font: inherit;
+  transition: border-color 0.15s var(--ease-out);
 }
 
 input:focus-visible,
@@ -117,6 +199,7 @@ input[aria-invalid] {
 .error {
   margin: 10px 0 0;
   color: var(--err-ink);
+  animation: rise 0.3s var(--ease-out) both;
 }
 
 .actions {
@@ -127,6 +210,9 @@ input[aria-invalid] {
 }
 
 button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   height: 38px;
   padding: 0 16px;
   border: 1px solid var(--hair-strong);
@@ -135,6 +221,17 @@ button {
   color: var(--ink);
   font: 500 14px/1 system-ui, sans-serif;
   cursor: pointer;
+  transition:
+    transform 0.12s var(--ease-out),
+    filter 0.15s var(--ease-out);
+}
+
+button:hover:not(:disabled) {
+  filter: brightness(1.03);
+}
+
+button:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 button.primary {
@@ -149,9 +246,26 @@ button:disabled {
   cursor: default;
 }
 
+/* Checking the address. */
+button[aria-busy='true'] {
+  opacity: 1;
+}
+
+button[aria-busy='true']::before {
+  content: '';
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentcolor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
 .hint {
-  margin: 24px 0 0;
+  margin: 22px 0 0;
+  text-align: center;
   font-size: 13.5px;
+  animation: rise 0.5s var(--ease-out) 0.3s both;
 }
 
 a {
@@ -165,4 +279,54 @@ a {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* ---- Motion. Anything shown again (a section's `hidden` lifted) plays its entrance again. */
+
+@keyframes mark-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.86);
+  }
+}
+
+@keyframes breathe {
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.985);
+  }
+}
+
+@keyframes drift {
+  to {
+    transform: translate(70px, 50px) scale(1.1);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

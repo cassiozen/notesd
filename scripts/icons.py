@@ -12,7 +12,8 @@ cut away, the tile is cropped square, and then placed per target:
   android: adaptive launcher foreground + monochrome, splash icon, brand mark
   ios:     the 1024px app icon, full bleed (iOS masks it to its own shape and
            allows no transparency), and the in-app mark
-  macos:   the desktop app's icon.icns and icon.png, on Apple's icon grid
+  macos:   the desktop app's icon.icns and icon.png, on Apple's icon grid, and
+           its setup page's mark (setup/mark.png)
 """
 
 import sys
@@ -25,6 +26,7 @@ WEB = ROOT / "apps/web"
 RES = ROOT / "apps/android/app/src/main/res"
 IOS = ROOT / "apps/ios/Notes/Resources/Assets.xcassets"
 MACOS = ROOT / "apps/desktop/src-tauri/icons"
+SETUP = ROOT / "apps/desktop/setup"
 PAPER = (246, 243, 238, 255)  # --paper / @color/paper
 DENSITIES = {"mdpi": 1, "hdpi": 1.5, "xhdpi": 2, "xxhdpi": 3, "xxxhdpi": 4}
 
@@ -131,6 +133,8 @@ def macos(tile):
     icon = place(tile, 1024, 824 / 1024)
     save(icon, MACOS / "icon.png")
     save(icon, MACOS / "icon.icns")
+    # Shown at 80px; sharp on a Retina screen.
+    save(place(tile, 160, 1), SETUP / "mark.png")
 
 
 if __name__ == "__main__":

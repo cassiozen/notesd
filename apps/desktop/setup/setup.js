@@ -6,30 +6,53 @@ const $ = (id) => document.getElementById(id)
 // didn't answer and its service worker had nothing kept. A slow server that answers later still replaces it.
 const UNREACHABLE_AFTER_MS = 6000
 
+const still = matchMedia('(prefers-reduced-motion: reduce)')
+
 let server = null
 let giveUp = 0
 
-function open(url) {
+/** `opening`, `unreachable` or `setup`: what the page shows, for its CSS. */
+function state(name) {
+  document.body.dataset.state = name
+}
+
+/** Fades the setup form out on its way to the next step, rather than dropping it. */
+async function leave(step) {
+  if (step.hidden) return
+  if (!still.matches) {
+    await step.animate([{ opacity: 1 }, { opacity: 0, transform: 'translateY(-8px) scale(0.985)' }], {
+      duration: 200,
+      easing: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+    }).finished
+  }
+  step.hidden = true
+}
+
+async function open(url) {
   server = url
-  $('setup').hidden = true
+  clearTimeout(giveUp)
+  const host = new URL(url).host
+  // Not location.replace: a load the page starts itself goes to the Safari web app, when there's one for this server.
+  invoke('open_server')
+  await leave($('setup-step'))
+  state('opening')
   $('opening').hidden = false
   $('unreachable').hidden = true
-  const host = new URL(url).host
   $('opening-title').textContent = `Opening ${host}…`
-  clearTimeout(giveUp)
   giveUp = setTimeout(() => {
+    state('unreachable')
     $('opening-title').textContent = `Can’t reach ${host}`
     $('unreachable').hidden = false
     $('retry').focus()
   }, UNREACHABLE_AFTER_MS)
-  // Not location.replace: a load the page starts itself goes to the Safari web app, when there's one for this server.
-  invoke('open_server')
 }
 
 function ask(changing) {
   clearTimeout(giveUp)
+  busy(false)
+  state('setup')
   $('opening').hidden = true
-  $('setup').hidden = false
+  $('setup-step').hidden = false
   $('cancel').hidden = !(changing && server)
   $('address').value = server ?? ''
   showError(null)
@@ -42,6 +65,12 @@ function showError(message) {
   $('error').hidden = !message
   if (message) $('address').setAttribute('aria-invalid', 'true')
   else $('address').removeAttribute('aria-invalid')
+  if (message && !still.matches) {
+    $('address').animate([{}, { transform: 'translateX(-6px)' }, { transform: 'translateX(6px)' }, {}], {
+      duration: 320,
+      easing: 'ease-in-out',
+    })
+  }
 }
 
 function busy(on) {
@@ -49,6 +78,7 @@ function busy(on) {
   // A check that succeeds after Cancel would still switch servers.
   $('cancel').disabled = on
   $('connect').textContent = on ? 'Checking…' : 'Connect'
+  $('connect').setAttribute('aria-busy', String(on))
   $('address').readOnly = on
 }
 
@@ -56,19 +86,22 @@ $('setup').addEventListener('submit', async (event) => {
   event.preventDefault()
   busy(true)
   showError(null)
+  let url
   try {
-    open(await invoke('set_server', { address: $('address').value }))
+    url = await invoke('set_server', { address: $('address').value })
   } catch (err) {
+    busy(false)
     showError(String(err))
     $('address').focus()
-  } finally {
-    busy(false)
+    return
   }
+  // Still busy while the form fades out; asked again later, it starts afresh.
+  void open(url)
 })
-$('cancel').addEventListener('click', () => open(server))
-$('retry').addEventListener('click', () => open(server))
+$('cancel').addEventListener('click', () => void open(server))
+$('retry').addEventListener('click', () => void open(server))
 $('change').addEventListener('click', () => ask(true))
 
 server = await invoke('get_server')
-if (server && !new URLSearchParams(location.search).has('change')) open(server)
+if (server && !new URLSearchParams(location.search).has('change')) void open(server)
 else ask(true)
