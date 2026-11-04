@@ -87,7 +87,8 @@ the Mac app gets the same number as its build number (`CFBundleVersion`), and `X
 | `vX.Y.Z-rcN` | `XXYYZZNN` |
 
 So `v0.3.0-rc1` (`00030001`) sorts before `v0.3.0` (`00030099`). Minor
-and patch numbers must stay below 100, and rc numbers below 99.
+and patch numbers must stay below 100, and rc numbers between 1 and 98:
+`scripts/release-version` refuses any other tag, which would share a build number with another release.
 
 ## Android signing
 

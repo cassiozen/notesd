@@ -141,8 +141,10 @@ description = "Release APK in server/bin and Play bundle in apps/android/app/bui
 dir = "apps/android"
 run = """
 set -e
+# On its own line: inside the here-document, the script failing wouldn't stop the task.
+release=$(../../scripts/release-version)
 read -r version code <<EOF
-$(../../scripts/release-version)
+$release
 EOF
 ./gradlew :app:assembleRelease :app:bundleRelease -Pnotes.versionName="$version" -Pnotes.versionCode="$code"
 mkdir -p ../../server/bin
@@ -227,8 +229,10 @@ set -euo pipefail
 : "${APPLE_API_ISSUER:?the App Store Connect API key issuer ID}"
 export APPLE_API_KEY_PATH="${APPLE_API_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_$APPLE_API_KEY.p8}"
 [ -f "$APPLE_API_KEY_PATH" ] || { echo "No API key at $APPLE_API_KEY_PATH" >&2; exit 1; }
+# On its own line: inside the here-document, the script failing wouldn't stop the task.
+release=$(../../scripts/release-version)
 read -r version code <<EOF
-$(../../scripts/release-version)
+$release
 EOF
 identity=$(plutil -extract bundle.macOS.signingIdentity raw src-tauri/tauri.signed.conf.json)
 bundle=src-tauri/target/release/bundle

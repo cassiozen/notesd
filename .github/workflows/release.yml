@@ -15,6 +15,9 @@ jobs:
   macos:
     runs-on: macos-26
     timeout-minutes: 60
+    # Builds with the signing secrets in reach: no write access to the repository or its packages.
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
         with:
