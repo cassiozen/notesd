@@ -1,0 +1,33 @@
+apps/web/src/notes/shell.tsx
+  s_f377e8ab9cbb1b::t_dadc1578e04054 3,309
+  s_f377e8ab9cbb1b::t_4cbfaaad99d758 310
+apps/web/src/auth/auth-context.tsx
+  s_f377e8ab9cbb1b::t_cce3d56380417d 5,100
+apps/web/src/settings/locked-notes.tsx
+  s_f377e8ab9cbb1b::t_cce3d56380417d 7,469
+apps/web/test/locks.test.tsx
+  s_f377e8ab9cbb1b::t_a233d25b3d2559 683,685,689-694,699,721,737,747,764,776,792,805,823,826-827,833-834,840,845-932,939
+  s_f377e8ab9cbb1b::t_19f362a2a89393 64-65,674-682,684,686-688,695-698
+  s_f377e8ab9cbb1b::t_3005ef873ab18f 700
+apps/web/src/locks/touch-id.ts
+  s_f377e8ab9cbb1b::t_5a6a4f8bb91f79 49,67-68,72,84,89-90,92,94,100,102-103,105,107-113,117-118,126,158,162-196,231,234,236-243,251
+apps/web/src/locks/unlock.tsx
+  s_f377e8ab9cbb1b::t_dadc1578e04054 12,101,234,254,312-344
+  s_f377e8ab9cbb1b::t_fe2a2c680b9bd3 345-347
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4af873dabe17258c4d0c4548aa6c47a64e5c7ae1",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
