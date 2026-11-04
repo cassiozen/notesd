@@ -137,7 +137,7 @@ dir = "apps/android"
 run = "./gradlew :app:assembleDebug"
 
 [tasks."release:android"]
-description = "Release APK in server/bin, signed when NOTESD_KEYSTORE is set (docs/contributing/releasing.md)"
+description = "Release APK in server/bin and Play bundle in apps/android/app/build/release, signed when NOTESD_KEYSTORE is set (docs/contributing/releasing.md)"
 dir = "apps/android"
 run = """
 set -e
@@ -153,12 +153,16 @@ case "$version" in
   *) suffix=99 ;;
 esac
 code=$(( ((major * 100 + minor) * 100 + patch) * 100 + ${suffix:-0} ))
-./gradlew :app:assembleRelease -Pnotes.versionName="$version" -Pnotes.versionCode="$code"
+./gradlew :app:assembleRelease :app:bundleRelease -Pnotes.versionName="$version" -Pnotes.versionCode="$code"
 mkdir -p ../../server/bin
 signed=app/build/outputs/apk/release/app-release.apk
 [ -f "$signed" ] || signed=app/build/outputs/apk/release/app-release-unsigned.apk
 cp "$signed" "../../server/bin/notesd-$version.apk"
 echo "server/bin/notesd-$version.apk (versionCode $code)"
+# Not in server/bin: everything there is published to the GitHub release, and a bundle only installs through Play.
+rm -rf app/build/release && mkdir -p app/build/release
+cp app/build/outputs/bundle/release/app-release.aab "app/build/release/notesd-$version.aab"
+echo "apps/android/app/build/release/notesd-$version.aab"
 """
 
 [tasks."test:ios:core"]
