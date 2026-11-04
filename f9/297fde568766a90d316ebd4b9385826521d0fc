@@ -1,0 +1,24 @@
+docs/guides/self-hosting/binary-systemd.md
+  s_a98b9d06ef8d2e::t_8c4a4afcc3638f 67,70-71
+docs/guides/self-hosting/upgrading.md
+  s_a98b9d06ef8d2e::t_e5a3c29375d373 17-18
+  s_a98b9d06ef8d2e::t_3491fc7db0e52f 58-59,61-62,64,66,69-71,73,77
+docs/guides/self-hosting/backups.md
+  s_a98b9d06ef8d2e::t_4fe5afaa127915 22-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f9297fde568766a90d316ebd4b9385826521d0fc",
+  "prompts": {},
+  "sessions": {
+    "s_a98b9d06ef8d2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "837e3163-d4dc-427f-a621-3f89da1b496e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
