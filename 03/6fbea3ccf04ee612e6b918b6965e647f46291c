@@ -1,0 +1,27 @@
+apps/web/src/router.ts
+  s_58c0936dc58703::t_9cf0bf03c51c99 55-61
+apps/web/src/notes/note-pane.module.css
+  s_58c0936dc58703::t_9cf0bf03c51c99 114-118
+apps/web/src/notes/note-list.module.css
+  s_58c0936dc58703::t_f657561e73d98d 280,291-295
+  s_58c0936dc58703::t_9cf0bf03c51c99 298,302
+  s_58c0936dc58703::t_ded1ee167ac226 296-297
+apps/web/test/router.test.ts
+  s_58c0936dc58703::t_f6f504a965c519 32-33
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "036fbea3ccf04ee612e6b918b6965e647f46291c",
+  "prompts": {},
+  "sessions": {
+    "s_58c0936dc58703": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86f0fc98-08c3-4aa1-994f-c5e4cfdc3f8f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
