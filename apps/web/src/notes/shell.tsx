@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { dragRegion } from '../desktop'
+import { TouchIdOffer } from '../locks/unlock'
 import type { SyncNotice } from '../offline/protocol'
 import { navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
@@ -304,6 +305,8 @@ function ShellView({ username }: { username: string }) {
       </div>
 
       {notice && <Toast text={notice.text} onUndo={notice.undo ? () => undo(notice.id) : undefined} />}
+
+      <TouchIdOffer username={username} />
 
       {route.name === 'settings' && (
         <SettingsSheet

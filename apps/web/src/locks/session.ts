@@ -174,6 +174,43 @@ class LockSession {
     await this.adopt(raw, proof, at, from)
   }
 
+  /**
+   * Unlocks with [password] and gives back a copy of the key, with the password entry it goes with, to keep
+   * on this device behind Touch ID: the session's own copy can't be read back out. The caller zeroes the
+   * copy. Throws LockedError for a wrong password.
+   */
+  async unlockForDevice(password: string): Promise<{ raw: Uint8Array<ArrayBuffer>; entry: string }> {
+    const at = this.at()
+    await this.load(true)
+    const from = this.passwordWrap()
+    const raw = await this.unwrapWithPassword(password)
+    const copy = raw.slice()
+    // adopt is quietly true after a sign-out too, having adopted nothing: no copy for the Keychain then.
+    if (!from || !(await this.adopt(raw, await verifierOf(raw), at, from)) || at.epoch !== this.epoch) {
+      copy.fill(0)
+      throw new KeyringChangedError()
+    }
+    return { raw: copy, entry: from }
+  }
+
+  /**
+   * Unlocks with a key kept on this device against the password entry [boundTo]. False, and nothing
+   * adopted, unless the keyring still has that entry: a new password or a reset since may have replaced it.
+   */
+  async unlockWithKey(raw: Uint8Array<ArrayBuffer>, boundTo: string): Promise<boolean> {
+    const at = this.at()
+    if (raw.length !== 32 || this.passwordWrap() !== boundTo) {
+      raw.fill(0)
+      return false
+    }
+    return (await this.adopt(raw, await verifierOf(raw), at, boundTo)) && at.epoch === this.epoch
+  }
+
+  /** The lock password entry of the keyring as last fetched: which wrap of the key it is. */
+  passwordEntry(): string | null {
+    return this.passwordWrap()
+  }
+
   /** Stops a passkey unlocking notes. Needs the key in memory (its verifier). */
   async removePasskey(id: string): Promise<void> {
     if (!this.proof) throw new LockedError('Unlock locked notes first')
@@ -209,8 +246,8 @@ class LockSession {
     return this.adopt(raw, await verifierOf(raw), at, from)
   }
 
-  /** Re-wraps the same key under a new password: no note changes. */
-  async changePassword(current: string, next: string): Promise<void> {
+  /** Re-wraps the same key under a new password: no note changes. Returns the entry it replaced. */
+  async changePassword(current: string, next: string): Promise<string | null> {
     const at = this.at()
     await this.load(true)
     const from = this.passwordWrap()
@@ -226,8 +263,9 @@ class LockSession {
       wrapped: await wrap(kek, raw, 'password'),
       verifier: proof,
     })
-    if (!this.changed(at, (keys) => [key, ...keys.filter((k) => k.id !== 'password')], { from, ours: key.wrapped })) return
+    if (!this.changed(at, (keys) => [key, ...keys.filter((k) => k.id !== 'password')], { from, ours: key.wrapped })) return from
     if (!(await this.adopt(raw, proof, at, key.wrapped))) throw new KeyringChangedError()
+    return from
   }
 
   /** Forgets the keyring for good, after a forgotten lock password. */

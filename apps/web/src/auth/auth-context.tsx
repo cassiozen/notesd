@@ -1,7 +1,8 @@
-import { createContext, use, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
+import { forgetTouchId } from '../locks/touch-id'
 import { forgetEmailSettings } from '../notes/email-settings'
 import { forgetSpaces } from '../notes/spaces'
 import { closeNotes, forgetNotesHere, keepIfInstalledApp, openNotes } from '../offline/device'
@@ -84,6 +85,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'signed-in', username: info.username, firstRun: opts.firstRun ?? false })
   }, [])
 
+  const account = useRef<string | null>(null)
+  useEffect(() => {
+    account.current = 'username' in state ? state.username : null
+  })
+
   const signOut = useCallback(async () => {
     try {
       await auth.logout()
@@ -91,6 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setCsrfToken(null)
       // Signed out, nothing of the account stays in this browser.
       void forgetNotesHere().catch(() => undefined)
+      if (account.current) forgetTouchId(account.current)
       // Already on the server's notes, the source doesn't change: the next account would get these.
       forgetSpaces()
       forgetEmailSettings()

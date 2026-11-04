@@ -1,19 +1,17 @@
 import Foundation
 import LocalAuthentication
-import NotesCore
 import Security
-import Synchronization
 
-/// Face ID or Touch ID, as this iPhone has it: what the app calls it, and its symbol.
-nonisolated struct BiometryKind: Sendable {
-    let name: String
-    let symbol: String
+/// Face ID or Touch ID, as this device has it: what the app calls it, and its symbol.
+public struct BiometryKind: Sendable {
+    public let name: String
+    public let symbol: String
 
-    static let faceID = BiometryKind(name: "Face ID", symbol: "faceid")
-    static let touchID = BiometryKind(name: "Touch ID", symbol: "touchid")
+    public static let faceID = BiometryKind(name: "Face ID", symbol: "faceid")
+    public static let touchID = BiometryKind(name: "Touch ID", symbol: "touchid")
 
     /// What this device has enrolled; Face ID when it can't tell.
-    static func current() -> BiometryKind {
+    public static func current() -> BiometryKind {
         let context = LAContext()
         _ = context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
         return context.biometryType == .touchID ? .touchID : .faceID
@@ -21,26 +19,26 @@ nonisolated struct BiometryKind: Sendable {
 }
 
 /// The locked-notes key as a Keychain item that only Face ID (or Touch ID)
-/// reads, every time, on this device only. iOS makes it unreadable when the
-/// enrolled faces or fingers change (`.biometryCurrentSet`), as Android's
+/// reads, every time, on this device only. The system makes it unreadable when
+/// the enrolled faces or fingers change (`.biometryCurrentSet`), as Android's
 /// Keystore key is destroyed then.
-nonisolated final class KeychainBiometrics: Biometrics {
+public final class KeychainBiometrics: Biometrics {
     private let service: String
     private let kind: BiometryKind
 
-    init(service: String, kind: BiometryKind) {
+    public init(service: String, kind: BiometryKind) {
         self.service = service
         self.kind = kind
     }
 
-    func available() -> Bool {
+    public func available() -> Bool {
         LAContext().canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: nil)
     }
 
-    func seal(_ key: Data) async -> BiometricResult {
+    public func seal(_ key: Data) async -> BiometricResult {
         let context = LAContext()
         context.localizedCancelTitle = "Not Now"
-        if let refused = await evaluate(context, reason: "Turn on \(kind.name) unlock for locked notes.") {
+        if let refused = await evaluate(context, reason: Self.reason("Turn on \(kind.name) unlock for locked notes")) {
             return refused
         }
         guard
@@ -55,7 +53,7 @@ nonisolated final class KeychainBiometrics: Biometrics {
         return SecItemAdd(item as CFDictionary, nil) == errSecSuccess ? .ok(Data()) : .failed
     }
 
-    func open() async -> BiometricResult {
+    public func open() async -> BiometricResult {
         // Gone (Face ID enrolled again, or never kept): say so without asking for a face first.
         let probe = LAContext()
         probe.interactionNotAllowed = true
@@ -70,7 +68,7 @@ nonisolated final class KeychainBiometrics: Biometrics {
 
         let context = LAContext()
         context.localizedFallbackTitle = "Use Password"
-        if let refused = await evaluate(context, reason: "Open your locked notes.") { return refused }
+        if let refused = await evaluate(context, reason: Self.reason("Open your locked notes")) { return refused }
         // Already confirmed: the read doesn't ask again.
         context.interactionNotAllowed = true
         var read = query
@@ -87,15 +85,30 @@ nonisolated final class KeychainBiometrics: Biometrics {
         }
     }
 
-    func forget() {
+    public func forget() {
         SecItemDelete(query as CFDictionary)
     }
 
     private var query: [String: Any] {
-        [
+        var query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
             kSecAttrAccount as String: "key",
         ]
+        #if os(macOS)
+            // Access control (the biometric check) works only in the data protection keychain, which iOS always
+            // uses; the Mac's default, file-based one rejects it. Needs a signed app with an application identifier.
+            query[kSecUseDataProtectionKeychain as String] = true
+        #endif
+        return query
+    }
+
+    /// The prompt's line. The Mac puts "<app> is trying to" before it; iOS shows it as it is.
+    private static func reason(_ text: String) -> String {
+        #if os(macOS)
+            text.prefix(1).lowercased() + text.dropFirst()
+        #else
+            text + "."
+        #endif
     }
 
     /// Nil once Face ID matched; otherwise what stopped it. Only the user's own
@@ -110,31 +123,4 @@ nonisolated final class KeychainBiometrics: Biometrics {
             return .failed
         }
     }
-}
-
-/// Face ID for UI tests: `--fake-biometrics=match` matches at once,
-/// `--fake-biometrics=cancel` is dismissed. Without the flag it isn't available,
-/// so flows that don't test it aren't interrupted.
-nonisolated final class FakeBiometrics: Biometrics {
-    private let mode: String?
-    private let kept = Mutex<Data?>(nil)
-
-    init(arguments: [String]) {
-        mode = arguments.first { $0.hasPrefix("--fake-biometrics=") }?.split(separator: "=").last.map(String.init)
-    }
-
-    func available() -> Bool { mode != nil }
-
-    func seal(_ key: Data) async -> BiometricResult {
-        guard mode == "match" else { return .cancelled }
-        kept.withLock { $0 = key }
-        return .ok(Data())
-    }
-
-    func open() async -> BiometricResult {
-        guard mode == "match" else { return .cancelled }
-        return kept.withLock { $0 }.map { .ok($0) } ?? .invalidated
-    }
-
-    func forget() { kept.withLock { $0 = nil } }
 }
