@@ -4,6 +4,8 @@
 
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[cfg(target_os = "macos")]
+mod close;
 mod downloads;
 mod server;
 mod store;
@@ -15,8 +17,11 @@ use std::sync::Mutex;
 use tauri::ipc::CapabilityBuilder;
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem, Submenu};
 use tauri::webview::{DownloadEvent, NewWindowResponse, PageLoadEvent};
-use tauri::{AppHandle, Manager, Url, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry};
+use tauri::{
+    AppHandle, Manager, RunEvent, Url, Webview, WebviewUrl, WebviewWindow, WebviewWindowBuilder, WindowEvent, Wry,
+};
 use tauri_plugin_opener::OpenerExt;
+use tauri_plugin_window_state::StateFlags;
 
 const MAIN: &str = "main";
 const CHANGE_SERVER: &str = "change-server";
@@ -100,7 +105,12 @@ fn touch_id_forget(webview: Webview, user: String) -> Result<(), String> {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .plugin(tauri_plugin_window_state::Builder::default().build())
+        // Not whether it's shown: last quit with the window closed or not, it opens shown and focused.
+        .plugin(
+            tauri_plugin_window_state::Builder::default()
+                .with_state_flags(StateFlags::all() - StateFlags::VISIBLE)
+                .build(),
+        )
         .manage(State::default())
         .invoke_handler(tauri::generate_handler![
             get_server,
@@ -125,10 +135,17 @@ fn main() {
             }
         })
         .on_window_event(|window, event| {
-            if let WindowEvent::Resized(_) = event
-                && let Some(webview) = window.get_webview_window(MAIN)
-            {
-                tell_fullscreen(&webview, false);
+            let Some(webview) = window.get_webview_window(MAIN) else {
+                return;
+            };
+            match event {
+                WindowEvent::Resized(_) => tell_fullscreen(&webview, false),
+                #[cfg(target_os = "macos")]
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    close::hide(&webview);
+                }
+                _ => {}
             }
         })
         .setup(|app| {
@@ -139,11 +156,27 @@ fn main() {
             *app.state::<State>().server.lock().unwrap() = server;
             let window = main_window(app.handle())?;
             *app.state::<State>().setup.lock().unwrap() = Some(window.url()?);
+            #[cfg(target_os = "macos")]
+            close::watch(&window)?;
             Ok(())
         })
-        .run(tauri::generate_context!())
-        .expect("error while running notesd");
+        .build(tauri::generate_context!())
+        .expect("error while building notesd")
+        .run(on_event);
 }
+
+/// The Dock icon clicked: the window back, if closed.
+#[cfg(target_os = "macos")]
+fn on_event(app: &AppHandle, event: RunEvent) {
+    if let RunEvent::Reopen { .. } = event
+        && let Some(window) = app.get_webview_window(MAIN)
+    {
+        close::show(&window);
+    }
+}
+
+#[cfg(not(target_os = "macos"))]
+fn on_event(_: &AppHandle, _: RunEvent) {}
 
 /// Opens on the setup page, which goes on to the server: when the server can't be reached and the service worker
 /// has nothing, a failed load leaves the setup page showing, with a way to retry, instead of a blank window.

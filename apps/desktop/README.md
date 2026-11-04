@@ -14,6 +14,10 @@ drags from, offers no passkeys (this WebKit refuses them), and names its
 session "notesd for macOS". Full screen, which hides the buttons, adds
 `data-fullscreen`.
 
+Closing the window leaves the app running, as Mac apps do: the window only
+hides (out of full screen first), and the Dock icon brings it back with the
+page as it was. Quit (⌘Q) quits.
+
 Touch ID stands in for passkeys: it unlocks locked notes, as Face ID does on
 the iPhone, with the same Keychain code (`shared/keychain-biometrics`). It
 needs a signed app (the Keychain item lives in the data protection keychain,
@@ -34,6 +38,7 @@ for now.
   server is one the app asks for (`navigate`): a load the page starts itself
   is first offered to whatever app claims the address, and a Safari web app
   made with Add to Dock claims its site, so the server would open there.
+- `src-tauri/src/close.rs`: closing hides the window, the Dock icon shows it.
 - `src-tauri/src/touch_id.rs` and `src-tauri/swift/`: Touch ID. The Swift
   package wraps the shared Keychain code in C functions; swift-rs builds and
   links it from `build.rs`. One Keychain item per server and account. The web
