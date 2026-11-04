@@ -26,7 +26,12 @@ storage, along with the server address and your sign-in details.
 - On iPhone, this data can be included in your device or iCloud backups, like any other app's
   data. Your backup settings decide this.
 - Signing out keeps your notes on the device so that you can sign in again later. To delete
-  everything, use **Settings → Remove all data**, or uninstall the app.
+  everything, use **Settings → Remove all data**.
+- Uninstalling deletes your notes and pictures. On Android, it deletes everything else too. On
+  iPhone, the server address, your username, your sign-in details and the Face ID key for locked
+  notes are kept in the iOS Keychain, which iOS doesn't clear when an app is removed. If you
+  reinstall, the app can still be signed in. To clear these, use **Remove all data** before
+  uninstalling.
 
 Locked notes are encrypted on your device before they're sent to the server, and the server stores only
 the encrypted text and pictures. Titles, dates, sizes and tags written in titles stay visible to the server.
