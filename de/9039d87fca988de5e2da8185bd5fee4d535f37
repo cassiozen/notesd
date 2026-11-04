@@ -1,0 +1,27 @@
+docs/contributing/releasing.md
+  s_f377e8ab9cbb1b::t_5ffdaab44df242 88-89
+.github/workflows/release.yml
+  s_f377e8ab9cbb1b::t_116fd4d9cf2de9 18-20
+docs/guides/apps/mac.md
+  s_f377e8ab9cbb1b::t_63646f5afe3b53 10-11,30-32,38-39,43-46
+mise.toml
+  s_f377e8ab9cbb1b::t_1035db8a35d53f 144-145,147,228-229,231
+scripts/release-version
+  s_f377e8ab9cbb1b::t_f7cf3f1e8d133a 8-9,21-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de9039d87fca988de5e2da8185bd5fee4d535f37",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
