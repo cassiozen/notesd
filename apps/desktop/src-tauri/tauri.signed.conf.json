@@ -1,0 +1,13 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "bundle": {
+    "macOS": {
+      "signingIdentity": "Developer ID Application: CASSIO ANTONIO (687T6N44QQ)",
+      "hardenedRuntime": true,
+      "entitlements": "signing/notesd.entitlements",
+      "files": {
+        "embedded.provisionprofile": "signing/notesd.provisionprofile"
+      }
+    }
+  }
+}

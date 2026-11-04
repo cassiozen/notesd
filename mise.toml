@@ -220,6 +220,12 @@ dir = "apps/desktop"
 depends = ["install"]
 run = "pnpm tauri build --bundles app"
 
+[tasks."build:desktop:signed"]
+description = "The macOS app signed with the team's Developer ID (needs its certificate in the keychain), with Touch ID"
+dir = "apps/desktop"
+depends = ["install"]
+run = "pnpm tauri build --bundles app --config src-tauri/tauri.signed.conf.json"
+
 [tasks."build:web"]
 description = "Build the web app into server/internal/web/dist"
 dir = "apps/web"
