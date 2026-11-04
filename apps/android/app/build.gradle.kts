@@ -39,7 +39,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "notes.app"
+        applicationId = "app.notesd"
         minSdk = 28
         targetSdk = 37
         // `mise run release:android` passes both, derived from the git tag (docs/contributing/releasing.md).

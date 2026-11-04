@@ -8,6 +8,6 @@
         <intent
             android:action="notes.app.action.NEW_NOTE"
             android:targetClass="notes.app.MainActivity"
-            android:targetPackage="notes.app" />
+            android:targetPackage="app.notesd" />
     </shortcut>
 </shortcuts>
