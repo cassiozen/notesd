@@ -19,7 +19,6 @@ import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Kicker } from '../ui/kicker'
 import { Surface } from '../ui/surface'
-import auth from '../auth/auth.module.css'
 import styles from './settings.module.css'
 
 /** Whether this browser keeps the signed-in user's notes; follows opting in and out. */
@@ -56,43 +55,48 @@ export function DeviceCard({ username }: { username: string }) {
   return (
     <Surface as="section" className={styles.card} aria-labelledby="device-kicker">
       <Kicker id="device-kicker">This device</Kicker>
-      {inDesktopApp() ? (
-        // Always kept there (wouldKeepWhenInstalled); signing out removes them.
-        kept && (
-          <p className={styles.muted}>
-            Your notes are kept on this Mac, so they open and save without a connection, and sync when it’s back.
-          </p>
-        )
-      ) : (
-        <>
-          <label className={auth.keep}>
-            <input
-              type="checkbox"
-              checked={kept}
-              disabled={busy || (!kept && !supported)}
-              onChange={(e) => (e.target.checked ? keepNotesHere(username) : void stop())}
-            />
-            <span>
-              Keep my notes on this device
-              <span className={auth.keepWhy}>
-                They open and save without a connection, and sync when it’s back. Anyone using this browser can read
-                them, locked notes aside.
+      <ul className={styles.items}>
+        {inDesktopApp() ? (
+          // Always kept there (wouldKeepWhenInstalled); signing out removes them.
+          kept && (
+            <li className={styles.item}>
+              <span className={styles.itemText}>
+                <span className={styles.itemTitle}>Kept on this Mac</span>
+                <span className={styles.muted}>Your notes open and save without a connection.</span>
               </span>
-            </span>
-          </label>
-          {!kept && !supported && (
-            <span className={styles.muted}>
-              This browser can’t keep notes: private windows, and some privacy settings, block the storage it needs.
-            </span>
-          )}
-        </>
+            </li>
+          )
+        ) : (
+          <li className={styles.item}>
+            <label className={styles.itemLabel}>
+              <span className={styles.itemText}>
+                <span className={styles.itemTitle}>Keep my notes on this device</span>
+                <span className={styles.muted}>
+                  They open and save without a connection. Anyone using this browser can read them, locked notes aside.
+                </span>
+              </span>
+              <input
+                type="checkbox"
+                className={styles.check}
+                checked={kept}
+                disabled={busy || (!kept && !supported)}
+                onChange={(e) => (e.target.checked ? keepNotesHere(username) : void stop())}
+              />
+            </label>
+          </li>
+        )}
+        {kept && <SyncItem />}
+      </ul>
+      {!inDesktopApp() && !kept && !supported && (
+        <span className={styles.muted}>
+          This browser can’t keep notes: private windows, and some privacy settings, block the storage it needs.
+        </span>
       )}
       {!kept && failure && (
         <p role="alert" className={styles.error}>
           The notes kept here couldn’t be opened ({failure}), so these are the server’s.
         </p>
       )}
-      {kept && <SyncRow />}
       {error && (
         <p role="alert" className={styles.error}>
           {error}
@@ -165,24 +169,44 @@ export function useSyncState(): SyncState | null {
   return sync ? state : null
 }
 
-function SyncRow() {
+/** The dot's colour: the save indicator's, for sync. */
+function syncTone(state: SyncState | null): 'saved' | 'waiting' | 'syncing' | 'failed' | 'attention' {
+  if (!state) return 'waiting'
+  switch (state.status.kind) {
+    case 'Synced':
+      return state.pending > 0 ? 'waiting' : 'saved'
+    case 'Syncing':
+      return 'syncing'
+    case 'Failed':
+      return 'failed'
+    case 'SignedOut':
+    case 'UpgradeRequired':
+      return 'attention'
+    case 'Offline':
+    case 'NotConnected':
+      return 'waiting'
+  }
+}
+
+function SyncItem() {
   const sync = useNotesSource().sync
   const state = useSyncState()
   const status = state?.status
   return (
-    <div className={styles.who}>
-      <span className={styles.text}>{syncSummary(state)}</span>
-      {status?.kind === 'Failed' && <span className={styles.muted}>{status.message}</span>}
-      {status?.kind === 'UpgradeRequired' && <span className={styles.muted}>{UPGRADE_REQUIRED}</span>}
-      {state?.lastSyncAt != null && (
-        <span className={styles.muted}>Last synced {relativeTime(state.lastSyncAt).toLowerCase()}</span>
-      )}
-      <div>
-        <Button size="md" onClick={() => sync?.now()}>
-          Sync now
-        </Button>
-      </div>
-    </div>
+    <li className={styles.item}>
+      <span className={[styles.syncDot, styles[syncTone(state)]].join(' ')} aria-hidden="true" />
+      <span className={styles.itemText}>
+        <span className={styles.itemTitle}>{syncSummary(state) || 'Not synced yet'}</span>
+        {status?.kind === 'Failed' && <span className={styles.muted}>{status.message}</span>}
+        {status?.kind === 'UpgradeRequired' && <span className={styles.muted}>{UPGRADE_REQUIRED}</span>}
+        {state?.lastSyncAt != null && (
+          <span className={styles.muted}>Last synced {relativeTime(state.lastSyncAt).toLowerCase()}</span>
+        )}
+      </span>
+      <Button size="sm" busy={status?.kind === 'Syncing'} onClick={() => sync?.now()}>
+        Sync now
+      </Button>
+    </li>
   )
 }
 

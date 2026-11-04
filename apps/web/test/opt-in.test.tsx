@@ -327,7 +327,7 @@ describe('the macOS app', () => {
     expect(started).toHaveLength(1)
 
     await openSettings(user, 'Sync & data')
-    expect(await screen.findByText(/Your notes are kept on this Mac/)).toBeTruthy()
+    expect(await screen.findByText('Kept on this Mac')).toBeTruthy()
     expect(keepBox()).toBeNull()
   })
 })
