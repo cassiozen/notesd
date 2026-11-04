@@ -13,6 +13,7 @@ checks, builds and publishes everything:
 | --- | --- |
 | Server binaries: `notesd-linux-amd64`, `notesd-linux-arm64`, `notesd-darwin-arm64` | GitHub release |
 | Signed Android APK: `notesd-<version>.apk` | GitHub release |
+| Signed Android app bundle: `notesd-<version>.aab`, for Google Play | `android-app-bundle` artifact of the workflow run |
 | `notesd-update`, for [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings) | GitHub release |
 | `SHA256SUMS` for all of the above | GitHub release |
 | Docker image, `linux/amd64` and `linux/arm64` | `ghcr.io/cassiozen/notesd` |
@@ -30,8 +31,9 @@ The workflow:
    release before anything is published.
 2. Builds the server binaries (`mise run release`), with the web app
    embedded and the version from `git describe`.
-3. Builds the signed APK (`mise run release:android`). It refuses to publish
-   an unsigned one.
+3. Builds the signed APK and app bundle (`mise run release:android`). It
+   refuses to publish an unsigned one. The bundle is uploaded as a workflow
+   artifact, not to the GitHub release: it only installs through Play.
 4. Pushes the Docker image, tagged `X.Y.Z` and `X.Y`, plus `latest` for
    non-prereleases.
 5. Creates the GitHub release with generated notes.
@@ -97,15 +99,31 @@ base64 < release.jks   # paste into NOTESD_KEYSTORE_BASE64
 
 `*.jks` and `*.keystore` are gitignored; never commit one.
 
+### Google Play
+
+Play re-signs the app with its own key (Play App Signing), so the keystore
+above is only Play's **upload key**: it signs the bundle you upload. A lost
+upload key can be reset through Play Console support; the APK key can't.
+
+Because Play's key differs from the APK's, Android won't install a GitHub
+APK over the app from Play, or the other way round: switching means
+uninstalling, which deletes the notes on the phone. Sync first.
+
+To publish to Play, open the release's workflow run, download the
+`android-app-bundle` artifact, and upload the `.aab` in Play Console. Play
+refuses a `versionCode` it has seen before, so upload bundles built from
+tags; to try a build on the closed testing track before a release, tag an
+rc.
+
 ## Building a release locally
 
 ```bash
 mise run release            # server binaries in server/bin
 mise run docker             # notesd:dev image for this machine, from those binaries
-mise run release:android    # APK in server/bin
+mise run release:android    # APK in server/bin, Play bundle in apps/android/app/build/release
 ```
 
-`release:android` signs the APK when `NOTESD_KEYSTORE` (the keystore's path),
-`NOTESD_KEYSTORE_PASSWORD` and `NOTESD_KEY_ALIAS` are set, and builds it
-unsigned otherwise. An APK signed with any other key can't be installed over
+`release:android` signs the APK and bundle when `NOTESD_KEYSTORE` (the
+keystore's path), `NOTESD_KEYSTORE_PASSWORD` and `NOTESD_KEY_ALIAS` are set,
+and builds them unsigned otherwise. An APK signed with any other key can't be installed over
 a published release.

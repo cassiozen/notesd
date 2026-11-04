@@ -49,6 +49,14 @@ jobs:
           echo "$NOTESD_KEYSTORE_BASE64" | base64 -d > "$NOTESD_KEYSTORE"
           mise run release:android
 
+      # For Play Console, which only takes bundles. A workflow artifact, not a release asset: it can't be sideloaded.
+      - name: Android app bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-app-bundle
+          path: apps/android/app/build/release/notesd-*.aab
+          if-no-files-found: error
+
       # The same linux binaries in an image: ghcr.io/<owner>/notesd. latest and X.Y only for non-prerelease tags.
       # Before the GitHub release, which can't be re-created: a failed image push can be re-run.
       - uses: docker/setup-buildx-action@v3
