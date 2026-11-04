@@ -28,12 +28,11 @@ Use `notesd create-owner`. It asks for a password of at least 8 characters (twic
 docker exec -it notesd notesd create-owner --username YOUR_USERNAME
 ```
 
-**If you're using the binary with systemd:** define
-[`notesd-run`](../reference/cli.md#with-systemd) first. It runs the command as the service's user,
-on its data directory.
+**If you're using the binary with systemd:** with
+[`NOTESD_DATA_DIR`](../reference/cli.md#with-systemd) set, as in the setup:
 
 ```bash
-notesd-run create-owner --username YOUR_USERNAME
+notesd create-owner --username YOUR_USERNAME
 ```
 
 **Either way:**

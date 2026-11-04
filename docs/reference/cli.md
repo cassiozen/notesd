@@ -21,23 +21,15 @@ docker exec -it notesd notesd check
 
 ### With systemd
 
-The [systemd setup](../guides/self-hosting/binary-systemd.md#keep-it-running-with-systemd) uses
-`DynamicUser=yes`, which keeps the data directory under `/var/lib/private`, where only root and the
-service can reach it, so `sudo -u notesd` doesn't work. Run commands through `systemd-run` with
-the same dynamic user and state directory instead. Units with the same `User=` share one dynamic
-user. A shell function saves typing it:
+The [systemd setup](../guides/self-hosting/binary-systemd.md#keep-it-running-with-systemd) runs
+the server as you, on `/var/lib/notesd`. With `NOTESD_DATA_DIR` set in your shell, as that page
+does, run commands as yourself, without `sudo`:
 
 ```bash
-notesd-run() {
-  sudo systemd-run --pipe --wait --quiet \
-    -p DynamicUser=yes -p User=notesd -p StateDirectory=notesd -p StateDirectoryMode=0700 \
-    /usr/local/bin/notesd "$@" --data-dir /var/lib/notesd
-}
-notesd-run check
+notesd check
 ```
 
-The rest of the file system is read-only to the command, so point `export --out` inside
-`/var/lib/notesd`.
+Without the variable, a command uses `./data` in the current folder: an empty server, not yours.
 
 | Command | What it does |
 | --- | --- |

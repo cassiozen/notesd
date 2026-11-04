@@ -18,7 +18,7 @@ back up the data directory, then replace the binary and restart:
 
 ```bash
 sudo systemctl stop notesd
-sudo cp -a /var/lib/private/notesd ~/notesd-backup-$(date +%Y%m%d-%H%M%S)   # DynamicUser keeps it here
+cp -a /var/lib/notesd ~/notesd-backup-$(date +%Y%m%d-%H%M%S)
 sudo install -m 755 notesd-linux-amd64 /usr/local/bin/notesd   # notesd-linux-arm64 on ARM64
 sudo systemctl start notesd
 notesd version
@@ -48,6 +48,30 @@ To stay on one release line, use its tag instead of `latest`, e.g.
 `ghcr.io/cassiozen/notesd:0.2`.
 
 ## Changes that need action
+
+### systemd: the service runs as you
+
+The [systemd setup](binary-systemd.md#keep-it-running-with-systemd) used to have
+`DynamicUser=yes`, which kept the data in `/var/lib/private/notesd` and meant every `notesd`
+command had to go through a `notesd-run` shell function. It now runs as your own user, so you can
+run commands directly. An older unit keeps working; to switch:
+
+1. In `/etc/systemd/system/notesd.service`, replace `DynamicUser=yes` with
+   `User=YOUR_USERNAME`.
+2. If you [update from Settings](#updating-from-settings), change `/var/lib/private/notesd` to
+   `/var/lib/notesd` in `notesd-update.service` and `notesd-update.path`.
+3. Restart:
+
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl restart notesd
+   sudo systemctl restart notesd-update.path   # only if you update from Settings
+   ```
+
+   On this start, systemd moves the data to `/var/lib/notesd` and makes you its owner.
+4. Set `NOTESD_DATA_DIR` in your shell, as in the
+   [setup](binary-systemd.md#keep-it-running-with-systemd), and delete `notesd-run` if you
+   defined it.
 
 ### 1.0: update the apps too
 
@@ -142,7 +166,7 @@ Description=Update notesd to the newest release
 
 [Service]
 Type=oneshot
-ExecStart=/usr/local/sbin/notesd-update /var/lib/private/notesd
+ExecStart=/usr/local/sbin/notesd-update /var/lib/notesd
 ```
 
 Create `/etc/systemd/system/notesd-update.path`:
@@ -152,7 +176,7 @@ Create `/etc/systemd/system/notesd-update.path`:
 Description=Update notesd when an admin asks in Settings
 
 [Path]
-PathExists=/var/lib/private/notesd/update-request
+PathExists=/var/lib/notesd/update-request
 
 [Install]
 WantedBy=multi-user.target
