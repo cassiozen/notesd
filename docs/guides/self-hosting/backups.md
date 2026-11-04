@@ -19,7 +19,8 @@ database and folds them in over time, so a copy taken while it runs can catch th
 and be inconsistent. A `notesd backup` command that copies safely while the server runs is
 planned, but not built yet.
 
-**systemd**, with the directory in `/var/lib/notesd`:
+**systemd**, with the directory in `/var/lib/notesd` (if your unit still has `DynamicUser=yes`,
+[switch it first](upgrading.md#systemd-the-service-runs-as-you)):
 
 ```bash
 sudo systemctl stop notesd

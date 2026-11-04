@@ -64,11 +64,11 @@ sudo systemctl enable --now notesd
 ```
 
 So that [`notesd` commands](../../reference/cli.md) such as `add-user` find the same data, tell
-your shell where it is (`~/.zshrc` if you use zsh):
+your shell where it is (this adds it to `~/.bashrc`, or `~/.zshrc` with zsh):
 
 ```bash
-echo 'export NOTESD_DATA_DIR=/var/lib/notesd' >> ~/.bashrc
-source ~/.bashrc
+echo 'export NOTESD_DATA_DIR=/var/lib/notesd' >> ~/."$(basename "$SHELL")"rc
+export NOTESD_DATA_DIR=/var/lib/notesd
 ```
 
 Check on it with `sudo systemctl status notesd`, or follow the logs with `sudo journalctl -u notesd -f`.
