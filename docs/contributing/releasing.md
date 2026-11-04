@@ -13,10 +13,10 @@ checks, builds and publishes everything:
 | --- | --- |
 | Server binaries: `notesd-linux-amd64`, `notesd-linux-arm64`, `notesd-darwin-arm64` | GitHub release |
 | Signed Android APK: `notesd-<version>.apk` | GitHub release |
-| Signed Android app bundle: `notesd-<version>.aab`, for Google Play | `android-app-bundle` artifact of the workflow run |
 | `notesd-update`, for [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings) | GitHub release |
-| `SHA256SUMS` for all of the above | GitHub release |
+| `SHA256SUMS` for the GitHub release files above | GitHub release |
 | Docker image, `linux/amd64` and `linux/arm64` | `ghcr.io/cassiozen/notesd` |
+| Signed Android app bundle: `notesd-<version>.aab`, for Google Play | `android-app-bundle` artifact of the workflow run |
 
 ## Cutting a release
 
