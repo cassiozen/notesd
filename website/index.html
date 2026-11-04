@@ -16,6 +16,9 @@
       href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
     />
     <link rel="stylesheet" href="./src/main.css" />
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
     <script type="module" src="./src/main.js"></script>
   </head>
   <body>
@@ -62,10 +65,10 @@
             <img src="./src/assets/mockup.png" alt="notesd in a browser and on a phone" />
             <p class="scribble scribble-server">
               served from a Pi under your desk
-              <svg viewBox="0 0 60 50" aria-hidden="true"><path d="M4 6c6 22 22 34 46 34M41 32l10 8-10 7" /></svg>
+              <svg viewBox="0 0 60 50" aria-hidden="true"><path pathLength="1" d="M4 6c6 22 22 34 46 34" /><path pathLength="1" d="M41 32l10 8-10 7" /></svg>
             </p>
             <p class="scribble scribble-phone">
-              <svg viewBox="0 0 50 60" aria-hidden="true"><path d="M8 54c22-4 32-22 30-48M30 14l8-9 7 10" /></svg>
+              <svg viewBox="0 0 50 60" aria-hidden="true"><path pathLength="1" d="M8 54c22-4 32-22 30-48" /><path pathLength="1" d="M30 14l8-9 7 10" /></svg>
               works on the subway, too
             </p>
           </div>
@@ -86,13 +89,13 @@
 
       <section id="features" class="section">
         <div class="container">
-          <div class="section-head">
+          <div class="section-head" data-reveal>
             <span class="eyebrow">Features</span>
             <h2>Simple, but not basic.</h2>
           </div>
 
           <div class="features">
-            <article class="feature feature-overlay">
+            <article data-reveal class="feature feature-overlay">
               <img src="./src/assets/search.png" alt="Search results for “malaga”" />
               <div class="feature-body">
                 <h3>Full-text search</h3>
@@ -100,7 +103,7 @@
               </div>
             </article>
 
-            <article class="feature feature-strip">
+            <article data-reveal class="feature feature-strip">
               <h3>Organize with tags</h3>
               <p>Type a tag anywhere in a note. The sidebar lists them all, and tags nest with a slash.</p>
               <div class="feature-shot">
@@ -108,7 +111,7 @@
               </div>
             </article>
 
-            <article class="feature feature-overlay">
+            <article data-reveal class="feature feature-overlay">
               <img src="./src/assets/locked.png" alt="A locked note with Face ID" />
               <div class="feature-body">
                 <h3>Locked notes</h3>
@@ -119,7 +122,7 @@
               </div>
             </article>
 
-            <article class="feature feature-strip">
+            <article data-reveal class="feature feature-strip">
               <h3>Spaces</h3>
               <p>Create separate spaces to keep contexts apart: a journal, a side project, recipes...</p>
               <div class="feature-shot">
@@ -127,7 +130,7 @@
               </div>
             </article>            
 
-            <article class="feature feature-strip">
+            <article data-reveal class="feature feature-strip">
               <h3>Markdown under the hood</h3>
               <p>Notes are stored as Markdown. Take them out whenever you want.</p>
               <div class="feature-shot">
@@ -135,7 +138,7 @@
               </div>
             </article>
 
-            <article class="feature feature-strip">
+            <article data-reveal class="feature feature-strip">
               <h3>Offline first</h3>
               <p>Native apps keep a full local copy and sync whenever you're back online.</p>
               <div class="feature-shot">
@@ -148,47 +151,45 @@
 
       <section id="how-it-works" class="section">
         <div class="container">
-          <div class="section-head">
+          <div class="section-head" data-reveal>
             <span class="eyebrow">How it works</span>
             <h2>Up and running in three steps.</h2>
           </div>
 
           <ol class="steps" role="list">
-            <li class="step">
+            <li class="step" data-reveal>
               <span class="step-num">1</span>
               <h3>Host the server</h3>
               <p>Run it with Docker or download the single binary for your machine.</p>
               <code class="code">ghcr.io/cassiozen/notesd</code>
-              <a href="/docs/get-started/run-the-server.html">Hosting guide →</a>
+              <a href="/docs/get-started/run-the-server.html">Hosting guide <span class="arrow" aria-hidden="true">→</span></a>
             </li>
-            <li class="step">
+            <li class="step" data-reveal>
               <span class="step-num">2</span>
               <h3>Create your account</h3>
               <p>Create your account on the server, before putting HTTPS in front and exposing it.</p>
-              <a href="/docs/get-started/create-your-account.html">
-                Account setup →
-              </a>
+              <a href="/docs/get-started/create-your-account.html">Account setup <span class="arrow" aria-hidden="true">→</span></a>
             </li>
-            <li class="step">
+            <li class="step" data-reveal>
               <span class="step-num">3</span>
               <h3>Install the app</h3>
               <p>Download the Android APK from Releases, or build the iPhone app, and connect it to your server.</p>
-              <a href="https://github.com/cassiozen/notesd/releases">Releases →</a>
+              <a href="https://github.com/cassiozen/notesd/releases">Releases <span class="arrow" aria-hidden="true">→</span></a>
             </li>
           </ol>
 
-          <a class="section-more" href="/docs/get-started/introduction.html">Read the full Get started guide →</a>
+          <a class="section-more" data-reveal href="/docs/get-started/introduction.html">Read the full Get started guide <span class="arrow" aria-hidden="true">→</span></a>
         </div>
       </section>
 
       <section id="faq" class="section">
         <div class="container">
-          <div class="section-head">
+          <div class="section-head" data-reveal>
             <span class="eyebrow">FAQ</span>
             <h2>Questions, answered.</h2>
           </div>
 
-          <div class="faq">
+          <div class="faq" data-reveal>
             <details class="faq-item">
               <summary>Why another notes app?</summary>
               <p>
@@ -260,12 +261,12 @@
             </details>
           </div>
 
-          <a class="section-more" href="/docs/faq.html">Read the full FAQ →</a>
+          <a class="section-more" data-reveal href="/docs/faq.html">Read the full FAQ <span class="arrow" aria-hidden="true">→</span></a>
         </div>
       </section>
 
       <section class="cta">
-        <div class="cta-inner">
+        <div class="cta-inner" data-reveal>
           <h2>Try it:</h2>
           <div class="terminal">
             <code id="run-cmd">docker run -d --name notesd -p 8080:8080 -v notesd-data:/data ghcr.io/cassiozen/notesd</code>

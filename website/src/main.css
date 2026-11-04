@@ -18,6 +18,13 @@
   --font-sans: "Instrument Sans", system-ui, sans-serif;
   --font-serif: "Instrument Serif", serif;
   --font-mono: "JetBrains Mono", monospace;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Keeps in-page anchors from landing under the sticky header */
+html {
+  scroll-padding-top: 64px;
 }
 
 *,
@@ -53,6 +60,13 @@ a {
 /* :where keeps specificity low so links with their own color class don't turn accent on hover */
 a:where(:hover) {
   color: var(--accent-hover);
+}
+
+/* :where so components keep their own border-radius for the ring */
+:where(a, button, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
 }
 
 ::selection {
@@ -144,6 +158,11 @@ h2 em {
   background: var(--accent);
   color: var(--on-accent);
   font-weight: 600;
+  transition: background-color 0.15s;
+}
+
+.nav .nav-github:hover {
+  background: var(--accent-hover);
 }
 
 /* Hero */
@@ -220,6 +239,15 @@ h2 em {
 .btn {
   padding: 14px 22px;
   border-radius: 12px;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    box-shadow 0.15s,
+    transform 0.15s var(--ease-out);
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.985);
 }
 
 .btn-primary {
@@ -229,10 +257,33 @@ h2 em {
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.18);
 }
 
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Pressed key: the bottom lip flattens */
+.btn-primary:active {
+  box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.18);
+}
+
 .btn-ghost {
   border: 1px solid var(--border-strong);
   color: var(--fg);
   font-weight: 500;
+}
+
+.btn-ghost:hover {
+  border-color: var(--subtle);
+  background: rgba(242, 238, 231, 0.04);
+}
+
+.arrow {
+  display: inline-block;
+  transition: transform 0.2s var(--ease-out);
+}
+
+a:hover .arrow {
+  transform: translateX(3px);
 }
 
 .showcase {
@@ -248,8 +299,20 @@ h2 em {
 
 .mockup {
   position: relative;
+  isolation: isolate;
   width: 100%;
   max-width: 1100px;
+}
+
+/* Warm light behind the devices so they don't sit flat on the background */
+.mockup::before {
+  content: "";
+  position: absolute;
+  inset: 8% 6% -4%;
+  z-index: -1;
+  background: radial-gradient(closest-side, rgba(238, 185, 65, 0.13), transparent);
+  filter: blur(30px);
+  pointer-events: none;
 }
 
 .mockup img {
@@ -643,12 +706,6 @@ h2 em {
   border-color: var(--accent);
 }
 
-.faq-item summary:focus-visible {
-  outline: 2px solid var(--accent);
-  outline-offset: 4px;
-  border-radius: 6px;
-}
-
 .faq-item p {
   padding: 0 48px 22px 0;
   color: var(--muted);
@@ -676,6 +733,15 @@ h2 em {
   background: var(--accent);
   color: var(--on-accent);
   text-align: center;
+}
+
+/* Accent ring would vanish on the accent background */
+.cta :focus-visible {
+  outline-color: var(--on-accent);
+}
+
+.cta .terminal :focus-visible {
+  outline-color: var(--accent);
 }
 
 .cta ::selection {
@@ -741,6 +807,8 @@ h2 em {
 
 .copy {
   flex: none;
+  /* Fits "✓ Copied" so the button doesn't resize when the label swaps */
+  min-width: calc(8ch + 26px);
   padding: 8px 12px;
   border: 1px solid var(--border-strong);
   border-radius: 8px;
@@ -751,9 +819,15 @@ h2 em {
   transition: color 0.15s, border-color 0.15s;
 }
 
-.copy:hover {
+.copy:hover,
+.copy.is-copied {
   border-color: var(--accent);
   color: var(--accent);
+}
+
+/* Alt text "" keeps screen readers to the "Copied" announcement */
+.copy.is-copied::before {
+  content: "✓ " / "";
 }
 
 /* Footer */
@@ -786,6 +860,157 @@ h2 em {
 
 .site-footer a {
   color: var(--subtle);
+}
+
+/* Motion. Everything here is opt-in via no-preference so reduced-motion gets the static page */
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 10px;
+  }
+}
+
+@keyframes draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes pop {
+  50% {
+    scale: 1.06;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Page load: hero settles in top to bottom.
+     `translate`, not `transform`, so it never fights hover transforms or the scribbles' rotation */
+  .hero-inner > *,
+  .mockup,
+  .btn-video {
+    animation: rise 0.7s var(--ease-out) backwards;
+  }
+
+  .hero-inner > :nth-child(2) {
+    animation-delay: 70ms;
+  }
+
+  .hero-inner > :nth-child(3) {
+    animation-delay: 140ms;
+  }
+
+  .hero-inner > :nth-child(4) {
+    animation-delay: 210ms;
+  }
+
+  .mockup {
+    animation-delay: 300ms;
+  }
+
+  .btn-video {
+    animation-delay: 450ms;
+  }
+
+  /* Margin notes get written after the mockup lands: words, then the arrow line, then its head.
+     pathLength="1" on each path makes dash 1 = the full stroke */
+  .scribble {
+    --at: 900ms;
+    animation: rise 0.5s var(--ease-out) var(--at) backwards;
+  }
+
+  .scribble-phone {
+    --at: 1200ms;
+  }
+
+  .scribble path {
+    stroke-dasharray: 1 2;
+    animation: draw 0.55s ease-in-out calc(var(--at) + 150ms) backwards;
+  }
+
+  .scribble path + path {
+    animation-duration: 0.2s;
+    animation-delay: calc(var(--at) + 700ms);
+  }
+
+  /* Scroll reveal. `.js` is set synchronously in <head> so targets are hidden before first paint;
+     main.js adds .is-revealed and a per-batch --reveal-delay stagger */
+  .js [data-reveal]:not(.is-revealed) {
+    opacity: 0;
+  }
+
+  .js [data-reveal].is-revealed {
+    animation: rise 0.7s var(--ease-out) var(--reveal-delay, 0ms) backwards;
+  }
+
+  /* Each step's accent rule draws in after the step appears, and stays */
+  .step.is-revealed::before {
+    transform: scaleX(1);
+    transition: transform 0.9s var(--ease-out) calc(var(--reveal-delay, 0ms) + 250ms);
+  }
+
+  .copy.is-copied {
+    animation: pop 0.3s var(--ease-out);
+  }
+
+  /* Smooth FAQ open/close where ::details-content and interpolate-size exist; elsewhere it snaps as before */
+  .faq-item {
+    interpolate-size: allow-keywords;
+  }
+
+  .faq-item::details-content {
+    block-size: 0;
+    overflow: hidden;
+    opacity: 0;
+    transition:
+      block-size 0.35s var(--ease-out),
+      opacity 0.35s var(--ease-out),
+      content-visibility 0.35s allow-discrete;
+  }
+
+  .faq-item[open]::details-content {
+    block-size: auto;
+    opacity: 1;
+  }
+
+  /* Video overlay fades and scales in; display/overlay transitions keep it on screen while closing */
+  .video-dialog,
+  .video-dialog::backdrop {
+    opacity: 0;
+    transition:
+      opacity 0.25s,
+      scale 0.3s var(--ease-out),
+      display 0.3s allow-discrete,
+      overlay 0.3s allow-discrete;
+  }
+
+  .video-dialog {
+    scale: 0.97;
+  }
+
+  .video-dialog[open],
+  .video-dialog[open]::backdrop {
+    opacity: 1;
+    scale: 1;
+  }
+
+  @starting-style {
+    .video-dialog[open],
+    .video-dialog[open]::backdrop {
+      opacity: 0;
+    }
+
+    .video-dialog[open] {
+      scale: 0.97;
+    }
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
