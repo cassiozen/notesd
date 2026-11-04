@@ -4,10 +4,22 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 import { App } from '../src/app'
 import { STANDALONE } from '../src/install'
 import { timing } from '../src/notes/saver'
-import { deviceUser, keepOnDevice } from '../src/auth/session-hint'
+import { declineDevice, deviceUser, keepOnDevice } from '../src/auth/session-hint'
 import type { Engine } from '../src/offline/tab'
 import { inProcessEngine, signIn } from './engine/helpers'
-import { createNote, getNote, list, listNotes, openNote, openSettings, saved, signedIn, startEngines, typeAtEnd } from './helpers'
+import {
+  createNote,
+  getNote,
+  inMacApp,
+  list,
+  listNotes,
+  openNote,
+  openSettings,
+  saved,
+  signedIn,
+  startEngines,
+  typeAtEnd,
+} from './helpers'
 import { createOwner, startServer } from './server'
 
 // Choosing to keep the notes in this browser, and leaving it again.
@@ -281,5 +293,57 @@ describe('the installed app', () => {
     await planListed()
     expect(deviceUser()).toBeNull()
     expect(started).toHaveLength(0)
+  })
+})
+
+describe('the macOS app', () => {
+  it('keeps the notes from sign-in, without asking', async () => {
+    const started = engines()
+    inMacApp()
+    const server = await startServer()
+    const { username, password } = await createOwner(server)
+    await server.api('POST', '/auth/login', { username, password, client: 'web' })
+    await createNote(server, 'Plan', 'One\n')
+    const user = userEvent.setup()
+    render(<App />)
+    await user.type(await screen.findByLabelText('Username'), username)
+    await user.type(screen.getByLabelText('Password'), password)
+    // By now a browser would show the box (its storage check is done): see signInFromScratch.
+    expect(keepBox()).toBeNull()
+    await user.click(screen.getByRole('button', { name: 'Sign in' }))
+    await planListed()
+    expect(deviceUser()).toBe(username)
+    expect(started).toHaveLength(1)
+  })
+
+  it('keeps the first account’s notes from the start, made in the app', async () => {
+    const started = engines()
+    inMacApp()
+    await startServer()
+    const user = userEvent.setup()
+    render(<App />)
+    await user.click(await screen.findByRole('button', { name: 'Get started' }))
+    await user.type(screen.getByLabelText('Username'), 'cassio')
+    await user.type(screen.getByLabelText('Password'), 'correct horse')
+    await user.type(screen.getByLabelText('Confirm password'), 'correct horse{Enter}')
+    await screen.findByRole('heading', { name: 'All Notes', level: 1 })
+    expect(deviceUser()).toBe('cassio')
+    expect(started).toHaveLength(1)
+  })
+
+  it('keeps them on opening even if turned off before, and Settings only says so', async () => {
+    const started = engines()
+    inMacApp()
+    declineDevice()
+    const { username } = await signedInAlready()
+    const user = userEvent.setup()
+    render(<App />)
+    await planListed()
+    expect(deviceUser()).toBe(username)
+    expect(started).toHaveLength(1)
+
+    await openSettings(user, 'Sync & data')
+    expect(await screen.findByText('Kept on this Mac')).toBeTruthy()
+    expect(keepBox()).toBeNull()
   })
 })

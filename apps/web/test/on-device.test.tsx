@@ -285,6 +285,30 @@ describe('notes on this device', () => {
     expect((await listNotes(server)).map((n) => n.preview)).toEqual(['One, two'])
   })
 
+  it('Settings shows a sync under way: Sync now waits for it', async () => {
+    const { user } = await signedIn({ onDevice: true, seed: (s) => createNote(s, 'Plan', 'One').then(() => undefined) })
+    await openSettings(user, 'Sync & data')
+    const card = await screen.findByRole('region', { name: 'This device' })
+    await within(card).findByText('Up to date')
+
+    const gate: { open?: () => void } = {}
+    const held = new Promise<void>((r) => (gate.open = r))
+    interceptApi(
+      (_, path) => path.endsWith('/sync'),
+      async (_m, _p, real) => {
+        await held
+        return real()
+      },
+    )
+    await user.click(within(card).getByRole('button', { name: 'Sync now' }))
+    expect(await within(card).findByText('Syncing…')).toBeTruthy()
+    expect(within(card).getByRole('button', { name: 'Sync now' }).hasAttribute('disabled')).toBe(true)
+
+    gate.open?.()
+    expect(await within(card).findByText('Up to date')).toBeTruthy()
+    expect(within(card).getByRole('button', { name: 'Sync now' }).hasAttribute('disabled')).toBe(false)
+  })
+
   it('sets aside an edit the server keeps answering strangely, and Retry sends it', async () => {
     let id = ''
     const { engine, server, user } = await signedIn({

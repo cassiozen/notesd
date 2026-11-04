@@ -20,6 +20,7 @@ import {
   bodyText,
   createNote,
   getNote,
+  inMacApp,
   interceptApi,
   list,
   listNotes,
@@ -271,6 +272,17 @@ describe('passkeys for locked notes', () => {
     await screen.findByText('This note is locked.')
     await s.user.click(screen.getByRole('button', { name: 'Unlock with passkey' }))
     await waitFor(() => expect(bodyText()).toBe('PIN 1234 #money'))
+  })
+
+  it('the macOS app offers none: its WebKit refuses passkeys', async () => {
+    fakeAuthenticator()
+    inMacApp()
+    const s = await seeded()
+    await lockOpenNote(s)
+    await openSettings(s.user, 'Security')
+    await screen.findByRole('button', { name: 'Change lock password' })
+    expect(screen.queryByRole('button', { name: 'Add a passkey' })).toBeNull()
+    expect(screen.queryByText('Passkeys')).toBeNull()
   })
 
   it('with a passkey, the lock password waits behind "Use password instead"', async () => {

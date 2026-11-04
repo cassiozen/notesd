@@ -1,5 +1,6 @@
 import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent, type Ref } from 'react'
 import type { Space, TagCount } from '../api/types'
+import { dragRegion } from '../desktop'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { SpaceMenu } from './space-menu'
 import { DEFAULT_SPACE } from './spaces'
@@ -129,9 +130,10 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
       className={[styles.panel, onHide ? styles.docked : '', hidden ? styles.collapsed : ''].join(' ')}
       aria-label="Sidebar"
       inert={hidden}
+      {...dragRegion('self')}
     >
       <div className={styles.inner}>
-        <div className={styles.header}>
+        <div className={styles.header} {...dragRegion('deep')}>
           {/* Before the list loads, the default space: the switcher keeps its place. */}
           <h1 className={styles.title}>
             <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} />
@@ -140,7 +142,7 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
             <button
               ref={hideRef}
               type="button"
-              className={styles.tool}
+              className={[styles.tool, styles.hide].join(' ')}
               onClick={onHide}
               aria-label="Hide sidebar"
               title="Hide sidebar"

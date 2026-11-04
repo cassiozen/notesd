@@ -15,6 +15,11 @@
   padding: 12px 12px 0;
 }
 
+/* macOS app: clear of the window buttons, which sit over the top left of every screen. */
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .banners {
+  padding-left: 92px;
+}
+
 .bannerWhy {
   opacity: 0.75;
 }

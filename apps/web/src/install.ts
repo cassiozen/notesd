@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react'
+import { inDesktopApp } from './desktop'
 
 /** Chromium only; not in lib.dom. */
 interface BeforeInstallPromptEvent extends Event {
@@ -9,8 +10,9 @@ interface BeforeInstallPromptEvent extends Event {
 /** The manifest's display; matches only in a window opened as the installed app. */
 export const STANDALONE = '(display-mode: standalone)'
 
+/** The macOS app counts: it's installed, and its window shows nothing but notesd. */
 export function isInstalledApp(): boolean {
-  return window.matchMedia(STANDALONE).matches
+  return window.matchMedia(STANDALONE).matches || inDesktopApp()
 }
 
 let deferred: BeforeInstallPromptEvent | null = null

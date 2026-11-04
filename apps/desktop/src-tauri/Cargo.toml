@@ -1,0 +1,25 @@
+[package]
+name = "notesd-desktop"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-window-state = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+url = { version = "2", features = ["serde"] }
+# The system's TLS, so a certificate this Mac trusts (a private CA, Tailscale's) passes the server check
+# exactly as it does in the window.
+ureq = { version = "3", default-features = false, features = ["native-tls"] }
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

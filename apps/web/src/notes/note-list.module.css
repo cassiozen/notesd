@@ -115,6 +115,53 @@
   }
 }
 
+/*
+ * macOS app, docked sidebar hidden: the list takes the window buttons' corner. It widens by their room, so the
+ * notes keep their width, in step with the sidebar closing; Show sidebar comes first after the buttons, as in Notes.
+ */
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .list,
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .titleRow {
+  transition:
+    width 0.34s var(--ease-out),
+    padding 0.34s var(--ease-out);
+}
+
+/* The title row's middle level with the buttons', which sit as far from the window's top as from its side. */
+@media (min-width: 760px) {
+  :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
+    padding-top: 2px;
+  }
+}
+
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden {
+  width: 366px;
+}
+
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden .titleRow {
+  padding-left: 66px;
+}
+
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .showTags {
+  order: -1;
+}
+
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .showTags[data-shown] {
+  margin-inline-end: 4px;
+}
+
+/* Narrower, the sidebar is a screen of its own: the way back to it moves beside the buttons, level with them. */
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .back {
+  margin-top: 0;
+  margin-left: 60px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :global(:root[data-desktop='macos']:not([data-fullscreen])) .list,
+  :global(:root[data-desktop='macos']:not([data-fullscreen])) .titleRow {
+    transition: none;
+  }
+}
+
 /* Matches the note pane's back link on phones. */
 .back {
   align-self: flex-start;

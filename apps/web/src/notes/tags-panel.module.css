@@ -58,6 +58,40 @@
   padding: 14px 12px 10px 14px;
 }
 
+/*
+ * macOS app: the window buttons sit over the top left. The tools get a row beside them, as tall as the list's
+ * title row so the two line up; the space moves under it.
+ */
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-rows: 31px auto;
+  gap: 13px 0;
+}
+
+/* The row's middle level with the buttons', which sit as far from the window's top as from its side. */
+@media (min-width: 760px) {
+  :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
+    padding-top: 2px;
+  }
+}
+
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .title {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+
+/* Explicit columns: placed automatically, the first tool would take column 1, under the window buttons. */
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .tool {
+  grid-row: 1;
+  grid-column: 3;
+  margin-left: 8px;
+}
+
+:global(:root[data-desktop='macos']:not([data-fullscreen])) .hide {
+  grid-column: 2;
+}
+
 /* The space, as the list's title is set: the switcher looks like a heading until hovered. */
 .title {
   flex: 1;

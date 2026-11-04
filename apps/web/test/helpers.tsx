@@ -21,6 +21,12 @@ export function mediumLayout() {
   globalThis.layout = 'medium'
 }
 
+/** Running in the macOS app, which marks the page before it loads, until the test ends. */
+export function inMacApp() {
+  document.documentElement.dataset.desktop = 'macos'
+  onTestFinished(() => void delete document.documentElement.dataset.desktop)
+}
+
 /**
  * A server with an owner account and the app signed in to it. seed runs
  * before the app loads, so the list starts with those notes (and, side by

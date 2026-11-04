@@ -1,6 +1,6 @@
 import { request } from './client'
 import type { Session, SessionInfo } from './types'
-import { browserName } from './user-agent'
+import { deviceName } from './user-agent'
 
 export const auth = {
   /** serverVersion and apiVersion: absent from servers before 1.0. */
@@ -8,7 +8,7 @@ export const auth = {
   setup: (username: string, password: string) =>
     request<{ status: 'created' }>('POST', '/auth/setup', { username, password }),
   login: (username: string, password: string) =>
-    request<SessionInfo>('POST', '/auth/login', { username, password, client: 'web', deviceName: browserName() }),
+    request<SessionInfo>('POST', '/auth/login', { username, password, client: 'web', deviceName: deviceName() }),
   logout: () => request<undefined>('POST', '/auth/logout'),
   session: () => request<SessionInfo>('GET', '/auth/session'),
   changePassword: (currentPassword: string, newPassword: string) =>

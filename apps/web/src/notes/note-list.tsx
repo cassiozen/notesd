@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type Ref } from 'react'
 import type { SearchResult } from '../api/types'
+import { dragRegion } from '../desktop'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime } from './list-time'
@@ -58,8 +59,8 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
       : ''
 
   return (
-    <aside className={styles.list} aria-label="Notes">
-      <div className={styles.header}>
+    <aside className={[styles.list, tags === 'show' ? styles.sidebarHidden : ''].join(' ')} aria-label="Notes" {...dragRegion('self')}>
+      <div className={styles.header} {...dragRegion('deep')}>
         {tags === 'back' && (
           <button type="button" className={styles.back} onClick={onTags} aria-label="Sidebar" title="Sidebar">
             <span className={styles.chevron} aria-hidden="true">

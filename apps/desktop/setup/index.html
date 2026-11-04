@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>notesd</title>
+    <link rel="stylesheet" href="setup.css" />
+    <script type="module" src="setup.js"></script>
+  </head>
+  <!-- No title bar: the window moves from the page's background (and the brand). -->
+  <body data-tauri-drag-region>
+    <div class="wash" aria-hidden="true"></div>
+    <main data-tauri-drag-region>
+      <header class="brand" data-tauri-drag-region="deep">
+        <img class="mark" src="mark.png" alt="" width="80" height="80" />
+        <span class="word">notesd</span>
+      </header>
+
+      <section id="opening" class="opening" hidden>
+        <h1 id="opening-title">Opening notesd…</h1>
+        <div id="unreachable" class="unreachable" hidden>
+          <p>Check that you’re online and that the server is running. Once notesd has opened here, it opens without a connection too.</p>
+          <div class="actions">
+            <button type="button" id="change">Change Server…</button>
+            <button type="button" id="retry" class="primary">Try Again</button>
+          </div>
+        </div>
+      </section>
+
+      <div id="setup-step" class="step" hidden>
+        <form id="setup" class="card" novalidate>
+          <h1>Connect to your notesd</h1>
+          <p>The address you open notesd at in a browser.</p>
+          <label for="address" class="visually-hidden">Server address</label>
+          <input
+            id="address"
+            name="address"
+            type="text"
+            inputmode="url"
+            autocomplete="url"
+            autocapitalize="off"
+            autocorrect="off"
+            spellcheck="false"
+            placeholder="https://notes.example.com"
+          />
+          <p id="error" class="error" role="alert" hidden></p>
+          <div class="actions">
+            <button type="button" id="cancel" hidden>Cancel</button>
+            <button type="submit" id="connect" class="primary">Connect</button>
+          </div>
+        </form>
+        <p class="hint">
+          No server yet? <a href="https://notesd.app/docs/get-started/introduction.html">Set one up</a>.
+        </p>
+      </div>
+    </main>
+  </body>
+</html>

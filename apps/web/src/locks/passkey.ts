@@ -3,6 +3,7 @@
 // after the user verifies (fingerprint, face, device PIN). The server never
 // checks an assertion; the secret unwraps the key or it doesn't.
 import type { LockKey } from '../api/types'
+import { inDesktopApp } from '../desktop'
 import { LockedError, fromBase64Url, randomBytes, toBase64Url } from './crypto'
 
 /** The passkey was dismissed, or this browser or authenticator can't give a PRF secret. */
@@ -16,9 +17,13 @@ export class PasskeyError extends Error {
   }
 }
 
-/** WebAuthn exists here; whether an authenticator supports PRF is only known once one is used. */
+/**
+ * WebAuthn exists here; whether an authenticator supports PRF is only known once one is used. The macOS app's
+ * WebKit has the API but refuses every call: only browsers Apple entitles may use passkeys.
+ */
 export function passkeysAvailable(): boolean {
-  return typeof window !== 'undefined' && typeof window.PublicKeyCredential === 'function' && !!navigator.credentials
+  if (typeof window === 'undefined' || inDesktopApp()) return false
+  return typeof window.PublicKeyCredential === 'function' && !!navigator.credentials
 }
 
 type PrfOutputs = { enabled?: boolean; results?: { first?: BufferSource } }
