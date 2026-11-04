@@ -1,0 +1,183 @@
+mise.toml
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 201-222
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 193-194
+.github/workflows/ci.yml
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 30-44
+apps/desktop/src-tauri/rust-toolchain.toml
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-3
+apps/desktop/src-tauri/src/downloads.rs
+  s_f377e8ab9cbb1b::t_5e6c8f3164699d 1-5,10,12-26,28-39,42,44,50,52-54
+  s_f377e8ab9cbb1b::t_2c55a2443b9d17 46-49
+  s_f377e8ab9cbb1b::t_b4dc2ac3763b88 6-9,11,27,40-41,43,45,51
+apps/desktop/src-tauri/capabilities/setup.json
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-3,5,13
+  s_f377e8ab9cbb1b::t_9ff6b1371a9290 4,6-12
+apps/desktop/src-tauri/build.rs
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-4,10-12
+  s_f377e8ab9cbb1b::t_171a5f3848351c 5-9
+apps/desktop/setup/setup.js
+  s_f377e8ab9cbb1b::t_cb5ecdada8fec8 1-8,11-13,32,39-40,41,42,44-47,48-51,54,56-65,74-77,80,82-88,90,92,94-95,97,100,103-105,107
+  s_f377e8ab9cbb1b::t_b4dc2ac3763b88 66-67,78-79
+  s_f377e8ab9cbb1b::t_9ff6b1371a9290 52,89,91,93,96,98-99
+  s_f377e8ab9cbb1b::t_ca365805c3b14b 9-10,14-31,33-38,43,53,55,68-73,81,101-102,106
+apps/desktop/src-tauri/src/server.rs
+  s_f377e8ab9cbb1b::t_e4c4c45d45596f 7
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 34-38,82-86,89-91,119-122
+  s_f377e8ab9cbb1b::t_5e6c8f3164699d 1-6,8-33,39-81,87-88,92-118,123-143
+apps/desktop/src-tauri/tauri.conf.json
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-24
+apps/desktop/src-tauri/.gitignore
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1,3
+  s_f377e8ab9cbb1b::t_5dc6ddb525b0f4 2,4
+apps/desktop/README.md
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 1-3,7-9,17-27,32-34,37-51
+  s_f377e8ab9cbb1b::t_4bb14cc532dd47 28-31
+  s_f377e8ab9cbb1b::t_b7b5de37c01895 10-16,35-36
+  s_f377e8ab9cbb1b::t_525ad52799348a 4-6
+apps/desktop/src-tauri/rustfmt.toml
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 1
+docs/contributing/development.md
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 47-51,112-124,138,144,150
+apps/desktop/src-tauri/src/store.rs
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 29-32
+  s_f377e8ab9cbb1b::t_5e6c8f3164699d 1-28,33-34
+apps/desktop/setup/index.html
+  s_f377e8ab9cbb1b::t_1e92dec90a8f9b 53
+  s_f377e8ab9cbb1b::t_cb5ecdada8fec8 1-9,18,20,22-29,52,54,56-58
+  s_f377e8ab9cbb1b::t_b4495776cd9ec9 10-17,19,21,30-51,55
+apps/desktop/src-tauri/Cargo.toml
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-15,17-25
+  s_f377e8ab9cbb1b::t_e4c4c45d45596f 16
+apps/desktop/setup/setup.css
+  s_f377e8ab9cbb1b::t_cb5ecdada8fec8 3-5,7-8,13-23,28-32,34-35,40-53,59-73,76-77,80-89,91-94,106-109,161-184,186-201,203-212,216-223,235-248,264,267,269-282
+  s_f377e8ab9cbb1b::t_17efd3976abbbc 54-58
+  s_f377e8ab9cbb1b::t_8fb0f04888cbd8 1-2,6,9-12,24-27,33,36-39,74-75,78-79,90,95-105,110-160,185,202,213-215,224-234,249-263,265-266,268,283-332
+apps/desktop/package.json
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-13
+apps/desktop/src-tauri/src/main.rs
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 79-81,129-131,134,167-173,303-305
+  s_f377e8ab9cbb1b::t_171a5f3848351c 16,31-34,47-55,76,122-128,132-133,135-143,145-148,151,196-197,252-261,264-266,268-274,276-289,297-301,374-396,400-414,418-441,460
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-2,4-10,12-13,15,18-30,40-46,56-65,67-75,77-78,82-89,97,103-114,116-117,120-121,152,159-160,162-165,179,190-195,262-263,267,275,295-296,302,306-373,397-399,415-417,442-443,458-459,461-462
+  s_f377e8ab9cbb1b::t_ca246288061712 290-294
+  s_f377e8ab9cbb1b::t_b7b5de37c01895 3
+  s_f377e8ab9cbb1b::t_4f399f741e8da4 14,17,35-36,66,90-96,98-102,115,118-119,149-150,153-158,198-199,201-205,207-238
+  s_f377e8ab9cbb1b::t_a3f78fb2502d23 239
+  s_f377e8ab9cbb1b::t_b4dc2ac3763b88 11,37-39,144,161,166,174-178,180-189,240-250
+  s_f377e8ab9cbb1b::t_7754da30afa3f8 445-448,454-457
+  s_f377e8ab9cbb1b::t_2c55a2443b9d17 449-453
+  s_f377e8ab9cbb1b::t_8484ef456ef271 251,444
+  s_f377e8ab9cbb1b::t_8b6431d6d73b8a 200
+  s_f377e8ab9cbb1b::t_de2a1e2c2c1163 206
+scripts/icons.py
+  s_f377e8ab9cbb1b::t_8a657a503bc2d9 4,28,79-80,130-135,138-139,141
+  s_f377e8ab9cbb1b::t_6ef250533196fe 15-16,29,136-137
+docs/contributing/architecture.md
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 95
+pnpm-workspace.yaml
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 3
+apps/desktop/src-tauri/Cargo.lock
+  s_f377e8ab9cbb1b::t_6ae779ffe428b9 1-5033
+pnpm-lock.yaml
+  s_f377e8ab9cbb1b::t_4466e072bfde28 11-16,1149-1219,3159-3205
+apps/web/src/notes/shell.module.css
+  s_f377e8ab9cbb1b::t_63cbf1897b1794 18-22
+apps/web/test/helpers.tsx
+  s_f377e8ab9cbb1b::t_438b31aac543f3 24-29
+apps/web/src/notes/note-pane.tsx
+  s_f377e8ab9cbb1b::t_f2e97f489f2b35 8,174,474
+apps/web/src/notes/sync-banners.tsx
+  s_f377e8ab9cbb1b::t_b9d8399abc8626 3
+  s_f377e8ab9cbb1b::t_2c55a2443b9d17 49
+apps/web/src/desktop.test.ts
+  s_f377e8ab9cbb1b::t_ec8bb01d258c2d 2-15,18-23
+  s_f377e8ab9cbb1b::t_5db14514e8330f 1,16-17
+apps/web/src/notes/tags-panel.module.css
+  s_f377e8ab9cbb1b::t_63cbf1897b1794 61-71,79-94
+  s_f377e8ab9cbb1b::t_e3341ce2a3cdc5 72-78
+apps/web/src/notes/note-list.module.css
+  s_f377e8ab9cbb1b::t_63cbf1897b1794 118-128,136-151,153,155-164
+  s_f377e8ab9cbb1b::t_dac4b595f862b3 152,154
+  s_f377e8ab9cbb1b::t_037a1fb0bb0a5c 129-135
+apps/web/src/api/auth.ts
+  s_f377e8ab9cbb1b::t_745367b409cb7d 3,11
+apps/web/test/locks.test.tsx
+  s_f377e8ab9cbb1b::t_d46e6e67eeb470 23
+  s_f377e8ab9cbb1b::t_438b31aac543f3 277-282,286-287
+  s_f377e8ab9cbb1b::t_ec8bb01d258c2d 283
+  s_f377e8ab9cbb1b::t_a75ca0b4fb21d4 284-285
+apps/web/src/notes/note-list.tsx
+  s_f377e8ab9cbb1b::t_f2e97f489f2b35 3,62-63
+apps/web/src/notes/tags-panel.tsx
+  s_f377e8ab9cbb1b::t_f2e97f489f2b35 3,133,136,145
+apps/web/src/notes/shell.tsx
+  s_f377e8ab9cbb1b::t_f2e97f489f2b35 2,256,258
+apps/web/src/desktop.ts
+  s_f377e8ab9cbb1b::t_cb6a69aa40714e 1-12
+apps/web/src/api/user-agent.ts
+  s_f377e8ab9cbb1b::t_745367b409cb7d 1-8
+apps/web/src/locks/passkey.ts
+  s_f377e8ab9cbb1b::t_745367b409cb7d 6,20-23,25-26
+apps/web/src/install.ts
+  s_f377e8ab9cbb1b::t_745367b409cb7d 2,13,15
+apps/web/src/settings/device.tsx
+  s_f377e8ab9cbb1b::t_aa793fef228115 4
+  s_f377e8ab9cbb1b::t_2c4e75285bf4f1 66
+  s_f377e8ab9cbb1b::t_1dd2634595ec7a 58-65,67-93,172-191,196-198,200-209
+  s_f377e8ab9cbb1b::t_a75ca0b4fb21d4 160,199
+apps/web/test/opt-in.test.tsx
+  s_f377e8ab9cbb1b::t_5d0ff088419bad 7,10-22,298-310,313-316,332-345,347-348
+  s_f377e8ab9cbb1b::t_7ad8188b45c3d7 349
+  s_f377e8ab9cbb1b::t_342698d6ae2c3e 346
+  s_f377e8ab9cbb1b::t_5b86a518724ae6 319-331
+  s_f377e8ab9cbb1b::t_a75ca0b4fb21d4 311-312
+  s_f377e8ab9cbb1b::t_8dac5c3a5c37a9 317-318
+apps/web/src/auth/login.tsx
+  s_f377e8ab9cbb1b::t_f41f29ef24e054 8,38,40-41,106
+apps/web/src/offline/device.ts
+  s_f377e8ab9cbb1b::t_f41f29ef24e054 4,108-111,113
+apps/web/test/on-device.test.tsx
+  s_f377e8ab9cbb1b::t_b771919b7cbbd8 291-292,303-305,308-309
+  s_f377e8ab9cbb1b::t_15c5627fa202f4 294-295,307
+  s_f377e8ab9cbb1b::t_dfe16de1823059 288-290,293,296-302,306,310-311
+apps/web/src/settings/settings.module.css
+  s_f377e8ab9cbb1b::t_c3ae1b6e8a665f 243
+  s_f377e8ab9cbb1b::t_cb09db144498b5 219-241,245-269
+  s_f377e8ab9cbb1b::t_7f198886832192 242,244
+apps/web/src/auth/onboarding.tsx
+  s_f377e8ab9cbb1b::t_a75ca0b4fb21d4 4,81-84
+apps/web/test/settings.test.tsx
+  s_f377e8ab9cbb1b::t_328bf57d616186 6,301-305
+  s_f377e8ab9cbb1b::t_22e2bf856e4e6d 306-307
+shared/keychain-biometrics/Sources/NotesBiometrics/Biometrics.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-24
+apps/ios/NotesCore/Sources/NotesCore/Crypto/BiometricUnlock.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 2-3
+shared/keychain-biometrics/Package.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-16
+apps/ios/README.md
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 111-112
+apps/ios/NotesCore/Package.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 14-16,20
+apps/ios/Notes/Locks/FakeBiometrics.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 1-30
+shared/keychain-biometrics/Sources/NotesBiometrics/KeychainBiometrics.swift
+  s_f377e8ab9cbb1b::t_fc0d8aa18bf063 5-8,10-11,14,22-23,25,29,34,38,56,88,93,97-102
+.gitignore
+  s_f377e8ab9cbb1b::t_c27d3245724de7 21-22
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a42aac41178bacb92fe222685137f1b283f79c3f",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
