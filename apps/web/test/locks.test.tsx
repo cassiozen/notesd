@@ -15,7 +15,13 @@ import {
   wrap,
 } from '../src/locks/crypto'
 import { lockSession, lockTiming } from '../src/locks/session'
-import { setTouchIdBridge, type TouchIdAnswer, type TouchIdBridge } from '../src/locks/touch-id'
+import {
+  forgetTouchId,
+  offerTouchId,
+  setTouchIdBridge,
+  type TouchIdAnswer,
+  type TouchIdBridge,
+} from '../src/locks/touch-id'
 import { timing } from '../src/notes/saver'
 import {
   bodyText,
@@ -487,6 +493,27 @@ describe('locked notes, when things happen meanwhile', () => {
     expect(await readLocked(s.server, s.id, 'brand new pass')).toBe('PIN 1234 #money\n')
   })
 
+  it('a key for this device, or from it, finishing after sign-out gives and opens nothing', async () => {
+    const s = await seeded()
+    await lockOpenNote(s)
+    const { raw, entry } = await lockSession.unlockForDevice(LOCK_PASSWORD)
+    await act(() => lockSession.lock())
+    await act(async () => {
+      const opened = lockSession.unlockWithKey(raw, entry)
+      lockSession.forget()
+      expect(await opened).toBe(false)
+    })
+    expect(lockSession.key()).toBeNull()
+
+    await act(async () => {
+      const copy = lockSession.unlockForDevice(LOCK_PASSWORD)
+      await Promise.resolve()
+      lockSession.forget()
+      await expect(copy).rejects.toThrow()
+    })
+    expect(lockSession.key()).toBeNull()
+  })
+
   it('an unlock or keyring fetch finishing after sign-out changes nothing', async () => {
     const s = await seeded()
     await lockOpenNote(s)
@@ -645,6 +672,8 @@ function fakeTouchId({ available = true } = {}) {
     kept,
     answer: 'ok' as TouchIdAnswer['outcome'],
     prompts: 0,
+    /** Set: sealing waits for it, as for a finger. */
+    gate: null as Promise<void> | null,
   }
   const answer = (): TouchIdAnswer | null => {
     touch.prompts++
@@ -653,6 +682,7 @@ function fakeTouchId({ available = true } = {}) {
   const bridge: TouchIdBridge = {
     available: async () => available,
     seal: async (user, key) => {
+      if (touch.gate) await touch.gate
       const refused = answer()
       if (refused) return refused
       kept.set(user, key)
@@ -916,6 +946,35 @@ describe('Touch ID in the macOS app', () => {
       await lockNow(s)
       await unlockWithPassword(s)
       expect(await offered()).toBe(false)
+    })
+
+    it('an offer on its way as the account signs out isn’t made', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockOpenNote(s)
+      touch.answer = 'failed'
+      await answerOffer(s, 'Use Touch ID')
+      await act(async () => {
+        const offering = offerTouchId('me', LOCK_PASSWORD)
+        forgetTouchId('me')
+        await offering
+      })
+      expect(await offered()).toBe(false)
+    })
+
+    it('signed out while Touch ID is asked for: what it turned on goes too', async () => {
+      const touch = fakeTouchId()
+      const s = await seeded()
+      await lockOpenNote(s)
+      const gate: { open?: () => void } = {}
+      touch.gate = new Promise<void>((r) => (gate.open = r))
+      const dialog = await screen.findByRole('dialog', { name: OFFER })
+      await s.user.click(within(dialog).getByRole('button', { name: 'Use Touch ID' }))
+      act(() => forgetTouchId('me'))
+      gate.open?.()
+      await waitFor(() => expect(touch.prompts).toBe(1))
+      await waitFor(() => expect(touch.kept.size).toBe(0))
+      expect(localStorage.getItem('notes.touchid.me')).toBeNull()
     })
 
     it('offered again once Touch ID went stale', async () => {

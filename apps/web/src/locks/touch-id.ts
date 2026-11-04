@@ -166,14 +166,17 @@ export async function turnOnTouchId(user: string, password: string): Promise<Exc
 
 /** The offer after the lock password, until it's answered: whose, and the password that turns Touch ID on. */
 let offer: { user: string; password: string } | null = null
+// Bumped by forgetTouchId (a sign-out among them): an offer on its way when it ran isn't made.
+let offers = 0
 
 /**
  * The lock password was just typed for [user]: unless Touch ID is on, was declined or isn't here, offer it, so
  * it's the last time the password is needed on this Mac. useTouchIdOffer shows the question.
  */
 export async function offerTouchId(user: string, password: string) {
+  const at = offers
   await checkAvailable()
-  if (offer || available !== true || bound(user) !== null || declined(user)) return
+  if (at !== offers || offer || available !== true || bound(user) !== null || declined(user)) return
   offer = { user, password }
   notify()
 }
@@ -193,7 +196,11 @@ export async function answerTouchIdOffer(yes: boolean) {
   } catch {
     outcome = 'failed'
   }
-  if (offer !== asked) return
+  if (offer !== asked) {
+    // Signed out (or reset) while Touch ID was asked: what was just turned on goes too.
+    if (outcome === 'done') forgetTouchId(asked.user)
+    return
+  }
   offer = null
   if (outcome === 'cancelled') setDeclined(asked.user, true)
   notify()
@@ -244,6 +251,7 @@ export function turnOffTouchId(user: string) {
 
 /** Off, and offered again: gone stale, the lock password reset, or signed out. */
 export function forgetTouchId(user: string) {
+  offers++
   if (offer?.user === user) offer = null
   setDeclined(user, false)
   setBound(user, null)

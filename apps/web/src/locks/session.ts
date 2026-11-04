@@ -185,7 +185,8 @@ class LockSession {
     const from = this.passwordWrap()
     const raw = await this.unwrapWithPassword(password)
     const copy = raw.slice()
-    if (!from || !(await this.adopt(raw, await verifierOf(raw), at, from))) {
+    // adopt is quietly true after a sign-out too, having adopted nothing: no copy for the Keychain then.
+    if (!from || !(await this.adopt(raw, await verifierOf(raw), at, from)) || at.epoch !== this.epoch) {
       copy.fill(0)
       throw new KeyringChangedError()
     }
@@ -202,7 +203,7 @@ class LockSession {
       raw.fill(0)
       return false
     }
-    return this.adopt(raw, await verifierOf(raw), at, boundTo)
+    return (await this.adopt(raw, await verifierOf(raw), at, boundTo)) && at.epoch === this.epoch
   }
 
   /** The lock password entry of the keyring as last fetched: which wrap of the key it is. */
