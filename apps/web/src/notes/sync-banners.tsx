@@ -46,7 +46,7 @@ export function SyncBanners() {
   if (!upgrade && !showParked && !showUnsynced && !version.reload) return null
 
   return (
-    <div className={styles.banners} {...dragRegion('self')}>
+    <div className={styles.banners} {...dragRegion('deep')}>
       {upgrade && <Banner tone="error">{UPGRADE_REQUIRED}</Banner>}
       {showParked && (
         <Banner

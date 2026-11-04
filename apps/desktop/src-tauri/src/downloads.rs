@@ -3,10 +3,12 @@
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 
-/// `dir/name`, or `dir/name (2).ext`, `(3)`… when taken.
-pub fn unused_path(dir: &Path, name: &OsStr) -> PathBuf {
+/// `dir/name`, or `dir/name (2).ext`, `(3)`… when taken: by a file, or by a download still under way (`pending`),
+/// whose file may not exist yet.
+pub fn unused_path(dir: &Path, name: &OsStr, pending: &[PathBuf]) -> PathBuf {
+    let free = |path: &PathBuf| !path.exists() && !pending.contains(path);
     let first = dir.join(name);
-    if !first.exists() {
+    if free(&first) {
         return first;
     }
     let name = Path::new(name);
@@ -22,7 +24,7 @@ pub fn unused_path(dir: &Path, name: &OsStr) -> PathBuf {
             }
             dir.join(candidate)
         })
-        .find(|path| !path.exists())
+        .find(free)
         .expect("some number is free")
 }
 
@@ -35,13 +37,18 @@ mod tests {
     fn numbers_a_taken_name() {
         let dir = std::env::temp_dir().join(format!("notesd-downloads-{}", std::process::id()));
         fs::create_dir_all(&dir).unwrap();
-        assert_eq!(unused_path(&dir, OsStr::new("notes.zip")), dir.join("notes.zip"));
+        let zip = OsStr::new("notes.zip");
+        assert_eq!(unused_path(&dir, zip, &[]), dir.join("notes.zip"));
         fs::write(dir.join("notes.zip"), "").unwrap();
-        assert_eq!(unused_path(&dir, OsStr::new("notes.zip")), dir.join("notes (2).zip"));
+        assert_eq!(unused_path(&dir, zip, &[]), dir.join("notes (2).zip"));
         fs::write(dir.join("notes (2).zip"), "").unwrap();
-        assert_eq!(unused_path(&dir, OsStr::new("notes.zip")), dir.join("notes (3).zip"));
+        assert_eq!(unused_path(&dir, zip, &[]), dir.join("notes (3).zip"));
+        assert_eq!(
+            unused_path(&dir, zip, &[dir.join("notes (3).zip")]),
+            dir.join("notes (4).zip")
+        );
         fs::write(dir.join("README"), "").unwrap();
-        assert_eq!(unused_path(&dir, OsStr::new("README")), dir.join("README (2)"));
+        assert_eq!(unused_path(&dir, OsStr::new("README"), &[]), dir.join("README (2)"));
         fs::remove_dir_all(&dir).unwrap();
     }
 }

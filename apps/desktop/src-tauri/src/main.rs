@@ -8,6 +8,7 @@ mod downloads;
 mod server;
 mod store;
 
+use std::path::PathBuf;
 use std::sync::Mutex;
 
 use tauri::ipc::CapabilityBuilder;
@@ -33,6 +34,9 @@ struct State {
     issued: Mutex<Option<Url>>,
     /// Last told to the page; a resize that doesn't change it needn't tell it again.
     fullscreen: Mutex<bool>,
+    /// Downloads under way: where each goes, by the address it came from. WebKit's finished event gives only the
+    /// address.
+    downloads: Mutex<Vec<(Url, PathBuf)>>,
 }
 
 #[tauri::command]
@@ -137,7 +141,7 @@ fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
                     false
                 }
                 Navigation::Elsewhere => {
-                    let _ = navigating.opener().open_url(url.as_str(), None::<&str>);
+                    open_elsewhere(&navigating, url);
                     false
                 }
             }
@@ -154,12 +158,12 @@ fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
             }
         })
         .on_new_window(move |url, _| {
-            let _ = popups.opener().open_url(url.as_str(), None::<&str>);
+            open_elsewhere(&popups, &url);
             NewWindowResponse::Deny
         })
         .on_download(move |_, event| {
             match event {
-                DownloadEvent::Requested { destination, .. } => {
+                DownloadEvent::Requested { url, destination } => {
                     let Ok(dir) = downloading.path().download_dir() else {
                         return false;
                     };
@@ -167,14 +171,22 @@ fn main_window(app: &AppHandle) -> tauri::Result<WebviewWindow> {
                         .file_name()
                         .map(|n| n.to_os_string())
                         .unwrap_or_else(|| "download".into());
-                    *destination = downloads::unused_path(&dir, &name);
+                    let state = downloading.state::<State>();
+                    let mut pending = state.downloads.lock().unwrap();
+                    let paths: Vec<PathBuf> = pending.iter().map(|(_, path)| path.clone()).collect();
+                    *destination = downloads::unused_path(&dir, &name, &paths);
+                    pending.push((url, destination.clone()));
                 }
-                DownloadEvent::Finished {
-                    path: Some(path),
-                    success: true,
-                    ..
-                } => {
-                    let _ = downloading.opener().reveal_item_in_dir(path);
+                DownloadEvent::Finished { url, path, success } => {
+                    let state = downloading.state::<State>();
+                    let mut pending = state.downloads.lock().unwrap();
+                    let kept = pending
+                        .iter()
+                        .position(|(from, _)| *from == url)
+                        .map(|i| pending.remove(i).1);
+                    if success && let Some(path) = path.or(kept) {
+                        let _ = downloading.opener().reveal_item_in_dir(path);
+                    }
                 }
                 _ => {}
             }
@@ -223,6 +235,18 @@ fn allow_window_moves(app: &AppHandle, server: &Url) -> tauri::Result<()> {
             .permission("core:window:allow-start-dragging")
             .permission("core:window:allow-internal-toggle-maximize"),
     )
+}
+
+/// Links and pop-ups off the server, in the browser or mail app. Only those: anything else the server links to
+/// (`file:`, another app's scheme) would have macOS open it, on the page's say-so.
+fn open_elsewhere(app: &AppHandle, url: &Url) {
+    if opens_elsewhere(url) {
+        let _ = app.opener().open_url(url.as_str(), None::<&str>);
+    }
+}
+
+fn opens_elsewhere(url: &Url) -> bool {
+    matches!(url.scheme(), "http" | "https" | "mailto")
 }
 
 #[derive(Debug, PartialEq)]
@@ -415,6 +439,20 @@ mod tests {
             navigation(&url(SERVER), None, Some(&setup), None, false),
             Navigation::Elsewhere
         );
+    }
+
+    #[test]
+    fn only_web_and_mail_addresses_leave_the_app() {
+        for to in ["https://notesd.app/", "http://example.com/", "mailto:a@b.c"] {
+            assert!(opens_elsewhere(&url(to)), "{to}");
+        }
+        for to in [
+            "file:///Applications/Calculator.app",
+            "x-apple.systempreferences:",
+            "ssh://host",
+        ] {
+            assert!(!opens_elsewhere(&url(to)), "{to}");
+        }
     }
 
     #[test]

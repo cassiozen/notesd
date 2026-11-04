@@ -40,11 +40,14 @@ function ask(changing) {
 function showError(message) {
   $('error').textContent = message ?? ''
   $('error').hidden = !message
-  $('address').toggleAttribute('aria-invalid', !!message)
+  if (message) $('address').setAttribute('aria-invalid', 'true')
+  else $('address').removeAttribute('aria-invalid')
 }
 
 function busy(on) {
   $('connect').disabled = on
+  // A check that succeeds after Cancel would still switch servers.
+  $('cancel').disabled = on
   $('connect').textContent = on ? 'Checking…' : 'Connect'
   $('address').readOnly = on
 }
