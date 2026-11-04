@@ -57,6 +57,7 @@ mise run test:desktop    # Rust tests
 mise run lint:desktop    # rustfmt, clippy, swift-format
 mise run build:desktop   # unsigned .app in src-tauri/target/release/bundle/macos
 mise run build:desktop:signed  # the same, signed, with Touch ID
+mise run release:macos   # signed, notarized DMG in server/bin (docs/contributing/releasing.md)
 ```
 
 The signed build needs the team's Developer ID Application certificate in the

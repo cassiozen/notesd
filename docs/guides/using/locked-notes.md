@@ -26,10 +26,11 @@ Type the lock password, or use one of these, once it's set up:
 | Web | A **passkey**: your fingerprint, face or device PIN, through the browser | **Settings → Security → Passkeys**. Adding one asks for the lock password |
 | Android | Your **fingerprint** | Offered the first time you type the lock password on the phone, or **Settings → Security → Unlock with fingerprint** |
 | iPhone | **Face ID** (or Touch ID) | Offered the first time you type the lock password on the iPhone, or **Settings → Security → Unlock with Face ID** |
+| Mac app | **Touch ID** | Offered the first time you type the lock password in the app, or **Settings → Security → Touch ID** |
 
-Fingerprint and Face ID unlock stay on that one phone. They turn themselves off, and ask for the
+Fingerprint, Face ID and Touch ID unlock stay on that one phone or Mac. They turn themselves off, and ask for the
 password again, when the lock password is changed on another device or reset, or when you change
-the fingerprints or faces the phone knows. A passkey belongs to the server's address: if you move
+the fingerprints or faces the device knows. A passkey belongs to the server's address: if you move
 the server to a new address, add your passkeys again.
 
 Once unlocked, locked notes stay open until:

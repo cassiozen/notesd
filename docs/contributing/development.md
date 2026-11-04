@@ -116,6 +116,7 @@ mise run dev:desktop     # the app, starting at its setup page
 mise run test:desktop    # Rust tests
 mise run lint:desktop    # rustfmt and clippy
 mise run build:desktop   # unsigned .app in apps/desktop/src-tauri/target/release/bundle/macos
+mise run build:desktop:signed  # the same, signed, with Touch ID (needs the team's Developer ID certificate)
 ```
 
 The app is a window on a notesd server, so its setup page takes your dev
@@ -142,8 +143,10 @@ See [`apps/desktop/README.md`](../../apps/desktop/README.md).
 | `build:android` | Debug APK |
 | `build:ios` | Debug build of the iOS app for a simulator |
 | `build:desktop` | Unsigned macOS app |
+| `build:desktop:signed` | The macOS app signed with the team's Developer ID, with Touch ID |
 | `release` | Server binaries for linux/amd64, linux/arm64 and darwin/arm64 in `server/bin` |
 | `release:android` | Release APK in `server/bin` ([releasing.md](releasing.md)) |
+| `release:macos` | The macOS app as a signed, notarized DMG in `server/bin` ([releasing.md](releasing.md)) |
 | `clean` | Remove `server/bin` |
 
 CI (`.github/workflows/ci.yml`) runs `check` and `test:android` on every

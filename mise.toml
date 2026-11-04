@@ -141,18 +141,9 @@ description = "Release APK in server/bin and Play bundle in apps/android/app/bui
 dir = "apps/android"
 run = """
 set -e
-version=$(git describe --tags --match 'v[0-9]*' 2>/dev/null || echo v0.1.0-dev)
-version=${version#v}
-# vX.Y.Z → XXYYZZ99; vX.Y.Z-rcN → XXYYZZNN, so release candidates sort before the release.
-base=${version%%-*}
-IFS=. read -r major minor patch <<EOF
-$base
+read -r version code <<EOF
+$(../../scripts/release-version)
 EOF
-case "$version" in
-  *-rc*) suffix=$(printf '%s' "${version#*-rc}" | sed 's/[^0-9].*//') ;;
-  *) suffix=99 ;;
-esac
-code=$(( ((major * 100 + minor) * 100 + patch) * 100 + ${suffix:-0} ))
 ./gradlew :app:assembleRelease :app:bundleRelease -Pnotes.versionName="$version" -Pnotes.versionCode="$code"
 mkdir -p ../../server/bin
 signed=app/build/outputs/apk/release/app-release.apk
@@ -225,6 +216,40 @@ description = "The macOS app signed with the team's Developer ID (needs its cert
 dir = "apps/desktop"
 depends = ["install"]
 run = "pnpm tauri build --bundles app --config src-tauri/tauri.signed.conf.json"
+
+[tasks."release:macos"]
+description = "The macOS app as a signed, notarized DMG in server/bin (docs/contributing/releasing.md)"
+dir = "apps/desktop"
+depends = ["install"]
+run = """
+set -euo pipefail
+: "${APPLE_API_KEY:?the App Store Connect API key ID: a DMG that isn't notarized won't open on other Macs}"
+: "${APPLE_API_ISSUER:?the App Store Connect API key issuer ID}"
+export APPLE_API_KEY_PATH="${APPLE_API_KEY_PATH:-$HOME/.appstoreconnect/private_keys/AuthKey_$APPLE_API_KEY.p8}"
+[ -f "$APPLE_API_KEY_PATH" ] || { echo "No API key at $APPLE_API_KEY_PATH" >&2; exit 1; }
+read -r version code <<EOF
+$(../../scripts/release-version)
+EOF
+identity=$(plutil -extract bundle.macOS.signingIdentity raw src-tauri/tauri.signed.conf.json)
+bundle=src-tauri/target/release/bundle
+rm -rf "$bundle/dmg"
+# Tauri signs the app, notarizes and staples it (it reads APPLE_API_*), then makes the DMG around it.
+# CFBundleShortVersionString takes X.Y.Z only; the build number tells release candidates apart.
+versions=$(printf '{"version": "%s", "bundle": {"macOS": {"bundleVersion": "%s"}}}' "${version%%-*}" "$code")
+pnpm tauri build --bundles app,dmg --config src-tauri/tauri.signed.conf.json --config "$versions"
+xcrun stapler validate "$bundle/macos/notesd.app"
+dmg=$(ls "$bundle"/dmg/*.dmg)
+# The DMG is what's downloaded, so it's signed and notarized too: Gatekeeper checks it before the app inside.
+codesign --force --timestamp --sign "$identity" "$dmg"
+status=$(xcrun notarytool submit "$dmg" --key "$APPLE_API_KEY_PATH" --key-id "$APPLE_API_KEY" \
+  --issuer "$APPLE_API_ISSUER" --wait --output-format json | plutil -extract status raw -)
+[ "$status" = Accepted ] || { echo "Notarization: $status" >&2; exit 1; }
+xcrun stapler staple "$dmg"
+spctl --assess --type open --context context:primary-signature -vv "$dmg"
+mkdir -p ../../server/bin
+cp "$dmg" "../../server/bin/notesd-$version.dmg"
+echo "server/bin/notesd-$version.dmg (build $code)"
+"""
 
 [tasks."build:web"]
 description = "Build the web app into server/internal/web/dist"
