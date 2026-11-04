@@ -111,9 +111,11 @@
   margin: 0 auto;
 }
 
-/* Only while switching notes on desktop; on phones the whole screen slides. */
-:global(:root[data-nav='switch']) .page {
-  view-transition-name: note-page;
+/* Side by side, each note opened fades in; on phones the whole screen slides instead. */
+@media (min-width: 760px) {
+  .page {
+    animation: fade-in 0.15s var(--ease-out);
+  }
 }
 
 /* Opens upward from the dock's Aa. */

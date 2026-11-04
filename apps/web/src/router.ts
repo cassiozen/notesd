@@ -52,11 +52,15 @@ export function navigate(
 /** Phones: the tags, the list and a note stack like screens; deeper pushes, shallower pops. */
 const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null })[route.name]
 
-/** How a user-initiated move animates (see base.css), or null for none. */
-export function transitionFor(from: string, to: string): 'forward' | 'back' | 'switch' | null {
+/**
+ * How a user-initiated move animates (see base.css), or null for none.
+ * Never side by side: a view transition takes the whole page's pointer events for its length, so the list
+ * stops responding to hover and clicks right after each one. The note pane fades in by itself instead.
+ */
+export function transitionFor(from: string, to: string): 'forward' | 'back' | null {
+  if (!window.matchMedia(PHONE).matches) return null
   const a = parseRoute(from)
   const b = parseRoute(to)
-  if (!window.matchMedia(PHONE).matches) return a.name === 'note' && b.name === 'note' ? 'switch' : null
   const da = depth(a)
   const db = depth(b)
   if (da === null || db === null || da === db) return null

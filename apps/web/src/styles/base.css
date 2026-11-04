@@ -140,21 +140,6 @@ code {
   animation: nav-leave-back 0.32s var(--ease-out);
 }
 
-/* Desktop, one note to another: only the page crossfades, quickly. */
-:root[data-nav='switch']::view-transition-old(root),
-:root[data-nav='switch']::view-transition-new(root) {
-  animation: none;
-}
-
-:root[data-nav='switch']::view-transition-group(note-page) {
-  animation-duration: 0.15s;
-}
-
-:root[data-nav='switch']::view-transition-old(note-page),
-:root[data-nav='switch']::view-transition-new(note-page) {
-  animation-duration: 0.15s;
-}
-
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
