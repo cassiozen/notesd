@@ -21,7 +21,9 @@ docker run -d --name notesd --restart unless-stopped \
 ```
 
 - `-p 127.0.0.1:8080:8080` publishes notesd on the machine's loopback interface only. Nothing
-  outside the machine can reach it until you put HTTPS in front in step 3.
+  outside the machine can reach it until you put HTTPS in front in step 3.  (Use -p 8080:8080 
+  instead to publish over plain HTTP for your whole network).
+
 - Your notes go in the `notesd-data` volume, so they survive upgrading or recreating the
   container.
 
