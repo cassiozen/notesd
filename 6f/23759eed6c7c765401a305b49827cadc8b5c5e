@@ -1,0 +1,25 @@
+website/index.html
+  s_e20762207068e1::t_73499996906fd6 290-293
+docs/privacy.md
+  s_e20762207068e1::t_4da2f51d7bf375 1-82
+website/src/main.css
+  s_e20762207068e1::t_73499996906fd6 865-869
+website/.vitepress/config.mjs
+  s_e20762207068e1::t_9b6f9beaf4ed33 165
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6f23759eed6c7c765401a305b49827cadc8b5c5e",
+  "prompts": {},
+  "sessions": {
+    "s_e20762207068e1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "496bc3dd-e36b-4e4c-a8c8-53753824c781",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
