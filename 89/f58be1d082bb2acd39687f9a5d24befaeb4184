@@ -1,0 +1,21 @@
+docs/guides/self-hosting/backups.md
+  s_a98b9d06ef8d2e::t_e913f4ae89b9fb 22
+docs/guides/self-hosting/upgrading.md
+  s_a98b9d06ef8d2e::t_e913f4ae89b9fb 17
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "89f58be1d082bb2acd39687f9a5d24befaeb4184",
+  "prompts": {},
+  "sessions": {
+    "s_a98b9d06ef8d2e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "837e3163-d4dc-427f-a621-3f89da1b496e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
