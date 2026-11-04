@@ -1,0 +1,78 @@
+mise.toml
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 196-217
+.github/workflows/ci.yml
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 30-44
+apps/desktop/src-tauri/rust-toolchain.toml
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-3
+apps/desktop/src-tauri/src/downloads.rs
+  s_f377e8ab9cbb1b::t_5e6c8f3164699d 1-47
+apps/desktop/src-tauri/capabilities/setup.json
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-5,7
+  s_f377e8ab9cbb1b::t_171a5f3848351c 6
+apps/desktop/src-tauri/build.rs
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-4,10-12
+  s_f377e8ab9cbb1b::t_171a5f3848351c 5-9
+apps/desktop/setup/setup.js
+  s_f377e8ab9cbb1b::t_171a5f3848351c 25-26
+  s_f377e8ab9cbb1b::t_cb5ecdada8fec8 1-24,27-71
+apps/desktop/src-tauri/src/server.rs
+  s_f377e8ab9cbb1b::t_e4c4c45d45596f 7
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 34-38,82-86,89-91,119-122
+  s_f377e8ab9cbb1b::t_5e6c8f3164699d 1-6,8-33,39-81,87-88,92-118,123-143
+apps/desktop/src-tauri/tauri.conf.json
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-24
+apps/desktop/src-tauri/.gitignore
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1,3
+  s_f377e8ab9cbb1b::t_5dc6ddb525b0f4 2,4
+apps/desktop/README.md
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 1-20,25-43
+  s_f377e8ab9cbb1b::t_4bb14cc532dd47 21-24
+apps/desktop/src-tauri/rustfmt.toml
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 1
+docs/contributing/development.md
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 47-51,112-124,138,144,150
+apps/desktop/src-tauri/src/store.rs
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 29-32
+  s_f377e8ab9cbb1b::t_5e6c8f3164699d 1-28,33-34
+apps/desktop/setup/index.html
+  s_f377e8ab9cbb1b::t_1e92dec90a8f9b 46
+  s_f377e8ab9cbb1b::t_cb5ecdada8fec8 1-45,47-51
+apps/desktop/src-tauri/Cargo.toml
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-15,17-25
+  s_f377e8ab9cbb1b::t_e4c4c45d45596f 16
+apps/desktop/setup/setup.css
+  s_f377e8ab9cbb1b::t_cb5ecdada8fec8 1-168
+apps/desktop/package.json
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-13
+apps/desktop/src-tauri/src/main.rs
+  s_f377e8ab9cbb1b::t_3a172cfe2ea697 71-73,109-111,114,141-147,150-154,215-217
+  s_f377e8ab9cbb1b::t_171a5f3848351c 14,29-32,40-48,68,102-108,112-113,115-131,162-173,176-178,180-186,188-201,209-213,286-308,312-326,330-353,358
+  s_f377e8ab9cbb1b::t_bc4a41498f2103 1-13,15-28,33-39,49-67,69-70,74-101,132-140,148-149,155-161,174-175,179,187,207-208,214,218-285,309-311,327-329,354-357,359-360
+  s_f377e8ab9cbb1b::t_ca246288061712 202-206
+scripts/icons.py
+  s_f377e8ab9cbb1b::t_8a657a503bc2d9 4,15,27,77-78,128-135,137
+docs/contributing/architecture.md
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 95
+pnpm-workspace.yaml
+  s_f377e8ab9cbb1b::t_be5ae7bc00ff32 3
+apps/desktop/src-tauri/Cargo.lock
+  s_f377e8ab9cbb1b::t_6ae779ffe428b9 1-5033
+pnpm-lock.yaml
+  s_f377e8ab9cbb1b::t_4466e072bfde28 11-16,1149-1219,3159-3205
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "46b33537e19c07709c5205f82173e2c251e2d99e",
+  "prompts": {},
+  "sessions": {
+    "s_f377e8ab9cbb1b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "81faca56-0c15-4830-aad0-f9753f95dd11",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
