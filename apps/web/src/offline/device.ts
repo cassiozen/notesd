@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { csrfTokenNow, sessionGone } from '../api/client'
 import { declineDevice, deviceDeclined, deviceUser, keepOnDevice } from '../auth/session-hint'
+import { inDesktopApp } from '../desktop'
 import { isInstalledApp } from '../install'
 import { localSource } from '../notes/local-source'
 import { onlineSource } from '../notes/online-source'
@@ -104,9 +105,12 @@ export function keepNotesHere(user: string) {
   openNotes(user)
 }
 
-/** Whether opening the installed app would start keeping notes here, browser support aside. */
+/**
+ * Whether opening the installed app would start keeping notes here, browser support aside. The macOS app always
+ * keeps them, whatever was said before: its storage is the Mac user's own, as any Mac app's.
+ */
 export function wouldKeepWhenInstalled(): boolean {
-  return deviceUser() === null && !deviceDeclined()
+  return deviceUser() === null && (inDesktopApp() || !deviceDeclined())
 }
 
 /**

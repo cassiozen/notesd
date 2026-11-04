@@ -1,6 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
+import { inDesktopApp } from '../desktop'
 import { useInstallPrompt } from '../install'
 import { relativeTime } from '../notes/relative-time'
 import { useNotes } from '../notes/store'
@@ -55,25 +56,36 @@ export function DeviceCard({ username }: { username: string }) {
   return (
     <Surface as="section" className={styles.card} aria-labelledby="device-kicker">
       <Kicker id="device-kicker">This device</Kicker>
-      <label className={auth.keep}>
-        <input
-          type="checkbox"
-          checked={kept}
-          disabled={busy || (!kept && !supported)}
-          onChange={(e) => (e.target.checked ? keepNotesHere(username) : void stop())}
-        />
-        <span>
-          Keep my notes on this device
-          <span className={auth.keepWhy}>
-            They open and save without a connection, and sync when it’s back. Anyone using this browser can read
-            them, locked notes aside.
-          </span>
-        </span>
-      </label>
-      {!kept && !supported && (
-        <span className={styles.muted}>
-          This browser can’t keep notes: private windows, and some privacy settings, block the storage it needs.
-        </span>
+      {inDesktopApp() ? (
+        // Always kept there (wouldKeepWhenInstalled); signing out removes them.
+        kept && (
+          <p className={styles.muted}>
+            Your notes are kept on this Mac, so they open and save without a connection, and sync when it’s back.
+          </p>
+        )
+      ) : (
+        <>
+          <label className={auth.keep}>
+            <input
+              type="checkbox"
+              checked={kept}
+              disabled={busy || (!kept && !supported)}
+              onChange={(e) => (e.target.checked ? keepNotesHere(username) : void stop())}
+            />
+            <span>
+              Keep my notes on this device
+              <span className={auth.keepWhy}>
+                They open and save without a connection, and sync when it’s back. Anyone using this browser can read
+                them, locked notes aside.
+              </span>
+            </span>
+          </label>
+          {!kept && !supported && (
+            <span className={styles.muted}>
+              This browser can’t keep notes: private windows, and some privacy settings, block the storage it needs.
+            </span>
+          )}
+        </>
       )}
       {!kept && failure && (
         <p role="alert" className={styles.error}>

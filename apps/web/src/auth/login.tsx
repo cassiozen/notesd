@@ -5,6 +5,7 @@ import { Button } from '../ui/button'
 import { Command } from '../ui/code'
 import { Field } from '../ui/field'
 import { useShake } from '../ui/shake'
+import { inDesktopApp } from '../desktop'
 import { isInstalledApp } from '../install'
 import { useAuth } from './auth-context'
 import { AuthLayout } from './auth-layout'
@@ -34,9 +35,10 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
   // Kept already: opting out is Settings', which warns of changes not yet on the server.
   const [keptHere] = useState(() => deviceUser() !== null)
   const canKeep = useDeviceSupported(offerDevice && !keptHere)
-  // Installed: kept unless said otherwise, as on opening the app (keepIfInstalledApp).
+  // Installed: kept unless said otherwise, as on opening the app (keepIfInstalledApp). The macOS app always keeps them.
   const [installed] = useState(isInstalledApp)
-  const [keep, setKeep] = useState(() => installed && !deviceDeclined())
+  const [always] = useState(inDesktopApp)
+  const [keep, setKeep] = useState(() => always || (installed && !deviceDeclined()))
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -101,7 +103,7 @@ export function LoginForm({ heading = 'Welcome back.', notice, username: fixedUs
           </p>
         )}
       </div>
-      {canKeep && (
+      {canKeep && !always && (
         <label className={styles.keep}>
           <input type="checkbox" checked={keep} onChange={(e) => setKeep(e.target.checked)} />
           <span>

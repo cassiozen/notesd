@@ -1,9 +1,9 @@
 # notesd for macOS
 
 A Mac app that is a window on your notesd server. The web app runs in it as it
-does in Safari, offline included: its service worker keeps the app, and, once
-"Keep my notes on this device" is on, the notes are kept in the window's
-storage (OPFS). This side adds what a Mac app has and a browser tab doesn't:
+does in Safari, offline included: its service worker keeps the app, and the
+notes are always kept in the window's storage (OPFS), with no "Keep my notes
+on this device" to turn off; signing out removes them. This side adds what a Mac app has and a browser tab doesn't:
 its own window and Dock icon, menus, links that open in your browser, and
 downloads to the Downloads folder.
 
