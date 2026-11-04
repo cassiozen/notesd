@@ -933,6 +933,23 @@ describe('Touch ID in the macOS app', () => {
     })
   })
 
+  it('storage refusing the binding: not turned on, and the Keychain key is given back', async () => {
+    const touch = fakeTouchId()
+    const s = await seeded()
+    await lockOpenNote(s)
+    await answerOffer(s, 'Not now')
+    const real = Storage.prototype.setItem
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(function (this: Storage, key, value) {
+      if (key.startsWith('notes.touchid.')) throw new DOMException('Quota exceeded', 'QuotaExceededError')
+      real.call(this, key, value)
+    })
+    onTestFinished(() => spy.mockRestore())
+    const dialog = await turnOnTouchId(s)
+    expect(await within(dialog).findByText('Touch ID couldn’t be turned on. Try again.')).toBeTruthy()
+    expect(touch.prompts).toBe(1)
+    expect(touch.kept.size).toBe(0)
+  })
+
   it('not offered on a Mac without it', async () => {
     fakeTouchId({ available: false })
     const s = await seeded()

@@ -64,7 +64,10 @@ login keychain. `src-tauri/tauri.signed.conf.json` adds the signing identity,
 hardened runtime, the entitlements (`src-tauri/signing/notesd.entitlements`)
 and the Developer ID provisioning profile they need
 (`src-tauri/signing/notesd.provisionprofile`, for the App ID
-`app.notesd.desktop`). Without the profile macOS won't launch an app that
-claims an application identifier, so the plain build claims nothing.
+`app.notesd.desktop`). The profile is what lets the app hold the
+application-identifier entitlement the data protection keychain needs: macOS
+won't launch an app claiming that entitlement without one. So the plain build,
+bundle identifier and all, claims no entitlements, and reports Touch ID
+unavailable.
 
 The icon comes from `scripts/icons.py … macos`.

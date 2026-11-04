@@ -155,6 +155,11 @@ export async function turnOnTouchId(user: string, password: string): Promise<Exc
     return 'failed'
   }
   setBound(user, entry)
+  // Storage refused it: Touch ID would look off while a key sat in the Keychain. Give the key back.
+  if (bound(user) !== entry) {
+    await b.forget(user).catch(() => undefined)
+    return 'failed'
+  }
   setDeclined(user, false)
   return 'done'
 }
