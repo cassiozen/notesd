@@ -1,0 +1,19 @@
+docs/contributing/releasing.md
+  s_12df40f33dbbfd::t_92e2742a38c6b0 17,19
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "519b592ec0c11147910eb70f293c161a952b7253",
+  "prompts": {},
+  "sessions": {
+    "s_12df40f33dbbfd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "edc3d4e2-7375-4ba5-a019-d9d4ee6a04bc",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
