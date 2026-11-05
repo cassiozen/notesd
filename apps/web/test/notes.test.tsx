@@ -456,11 +456,12 @@ describe('failures', () => {
     // The editor is still there underneath with the unsaved text.
     expect(bodyText()).toBe('Before after')
     // A reopened app shouldn't draw the shell for a session that's gone.
-    expect(localStorage.getItem('notes.signed-in')).toBeNull()
+    // Written in an effect after the render, so not always there the moment the dialog is.
+    await waitFor(() => expect(localStorage.getItem('notes.signed-in')).toBeNull())
 
     await user.type(within(dialog).getByLabelText('Password'), `${password}{Enter}`)
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Sign in again' })).toBeNull())
-    expect(localStorage.getItem('notes.signed-in')).toBe('true')
+    await waitFor(() => expect(localStorage.getItem('notes.signed-in')).toBe('true'))
     await waitFor(async () => expect((await getNote(server, id)).content).toBe('Before after\n'))
     await saved()
   })

@@ -48,7 +48,7 @@ class MainActivityTest {
     @After
     fun tearDown() {
         scenario.close()
-        graph.database.close()
+        graph.shutDown()
     }
 
     @Test

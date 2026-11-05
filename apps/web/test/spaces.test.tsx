@@ -1,7 +1,8 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Note, Space } from '../src/api/types'
 import { SPACE_RESET_MS } from '../src/notes/shell'
+import { reloadSpaces } from '../src/notes/spaces'
 import duck from '../src/notes/space-icons/duck.svg?url'
 import {
   bodyText,
@@ -29,7 +30,7 @@ async function noteIn(server: TestServer, spaceId: string, title: string, conten
 
 /** Notes in the default space and in Work. */
 async function withWork() {
-  return signedIn({
+  const session = await signedIn({
     seed: async (s) => {
       await s.api('PUT', '/spaces/work', { name: 'Work' })
       await createNote(s, 'Groceries', 'Milk and garden seeds #home\n')
@@ -37,6 +38,9 @@ async function withWork() {
       await noteIn(s, 'work', 'Budget', 'Numbers #clients\n')
     },
   })
+  // The switcher shows only Notes until the list loads, so a menu opened before then has no Work.
+  await act(() => reloadSpaces())
+  return session
 }
 
 const panel = () => screen.getByRole('navigation', { name: 'Sidebar' })

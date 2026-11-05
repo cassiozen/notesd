@@ -226,6 +226,12 @@ async function addPasskey(s: Session) {
   return dialog
 }
 
+/** Waits for the confirmation: Settings closed before it, the passkey may never be stored. */
+async function passkeyAdded(s: Session) {
+  await addPasskey(s)
+  await within(screen.getByRole('region', { name: 'Locked notes' })).findByText(/^Passkey added\./)
+}
+
 async function closeSettings(s: Session) {
   await s.user.click(screen.getByRole('button', { name: 'Done' }))
 }
@@ -287,8 +293,7 @@ describe('passkeys for locked notes', () => {
     fakeAuthenticator()
     const s = await seeded()
     await lockOpenNote(s)
-    await addPasskey(s)
-    expect(await within(screen.getByRole('region', { name: 'Locked notes' })).findByText(/^Passkey added\./)).toBeTruthy()
+    await passkeyAdded(s)
     const { keys } = (await s.server.api<{ keys: LockKey[] }>('GET', '/locks')).body
     expect(keys.map((k) => k.kind)).toEqual(['password', 'passkey'])
 
@@ -314,7 +319,7 @@ describe('passkeys for locked notes', () => {
     fakeAuthenticator()
     const s = await seeded()
     await lockOpenNote(s)
-    await addPasskey(s)
+    await passkeyAdded(s)
     await closeSettings(s)
     await s.user.click(screen.getByRole('button', { name: 'Lock now' }))
     await screen.findByText('This note is locked.')
@@ -332,7 +337,7 @@ describe('passkeys for locked notes', () => {
     const auth = fakeAuthenticator()
     const s = await seeded()
     await lockOpenNote(s)
-    await addPasskey(s)
+    await passkeyAdded(s)
     await closeSettings(s)
     await s.user.click(screen.getByRole('button', { name: 'Lock now' }))
     await screen.findByText('This note is locked.')

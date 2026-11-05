@@ -26,6 +26,7 @@ import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.account.Account
+import notes.app.shutDown
 import notes.core.api.Session
 import notes.core.api.SignIn
 import org.junit.After
@@ -48,7 +49,7 @@ class AccountPasswordTest {
     @After
     fun tearDown() {
         scenario?.close()
-        graph.database.close()
+        graph.shutDown()
         server.close()
     }
 

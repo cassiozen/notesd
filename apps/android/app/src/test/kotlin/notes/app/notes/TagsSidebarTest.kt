@@ -14,6 +14,7 @@ import kotlinx.coroutines.runBlocking
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.shutDown
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -45,7 +46,7 @@ class TagsSidebarTest {
     @After
     fun tearDown() {
         scenario.close()
-        graph.database.close()
+        graph.shutDown()
     }
 
     @Test
