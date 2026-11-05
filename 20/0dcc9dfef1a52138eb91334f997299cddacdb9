@@ -1,0 +1,55 @@
+apps/web/test/spaces.test.tsx
+  s_5e43929285420f::t_35236bb8f2770d 1,5,33,41-43
+apps/android/app/src/test/kotlin/notes/app/notes/FindFlowTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 25,55
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 32,105
+apps/android/app/src/test/kotlin/notes/app/MainActivityTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 51
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Database.kt
+  s_5e43929285420f::t_799ce060bb4168 124,129-130
+  s_5e43929285420f::t_9539696dd69345 125-128
+apps/android/app/src/test/kotlin/notes/app/notes/TagsFlowTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 24,65
+apps/android/app/src/test/kotlin/notes/app/notes/SpacesFlowTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 22,50
+apps/android/app/src/test/kotlin/notes/app/notes/SyncBannersTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 27,56
+apps/web/test/locks.test.tsx
+  s_5e43929285420f::t_a02ac9610422cd 229
+  s_5e43929285420f::t_3d02d8df692558 230-234,296,322,340
+apps/android/app/src/test/kotlin/notes/app/notes/TagsSidebarTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 17,49
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 57
+apps/android/app/src/test/kotlin/notes/app/ShutDown.kt
+  s_5e43929285420f::t_d88d7f3495ee26 1-28
+apps/android/app/src/test/kotlin/notes/app/AccessibilityTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 46
+apps/android/app/src/test/kotlin/notes/app/settings/AccountPasswordTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 29,52
+apps/web/e2e/offline.spec.ts
+  s_5e43929285420f::t_8c67617201b6a1 10-11
+apps/android/app/src/test/kotlin/notes/app/account/OnboardingFlowTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 21,44
+apps/web/test/notes.test.tsx
+  s_5e43929285420f::t_8c67617201b6a1 459-460,464
+apps/android/app/src/test/kotlin/notes/app/notes/EmailTest.kt
+  s_5e43929285420f::t_d88d7f3495ee26 37,60
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "200dcc9dfef1a52138eb91334f997299cddacdb9",
+  "prompts": {},
+  "sessions": {
+    "s_5e43929285420f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6a5d002-81a7-4580-bb50-77700cd0e2f8",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
