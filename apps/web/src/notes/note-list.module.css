@@ -295,6 +295,11 @@
   inset: -1px 0;
 }
 
+/* Over the gap filler, so pointing at the text still reaches the text. */
+.row > * {
+  position: relative;
+}
+
 /* On at once, so the highlight keeps up with a fast cursor; only leaving fades. */
 .row:hover {
   color: var(--ink);
