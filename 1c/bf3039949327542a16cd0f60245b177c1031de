@@ -1,0 +1,25 @@
+apps/android/app/src/main/kotlin/notes/app/sync/SyncScheduler.kt
+  s_1888adecd24abf::t_1a43a1f7104ea1 18,27,56-60,75,78-86,89-90,94-95,149-152
+  s_1888adecd24abf::t_f4b326fa1faf42 23
+apps/ios/Notes/Sync/SyncScheduler.swift
+  s_1888adecd24abf::t_f4b326fa1faf42 36-37,129,136,139,142-143
+  s_1888adecd24abf::t_85023acf524205 34-35,38,122,126-127,130-131,135,138,144
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListViewModel.kt
+  s_1888adecd24abf::t_1a43a1f7104ea1 69-70,98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1cbf3039949327542a16cd0f60245b177c1031de",
+  "prompts": {},
+  "sessions": {
+    "s_1888adecd24abf": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "72ec1793-6958-4bed-8ea2-63c803f9ff21",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
