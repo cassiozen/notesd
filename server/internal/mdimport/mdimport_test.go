@@ -350,7 +350,7 @@ func TestSkipsAndRepeats(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if rep.Notes != 0 || rep.Existing != 4 {
+	if rep.Notes != 0 || rep.Existing != 4 || rep.NoteLinks != 0 || len(rep.Changed) != 0 {
 		t.Errorf("second run = %+v", rep)
 	}
 	// Another space makes other notes.
@@ -530,6 +530,7 @@ func TestImageLookups(t *testing.T) {
 			"![dup](gone/dup.png)",
 			"![one](gone/one.png)",
 			"![r][pic]\n\n[pic]: pic.png",
+			"![w][web]\n\n[web]: https://example.com/b.png",
 		}, "\n\n"),
 		"pic.png":   string(img),
 		"x/dup.png": string(img),
@@ -542,18 +543,19 @@ func TestImageLookups(t *testing.T) {
 		"![dup](gone/dup.png)",
 		"![one](" + r + ")",
 		"![r][pic]\n\n[pic]: pic.png",
+		"![w][web]\n\n[web]: https://example.com/b.png",
 	}, "\n\n")
 	if got := w.byPath(t, "n.md").Content; got != want {
 		t.Errorf("content =\n%s\nwant\n%s", got, want)
 	}
-	if rep.RemoteImages != 2 {
+	if rep.RemoteImages != 3 {
 		t.Errorf("remote images = %d", rep.RemoteImages)
 	}
 	var msgs []string
 	for _, is := range rep.Changed {
 		msgs = append(msgs, is.Message)
 	}
-	if len(msgs) != 2 || !strings.Contains(msgs[0], "gone/dup.png isn't in the import") || !strings.Contains(msgs[1], "pic.png, written as a reference") {
+	if len(msgs) != 2 || !strings.Contains(msgs[0], "gone/dup.png isn't in the import") || !strings.Contains(msgs[1], "pic.png left as written") {
 		t.Errorf("changed = %q", msgs)
 	}
 }
@@ -615,5 +617,24 @@ func TestFolderLinks(t *testing.T) {
 	}
 	if !slices.Equal(w.paths(), []string{"b.md"}) || len(rep.Skipped) != 1 || rep.Skipped[0].Path != "sub/a.md" {
 		t.Errorf("imported %v, skipped %+v", w.paths(), rep.Skipped)
+	}
+}
+
+func TestRerunReportsNothingAgain(t *testing.T) {
+	src, err := Open(writeTree(t, map[string]string{
+		"a.md": "[[b]] ![](https://example.com/a.png) [doc](doc.pdf)",
+		"b.md": "b",
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	w := newMem()
+	if rep, err := Run(ctx, src, Options{}, w); err != nil || rep.NoteLinks != 1 || rep.RemoteImages != 1 || len(rep.Changed) != 1 {
+		t.Fatalf("first run = %+v, %v", rep, err)
+	}
+	rep, err := Run(ctx, src, Options{}, w)
+	if err != nil || rep.Existing != 2 || rep.NoteLinks != 0 || rep.RemoteImages != 0 || len(rep.Changed) != 0 {
+		t.Errorf("second run = %+v, %v", rep, err)
 	}
 }

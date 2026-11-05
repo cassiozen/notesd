@@ -146,7 +146,7 @@ func TestImportDefaultSpace(t *testing.T) {
 	db, _ := newDB(t)
 	dir := writeFiles(t, map[string][]byte{"a.md": []byte("a")})
 	var out bytes.Buffer
-	if err := importNotes(ctx, db, options{from: dir}, &out); err != nil {
+	if err := importNotes(ctx, db, options{from: dir, space: "  "}, &out); err != nil {
 		t.Fatal(err)
 	}
 	if all := allNotes(t, db); len(all) != 1 || all[0].SpaceID != spaces.Default {

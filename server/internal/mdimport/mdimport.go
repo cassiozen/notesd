@@ -129,11 +129,6 @@ func (r *run) note(f *File) error {
 		r.skip(f, "longer than a note can be (1 MiB)")
 		return nil
 	}
-	r.report.NoteLinks += c.noteLinks
-	r.report.RemoteImages += c.remoteImages
-	for _, msg := range issues {
-		r.report.Changed = append(r.report.Changed, Issue{f.Path, msg})
-	}
 	if r.seen[n.ID] {
 		r.report.Existing++
 		return nil
@@ -144,7 +139,13 @@ func (r *run) note(f *File) error {
 		return err
 	}
 	if created {
+		// Only for notes written: a rerun reports nothing again.
 		r.report.Notes++
+		r.report.NoteLinks += c.noteLinks
+		r.report.RemoteImages += c.remoteImages
+		for _, msg := range issues {
+			r.report.Changed = append(r.report.Changed, Issue{f.Path, msg})
+		}
 		for _, id := range images.Refs(n.Content) {
 			if r.put[id] && !r.stored[id] {
 				r.stored[id] = true

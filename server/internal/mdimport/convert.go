@@ -120,7 +120,9 @@ func (c *converter) rewrite(body string) string {
 	var left []string
 	for dest, n := range imageDests {
 		if _, p, ok := c.local(dest); ok && n > 0 {
-			left = append(left, "image "+p+", written as a reference, left as written")
+			left = append(left, "image "+p+" left as written; reference-style images aren't read")
+		} else if !ok && isRemote(strings.TrimSpace(dest)) {
+			c.remoteImages += n
 		}
 	}
 	sort.Strings(left)

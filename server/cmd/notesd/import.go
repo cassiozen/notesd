@@ -78,11 +78,11 @@ func importSpace(ctx context.Context, db *database.DB, name string, dryRun bool)
 	if err != nil {
 		return sp, false, err
 	}
-	if strings.TrimSpace(name) != "" {
+	if strings.TrimSpace(name) == "" {
+		name = ""
+	} else if name, err = spaces.NormalizeName(name); err != nil {
 		// Checked here too so a dry run refuses what the real run would.
-		if name, err = spaces.NormalizeName(name); err != nil {
-			return sp, false, err
-		}
+		return sp, false, err
 	}
 	for _, s := range list {
 		if name == "" && s.ID == spaces.Default || name != "" && spaces.Key(s.Name) == spaces.Key(name) {
