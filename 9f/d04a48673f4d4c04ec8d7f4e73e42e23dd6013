@@ -1,0 +1,21 @@
+website/download/index.html
+  s_564cf5099e940d::t_637a05721db0fe 101,103-104
+docs/get-started/05-add-your-phone.md
+  s_564cf5099e940d::t_637a05721db0fe 35-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9fd04a48673f4d4c04ec8d7f4e73e42e23dd6013",
+  "prompts": {},
+  "sessions": {
+    "s_564cf5099e940d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6a9764f-7e36-46e2-b83b-458bf2286adb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
