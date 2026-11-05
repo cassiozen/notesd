@@ -1,0 +1,21 @@
+apps/ios/Notes/Account/OnboardingModel.swift
+  s_cc70a72cb1bc3d::t_455a3ccce87a0f 88-89,91
+apps/ios/README.md
+  s_cc70a72cb1bc3d::t_455a3ccce87a0f 78-79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d08a2a4302bfeacd27c35bbed220add7d65168d4",
+  "prompts": {},
+  "sessions": {
+    "s_cc70a72cb1bc3d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c481767-985a-42e9-8837-91a7f34e59b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
