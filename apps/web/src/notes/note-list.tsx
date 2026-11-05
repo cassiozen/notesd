@@ -2,7 +2,7 @@ import { memo, useEffect, useId, useMemo, useRef, useState, type MouseEvent, typ
 import { dragRegion } from '../desktop'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
-import { groupByDate, listTime } from './list-time'
+import { groupByDate, listTime, useMidnight } from './list-time'
 import { useSearch } from './search'
 import { SpaceIcon } from './space-icon'
 import { spaceName, useSpaces } from './spaces'
@@ -49,7 +49,10 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   // The sidebar beside the list, showing.
   const docked = tags === null
 
-  const groups = useMemo(() => groupByDate(items), [items])
+  const midnight = useMidnight()
+  // midnight isn't read: it's there so the sections move on with the day, not only when the notes change.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps, react/memo-dependencies
+  const groups = useMemo(() => groupByDate(items), [items, midnight])
 
   const count = searching
     ? search.status === 'loading'
@@ -163,6 +166,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     title={r.title}
                     time={r.updatedAt}
                     selected={r.id === selectedId}
+                    midnight={midnight}
                     onSelect={onSelect}
                     locked={r.locked}
                     excerpt={r.excerpt}
@@ -187,6 +191,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     title={r.title}
                     time={r.updatedAt}
                     selected={r.id === selectedId}
+                    midnight={midnight}
                     onSelect={(id) => onSelectElsewhere(id, r.spaceId)}
                     badge={spaceName(spaces, r.spaceId)}
                     locked={r.locked}
@@ -222,6 +227,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     title={note.title}
                     time={note.updatedAt}
                     selected={note.id === selectedId}
+                    midnight={midnight}
                     onSelect={onSelect}
                     locked={note.locked}
                     preview={note.preview}
@@ -275,6 +281,8 @@ type RowProps = {
   excerpt?: string
   selected: boolean
   onSelect: (id: string) => void
+  /** Unread: changes at midnight, so a memoized row re-renders and its time label (a clock time, Yesterday…) moves on. */
+  midnight: number
 }
 
 const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey
