@@ -31,8 +31,11 @@ final class SyncScheduler {
     private static let refreshInterval: Double = 30
     private static let openFresh: Duration = .seconds(10)
 
-    /// The loop's cycle and a pull to refresh's can overlap.
-    private var syncing = 0
+    private var syncing = false
+    /// Cycles begun, and the last one ended: what `syncNow` waits on.
+    private var cyclesBegun = 0
+    private var cyclesEnded = 0
+    private var cycleWaiters: [(target: Int, done: CheckedContinuation<Void, Never>)] = []
     /// When the last cycle that went through ended; nil after one that didn't. Then backoff, sign-in or a request
     /// owns the timing, and the foreground timer stops.
     private var lastSynced: ContinuousClock.Instant?
@@ -116,21 +119,29 @@ final class SyncScheduler {
 
     /// Opening a note is when a stale copy shows; an open note takes the newer text when it arrives.
     func noteOpened() {
-        guard syncing == 0, let lastSynced, lastSynced.duration(to: .now) >= Self.openFresh else { return }
+        guard !syncing, let lastSynced, lastSynced.duration(to: .now) >= Self.openFresh else { return }
         request()
     }
 
-    /// One cycle now, counted like the loop's: pull to refresh.
+    /// Pull to refresh: asks the loop, and returns once a cycle begun after asking has ended. Through the loop,
+    /// so its outcome sets the backoff and the foreground timer like any other.
     func syncNow() async {
-        _ = await cycle()
+        let target = cyclesBegun + 1
+        request(byUser: true)
+        await withCheckedContinuation { cycleWaiters.append((target, $0)) }
     }
 
     private func cycle() async -> SyncOutcome {
-        syncing += 1
+        syncing = true
+        cyclesBegun += 1
         let outcome = await graph.engine.sync().outcome
-        syncing -= 1
+        syncing = false
+        cyclesEnded = cyclesBegun
         lastSynced = outcome == .done ? .now : nil
         upgradeRequired = outcome == .upgradeRequired
+        let done = cycleWaiters.filter { $0.target <= cyclesEnded }
+        cycleWaiters.removeAll { $0.target <= cyclesEnded }
+        for waiter in done { waiter.done.resume() }
         return outcome
     }
 

@@ -15,14 +15,16 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
-import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
@@ -51,8 +53,11 @@ class SyncScheduler(
 
     @Volatile private var foreground = false
 
-    /** The loop's cycle and a pull to refresh's can overlap. */
-    private val syncing = AtomicInteger()
+    @Volatile private var syncing = false
+
+    /** Cycles begun, and the last one ended: what [syncNow] waits on. Max once the loop has stopped for good. */
+    private val started = AtomicLong()
+    private val finished = MutableStateFlow(0L)
 
     /**
      * When the last cycle that went through ended; null after one that didn't. Then backoff, sign-in or a
@@ -67,18 +72,27 @@ class SyncScheduler(
     /** Opening a note is when a stale copy shows; an open note takes the newer text when it arrives. */
     fun noteOpened() {
         val last = lastSynced ?: return
-        if (syncing.get() == 0 && SystemClock.elapsedRealtime() - last >= OPEN_FRESH_MS) request()
+        if (!syncing && SystemClock.elapsedRealtime() - last >= OPEN_FRESH_MS) request()
     }
 
-    /** One cycle now, counted like the loop's: pull to refresh. */
-    suspend fun syncNow(): SyncOutcome = cycle()
+    /**
+     * Pull to refresh: asks the loop, and returns once a cycle begun after asking has ended. Through the loop, so
+     * its outcome sets the backoff and the foreground timer like any other.
+     */
+    suspend fun syncNow() {
+        val target = started.get() + 1
+        request()
+        finished.first { it >= target }
+    }
 
     private suspend fun cycle(): SyncOutcome {
-        syncing.incrementAndGet()
+        syncing = true
+        val n = started.incrementAndGet()
         val outcome = try {
             engine.sync()
         } finally {
-            syncing.decrementAndGet()
+            syncing = false
+            finished.value = n
         }
         lastSynced = if (outcome == SyncOutcome.Done) SystemClock.elapsedRealtime() else null
         return outcome
@@ -132,7 +146,10 @@ class SyncScheduler(
             while (true) {
                 val outcome = cycle()
                 // Only an updated app helps, and that's a new process: nothing more until then.
-                if (outcome == SyncOutcome.UpgradeRequired) return
+                if (outcome == SyncOutcome.UpgradeRequired) {
+                    finished.value = Long.MAX_VALUE
+                    return
+                }
                 if (outcome != SyncOutcome.Offline && outcome != SyncOutcome.Failed) {
                     backoff = FIRST_RETRY_MS
                     break
