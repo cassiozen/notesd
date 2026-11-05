@@ -85,8 +85,10 @@ final class OnboardingModel {
             switch await api.status() {
             case .ok(let status) where status.setupRequired:
                 // No step of its own: tapping Continue after creating it re-checks and moves on to sign-in.
+                // Signed out, only this iPhone's owner may sign in, so an account under any other name goes unused.
+                let name = self.lockedUsername.map { " with the username \($0)" } ?? ""
                 self.fail(
-                    message: "\(url.host() ?? self.server) has no account yet. Create it in a web browser at "
+                    message: "\(url.host() ?? self.server) has no account yet. Create it\(name) in a web browser at "
                         + "\(url.absoluteString), then come back and tap Continue.")
             case .ok:
                 self.url = url
