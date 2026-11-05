@@ -32,9 +32,9 @@ Your notes download.
 ## What's next
 
 - **Set up backups.** The phones' copies aren't a backup: [Backups](../guides/self-hosting/backups.md).
-- **Add your computer.** The [Mac app](../guides/apps/mac.md), or on any computer the
-  [desktop web app](../guides/apps/desktop-web-app.md), keeps your notes on the computer and opens
-  notesd in its own window.
+- **Add your computer.** Install the [Mac app](../guides/apps/mac.md), or the
+  [desktop web app](../guides/apps/desktop-web-app.md) on any other computer. Both keep your notes
+  on the computer and open notesd in its own window.
 - **Lock private notes.** Locked notes are encrypted on your device, and the server can't read
   them: [Locked notes](../guides/using/locked-notes.md).
 - **Add people.** Family or friends can have their own accounts on the same server:
