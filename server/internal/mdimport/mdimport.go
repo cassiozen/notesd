@@ -121,7 +121,7 @@ func (r *run) note(f *File) error {
 		r.skip(f, problem)
 		return nil
 	}
-	n, issues := r.convert(f, text)
+	n, c, issues := r.convert(f, text)
 	if r.err != nil {
 		return r.err
 	}
@@ -129,6 +129,8 @@ func (r *run) note(f *File) error {
 		r.skip(f, "longer than a note can be (1 MiB)")
 		return nil
 	}
+	r.report.NoteLinks += c.noteLinks
+	r.report.RemoteImages += c.remoteImages
 	for _, msg := range issues {
 		r.report.Changed = append(r.report.Changed, Issue{f.Path, msg})
 	}
@@ -172,7 +174,7 @@ func decodeText(data []byte) (string, string) {
 	return strings.ReplaceAll(text, "\r", "\n"), ""
 }
 
-func (r *run) convert(f *File, text string) (Note, []string) {
+func (r *run) convert(f *File, text string) (Note, *converter, []string) {
 	var issues []string
 	fm, body, _, err := splitFrontMatter(text)
 	if err != nil {
@@ -190,7 +192,10 @@ func (r *run) convert(f *File, text string) (Note, []string) {
 	case title == "":
 		title = fileTitle(f.Path)
 	}
-	title = cleanTitle(title)
+	title, cut := cleanTitle(title)
+	if cut {
+		issues = append(issues, "title cut to 1 KiB")
+	}
 
 	c := &converter{src: r.src, notePath: f.Path, images: r}
 	body = c.rewrite(strings.TrimLeft(body, "\n"))
@@ -198,8 +203,6 @@ func (r *run) convert(f *File, text string) (Note, []string) {
 		body = hardBreaks(body)
 	}
 	issues = append(issues, c.issues...)
-	r.report.NoteLinks += c.noteLinks
-	r.report.RemoteImages += c.remoteImages
 
 	body = strings.TrimRight(body, " \t\n")
 	tags, tagIssues := newTags(title, body, append(fm.tags, folderTag(f.Path)))
@@ -230,7 +233,7 @@ func (r *run) convert(f *File, text string) (Note, []string) {
 		Content:   body,
 		CreatedAt: unixMilli(created),
 		UpdatedAt: unixMilli(updated),
-	}, issues
+	}, c, issues
 }
 
 // newTags is the line of tags to add for names the note doesn't already
@@ -249,6 +252,9 @@ func newTags(title, body string, names []string) (string, []string) {
 		if tag == "" {
 			issues = append(issues, fmt.Sprintf("tag %q can't be written as a notesd tag; left out", name))
 			continue
+		}
+		if strings.Contains(name, "#") {
+			issues = append(issues, fmt.Sprintf("tag %q written as %s; tags can't hold #", name, tag))
 		}
 		key := search.TagKey(tag)
 		if !have[key] {
@@ -290,13 +296,14 @@ func fileTitle(p string) string {
 }
 
 // cleanTitle makes a title one line that fits notes.MaxTitleBytes.
-func cleanTitle(t string) string {
+func cleanTitle(t string) (string, bool) {
 	t = strings.Join(strings.Fields(t), " ")
+	cut := false
 	for len(t) > notes.MaxTitleBytes {
 		_, size := utf8.DecodeLastRuneInString(t)
-		t = t[:len(t)-size]
+		t, cut = t[:len(t)-size], true
 	}
-	return t
+	return t, cut
 }
 
 func (r *run) fileImage(f *File) (string, string) {

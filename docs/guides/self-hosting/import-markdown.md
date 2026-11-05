@@ -43,13 +43,13 @@ time the account changes a note, or when the server restarts.
 
 ## What it reads
 
-Files ending in `.md`, `.markdown` or `.txt` become notes; hidden folders such as `.obsidian` and
+Files ending in `.md`, `.markdown`, `.mdown`, `.mkd` or `.txt` become notes; hidden folders such as `.obsidian` and
 `.trash` are skipped. A zip of one folder is read as that folder's contents.
 
 - **Title:** the front matter's `title`, else a `# Heading` on the first line (which is then
   removed from the text), else the file name.
-- **Dates:** `created` (or `date`) and `updated` (or `modified`, `lastmod`) from the front matter,
-  else the file's modification time.
+- **Dates:** `created` (or `date`) and `updated` (or `modified`, `lastmod`) from the front matter.
+  Without `updated`, the file's modification time; without `created`, the updated date.
 - **Tags:** the front matter's `tags` are added at the end of the note, as are its folders: a
   note in `Work/Projects/` gets `#Work/Projects`. Tags already in the text work as they are.
   Names with spaces are written `#like this#`.
@@ -58,7 +58,8 @@ Files ending in `.md`, `.markdown` or `.txt` become notes; hidden folders such a
 - **Pictures:** JPEG, PNG, WebP and GIF files the notes show, by path, as `![[name]]`, as
   `<img>` or inline as `data:` URLs, up to 10 MiB each, are stored as they are, like pictures
   added in the apps. Pictures on the web stay links to their sites and are never downloaded.
-  Other formats, such as SVG and HEIC, are left as written and listed.
+  Other formats, such as SVG and HEIC, and reference-style pictures (`![alt][ref]`) are left as
+  written and listed.
 - **Links:** notesd has no links between notes, so links to other notes, and wiki-links
   (`[[Note]]`, `[[Note|text]]`), become their text. Links to other files, such as PDFs, become
   their text too, and are listed: only notes and pictures are imported.
@@ -77,4 +78,5 @@ old one. A note you deleted after importing it stays deleted.
 
 After the totals, `import` lists every file it skipped (not UTF-8 text, longer than a note can
 be, a symbolic link) and every note it imported with something left as written or out (a picture
-it couldn't find or store, a link to a file, a tag it couldn't write).
+it couldn't find or store, a link to a file, a tag it couldn't write). Links to other notes and
+web images are only counted, since a vault can hold thousands.

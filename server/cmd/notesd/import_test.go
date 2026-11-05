@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	imgpng "image/png"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -189,5 +190,35 @@ func TestImportReadsExport(t *testing.T) {
 	}
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Errorf("imported %q\nwant %q\n(output %s)", got, want, out.String())
+	}
+}
+
+// A copy of the same files has other modification times: still skipped.
+func TestImportAgainWithOtherTimes(t *testing.T) {
+	db, _ := newDB(t)
+	dir := writeFiles(t, map[string][]byte{"a.md": []byte("a")})
+	var out bytes.Buffer
+	if err := importNotes(ctx, db, options{from: dir}, &out); err != nil {
+		t.Fatal(err)
+	}
+	later := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(filepath.Join(dir, "a.md"), later, later); err != nil {
+		t.Fatal(err)
+	}
+	out.Reset()
+	if err := importNotes(ctx, db, options{from: dir}, &out); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out.String(), "skipped 1 notes already there") {
+		t.Errorf("output = %q", out.String())
+	}
+}
+
+func TestImportDryRunChecksSpaceName(t *testing.T) {
+	db, _ := newDB(t)
+	dir := writeFiles(t, map[string][]byte{"a.md": []byte("a")})
+	err := importNotes(ctx, db, options{from: dir, space: strings.Repeat("x", 65), dryRun: true}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "at most") {
+		t.Errorf("err = %v", err)
 	}
 }

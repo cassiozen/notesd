@@ -166,7 +166,7 @@ an always-current copy instead.
 notesd import [--username NAME] --from PATH [--space NAME] [--dry-run] [--no-line-breaks]
 ```
 
-Adds every Markdown file (`.md`, `.markdown`, `.txt`) in `PATH`, a folder or `.zip`, as a note,
+Adds every Markdown file (`.md`, `.markdown`, `.mdown`, `.mkd`, `.txt`) in `PATH`, a folder or `.zip`, as a note,
 with the pictures the notes show. Front matter gives titles, dates and tags, and each note is
 tagged with its folder. Running it again skips notes already imported.
 
@@ -178,7 +178,7 @@ tagged with its folder. Running it again skips notes already imported.
 | `--no-line-breaks` | Join single newlines inside paragraphs, as Markdown does, instead of making them line breaks |
 
 It prints the totals, then every file it skipped and every note imported with something left out,
-with the reason. See [Import notes from Markdown](../guides/self-hosting/import-markdown.md) for
+with the reason. Links to other notes and web images are only counted. See [Import notes from Markdown](../guides/self-hosting/import-markdown.md) for
 what it reads and how.
 
 ### check

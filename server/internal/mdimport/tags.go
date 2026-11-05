@@ -9,6 +9,7 @@ import (
 // formatTag writes name as `#name`, else `#name#` (spaces, `#2024#`): the
 // first the extractor reads back as name, or "" when neither is.
 func formatTag(name string) string {
+	// Tags end at #, so C# can only be #C.
 	name = strings.Join(strings.Fields(strings.ReplaceAll(name, "#", " ")), " ")
 	key := search.TagKey(name)
 	if key == "" {

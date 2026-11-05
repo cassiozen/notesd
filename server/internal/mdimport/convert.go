@@ -116,6 +116,15 @@ func (c *converter) rewrite(body string) string {
 		return ast.WalkContinue, nil
 	})
 	edits = append(edits, c.scan(src, open, imageDests, linkDests)...)
+	// Left: images scan doesn't read, such as `![alt][ref]` references.
+	var left []string
+	for dest, n := range imageDests {
+		if _, p, ok := c.local(dest); ok && n > 0 {
+			left = append(left, "image "+p+", written as a reference, left as written")
+		}
+	}
+	sort.Strings(left)
+	c.issues = append(c.issues, left...)
 	return applyEdits(body, edits)
 }
 
@@ -299,6 +308,11 @@ func inlineLink(src []byte, open []bool, i int) (link, bool) {
 
 var scheme = regexp.MustCompile(`^[A-Za-z][A-Za-z0-9+.-]*:`)
 
+func isRemote(dest string) bool {
+	d := strings.ToLower(dest)
+	return strings.HasPrefix(d, "http:") || strings.HasPrefix(d, "https:") || strings.HasPrefix(d, "//")
+}
+
 // local resolves a Markdown link destination to a file in the import.
 func (c *converter) local(rawDest string) (f *File, p string, ok bool) {
 	return c.resolve(html.UnescapeString(unescapeMarkdown(strings.TrimSpace(rawDest))))
@@ -307,7 +321,8 @@ func (c *converter) local(rawDest string) (f *File, p string, ok bool) {
 // resolve finds the file a decoded destination names: ok is false for URLs
 // and in-note anchors.
 func (c *converter) resolve(dest string) (f *File, p string, ok bool) {
-	if dest == "" || strings.HasPrefix(dest, "#") || scheme.MatchString(dest) {
+	// `//host/path` is a URL without its scheme, not a path from the root.
+	if dest == "" || strings.HasPrefix(dest, "#") || strings.HasPrefix(dest, "//") || scheme.MatchString(dest) {
 		return nil, "", false
 	}
 	if i := strings.IndexAny(dest, "?#"); i >= 0 {
@@ -357,13 +372,13 @@ func (c *converter) image(rawAlt, rawDest string) (string, bool) {
 	}
 	f, p, isLocal := c.local(rawDest)
 	if !isLocal {
-		if strings.HasPrefix(dest, "http:") || strings.HasPrefix(dest, "https:") {
+		if isRemote(dest) {
 			c.remoteImages++
 		}
 		return "", false
 	}
 	if f == nil {
-		f = c.src.LookupBase(path.Base(p))
+		f = c.src.LookupOnlyBase(path.Base(p))
 	}
 	return c.fileImage(f, p, alt)
 }
@@ -461,10 +476,13 @@ func (c *converter) htmlImage(tag string) (string, bool) {
 	}
 	f, p, isLocal := c.resolve(strings.TrimSpace(src))
 	if !isLocal {
+		if isRemote(strings.TrimSpace(src)) {
+			c.remoteImages++
+		}
 		return "", false
 	}
 	if f == nil {
-		f = c.src.LookupBase(path.Base(p))
+		f = c.src.LookupOnlyBase(path.Base(p))
 	}
 	return c.fileImage(f, p, alt)
 }

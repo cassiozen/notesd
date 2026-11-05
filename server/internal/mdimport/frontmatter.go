@@ -151,9 +151,10 @@ func parseDate(v any) (time.Time, bool) {
 }
 
 // epoch reads Unix seconds or milliseconds, whichever gives a plausible date.
+// Below 2001 in seconds is more likely a year or 20240115 than a timestamp.
 func epoch(n int64) (time.Time, bool) {
 	switch {
-	case n <= 0:
+	case n < 1e9:
 		return time.Time{}, false
 	case n < 1e11:
 		return time.Unix(n, 0), true
@@ -186,7 +187,9 @@ func tagList(v any) []string {
 	var out []string
 	for _, r := range raw {
 		r = strings.TrimSpace(r)
-		r = strings.TrimSuffix(strings.TrimPrefix(r, "#"), "#")
+		if t, ok := strings.CutPrefix(r, "#"); ok {
+			r = strings.TrimSuffix(t, "#") // `#multi word#`; C# keeps its #
+		}
 		if r != "" {
 			out = append(out, r)
 		}

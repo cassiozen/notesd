@@ -11,8 +11,9 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"syscall"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 // Limits on what an import reads. An archive's own size fields can lie, so
@@ -44,7 +45,7 @@ type Source struct {
 	closer  io.Closer
 }
 
-// Close releases the zip, if any.
+// Close releases the zip or folder.
 func (s *Source) Close() error {
 	if s.closer != nil {
 		return s.closer.Close()
@@ -54,6 +55,11 @@ func (s *Source) Close() error {
 
 // Open reads a folder or a .zip file.
 func Open(root string) (*Source, error) {
+	// WalkDir doesn't descend into a root that is itself a link.
+	root, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		return nil, err
+	}
 	info, err := os.Stat(root)
 	if err != nil {
 		return nil, err
@@ -68,8 +74,12 @@ func Open(root string) (*Source, error) {
 }
 
 func openDir(root string) (*Source, error) {
-	s := &Source{}
-	err := filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
+	dir, err := os.Open(root)
+	if err != nil {
+		return nil, err
+	}
+	s := &Source{closer: dir}
+	err = filepath.WalkDir(root, func(p string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
@@ -104,34 +114,52 @@ func openDir(root string) (*Source, error) {
 			return err
 		}
 		s.Files = append(s.Files, File{Path: rel, ModTime: info.ModTime(), open: func() (io.ReadCloser, error) {
-			return openRegular(p)
+			return openIn(dir, rel)
 		}})
 		return nil
 	})
 	if err != nil {
+		dir.Close()
 		return nil, err
 	}
 	s.index()
 	return s, nil
 }
 
-// openRegular opens p only if it is still a regular file: one replaced by a
-// symbolic link after the walk isn't followed.
-func openRegular(p string) (io.ReadCloser, error) {
-	f, err := os.OpenFile(p, os.O_RDONLY|syscall.O_NOFOLLOW, 0)
-	if err != nil {
-		return nil, err
+// openIn opens rel under dir a part at a time, following no symbolic link,
+// so a folder swapped for a link after the walk can't lead outside dir.
+func openIn(dir *os.File, rel string) (io.ReadCloser, error) {
+	parts := strings.Split(rel, "/")
+	fd, owned := int(dir.Fd()), false
+	for i, part := range parts {
+		flags := unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC | unix.O_DIRECTORY
+		if i == len(parts)-1 {
+			// Nonblocking so a FIFO put in the file's place doesn't hang.
+			flags = unix.O_RDONLY | unix.O_NOFOLLOW | unix.O_CLOEXEC | unix.O_NONBLOCK
+		}
+		next, err := unix.Openat(fd, part, flags, 0)
+		if owned {
+			unix.Close(fd)
+		}
+		if err != nil {
+			return nil, &fs.PathError{Op: "open", Path: rel, Err: err}
+		}
+		fd, owned = next, true
 	}
-	info, err := f.Stat()
-	if err != nil {
-		f.Close()
-		return nil, err
+	var st unix.Stat_t
+	if err := unix.Fstat(fd, &st); err != nil {
+		unix.Close(fd)
+		return nil, &fs.PathError{Op: "stat", Path: rel, Err: err}
 	}
-	if !info.Mode().IsRegular() {
-		f.Close()
+	if st.Mode&unix.S_IFMT != unix.S_IFREG {
+		unix.Close(fd)
 		return nil, errors.New("not a regular file")
 	}
-	return f, nil
+	if err := unix.SetNonblock(fd, false); err != nil {
+		unix.Close(fd)
+		return nil, err
+	}
+	return os.NewFile(uintptr(fd), rel), nil
 }
 
 func openZip(name string) (*Source, error) {
@@ -243,6 +271,15 @@ func (s *Source) LookupBase(name string) *File {
 		}
 	}
 	return best
+}
+
+// LookupOnlyBase finds the one file with this name, if only one has it: a
+// link whose folder is wrong may still name it, but not if that's ambiguous.
+func (s *Source) LookupOnlyBase(name string) *File {
+	if fs := s.byBase[strings.ToLower(name)]; len(fs) == 1 {
+		return fs[0]
+	}
+	return nil
 }
 
 // Read returns up to limit bytes of f, and whether it held more.

@@ -298,7 +298,7 @@ func TestSkipsAndRepeats(t *testing.T) {
 		"utf16.md":            "\xff\xfeh\x00i\x00",
 		".obsidian/x.md":      "hidden",
 		"big.md":              strings.Repeat("x", maxNoteFileBytes+1),
-		"long.md":             strings.Repeat("x", 1<<20+1),
+		"long.md":             "[[b]] ![](https://example.com/a.png) " + strings.Repeat("x", 1<<20+1),
 		"crlf.txt":            "\xef\xbb\xbfline one\r\nline two\r\n",
 		"notes.markdown":      "md",
 		"picture.png":         "not really",
@@ -340,6 +340,9 @@ func TestSkipsAndRepeats(t *testing.T) {
 	}
 	if len(skipped) != 5 {
 		t.Errorf("skipped = %v", skipped)
+	}
+	if rep.NoteLinks != 0 || rep.RemoteImages != 0 {
+		t.Errorf("counted a skipped note: %+v", rep)
 	}
 
 	// Again: everything is already there.
@@ -514,5 +517,103 @@ func TestFormatTag(t *testing.T) {
 		if got := formatTag(name); got != want {
 			t.Errorf("formatTag(%q) = %q, want %q", name, got, want)
 		}
+	}
+}
+
+func TestImageLookups(t *testing.T) {
+	img := pngBytes(t, 4, 3)
+	r := ref(img, 4, 3)
+	w, rep := importTree(t, map[string]string{
+		"n.md": strings.Join([]string{
+			"![proto](//pic.png)",
+			`<img src="https://example.com/a.png">`,
+			"![dup](gone/dup.png)",
+			"![one](gone/one.png)",
+			"![r][pic]\n\n[pic]: pic.png",
+		}, "\n\n"),
+		"pic.png":   string(img),
+		"x/dup.png": string(img),
+		"y/dup.png": string(img),
+		"z/one.png": string(img),
+	}, Options{})
+	want := strings.Join([]string{
+		"![proto](//pic.png)",
+		`<img src="https://example.com/a.png">`,
+		"![dup](gone/dup.png)",
+		"![one](" + r + ")",
+		"![r][pic]\n\n[pic]: pic.png",
+	}, "\n\n")
+	if got := w.byPath(t, "n.md").Content; got != want {
+		t.Errorf("content =\n%s\nwant\n%s", got, want)
+	}
+	if rep.RemoteImages != 2 {
+		t.Errorf("remote images = %d", rep.RemoteImages)
+	}
+	var msgs []string
+	for _, is := range rep.Changed {
+		msgs = append(msgs, is.Message)
+	}
+	if len(msgs) != 2 || !strings.Contains(msgs[0], "gone/dup.png isn't in the import") || !strings.Contains(msgs[1], "pic.png, written as a reference") {
+		t.Errorf("changed = %q", msgs)
+	}
+}
+
+func TestFrontMatterOddities(t *testing.T) {
+	long := strings.Repeat("é", 600)
+	w, rep := importTree(t, map[string]string{
+		"num.md":  "---\ndate: 20240115\ntags: [C#, \"#multi word#\"]\n---\nx",
+		"long.md": "# " + long + "\n\nbody",
+	}, Options{})
+	n := w.byPath(t, "num.md")
+	if n.Content != "x\n\n#C #multi word#" {
+		t.Errorf("content = %q", n.Content)
+	}
+	if time.UnixMilli(n.CreatedAt).Year() < 2001 {
+		t.Errorf("created = %v", time.UnixMilli(n.CreatedAt))
+	}
+	if l := w.byPath(t, "long.md"); len(l.Title) != 1024 {
+		t.Errorf("title is %d bytes", len(l.Title))
+	}
+	got := map[string][]string{}
+	for _, is := range rep.Changed {
+		got[is.Path] = append(got[is.Path], is.Message)
+	}
+	if m := got["num.md"]; len(m) != 2 || !strings.Contains(m[0], "isn't a date") || !strings.Contains(m[1], `"C#" written as #C`) {
+		t.Errorf("num.md issues = %q", m)
+	}
+	if m := got["long.md"]; len(m) != 1 || m[0] != "title cut to 1 KiB" {
+		t.Errorf("long.md issues = %q", m)
+	}
+}
+
+func TestFolderLinks(t *testing.T) {
+	outside := writeTree(t, map[string]string{"sub/a.md": "secret"})
+	root := writeTree(t, map[string]string{"sub/a.md": "mine", "b.md": "b"})
+	link := filepath.Join(t.TempDir(), "vault")
+	if err := os.Symlink(root, link); err != nil {
+		t.Fatal(err)
+	}
+	src, err := Open(link)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer src.Close()
+	if len(src.Files) != 2 {
+		t.Fatalf("files through a linked root = %d", len(src.Files))
+	}
+	// A folder swapped for a link after the walk isn't followed.
+	if err := os.RemoveAll(filepath.Join(root, "sub")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(filepath.Join(outside, "sub"), filepath.Join(root, "sub")); err != nil {
+		t.Fatal(err)
+	}
+	w := newMem()
+	rep, err := Run(ctx, src, Options{}, w)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(w.paths(), []string{"b.md"}) || len(rep.Skipped) != 1 || rep.Skipped[0].Path != "sub/a.md" {
+		t.Errorf("imported %v, skipped %+v", w.paths(), rep.Skipped)
 	}
 }

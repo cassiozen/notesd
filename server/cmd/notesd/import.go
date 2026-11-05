@@ -32,7 +32,9 @@ func (w storeWriter) PutImage(ctx context.Context, id, contentType string, data 
 func (w storeWriter) CreateNote(ctx context.Context, n mdimport.Note) (bool, error) {
 	in := notes.CreateInput{
 		// From the note id: a run cut short and started again replays it.
+		// Fixed fingerprint: a rerun may bring other dates (file times).
 		OperationID: "import-" + n.ID,
+		Fingerprint: "import-" + n.ID,
 		ID:          n.ID,
 		Title:       n.Title,
 		Content:     n.Content,
@@ -76,7 +78,12 @@ func importSpace(ctx context.Context, db *database.DB, name string, dryRun bool)
 	if err != nil {
 		return sp, false, err
 	}
-	name = strings.Join(strings.Fields(name), " ")
+	if strings.TrimSpace(name) != "" {
+		// Checked here too so a dry run refuses what the real run would.
+		if name, err = spaces.NormalizeName(name); err != nil {
+			return sp, false, err
+		}
+	}
 	for _, s := range list {
 		if name == "" && s.ID == spaces.Default || name != "" && spaces.Key(s.Name) == spaces.Key(name) {
 			return s, false, nil
