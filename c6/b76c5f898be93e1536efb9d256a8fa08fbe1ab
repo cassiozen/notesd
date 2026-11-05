@@ -1,0 +1,35 @@
+apps/web/src/notes/shell-skeleton.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 6
+apps/web/src/ui/banner.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 10
+apps/web/src/editor/editor.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 123
+apps/web/src/ui/dialog.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 19,23
+apps/web/src/ui/surface.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 17
+apps/web/src/notes/empty.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 19
+apps/web/src/ui/status-pill.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 10,44
+apps/web/src/settings/settings.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 259
+apps/web/src/ui/sheet.module.css
+  s_58c0936dc58703::t_9489f65b68f2d8 30,39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c6b76c5f898be93e1536efb9d256a8fa08fbe1ab",
+  "prompts": {},
+  "sessions": {
+    "s_58c0936dc58703": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86f0fc98-08c3-4aa1-994f-c5e4cfdc3f8f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
