@@ -41,10 +41,12 @@ to a server** in Settings (the sidebar's gear):
 
 1. Enter the **server address**, for example `notes.example.com`, or
    `http://192.168.1.20:8080` for a server on your LAN.
-2. Then either:
-   - **Sign in** with your username and password, or
-   - on a **new server** that has no account yet, create the account
-     from the phone (see [Create your account](../self-hosting/users.md#create-your-account)).
+2. **Sign in** with your username and password.
+
+The iPhone app doesn't create accounts. On a **new server** that has no account
+yet, the app asks you to create it first, in a web browser or on the server
+(see [Create your account](../self-hosting/users.md#create-your-account)), then
+tap **Continue** again.
 
 The app only connects over **HTTPS**, or over plain HTTP to a local
 address (private, link-local or loopback IPs such as `192.168.x` or `10.x`,

@@ -1,7 +1,6 @@
 import SwiftUI
 
-/// Connecting to a server: its address, then a new account (a fresh server)
-/// or a sign-in. A sheet: the app works without a server until then.
+/// Connecting to a server: its address, then a sign-in. A sheet: the app works without a server until then.
 struct OnboardingView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var model: OnboardingModel
@@ -72,7 +71,6 @@ struct OnboardingView: View {
     private var heading: String {
         switch model.step {
         case .server: "Connect to your server"
-        case .account: "Create your account"
         case .signIn: model.lockedServer == nil ? "Sign in" : "Sign in again"
         }
     }
@@ -80,7 +78,6 @@ struct OnboardingView: View {
     private var lede: String {
         switch model.step {
         case .server: "Your notes live on this iPhone and sync with your notesd server whenever it can reach it."
-        case .account: "\(model.server) has no account yet. Yours will be the first."
         case .signIn: "To \(model.server)."
         }
     }
@@ -88,7 +85,6 @@ struct OnboardingView: View {
     private var buttonTitle: String {
         switch model.step {
         case .server: "Continue"
-        case .account: "Create account"
         case .signIn: "Sign in"
         }
     }
@@ -103,24 +99,13 @@ struct OnboardingView: View {
                     .font(.notesMono)
                     .onSubmit(submit)
             }
-        case .account:
-            LabeledField(label: "Username", error: model.fieldErrors[.username]) {
-                TextField("Username", text: $model.username).textContentType(.username)
-                    .disabled(model.lockedUsername != nil)
-            }
-            LabeledField(label: "Password", error: model.fieldErrors[.password]) {
-                SecureField("At least 8 characters", text: $model.password).textContentType(.newPassword)
-            }
-            LabeledField(label: "Confirm password", error: model.fieldErrors[.confirm]) {
-                SecureField("Again", text: $model.confirm).textContentType(.newPassword).onSubmit(submit)
-            }
         case .signIn:
-            LabeledField(label: "Username", error: model.fieldErrors[.username]) {
+            LabeledField(label: "Username") {
                 // These notes are this person's; someone else removes all data first.
                 TextField("Username", text: $model.username).textContentType(.username)
                     .disabled(model.lockedUsername != nil)
             }
-            LabeledField(label: "Password", error: model.fieldErrors[.password]) {
+            LabeledField(label: "Password") {
                 SecureField("Password", text: $model.password).textContentType(.password).onSubmit(submit)
             }
         }
@@ -129,7 +114,6 @@ struct OnboardingView: View {
     private func submit() {
         switch model.step {
         case .server: model.submitServer()
-        case .account: model.submitAccount()
         case .signIn: model.submitSignIn()
         }
     }
@@ -137,7 +121,7 @@ struct OnboardingView: View {
 
 private struct LabeledField<Content: View>: View {
     let label: String
-    let error: String?
+    var error: String? = nil
     @ViewBuilder let content: Content
 
     var body: some View {

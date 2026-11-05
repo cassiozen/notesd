@@ -75,7 +75,10 @@ those folders is in its target, with no project edit.
 - **First run**: no onboarding. The app opens on the list, working offline,
   and the empty list offers **Connect to a server** (App Review requires an
   app that works without a server). The other platforms ask for the server
-  first.
+  first. It also never creates the server's first account, as the other
+  platforms do: App Store guideline 5.1.1(v) would then require deleting
+  accounts in the app, which notesd has no way to do. It points to a browser
+  instead.
 - **Undo**: the platform undoes typing; formatting and other editor commands
   register a snapshot, so structure comes back with the text.
 

@@ -20,7 +20,7 @@ notesd create-owner --username me
 ```
 
 With systemd, set [`NOTESD_DATA_DIR`](../../reference/cli.md#with-systemd) first. You can also sign
-up from the web app or the Android or iPhone app directly: the first account created is the
+up from the web app or the Android app directly: the first account created is the
 owner.
 
 To create it when the server first starts instead, set `NOTESD_OWNER_USERNAME` and

@@ -2,22 +2,23 @@ import Foundation
 import NotesCore
 import Observation
 
-/// Server address → new account (when the server has none yet) or sign in. With `lockedServer` it's
-/// "sign in again": straight to sign-in on the server these notes belong to. A port of Android's OnboardingViewModel.
+/// Server address → sign in. With `lockedServer` it's "sign in again": straight to sign-in on the server these
+/// notes belong to. A port of Android's OnboardingViewModel, minus creating the first account: App Store
+/// guideline 5.1.1(v) requires an app that creates accounts to delete them too, and notesd can't delete one. A
+/// server with no account yet sends the person to a browser for it.
 ///
 /// Signed out, only the person whose notes these are can sign in: anyone else's first sync would take this iPhone's
 /// notes into their account. Someone else removes all data first.
 @MainActor
 @Observable
 final class OnboardingModel {
-    enum Step { case server, account, signIn }
-    enum Field { case server, username, password, confirm }
+    enum Step { case server, signIn }
+    enum Field { case server }
 
     private(set) var step: Step
     var server: String
     var username: String
     var password = ""
-    var confirm = ""
     private(set) var busy = false
     /// About the whole step, shown above its button.
     private(set) var error: String?
@@ -57,13 +58,11 @@ final class OnboardingModel {
         let previous: Step? =
             switch step {
             case .server: nil
-            case .account: .server
             case .signIn: lockedServer == nil ? .server : nil
             }
         guard let previous else { return false }
         step = previous
         password = ""
-        confirm = ""
         clearErrors()
         return true
     }
@@ -84,52 +83,15 @@ final class OnboardingModel {
             case let other: return self.fail(message: Self.message(other))
             }
             switch await api.status() {
-            case .ok(let status):
+            case .ok(let status) where status.setupRequired:
+                // No step of its own: tapping Continue after creating it re-checks and moves on to sign-in.
+                self.fail(
+                    message: "\(url.host() ?? self.server) has no account yet. Create it in a web browser at "
+                        + "\(url.absoluteString), then come back and tap Continue.")
+            case .ok:
                 self.url = url
-                self.step = status.setupRequired ? .account : .signIn
+                self.step = .signIn
             case let other: self.fail(message: Self.message(other))
-            }
-        }
-    }
-
-    func submitAccount() {
-        run {
-            var errors: [Field: String] = [:]
-            if self.username.trimmed.isEmpty { errors[.username] = "Choose a username." }
-            if self.password.count < 8 {
-                errors[.password] = "Use at least 8 characters."
-            } else if self.confirm != self.password {
-                errors[.confirm] = "The passwords don’t match."
-            }
-            if !errors.isEmpty { return self.fail(errors) }
-            // Before setup: an account made under another name would be left on the server, unused.
-            if !self.isLockedUser(self.username) { return self.fail(message: self.otherUserMessage) }
-            guard let url = self.url else { return }
-            let api = ApiClient(baseURL: url)
-            // The fields stay bound while setup runs; login must use what setup did.
-            let username = self.username.trimmed
-            let password = self.password
-            switch await api.setup(username: username, password: password) {
-            case .ok: break
-            case .rejected(_, "invalid_request", let message, let field?):
-                let message = message.prefix(1).uppercased() + message.dropFirst() + "."
-                return self.fail([field == "username" ? .username : .password: message])
-            case .conflict:
-                self.step = .signIn
-                self.password = ""
-                self.confirm = ""
-                return self.fail(message: "This server already has an account. Sign in instead.")
-            case let other:
-                return self.fail(message: Self.message(other))
-            }
-            switch await api.login(username: username, password: password, deviceName: self.deviceName) {
-            case .ok(let signIn): self.finish(signIn)
-            case let other:
-                // The account exists now; plain sign-in takes it from here.
-                self.step = .signIn
-                self.password = ""
-                self.confirm = ""
-                self.fail(message: Self.message(other))
             }
         }
     }
@@ -164,7 +126,6 @@ final class OnboardingModel {
         if !isLockedUser(signIn.username) { return fail(message: otherUserMessage) }
         accounts.signedIn(server: url.absoluteString, signIn)
         password = ""
-        confirm = ""
         done = true
     }
 
