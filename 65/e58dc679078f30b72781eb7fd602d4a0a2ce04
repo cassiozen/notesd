@@ -1,0 +1,47 @@
+server/internal/mdimport/tags.go
+  s_aab2c1eefa8d3e::t_ffd7a98b6bd957 12
+server/internal/mdimport/mdimport.go
+  s_aab2c1eefa8d3e::t_ffd7a98b6bd957 124,132-133,177,197-198,236,256-257
+  s_aab2c1eefa8d3e::t_c4cb64cf43a135 195-196,299,301,304,306
+  s_aab2c1eefa8d3e::t_54ccaaaa5f3b9e 258
+server/internal/mdimport/convert.go
+  s_aab2c1eefa8d3e::t_5795da109849ad 119,121-122,124-125,311-315,324-325,375,381,479-481,485
+  s_aab2c1eefa8d3e::t_3f6877b2251a27 120,123,126-127
+server/cmd/notesd/import_test.go
+  s_aab2c1eefa8d3e::t_51431978b88c1e 10
+  s_aab2c1eefa8d3e::t_595ff195811f69 195-224
+docs/guides/self-hosting/import-markdown.md
+  s_aab2c1eefa8d3e::t_d692b3a26d7be5 61-62
+  s_aab2c1eefa8d3e::t_bc7955f02312a3 46,51-52,81-82
+docs/reference/cli.md
+  s_aab2c1eefa8d3e::t_bc7955f02312a3 169,181
+server/go.mod
+  s_aab2c1eefa8d3e::t_71c46e60b4daaf 10
+server/internal/mdimport/mdimport_test.go
+  s_aab2c1eefa8d3e::t_923ea17229bbc3 301,344-346,522-619
+server/internal/spaces/spaces.go
+  s_aab2c1eefa8d3e::t_837c5fb2499e66 113,195-196
+server/internal/mdimport/frontmatter.go
+  s_aab2c1eefa8d3e::t_dddd88a9f0f886 154,157,190-192
+server/cmd/notesd/import.go
+  s_aab2c1eefa8d3e::t_837c5fb2499e66 35,37,81-86
+server/internal/mdimport/source.go
+  s_aab2c1eefa8d3e::t_4a813cb31705f2 15-16,48,58-62,77-82,117,122,129-147,149-152,154-155,158-162
+  s_aab2c1eefa8d3e::t_5795da109849ad 276-284
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "65e58dc679078f30b72781eb7fd602d4a0a2ce04",
+  "prompts": {},
+  "sessions": {
+    "s_aab2c1eefa8d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de1b0f0b-e245-4853-9b04-3d54118f7b27",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
