@@ -1,0 +1,70 @@
+server/internal/mdimport/source.go
+  s_aab2c1eefa8d3e::t_ac18eef2d26388 1-13,15-120,122-187,189-274
+  s_aab2c1eefa8d3e::t_737a1416b0099d 14,121,188
+docs/README.md
+  s_aab2c1eefa8d3e::t_5f1024d944610c 20,60
+server/internal/mdimport/mdimport_test.go
+  s_aab2c1eefa8d3e::t_eed326c90d1dcd 112-114,116-118,295-304,402-407,484-486,505-508,511-512
+  s_aab2c1eefa8d3e::t_c7f61ba72c917e 219,239,241
+  s_aab2c1eefa8d3e::t_f10c8df150868e 1-111,115,119-218,220-238,240,242-294,305-401,408-483,487-504,509,513-518
+  s_aab2c1eefa8d3e::t_143f9494c94721 510
+server/internal/mdimport/tags.go
+  s_aab2c1eefa8d3e::t_89d8c2e9d0dcef 1-8,11-32
+  s_aab2c1eefa8d3e::t_e6a721fe5140fa 9-10
+server/internal/mdimport/mdimport.go
+  s_aab2c1eefa8d3e::t_efbf5be1864faf 70-71,104-105,147,355
+  s_aab2c1eefa8d3e::t_3be1b8cbee69ee 3-55,57-69,72-103,106-145,152-353,356-357
+  s_aab2c1eefa8d3e::t_44c6be632a50dc 56,146,148-151
+  s_aab2c1eefa8d3e::t_925694e3cbdc53 1-2,354
+docs/faq.md
+  s_aab2c1eefa8d3e::t_5f1024d944610c 125-130
+docs/contributing/architecture.md
+  s_aab2c1eefa8d3e::t_c36d822e051948 430
+website/.vitepress/config.mjs
+  s_aab2c1eefa8d3e::t_5f1024d944610c 148
+server/internal/mdimport/convert.go
+  s_aab2c1eefa8d3e::t_9fc11ecb0b8a27 15,113,136-137,302,304-309,462,518-519,549
+  s_aab2c1eefa8d3e::t_46a43129dbb968 1-14,16-112,114-135,138-301,303,310-461,463-512,514-517,520-548,550-568
+  s_aab2c1eefa8d3e::t_c7f61ba72c917e 513
+server/go.mod
+  s_aab2c1eefa8d3e::t_8b13f90eb87420 6,8
+server/cmd/notesd/main.go
+  s_aab2c1eefa8d3e::t_8b13f90eb87420 24-25,29,91-93,129-134,159-161,247-252,298
+docs/guides/using/writing-and-markdown.md
+  s_aab2c1eefa8d3e::t_5f1024d944610c 15-16
+server/internal/mdimport/imagesize.go
+  s_aab2c1eefa8d3e::t_312ba095fddb68 1-116
+server/cmd/notesd/import_test.go
+  s_aab2c1eefa8d3e::t_1c173acaa67cd9 1-106,110-117,119-193
+  s_aab2c1eefa8d3e::t_b2313269b380f0 118
+  s_aab2c1eefa8d3e::t_b85a4dac2363ff 107-109
+docs/reference/cli.md
+  s_aab2c1eefa8d3e::t_ac9dc93283f668 43,142-143,163-182
+  s_aab2c1eefa8d3e::t_025d706051fbbd 183
+server/internal/mdimport/frontmatter.go
+  s_aab2c1eefa8d3e::t_8b603b4edcac32 5,30-31,59-66,109-110
+  s_aab2c1eefa8d3e::t_6251686ff13048 1-4,6-29,32-58,67-108,111-206
+server/cmd/notesd/import.go
+  s_aab2c1eefa8d3e::t_1a3351aea0744b 1-110,112-149
+  s_aab2c1eefa8d3e::t_8b13f90eb87420 111
+docs/guides/self-hosting/import-markdown.md
+  s_aab2c1eefa8d3e::t_1b9c74b4d50bee 1-80
+server/go.sum
+  s_aab2c1eefa8d3e::t_b5ff6f3e7264df 19-20
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ced6ef6353a73c57788dd1e21c62c7b535d79186",
+  "prompts": {},
+  "sessions": {
+    "s_aab2c1eefa8d3e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "de1b0f0b-e245-4853-9b04-3d54118f7b27",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
