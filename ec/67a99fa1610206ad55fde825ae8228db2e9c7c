@@ -1,0 +1,19 @@
+apps/web/src/notes/note-list.module.css
+  s_58c0936dc58703::t_3a78a28ec1c412 298-302
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ec67a99fa1610206ad55fde825ae8228db2e9c7c",
+  "prompts": {},
+  "sessions": {
+    "s_58c0936dc58703": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "86f0fc98-08c3-4aa1-994f-c5e4cfdc3f8f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
