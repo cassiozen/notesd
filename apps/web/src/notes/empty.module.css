@@ -16,7 +16,7 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
-  animation: sheet-in 0.5s var(--ease-out);
+  animation: global(sheet-in) 0.5s var(--ease-out);
 }
 
 .kicker {

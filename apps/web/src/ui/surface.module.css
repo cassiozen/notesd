@@ -14,5 +14,5 @@
 }
 
 .enter {
-  animation: sheet-in 0.45s var(--spring);
+  animation: global(sheet-in) 0.45s var(--spring);
 }

@@ -3,7 +3,7 @@
   flex-direction: column;
   gap: 14px;
   padding: 14px 12px 10px 14px;
-  animation: fade-in 0.4s var(--ease-out) both;
+  animation: global(fade-in) 0.4s var(--ease-out) both;
 }
 
 .row {
