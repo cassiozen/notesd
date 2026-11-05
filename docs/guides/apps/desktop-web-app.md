@@ -5,14 +5,13 @@ description: Install notesd on your computer as an app that keeps your notes and
 
 # Desktop web app
 
-On a Mac with Apple silicon, the [Mac app](mac.md) does the same, with Touch ID for locked notes.
+On a Mac with Apple silicon, you can download the [Mac app](mac.md). 
 
-The notesd web app can be installed on your computer as an app. Installed, it opens in its own window from
-your dock or taskbar, keeps a full copy of your notes on the computer, and works offline, just like
-the phone apps: writing, search and tags work with no connection, and it syncs with your server
-whenever it can.
+For other platforms, like Windows, Linux or ChromeOS, the notesd web app can be installed on your 
+computer as an app - it opens in its own window, keeps your notes on the computer and works fully offline: 
+writing, search and tags work with no connection, and it syncs with your server whenever it can.
 
-<img width="1000" height="592" alt="notesd installed as a desktop app" src="https://github.com/user-attachments/assets/cd45c640-262b-4ca5-88c6-bd4cf086622f" />
+<img width="1000" height="592" alt="notesd installed as a desktop app" src="https://github.com/user-attachments/assets/53ccee89-3eb0-4058-9174-ea94b71b6d8b" />
 
 ## Install it
 
@@ -21,31 +20,19 @@ from `localhost`), as set up in [Get started](../../get-started/03-set-up-https.
 `http://192.168.1.20:8080`, Chrome won't show its install offer, and no browser keeps notes on the
 computer.
 
-### Safari (Recommended on Mac)
-
-On macOS 14 or later, choose File → **Add to Dock**.
-
-<img width="380" height="348" alt="Install on Safari" src="https://github.com/user-attachments/assets/a1eb7c63-3296-4666-906c-39b9e4aad390" />
-
-#### Safari additional recommendations
-
-After the application is added to the dock, open it and click on notesd → Settings.
-<img width="423" height="288" alt="Settings" src="https://github.com/user-attachments/assets/7d7c4136-901a-4b31-9e25-b2d2e44195ad" />
-
-Then:
-
-1. Uncheck "Show Navigation Controls"
-  <img width="682" height="354" alt="Uncheck Show Navigation controls" src="https://github.com/user-attachments/assets/13d526c5-a68c-4259-990a-8ab385e5fe83" />
-
-2. Disable extensions for this app (unless there are some specific extensions you need in notesd)
-
 ### Chrome
 
-Click the install icon at the right of the address bar. Or, In notesd, go to Settings → Sync & data and click **Install notesd**.
+Click the install icon at the right of the address bar:
 
-<img width="362" height="125" alt="Install on Chrome" src="https://github.com/user-attachments/assets/fc8ba906-b7ec-4062-8aa9-d6ae1bd56def" />
+<img width="443" height="186" alt="Install on Chrome" src="https://github.com/user-attachments/assets/7c76b305-e4b4-4182-91a2-440ff218dd03" />
 
-Firefox can't install it; use notesd in a tab there.
+Or, you can also go to Settings → Sync & data and click **Install notesd**.
+
+<img width="546" height="426" alt="Install in the Settings menu" src="https://github.com/user-attachments/assets/34967ffa-bed7-4d15-b9c7-65d96f5adf8c" />
+
+> [!TIP]
+> When Chrome confirms, click "Show in folder" so you can find the app and add it to the taskbar.
+> <img width="471" height="240" alt="Show in folder" src="https://github.com/user-attachments/assets/3e6340f1-a613-44ef-b95f-878a21fb68ab" />
 
 ## Using notesd
 
