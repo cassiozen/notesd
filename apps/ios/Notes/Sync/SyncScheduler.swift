@@ -31,8 +31,10 @@ final class SyncScheduler {
     private static let refreshInterval: Double = 30
     private static let openFresh: Duration = .seconds(10)
 
-    private var syncing = false
-    /// When the last cycle that went through ended; nil after one that didn't, whose backoff owns the timing.
+    /// The loop's cycle and a pull to refresh's can overlap.
+    private var syncing = 0
+    /// When the last cycle that went through ended; nil after one that didn't. Then backoff, sign-in or a request
+    /// owns the timing, and the foreground timer stops.
     private var lastSynced: ContinuousClock.Instant?
 
     init(graph: AppGraph) {
@@ -114,8 +116,22 @@ final class SyncScheduler {
 
     /// Opening a note is when a stale copy shows; an open note takes the newer text when it arrives.
     func noteOpened() {
-        guard !syncing, let lastSynced, lastSynced.duration(to: .now) >= Self.openFresh else { return }
+        guard syncing == 0, let lastSynced, lastSynced.duration(to: .now) >= Self.openFresh else { return }
         request()
+    }
+
+    /// One cycle now, counted like the loop's: pull to refresh.
+    func syncNow() async {
+        _ = await cycle()
+    }
+
+    private func cycle() async -> SyncOutcome {
+        syncing += 1
+        let outcome = await graph.engine.sync().outcome
+        syncing -= 1
+        lastSynced = outcome == .done ? .now : nil
+        upgradeRequired = outcome == .upgradeRequired
+        return outcome
     }
 
     /// The user's retry of parked changes; its outcome counts like any cycle's.
@@ -179,13 +195,9 @@ final class SyncScheduler {
     private func loop() async {
         var backoff = Self.firstRetry
         while true {
-            if foreground { await next(orAfter: Self.refreshInterval) } else { await next() }
+            if foreground && lastSynced != nil { await next(orAfter: Self.refreshInterval) } else { await next() }
             while true {
-                syncing = true
-                let outcome = await graph.engine.sync().outcome
-                syncing = false
-                lastSynced = outcome == .done ? .now : nil
-                upgradeRequired = outcome == .upgradeRequired
+                let outcome = await cycle()
                 if outcome != .offline && outcome != .failed {
                     backoff = Self.firstRetry
                     break

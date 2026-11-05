@@ -65,7 +65,9 @@ class NotesListViewModel(
     private val engine: SyncEngine,
     private val filter: MutableStateFlow<NoteFilter?>,
     private val space: StateFlow<String>,
-    private val requestSync: () -> Unit
+    private val requestSync: () -> Unit,
+    /** One cycle now, through the scheduler so it counts as one. */
+    private val syncNow: suspend () -> Unit
 ) : ViewModel() {
     val events: SharedFlow<SyncEvent> get() = engine.events
 
@@ -93,7 +95,7 @@ class NotesListViewModel(
         _refreshing.value = true
         viewModelScope.launch {
             try {
-                engine.sync()
+                syncNow()
             } finally {
                 _refreshing.value = false
             }

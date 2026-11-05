@@ -122,7 +122,7 @@ struct NotesListView: View {
         .background { Backdrop() }
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
-        .refreshable { _ = await graph.engine.sync() }
+        .refreshable { await graph.scheduler.syncNow() }
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
                 Button("Tags", systemImage: "sidebar.left") {

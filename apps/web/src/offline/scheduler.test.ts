@@ -48,6 +48,22 @@ describe('polls', () => {
     s.request(0)
     await vi.advanceTimersByTimeAsync(0)
     expect(sync).toHaveBeenCalledTimes(1)
+
+    // The first retry: 2 s plus up to half again of jitter.
+    await vi.advanceTimersByTimeAsync(2_000)
+    expect(sync).toHaveBeenCalledTimes(2)
+  })
+
+  it('aren’t skipped because the last cycle was slow', async () => {
+    const sync = vi.fn(() => new Promise<SyncOutcome>((resolve) => setTimeout(() => resolve('Done'), 10_000)))
+    const s = new Scheduler(sync)
+    scheduler = s
+    await vi.advanceTimersByTimeAsync(10_000)
+    await vi.advanceTimersByTimeAsync(20_000)
+
+    s.request(24_000)
+    await vi.advanceTimersByTimeAsync(0)
+    expect(sync).toHaveBeenCalledTimes(2)
   })
 
   it('leave a signed-out sync waiting for the sign-in', async () => {

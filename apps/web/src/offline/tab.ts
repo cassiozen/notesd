@@ -164,7 +164,7 @@ export function connectEngine(user: string, csrfToken: string): Engine {
     clearInterval(poll)
     poll = undefined
     if (document.visibilityState !== 'visible') return
-    // A little under the interval, so one tab's polls aren't skipped by a cycle that ended just short of it.
+    // A little under the interval, so timer drift doesn't skip a tab's own polls.
     const ifOlderThan = syncTiming.visibleIntervalMs * 0.8
     poll = setInterval(
       () => void request('requestSync', [ifOlderThan]).catch(() => {}),

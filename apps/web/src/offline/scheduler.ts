@@ -21,7 +21,8 @@ export const syncTiming = {
 export class Scheduler {
   private requested = true
   private running = false
-  private lastEnded = 0
+  /** From the start, not the end: a slow cycle mustn't make a tab's next poll look too soon. */
+  private lastStarted = 0
   /** The last cycle went through: polls only add to that. Backoff and sign-in own the timing otherwise. */
   private healthy = false
   private wake: (() => void) | null = null
@@ -33,11 +34,11 @@ export class Scheduler {
   }
 
   /**
-   * [ifOlderThanMs]: a poll, only if the last cycle went through and none is running or ended that recently.
+   * [ifOlderThanMs]: a poll, only if the last cycle went through and none is running or started that recently.
    * Several visible tabs each poll on their own timer; this keeps them to about one cycle per interval between them.
    */
   request(ifOlderThanMs?: number) {
-    const fresh = !this.healthy || this.running || Date.now() - this.lastEnded < (ifOlderThanMs ?? 0)
+    const fresh = !this.healthy || this.running || Date.now() - this.lastStarted < (ifOlderThanMs ?? 0)
     if (ifOlderThanMs !== undefined && fresh) return
     this.requested = true
     this.wake?.()
@@ -62,6 +63,7 @@ export class Scheduler {
       if (this.stopped) return
       this.requested = false
       this.running = true
+      this.lastStarted = Date.now()
       let outcome: SyncOutcome
       try {
         outcome = await this.sync()
@@ -69,7 +71,6 @@ export class Scheduler {
         outcome = 'Failed'
       } finally {
         this.running = false
-        this.lastEnded = Date.now()
       }
       // Only an updated app helps, and that's a new worker: no retry until then, asked or not.
       if (this.stopped || outcome === 'UpgradeRequired') return

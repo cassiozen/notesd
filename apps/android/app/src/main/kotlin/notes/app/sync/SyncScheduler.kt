@@ -15,6 +15,7 @@ import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -50,9 +51,13 @@ class SyncScheduler(
 
     @Volatile private var foreground = false
 
-    @Volatile private var syncing = false
+    /** The loop's cycle and a pull to refresh's can overlap. */
+    private val syncing = AtomicInteger()
 
-    /** When the last cycle that went through ended; null after one that didn't, whose backoff owns the timing. */
+    /**
+     * When the last cycle that went through ended; null after one that didn't. Then backoff, sign-in or a
+     * request owns the timing, and the foreground timer stops.
+     */
     @Volatile private var lastSynced: Long? = null
 
     fun request() {
@@ -62,7 +67,21 @@ class SyncScheduler(
     /** Opening a note is when a stale copy shows; an open note takes the newer text when it arrives. */
     fun noteOpened() {
         val last = lastSynced ?: return
-        if (!syncing && SystemClock.elapsedRealtime() - last >= OPEN_FRESH_MS) request()
+        if (syncing.get() == 0 && SystemClock.elapsedRealtime() - last >= OPEN_FRESH_MS) request()
+    }
+
+    /** One cycle now, counted like the loop's: pull to refresh. */
+    suspend fun syncNow(): SyncOutcome = cycle()
+
+    private suspend fun cycle(): SyncOutcome {
+        syncing.incrementAndGet()
+        val outcome = try {
+            engine.sync()
+        } finally {
+            syncing.decrementAndGet()
+        }
+        lastSynced = if (outcome == SyncOutcome.Done) SystemClock.elapsedRealtime() else null
+        return outcome
     }
 
     fun start() {
@@ -111,13 +130,7 @@ class SyncScheduler(
         while (true) {
             next()
             while (true) {
-                syncing = true
-                val outcome = try {
-                    engine.sync()
-                } finally {
-                    syncing = false
-                }
-                lastSynced = if (outcome == SyncOutcome.Done) SystemClock.elapsedRealtime() else null
+                val outcome = cycle()
                 // Only an updated app helps, and that's a new process: nothing more until then.
                 if (outcome == SyncOutcome.UpgradeRequired) return
                 if (outcome != SyncOutcome.Offline && outcome != SyncOutcome.Failed) {
@@ -133,14 +146,18 @@ class SyncScheduler(
         }
     }
 
-    /** A request, or in the foreground [REFRESH_MS] without one. A stopped app doesn't wake itself: WorkManager does. */
+    /**
+     * A request, or in the foreground [REFRESH_MS] without one while sync is going through. A stopped app doesn't
+     * wake itself: WorkManager does.
+     */
     private suspend fun next() {
         while (true) {
-            if (!foreground) {
+            if (!foreground || lastSynced == null) {
                 requests.receive()
                 return
             }
-            if (withTimeoutOrNull(REFRESH_MS) { requests.receive() } != null || foreground) return
+            val asked = withTimeoutOrNull(REFRESH_MS) { requests.receive() } != null
+            if (asked || (foreground && lastSynced != null)) return
         }
     }
 

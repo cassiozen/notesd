@@ -319,7 +319,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             graph.sync,
                                             graph.listFilter,
                                             graph.space,
-                                            graph.scheduler::request
+                                            graph.scheduler::request,
+                                            { graph.scheduler.syncNow() }
                                         )
                                     },
                                     signedOut = account is Account.SignedOut,
