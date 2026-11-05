@@ -16,11 +16,11 @@
 }
 
 .dialog[open] {
-  animation: sheet-in 0.45s var(--spring);
+  animation: global(sheet-in) 0.45s var(--spring);
 }
 
 .dialog[open]::backdrop {
-  animation: fade-in 0.25s;
+  animation: global(fade-in) 0.25s;
 }
 
 @media (max-width: 600px) {

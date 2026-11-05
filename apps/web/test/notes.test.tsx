@@ -558,6 +558,25 @@ describe('the list', () => {
     await waitFor(() => expect(within(list()).getAllByRole('link')).toHaveLength(55))
     expect(screen.queryByRole('button', { name: 'Load more' })).toBeNull()
   })
+
+  it('opens a note on mouse press, a touch only once it lifts', async () => {
+    const { user } = await signedIn({
+      seed: async (s) => {
+        await createNote(s, 'Groceries')
+        await createNote(s, 'Trip')
+      },
+    })
+    await waitFor(() => expect(noteTitle()).toBe('Trip'))
+
+    await user.pointer({ keys: '[MouseLeft>]', target: row('Groceries') })
+    await waitFor(() => expect(noteTitle()).toBe('Groceries'))
+    await user.pointer({ keys: '[/MouseLeft]', target: row('Groceries') })
+
+    await user.pointer({ keys: '[TouchA>]', target: row('Trip') })
+    expect(noteTitle()).toBe('Groceries')
+    await user.pointer({ keys: '[/TouchA]', target: row('Trip') })
+    await waitFor(() => expect(noteTitle()).toBe('Trip'))
+  })
 })
 
 describe('on a phone', () => {

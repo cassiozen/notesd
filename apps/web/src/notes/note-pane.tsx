@@ -175,7 +175,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
             {mobile && <BackButton onClick={onBack} />}
           </div>
           <div className={styles.placeholder}>
-            {load.kind === 'loading' && <span className={styles.muted}>Loading…</span>}
+            {load.kind === 'loading' && <span className={[styles.muted, styles.loading].join(' ')}>Loading…</span>}
             {load.kind === 'missing' && (
               <>
                 <h2 className={styles.placeholderTitle}>This note doesn’t exist.</h2>

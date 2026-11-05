@@ -120,7 +120,7 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 6px;
-  animation: fade-in 0.15s;
+  animation: global(fade-in) 0.15s;
 }
 
 .linkInput {

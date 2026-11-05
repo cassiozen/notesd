@@ -1,9 +1,8 @@
-import { useEffect, useId, useRef, useState, type MouseEvent, type ReactNode, type Ref } from 'react'
-import type { SearchResult } from '../api/types'
+import { memo, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type Ref } from 'react'
 import { dragRegion } from '../desktop'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
-import { groupByDate, listTime } from './list-time'
+import { groupByDate, listTime, useMidnight } from './list-time'
 import { useSearch } from './search'
 import { SpaceIcon } from './space-icon'
 import { spaceName, useSpaces } from './spaces'
@@ -50,8 +49,13 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   // The sidebar beside the list, showing.
   const docked = tags === null
 
+  const midnight = useMidnight()
+  // midnight isn't read: it's there so the sections move on with the day, not only when the notes change.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps, react/memo-dependencies
+  const groups = useMemo(() => groupByDate(items), [items, midnight])
+
   const count = searching
-    ? search.status === 'loading' && n === 0
+    ? search.status === 'loading'
       ? 'Searching…'
       : `${n}${search.hasMore ? '+' : ''} ${n === 1 ? 'result' : 'results'}`
     : status === 'ready'
@@ -128,7 +132,8 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
             onChange={(e) => onQuery(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') onQuery('')
-              const first = search.results[0]
+              // Not a result for the words typed yet.
+              const first = search.stale ? undefined : search.results[0]
               if (e.key === 'Enter' && first) onSelect(first.id)
             }}
           />
@@ -153,7 +158,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               </Message>
             )}
             {n > 0 && (
-              <Section label="Top results" listLabel="Search results">
+              <Section label="Top results" listLabel="Search results" stale={search.stale}>
                 {search.results.map((r) => (
                   <Row
                     key={r.id}
@@ -161,8 +166,10 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     title={r.title}
                     time={r.updatedAt}
                     selected={r.id === selectedId}
+                    midnight={midnight}
                     onSelect={onSelect}
-                    preview={excerpt(r)}
+                    locked={r.locked}
+                    excerpt={r.excerpt}
                   />
                 ))}
               </Section>
@@ -184,9 +191,11 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     title={r.title}
                     time={r.updatedAt}
                     selected={r.id === selectedId}
+                    midnight={midnight}
                     onSelect={(id) => onSelectElsewhere(id, r.spaceId)}
                     badge={spaceName(spaces, r.spaceId)}
-                    preview={excerpt(r)}
+                    locked={r.locked}
+                    excerpt={r.excerpt}
                   />
                 ))}
               </Section>
@@ -209,7 +218,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
             {status === 'ready' && items.length === 0 && (
               <Message>{scope ? `No notes in ${scope}.` : many ? `No notes in ${name} yet.` : 'No notes yet.'}</Message>
             )}
-            {groupByDate(items).map((g) => (
+            {groups.map((g) => (
               <Section key={g.label} label={g.label}>
                 {g.items.map((note) => (
                   <Row
@@ -218,10 +227,10 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     title={note.title}
                     time={note.updatedAt}
                     selected={note.id === selectedId}
+                    midnight={midnight}
                     onSelect={onSelect}
-                    preview={
-                      note.locked ? <Locked /> : note.preview ? note.preview.split('\n').join(' · ') : 'No additional text'
-                    }
+                    locked={note.locked}
+                    preview={note.preview}
                   />
                 ))}
               </Section>
@@ -245,24 +254,18 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   )
 }
 
-function Section({ label, listLabel, children }: { label: string; listLabel?: string; children: ReactNode }) {
+function Section({ label, listLabel, stale, children }: { label: string; listLabel?: string; stale?: boolean; children: ReactNode }) {
   const id = useId()
   return (
     <section className={styles.group} aria-labelledby={id}>
       <h2 id={id} className={styles.groupLabel}>
         {label}
       </h2>
-      <ul className={styles.rows} aria-label={listLabel}>
+      <ul className={styles.rows} aria-label={listLabel} aria-busy={stale || undefined} data-stale={stale ? '' : undefined}>
         {children}
       </ul>
     </section>
   )
-}
-
-/** A search result's excerpt. */
-function excerpt(r: SearchResult): ReactNode {
-  // The server escapes the note text and adds only <mark>: the one place raw HTML is allowed.
-  return r.locked ? <Locked /> : <span dangerouslySetInnerHTML={{ __html: r.excerpt }} />
 }
 
 type RowProps = {
@@ -271,12 +274,21 @@ type RowProps = {
   time: number
   /** The space a result from another space is in. */
   badge?: string
-  preview: ReactNode
+  locked: boolean
+  /** A listed note's first lines… */
+  preview?: string
+  /** …or a search result's excerpt, as HTML. */
+  excerpt?: string
   selected: boolean
   onSelect: (id: string) => void
+  /** Unread: changes at midnight, so a memoized row re-renders and its time label (a clock time, Yesterday…) moves on. */
+  midnight: number
 }
 
-function Row({ id, title, time, badge, preview, selected, onSelect }: RowProps) {
+const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey
+
+/** Plain props, so a list change re-renders only the rows it touched; typing in a note changes the list every few keystrokes. */
+const Row = memo(function Row({ id, title, time, badge, locked, preview, excerpt, selected, onSelect }: RowProps) {
   const href = `/notes/${id}`
   return (
     <li>
@@ -284,8 +296,13 @@ function Row({ id, title, time, badge, preview, selected, onSelect }: RowProps) 
         href={href}
         className={styles.row}
         aria-current={selected ? 'page' : undefined}
+        // Opens on press, as native lists do: a click's release comes ~100ms later. Touch waits for the
+        // click, or starting a scroll on a row would open it.
+        onPointerDown={(e: PointerEvent) => {
+          if (e.pointerType === 'mouse' && plainClick(e)) onSelect(id)
+        }}
         onClick={(e: MouseEvent) => {
-          if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+          if (!plainClick(e)) return
           e.preventDefault()
           onSelect(id)
         }}
@@ -294,12 +311,23 @@ function Row({ id, title, time, badge, preview, selected, onSelect }: RowProps) 
         <span className={styles.rowMeta}>
           {badge && <span className={styles.rowSpace}>{badge}</span>}
           <span className={styles.rowTime}>{listTime(time)}</span>
-          <span className={styles.rowPreview}>{preview}</span>
+          <span className={styles.rowPreview}>
+            {locked ? (
+              <Locked />
+            ) : excerpt !== undefined ? (
+              // The server escapes the note text and adds only <mark>: the one place raw HTML is allowed.
+              <span dangerouslySetInnerHTML={{ __html: excerpt }} />
+            ) : preview ? (
+              preview.split('\n').join(' · ')
+            ) : (
+              'No additional text'
+            )}
+          </span>
         </span>
       </a>
     </li>
   )
-}
+})
 
 /** A locked note's preview: its body is encrypted. */
 function Locked() {

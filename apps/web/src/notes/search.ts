@@ -8,6 +8,8 @@ export type SearchState = {
   hasMore: boolean
   /** Searching one space: the matches in every other space (§7.7). */
   otherSpaces: number
+  /** Loading: these are the previous words' results, kept up so the list doesn't blank between keystrokes. */
+  stale: boolean
 }
 
 type Answer = {
@@ -37,6 +39,8 @@ export function useSearch(query: string, filter: NoteFilter, where: SearchScope,
   const key = `${version}\u0000${scope}\u0000${q}`
   const [answer, setAnswer] = useState<Answer | null>(null)
   const more = useRef<AbortController | null>(null)
+  // Search cleared: the next one starts blank, not with these results.
+  if (!q && answer) setAnswer(null)
 
   useEffect(() => {
     more.current?.abort()
@@ -87,13 +91,22 @@ export function useSearch(query: string, filter: NoteFilter, where: SearchScope,
   }, [answer])
 
   let state: SearchState
-  if (!q) state = { status: 'idle', results: [], hasMore: false, otherSpaces: 0 }
+  if (!q) state = { status: 'idle', results: [], hasMore: false, otherSpaces: 0, stale: false }
   else if (answer?.key === key) {
-    state = { status: answer.ok ? 'ready' : 'error', results: answer.results, hasMore: answer.hasMore, otherSpaces: answer.otherSpaces }
+    state = {
+      status: answer.ok ? 'ready' : 'error',
+      results: answer.results,
+      hasMore: answer.hasMore,
+      otherSpaces: answer.otherSpaces,
+      stale: false,
+    }
   } else if (answer?.q === q && answer.scope === scope && answer.ok) {
     // Same words, notes changed: keep showing the old results while refreshing.
-    state = { status: 'ready', results: answer.results, hasMore: answer.hasMore, otherSpaces: answer.otherSpaces }
-  } else state = { status: 'loading', results: [], hasMore: false, otherSpaces: 0 }
+    state = { status: 'ready', results: answer.results, hasMore: answer.hasMore, otherSpaces: answer.otherSpaces, stale: false }
+  } else if (answer?.scope === scope && answer.ok) {
+    // Other words: no more pages or other-space count for them, as those would be the old words'.
+    state = { status: 'loading', results: answer.results, hasMore: false, otherSpaces: 0, stale: true }
+  } else state = { status: 'loading', results: [], hasMore: false, otherSpaces: 0, stale: false }
 
   return { ...state, loadMore }
 }
