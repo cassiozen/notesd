@@ -7,6 +7,7 @@ import {
   type Reply,
   type WorkerMessage,
 } from './protocol'
+import { syncTiming } from './scheduler'
 
 /** A tab's handle on the engine, wherever it runs. */
 export type Engine = {
@@ -157,11 +158,27 @@ export function connectEngine(user: string, csrfToken: string): Engine {
     })
 
   const online = () => void request('requestSync', []).catch(() => {})
+  // Hidden, the worker's own slower pace is enough; the sync on coming back catches up.
+  let poll: ReturnType<typeof setInterval> | undefined
+  const watch = () => {
+    clearInterval(poll)
+    poll = undefined
+    if (document.visibilityState !== 'visible') return
+    // A little under the interval, so timer drift doesn't skip a tab's own polls.
+    const ifOlderThan = syncTiming.visibleIntervalMs * 0.8
+    poll = setInterval(
+      () => void request('requestSync', [ifOlderThan]).catch(() => {}),
+      syncTiming.visibleIntervalMs,
+    )
+  }
   const visible = () => {
+    watch()
     if (document.visibilityState === 'visible') online()
   }
   window.addEventListener('online', online)
   document.addEventListener('visibilitychange', visible)
+  // Not visible(): open goes first, and the engine syncs on opening anyway.
+  watch()
 
   void request('open', [user, token]).catch(() => {})
 
@@ -179,6 +196,7 @@ export function connectEngine(user: string, csrfToken: string): Engine {
       closed = true
       window.removeEventListener('online', online)
       document.removeEventListener('visibilitychange', visible)
+      clearInterval(poll)
       abort.abort()
       worker?.terminate()
       worker = null

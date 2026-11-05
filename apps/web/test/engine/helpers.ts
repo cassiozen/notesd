@@ -68,7 +68,7 @@ export async function signIn(username: string, password: string): Promise<string
 /** A server, an owner signed in as "the browser", and the engine for them. */
 export async function engineSignedIn(): Promise<{ server: TestServer; engine: ReturnType<typeof inProcessEngine>; password: string }> {
   // Long enough that only what a test triggers runs; tests that want the scheduler shorten these.
-  Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, firstRetryMs: 60_000 })
+  Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, visibleIntervalMs: 60_000, openFreshMs: 60_000, firstRetryMs: 60_000 })
   onTestFinished(() => {
     Object.assign(syncTiming, defaults)
   })

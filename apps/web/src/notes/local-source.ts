@@ -3,6 +3,7 @@ import { locks } from '../api/locks'
 import { SEARCH_PAGE } from '../api/notes'
 import type { ListItem, Note } from '../api/types'
 import type { LocalListItem, LocalNote, SyncStatus } from '../offline/protocol'
+import { syncTiming } from '../offline/scheduler'
 import type { Engine } from '../offline/tab'
 import { LocalSaver } from './local-saver'
 import type { NotesSource, SyncState, Unsynced } from './source'
@@ -27,6 +28,8 @@ export function localSource(engine: Engine): NotesSource {
       return { notes: snapshot.slice(offset, end), nextCursor: String(end), hasMore: end < snapshot.length, total: snapshot.length }
     },
     async get(id) {
+      // Opening a note is when a stale copy shows; an open note takes the newer text when it arrives.
+      void engine.call('requestSync', syncTiming.openFreshMs).catch(() => {})
       const local = await engine.call('get', id)
       if (!local) throw new ApiError(404, { error: 'not_found', message: 'No such note on this device' })
       return note(local)

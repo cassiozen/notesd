@@ -248,7 +248,9 @@ Settings → Sync & data. Otherwise the app works on the server as before.
   session gone pauses and asks to sign in again, edits kept. Storage is asked to persist; a full device
   says so on the save that couldn't be stored.
 - **Scheduling** (`src/offline/scheduler.ts`), in the worker: on start, 2 s
-  after an edit, when a tab comes back or goes online, and every minute.
+  after an edit, on opening a note, when a tab comes back or goes online, every
+  30 s while a tab is visible (each visible tab asks; the scheduler drops asks
+  that come too soon after a sync) and every 5 min otherwise.
   Failures back off from 2 s to 5 min. Signed out, it waits for the next
   sign-in's token.
 

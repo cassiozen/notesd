@@ -48,6 +48,9 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
+import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
+import androidx.compose.material3.pulltorefresh.pullToRefresh
+import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -168,6 +171,8 @@ fun NotesListScreen(
     val toasts = remember { SnackbarHostState() }
     val haze = rememberHazeState()
     val list = rememberLazyListState()
+    val refreshing by vm.refreshing.collectAsStateWithLifecycle()
+    val pull = rememberPullToRefreshState()
 
     // One toast for the latest delete; it goes away when that delete is committed or undone.
     val latest = pending.lastOrNull()
@@ -237,7 +242,12 @@ fun NotesListScreen(
                     }
                 )
         ) {
-            Box(Modifier.fillMaxSize().hazeSource(haze)) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .hazeSource(haze)
+                    .pullToRefresh(refreshing, pull, onRefresh = vm::refresh)
+            ) {
                 Backdrop()
                 LazyColumn(
                     state = list,
@@ -406,6 +416,13 @@ fun NotesListScreen(
                         }
                     }
                 }
+                PullToRefreshDefaults.Indicator(
+                    pull,
+                    refreshing,
+                    Modifier.align(Alignment.TopCenter).padding(top = top + 56.dp),
+                    containerColor = t.bg,
+                    color = t.ink2
+                )
             }
 
             TopBar(collapsed, scope ?: "All Notes", onTags, Modifier.align(Alignment.TopCenter))

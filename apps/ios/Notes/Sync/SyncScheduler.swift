@@ -3,9 +3,10 @@ import Network
 import NotesCore
 import UIKit
 
-/// When to sync (§5.5). In the foreground: on start and return, every 2 min
-/// to pick up remote edits, 5 s after the last local edit, when the network
-/// comes back, and right after signing in, retrying failures with backoff (2 s doubling to 5 min, with jitter). In the
+/// When to sync (§5.5). In the foreground: on start and return, every 30 s
+/// to pick up remote edits, 2 s after the last local edit, on opening a note,
+/// when the network comes back, and right after signing in, retrying failures with backoff (2 s doubling to 5 min,
+/// with jitter). In the
 /// background: an app refresh task when iOS allows one, and one sync to finish
 /// unsent changes when the app leaves the screen. Correctness never depends on
 /// any of these running.
@@ -24,10 +25,20 @@ final class SyncScheduler {
     private var afterEdit: Task<Void, Never>?
     private let monitor = NWPathMonitor()
 
-    private static let afterEditDelay: Duration = .seconds(5)
+    private static let afterEditDelay: Duration = .seconds(2)
     private static let firstRetry: Double = 2
     private static let maxRetry: Double = 300
-    private static let refreshInterval: Double = 120
+    private static let refreshInterval: Double = 30
+    private static let openFresh: Duration = .seconds(10)
+
+    private var syncing = false
+    /// Cycles begun, and the last one ended: what `syncNow` waits on.
+    private var cyclesBegun = 0
+    private var cyclesEnded = 0
+    private var cycleWaiters: [(target: Int, done: CheckedContinuation<Void, Never>)] = []
+    /// When the last cycle that went through ended; nil after one that didn't. Then backoff, sign-in or a request
+    /// owns the timing, and the foreground timer stops.
+    private var lastSynced: ContinuousClock.Instant?
 
     init(graph: AppGraph) {
         self.graph = graph
@@ -106,6 +117,34 @@ final class SyncScheduler {
         }
     }
 
+    /// Opening a note is when a stale copy shows; an open note takes the newer text when it arrives.
+    func noteOpened() {
+        guard !syncing, let lastSynced, lastSynced.duration(to: .now) >= Self.openFresh else { return }
+        request()
+    }
+
+    /// Pull to refresh: asks the loop, and returns once a cycle begun after asking has ended. Through the loop,
+    /// so its outcome sets the backoff and the foreground timer like any other.
+    func syncNow() async {
+        let target = cyclesBegun + 1
+        request(byUser: true)
+        await withCheckedContinuation { cycleWaiters.append((target, $0)) }
+    }
+
+    private func cycle() async -> SyncOutcome {
+        syncing = true
+        cyclesBegun += 1
+        let outcome = await graph.engine.sync().outcome
+        syncing = false
+        cyclesEnded = cyclesBegun
+        lastSynced = outcome == .done ? .now : nil
+        upgradeRequired = outcome == .upgradeRequired
+        let done = cycleWaiters.filter { $0.target <= cyclesEnded }
+        cycleWaiters.removeAll { $0.target <= cyclesEnded }
+        for waiter in done { waiter.done.resume() }
+        return outcome
+    }
+
     /// The user's retry of parked changes; its outcome counts like any cycle's.
     func retryParked() {
         Task { upgradeRequired = await graph.engine.retryParked().outcome == .upgradeRequired }
@@ -167,10 +206,9 @@ final class SyncScheduler {
     private func loop() async {
         var backoff = Self.firstRetry
         while true {
-            if foreground { await next(orAfter: Self.refreshInterval) } else { await next() }
+            if foreground && lastSynced != nil { await next(orAfter: Self.refreshInterval) } else { await next() }
             while true {
-                let outcome = await graph.engine.sync().outcome
-                upgradeRequired = outcome == .upgradeRequired
+                let outcome = await cycle()
                 if outcome != .offline && outcome != .failed {
                     backoff = Self.firstRetry
                     break

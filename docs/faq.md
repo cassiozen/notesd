@@ -148,7 +148,7 @@ and what to do when you restore.
 ### When does it sync?
 
 Automatically: when the app opens, a few seconds after you stop typing,
-when the network comes back, and every minute or two while it's open. On
+when you open a note, when the network comes back, and every 30 seconds while it's open. On
 phones you can also pull down on the list. The OS may let the phone apps
 sync in the background now and then, on its own schedule.
 

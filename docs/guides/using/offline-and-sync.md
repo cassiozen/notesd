@@ -13,9 +13,10 @@ all work with no connection; edits wait on the phone and upload when the server 
 They sync:
 
 - when the app opens or comes back to the screen;
-- a few seconds after you stop typing;
+- a couple of seconds after you stop typing;
+- when you open a note;
 - when the network comes back;
-- on the iPhone, every couple of minutes while the app is open;
+- every 30 seconds while the app is open;
 - when you pull down on the list;
 - now and then in the background, when the system allows it: on Android at most every 15 minutes,
   on the iPhone on its own schedule.
@@ -46,8 +47,8 @@ By default the web app works directly on the server, and needs a connection.
 
 Choose **Keep my notes on this device** when you sign in, or later in **Settings → Sync & data**,
 and the browser keeps a full copy too. Then the web app works offline like the phones: it syncs
-when it starts, 2 seconds after an edit, when the tab or the network comes back, and every minute
-while a tab is open. It's on by default in the [installed web app](../apps/desktop-web-app.md).
+when it starts, 2 seconds after an edit, when you open a note, when the tab or the network comes back,
+every 30 seconds while a tab is visible, and every 5 minutes while one is open in the background. It's on by default in the [installed web app](../apps/desktop-web-app.md).
 
 - It needs notesd served over HTTPS (or from `localhost`), and isn't offered in private windows.
 - Anyone using that browser profile can read the notes it keeps, except locked notes. Only turn

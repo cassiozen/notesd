@@ -171,6 +171,7 @@ struct NoteScreen: View {
         }
         .task { await model.run() }
         .task { await graph.email.refresh() }
+        .task { graph.scheduler.noteOpened() }
         .sheet(item: $lockSheet) {
             if typedPassword { graph.biometrics.offer() }
             typedPassword = false

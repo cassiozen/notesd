@@ -324,10 +324,10 @@ A new device authenticates, initializes its database, syncs from cursor 0 in pag
 
 ### 5.5 Scheduling
 
-- Triggers: app launch, return to foreground, local edits (debounced), connectivity regained, OS-approved background windows, periodic refresh while active.
+- Triggers: app launch, return to foreground, local edits (debounced 2 s), opening a note (unless a sync went through in the last 10 s), connectivity regained, OS-approved background windows, periodic refresh while active (every 30 s).
 - Failures back off exponentially with jitter; edits never cause one request per keystroke.
 - Background execution is not guaranteed on iOS or Android, so correctness must never depend on its timing.
-- Web (a browser keeping its notes): the engine's worker syncs on start, 2 s after an edit, when a tab comes back or the network does, and every minute while a tab is open; nothing runs with every tab closed. Opened offline, the page has no CSRF token, so writes wait until the server answers and hands one over; a write is never sent without one.
+- Web (a browser keeping its notes): the engine's worker syncs on start, 2 s after an edit, on opening a note, when a tab comes back or the network does, every 30 s while a tab is visible and every 5 min while only hidden tabs are open; nothing runs with every tab closed. Opened offline, the page has no CSRF token, so writes wait until the server answers and hands one over; a write is never sent without one.
 
 ## 6. Conflicts and Deletion
 
