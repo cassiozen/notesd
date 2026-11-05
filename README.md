@@ -3,7 +3,7 @@
 <h2 align="center">notesd</h2>
 <p align="center">Self-hosted notes, with a web app and native Android and iPhone apps that work offline.</p>
 <p align="center"><sub><b>notesd</b> · /notes-dee/ · <i>n.</i> a small daemon, like sshd or httpd, but for your grocery lists.</sub></p>
-<p align="center"><a href="https://notesd.app">notesd.app</a></p>
+<p align="center"><a href="https://notesd.app">notesd.app</a> · <a href="https://notesd.app/download/">Download the apps</a></p>
 
 <img width="1448" height="1086" alt="notesd in a browser and on a phone" src="https://github.com/user-attachments/assets/9ceabc92-18c3-443d-9e3f-5a8e058d0c4f" />
 
@@ -46,8 +46,10 @@ and connecting your phone. To run it without Docker, see
 - **A few accounts per server,** for family or friends, each with its own notes.
 
 The server runs on 64-bit Linux (x86-64 or ARM64) and Apple silicon Macs. The Android app needs
-Android 9 or later and installs from an APK; the iPhone app needs iOS 26 or later and is built
-with Xcode.
+Android 9 or later and is on [Google Play](https://play.google.com/store/apps/details?id=app.notesd)
+(early access); the Mac app needs macOS 14 or later on Apple silicon; the iPhone app needs iOS 26
+or later and, until it reaches the App Store, is built with Xcode. All downloads:
+[notesd.app/download](https://notesd.app/download/).
 
 ## Your data and security
 

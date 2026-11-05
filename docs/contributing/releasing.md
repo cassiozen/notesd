@@ -13,7 +13,7 @@ checks, builds and publishes everything:
 | --- | --- |
 | Server binaries: `notesd-linux-amd64`, `notesd-linux-arm64`, `notesd-darwin-arm64` | GitHub release |
 | Signed Android APK: `notesd-<version>.apk` | GitHub release |
-| Signed, notarized Mac app: `notesd-<version>.dmg` | GitHub release |
+| Signed, notarized Mac app: `notesd-mac.dmg`, unversioned so `releases/latest/download/notesd-mac.dmg` always works | GitHub release |
 | `notesd-update`, for [updating from Settings](../guides/self-hosting/upgrading.md#updating-from-settings) | GitHub release |
 | `SHA256SUMS` for the GitHub release files above | GitHub release |
 | Docker image, `linux/amd64` and `linux/arm64` | `ghcr.io/cassiozen/notesd` |
@@ -41,7 +41,10 @@ The workflow:
    artifact, not to the GitHub release: it only installs through Play.
 5. Pushes the Docker image, tagged `X.Y.Z` and `X.Y`, plus `latest` for
    non-prereleases.
-6. Creates the GitHub release with generated notes.
+6. Creates the GitHub release: a download table (Play, Mac, iPhone, server)
+   followed by generated notes. The same links are on
+   [notesd.app/download](https://notesd.app/download/)
+   (`website/download/index.html`); keep both in step when an app changes.
 
 The image goes out before the GitHub release because a release can't be
 created twice, while a failed image push can be re-run.

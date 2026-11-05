@@ -173,14 +173,16 @@ Yes. They share a design, the same Settings layout, and the same rules for
 Markdown, tags and locked notes, checked by shared tests. Small differences
 are listed in each [app's guide](README.md#apps).
 
-### Why aren't the apps in the Play Store or App Store?
+### Are the apps in the Play Store or App Store?
 
-They aren't published there yet. On Android, install the APK; newer APKs
-install over it and keep your notes.
+The Android app is on
+[Google Play](https://play.google.com/store/apps/details?id=app.notesd), in
+early access. The iPhone app is coming to the App Store. All the apps are
+listed at [notesd.app/download](https://notesd.app/download/).
 
 ### Why do I need Xcode for the iPhone app?
 
-Without the App Store, building it yourself is the only way to install it.
+Until it reaches the App Store, building it yourself is the only way to install it.
 With a free Apple ID, the app stops opening after 7 days until you run it
 from Xcode again; your notes are kept.
 

@@ -99,6 +99,8 @@ export default defineConfig({
     nav: [
       { text: "Get started", link: "/get-started/introduction" },
       { text: "FAQ", link: "/faq" },
+      // On the landing site, outside the docs' base, so a full URL.
+      { text: "Download", link: "https://notesd.app/download/", target: "_self" },
     ],
     socialLinks: [{ icon: "github", link: repo }],
     search: { provider: "local" },
@@ -130,6 +132,7 @@ export default defineConfig({
       {
         text: "Apps",
         items: [
+          { text: "Mac", link: "/guides/apps/mac" },
           { text: "Desktop web app", link: "/guides/apps/desktop-web-app" },
           { text: "Android", link: "/guides/apps/android" },
           { text: "iPhone", link: "/guides/apps/iphone" },
