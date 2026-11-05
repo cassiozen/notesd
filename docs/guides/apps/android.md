@@ -12,7 +12,15 @@ foldables.
 
 ## Install
 
-notesd isn't on the Play Store yet. Install the APK from GitHub:
+Get notesd on
+[Google Play](https://play.google.com/store/apps/details?id=app.notesd). It's
+in early access: if the store doesn't show it, join the test at
+[play.google.com/apps/testing/app.notesd](https://play.google.com/apps/testing/app.notesd)
+first. Play keeps it up to date.
+
+### Without Google Play
+
+Each release also has an APK on GitHub:
 
 1. On the phone, open the
    [latest release](https://github.com/cassiozen/notesd/releases/latest) and
@@ -21,10 +29,13 @@ notesd isn't on the Play Store yet. Install the APK from GitHub:
    to install unknown apps, then tap **Install**.
 
 **Updates:** download the newer APK and install it over the existing app;
-your notes and sign-in are kept. Every release is signed with the same key,
-so Android accepts it as an update. An APK you built yourself is signed
-with a different key, so to switch between the two you have to uninstall
-first, which deletes the notes on the phone. Sync before you uninstall.
+your notes and sign-in are kept.
+
+**Pick one source and stay with it.** The app from Google Play, the APK
+from GitHub and an APK you built yourself are each signed with a different
+key, so Android won't install one over another. Switching means
+uninstalling first, which deletes the notes on the phone. Sync before you
+uninstall.
 
 To build the app yourself, see [development.md](../../contributing/development.md#android).
 

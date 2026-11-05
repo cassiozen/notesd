@@ -11,8 +11,8 @@ whenever it can. It runs on iOS 26 or later.
 
 ## Install
 
-notesd isn't on the App Store yet. You build it with Xcode on a Mac and install
-it on your iPhone with your Apple ID. A free Apple ID works.
+notesd is coming to the App Store. Until then, you build it with Xcode on a Mac
+and install it on your iPhone with your Apple ID. A free Apple ID works.
 
 1. Install Xcode from the Mac App Store, open it once and sign in with your
    Apple ID (Xcode → Settings → Accounts).

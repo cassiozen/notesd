@@ -6,7 +6,7 @@ description: What notesd is, and what you need to set it up.
 # Introduction
 
 notesd is a notes app you host yourself. The server is a single binary with SQLite inside, and
-nothing else to set up. You use it from the web app it serves, or from the Android and iPhone
+nothing else to set up. You use it from the web app it serves, or from the Android, iPhone and Mac
 apps, which keep a full copy of your notes, work offline and sync when they can reach the server.
 
 ## What you need

@@ -148,7 +148,8 @@ h2 em {
   transition: color 0.15s;
 }
 
-.nav a:not(.nav-github):hover {
+.nav a:not(.nav-github):hover,
+.nav a[aria-current="page"] {
   color: var(--accent);
 }
 
@@ -651,6 +652,86 @@ a:hover .arrow {
   font-size: 13px;
 }
 
+/* Download page */
+
+.hero-download {
+  padding-bottom: 56px;
+}
+
+.downloads-section {
+  padding: 0 24px 80px;
+}
+
+.downloads {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.download {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 28px;
+  border-radius: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border-card);
+}
+
+.download h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-serif);
+  font-weight: 400;
+  font-size: 34px;
+  line-height: 1.05;
+}
+
+.download p {
+  color: var(--muted);
+  text-wrap: pretty;
+}
+
+.download .download-req {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--subtle);
+}
+
+/* Buttons line up across a row of cards whatever the text above them */
+.download .btn {
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.download-more {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  font-size: 14px;
+  color: var(--subtle);
+}
+
+.badge {
+  padding: 4px 8px;
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.section-lede {
+  color: var(--muted);
+}
+
 /* FAQ */
 
 .faq {
@@ -1055,7 +1136,13 @@ a:hover .arrow {
   }
 }
 
-/* Five links don't fit beside the logo; in-page anchors are the least needed on a page you just scroll */
+@media (max-width: 720px) {
+  .downloads {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+/* Six links don't fit beside the logo; in-page anchors are the least needed on a page you just scroll */
 @media (max-width: 640px) {
   .nav {
     gap: 20px;

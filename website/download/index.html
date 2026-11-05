@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Download notesd</title>
+    <meta
+      name="description"
+      content="Get notesd for Android, Mac and iPhone, and the server to run it on."
+    />
+    <link rel="icon" href="/src/assets/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+    <link rel="stylesheet" href="/src/main.css" />
+    <script>
+      document.documentElement.classList.add("js");
+    </script>
+    <script type="module" src="/src/main.js"></script>
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="container">
+        <a href="/" class="logo">
+          <img src="/src/assets/icon.png" alt="" />
+          <span>notesd</span>
+        </a>
+        <nav class="nav">
+          <a class="nav-section" href="/#features">Features</a>
+          <a class="nav-section" href="/#how-it-works">How it works</a>
+          <a class="nav-section" href="/#faq">FAQ</a>
+          <a href="/download/" aria-current="page">Download</a>
+          <a href="/docs/">Docs</a>
+          <a href="https://github.com/cassiozen/notesd" class="nav-github">GitHub</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero hero-download">
+        <div class="hero-inner">
+          <h1>Get <em>notesd</em></h1>
+          <p>The apps keep a full copy of your notes, work offline, and sync with a notesd server you run yourself.</p>
+        </div>
+      </section>
+
+      <section class="downloads-section">
+        <div class="container">
+          <div class="downloads">
+            <article class="download" data-reveal>
+              <h2>Android</h2>
+              <p class="download-req">Android 9 or later</p>
+              <p>On Google Play, in early access.</p>
+              <a href="https://play.google.com/store/apps/details?id=app.notesd" class="btn btn-primary">Get it on Google Play</a>
+              <ul class="download-more" role="list">
+                <li>
+                  Store not showing it?
+                  <a href="https://play.google.com/apps/testing/app.notesd">Join the test on the web</a>
+                </li>
+                <li>
+                  No Google Play?
+                  <a href="/docs/guides/apps/android.html#without-google-play">Install the APK</a>
+                </li>
+              </ul>
+            </article>
+
+            <article class="download" data-reveal>
+              <h2>Mac</h2>
+              <p class="download-req">macOS 14 or later, Apple silicon</p>
+              <a href="https://github.com/cassiozen/notesd/releases/latest/download/notesd-mac.dmg" class="btn btn-primary">Download for Mac</a>
+              <ul class="download-more" role="list">
+                <li><a href="/docs/guides/apps/mac.html">Mac guide</a></li>
+              </ul>
+            </article>
+
+            <article class="download download-soon" data-reveal>
+              <h2>iPhone <span class="badge">Coming soon</span></h2>
+              <p class="download-req">iOS 26 or later</p>
+              <p>On its way to the App Store. Until then, you can build it yourself with Xcode.</p>
+              <a href="/docs/guides/apps/iphone.html#install" class="btn btn-ghost">Build it with Xcode</a>
+            </article>
+
+            <article class="download" data-reveal>
+              <h2>Windows, Linux, ChromeOS</h2>
+              <p class="download-req">Any modern browser</p>
+              <p>Install the web app your server serves. It opens in its own window and works offline.</p>
+              <a href="/docs/guides/apps/desktop-web-app.html" class="btn btn-ghost">Install the web app</a>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div class="section-head" data-reveal>
+            <span class="eyebrow">The server</span>
+            <h2>Sync runs through yours.</h2>
+            <p class="section-lede">
+              The phone apps work on their own; to sync your notes between devices, run a notesd server. It's a single
+              binary for 64-bit Linux (x86-64 or ARM64) or Apple silicon Macs, or a Docker image.
+            </p>
+          </div>
+
+          <ol class="steps" role="list">
+            <li class="step" data-reveal>
+              <h3>Docker</h3>
+              <code class="code">ghcr.io/cassiozen/notesd</code>
+              <a href="/docs/guides/self-hosting/docker.html">Run with Docker <span class="arrow" aria-hidden="true">→</span></a>
+            </li>
+            <li class="step" data-reveal>
+              <h3>Binary</h3>
+              <code class="code">notesd-linux-amd64 · notesd-linux-arm64 · notesd-darwin-arm64</code>
+              <a href="https://github.com/cassiozen/notesd/releases/latest">Latest release <span class="arrow" aria-hidden="true">→</span></a>
+            </li>
+            <li class="step" data-reveal>
+              <h3>New to notesd?</h3>
+              <p>Set up the server, HTTPS and your first device in about fifteen minutes.</p>
+              <a href="/docs/get-started/introduction.html">Get started <span class="arrow" aria-hidden="true">→</span></a>
+            </li>
+          </ol>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="footer-brand">
+          <img src="/src/assets/icon.png" alt="" />
+          <span>notesd — self-hosted notes</span>
+        </div>
+        <p>No cookies on this page. Not even the good kind.</p>
+        <nav class="footer-links">
+          <a href="/docs/privacy.html">Privacy</a>
+          <a href="https://github.com/cassiozen/notesd">github.com/cassiozen/notesd</a>
+        </nav>
+      </div>
+    </footer>
+  </body>
+</html>

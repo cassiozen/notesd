@@ -12,8 +12,8 @@ macOS 14 or later, on Macs with Apple silicon.
 
 ## Install
 
-1. Open the [latest release](https://github.com/cassiozen/notesd/releases/latest) and download
-   `notesd-<version>.dmg`.
+1. Download [`notesd-mac.dmg`](https://github.com/cassiozen/notesd/releases/latest/download/notesd-mac.dmg)
+   from the latest release.
 2. Open it and drag **notesd** to **Applications**.
 
 The app is signed and notarized by Apple, so it opens without warnings.

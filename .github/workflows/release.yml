@@ -152,8 +152,24 @@ jobs:
           cd server/bin
           rm -f notesd-dev
           cp ../../scripts/notesd-update . # for Updating from Settings (docs/guides/self-hosting/upgrading.md)
+          # No version in the name, so releases/latest/download/notesd-mac.dmg always gets the newest one.
+          mv notesd-*.dmg notesd-mac.dmg
           sha256sum notesd-* > SHA256SUMS
           prerelease=""
           case "$GITHUB_REF_NAME" in *-*) prerelease="--prerelease" ;; esac
-          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes $prerelease \
-            notesd-* SHA256SUMS
+          # Prepended to the generated notes: most people landing here want an app, not the changelog.
+          cat > ../release-notes.md <<'NOTES'
+          ## Download
+
+          | App | Get it |
+          | --- | --- |
+          | **Android** | [Google Play](https://play.google.com/store/apps/details?id=app.notesd) (early access), or `notesd-*.apk` below |
+          | **Mac** | `notesd-mac.dmg` below (macOS 14+, Apple silicon) |
+          | **iPhone** | Coming soon to the App Store. [Build it with Xcode](https://notesd.app/docs/guides/apps/iphone.html#install) |
+          | **Server** | `ghcr.io/cassiozen/notesd`, or a `notesd-linux-*` / `notesd-darwin-arm64` binary below |
+
+          All apps: [notesd.app/download](https://notesd.app/download/)
+
+          NOTES
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --generate-notes --notes-file ../release-notes.md \
+            $prerelease notesd-* SHA256SUMS
