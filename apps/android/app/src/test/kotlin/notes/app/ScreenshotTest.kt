@@ -54,7 +54,7 @@ class ScreenshotTest {
     @After
     fun tearDown() {
         scenario?.close()
-        graph.database.close()
+        graph.shutDown()
     }
 
     private fun launch(qualifiers: String? = null) {

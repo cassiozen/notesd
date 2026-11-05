@@ -22,6 +22,7 @@ import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.editor.FindSpan
 import notes.app.editor.NoteEditText
+import notes.app.shutDown
 import notes.core.markdown.Markdown
 import org.junit.After
 import org.junit.Before
@@ -51,7 +52,7 @@ class FindFlowTest {
     @After
     fun tearDown() {
         scenario.close()
-        graph.database.close()
+        graph.shutDown()
     }
 
     private fun open() {

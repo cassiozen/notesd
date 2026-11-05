@@ -18,6 +18,7 @@ import mockwebserver3.MockWebServer
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.shutDown
 import notes.core.api.Session
 import notes.core.api.SignIn
 import org.junit.After
@@ -40,7 +41,7 @@ class OnboardingFlowTest {
     @After
     fun tearDown() {
         activity?.close()
-        graph.database.close()
+        graph.shutDown()
         server.close()
     }
 

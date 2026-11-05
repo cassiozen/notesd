@@ -19,6 +19,7 @@ import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.runOffMain
+import notes.app.shutDown
 import notes.core.db.Spaces
 import org.junit.After
 import org.junit.Rule
@@ -46,7 +47,7 @@ class SpacesFlowTest {
     @After
     fun tearDown() {
         scenario.close()
-        graph.database.close()
+        graph.shutDown()
     }
 
     @Test

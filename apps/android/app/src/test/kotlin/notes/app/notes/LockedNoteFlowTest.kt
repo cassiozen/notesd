@@ -29,6 +29,7 @@ import notes.app.FakeBiometrics
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.shutDown
 import notes.core.crypto.Keyring
 import notes.core.crypto.LockSession
 import notes.core.crypto.LockedNotes
@@ -101,7 +102,7 @@ class LockedNoteFlowTest {
     @After
     fun tearDown() {
         scenario?.close()
-        graph.database.close()
+        graph.shutDown()
         FakeBiometrics.cancelNext = false
         FakeBiometrics.failNext = false
         FakeBiometrics.invalidated = false

@@ -21,6 +21,7 @@ import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.editor.NoteEditText
 import notes.app.runOffMain
+import notes.app.shutDown
 import notes.core.crypto.LockedNotes
 import notes.core.db.NoteFilter
 import org.junit.After
@@ -61,7 +62,7 @@ class TagsFlowTest {
     @After
     fun tearDown() {
         scenario.close()
-        graph.database.close()
+        graph.shutDown()
     }
 
     private fun tag(description: String) = hasContentDescription(description)

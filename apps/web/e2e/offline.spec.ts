@@ -7,6 +7,8 @@ import { owner, test } from './profile'
 test.use({ baseURL: 'http://127.0.0.1:5176' })
 
 test('kept on this device, the app opens offline, and what was typed reaches the server later', async ({ page, context, baseURL }) => {
+  // The first sync alone may take the default 30s on a busy runner, and reaching the server again up to 60s more.
+  test.setTimeout(120_000)
   const server = await api.newContext({ baseURL })
   await server.post('/api/v1/auth/login', { data: { ...owner, client: 'web' } })
   const { csrfToken } = (await (await server.get('/api/v1/auth/session')).json()) as { csrfToken: string }

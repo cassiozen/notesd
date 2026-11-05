@@ -121,6 +121,13 @@ class Database(private val connections: Connections) : AutoCloseable {
         }
     }
 
+    /** [close], once the write and read under way finish: closed under a statement, it fails with "connection is closed". */
+    suspend fun closeWhenIdle() {
+        writeLock.withLock {
+            if (readLock === writeLock) close() else readLock.withLock { close() }
+        }
+    }
+
     override fun close() {
         reader?.close()
         writer?.close()

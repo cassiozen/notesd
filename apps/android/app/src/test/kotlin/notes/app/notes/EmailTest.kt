@@ -34,6 +34,7 @@ import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.settings.Sender
+import notes.app.shutDown
 import notes.core.api.Session
 import notes.core.api.SignIn
 import org.junit.After
@@ -56,7 +57,7 @@ class EmailTest {
     @After
     fun tearDown() {
         scenario?.close()
-        graph.database.close()
+        graph.shutDown()
         server.close()
     }
 
