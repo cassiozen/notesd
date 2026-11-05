@@ -17,6 +17,7 @@ account, put HTTPS in front, write a note and sync your phone, in about fifteen 
 - **Back up, or restore:** [Backups](guides/self-hosting/backups.md)
 - **Add someone, or reset a password:** [Accounts](guides/self-hosting/users.md)
 - **Get my notes out as Markdown:** [Markdown mirror and export](guides/self-hosting/markdown-mirror-and-export.md)
+- **Bring notes in from another app:** [Import notes from Markdown](guides/self-hosting/import-markdown.md)
 - **Look up a command or setting:** [Command line](reference/cli.md)
 - **Look up an endpoint:** [HTTP API](reference/api.md)
 - **Find a quick answer:** [FAQ](faq.md)
@@ -56,6 +57,7 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 - [Backups](guides/self-hosting/backups.md)
 - [Upgrading](guides/self-hosting/upgrading.md)
 - [Markdown mirror and export](guides/self-hosting/markdown-mirror-and-export.md)
+- [Import notes from Markdown](guides/self-hosting/import-markdown.md)
 - [Monitoring and logs](guides/self-hosting/monitoring-and-logs.md)
 
 ## Concepts
