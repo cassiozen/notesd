@@ -277,6 +277,7 @@
 }
 
 .row {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -287,9 +288,23 @@
   transition: background 0.12s;
 }
 
+/* Half the gap between rows on each side, part of the link: the cursor is never between rows, so the highlight doesn't flicker off crossing one. */
+.row::before {
+  content: '';
+  position: absolute;
+  inset: -1px 0;
+}
+
+/* Over the gap filler, so pointing at the text still reaches the text. */
+.row > * {
+  position: relative;
+}
+
+/* On at once, so the highlight keeps up with a fast cursor; only leaving fades. */
 .row:hover {
   color: var(--ink);
   background: var(--hover);
+  transition: none;
 }
 
 .row:focus-visible {

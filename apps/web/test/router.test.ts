@@ -29,8 +29,8 @@ describe('navigation transitions', () => {
     expect(transitionFor('/settings', '/settings/spaces')).toBeNull()
   })
 
-  it('only crossfades the page between notes on a wider screen', () => {
-    expect(transitionFor('/notes/a', '/notes/b')).toBe('switch')
+  it('plays none on a wider screen, so the list keeps taking hover and clicks', () => {
+    expect(transitionFor('/notes/a', '/notes/b')).toBeNull()
     expect(transitionFor('/', '/notes/a')).toBeNull()
   })
 
