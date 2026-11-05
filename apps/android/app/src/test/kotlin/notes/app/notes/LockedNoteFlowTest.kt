@@ -102,10 +102,10 @@ class LockedNoteFlowTest {
     @After
     fun tearDown() {
         scenario?.close()
-        graph.shutDown()
         FakeBiometrics.cancelNext = false
         FakeBiometrics.failNext = false
         FakeBiometrics.invalidated = false
+        graph.shutDown()
     }
 
     private fun openBank() {
