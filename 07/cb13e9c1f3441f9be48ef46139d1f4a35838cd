@@ -1,0 +1,53 @@
+website/src/main.css
+  s_564cf5099e940d::t_0456674cc99095 655-734
+  s_564cf5099e940d::t_55733a25a59e31 1145
+  s_564cf5099e940d::t_4a5cd17072db5e 1139-1144
+  s_564cf5099e940d::t_dd2662a070f092 151-152
+docs/faq.md
+  s_564cf5099e940d::t_3815732fd1d2fc 176,178-181
+  s_564cf5099e940d::t_f005547cd1e996 185
+docs/guides/apps/mac.md
+  s_564cf5099e940d::t_3815732fd1d2fc 15-16
+.github/workflows/release.yml
+  s_564cf5099e940d::t_67d928bae822dc 164
+  s_564cf5099e940d::t_55733a25a59e31 155-156,160-163,165-175
+docs/guides/apps/android.md
+  s_564cf5099e940d::t_3815732fd1d2fc 15-23,32-38
+README.md
+  s_564cf5099e940d::t_3815732fd1d2fc 6,49-52
+docs/README.md
+  s_564cf5099e940d::t_3815732fd1d2fc 15
+website/.vitepress/config.mjs
+  s_564cf5099e940d::t_f005547cd1e996 102-103
+  s_564cf5099e940d::t_3815732fd1d2fc 135
+website/index.html
+  s_564cf5099e940d::t_6fef24dc395c77 35,58,177-178,253,255-256
+website/download/index.html
+  s_564cf5099e940d::t_2d4b76b8fbe1ce 1-142
+website/vite.config.js
+  s_564cf5099e940d::t_2da47342f3c823 1,5-6,8-15
+docs/get-started/00-introduction.md
+  s_564cf5099e940d::t_3bf0c11a5b5ae3 9
+docs/guides/apps/iphone.md
+  s_564cf5099e940d::t_3815732fd1d2fc 14-15
+docs/get-started/05-add-your-phone.md
+  s_564cf5099e940d::t_3815732fd1d2fc 18-23,26,35-37
+docs/contributing/releasing.md
+  s_564cf5099e940d::t_f9a5b25ada2e44 16,44-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "07cb13e9c1f3441f9be48ef46139d1f4a35838cd",
+  "prompts": {},
+  "sessions": {
+    "s_564cf5099e940d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c6a9764f-7e36-46e2-b83b-458bf2286adb",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
