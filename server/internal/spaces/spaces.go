@@ -110,7 +110,7 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 	if icon != nil && !iconPattern.MatchString(*icon) {
 		return Space{}, &InputError{"icon", "must be at most 64 characters of [a-z0-9-]"}
 	}
-	name, err := normalizeName(name)
+	name, err := NormalizeName(name)
 	if err != nil {
 		return Space{}, err
 	}
@@ -192,8 +192,8 @@ func withNumber(name string, n int) string {
 // Key identifies a name ignoring case.
 func Key(name string) string { return strings.ToLower(name) }
 
-// normalizeName trims and collapses whitespace and checks what is left.
-func normalizeName(name string) (string, error) {
+// NormalizeName trims and collapses whitespace and checks what is left.
+func NormalizeName(name string) (string, error) {
 	if !utf8.ValidString(name) {
 		return "", &InputError{"name", "must be valid UTF-8"}
 	}

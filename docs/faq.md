@@ -122,9 +122,12 @@ Yes, two ways:
 
 ### Can I import my existing notes?
 
-There's no bulk importer yet. For a few notes: paste Markdown into the web
-app's editor. Headings, lists, quotes, bold and italic become formatting,
-and pasting into the title line makes the first line the title.
+Yes, from a folder or zip of Markdown files, which Obsidian, Joplin, Bear
+and most other apps can export: see
+[Import notes from Markdown](guides/self-hosting/import-markdown.md). For a
+few notes, paste Markdown into the web app's editor. Headings, lists, quotes,
+bold and italic become formatting, and pasting into the title line makes the
+first line the title.
 
 ### How do I back up?
 

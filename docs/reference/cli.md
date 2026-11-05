@@ -40,6 +40,7 @@ Without the variable, a command uses `./data` in the current folder: an empty se
 | [`remove-user`](#remove-user) | Deletes an account and signs it out |
 | [`reset-password`](#reset-password) | Sets a new password for an account |
 | [`export`](#export) | Writes an account's notes to a folder as Markdown |
+| [`import`](#import) | Adds a folder or zip of Markdown files as notes |
 | [`check`](#check) | Checks the databases and images for damage |
 | [`reindex`](#reindex) | Rebuilds search, tags and image references |
 | [`gc-images`](#gc-images) | Deletes images no note has shown for 30 days |
@@ -138,7 +139,8 @@ one account. Locked notes use their own password, which this doesn't change.
 ## Data commands
 
 `check`, `reindex` and `gc-images` act on every account unless you pass `--username`. `export`
-needs `--username` once there's more than one account. Only `gc-images` deletes anything.
+and `import` need `--username` once there's more than one account. Only `gc-images` deletes
+anything.
 
 ### export
 
@@ -157,6 +159,27 @@ and their images decrypted.
 
 See [Markdown mirror and export](../guides/self-hosting/markdown-mirror-and-export.md) for keeping
 an always-current copy instead.
+
+### import
+
+```text
+notesd import [--username NAME] --from PATH [--space NAME] [--dry-run] [--no-line-breaks]
+```
+
+Adds every Markdown file (`.md`, `.markdown`, `.mdown`, `.mkd`, `.txt`) in `PATH`, a folder or `.zip`, as a note,
+with the pictures the notes show. Front matter gives titles, dates and tags, and each note is
+tagged with its folder. Running it again skips notes already imported.
+
+| Flag | Description |
+| --- | --- |
+| `--from` | The folder or `.zip` to import |
+| `--space` | The space to put the notes in, created if there's none by that name, ignoring case. Default: the default space |
+| `--dry-run` | Only report what would be imported |
+| `--no-line-breaks` | Join single newlines inside paragraphs, as Markdown does, instead of making them line breaks |
+
+It prints the totals, then every file it skipped and every note imported with something left out,
+with the reason. Links to other notes and web images are only counted. See [Import notes from Markdown](../guides/self-hosting/import-markdown.md) for
+what it reads and how.
 
 ### check
 

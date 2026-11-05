@@ -12,8 +12,8 @@ there's no Save button.
 
 To start a note, use **New note** at the top of the list. In the web app, pasting Markdown into a
 note turns headings, lists, quotes, bold and italic into formatting, and pasting into the title
-line makes the pasted text's first line the title. That's also the way to bring in notes from
-another app: there's no bulk importer yet.
+line makes the pasted text's first line the title. To bring in many notes from another app, see
+[Import notes from Markdown](../self-hosting/import-markdown.md).
 
 ## Formatting
 

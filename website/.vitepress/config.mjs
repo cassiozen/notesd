@@ -145,6 +145,7 @@ export default defineConfig({
           { text: "Backups", link: "/guides/self-hosting/backups" },
           { text: "Upgrading", link: "/guides/self-hosting/upgrading" },
           { text: "Markdown mirror and export", link: "/guides/self-hosting/markdown-mirror-and-export" },
+          { text: "Import notes from Markdown", link: "/guides/self-hosting/import-markdown" },
           { text: "Monitoring and logs", link: "/guides/self-hosting/monitoring-and-logs" },
         ],
       },

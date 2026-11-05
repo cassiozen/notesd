@@ -21,10 +21,12 @@
 //	                                delete images no note has shown for 30 days
 //	notesd export [--username NAME] --out DIR [--include-locked]
 //	                                write a user's notes to DIR as Markdown
+//	notesd import [--username NAME] --from PATH [--space NAME] [--dry-run] [--no-line-breaks]
+//	                                add a folder or zip of Markdown files as notes
 //	notesd version
 //
 // Commands that take --username act on every user without it, except
-// reset-password and export, which need it once there is more than one.
+// reset-password, export and import, which need it once there is more than one.
 //
 // Flags may also be set through environment variables: NOTESD_DATA_DIR,
 // NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT, NOTESD_RESEND_URL, NOTESD_MIRROR_DIR.
@@ -86,6 +88,9 @@ type options struct {
 	username   string
 	admin      bool
 	out        string
+	from       string
+	space      string
+	noBreaks   bool
 	locked     bool
 	dryRun     bool
 	selfUpdate bool
@@ -121,6 +126,12 @@ func run(args []string) error {
 		usernameFlag("whose notes to export (needed once there is more than one user)")
 		fs.StringVar(&o.out, "out", "", "directory to write the Markdown files to (new or empty)")
 		fs.BoolVar(&o.locked, "include-locked", false, "decrypt locked notes with the lock password and export them as plain text")
+	case "import":
+		usernameFlag("whose notes to add to (needed once there is more than one user)")
+		fs.StringVar(&o.from, "from", "", "folder or .zip of Markdown files to import")
+		fs.StringVar(&o.space, "space", "", "space to put the notes in, created if there is none by that name (default the default space)")
+		fs.BoolVar(&o.dryRun, "dry-run", false, "only report what would be imported")
+		fs.BoolVar(&o.noBreaks, "no-line-breaks", false, "keep single newlines inside paragraphs as Markdown reads them (joined), instead of line breaks")
 	case "gc-images":
 		usernameFlag("only this user (default every user)")
 		fs.BoolVar(&o.dryRun, "dry-run", false, "only report what would be deleted")
@@ -144,6 +155,9 @@ func run(args []string) error {
 	}
 	if cmd == "export" && o.out == "" {
 		return errors.New("--out is required")
+	}
+	if cmd == "import" && o.from == "" {
+		return errors.New("--from is required")
 	}
 	if (cmd == "create-owner" || cmd == "add-user" || cmd == "remove-user") && o.username == "" {
 		return errors.New("--username is required")
@@ -230,6 +244,12 @@ func run(args []string) error {
 			return err
 		}
 		return withUserDB(ctx, o.dataDir, u, func(db *database.DB) error { return export(ctx, db, o) })
+	case "import":
+		u, err := oneUser(ctx, authSvc, o.username)
+		if err != nil {
+			return err
+		}
+		return withUserDB(ctx, o.dataDir, u, func(db *database.DB) error { return importNotes(ctx, db, o, os.Stdout) })
 	case "reindex", "check", "gc-images":
 		if cmd == "check" {
 			if err := checkDB(ctx, system, nil); err != nil {
@@ -275,7 +295,7 @@ func run(args []string) error {
 	return nil
 }
 
-const commands = "serve, create-owner, add-user, list-users, remove-user, reset-password, reindex, check, gc-images, export, version"
+const commands = "serve, create-owner, add-user, list-users, remove-user, reset-password, reindex, check, gc-images, export, import, version"
 
 // someUsers is the named user, or every user.
 func someUsers(ctx context.Context, a *auth.Service, username string) ([]auth.User, error) {
