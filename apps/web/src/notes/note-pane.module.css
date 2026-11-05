@@ -114,7 +114,7 @@
 /* Side by side, each note opened fades in; on phones the whole screen slides instead. */
 @media (min-width: 760px) {
   .page {
-    animation: fade-in 0.15s var(--ease-out);
+    animation: global(fade-in) 0.15s var(--ease-out);
   }
 }
 
@@ -265,6 +265,11 @@
 .muted {
   font-size: 14px;
   color: var(--ink-3);
+}
+
+/* Most notes open sooner than this: only a slow one says it's loading, instead of every one flashing it. */
+.loading {
+  animation: global(fade-in) 0.2s var(--ease-out) 0.3s both;
 }
 
 @media (max-width: 759px) {

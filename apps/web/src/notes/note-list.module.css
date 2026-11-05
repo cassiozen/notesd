@@ -276,6 +276,13 @@
   list-style: none;
 }
 
+/* The previous words' results while the new ones load. Dimmed only once the wait is noticeable, so quick answers
+   don't blink; back at once when they land. */
+.rows[data-stale] {
+  opacity: 0.55;
+  transition: opacity 0.15s var(--ease-out) 0.25s;
+}
+
 .row {
   position: relative;
   display: flex;

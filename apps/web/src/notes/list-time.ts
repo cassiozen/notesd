@@ -1,13 +1,22 @@
 const DAY = 86_400_000
 
-const sameDay = (a: number, b: number) => new Date(a).toDateString() === new Date(b).toDateString()
+function sameDay(a: number, b: number): boolean {
+  const x = new Date(a)
+  const y = new Date(b)
+  return x.getDate() === y.getDate() && x.getMonth() === y.getMonth() && x.getFullYear() === y.getFullYear()
+}
+
+// Made once: toLocale*String builds a new formatter on every call, which shows when a long list re-renders.
+const clock = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+const weekday = new Intl.DateTimeFormat(undefined, { weekday: 'long' })
+const shortDate = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'numeric', year: '2-digit' })
 
 /** Apple Notes-style row time: a clock time today, then Yesterday, a weekday, a short date. */
 export function listTime(ts: number, now = Date.now()): string {
-  if (sameDay(ts, now)) return new Date(ts).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })
+  if (sameDay(ts, now)) return clock.format(ts)
   if (sameDay(ts, now - DAY)) return 'Yesterday'
-  if (now - ts < 7 * DAY) return new Date(ts).toLocaleDateString(undefined, { weekday: 'long' })
-  return new Date(ts).toLocaleDateString(undefined, { day: 'numeric', month: 'numeric', year: '2-digit' })
+  if (now - ts < 7 * DAY) return weekday.format(ts)
+  return shortDate.format(ts)
 }
 
 export type Group<T> = { label: string; items: T[] }
