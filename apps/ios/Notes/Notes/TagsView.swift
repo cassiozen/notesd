@@ -21,7 +21,7 @@ struct TagsView: View {
                 HStack {
                     // The space, always: its menu makes new ones too.
                     SpaceMenu(
-                        font: .custom("InstrumentSerif-Regular", size: 27, relativeTo: .title), iconSize: 31,
+                        title: TitleStyle(size: 27, style: .title1), iconSize: 31,
                         onSwitched: { switched() }
                     ) {
                         creating = true
@@ -33,9 +33,9 @@ struct TagsView: View {
                             .font(.system(size: 17, weight: .medium))
                             .foregroundStyle(Color.ink)
                             .frame(width: 40, height: 40)
-                            .background(Color.chip, in: .rect(cornerRadius: 12, style: .continuous))
+                            .background(Color.chip, in: .rect(cornerRadius: corner(12), style: .continuous))
                             .overlay(
-                                RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.edge)
+                                RoundedRectangle(cornerRadius: corner(12), style: .continuous).strokeBorder(Color.edge)
                             )
                             .frame(width: 48, height: 48)
                             .contentShape(.rect)

@@ -50,7 +50,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 | 2 | Synced | Security | `security` | lock | "Off" (no lock password), "Locked", "Unlocked" |
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
 | 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many |
-| 5 | This device | Appearance | `appearance` | half-filled circle | the theme's name ("Amber") on the web and Android; "System", "Light", "Dark" on iOS ("Automatic", as the system says) |
+| 5 | This device | Appearance | `appearance` | half-filled circle | the theme's name ("Amber") |
 | 6 | This device | Sync & data | `device` | cloud | "Up to date", "N waiting", "Syncing…", "Offline", "Sync problem", "Signed out", "Update notesd"; the web says some in its own words ("Couldn't sync", "Sign in again to sync") and "Off" unless it keeps the notes |
 | 7 | This device | About | `about` | info (i in a circle) | the version |
 
@@ -75,8 +75,8 @@ the list is its own screen and a category opens on top of it with a back button.
 | Signed-in devices (list, sign one out) | Security | account | ✓ | – | – |
 | Spaces: list, new, edit, delete | Spaces | account | ✓ | ✓ | ✓ |
 | Email via Resend (API key, From): listed as connected or available, connected in two steps (key, then sender) | Integrations | **server** | ✓ | ✓ | ✓ |
-| Theme (palette, fonts and style together; docs/contributing/themes.md) | Appearance | device | ✓ | – | ✓ |
-| Mode (System, Light, Dark; called Theme on iOS) | Appearance | device | ✓ | ✓ | ✓ |
+| Theme (palette, fonts and style together; docs/contributing/themes.md) | Appearance | device | ✓ | ✓ | ✓ |
+| Mode (System, Light, Dark; Automatic on iOS, as the system says) | Appearance | device | ✓ | ✓ | ✓ |
 | Keep my notes on this device (also offered at sign-in; on by default in the installed app; off removes them) | Sync & data | device | ✓ | – | – |
 | Sync status, last synced, last error, Sync now | Sync & data | device | ✓ (while kept) | ✓ | ✓ |
 | Changes that couldn't sync, with Retry (the web: in its app-wide banner instead) | Sync & data | device | – | ✓ | ✓ |

@@ -141,15 +141,15 @@ recreates the activity, as a change of mode does. Amber draws what the app drew 
 `ThemesTest` holds it to the old values. Not used yet: shadows (Compose draws its own elevation),
 `motion`, `layout` and the sidebar option.
 
-**iOS** (to adopt): the generated `Themes.all` has every value resolved per mode, so the app
-does no color math. To adopt:
+**iOS** (done): `AppGraph` stores the theme id next to the mode and sets `CurrentTheme`.
+`Palette`'s colors resolve against it as they're drawn; `Typeface` and the `Font` styles set text in
+its faces (titles through `titleFont`, since SwiftUI's own fonts can't carry a face's axes);
+`corner()` applies `radius-scale`; the editor (`EditorStyle`) takes code, tag and checkbox details
+from it. The system's Liquid Glass stays on bars, sheets and buttons; the two pills the app draws
+(the formatting bar, the undo toast) are glass in a style that blurs and its solid panel in one
+that doesn't. A new theme rebuilds every screen, back on the list. Amber draws what the app drew
+before themes; `ThemesTests` holds it to the old values. Not used yet: most shadows, `motion`,
+`selection`, `layout` and the sidebar option.
 
-- Store the picked theme id per device, next to the mode, and read it with
-  `Themes.theme(id: stored)`, which falls back to the default for an id the build doesn't have.
-- Draw from `colors`, `shadows`, `blurs`, `shape` and `motion` in place of the hand-kept
-  `Palette`. Amber matches it exactly; the native tests check it.
-- Blurs: take the closest system material.
-- Fonts: set weight, and the title's axes, on the variable faces; set opsz to the point size when
-  `opticalSizing` is true; multiply title sizes by `scale` and add `tracking`.
-- `layout` and the sidebar option are web only until there's a layout with columns to apply them to.
-- Add the Theme row to Appearance, as `docs/contributing/settings-guidelines.md` describes.
+On both phones the sidebar is a drawer, so the sidebar option doesn't apply: the web, too, gives
+a docked sidebar only its own color.

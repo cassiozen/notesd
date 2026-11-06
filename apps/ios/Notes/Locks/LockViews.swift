@@ -59,7 +59,7 @@ struct LockedNoteView: View {
                 Image(systemName: "lock.fill").font(.system(size: 34)).foregroundStyle(Color.accentDeep)
                     .accessibilityHidden(true)
                     .padding(.top, 48)
-                Text(title.isEmpty ? "Locked note" : title).font(.notesTitle).foregroundStyle(Color.ink)
+                Text(title.isEmpty ? "Locked note" : title).titleFont(.title).foregroundStyle(Color.ink)
                     .multilineTextAlignment(.center)
                 if unreadable {
                     Text(reason ?? "This note was locked with a password that was reset. It can’t be opened.")
@@ -76,8 +76,8 @@ struct LockedNoteView: View {
                             .onChange(of: password) { _, typed in if !typed.isEmpty { error = nil } }
                             .padding(.horizontal, 14)
                             .frame(minHeight: 48)
-                            .background(Color(Palette.field), in: .rect(cornerRadius: 12))
-                            .overlay(RoundedRectangle(cornerRadius: 12).stroke(Color.hair))
+                            .background(Color(Palette.field), in: .rect(cornerRadius: corner(12)))
+                            .overlay(RoundedRectangle(cornerRadius: corner(12)).stroke(Color.hair))
                             .disabled(busy)
                         if let error {
                             Text(error).font(.notesSmall).foregroundStyle(Color.errInk)

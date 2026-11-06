@@ -85,7 +85,7 @@ struct IntegrationsSection: View {
 
 private struct ResendMark: View {
     var body: some View {
-        RoundedRectangle(cornerRadius: 11)
+        RoundedRectangle(cornerRadius: corner(11))
             .fill(Color.ink)
             .frame(width: 40, height: 40)
             .overlay { Image(systemName: "envelope").foregroundStyle(Color.notesBg) }
@@ -375,7 +375,7 @@ private struct InboxPreview: View {
         let shown = name.isEmpty ? (address.isEmpty ? "Your name" : address) : name
         HStack(alignment: .top, spacing: 12) {
             Text(shown.prefix(1).uppercased())
-                .font(.notesTitle)
+                .titleFont(.title)
                 .foregroundStyle(Color.ink)
                 .frame(width: 36, height: 36)
                 .background(Color.accent, in: .circle)

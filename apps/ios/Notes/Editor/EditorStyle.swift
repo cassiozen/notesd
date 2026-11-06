@@ -2,8 +2,8 @@ import NotesCore
 import UIKit
 
 /// Sizes, faces and colours the editor draws with. Typography follows the web
-/// app's phone sizes (editor.module.css): serif title and H1/H2, a sans H3,
-/// italic serif quotes. Sizes scale with the user's text size.
+/// app's phone sizes (editor.module.css): the theme's title face for the title, H1/H2 and
+/// quotes, its body face for the rest. Sizes scale with the user's text size.
 nonisolated struct EditorStyle {
     var body: CGFloat
 
@@ -23,7 +23,8 @@ nonisolated struct EditorStyle {
     let boxSize: CGFloat = 18
     // Under half a space: two tags in a row keep a gap between their pills.
     let tagPadX: CGFloat = 2
-    let tagRadius: CGFloat = 6
+    let theme = CurrentTheme.theme
+    var tagRadius: CGFloat { theme.shape.tagRadius }
 
     func margin(_ attr: BlockAttr) -> CGFloat {
         attr.path.reduce(0) { $0 + (isItem($1) ? itemIndent : quoteIndent) }
@@ -32,13 +33,13 @@ nonisolated struct EditorStyle {
     /// The font for a block's text with these marks.
     func font(_ leaf: Leaf, quoted: Bool, bold: Bool, italic: Bool) -> UIFont {
         switch leaf {
-        case .title: return Typeface.serif(body * 34 / 17)
-        case .heading(1): return Typeface.serif(body * 30 / 17, italic: italic)
-        case .heading(2): return Typeface.serif(body * 24 / 17, italic: italic)
+        case .title: return Typeface.title(body * 34 / 17)
+        case .heading(1): return Typeface.title(body * 30 / 17, italic: italic)
+        case .heading(2): return Typeface.title(body * 24 / 17, italic: italic)
         case .heading: return Typeface.sans(body, weight: 600, italic: italic)
         case .raw: return Typeface.mono(body * 0.82)
         case .paragraph:
-            if quoted { return Typeface.serif(body * 20 / 17, italic: !italic) }
+            if quoted { return Typeface.quote(body * 20 / 17, italic: italic) }
             return Typeface.sans(body, weight: bold ? 600 : 400, italic: italic)
         }
     }
@@ -69,12 +70,17 @@ nonisolated struct EditorStyle {
     func attributes(_ attr: BlockAttr, run: [NSAttributedString.Key: Any]) -> [NSAttributedString.Key: Any] {
         let bold = run[.notesBold] != nil
         let italic = run[.notesItalic] != nil
+        let font = font(attr.leaf, quoted: attr.quoted, bold: bold, italic: italic)
         var out: [NSAttributedString.Key: Any] = [
-            .font: font(attr.leaf, quoted: attr.quoted, bold: bold, italic: italic),
+            .font: font,
             .paragraphStyle: paragraphStyle(attr),
             .foregroundColor: color(attr),
         ]
-        if run[.notesStrike] != nil { out[.strikethroughStyle] = NSUnderlineStyle.single.rawValue }
+        if titled(attr), theme.title.tracking != 0 { out[.kern] = Typeface.titleKern(font) }
+        if run[.notesStrike] != nil || (attr.dim && theme.shape.doneStrikethrough) {
+            out[.strikethroughStyle] = NSUnderlineStyle.single.rawValue
+        }
+        if run[.notesTag] != nil, let ink = Palette.tagInk { out[.foregroundColor] = ink }
         if run[.notesLink] != nil {
             out[.foregroundColor] = Palette.link
             out[.underlineStyle] = NSUnderlineStyle.single.rawValue
@@ -89,8 +95,17 @@ nonisolated struct EditorStyle {
         return Palette.ink
     }
 
+    /// Set in the title face: the title, H1 and H2, and quotes.
+    private func titled(_ attr: BlockAttr) -> Bool {
+        switch attr.leaf {
+        case .title, .heading(1), .heading(2): true
+        case .paragraph: attr.quoted
+        default: false
+        }
+    }
+
     private static let displayKeys: [NSAttributedString.Key] = [
-        .font, .paragraphStyle, .foregroundColor, .strikethroughStyle, .underlineStyle,
+        .font, .paragraphStyle, .foregroundColor, .strikethroughStyle, .underlineStyle, .kern,
     ]
 
     /// Restyles the blocks at `indices` from their structure and marks.

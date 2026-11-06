@@ -19,7 +19,7 @@ struct OnboardingView: View {
                         Text(error).font(.notesSmall).foregroundStyle(Color.errInk)
                             .padding(12)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(Color.errBg, in: .rect(cornerRadius: 12))
+                            .background(Color.errBg, in: .rect(cornerRadius: corner(12)))
                     }
                     Button(action: submit) {
                         HStack {
@@ -63,7 +63,7 @@ struct OnboardingView: View {
                 }
                 .padding(.bottom, 12)
             }
-            Text(heading).font(.notesHeading).foregroundStyle(Color.ink)
+            Text(heading).titleFont(.heading).foregroundStyle(Color.ink)
             Text(lede).font(.notesLede).foregroundStyle(Color.ink2)
         }
     }
@@ -133,8 +133,8 @@ private struct LabeledField<Content: View>: View {
                 .font(.notesBody)
                 .padding(.horizontal, 14)
                 .frame(minHeight: 48)
-                .background(Color.field, in: .rect(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(error == nil ? Color.hair : Color.danger))
+                .background(Color.field, in: .rect(cornerRadius: corner(12)))
+                .overlay(RoundedRectangle(cornerRadius: corner(12)).stroke(error == nil ? Color.hair : Color.danger))
                 .accessibilityLabel(label)
             if let error { Text(error).font(.notesSmall).foregroundStyle(Color.danger) }
         }

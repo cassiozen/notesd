@@ -54,7 +54,7 @@ struct FormattingBar: View {
         .padding(.horizontal, 6)
         // No wider than the text on a wide pane.
         .frame(maxWidth: NoteTextView.measure)
-        .glassEffect(.regular, in: .capsule)
+        .floatingPanel()
         .padding(.horizontal, 8)
         .frame(maxWidth: .infinity)
         // Under the note: beside the list (an unfolded iPhone Duo) the window's other side is the list's.
@@ -64,14 +64,14 @@ struct FormattingBar: View {
     }
 
     @ViewBuilder private var writingTools: some View {
-        glyph("H1", "Heading 1", font: .custom("InstrumentSerif-Regular", size: 22), on: state.heading == 1) {
+        glyph("H1", "Heading 1", font: Self.title(22), on: state.heading == 1) {
             $0.toggleHeading(1)
         }
-        glyph("H2", "Heading 2", font: .custom("InstrumentSerif-Regular", size: 19), on: state.heading == 2) {
+        glyph("H2", "Heading 2", font: Self.title(19), on: state.heading == 2) {
             $0.toggleHeading(2)
         }
         glyph(
-            "H3", "Heading 3", font: .custom("InstrumentSans-Regular", size: 15).weight(.semibold),
+            "H3", "Heading 3", font: Self.sans(15, weight: 600),
             on: state.heading == 3
         ) { $0.toggleHeading(3) }
         divider
@@ -88,13 +88,13 @@ struct FormattingBar: View {
     }
 
     @ViewBuilder private var selectionTools: some View {
-        glyph("B", "Bold", font: .custom("InstrumentSans-Regular", size: 18).weight(.bold), on: state.bold) {
+        glyph("B", "Bold", font: Self.sans(18, weight: 700), on: state.bold) {
             $0.toggleBold()
         }
         glyph("I", "Italic", font: .custom("InstrumentSerif-Italic", size: 22), on: state.italic) {
             $0.toggleItalic()
         }
-        glyph("S", "Strikethrough", font: .custom("InstrumentSans-Regular", size: 18), strike: true, on: state.strike) {
+        glyph("S", "Strikethrough", font: Self.sans(18), strike: true, on: state.strike) {
             $0.toggleStrike()
         }
         divider
@@ -110,8 +110,15 @@ struct FormattingBar: View {
         label()
             .foregroundStyle(on ? Color.onAccent : Color.ink)
             .frame(width: 44, height: 40)
-            .background(on ? Color.accent : .clear, in: .rect(cornerRadius: 12, style: .continuous))
+            .background(on ? Color.accent : .clear, in: .rect(cornerRadius: corner(12), style: .continuous))
             .contentShape(.rect)
+    }
+
+    /// The heading buttons show the theme's title face; the italic "I" is an icon, the same in every theme.
+    private static func title(_ size: CGFloat) -> Font { Font(Typeface.title(size) as CTFont) }
+
+    private static func sans(_ size: CGFloat, weight: CGFloat = 400) -> Font {
+        Font(Typeface.sans(size, weight: weight) as CTFont)
     }
 
     private func glyph(

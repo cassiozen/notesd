@@ -100,15 +100,26 @@ nonisolated final class BlockLayoutFragment: NSTextLayoutFragment {
         case .box(let checked):
             let r = style.boxSize / 2
             let box = CGRect(x: center - r, y: mid - r, width: 2 * r, height: 2 * r)
+            // Round, or a rounded square, as the theme draws a task's box.
+            func shape(_ rect: CGRect) -> CGPath {
+                switch style.theme.shape.checkCorner {
+                case .circle: CGPath(ellipseIn: rect, transform: nil)
+                case .radius(let corner): UIBezierPath(roundedRect: rect, cornerRadius: corner).cgPath
+                }
+            }
             if checked {
                 context.setFillColor(Palette.accent.cgColor)
-                context.fillEllipse(in: box)
-                context.setFillColor(Palette.onAccent.cgColor)
-                context.fillEllipse(in: box.insetBy(dx: r * 0.55, dy: r * 0.55))
+                context.addPath(shape(box))
+                context.fillPath()
+                if style.theme.shape.checkMark == .dot {
+                    context.setFillColor(Palette.onAccent.cgColor)
+                    context.fillEllipse(in: box.insetBy(dx: r * 0.55, dy: r * 0.55))
+                }
             }
             context.setLineWidth(1.5)
             context.setStrokeColor((checked ? Palette.accentDeep : Palette.ink3).cgColor)
-            context.strokeEllipse(in: box.insetBy(dx: 0.75, dy: 0.75))
+            context.addPath(shape(box.insetBy(dx: 0.75, dy: 0.75)))
+            context.strokePath()
         }
     }
 
@@ -120,7 +131,8 @@ nonisolated final class BlockLayoutFragment: NSTextLayoutFragment {
         text.enumerateAttribute(.notesTag, in: NSRange(location: 0, length: text.length)) { value, range, _ in
             if value != nil { tags.append(range) }
         }
-        if tags.isEmpty { return }
+        // A theme without pills colours the tags' text instead (EditorStyle).
+        if tags.isEmpty || style.theme.colors.tagBackground == nil { return }
         context.setFillColor(Palette.tagBg.cgColor)
         for line in textLineFragments {
             let lineRange = line.characterRange

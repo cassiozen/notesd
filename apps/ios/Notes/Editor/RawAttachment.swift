@@ -123,7 +123,7 @@ nonisolated final class RawAttachment: NSTextAttachment {
             let loaded = ImageLoader.shared?.image(picture.id, pixels: Int((bounds.width * format.scale).rounded(.up)))
             return UIGraphicsImageRenderer(size: bounds.size, format: format).image { _ in
                 let box = CGRect(origin: .zero, size: bounds.size)
-                let shape = UIBezierPath(roundedRect: box, cornerRadius: Self.pictureRadius)
+                let shape = UIBezierPath(roundedRect: box, cornerRadius: corner(Self.pictureRadius))
                 Palette.hover.setFill()
                 shape.fill()
                 if let loaded {
@@ -135,7 +135,7 @@ nonisolated final class RawAttachment: NSTextAttachment {
         return UIGraphicsImageRenderer(size: bounds.size, format: format).image { _ in
             let box = CGRect(origin: .zero, size: bounds.size)
             (fence != nil ? Palette.code : Palette.hover).setFill()
-            UIBezierPath(roundedRect: box, cornerRadius: isBlock ? 8 : 5).fill()
+            UIBezierPath(roundedRect: box, cornerRadius: corner(isBlock ? 8 : 5)).fill()
             let pad = isBlock ? Self.padBlock : Self.padX
             var inner = box.insetBy(dx: pad, dy: isBlock ? pad : 2)
             if !lang.isEmpty {

@@ -8,7 +8,7 @@ struct NothingOpen: View {
         VStack(spacing: 10) {
             Text("Nothing selected").font(.notesKicker).foregroundStyle(Color.ink3)
             Text("Pick a note, or start one.")
-                .font(.notesHeading)
+                .titleFont(.heading)
                 .foregroundStyle(Color.ink)
                 .multilineTextAlignment(.center)
                 .accessibilityAddTraits(.isHeader)

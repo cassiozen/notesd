@@ -50,9 +50,11 @@ struct SpaceIconPicker: View {
                         .scaledToFit()
                         .frame(width: 38, height: 38)
                         .frame(maxWidth: .infinity, minHeight: 54)
-                        .background(on ? Color.chip : .clear, in: .rect(cornerRadius: 10))
+                        .background(on ? Color.chip : .clear, in: .rect(cornerRadius: corner(10)))
                         .overlay {
-                            if on { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.notesTint, lineWidth: 2) }
+                            if on {
+                                RoundedRectangle(cornerRadius: corner(10)).strokeBorder(Color.notesTint, lineWidth: 2)
+                            }
                         }
                         .contentShape(.rect)
                 }

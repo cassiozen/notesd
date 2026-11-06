@@ -5,7 +5,7 @@ import SwiftUI
 /// opening a menu of every space and, last, New Space….
 struct SpaceMenu: View {
     @Environment(AppGraph.self) private var graph
-    var font: Font = .notesHeading
+    var title: TitleStyle = .heading
     var iconSize: CGFloat = 26
     /// After switching: the sidebar closes, onto the space's list.
     var onSwitched: () -> Void = {}
@@ -36,7 +36,7 @@ struct SpaceMenu: View {
         } label: {
             HStack(spacing: 6) {
                 SpaceIconImage(icon: icon, size: iconSize).padding(.trailing, 2)
-                Text(name).font(font).foregroundStyle(Color.ink).lineLimit(1)
+                Text(name).titleFont(title).foregroundStyle(Color.ink).lineLimit(1)
                 Image(systemName: "chevron.down")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(Color.ink3)

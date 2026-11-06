@@ -50,7 +50,7 @@ struct NoteScreen: View {
                     }
                     .foregroundStyle(Color.warnInk)
                     .padding(12)
-                    .background(Color.warnBg, in: .rect(cornerRadius: 12))
+                    .background(Color.warnBg, in: .rect(cornerRadius: corner(12)))
                 }
                 .buttonStyle(.plain)
                 .padding(.horizontal, 16)
@@ -62,7 +62,7 @@ struct NoteScreen: View {
                     .foregroundStyle(Color.errInk)
                     .padding(12)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                    .background(Color.errBg, in: .rect(cornerRadius: 12))
+                    .background(Color.errBg, in: .rect(cornerRadius: corner(12)))
                     .padding(.horizontal, 16)
                     .padding(.top, 8)
             }
@@ -215,7 +215,7 @@ struct NoteScreen: View {
             }
             .foregroundStyle(Color.errInk)
             .padding(12)
-            .background(Color.errBg, in: .rect(cornerRadius: 12))
+            .background(Color.errBg, in: .rect(cornerRadius: corner(12)))
         }
         .buttonStyle(.plain)
         .padding(.horizontal, 16)
