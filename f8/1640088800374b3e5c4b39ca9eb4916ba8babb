@@ -1,0 +1,43 @@
+server/internal/api/events_test.go
+  s_cc6cacc0a6fc01::t_5f2efbb621594a 10,31,36,41
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_cc6cacc0a6fc01::t_a736bc90ad5acf 318-320
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_a736bc90ad5acf 402
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_cc6cacc0a6fc01::t_a736bc90ad5acf 161,170
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_cc6cacc0a6fc01::t_dd4418828fea29 178
+server/internal/api/notes_handlers.go
+  s_cc6cacc0a6fc01::t_3ec2cd7414955c 85-91,126-127
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_cc6cacc0a6fc01::t_249343848dcf46 10,235
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_cc6cacc0a6fc01::t_a736bc90ad5acf 35-40
+shared/sync-engine/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_cc6cacc0a6fc01::t_a736bc90ad5acf 72
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_cc6cacc0a6fc01::t_a736bc90ad5acf 53
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_cc6cacc0a6fc01::t_dd4418828fea29 419-420
+server/internal/notes/notes.go
+  s_cc6cacc0a6fc01::t_83aa9b6e1f9c65 330,396,485
+server/internal/notes/events_test.go
+  s_cc6cacc0a6fc01::t_5f2efbb621594a 52,66-67,71-72
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f81640088800374b3e5c4b39ca9eb4916ba8babb",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
