@@ -1,0 +1,27 @@
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_e52f495263e16d 199-200,202
+server/cmd/notesd/main.go
+  s_cc6cacc0a6fc01::t_e52f495263e16d 516
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_e52f495263e16d 92
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_e52f495263e16d 89,314-315,317-323,330
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_e52f495263e16d 148,150-151,194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "35fd1fa67ab8ba8d147b1ee86e0bebfc7e35047c",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
