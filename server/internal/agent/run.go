@@ -130,13 +130,10 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		return failed(FailInterrupted, err)
 	}
 
+	// An editor trigger's note is read from its editor below.
 	var note *notes.Note
-	if r.Event.Title == nil {
+	if r.Event.Title == nil && !r.Trigger.InEditor() {
 		n, err := acct.Notes.Get(ctx, r.NoteID)
-		if errors.Is(err, notes.ErrNotFound) && r.Trigger == NoteCreated {
-			// A new note the editor hasn't saved yet.
-			n, err = draftInEditor(ctx, acct, r)
-		}
 		if f := unusable(n, err, r.SpaceID, false); f.Status != "" {
 			return f
 		}
@@ -162,7 +159,14 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	var f finished
 	rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, inEditor: map[string]*editorRead{}, day: day,
 		budget: min(left, today), dailyLimited: today <= left}
-	if note != nil {
+	switch {
+	case r.Trigger.InEditor():
+		n, err := rs.readEditor(runCtx, r.NoteID)
+		if u := unusable(n, err, r.SpaceID, false); u.Status != "" {
+			return u
+		}
+		note = &n
+	case note != nil:
 		// As the user sees it, if an editor has it open.
 		n, err := rs.read(runCtx, note.ID)
 		var stop *stopError
@@ -211,18 +215,6 @@ func interrupted(ctx context.Context, f *finished, err error) {
 	}
 }
 
-// draftInEditor is a new note as its editor shows it, or notes.ErrNotFound.
-func draftInEditor(ctx context.Context, acct Account, r queuedRun) (notes.Note, error) {
-	if acct.Editors == nil {
-		return notes.Note{}, notes.ErrNotFound
-	}
-	en, err := acct.Editors.Read(ctx, r.NoteID, r.Event.ConnectionID)
-	if err != nil {
-		return notes.Note{}, notes.ErrNotFound
-	}
-	return notes.Note{ID: r.NoteID, SpaceID: en.SpaceID, Title: en.Title, Content: en.Content}, nil
-}
-
 func failed(why string, err error) finished {
 	return finished{Status: StatusFailed, Failure: why, Message: err.Error()}
 }
@@ -239,6 +231,12 @@ func unusable(n notes.Note, err error, spaceID string, started bool) finished {
 		when = "while the agent worked on it"
 	}
 	switch {
+	case errors.Is(err, errEditorClosed):
+		return skipped(FailNoteClosed, "The note was closed "+when+".")
+	case errors.Is(err, errLockedInEditor) && started:
+		return skipped(FailNoteLocked, "The note was locked "+when+".")
+	case errors.Is(err, errLockedInEditor):
+		return skipped(FailNoteLocked, "The note is locked. Locked notes are never sent.")
 	case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
 		return skipped(FailNoteGone, "The note was deleted "+when+".")
 	case err != nil:

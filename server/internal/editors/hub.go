@@ -303,8 +303,10 @@ func (a account) do(ctx context.Context, c *Conn, msg map[string]any) (reply, er
 		return r, nil
 	case "changed":
 		return r, agent.ErrEditorChanged
+	case "locked":
+		return r, agent.ErrEditorLocked
 	default:
-		// not_open, locked, or one this server doesn't know: read it from the store instead.
+		// not_open, or one this server doesn't know: read it from the store instead.
 		return r, agent.ErrNotOpen
 	}
 }

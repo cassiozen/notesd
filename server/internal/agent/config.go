@@ -35,6 +35,11 @@ var Triggers = []Trigger{NoteCreated, EditStarted, NewNoteDone, EditDone, NoteDe
 
 func (t Trigger) valid() bool { return slices.Contains(Triggers, t) }
 
+// InEditor reports whether t is one an open editor asks for while the user
+// is in the note. Its run works on the note as that editor shows it, never
+// the store's copy, which may not even exist yet.
+func (t Trigger) InEditor() bool { return t == NoteCreated || t == EditStarted || t == Menu }
+
 // Limits on what a user writes.
 const (
 	MaxPromptBytes    = 16 << 10

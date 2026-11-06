@@ -22,6 +22,7 @@ var (
 	ErrNotOpen       = errors.New("no editor has the note open")
 	ErrEditorGone    = errors.New("the editor disconnected")
 	ErrEditorChanged = errors.New("the note changed in the editor")
+	ErrEditorLocked  = errors.New("the note is locked in the editor")
 )
 
 // EditorNote is a note as an editor shows it. Cursor is in Unicode code

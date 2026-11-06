@@ -483,8 +483,10 @@ The user guide is [agents](../guides/using/agents.md).
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
   for the space the note is in then, or at once when an editor closes the note and the server has
   what it last saved (`editor.closed` on the socket below). The editor asks for *note created*,
-  *started editing* and the menu command (`POST /agent/runs`), queued ahead of the rest; a
-  *note created* run may start before the note is saved, reading it from that editor. A new note
+  *started editing* and the menu command (`POST /agent/runs`), queued ahead of the rest. Their runs
+  work on the note only as an editor shows it, the asking one's first, never the store's copy, which
+  may not exist yet: with no editor showing it, before or during the run, the run is skipped
+  (`note_closed`). A new note
   whose first save holds only an agent's change starts its session at that revision, so only the
   user's writing ends it with a trigger. Never a trigger: the agent's own writes and saves holding
   only its change, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
@@ -531,8 +533,8 @@ The user guide is [agents](../guides/using/agents.md).
   `applied_from`, not text); otherwise the user's unsaved typing went out with it, and it counts
   as theirs too. A save with typing after the change isn't linked, so undo can't take that
   typing; the edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
-  seconds counts as gone: a read falls back to the store, a write fails the run
-  (`editor_disconnected`).
+  seconds counts as gone: a read falls back to the store (not for an editor trigger's own note), a
+  write fails the run (`editor_disconnected`).
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the

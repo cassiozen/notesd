@@ -808,6 +808,10 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 	h.done("n1", "a")
 	h.create("n2", "work", "b")
 	h.create("n3", "work", "c")
+	// Editor triggers: the user has each note open.
+	for id, content := range map[string]string{"n1": "a", "n2": "b", "n3": "c"} {
+		h.openInEditor(id, content, nil)
+	}
 	entered, release := make(chan struct{}), make(chan struct{})
 	var once sync.Once
 	free := func() { once.Do(func() { close(release) }) }

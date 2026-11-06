@@ -439,11 +439,13 @@ undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `
 `partly_undone` while some of its changes stand. Undo fires no triggers.
 
 **Asking for a run.** An editor asks for `noteCreated`, `editStarted` or `menu` runs; the others
-come from writes. `spaceId` is needed only for a new note the server hasn't got yet (`noteCreated`),
-and `connectionId` is the asking tab's socket, whose editor the run reads first. It's queued ahead of
-other runs, and asked again before it starts, it's the same run. `409 agent_disabled` when the
-space's agent is off, `trigger_off` when it doesn't act on that trigger, `note_locked`; `404
-not_found` for a note that's gone.
+come from writes. `spaceId` is the note's space as the editor shows it, which the server may not
+have yet; and `connectionId` is the asking tab's socket. The run works on the note only as an editor
+shows it, that tab's first, never the server's copy: with no editor showing it, before or during
+the run, it's skipped as `note_closed`. It's queued ahead of other runs, and asked again before it
+starts, it's the same run. `409 agent_disabled` when the space's agent is off, `trigger_off` when
+it doesn't act on that trigger, `note_locked`; `404 not_found` for a note that's gone, or one the
+server hasn't got with no `spaceId`.
 
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one

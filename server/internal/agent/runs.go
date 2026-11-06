@@ -38,6 +38,7 @@ const (
 	FailQueueFull    = "queue_full"
 	FailUnknownEvent = "unknown_trigger"
 	FailEditorGone   = "editor_disconnected" // the editor went away while the run changed the note in it
+	FailNoteClosed   = "note_closed"         // an editor trigger's note was closed before or while it ran
 )
 
 // queuedRun is a run as the runner takes it from the queue.

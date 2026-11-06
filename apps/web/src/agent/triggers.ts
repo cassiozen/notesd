@@ -8,15 +8,14 @@ export const triggerTiming = { idleMs: 3 * 60_000 }
 const created = new Set<string>()
 
 /**
- * Asks for a run the open editor fires, if the space's agent acts on it.
- * Note created and started editing need this tab's editor, so they're
- * dropped while it isn't connected; the menu command isn't.
+ * Asks for a run the open editor fires, if the space's agent acts on it. The run works in this tab's
+ * editor, never on the server's copy, so it's dropped while the editor isn't connected.
  */
 export async function requestRun(trigger: 'noteCreated' | 'editStarted' | 'menu', noteId: string, spaceId: string): Promise<boolean> {
   const c = agentConfigFor(spaceId)
   if (!c?.enabled || !c.triggers[trigger]) return false
   const connectionId = agentSocket.connectionId ?? undefined
-  if (!connectionId && trigger !== 'menu') return false
+  if (!connectionId) return false
   if (trigger === 'noteCreated') {
     // Once per note, however often its editor mounts.
     if (created.has(noteId)) return false

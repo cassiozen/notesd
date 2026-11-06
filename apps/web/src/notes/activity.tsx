@@ -33,6 +33,7 @@ const FAILURES: Record<string, string> = {
   queue_full: 'too many runs were waiting',
   unknown_trigger: 'this server doesn’t know the trigger',
   editor_disconnected: 'the note was closed while the agent changed it',
+  note_closed: 'the note was closed',
 }
 
 const OUTCOMES: Record<string, string> = {

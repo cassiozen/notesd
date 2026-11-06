@@ -18,6 +18,7 @@ import (
 type fakeEditor struct {
 	notes   map[string]*agent.EditorNote
 	gone    bool
+	locked  bool
 	changes []agent.EditorChange
 	// rewrite is the editor's Markdown writing some text its own way.
 	rewrite func(string) string
@@ -35,6 +36,9 @@ func (h *harness) openInEditor(id, content string, cursor *int) *agent.EditorNot
 func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, error) {
 	if e.gone {
 		return agent.EditorNote{}, agent.ErrEditorGone
+	}
+	if e.locked {
+		return agent.EditorNote{}, agent.ErrEditorLocked
 	}
 	n, ok := e.notes[id]
 	if !ok {

@@ -25,8 +25,7 @@ var noteIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 type RunRequest struct {
 	Trigger Trigger
 	NoteID  string
-	// SpaceID is a new note's space, needed only while the store hasn't
-	// got the note.
+	// SpaceID is the note's space as the editor shows it.
 	SpaceID      string
 	ConnectionID string
 }
@@ -34,9 +33,7 @@ type RunRequest struct {
 // RequestRun queues a run an editor asked for, ahead of the others. Asked
 // again before it starts, it's the same run.
 func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) {
-	switch req.Trigger {
-	case NoteCreated, EditStarted, Menu:
-	default:
+	if !req.Trigger.InEditor() {
 		return "", &InputError{Field: "trigger", Message: "must be noteCreated, editStarted or menu"}
 	}
 	if !noteIDPattern.MatchString(req.NoteID) {
@@ -72,22 +69,25 @@ func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) 
 	return id, err
 }
 
-// requestSpace is the space the note is in, or, for a new note the store
-// hasn't got yet, the one the editor named.
+// requestSpace is the space the editor says the note is in: the store may
+// not have the note yet, or not its latest move. A copy the store has
+// deleted or locked refuses; with no space named, the store's is used.
 func requestSpace(ctx context.Context, tx *sql.Tx, req RunRequest) (string, error) {
 	var space, content string
 	var deleted sql.NullInt64
 	err := tx.QueryRowContext(ctx, `SELECT space_id, content, deleted_at FROM notes WHERE id = ?`, req.NoteID).
 		Scan(&space, &content, &deleted)
 	switch {
-	case errors.Is(err, sql.ErrNoRows) && req.Trigger == NoteCreated && req.SpaceID != "":
-		return req.SpaceID, nil
-	case errors.Is(err, sql.ErrNoRows) || deleted.Valid:
-		return "", ErrNoteGone
-	case err != nil:
+	case err != nil && !errors.Is(err, sql.ErrNoRows):
 		return "", err
-	case locks.IsLocked(content):
+	case err == nil && deleted.Valid:
+		return "", ErrNoteGone
+	case err == nil && locks.IsLocked(content):
 		return "", ErrNoteLocked
+	case req.SpaceID != "":
+		return req.SpaceID, nil
+	case err == nil:
+		return space, nil
 	}
-	return space, nil
+	return "", ErrNoteGone
 }

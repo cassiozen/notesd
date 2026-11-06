@@ -111,8 +111,8 @@ func TestEditorAnswers(t *testing.T) {
 		return map[string]any{"error": "locked"}
 	})
 	h.Opened(tb.c, "n1")
-	if _, err := ed.Read(ctx, "n1", ""); !errors.Is(err, agent.ErrNotOpen) {
-		t.Fatalf("a refusal reads from the store instead: %v", err)
+	if _, err := ed.Read(ctx, "n1", ""); !errors.Is(err, agent.ErrEditorLocked) {
+		t.Fatalf("locked: %v", err)
 	}
 	ch := agent.EditorChange{RunID: "run_1", Before: agent.Fields{Content: "a"}, After: agent.Fields{Content: "b"}}
 	if _, err := ed.Apply(ctx, "n1", "", ch); !errors.Is(err, agent.ErrEditorChanged) {
