@@ -1,5 +1,6 @@
 import type { AgentConfig, AgentConfigInput, AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
+import { sentence } from '../auth/errors'
 
 /** A space's agent being edited. */
 export type AgentDraft = Required<AgentConfigInput>
@@ -28,7 +29,7 @@ export function rulesOf(d: AgentDraft): AgentTrigger[] {
 export function agentFieldError(err: unknown): AgentErrors | undefined {
   if (!(err instanceof ApiError) || err.status !== 400 || !err.field) return undefined
   if (['prompt', 'menuLabel', 'referenceNotes'].includes(err.field) || err.field.startsWith('triggers.')) {
-    return { [err.field]: err.message.charAt(0).toUpperCase() + err.message.slice(1) + '.' }
+    return { [err.field]: sentence(err.message) }
   }
   return undefined
 }
