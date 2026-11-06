@@ -1,0 +1,19 @@
+apps/web/src/router.ts
+  s_cc6cacc0a6fc01::t_32148e152dd87d 55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fae1cc9f6a3d0f559050f3023537eca7610c2042",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
