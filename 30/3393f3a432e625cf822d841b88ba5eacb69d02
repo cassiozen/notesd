@@ -1,0 +1,40 @@
+apps/web/src/notes/email-settings.ts
+  s_2e1cfc35b19445::t_968499e586eee3 22-24,51
+  s_2e1cfc35b19445::t_d1ba4c405503b7 47-49,52
+apps/web/src/notes/ai-settings.ts
+  s_2e1cfc35b19445::t_d1ba4c405503b7 50-52,55
+  s_2e1cfc35b19445::t_968499e586eee3 25-27,54
+docs/guides/using/agents.md
+  s_2e1cfc35b19445::t_3440b252e7ae68 27
+server/internal/llm/client.go
+  s_2e1cfc35b19445::t_5044dccfe9e592 135-137
+apps/web/test/settings-stores.test.tsx
+  s_2e1cfc35b19445::t_aa139b229ee3ed 2,9-10,28-36,38-39,41
+  s_2e1cfc35b19445::t_968499e586eee3 37,40
+  s_2e1cfc35b19445::t_9238fe31f04db9 42
+apps/web/test/server.ts
+  s_2e1cfc35b19445::t_3440b252e7ae68 147
+server/internal/llm/settings.go
+  s_2e1cfc35b19445::t_5044dccfe9e592 176-177
+docs/contributing/architecture.md
+  s_2e1cfc35b19445::t_3440b252e7ae68 535
+server/internal/llm/client_test.go
+  s_2e1cfc35b19445::t_ecf68e967034d6 50-53,57-65
+  s_2e1cfc35b19445::t_5044dccfe9e592 43-49,54-56,66-67,84-87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "303393f3a432e625cf822d841b88ba5eacb69d02",
+  "prompts": {},
+  "sessions": {
+    "s_2e1cfc35b19445": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "eb372611-7d3d-41f2-9b7f-849827cd219d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
