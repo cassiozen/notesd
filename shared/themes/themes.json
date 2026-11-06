@@ -1,0 +1,42 @@
+{
+  "$schema": "./schema/themes.schema.json",
+  "default": "amber",
+  "themes": [
+    {
+      "id": "amber",
+      "name": "Amber",
+      "mood": "Afternoon light on paper",
+      "palette": "amber",
+      "style": "glass",
+      "fonts": {"title": "instrument-serif", "body": "instrument-sans"},
+      "sidebar": "theme"
+    },
+    {
+      "id": "nocturne",
+      "name": "Nocturne",
+      "mood": "The city, long after midnight",
+      "palette": "nocturne",
+      "style": "lumen",
+      "fonts": {"title": "shippori-mincho", "body": "zen-kaku-gothic"},
+      "sidebar": "theme"
+    },
+    {
+      "id": "carta",
+      "name": "Carta",
+      "mood": "Black ink on good paper",
+      "palette": "carta",
+      "style": "paper",
+      "fonts": {"title": "playfair", "body": "hanken-grotesk"},
+      "sidebar": "theme"
+    },
+    {
+      "id": "den",
+      "name": "Den",
+      "mood": "Warm graphite, one honey mark",
+      "palette": "den",
+      "style": "flush",
+      "fonts": {"title": "nunito-sans-bold", "body": "nunito-sans"},
+      "sidebar": "dark"
+    }
+  ]
+}

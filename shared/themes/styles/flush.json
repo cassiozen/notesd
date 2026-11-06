@@ -1,0 +1,65 @@
+{
+  "$schema": "../schema/style.schema.json",
+  "description": "A desktop app's own window: columns edge to edge, split by hairlines, the note on a square sheet with no shadow. Small corners, menus with the system's frosted look, quick plain motion. Done tasks are struck through.",
+  "layout": {
+    "app-gap": 0,
+    "app-padding": 0,
+    "pane-radius": 0,
+    "pane-border": null,
+    "pane-shadow": [],
+    "column-rule": {"width": 1, "color": {"token": "hair"}}
+  },
+  "shape": {"radius-scale": 0.5},
+  "material": {
+    "glass-hi": {"role": "surface", "alpha": 0.82},
+    "blur": {"radius": 30, "saturate": 1.8},
+    "blur-pop": {"radius": 30, "saturate": 1.8},
+    "blur-dialog": {"radius": 30, "saturate": 1.8},
+    "blur-scrim": {"radius": 12},
+    "edge": {"role": "line", "alpha": 0.12},
+    "inset": [],
+    "field": {"role": "line", "alpha": 0.06},
+    "chip": {"role": "line", "alpha": 0.06}
+  },
+  "lines": {
+    "hair": {"role": "line", "alpha": 0.1},
+    "hair-strong": {"role": "line", "alpha": 0.18},
+    "hover": {"role": "line", "alpha": 0.05},
+    "on": {"role": "line", "alpha": 0.09}
+  },
+  "depth": {
+    "shadow": [],
+    "shadow-lg": [],
+    "shadow-pop": [
+      {"spread": 0.5, "color": {"role": "line", "alpha": 0.14}},
+      {
+        "y": 10,
+        "blur": 30,
+        "spread": -8,
+        "color": {"role": "shade", "alpha": {"light": 0.25, "dark": 0.65}}
+      }
+    ],
+    "shadow-bar": ["shadow-pop"],
+    "shadow-toast": ["shadow-pop"],
+    "shadow-thumb": [
+      {"spread": 0.5, "color": {"role": "line", "alpha": 0.12}},
+      {"y": 1, "blur": 2, "color": {"role": "shade", "alpha": {"light": 0.15, "dark": 0.5}}}
+    ]
+  },
+  "backdrop": {"wash": null},
+  "motion": {
+    "spring": {"cubicBezier": [0.25, 0.1, 0.25, 1]},
+    "ease-out": {"cubicBezier": [0.25, 0.1, 0.25, 1]}
+  },
+  "details": {
+    "focus-ring": [{"spread": 3, "color": {"role": "focus"}}],
+    "check-radius": "circle",
+    "check-mark": "fill",
+    "tag-bg": {"role": "line", "alpha": 0.08},
+    "tag-ink": "currentColor",
+    "tag-radius": 4,
+    "tag-padding": [0.05, 0.35],
+    "selection": {"role": "accent", "alpha": 0.25},
+    "done-decoration": "line-through"
+  }
+}

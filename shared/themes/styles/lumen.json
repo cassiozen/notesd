@@ -1,0 +1,66 @@
+{
+  "$schema": "../schema/style.schema.json",
+  "description": "Light in a dark room, flat: matte surfaces told apart only by how much light they hold, and a hairline of light along each panel's top edge. No glows, no ambient shadows; only what floats over the page (menus, the find bar, toasts) keeps one. Unhurried motion.",
+  "layout": {
+    "app-gap": 12,
+    "app-padding": 12,
+    "pane-radius": 20.64,
+    "pane-border": {"width": 1, "color": {"token": "edge"}},
+    "pane-shadow": ["inset"],
+    "column-rule": null
+  },
+  "shape": {"radius-scale": 0.86},
+  "material": {
+    "glass-hi": {"role": "surface", "alpha": 0.84},
+    "blur": {"radius": 28, "saturate": 1.15},
+    "blur-pop": {"radius": 32, "saturate": 1.2},
+    "blur-dialog": {"radius": 32, "saturate": 1.2},
+    "blur-scrim": {"radius": 14},
+    "edge": {"role": "line", "alpha": {"light": 0.07, "dark": 0.06}},
+    "inset": [
+      {"y": 1, "inset": true, "color": {"color": "#ffffff", "alpha": {"light": 0.9, "dark": 0.055}}}
+    ],
+    "field": {"light": {"color": "#ffffff", "alpha": 0.7}, "dark": {"role": "line", "alpha": 0.05}},
+    "chip": {"light": {"color": "#ffffff", "alpha": 0.55}, "dark": {"role": "line", "alpha": 0.06}}
+  },
+  "lines": {
+    "hair": {"role": "line", "alpha": 0.08},
+    "hair-strong": {"role": "line", "alpha": 0.15},
+    "hover": {"role": "line", "alpha": 0.06},
+    "on": {"role": "line", "alpha": 0.1}
+  },
+  "depth": {
+    "shadow": [],
+    "shadow-lg": [],
+    "shadow-pop": [
+      {
+        "y": 28,
+        "blur": 60,
+        "spread": -20,
+        "color": {"role": "shade", "alpha": {"light": 0.3, "dark": 0.75}}
+      }
+    ],
+    "shadow-bar": ["shadow-pop"],
+    "shadow-toast": ["shadow-pop"],
+    "shadow-thumb": [
+      {"y": 1, "inset": true, "color": {"color": "#ffffff", "alpha": {"light": 0.9, "dark": 0.07}}},
+      {"y": 1, "blur": 3, "color": {"role": "shade", "alpha": {"light": 0.16, "dark": 0.7}}}
+    ]
+  },
+  "backdrop": {"wash": null},
+  "motion": {
+    "spring": {"cubicBezier": [0.22, 1, 0.36, 1]},
+    "ease-out": {"cubicBezier": [0.22, 1, 0.36, 1]}
+  },
+  "details": {
+    "focus-ring": [{"spread": 3, "color": {"role": "focus"}}],
+    "check-radius": "circle",
+    "check-mark": "dot",
+    "tag-bg": {"role": "accent", "alpha": 0.16},
+    "tag-ink": "currentColor",
+    "tag-radius": 6,
+    "tag-padding": [0.05, 0.3],
+    "selection": {"role": "accent", "alpha": 0.3},
+    "done-decoration": "none"
+  }
+}

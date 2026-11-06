@@ -1,0 +1,81 @@
+{
+  "$schema": "../schema/style.schema.json",
+  "description": "A sheet lying on a desk: opaque, matte, crisp hairline edges, the shortest shadow that still lifts it, small corners. Nothing blurs or bounces, except behind a sheet laid over the app, so it doesn't read as text on text. Tags are cross-references in the link's ink rather than chips.",
+  "layout": {
+    "app-gap": 12,
+    "app-padding": 12,
+    "pane-radius": 10.8,
+    "pane-border": {"width": 1, "color": {"token": "edge"}},
+    "pane-shadow": ["inset", "shadow-lg"],
+    "column-rule": null
+  },
+  "shape": {"radius-scale": 0.45},
+  "material": {
+    "glass-hi": {"role": "surface"},
+    "blur": null,
+    "blur-pop": null,
+    "blur-dialog": null,
+    "blur-scrim": {"radius": 8},
+    "edge": {"role": "line", "alpha": 0.13},
+    "inset": [],
+    "field": {"role": "paper"},
+    "chip": {"role": "line", "alpha": 0.04}
+  },
+  "lines": {
+    "hair": {"role": "line", "alpha": 0.1},
+    "hair-strong": {"role": "line", "alpha": 0.18},
+    "hover": {"role": "line", "alpha": 0.05},
+    "on": {"role": "line", "alpha": 0.08}
+  },
+  "depth": {
+    "shadow": [
+      {"y": 1, "blur": 1, "color": {"role": "shade", "alpha": 0.06}},
+      {
+        "y": 8,
+        "blur": 20,
+        "spread": -14,
+        "color": {"role": "shade", "alpha": {"light": 0.28, "dark": 0.6}}
+      }
+    ],
+    "shadow-lg": [
+      {"y": 1, "blur": 1, "color": {"role": "shade", "alpha": 0.07}},
+      {
+        "y": 14,
+        "blur": 32,
+        "spread": -22,
+        "color": {"role": "shade", "alpha": {"light": 0.32, "dark": 0.7}}
+      }
+    ],
+    "shadow-pop": [
+      {"y": 1, "blur": 2, "color": {"role": "shade", "alpha": 0.08}},
+      {
+        "y": 14,
+        "blur": 28,
+        "spread": -16,
+        "color": {"role": "shade", "alpha": {"light": 0.32, "dark": 0.7}}
+      }
+    ],
+    "shadow-bar": ["shadow-pop"],
+    "shadow-toast": ["shadow-pop"],
+    "shadow-thumb": [
+      {"spread": 1, "color": {"token": "hair"}},
+      {"y": 1, "blur": 1, "color": {"role": "shade", "alpha": 0.1}}
+    ]
+  },
+  "backdrop": {"wash": null},
+  "motion": {
+    "spring": {"cubicBezier": [0.25, 0.8, 0.3, 1]},
+    "ease-out": {"cubicBezier": [0.25, 0.8, 0.3, 1]}
+  },
+  "details": {
+    "focus-ring": [{"spread": 2, "color": {"role": "focus"}}],
+    "check-radius": 4,
+    "check-mark": "fill",
+    "tag-bg": null,
+    "tag-ink": {"role": "link"},
+    "tag-radius": 0,
+    "tag-padding": [0, 0],
+    "selection": {"role": "accent", "alpha": 0.16},
+    "done-decoration": "none"
+  }
+}

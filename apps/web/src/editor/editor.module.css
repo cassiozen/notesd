@@ -5,7 +5,7 @@
   width: 31px;
   height: 32px;
   border: 0;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--radius-scale));
   background: transparent;
   color: var(--ink);
   font-size: 13.5px;
@@ -66,7 +66,7 @@
   gap: 8px;
   padding: 4px 10px 4px 8px;
   text-align: left;
-  font: 400 13.5px/1.2 var(--font-sans);
+  font: 400 13.5px/1.2 var(--font-body);
 }
 
 /* The menu marks the current style with a check, not a fill. */
@@ -93,19 +93,25 @@
 }
 
 .title {
-  font: 400 23px/1.1 var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(23px * var(--title-scale))/1.1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
 }
 
 .h2 {
-  font: 400 18px/1.1 var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(18px * var(--title-scale))/1.1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
 }
 
 .h3 {
-  font: 600 13.5px/1.2 var(--font-sans);
+  font: 600 13.5px/1.2 var(--font-body);
 }
 
 .quote {
-  font: italic 400 15.5px/1.2 var(--font-serif);
+  font: var(--quote-style) var(--quote-weight) calc(15.5px * var(--title-scale))/1.2 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
 }
 
 .bullets,
@@ -127,7 +133,7 @@
   flex: 1;
   min-width: 0;
   height: 34px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   border: 1px solid var(--hair);
   background: var(--field);
   color: var(--ink);
@@ -138,7 +144,7 @@
 .linkInput:focus-visible {
   outline: none;
   border-color: var(--accent-deep);
-  box-shadow: 0 0 0 3px var(--focus);
+  box-shadow: var(--focus-ring);
 }
 
 .linkInput[aria-invalid='true'] {
@@ -150,7 +156,7 @@
   height: 34px;
   padding: 0 12px;
   border: 0;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   font-size: 13px;
   cursor: pointer;
 }
@@ -184,9 +190,8 @@
 
 .prose {
   min-height: 300px;
-  /* The note font picked in Settings (tokens.css): the note's text rules name --note-sans or
-     --note-serif; code and the code box's language keep the UI's fonts. */
-  font-family: var(--note-sans);
+  /* The theme's fonts (themes/generated/themes.css); code keeps the mono. */
+  font-family: var(--font-body);
   font-size: 17px;
   line-height: 1.6;
   color: var(--ink);
@@ -203,8 +208,9 @@
 
 /* The first line is the note's title. */
 .prose h1[data-title] {
-  font: 400 34px/1.15 var(--note-serif);
-  letter-spacing: -0.015em;
+  font: var(--title-style) var(--title-weight) calc(34px * var(--title-scale))/1.15 var(--font-title);
+  letter-spacing: calc(-0.015em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
   margin: 0 0 0.35em;
 }
 
@@ -230,18 +236,21 @@
 }
 
 .prose h1 {
-  font: 400 32px/1.15 var(--note-serif);
-  letter-spacing: -0.015em;
+  font: var(--title-style) var(--title-weight) calc(32px * var(--title-scale))/1.15 var(--font-title);
+  letter-spacing: calc(-0.015em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
   margin: calc(0.5em + 6px) 0 0.25em;
 }
 
 .prose h2 {
-  font: 400 25px/1.2 var(--note-serif);
+  font: var(--title-style) var(--title-weight) calc(25px * var(--title-scale))/1.2 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
   margin: calc(0.6em + 6px) 0 0.2em;
 }
 
 .prose h3 {
-  font: 600 17px/1.3 var(--note-sans);
+  font: 600 17px/1.3 var(--font-body);
   margin: calc(0.8em + 6px) 0 0.2em;
 }
 
@@ -265,7 +274,9 @@
   margin: 0.6em 0;
   padding: 0 0 0 18px;
   border-left: 2px solid var(--accent);
-  font: italic 400 20px/1.45 var(--note-serif);
+  font: var(--quote-style) var(--quote-weight) calc(20px * var(--title-scale))/1.45 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
   color: var(--ink-2);
 }
 
@@ -312,7 +323,7 @@
   display: block;
   width: 16px;
   height: 16px;
-  border-radius: 50%;
+  border-radius: var(--check-radius);
   border: 1.5px solid var(--ink-3);
   background: transparent;
   cursor: pointer;
@@ -322,20 +333,19 @@
 .prose ul[data-type='taskList'] > li input[type='checkbox']:checked {
   background: var(--accent);
   border-color: var(--accent-deep);
-  box-shadow:
-    inset 0 0 0 3.5px var(--accent),
-    inset 0 0 0 8px oklch(0.25 0.012 60);
+  box-shadow: var(--check-mark);
 }
 
 .prose li[data-checked='true'] > div {
   color: var(--ink-3);
+  text-decoration: var(--done-decoration);
 }
 
 /* Raw Markdown the editor can't represent: shown as written, read-only. */
 .prose pre[data-raw] {
   margin: 0.4em 0;
   padding: 10px 14px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   border: 1px dashed var(--hair-strong);
   background: var(--hover);
   font: 400 13px/1.6 var(--font-mono);
@@ -357,7 +367,7 @@
 .prose pre[data-fence] span[data-lang] {
   display: block;
   margin-bottom: 4px;
-  font: 500 11px/1.4 var(--font-sans);
+  font: 500 11px/1.4 var(--font-body);
   letter-spacing: 0.02em;
   color: var(--code-dim);
 }
@@ -387,7 +397,7 @@
 
 .prose pre[data-editing] input {
   margin-bottom: 4px;
-  font: 500 11px/1.4 var(--font-sans);
+  font: 500 11px/1.4 var(--font-body);
   letter-spacing: 0.02em;
   color: var(--code-dim);
 }
@@ -403,7 +413,7 @@
   outline-offset: 2px;
 }
 
-/* highlight.js classes. The block is dark in both themes, so one palette. */
+/* highlight.js classes, in the palette's syntax colors. The block is dark in every palette. */
 .prose pre[data-fence] :global(.hljs-comment),
 .prose pre[data-fence] :global(.hljs-quote) {
   color: var(--code-dim);
@@ -414,41 +424,41 @@
 .prose pre[data-fence] :global(.hljs-selector-tag),
 .prose pre[data-fence] :global(.hljs-built_in),
 .prose pre[data-fence] :global(.hljs-type) {
-  color: oklch(0.78 0.12 300);
+  color: var(--syntax-keyword);
 }
 
 .prose pre[data-fence] :global(.hljs-string),
 .prose pre[data-fence] :global(.hljs-regexp),
 .prose pre[data-fence] :global(.hljs-addition) {
-  color: oklch(0.8 0.12 145);
+  color: var(--syntax-string);
 }
 
 .prose pre[data-fence] :global(.hljs-number),
 .prose pre[data-fence] :global(.hljs-literal),
 .prose pre[data-fence] :global(.hljs-symbol) {
-  color: oklch(0.8 0.13 60);
+  color: var(--syntax-number);
 }
 
 .prose pre[data-fence] :global(.hljs-title),
 .prose pre[data-fence] :global(.hljs-section),
 .prose pre[data-fence] :global(.hljs-attr),
 .prose pre[data-fence] :global(.hljs-attribute) {
-  color: oklch(0.8 0.1 230);
+  color: var(--syntax-title);
 }
 
 .prose pre[data-fence] :global(.hljs-meta),
 .prose pre[data-fence] :global(.hljs-variable),
 .prose pre[data-fence] :global(.hljs-template-variable) {
-  color: oklch(0.8 0.1 20);
+  color: var(--syntax-meta);
 }
 
 .prose pre[data-fence] :global(.hljs-deletion) {
-  color: oklch(0.72 0.15 27);
+  color: var(--syntax-deletion);
 }
 
 .prose code[data-raw] {
   padding: 1px 5px;
-  border-radius: 6px;
+  border-radius: calc(6px * var(--radius-scale));
   background: var(--hover);
   border: 1px dashed var(--hair-strong);
   font: 400 0.85em var(--font-mono);
@@ -464,15 +474,15 @@
 @media (max-width: 759px) {
   .prose h1[data-title],
   .prose h1 {
-    font-size: 36px;
+    font-size: calc(36px * var(--title-scale));
   }
 
   .prose h2 {
-    font-size: 27px;
+    font-size: calc(27px * var(--title-scale));
   }
 
   .prose blockquote {
-    font-size: 21px;
+    font-size: calc(21px * var(--title-scale));
   }
 
   .prose ul[data-type='taskList'] > li input[type='checkbox'] {
@@ -483,17 +493,18 @@
 
 /* #tags: a tinted pill, still plain editable text. */
 .prose [data-tag] {
-  padding: 0.05em 0.3em;
+  padding: var(--tag-padding);
   margin: 0 -0.1em;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: var(--tag-radius);
+  background: var(--tag-bg);
+  color: var(--tag-ink);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
 
 /* Find matches: a neutral wash, so they don't read as tags; the current one in the accent. */
 .prose [data-find] {
-  border-radius: 3px;
+  border-radius: calc(3px * var(--radius-scale));
   background: var(--hair-strong);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
@@ -514,7 +525,7 @@
   margin: 0;
   padding: 4px;
   list-style: none;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--radius-scale));
   border: 1px solid var(--edge);
   background: var(--glass-hi);
   backdrop-filter: var(--blur);
@@ -528,7 +539,7 @@
 
 :global([data-tag-option]) {
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--radius-scale));
   color: var(--ink);
   white-space: nowrap;
   overflow: hidden;
@@ -552,7 +563,7 @@
   display: block;
   max-width: 100%;
   height: auto;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   background: var(--hover);
 }
 

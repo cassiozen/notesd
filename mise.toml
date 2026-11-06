@@ -88,11 +88,33 @@ run = "pnpm deps"
 
 [tasks.typecheck]
 dir = "apps/web"
-depends = ["install", "build:deps"]
+depends = ["install", "build:deps", "typecheck:themes"]
+run = "pnpm typecheck"
+
+# Node runs the generator's TypeScript without checking its types.
+[tasks."typecheck:themes"]
+dir = "shared/themes"
+depends = ["install"]
 run = "pnpm typecheck"
 
 [tasks.test]
-depends = ["test:go", "test:web", "test:sync-engine"]
+depends = ["test:go", "test:web", "test:sync-engine", "test:themes"]
+
+[tasks.themes]
+description = "Each platform's theme code from shared/themes (docs/contributing/themes.md)"
+dir = "shared/themes"
+depends = ["install"]
+run = "node generate.ts"
+
+[tasks."themes:fonts"]
+description = "The theme fonts the iOS and Android apps bundle, built from shared/themes/fonts.json; needs uv"
+run = "uv run --no-project --with fonttools==4.68.0 python shared/themes/scripts/native_fonts.py"
+
+[tasks."test:themes"]
+description = "The theme definitions: schemas, contrast, and that the generated code is current"
+dir = "shared/themes"
+depends = ["install"]
+run = "pnpm test"
 
 [tasks."test:go"]
 dir = "server"

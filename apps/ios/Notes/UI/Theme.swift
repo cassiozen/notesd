@@ -1,9 +1,9 @@
 import SwiftUI
 import UIKit
 
-/// The web app's design tokens (apps/web/src/styles/tokens.css) as sRGB,
-/// taken from Android's ui/Tokens.kt, which keeps the oklch source beside each
-/// value. Each colour follows the system light/dark appearance.
+/// The web app's Amber theme (shared/themes) as sRGB, taken from Android's ui/Tokens.kt, which
+/// keeps the oklch source beside each value. Each colour follows the system light/dark appearance.
+/// Themes.generated.swift has every theme; adopting it replaces this (docs/contributing/themes.md).
 nonisolated enum Palette {
     static let bg = pair(0xFFF5_F3F1, 0xFF12_1416)
     static let ink = pair(0xFF21_1F1C, 0xFFE9_EBEE)

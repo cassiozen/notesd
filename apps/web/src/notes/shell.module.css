@@ -28,8 +28,8 @@
   flex: 1;
   min-height: 0;
   display: flex;
-  gap: 12px;
-  padding: 12px;
+  gap: var(--app-gap);
+  padding: var(--app-padding);
 }
 
 @media (max-width: 759px) {

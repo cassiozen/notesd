@@ -1,0 +1,274 @@
+{
+  "$schema": "./schema/fonts.schema.json",
+  "sources": {"repository": "google/fonts", "commit": "86aced91de05cd4f96a06838124cca45be337b2b"},
+  "subsets": ["latin", "latin-ext"],
+  "families": {
+    "instrument-serif": {
+      "name": "Instrument Serif",
+      "css": "Instrument Serif",
+      "fallback": "Georgia, serif",
+      "web": {"package": "@fontsource/instrument-serif", "css": ["400.css", "400-italic.css"]},
+      "native": {
+        "license": "OFL-InstrumentSerif.txt",
+        "faces": [
+          {
+            "ios": "InstrumentSerif.ttf",
+            "android": "instrument_serif",
+            "postscript": "InstrumentSerif-Regular",
+            "weight": 400,
+            "style": "normal"
+          },
+          {
+            "ios": "InstrumentSerif-Italic.ttf",
+            "android": "instrument_serif_italic",
+            "postscript": "InstrumentSerif-Italic",
+            "weight": 400,
+            "style": "italic"
+          }
+        ]
+      }
+    },
+    "shippori-mincho": {
+      "name": "Shippori Mincho",
+      "css": "Shippori Mincho",
+      "fallback": "Georgia, serif",
+      "web": {"package": "@fontsource/shippori-mincho", "css": ["400.css", "500.css"]},
+      "native": {
+        "license": "OFL-ShipporiMincho.txt",
+        "source": "ofl/shipporimincho",
+        "faces": [
+          {
+            "file": "ShipporiMincho-Regular.ttf",
+            "ios": "ShipporiMincho-Regular.ttf",
+            "android": "shippori_mincho_regular",
+            "postscript": "ShipporiMincho-Regular",
+            "weight": 400,
+            "style": "normal"
+          },
+          {
+            "file": "ShipporiMincho-Medium.ttf",
+            "ios": "ShipporiMincho-Medium.ttf",
+            "android": "shippori_mincho_medium",
+            "postscript": "ShipporiMincho-Medium",
+            "weight": 500,
+            "style": "normal"
+          }
+        ]
+      }
+    },
+    "playfair": {
+      "name": "Playfair",
+      "css": "Playfair Variable",
+      "fallback": "Didot, serif",
+      "opticalSize": "auto",
+      "web": {
+        "package": "@fontsource-variable/playfair",
+        "css": ["standard.css", "standard-italic.css"]
+      },
+      "native": {
+        "license": "OFL-Playfair.txt",
+        "source": "ofl/playfair",
+        "faces": [
+          {
+            "file": "Playfair[opsz,wdth,wght].ttf",
+            "ios": "Playfair.ttf",
+            "android": "playfair",
+            "postscript": "Playfair-Regular",
+            "weight": [400, 500],
+            "style": "normal",
+            "limits": {"wdth": 88, "wght": [400, 500], "opsz": [8, 72]}
+          },
+          {
+            "file": "Playfair-Italic[opsz,wdth,wght].ttf",
+            "ios": "Playfair-Italic.ttf",
+            "android": "playfair_italic",
+            "postscript": "Playfair-Italic",
+            "weight": [400, 500],
+            "style": "italic",
+            "limits": {"wdth": 88, "wght": [400, 500], "opsz": [8, 72]}
+          }
+        ]
+      }
+    },
+    "nunito-sans": {
+      "name": "Nunito Sans",
+      "css": "Nunito Sans Variable",
+      "fallback": "system-ui, sans-serif",
+      "opticalSize": "auto",
+      "web": {"package": "@fontsource-variable/nunito-sans", "css": ["wght.css", "wght-italic.css"]},
+      "native": {
+        "license": "OFL-NunitoSans.txt",
+        "source": "ofl/nunitosans",
+        "faces": [
+          {
+            "file": "NunitoSans[YTLC,opsz,wdth,wght].ttf",
+            "ios": "NunitoSans.ttf",
+            "android": "nunito_sans",
+            "postscript": "NunitoSans-Regular",
+            "weight": [400, 800],
+            "style": "normal",
+            "limits": {"wdth": 100, "YTLC": 500, "wght": [400, 800]}
+          },
+          {
+            "file": "NunitoSans-Italic[YTLC,opsz,wdth,wght].ttf",
+            "ios": "NunitoSans-Italic.ttf",
+            "android": "nunito_sans_italic",
+            "postscript": "NunitoSans-Italic",
+            "weight": [400, 800],
+            "style": "italic",
+            "limits": {"wdth": 100, "YTLC": 500, "wght": [400, 800]}
+          }
+        ]
+      }
+    },
+    "instrument-sans": {
+      "name": "Instrument Sans",
+      "css": "Instrument Sans Variable",
+      "fallback": "system-ui, sans-serif",
+      "web": {
+        "package": "@fontsource-variable/instrument-sans",
+        "css": ["wght.css", "wght-italic.css"]
+      },
+      "native": {
+        "license": "OFL-InstrumentSans.txt",
+        "faces": [
+          {
+            "ios": "InstrumentSans.ttf",
+            "android": "instrument_sans",
+            "postscript": "InstrumentSans-Regular",
+            "weight": [400, 700],
+            "style": "normal"
+          },
+          {
+            "ios": "InstrumentSans-Italic.ttf",
+            "android": "instrument_sans_italic",
+            "postscript": "InstrumentSans-Italic",
+            "weight": [400, 700],
+            "style": "italic"
+          }
+        ]
+      }
+    },
+    "zen-kaku-gothic-new": {
+      "name": "Zen Kaku Gothic New",
+      "css": "Zen Kaku Gothic New",
+      "fallback": "system-ui, sans-serif",
+      "web": {
+        "package": "@fontsource/zen-kaku-gothic-new",
+        "css": ["400.css", "500.css", "700.css"]
+      },
+      "native": {
+        "license": "OFL-ZenKakuGothicNew.txt",
+        "source": "ofl/zenkakugothicnew",
+        "faces": [
+          {
+            "file": "ZenKakuGothicNew-Regular.ttf",
+            "ios": "ZenKakuGothicNew-Regular.ttf",
+            "android": "zen_kaku_gothic_new_regular",
+            "postscript": "ZenKakuGothicNew-Regular",
+            "weight": 400,
+            "style": "normal"
+          },
+          {
+            "file": "ZenKakuGothicNew-Medium.ttf",
+            "ios": "ZenKakuGothicNew-Medium.ttf",
+            "android": "zen_kaku_gothic_new_medium",
+            "postscript": "ZenKakuGothicNew-Medium",
+            "weight": 500,
+            "style": "normal"
+          },
+          {
+            "file": "ZenKakuGothicNew-Bold.ttf",
+            "ios": "ZenKakuGothicNew-Bold.ttf",
+            "android": "zen_kaku_gothic_new_bold",
+            "postscript": "ZenKakuGothicNew-Bold",
+            "weight": 700,
+            "style": "normal"
+          }
+        ]
+      }
+    },
+    "hanken-grotesk": {
+      "name": "Hanken Grotesk",
+      "css": "Hanken Grotesk Variable",
+      "fallback": "system-ui, sans-serif",
+      "web": {
+        "package": "@fontsource-variable/hanken-grotesk",
+        "css": ["wght.css", "wght-italic.css"]
+      },
+      "native": {
+        "license": "OFL-HankenGrotesk.txt",
+        "source": "ofl/hankengrotesk",
+        "faces": [
+          {
+            "file": "HankenGrotesk[wght].ttf",
+            "ios": "HankenGrotesk.ttf",
+            "android": "hanken_grotesk",
+            "postscript": "HankenGrotesk-Regular",
+            "weight": [100, 900],
+            "style": "normal"
+          },
+          {
+            "file": "HankenGrotesk-Italic[wght].ttf",
+            "ios": "HankenGrotesk-Italic.ttf",
+            "android": "hanken_grotesk_italic",
+            "postscript": "HankenGrotesk-Italic",
+            "weight": [100, 900],
+            "style": "italic"
+          }
+        ]
+      }
+    }
+  },
+  "title": {
+    "instrument-serif": {
+      "family": "instrument-serif",
+      "description": "A narrow display serif, the one the size rules were written for.",
+      "weight": 400,
+      "style": "normal",
+      "axes": {},
+      "scale": 1,
+      "tracking": 0,
+      "quote": {"weight": 400, "style": "italic"}
+    },
+    "shippori-mincho": {
+      "family": "shippori-mincho",
+      "description": "The Latin of a Japanese Mincho: calm, sharp-wedged serifs. It has no italic, so quotes stay roman, as Japanese typesetting sets them, rather than a slanted fake.",
+      "weight": 500,
+      "style": "normal",
+      "axes": {},
+      "scale": 0.9,
+      "tracking": 0,
+      "quote": {"weight": 400, "style": "normal"}
+    },
+    "playfair": {
+      "family": "playfair",
+      "description": "Playfair 2, narrowed: a Didone with optical sizes, so each size gets its own cut. Titles get full black-and-white contrast; small headings get sturdier strokes that hold on a screen's pixels.",
+      "weight": 400,
+      "style": "normal",
+      "axes": {"wdth": 88},
+      "scale": 1,
+      "tracking": 0,
+      "quote": {"weight": 400, "style": "italic"}
+    },
+    "nunito-sans-bold": {
+      "family": "nunito-sans",
+      "description": "The text face, heavy, so headings and text read as one voice, as in a writing app whose headings are only bigger, bolder text.",
+      "weight": 750,
+      "style": "normal",
+      "axes": {},
+      "scale": 0.84,
+      "tracking": -0.012,
+      "quote": {"weight": 400, "style": "italic"}
+    }
+  },
+  "body": {
+    "instrument-sans": {"family": "instrument-sans"},
+    "zen-kaku-gothic": {
+      "family": "zen-kaku-gothic-new",
+      "description": "The Latin of a Japanese gothic: plain, even, a little wider-set than Western grotesques. No italic."
+    },
+    "hanken-grotesk": {"family": "hanken-grotesk"},
+    "nunito-sans": {"family": "nunito-sans"}
+  }
+}

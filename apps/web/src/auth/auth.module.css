@@ -36,8 +36,9 @@
 
 .stack h1 {
   margin: 0;
-  font: 400 38px/1.05 var(--font-serif);
-  letter-spacing: -0.02em;
+  font: var(--title-style) var(--title-weight) calc(38px * var(--title-scale))/1.05 var(--font-title);
+  letter-spacing: calc(-0.02em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
   text-wrap: balance;
 }
 
@@ -46,7 +47,7 @@
 }
 
 .hero {
-  font-size: 46px !important;
+  font-size: calc(46px * var(--title-scale)) !important;
   line-height: 1.02 !important;
 }
 
@@ -102,11 +103,11 @@
   }
 
   .stack h1 {
-    font-size: 32px;
+    font-size: calc(32px * var(--title-scale));
   }
 
   .hero {
-    font-size: 38px !important;
+    font-size: calc(38px * var(--title-scale)) !important;
   }
 }
 

@@ -1,17 +1,19 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { App } from './app'
-import { applyFont, readFont } from './font'
 import { captureInstallPrompt } from './install'
-import { applyTheme, readTheme } from './theme'
+import { applyMode, applyTheme, readMode, readTheme } from './theme'
 import './styles/fonts.css'
 import './styles/tokens.css'
+import './themes/generated/themes.css'
 import './styles/base.css'
 import './styles/boot.css'
 
-// Before the first render so a picked theme doesn't flash the OS one.
-applyTheme(readTheme())
-applyFont(readFont())
+// Before the first render so a picked theme doesn't flash the OS one. Both read first: applying the
+// theme drops the key an older version kept the mode in.
+const [theme, mode] = [readTheme(), readMode()]
+applyTheme(theme)
+applyMode(mode)
 captureInstallPrompt()
 
 const root = document.getElementById('root')

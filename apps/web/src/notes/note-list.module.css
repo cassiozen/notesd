@@ -3,6 +3,7 @@
   width: 300px;
   min-width: 0;
   display: flex;
+  border-inline-end: var(--column-rule);
   flex-direction: column;
   overflow: hidden;
 }
@@ -23,8 +24,9 @@
 .heading {
   flex: 1;
   margin: 0;
-  font: 400 21px/1 var(--font-serif);
-  letter-spacing: -0.01em;
+  font: var(--title-style) var(--title-weight) calc(21px * var(--title-scale))/1 var(--font-title);
+  letter-spacing: calc(-0.01em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
 }
 
 .scoped {
@@ -52,7 +54,7 @@
   border-radius: 50%;
   background: var(--on);
   color: var(--ink-2);
-  font: 400 14px/1 var(--font-sans);
+  font: 400 14px/1 var(--font-body);
   cursor: pointer;
 }
 
@@ -68,7 +70,7 @@
   width: 28px;
   height: 28px;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--radius-scale));
   background: none;
   color: var(--ink-2);
   cursor: pointer;
@@ -126,19 +128,20 @@
     padding 0.34s var(--ease-out);
 }
 
-/* The title row's middle level with the buttons', which sit as far from the window's top as from its side. */
+/* The title row's middle level with the buttons', which sit as far from the window's top as from its side.
+   The window buttons are where they are; the 12px is the window padding these were set for. */
 @media (min-width: 760px) {
   :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
-    padding-top: 2px;
+    padding-top: calc(14px - var(--app-padding));
   }
 }
 
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden {
-  width: 366px;
+  width: calc(378px - var(--app-padding));
 }
 
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden .titleRow {
-  padding-left: 66px;
+  padding-left: calc(78px - var(--app-padding));
 }
 
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .showTags {
@@ -188,7 +191,7 @@
 .newNote {
   height: 32px;
   padding: 0 11px 0 9px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   font-size: 12.5px;
   gap: 6px;
 }
@@ -214,7 +217,7 @@
 .searchInput {
   width: 100%;
   height: 32px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   border: 1px solid var(--hair);
   background: var(--field);
   padding: 0 28px 0 31px;
@@ -230,7 +233,7 @@
 .searchInput:focus-visible {
   outline: none;
   border-color: var(--accent-deep);
-  box-shadow: 0 0 0 3px var(--focus);
+  box-shadow: var(--focus-ring);
 }
 
 .clear {
@@ -263,7 +266,7 @@
 .groupLabel {
   margin: 0;
   padding: 10px 11px 5px;
-  font: 600 12px/1 var(--font-sans);
+  font: 600 12px/1 var(--font-body);
   color: var(--ink-3);
 }
 
@@ -289,7 +292,7 @@
   flex-direction: column;
   gap: 2px;
   padding: 9px 11px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   color: var(--ink);
   text-decoration: none;
   transition: background 0.12s;
@@ -364,7 +367,7 @@
 .rowPreview mark {
   background: color-mix(in srgb, var(--accent) 45%, transparent);
   color: inherit;
-  border-radius: 3px;
+  border-radius: calc(3px * var(--radius-scale));
   padding: 0 1px;
 }
 
@@ -379,7 +382,9 @@
 }
 
 .messageTitle {
-  font: 400 21px var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(21px * var(--title-scale)) var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
   color: var(--ink);
 }
 
@@ -409,7 +414,7 @@
   width: 44px;
   height: 44px;
   border: 0;
-  border-radius: 14px;
+  border-radius: calc(14px * var(--radius-scale));
   background: var(--accent);
   color: var(--on-accent);
   display: flex;
@@ -430,7 +435,7 @@
   }
 
   .heading {
-    font-size: 30px;
+    font-size: calc(30px * var(--title-scale));
   }
 
   .back {

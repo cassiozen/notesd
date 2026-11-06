@@ -14,7 +14,7 @@ body {
   margin: 0;
   background: var(--bg);
   color: var(--ink);
-  font-family: var(--font-sans);
+  font-family: var(--font-body);
   font-size: 16px;
   line-height: 1.55;
   font-variant-numeric: tabular-nums;
@@ -148,4 +148,22 @@ code {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Switching themes (theme.ts): the new one is uncovered by a circle growing from the picked card. */
+@keyframes theme-wipe {
+  from {
+    clip-path: circle(0 at var(--wipe-x) var(--wipe-y));
+  }
+  to {
+    clip-path: circle(150vmax at var(--wipe-x) var(--wipe-y));
+  }
+}
+
+:root[data-switching]::view-transition-old(root) {
+  animation: none;
+}
+
+:root[data-switching]::view-transition-new(root) {
+  animation: theme-wipe 0.7s var(--ease-out);
 }

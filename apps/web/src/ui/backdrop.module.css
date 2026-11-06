@@ -1,3 +1,5 @@
+/* The style's wash (shared/themes): a blurred glow behind the window, transparent for styles
+   without one. */
 .backdrop {
   position: fixed;
   inset: 0;
@@ -13,7 +15,6 @@
   left: -160px;
   top: -200px;
   border-radius: 50%;
-  background: var(--blob-1);
-  opacity: var(--blob-opacity);
+  background: var(--wash);
   filter: blur(100px);
 }

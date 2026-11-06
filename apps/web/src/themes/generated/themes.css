@@ -1,0 +1,746 @@
+/* Generated from shared/themes by shared/themes/generate.ts. Change the JSON there and run `mise run themes`. */
+
+/* instrument-serif-latin-ext-400-normal */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-ext-400-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-ext-400-normal.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* instrument-serif-latin-400-normal */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* instrument-serif-latin-ext-400-italic */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-ext-400-italic.woff2) format('woff2'), url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-ext-400-italic.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* instrument-serif-latin-400-italic */
+@font-face {
+  font-family: 'Instrument Serif';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff2) format('woff2'), url(../../../node_modules/@fontsource/instrument-serif/files/instrument-serif-latin-400-italic.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* shippori-mincho-latin-ext-400-normal */
+@font-face {
+  font-family: 'Shippori Mincho';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-ext-400-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-ext-400-normal.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* shippori-mincho-latin-400-normal */
+@font-face {
+  font-family: 'Shippori Mincho';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-400-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-400-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* shippori-mincho-latin-ext-500-normal */
+@font-face {
+  font-family: 'Shippori Mincho';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-ext-500-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-ext-500-normal.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* shippori-mincho-latin-500-normal */
+@font-face {
+  font-family: 'Shippori Mincho';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-500-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/shippori-mincho/files/shippori-mincho-latin-500-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* playfair-latin-ext-standard-normal */
+@font-face {
+  font-family: 'Playfair Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  font-stretch: 87.5% 112.5%;
+  src: url(../../../node_modules/@fontsource-variable/playfair/files/playfair-latin-ext-standard-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* playfair-latin-standard-normal */
+@font-face {
+  font-family: 'Playfair Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 300 900;
+  font-stretch: 87.5% 112.5%;
+  src: url(../../../node_modules/@fontsource-variable/playfair/files/playfair-latin-standard-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* playfair-latin-ext-standard-italic */
+@font-face {
+  font-family: 'Playfair Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 300 900;
+  font-stretch: 87.5% 112.5%;
+  src: url(../../../node_modules/@fontsource-variable/playfair/files/playfair-latin-ext-standard-italic.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* playfair-latin-standard-italic */
+@font-face {
+  font-family: 'Playfair Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 300 900;
+  font-stretch: 87.5% 112.5%;
+  src: url(../../../node_modules/@fontsource-variable/playfair/files/playfair-latin-standard-italic.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* nunito-sans-latin-ext-wght-normal */
+@font-face {
+  font-family: 'Nunito Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url(../../../node_modules/@fontsource-variable/nunito-sans/files/nunito-sans-latin-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* nunito-sans-latin-wght-normal */
+@font-face {
+  font-family: 'Nunito Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url(../../../node_modules/@fontsource-variable/nunito-sans/files/nunito-sans-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* nunito-sans-latin-ext-wght-italic */
+@font-face {
+  font-family: 'Nunito Sans Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url(../../../node_modules/@fontsource-variable/nunito-sans/files/nunito-sans-latin-ext-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* nunito-sans-latin-wght-italic */
+@font-face {
+  font-family: 'Nunito Sans Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 200 1000;
+  src: url(../../../node_modules/@fontsource-variable/nunito-sans/files/nunito-sans-latin-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* instrument-sans-latin-ext-wght-normal */
+@font-face {
+  font-family: 'Instrument Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url(../../../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* instrument-sans-latin-wght-normal */
+@font-face {
+  font-family: 'Instrument Sans Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url(../../../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* instrument-sans-latin-ext-wght-italic */
+@font-face {
+  font-family: 'Instrument Sans Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url(../../../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-ext-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* instrument-sans-latin-wght-italic */
+@font-face {
+  font-family: 'Instrument Sans Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 400 700;
+  src: url(../../../node_modules/@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* zen-kaku-gothic-new-latin-ext-400-normal */
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-ext-400-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-ext-400-normal.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* zen-kaku-gothic-new-latin-400-normal */
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-400-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-400-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* zen-kaku-gothic-new-latin-ext-500-normal */
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-ext-500-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-ext-500-normal.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* zen-kaku-gothic-new-latin-500-normal */
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-500-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-500-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* zen-kaku-gothic-new-latin-ext-700-normal */
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-ext-700-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-ext-700-normal.woff) format('woff');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C4,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* zen-kaku-gothic-new-latin-700-normal */
+@font-face {
+  font-family: 'Zen Kaku Gothic New';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 700;
+  src: url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-700-normal.woff2) format('woff2'), url(../../../node_modules/@fontsource/zen-kaku-gothic-new/files/zen-kaku-gothic-new-latin-700-normal.woff) format('woff');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* hanken-grotesk-latin-ext-wght-normal */
+@font-face {
+  font-family: 'Hanken Grotesk Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../../../node_modules/@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-ext-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* hanken-grotesk-latin-wght-normal */
+@font-face {
+  font-family: 'Hanken Grotesk Variable';
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../../../node_modules/@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-normal.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* hanken-grotesk-latin-ext-wght-italic */
+@font-face {
+  font-family: 'Hanken Grotesk Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../../../node_modules/@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-ext-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF;
+}
+
+/* hanken-grotesk-latin-wght-italic */
+@font-face {
+  font-family: 'Hanken Grotesk Variable';
+  font-style: italic;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url(../../../node_modules/@fontsource-variable/hanken-grotesk/files/hanken-grotesk-latin-wght-italic.woff2) format('woff2-variations');
+  unicode-range: U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD;
+}
+
+/* A narrow display serif, the one the size rules were written for. */
+[data-title-font='instrument-serif'] {
+  --font-title: 'Instrument Serif', Georgia, serif;
+  --title-style: normal;
+  --title-weight: 400;
+  --quote-weight: 400;
+  --quote-style: italic;
+  --title-axes: normal;
+  --title-scale: 1;
+  --title-tracking: 0em;
+}
+
+/* The Latin of a Japanese Mincho: calm, sharp-wedged serifs. It has no italic, so quotes stay roman, as Japanese typesetting sets them, rather than a slanted fake. */
+[data-title-font='shippori-mincho'] {
+  --font-title: 'Shippori Mincho', Georgia, serif;
+  --title-style: normal;
+  --title-weight: 500;
+  --quote-weight: 400;
+  --quote-style: normal;
+  --title-axes: normal;
+  --title-scale: 0.9;
+  --title-tracking: 0em;
+}
+
+/* Playfair 2, narrowed: a Didone with optical sizes, so each size gets its own cut. Titles get full black-and-white contrast; small headings get sturdier strokes that hold on a screen's pixels. */
+[data-title-font='playfair'] {
+  --font-title: 'Playfair Variable', Didot, serif;
+  --title-style: normal;
+  --title-weight: 400;
+  --quote-weight: 400;
+  --quote-style: italic;
+  --title-axes: 'wdth' 88;
+  --title-scale: 1;
+  --title-tracking: 0em;
+}
+
+/* The text face, heavy, so headings and text read as one voice, as in a writing app whose headings are only bigger, bolder text. */
+[data-title-font='nunito-sans-bold'] {
+  --font-title: 'Nunito Sans Variable', system-ui, sans-serif;
+  --title-style: normal;
+  --title-weight: 750;
+  --quote-weight: 400;
+  --quote-style: italic;
+  --title-axes: normal;
+  --title-scale: 0.84;
+  --title-tracking: -0.012em;
+}
+
+[data-body-font='instrument-sans'] {
+  --font-body: 'Instrument Sans Variable', system-ui, sans-serif;
+}
+
+/* The Latin of a Japanese gothic: plain, even, a little wider-set than Western grotesques. No italic. */
+[data-body-font='zen-kaku-gothic'] {
+  --font-body: 'Zen Kaku Gothic New', system-ui, sans-serif;
+}
+
+[data-body-font='hanken-grotesk'] {
+  --font-body: 'Hanken Grotesk Variable', system-ui, sans-serif;
+}
+
+[data-body-font='nunito-sans'] {
+  --font-body: 'Nunito Sans Variable', system-ui, sans-serif;
+}
+
+/* Warm afternoon light on paper: near-white stock, warm graphite ink, one amber accent. At night, a cool slate with the same amber. */
+[data-palette='amber'] {
+  --bg: light-dark(oklch(0.965 0.0035 80), oklch(0.19 0.005 250));
+  --paper: light-dark(oklch(0.988 0.002 80), oklch(0.225 0.005 250));
+  --ink: light-dark(oklch(0.24 0.006 60), oklch(0.94 0.004 250));
+  --ink-2: light-dark(oklch(0.42 0.006 60), oklch(0.77 0.005 250));
+  --ink-3: light-dark(oklch(0.5 0.006 60), oklch(0.67 0.005 250));
+  --scrim: light-dark(rgb(236 234 230 / 0.42), rgb(11 13 14 / 0.5));
+  --surface: light-dark(rgb(254 253 252), rgb(45 47 49));
+  --line: light-dark(rgb(45 40 35), rgb(255 255 255));
+  --shade: light-dark(rgb(48 40 33), rgb(0 0 0));
+  --blob-1: light-dark(oklch(0.895 0.07 82), oklch(0.42 0.065 75));
+  --accent: oklch(0.8 0.14 78);
+  --accent-deep: oklch(0.72 0.15 72);
+  --on-accent: oklch(0.22 0.012 60);
+  --check-ink: oklch(0.25 0.012 60);
+  --tint: light-dark(oklch(0.62 0.15 70), oklch(0.82 0.13 80));
+  --link: light-dark(oklch(0.48 0.11 65), oklch(0.82 0.12 78));
+  --focus: oklch(0.72 0.15 72 / 0.55);
+  --solid: light-dark(oklch(0.25 0.006 60), oklch(0.93 0.004 250));
+  --on-solid: light-dark(oklch(0.98 0.0025 80), oklch(0.2 0.005 250));
+  --danger: light-dark(oklch(0.5 0.16 27), oklch(0.74 0.15 27));
+  --danger-bg: light-dark(oklch(0.6 0.17 27 / 0.1), oklch(0.6 0.17 27 / 0.16));
+  --good: light-dark(oklch(0.36 0.08 155), oklch(0.85 0.09 155));
+  --good-bg: light-dark(oklch(0.9 0.06 155 / 0.75), oklch(0.4 0.07 155 / 0.5));
+  --err-bg: light-dark(oklch(0.95 0.03 30 / 0.85), oklch(0.32 0.06 30 / 0.7));
+  --err-edge: light-dark(oklch(0.88 0.06 30), oklch(0.42 0.08 30));
+  --err-ink: light-dark(oklch(0.4 0.11 30), oklch(0.88 0.06 30));
+  --warn-bg: light-dark(oklch(0.95 0.04 65 / 0.88), oklch(0.33 0.05 60 / 0.75));
+  --warn-edge: light-dark(oklch(0.87 0.07 62), oklch(0.45 0.07 60));
+  --warn-ink: light-dark(oklch(0.38 0.08 55), oklch(0.9 0.06 70));
+  --status-saved: oklch(0.68 0.13 150);
+  --status-unsaved: oklch(0.66 0.01 70);
+  --status-saving: oklch(0.76 0.15 75);
+  --status-failed: oklch(0.62 0.19 27);
+  --status-conflict: oklch(0.68 0.16 45);
+  --code: light-dark(oklch(0.25 0.006 60 / 0.93), oklch(0.13 0.004 250 / 0.85));
+  --code-ink: oklch(0.87 0.01 80);
+  --code-dim: oklch(0.64 0.01 80);
+  --syntax-keyword: oklch(0.78 0.12 300);
+  --syntax-string: oklch(0.8 0.12 145);
+  --syntax-number: oklch(0.8 0.13 60);
+  --syntax-title: oklch(0.8 0.1 230);
+  --syntax-meta: oklch(0.8 0.1 20);
+  --syntax-deletion: oklch(0.72 0.15 27);
+}
+
+/* Tokyo, long after midnight: blue-black rooms, soft lavender-grey ink, and one light, the pink of a sakura lantern. Its day side is the hour before dawn, pale and cool, the pink a deep rose. Code keeps the editor theme it comes from. */
+[data-palette='nocturne'] {
+  --bg: light-dark(#e8e9ef, #13141b);
+  --paper: light-dark(#f6f6f9, #191a24);
+  --ink: light-dark(#262a45, #d0d5ea);
+  --ink-2: light-dark(#4a4f70, #a3abcb);
+  --ink-3: light-dark(#5d6286, #7c84ab);
+  --scrim: light-dark(rgb(225 227 236 / 0.5), rgb(8 9 14 / 0.55));
+  --surface: light-dark(#fbfbfd, #1f2130);
+  --line: light-dark(rgb(38 42 69), rgb(169 177 214));
+  --shade: light-dark(rgb(30 36 80), rgb(0 0 4));
+  --blob-1: light-dark(#c9d1ef, #283163);
+  --accent: light-dark(#b8336f, #f0a3c6);
+  --accent-deep: light-dark(#962a5b, #df88b1);
+  --on-accent: light-dark(#ffffff, #12131b);
+  --tint: light-dark(#b8336f, #f2adcc);
+  --link: light-dark(#a02c61, #f5b3d0);
+  --focus: light-dark(rgb(184 51 111 / 0.3), rgb(240 163 198 / 0.4));
+  --solid: light-dark(#262a45, #d0d5ea);
+  --on-solid: light-dark(#f6f6f9, #13141b);
+  --danger: light-dark(#b8324f, #ef8399);
+  --danger-bg: light-dark(rgb(184 50 79 / 0.09), rgb(239 131 153 / 0.13));
+  --good: light-dark(#3f6a1e, #a9d27c);
+  --good-bg: light-dark(rgb(120 170 80 / 0.22), rgb(158 206 106 / 0.14));
+  --err-bg: light-dark(rgb(250 228 234 / 0.9), rgb(70 30 45 / 0.7));
+  --err-edge: light-dark(#eab8c4, #5e3346);
+  --err-ink: light-dark(#8a2139, #ffc9d3);
+  --warn-bg: light-dark(rgb(248 236 214 / 0.9), rgb(70 55 30 / 0.7));
+  --warn-edge: light-dark(#e6c99a, #5e4a2a);
+  --warn-ink: light-dark(#6a4710, #f2d6a6);
+  --status-saved: light-dark(#5f9a35, #9ece6a);
+  --status-unsaved: light-dark(#9a9fba, #565f89);
+  --status-saving: light-dark(#b8336f, #f0a3c6);
+  --status-failed: light-dark(#c4304f, #f7768e);
+  --status-conflict: light-dark(#c07a20, #e0af68);
+  --code: light-dark(#1c1d29, #101118);
+  --code-ink: #c0caf5;
+  --code-dim: #6a72a0;
+  --syntax-keyword: #bb9af7;
+  --syntax-string: #9ece6a;
+  --syntax-number: #ff9e64;
+  --syntax-title: #7aa2f7;
+  --syntax-meta: #7dcfff;
+  --syntax-deletion: #f7768e;
+}
+
+/* Black ink on good paper, and nothing else: no hue anywhere but where something has gone wrong. The accent is the ink. At night, the closed notebook: black, with the page's white as ink. Code is in greys too. */
+[data-palette='carta'] {
+  --bg: light-dark(#ecebe7, #0a0a0a);
+  --paper: light-dark(#fbfaf7, #131313);
+  --ink: light-dark(#121212, #ecebe6);
+  --ink-2: light-dark(#3d3d3b, #b4b3ae);
+  --ink-3: light-dark(#5c5c59, #8f8e8a);
+  --scrim: light-dark(rgb(236 235 231 / 0.6), rgb(0 0 0 / 0.6));
+  --surface: light-dark(#fdfcfa, #1a1a1a);
+  --line: light-dark(rgb(18 18 18), rgb(236 235 230));
+  --shade: light-dark(rgb(20 18 15), rgb(0 0 0));
+  --blob-1: light-dark(#e2e1dc, #1c1c1c);
+  --accent: light-dark(#121212, #ecebe6);
+  --accent-deep: light-dark(#000000, #ffffff);
+  --on-accent: light-dark(#fbfaf7, #0a0a0a);
+  --tint: light-dark(#121212, #ecebe6);
+  --link: light-dark(#5c5c59, #a8a7a2);
+  --focus: light-dark(rgb(18 18 18 / 0.6), rgb(236 235 230 / 0.6));
+  --solid: light-dark(#121212, #ecebe6);
+  --on-solid: light-dark(#fbfaf7, #0a0a0a);
+  --danger: light-dark(#b3261e, #f2847a);
+  --danger-bg: light-dark(rgb(179 38 30 / 0.07), rgb(242 132 122 / 0.12));
+  --good: light-dark(#2f4a36, #b9cbbd);
+  --good-bg: light-dark(rgb(47 74 54 / 0.1), rgb(185 203 189 / 0.12));
+  --err-bg: light-dark(rgb(246 230 227 / 0.9), rgb(70 28 25 / 0.7));
+  --err-edge: light-dark(#e3bdb7, #5e302b);
+  --err-ink: light-dark(#7d1d17, #ffcfc9);
+  --warn-bg: light-dark(rgb(240 236 226 / 0.9), rgb(50 46 36 / 0.8));
+  --warn-edge: light-dark(#d8d0bc, #55503f);
+  --warn-ink: light-dark(#4a4430, #ece4cc);
+  --status-saved: light-dark(#9a9a96, #6e6d6a);
+  --status-unsaved: light-dark(#cfcfcb, #3a3a38);
+  --status-saving: light-dark(#121212, #ecebe6);
+  --status-failed: #c62d22;
+  --status-conflict: light-dark(#7a6a3a, #c9b47a);
+  --code: light-dark(#151515, #050505);
+  --code-ink: #e4e3de;
+  --code-dim: #858480;
+  --syntax-keyword: #ffffff;
+  --syntax-string: #bdbcb7;
+  --syntax-number: #ffffff;
+  --syntax-title: #f4f3ee;
+  --syntax-meta: #a6a5a0;
+  --syntax-deletion: #f2847a;
+}
+
+/* Warm graphite and white, and one honey mark: it marks what you act on (the button, the caret, a ticked task) and nothing else. The sidebar is the graphite in either mode. */
+[data-palette='den'] {
+  --bg: light-dark(#f6f6f5, #222427);
+  --paper: light-dark(#ffffff, #2a2c30);
+  --ink: light-dark(#2b2d30, #dedede);
+  --ink-2: light-dark(#53565b, #b0b2b5);
+  --ink-3: light-dark(#66696e, #919397);
+  --scrim: light-dark(rgb(246 246 245 / 0.82), rgb(18 19 21 / 0.75));
+  --sidebar: light-dark(#ececeb, #25272a);
+  --surface: light-dark(#ffffff, #303236);
+  --line: light-dark(rgb(43 45 48), rgb(222 222 222));
+  --shade: light-dark(rgb(30 30 32), rgb(0 0 0));
+  --blob-1: light-dark(#ececeb, #2a2c30);
+  --accent: light-dark(#c8962f, #d9a94f);
+  --accent-deep: light-dark(#a87a1f, #c2913a);
+  --on-accent: light-dark(#211c12, #1a1b1d);
+  --tint: light-dark(#b2842a, #dcae58);
+  --link: light-dark(#8a6414, #e2b766);
+  --focus: light-dark(rgb(200 150 47 / 0.35), rgb(217 169 79 / 0.4));
+  --solid: light-dark(#2b2d30, #dedede);
+  --on-solid: light-dark(#ffffff, #1c1d20);
+  --danger: light-dark(#b42318, #f2847a);
+  --danger-bg: light-dark(rgb(180 35 24 / 0.07), rgb(242 132 122 / 0.12));
+  --good: light-dark(#2f6b3a, #9fd8a8);
+  --good-bg: light-dark(rgb(47 107 58 / 0.1), rgb(159 216 168 / 0.12));
+  --err-bg: light-dark(rgb(252 232 230 / 0.95), rgb(80 30 28 / 0.8));
+  --err-edge: light-dark(#f0c0bb, #6e3530);
+  --err-ink: light-dark(#86201a, #ffd0c8);
+  --warn-bg: light-dark(rgb(252 242 220 / 0.95), rgb(75 60 25 / 0.8));
+  --warn-edge: light-dark(#ead39c, #6e5a28);
+  --warn-ink: light-dark(#5e4500, #f2df9c);
+  --status-saved: light-dark(#4f9a5c, #7fcf8c);
+  --status-unsaved: light-dark(#b5b7ba, #5a5c60);
+  --status-saving: light-dark(#c8962f, #d9a94f);
+  --status-failed: #d1403d;
+  --status-conflict: #d98a1c;
+  --code: light-dark(#2f3237, #1c1d20);
+  --code-ink: #e3e3e3;
+  --code-dim: #8e9196;
+  --syntax-keyword: #ff8a85;
+  --syntax-string: #a8d68f;
+  --syntax-number: #f4b860;
+  --syntax-title: #8fbcf0;
+  --syntax-meta: #c7a3f0;
+  --syntax-deletion: #ff8a85;
+}
+
+/* Frosted panels over a warm glow, soft deep shadows, springy motion. */
+[data-style='glass'] {
+  --radius-scale: 1;
+  --app-gap: 12px;
+  --app-padding: 12px;
+  --pane-radius: 24px;
+  --pane-border: 1px solid var(--edge);
+  --pane-shadow: var(--inset),
+    var(--shadow-lg);
+  --column-rule: 0 solid transparent;
+  --glass-hi: color-mix(in srgb, var(--surface) 88%, transparent);
+  --blur: blur(18px) saturate(1.3);
+  --blur-pop: blur(24px) saturate(1.4);
+  --blur-dialog: blur(24px) saturate(1.3);
+  --blur-scrim: blur(10px);
+  --edge: light-dark(rgb(255 255 255 / 0.85), rgb(255 255 255 / 0.08));
+  --inset: inset 0 1px 0 light-dark(rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.06));
+  --field: light-dark(rgb(255 255 255 / 0.78), rgb(255 255 255 / 0.06));
+  --chip: light-dark(rgb(255 255 255 / 0.62), rgb(255 255 255 / 0.07));
+  --hair: light-dark(color-mix(in srgb, var(--line) 9%, transparent), color-mix(in srgb, var(--line) 8%, transparent));
+  --hair-strong: color-mix(in srgb, var(--line) 16%, transparent);
+  --hover: color-mix(in srgb, var(--line) 7%, transparent);
+  --on: light-dark(color-mix(in srgb, var(--line) 11%, transparent), color-mix(in srgb, var(--line) 13%, transparent));
+  --shadow: 0 12px 32px -18px light-dark(color-mix(in srgb, var(--shade) 22%, transparent), transparent),
+    0 14px 34px -18px light-dark(transparent, color-mix(in srgb, var(--shade) 65%, transparent));
+  --shadow-lg: 0 40px 90px -34px light-dark(color-mix(in srgb, var(--shade) 35%, transparent), transparent),
+    0 40px 90px -30px light-dark(transparent, color-mix(in srgb, var(--shade) 75%, transparent));
+  --shadow-pop: 0 24px 50px -16px rgb(0 0 0 / 0.35);
+  --shadow-bar: 0 24px 50px -16px rgb(0 0 0 / 0.3);
+  --shadow-toast: 0 16px 40px -12px rgb(0 0 0 / 0.4);
+  --shadow-thumb: 0 1px 3px rgb(0 0 0 / 0.12);
+  --wash: light-dark(color-mix(in srgb, var(--blob-1) 18%, transparent), color-mix(in srgb, var(--blob-1) 20%, transparent));
+  --spring: linear(0, 0.084, 0.266, 0.471, 0.657, 0.805, 0.911, 0.979, 1.017, 1.035, 1.038, 1.034, 1.027, 1.019, 1.012, 1.007, 1.003, 1);
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --focus-ring: 0 0 0 3px var(--focus);
+  --check-radius: 50%;
+  --check-mark: inset 0 0 0 3.5px var(--accent), inset 0 0 0 8px var(--check-ink);
+  --tag-bg: color-mix(in srgb, var(--accent) 30%, transparent);
+  --tag-ink: currentColor;
+  --tag-radius: 6px;
+  --tag-padding: 0.05em 0.3em;
+  --done-decoration: none;
+}
+
+/* Light in a dark room, flat: matte surfaces told apart only by how much light they hold, and a hairline of light along each panel's top edge. No glows, no ambient shadows; only what floats over the page (menus, the find bar, toasts) keeps one. Unhurried motion. */
+[data-style='lumen'] {
+  --radius-scale: 0.86;
+  --app-gap: 12px;
+  --app-padding: 12px;
+  --pane-radius: 20.64px;
+  --pane-border: 1px solid var(--edge);
+  --pane-shadow: var(--inset);
+  --column-rule: 0 solid transparent;
+  --glass-hi: color-mix(in srgb, var(--surface) 84%, transparent);
+  --blur: blur(28px) saturate(1.15);
+  --blur-pop: blur(32px) saturate(1.2);
+  --blur-dialog: blur(32px) saturate(1.2);
+  --blur-scrim: blur(14px);
+  --edge: light-dark(color-mix(in srgb, var(--line) 7%, transparent), color-mix(in srgb, var(--line) 6%, transparent));
+  --inset: inset 0 1px 0 light-dark(rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.055));
+  --field: light-dark(rgb(255 255 255 / 0.7), color-mix(in srgb, var(--line) 5%, transparent));
+  --chip: light-dark(rgb(255 255 255 / 0.55), color-mix(in srgb, var(--line) 6%, transparent));
+  --hair: color-mix(in srgb, var(--line) 8%, transparent);
+  --hair-strong: color-mix(in srgb, var(--line) 15%, transparent);
+  --hover: color-mix(in srgb, var(--line) 6%, transparent);
+  --on: color-mix(in srgb, var(--line) 10%, transparent);
+  --shadow: 0 0 transparent;
+  --shadow-lg: 0 0 transparent;
+  --shadow-pop: 0 28px 60px -20px light-dark(color-mix(in srgb, var(--shade) 30%, transparent), color-mix(in srgb, var(--shade) 75%, transparent));
+  --shadow-bar: var(--shadow-pop);
+  --shadow-toast: var(--shadow-pop);
+  --shadow-thumb: inset 0 1px 0 light-dark(rgb(255 255 255 / 0.9), rgb(255 255 255 / 0.07)),
+    0 1px 3px light-dark(color-mix(in srgb, var(--shade) 16%, transparent), color-mix(in srgb, var(--shade) 70%, transparent));
+  --wash: transparent;
+  --spring: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --focus-ring: 0 0 0 3px var(--focus);
+  --check-radius: 50%;
+  --check-mark: inset 0 0 0 3.5px var(--accent), inset 0 0 0 8px var(--check-ink);
+  --tag-bg: color-mix(in srgb, var(--accent) 16%, transparent);
+  --tag-ink: currentColor;
+  --tag-radius: 6px;
+  --tag-padding: 0.05em 0.3em;
+  --done-decoration: none;
+  --selection: color-mix(in srgb, var(--accent) 30%, transparent);
+}
+
+:root[data-style='lumen'] ::selection {
+  background: var(--selection);
+}
+
+/* A sheet lying on a desk: opaque, matte, crisp hairline edges, the shortest shadow that still lifts it, small corners. Nothing blurs or bounces, except behind a sheet laid over the app, so it doesn't read as text on text. Tags are cross-references in the link's ink rather than chips. */
+[data-style='paper'] {
+  --radius-scale: 0.45;
+  --app-gap: 12px;
+  --app-padding: 12px;
+  --pane-radius: 10.8px;
+  --pane-border: 1px solid var(--edge);
+  --pane-shadow: var(--inset),
+    var(--shadow-lg);
+  --column-rule: 0 solid transparent;
+  --glass-hi: var(--surface);
+  --blur: none;
+  --blur-pop: none;
+  --blur-dialog: none;
+  --blur-scrim: blur(8px);
+  --edge: color-mix(in srgb, var(--line) 13%, transparent);
+  --inset: 0 0 transparent;
+  --field: var(--paper);
+  --chip: color-mix(in srgb, var(--line) 4%, transparent);
+  --hair: color-mix(in srgb, var(--line) 10%, transparent);
+  --hair-strong: color-mix(in srgb, var(--line) 18%, transparent);
+  --hover: color-mix(in srgb, var(--line) 5%, transparent);
+  --on: color-mix(in srgb, var(--line) 8%, transparent);
+  --shadow: 0 1px 1px color-mix(in srgb, var(--shade) 6%, transparent),
+    0 8px 20px -14px light-dark(color-mix(in srgb, var(--shade) 28%, transparent), color-mix(in srgb, var(--shade) 60%, transparent));
+  --shadow-lg: 0 1px 1px color-mix(in srgb, var(--shade) 7%, transparent),
+    0 14px 32px -22px light-dark(color-mix(in srgb, var(--shade) 32%, transparent), color-mix(in srgb, var(--shade) 70%, transparent));
+  --shadow-pop: 0 1px 2px color-mix(in srgb, var(--shade) 8%, transparent),
+    0 14px 28px -16px light-dark(color-mix(in srgb, var(--shade) 32%, transparent), color-mix(in srgb, var(--shade) 70%, transparent));
+  --shadow-bar: var(--shadow-pop);
+  --shadow-toast: var(--shadow-pop);
+  --shadow-thumb: 0 0 0 1px var(--hair),
+    0 1px 1px color-mix(in srgb, var(--shade) 10%, transparent);
+  --wash: transparent;
+  --spring: cubic-bezier(0.25, 0.8, 0.3, 1);
+  --ease-out: cubic-bezier(0.25, 0.8, 0.3, 1);
+  --focus-ring: 0 0 0 2px var(--focus);
+  --check-radius: 4px;
+  --check-mark: 0 0 transparent;
+  --tag-bg: transparent;
+  --tag-ink: var(--link);
+  --tag-radius: 0;
+  --tag-padding: 0;
+  --done-decoration: none;
+  --selection: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+:root[data-style='paper'] ::selection {
+  background: var(--selection);
+}
+
+/* A desktop app's own window: columns edge to edge, split by hairlines, the note on a square sheet with no shadow. Small corners, menus with the system's frosted look, quick plain motion. Done tasks are struck through. */
+[data-style='flush'] {
+  --radius-scale: 0.5;
+  --app-gap: 0px;
+  --app-padding: 0px;
+  --pane-radius: 0px;
+  --pane-border: 0 solid transparent;
+  --pane-shadow: 0 0 transparent;
+  --column-rule: 1px solid var(--hair);
+  --glass-hi: color-mix(in srgb, var(--surface) 82%, transparent);
+  --blur: blur(30px) saturate(1.8);
+  --blur-pop: blur(30px) saturate(1.8);
+  --blur-dialog: blur(30px) saturate(1.8);
+  --blur-scrim: blur(12px);
+  --edge: color-mix(in srgb, var(--line) 12%, transparent);
+  --inset: 0 0 transparent;
+  --field: color-mix(in srgb, var(--line) 6%, transparent);
+  --chip: color-mix(in srgb, var(--line) 6%, transparent);
+  --hair: color-mix(in srgb, var(--line) 10%, transparent);
+  --hair-strong: color-mix(in srgb, var(--line) 18%, transparent);
+  --hover: color-mix(in srgb, var(--line) 5%, transparent);
+  --on: color-mix(in srgb, var(--line) 9%, transparent);
+  --shadow: 0 0 transparent;
+  --shadow-lg: 0 0 transparent;
+  --shadow-pop: 0 0 0 0.5px color-mix(in srgb, var(--line) 14%, transparent),
+    0 10px 30px -8px light-dark(color-mix(in srgb, var(--shade) 25%, transparent), color-mix(in srgb, var(--shade) 65%, transparent));
+  --shadow-bar: var(--shadow-pop);
+  --shadow-toast: var(--shadow-pop);
+  --shadow-thumb: 0 0 0 0.5px color-mix(in srgb, var(--line) 12%, transparent),
+    0 1px 2px light-dark(color-mix(in srgb, var(--shade) 15%, transparent), color-mix(in srgb, var(--shade) 50%, transparent));
+  --wash: transparent;
+  --spring: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --ease-out: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --focus-ring: 0 0 0 3px var(--focus);
+  --check-radius: 50%;
+  --check-mark: 0 0 transparent;
+  --tag-bg: color-mix(in srgb, var(--line) 8%, transparent);
+  --tag-ink: currentColor;
+  --tag-radius: 4px;
+  --tag-padding: 0.05em 0.35em;
+  --done-decoration: line-through;
+  --selection: color-mix(in srgb, var(--accent) 25%, transparent);
+}
+
+:root[data-style='flush'] ::selection {
+  background: var(--selection);
+}

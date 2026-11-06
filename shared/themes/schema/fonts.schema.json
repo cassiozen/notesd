@@ -1,0 +1,297 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "fonts.schema.json",
+  "title": "notesd theme fonts",
+  "description": "The font library: families (the files) and the roles a theme picks from: a title face and a body face, which the whole UI is set in.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "sources",
+    "subsets",
+    "families",
+    "title",
+    "body"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "sources": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repository",
+        "commit"
+      ],
+      "properties": {
+        "repository": {
+          "type": "string"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40}$"
+        }
+      }
+    },
+    "subsets": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "latin",
+          "latin-ext"
+        ]
+      },
+      "minItems": 1
+    },
+    "families": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/family"
+      }
+    },
+    "title": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/title"
+      }
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/body"
+      }
+    }
+  },
+  "$defs": {
+    "family": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "css",
+        "fallback",
+        "web",
+        "native"
+      ],
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "css": {
+          "type": "string",
+          "description": "The family's CSS name, as its fontsource package registers it."
+        },
+        "fallback": {
+          "type": "string"
+        },
+        "opticalSize": {
+          "const": "auto",
+          "description": "Has an opsz axis, set to the font size: browsers do it themselves, native apps must."
+        },
+        "web": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "package",
+            "css"
+          ],
+          "properties": {
+            "package": {
+              "type": "string"
+            },
+            "css": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "minItems": 1,
+              "description": "The package's stylesheets; only the subsets' @font-face rules are kept."
+            }
+          }
+        },
+        "native": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "license",
+            "faces"
+          ],
+          "properties": {
+            "license": {
+              "type": "string"
+            },
+            "source": {
+              "type": "string",
+              "description": "The directory in the source repository; without one, the files are maintained by hand."
+            },
+            "faces": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/face"
+              },
+              "minItems": 1
+            }
+          }
+        }
+      }
+    },
+    "face": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ios",
+        "android",
+        "postscript",
+        "weight",
+        "style"
+      ],
+      "properties": {
+        "file": {
+          "type": "string",
+          "description": "The file in the source directory. Required when the family has a source (the loader checks it)."
+        },
+        "ios": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-]+\\.ttf$"
+        },
+        "android": {
+          "type": "string",
+          "pattern": "^[a-z0-9_]+$",
+          "description": "The res/font resource name."
+        },
+        "postscript": {
+          "type": "string",
+          "minLength": 1,
+          "description": "What iOS loads it by."
+        },
+        "weight": {
+          "oneOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          ],
+          "description": "One weight, or the range a variable font covers."
+        },
+        "style": {
+          "enum": [
+            "normal",
+            "italic"
+          ]
+        },
+        "limits": {
+          "type": "object",
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "number"
+                },
+                "minItems": 2,
+                "maxItems": 2
+              }
+            ]
+          },
+          "description": "Axes pinned (a number) or narrowed (a range) in the native files."
+        }
+      }
+    },
+    "title": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family",
+        "weight",
+        "style",
+        "axes",
+        "scale",
+        "tracking",
+        "quote"
+      ],
+      "properties": {
+        "family": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "weight": {
+          "type": "number"
+        },
+        "style": {
+          "enum": [
+            "normal",
+            "italic"
+          ]
+        },
+        "axes": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Variation axes for titles, e.g. {\"wdth\": 88}. Not opsz: that follows the size.",
+          "propertyNames": {
+            "not": {
+              "const": "opsz"
+            }
+          }
+        },
+        "scale": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "description": "Multiplies title sizes, which were written for Instrument Serif, a narrow face."
+        },
+        "tracking": {
+          "type": "number",
+          "description": "Letter spacing added to titles, in em."
+        },
+        "quote": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "weight",
+            "style"
+          ],
+          "properties": {
+            "weight": {
+              "type": "number"
+            },
+            "style": {
+              "enum": [
+                "normal",
+                "italic"
+              ]
+            }
+          },
+          "description": "Quotes are set in the title face, lighter."
+        }
+      }
+    },
+    "body": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "family"
+      ],
+      "properties": {
+        "family": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -16,12 +16,15 @@
     "lint": "oxlint --deny-warnings"
   },
   "dependencies": {
-    "@notes/sync-engine": "workspace:*",
-    "@fontsource-variable/atkinson-hyperlegible-next": "^5.3.0",
+    "@fontsource-variable/hanken-grotesk": "^5.3.0",
     "@fontsource-variable/instrument-sans": "^5.3.0",
     "@fontsource-variable/jetbrains-mono": "^5.3.0",
-    "@fontsource-variable/literata": "^5.3.0",
+    "@fontsource-variable/nunito-sans": "^5.3.0",
+    "@fontsource-variable/playfair": "^5.3.0",
     "@fontsource/instrument-serif": "^5.3.0",
+    "@fontsource/shippori-mincho": "^5.3.0",
+    "@fontsource/zen-kaku-gothic-new": "^5.3.1",
+    "@notes/sync-engine": "workspace:*",
     "@sqlite.org/sqlite-wasm": "3.53.4-build2",
     "@tiptap/core": "^3.31.4",
     "@tiptap/extension-blockquote": "^3.31.4",

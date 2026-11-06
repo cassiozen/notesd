@@ -6,9 +6,16 @@
 }
 
 .top h2 {
-  margin: 0;
-  font: 400 38px/1 var(--font-serif);
-  letter-spacing: -0.015em;
+  min-width: 0;
+  /* Clipped for the ellipsis: room for descenders below the 1.0 line, given back in the margin. */
+  padding: 0.15em 0;
+  margin: -0.15em 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: var(--title-style) var(--title-weight) calc(38px * var(--title-scale))/1 var(--font-title);
+  letter-spacing: calc(-0.015em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
 }
 
 .back {
@@ -32,7 +39,7 @@
   display: flex;
   flex-direction: column;
   padding: 8px;
-  border-radius: 22px;
+  border-radius: calc(22px * var(--radius-scale));
   border: 1px solid var(--edge);
   background: var(--paper);
   box-shadow: var(--inset), var(--shadow);
@@ -68,7 +75,7 @@
   gap: 10px;
   min-height: 38px;
   padding: 0 10px;
-  border-radius: 11px;
+  border-radius: calc(11px * var(--radius-scale));
   color: var(--ink);
   text-decoration: none;
 }
@@ -104,7 +111,9 @@
   place-items: center;
   background: var(--hover);
   border: 1px solid var(--edge);
-  font: 400 20px/1 var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(20px * var(--title-scale))/1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
   color: var(--ink);
 }
 
@@ -125,7 +134,7 @@
   flex: none;
   width: 26px;
   height: 26px;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--radius-scale));
   display: grid;
   place-items: center;
   background: var(--hover);
@@ -166,7 +175,9 @@
 .pageTitle {
   margin: 0;
   padding: 4px 6px 0;
-  font: 400 26px/1.1 var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(26px * var(--title-scale))/1.1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
 }
 
 .card {
@@ -309,14 +320,14 @@
   grid-template-columns: repeat(3, 1fr);
   gap: 4px;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: calc(14px * var(--radius-scale));
   background: var(--hover);
 }
 
 .segment {
   height: 40px;
   border: 0;
-  border-radius: 11px;
+  border-radius: calc(11px * var(--radius-scale));
   font-size: 14px;
   font-weight: 500;
   color: var(--ink);
@@ -326,101 +337,166 @@
 
 .segment[aria-checked='true'] {
   background: var(--glass-hi);
-  box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);
+  box-shadow: var(--shadow-thumb);
 }
 
-/* Font: a short note in the picked font, then one tile per font, each set in its own face. */
-.fontSample {
+/* Theme: one small window per theme. The preview carries the theme's attributes, so everything
+   inside it resolves in that theme's palette, fonts and style; the frame around it stays in the
+   app's, so the picked ring is the current theme's. */
+.themes {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px 14px;
+}
+
+.themeOption {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  padding: 16px 18px 18px;
-  border-radius: 14px;
-  border: 1px solid var(--hair);
-  background: var(--paper);
-}
-
-.fontSampleTitle {
-  font: 400 24px/1.15 var(--note-serif);
-  letter-spacing: -0.01em;
-  overflow-wrap: anywhere;
-}
-
-.fontSampleText {
-  font: 400 15px/1.55 var(--note-sans);
-  color: var(--ink-2);
-}
-
-.fontSampleFace {
-  margin-top: 4px;
-  font-size: 11.5px;
-  color: var(--ink-3);
-}
-
-.fontOptions {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-  padding: 4px;
-  border-radius: 14px;
-  background: var(--hover);
-}
-
-.fontOption {
-  min-width: 0;
-  height: 40px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border-radius: 11px;
+  gap: 2px;
   cursor: pointer;
-  transition:
-    background-color 0.15s var(--ease-out),
-    transform 0.15s var(--ease-out);
 }
 
-.fontOption:hover {
-  background: var(--hover);
+.previewFrame {
+  display: block;
+  margin-bottom: 8px;
+  padding: 3px;
+  border-radius: calc(17px * var(--radius-scale));
+  transition: box-shadow 0.15s var(--ease-out);
 }
 
-.fontOption:active {
-  transform: scale(0.97);
+.themeOption:hover .previewFrame {
+  box-shadow: inset 0 0 0 2px var(--hair-strong);
 }
 
-/* Like a segment, with a tinted edge: the fill alone is faint against the tray in dark mode. */
-.fontOption:has(:checked) {
-  background: var(--glass-hi);
-  box-shadow:
-    inset 0 0 0 1.5px var(--tint),
-    0 1px 3px rgb(0 0 0 / 0.12);
+.themeOption:has(:checked) .previewFrame {
+  box-shadow: inset 0 0 0 2px var(--tint);
 }
 
-/* The radio itself is hidden; its ring goes on the tile. */
-.fontOption:has(:focus-visible) {
+.themeOption:has(:focus-visible) .previewFrame {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }
 
-.fontGlyph {
-  font: 400 18px/1 var(--note-sans);
+.themeName {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.themeMood {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.preview {
+  position: relative;
+  isolation: isolate;
+  display: block;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  border-radius: calc(14px * var(--radius-scale));
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-body);
+}
+
+.previewWash {
+  position: absolute;
+  z-index: -1;
+  width: 90%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  filter: blur(24px);
+}
+
+.previewWash {
+  left: -35%;
+  top: -45%;
+  background: var(--wash);
+}
+
+/* Only for a theme with a sidebar option (tags-panel.module.css does the same to the real one). */
+.previewSide {
+  display: none;
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 9%;
+  background: var(--sidebar);
+  border-inline-end: var(--column-rule);
+}
+
+.preview:is([data-sidebar='tinted'], [data-sidebar='dark']) .previewSide {
+  display: block;
+}
+
+.preview[data-sidebar='dark'] .previewSide {
+  color-scheme: dark;
+}
+
+/* Bleeds off the bottom right, like a page slid onto the desk. */
+.previewSheet {
+  position: absolute;
+  inset: 16% -1px -1px 13%;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 0 0 14px;
+  border-top-left-radius: calc(12px * var(--radius-scale));
+  border: 1px solid var(--edge);
+  border-right: 0;
+  border-bottom: 0;
+  background: var(--paper);
+  box-shadow: var(--inset), var(--shadow-lg);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.previewTitle {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  font: var(--title-style) var(--title-weight) calc(20px * var(--title-scale))/1.1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
+}
+
+.previewCaret {
+  width: 1.5px;
+  height: 1.05em;
+  margin-left: 2px;
+  background: var(--tint);
+}
+
+.previewText {
+  font-size: 11.5px;
   color: var(--ink-2);
 }
 
-.fontName {
-  font-size: 14px;
-  font-weight: 500;
-  white-space: nowrap;
+.previewTag {
+  padding: 0 2px;
+  border-radius: var(--tag-radius);
+  background: var(--tag-bg);
+  color: var(--tag-ink);
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .fontOption {
-    transition: none;
-  }
+.previewTask {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--ink-3);
+}
 
-  .fontOption:active {
-    transform: none;
-  }
+.previewCheck {
+  flex: none;
+  /* The editor's checkbox, shrunk: its mark is drawn for 16px. */
+  width: 16px;
+  height: 16px;
+  margin: -3.5px;
+  transform: scale(0.56);
+  border-radius: var(--check-radius);
+  background: var(--accent);
+  box-shadow: var(--check-mark);
 }
 
 .form {
@@ -444,7 +520,7 @@
 .success {
   margin: 0;
   padding: 10px 14px;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--radius-scale));
   background: var(--good-bg);
   color: var(--good);
   font-size: 13.5px;
@@ -495,7 +571,7 @@
   width: 40px;
   height: 40px;
   flex: none;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--radius-scale));
   background: var(--chip);
   border: 1px solid var(--edge);
   display: flex;
@@ -525,7 +601,7 @@
   flex: none;
   height: 26px;
   padding: 0 10px;
-  border-radius: 999px;
+  border-radius: calc(999px * var(--radius-scale));
   background: var(--good-bg);
   color: var(--good);
   font-size: 12px;
@@ -566,7 +642,7 @@
 
 @media (max-width: 600px) {
   .top h2 {
-    font-size: 32px;
+    font-size: calc(32px * var(--title-scale));
   }
 
   .pair {
@@ -588,7 +664,9 @@
 
 .dialogTitle {
   margin: 0;
-  font: 400 30px/1.1 var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(30px * var(--title-scale))/1.1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
 }
 
 .dialogText {
@@ -622,7 +700,7 @@
   width: 40px;
   height: 40px;
   flex: none;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--radius-scale));
   display: grid;
   place-items: center;
   background: var(--ink);
@@ -634,7 +712,7 @@
   display: flex;
   gap: 12px;
   padding: 14px 16px;
-  border-radius: 16px;
+  border-radius: calc(16px * var(--radius-scale));
   border: 1px solid var(--hair);
   background: var(--paper);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.06);
@@ -649,7 +727,9 @@
   place-items: center;
   background: var(--accent);
   color: var(--ink);
-  font: 400 18px/1 var(--font-serif);
+  font: var(--title-style) var(--title-weight) calc(18px * var(--title-scale))/1 var(--font-title);
+  letter-spacing: var(--title-tracking);
+  font-variation-settings: var(--title-axes);
 }
 
 .inboxBody {

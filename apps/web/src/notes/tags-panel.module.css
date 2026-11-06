@@ -4,6 +4,7 @@
   width: 300px;
   min-width: 0;
   display: flex;
+  border-inline-end: var(--column-rule);
   /* Pinned to the trailing edge: as a docked panel narrows, its contents slide out rather than get cropped. */
   justify-content: flex-end;
   overflow: hidden;
@@ -16,6 +17,25 @@
   flex-direction: column;
   /* Here, not on the panel: the space menu keeps to the sidebar's full width while it narrows. */
   container-type: inline-size;
+}
+
+/* A theme's sidebar option (shared/themes), docked beside the list only: on a phone the sidebar is
+   a whole screen, and a dark one in light mode would just be the wrong mode. tinted: on its own
+   color; dark: the palette's dark side, as color-scheme makes every light-dark() inside resolve. */
+:global(:root[data-sidebar='tinted']) .docked,
+:global(:root[data-sidebar='dark']) .docked {
+  border-radius: var(--pane-radius);
+  background: var(--sidebar);
+  color: var(--ink);
+}
+
+:global(:root[data-sidebar='dark']) .docked {
+  color-scheme: dark;
+}
+
+/* In dark mode the window is dark too: the sidebar sinks a step below it to stay its own column. */
+:global(:root[data-mode='dark'][data-sidebar='dark']) .docked {
+  background: color-mix(in srgb, var(--sidebar) 80%, black);
 }
 
 /* Hidden by width, not by removal, so the list and the note glide over instead of jumping. */
@@ -34,7 +54,8 @@
 /* The negative margin gives back the gap the app keeps after it. */
 .collapsed {
   width: 0;
-  margin-inline-end: -12px;
+  margin-inline-end: calc(-1 * var(--app-gap));
+  border-inline-end-width: 0;
   transition-duration: 0.28s;
 }
 
@@ -69,10 +90,11 @@
   gap: 13px 0;
 }
 
-/* The row's middle level with the buttons', which sit as far from the window's top as from its side. */
+/* The row's middle level with the buttons', which sit as far from the window's top as from its side,
+   wherever the style puts the columns (Flush has no window padding). */
 @media (min-width: 760px) {
   :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
-    padding-top: 2px;
+    padding-top: calc(14px - var(--app-padding));
   }
 }
 
@@ -98,8 +120,9 @@
   min-width: 0;
   display: flex;
   margin: 0;
-  font: 400 21px/1 var(--font-serif);
-  letter-spacing: -0.01em;
+  font: var(--title-style) var(--title-weight) calc(21px * var(--title-scale))/1 var(--font-title);
+  letter-spacing: calc(-0.01em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
 }
 
 /* Lines up with the rows' labels, past the expander column. */
@@ -117,7 +140,7 @@
   place-items: center;
   width: 32px;
   height: 32px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   border: 1px solid var(--edge);
   background: var(--chip);
   color: var(--ink);
@@ -203,7 +226,7 @@
   height: 30px;
   padding: 0 9px 0 6px;
   border: 0;
-  border-radius: 8px;
+  border-radius: calc(8px * var(--radius-scale));
   background: none;
   font-size: 13px;
   color: var(--ink);
@@ -255,7 +278,7 @@
 
   /* As large as the list's title on a phone. */
   .title {
-    font-size: 30px;
+    font-size: calc(30px * var(--title-scale));
   }
 
   .tool {

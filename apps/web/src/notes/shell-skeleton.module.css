@@ -15,11 +15,11 @@
 .bar {
   display: block;
   height: 10px;
-  border-radius: 5px;
+  border-radius: calc(5px * var(--radius-scale));
   background: var(--on);
 }
 
 .tall {
   height: 28px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
 }
