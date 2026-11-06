@@ -102,7 +102,7 @@ func (s *Server) agentRuns(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	runs, next, err := u.Agent.Runs(r.Context(), agent.RunFilter{Space: q.Get("space"), Note: q.Get("note")},
-		int(min(limit, agent.MaxRunsPage)), q.Get("cursor"))
+		int(limit), q.Get("cursor"))
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

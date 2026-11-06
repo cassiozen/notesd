@@ -3,6 +3,7 @@ import type { Space, TagCount } from '../api/types'
 import { dragRegion } from '../desktop'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { useAgentConfigs } from './agent-config'
+import { loadLocal, saveLocal } from './local-storage'
 import { SpaceMenu } from './space-menu'
 import { DEFAULT_SPACE } from './spaces'
 import type { ListFilter } from './store'
@@ -35,24 +36,6 @@ const EXPANDED_KEY = 'notes.tags.expanded'
 
 const DEFAULT: Space = { id: DEFAULT_SPACE, name: 'Notes', icon: '', createdAt: 0, noteCount: 0 }
 
-// Per-browser conveniences: storage can be missing or throw (private windows).
-function load<T>(key: string, fallback: T): T {
-  try {
-    const raw = localStorage.getItem(key)
-    return raw === null ? fallback : (JSON.parse(raw) as T)
-  } catch {
-    return fallback
-  }
-}
-
-function save(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value))
-  } catch {
-    // Not remembered; nothing else depends on it.
-  }
-}
-
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
 export function TagsPanel({
   tags,
@@ -72,14 +55,14 @@ export function TagsPanel({
   const agents = useAgentConfigs()
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
-  const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
+  const [expanded, setExpanded] = useState(() => new Set(loadLocal<string[]>(EXPANDED_KEY, [])))
 
   const setNodeOpen = (key: string, on: boolean) => {
     const next = new Set(expanded)
     if (on) next.add(key)
     else next.delete(key)
     setExpanded(next)
-    save(EXPANDED_KEY, [...next])
+    saveLocal(EXPANDED_KEY, [...next])
   }
 
   const selected = !filter ? 'all' : 'tag' in filter ? `#${filter.tag}` : 'locked' in filter ? 'locked' : 'untagged'

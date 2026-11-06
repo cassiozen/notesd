@@ -31,7 +31,6 @@ const FAILURES: Record<string, string> = {
   provider: 'the AI provider failed',
   note_changed: 'the note kept changing',
   interrupted: 'the server stopped',
-  ai_not_set_up: 'AI was removed',
   queue_full: 'too many runs were waiting',
   unknown_trigger: 'this server doesn’t know the trigger',
 }

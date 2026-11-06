@@ -104,13 +104,20 @@ func (s *Store) Runs(ctx context.Context, f RunFilter, limit int, cursor string)
 			return nil, "", err
 		}
 	}
+	// Only the filters given, so SQLite can use their index.
+	where, args := "(r.created_at < ? OR (r.created_at = ? AND r.rowid < ?))", []any{at, at, rowid}
+	if f.Space != "" {
+		where, args = where+" AND r.space_id = ?", append(args, f.Space)
+	}
+	if f.Note != "" {
+		where, args = where+" AND r.note_id = ?", append(args, f.Note)
+	}
 	err = s.db.ReadTx(ctx, func(tx *sql.Tx) error {
 		rows, err := tx.QueryContext(ctx, `SELECT `+runColumns+`
 			FROM agent_runs r LEFT JOIN notes n ON n.id = r.note_id
-			WHERE (? = '' OR r.space_id = ?) AND (? = '' OR r.note_id = ?)
-			  AND (r.created_at < ? OR (r.created_at = ? AND r.rowid < ?))
+			WHERE `+where+`
 			ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?`,
-			f.Space, f.Space, f.Note, f.Note, at, at, rowid, limit+1)
+			append(args, limit+1)...)
 		if err != nil {
 			return err
 		}

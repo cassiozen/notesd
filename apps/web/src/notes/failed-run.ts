@@ -1,17 +1,11 @@
 import { useEffect, useState } from 'react'
 import { agent, type AgentRun } from '../api/agent'
 import { useAgentConfigs } from './agent-config'
+import { loadLocal, saveLocal } from './local-storage'
 
 const DISMISSED_KEY = 'notes.agent.dismissedRuns'
 
-function dismissed(): string[] {
-  try {
-    const raw = localStorage.getItem(DISMISSED_KEY)
-    return raw ? (JSON.parse(raw) as string[]) : []
-  } catch {
-    return []
-  }
-}
+const dismissed = () => loadLocal<string[]>(DISMISSED_KEY, [])
 
 /**
  * The note's latest agent run, if it failed and wasn't dismissed. Fetched when the note opens; from
@@ -43,12 +37,8 @@ export function useFailedRun(noteId: string | null): { run: AgentRun | null; dis
     run,
     dismiss: () => {
       if (!run) return
-      try {
-        // The last few are enough: a newer run replaces an old failure anyway.
-        localStorage.setItem(DISMISSED_KEY, JSON.stringify([run.id, ...dismissed()].slice(0, 50)))
-      } catch {
-        // Not remembered; it shows again next time the note opens.
-      }
+      // The last few are enough: a newer run replaces an old failure anyway.
+      saveLocal(DISMISSED_KEY, [run.id, ...dismissed()].slice(0, 50))
       setFound(null)
     },
   }

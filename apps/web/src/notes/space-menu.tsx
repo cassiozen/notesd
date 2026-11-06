@@ -23,6 +23,10 @@ export function SpaceMenu({
   onActivity?: (() => void) | undefined
 }) {
   const [open, setOpen] = useState(false)
+  const actions = [
+    { label: 'New space…', icon: <PlusIcon />, run: onCreate },
+    ...(onActivity ? [{ label: 'Activity…', icon: <ActivityIcon />, run: onActivity }] : []),
+  ]
   const menuId = useId()
   const anchor = useRef<HTMLSpanElement>(null)
   const trigger = useRef<HTMLButtonElement>(null)
@@ -40,7 +44,7 @@ export function SpaceMenu({
   }, [open])
 
   // Opened, focus goes to the space shown (as a menu's keyboard users expect), else the first.
-  // New space… comes after the spaces, at items.current[spaces.length], then Activity….
+  // The actions (New space…, …) come after the spaces, from items.current[spaces.length].
   useEffect(() => {
     if (!open) return
     items.current[Math.max(0, spaces.findIndex((s) => s.id === current))]?.focus()
@@ -124,28 +128,11 @@ export function SpaceMenu({
             </button>
           ))}
           <div role="separator" className={styles.separator} />
-          <button
-            ref={(el) => {
-              items.current[spaces.length] = el
-            }}
-            type="button"
-            role="menuitem"
-            tabIndex={-1}
-            className={styles.item}
-            onClick={() => {
-              close()
-              onCreate()
-            }}
-          >
-            <span className={styles.plus} aria-hidden="true">
-              <PlusIcon />
-            </span>
-            <span className={styles.itemName}>New space…</span>
-          </button>
-          {onActivity && (
+          {actions.map((a, i) => (
             <button
+              key={a.label}
               ref={(el) => {
-                items.current[spaces.length + 1] = el
+                items.current[spaces.length + i] = el
               }}
               type="button"
               role="menuitem"
@@ -153,15 +140,15 @@ export function SpaceMenu({
               className={styles.item}
               onClick={() => {
                 close()
-                onActivity()
+                a.run()
               }}
             >
               <span className={styles.plus} aria-hidden="true">
-                <ActivityIcon />
+                {a.icon}
               </span>
-              <span className={styles.itemName}>Activity…</span>
+              <span className={styles.itemName}>{a.label}</span>
             </button>
-          )}
+          ))}
         </div>
       )}
     </span>
