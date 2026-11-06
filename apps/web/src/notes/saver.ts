@@ -463,8 +463,7 @@ export class NoteSaver extends SaverCore {
    */
   async savedRevision(): Promise<number | null> {
     await this.flush()
-    if (!this.created || this.dirty || this.pending || this.problem || this.waitingForAuth) return null
-    return this.revision
+    return this.knownRevision()
   }
 
   override knownRevision(): number | null {

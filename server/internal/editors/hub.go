@@ -29,7 +29,6 @@ var ErrTooMany = errors.New("too many editor connections")
 type Hub struct {
 	mu    sync.Mutex
 	users map[int64]map[*Conn]struct{}
-	now   func() time.Time
 }
 
 // Conn is one connection: a browser tab or an app.
@@ -46,7 +45,7 @@ type Conn struct {
 
 // NewHub returns an empty hub.
 func NewHub() *Hub {
-	return &Hub{users: map[int64]map[*Conn]struct{}{}, now: time.Now}
+	return &Hub{users: map[int64]map[*Conn]struct{}{}}
 }
 
 // Add registers a new connection for the user; send writes a message to it.
@@ -87,7 +86,7 @@ func (h *Hub) Remove(c *Conn) {
 func (h *Hub) Opened(c *Conn, noteID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	c.open[noteID] = h.now()
+	c.open[noteID] = time.Now()
 }
 
 // Closed records that c's editor closed the note, and reports whether it

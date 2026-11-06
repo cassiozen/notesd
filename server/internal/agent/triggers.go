@@ -81,7 +81,7 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 		}
 	}
 	if (ev.Agent == nil || !ev.Agent.Runner) && ev.Kind != notes.EventDeleted {
-		_, agentOnly, err := linkEditorEdit(ctx, tx, ev)
+		agentOnly, err := linkEditorEdit(ctx, tx, ev)
 		if err != nil {
 			return err
 		}

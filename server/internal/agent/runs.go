@@ -265,28 +265,31 @@ func fieldsHash(title, content string) string {
 // that isn't linked, so undo never takes the user's typing. agentOnly: the
 // server had exactly what the editor showed before the change, so the save
 // adds nothing of the user's.
-func linkEditorEdit(ctx context.Context, tx *sql.Tx, ev notes.Event) (linked, agentOnly bool, err error) {
+func linkEditorEdit(ctx context.Context, tx *sql.Tx, ev notes.Event) (agentOnly bool, err error) {
 	rows, err := tx.QueryContext(ctx, `UPDATE agent_run_edits SET after_revision = ?
 		WHERE note_id = ? AND after_revision IS NULL AND after_title = ? AND after_content = ?
 		RETURNING applied_from`,
 		ev.After.Revision, ev.NoteID, ev.After.Title, ev.After.Content)
 	if err != nil {
-		return false, false, err
+		return false, err
 	}
 	defer rows.Close()
-	prior := fieldsHash("", "")
-	if ev.Before != nil {
-		prior = fieldsHash(ev.Before.Title, ev.Before.Content)
-	}
+	// Hashed only for a save that holds a run's change, which few do.
+	prior := ""
 	for rows.Next() {
 		var from sql.NullString
 		if err := rows.Scan(&from); err != nil {
-			return false, false, err
+			return false, err
 		}
-		linked = true
+		if prior == "" {
+			prior = fieldsHash("", "")
+			if ev.Before != nil {
+				prior = fieldsHash(ev.Before.Title, ev.Before.Content)
+			}
+		}
 		agentOnly = agentOnly || from.String == prior
 	}
-	return linked, agentOnly, rows.Err()
+	return agentOnly, rows.Err()
 }
 
 // edited reports what a run changed: notes it edited, and notes it created.
