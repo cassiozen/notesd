@@ -1,0 +1,124 @@
+apps/android/app/src/main/kotlin/notes/app/editor/Spans.kt
+  s_6e390fbf5493aa::t_a36048236875f6 133,136-143,147-151,156,228-231,241-243,248-254,265-266,348,351-355
+apps/android/app/src/main/res/font/theme_zen_kaku_gothic_new.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-16
+apps/android/app/src/main/kotlin/notes/app/editor/FormattingBar.kt
+  s_6e390fbf5493aa::t_6d2e6c148fd199 39,49,95-96,131
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 41,45
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 120
+  s_6e390fbf5493aa::t_1a0c34b5130d23 633
+apps/android/app/src/main/kotlin/notes/app/notes/Spaces.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 82,99,139,199,223
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 51
+shared/themes/generate.ts
+  s_6e390fbf5493aa::t_dba0f46e9513f0 7,20
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 67
+  s_6e390fbf5493aa::t_46078f2337c45a 115,140,210-215,367-374
+  s_6e390fbf5493aa::t_1a0c34b5130d23 392,431,462,477,479
+  s_6e390fbf5493aa::t_1417ad74211db0 375-377
+apps/android/app/src/main/kotlin/notes/app/ui/Type.kt
+  s_6e390fbf5493aa::t_9e2d4cbedb4ba2 190-197,199-200
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 14,37-43,59-63,101-112
+  s_6e390fbf5493aa::t_6d2e6c148fd199 66-67
+  s_6e390fbf5493aa::t_2d4a4092128d3d 15-16,18,22-36,44-51,53-57,72-76,78,80-100,113-178,181-189
+  s_6e390fbf5493aa::t_f71d97fabf052f 58
+apps/android/app/src/main/res/font/theme_nunito_sans.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-54
+apps/android/app/src/main/res/font/theme_shippori_mincho.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-12
+apps/android/app/src/main/kotlin/notes/app/editor/NoteEditText.kt
+  s_6e390fbf5493aa::t_a36048236875f6 163,182
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 183-187
+apps/android/app/src/test/kotlin/notes/app/ui/themes/ThemesTest.kt
+  s_6e390fbf5493aa::t_3bf374b4ab3847 91,125
+  s_6e390fbf5493aa::t_6159e7fafc6272 37
+  s_6e390fbf5493aa::t_5530ff8c9d4994 3,36,38-70,72-74,84-86,89-90,92-124,126-157
+apps/android/app/src/main/kotlin/notes/app/editor/TagStrip.kt
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 30
+  s_6e390fbf5493aa::t_1a0c34b5130d23 87
+shared/themes/lib/kotlin.ts
+  s_6e390fbf5493aa::t_dba0f46e9513f0 22-25,69,80,86-125,202,214,263-266
+  s_6e390fbf5493aa::t_7957a89d4bd8d7 267
+apps/android/app/src/main/res/font/theme_instrument_serif.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-12
+apps/android/app/src/main/res/font/theme_playfair.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-24
+docs/contributing/themes.md
+  s_6e390fbf5493aa::t_fb704ba1074426 37,134-136,139-145,148,150-151
+  s_6e390fbf5493aa::t_22a05af80ae540 137-138
+apps/android/app/src/main/res/font/theme_hanken_grotesk.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-44
+apps/android/app/src/main/kotlin/notes/app/ui/Overlays.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 57-58,78,102,136,184-185
+docs/guides/using/settings.md
+  s_6e390fbf5493aa::t_fb704ba1074426 21
+apps/android/app/src/main/kotlin/notes/app/locks/LockUi.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 183
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 49
+apps/android/app/src/main/kotlin/notes/app/settings/Rows.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 24,41
+apps/android/app/src/main/kotlin/notes/app/editor/Normalizer.kt
+  s_6e390fbf5493aa::t_a36048236875f6 308
+apps/android/app/src/main/kotlin/notes/app/settings/Integrations.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 162,185,451-452,557
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 60
+apps/android/app/src/main/kotlin/notes/app/notes/TagTree.kt
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 69
+  s_6e390fbf5493aa::t_1a0c34b5130d23 244,246,341,351
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 134,250,310,351,376,503
+apps/android/app/src/main/res/font/theme_instrument_sans.xml
+  s_6e390fbf5493aa::t_dba0f46e9513f0 1-44
+apps/android/app/src/main/kotlin/notes/app/notes/FindBar.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 65,224
+apps/android/app/src/main/kotlin/notes/app/settings/ThemeGallery.kt
+  s_6e390fbf5493aa::t_6bceba9b500993 26-27,32,60-62,67-68,71,74-81,85,87-89,93-94,96,98,102-105,107,109-111,114-115,117,124-126,130-133,139,143,146-148
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 39,127-129
+  s_6e390fbf5493aa::t_fe427d24196b6e 1-25,28-31,33-38,40-59,63-66,69-70,72-73,82-84,86,90-92,95,97,99-101,106,108,112-113,116,118-123,134-138,140-142,144-145,149-150
+apps/android/app/src/main/kotlin/notes/app/ui/Tokens.kt
+  s_6e390fbf5493aa::t_bb389724e7bc7a 4,8-10,47-48,50,56-101
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 5
+apps/android/app/src/main/kotlin/notes/app/ui/Theme.kt
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 17
+  s_6e390fbf5493aa::t_fcdc530640579b 14,16,19,21-38,41,68-72,79
+apps/android/app/src/main/kotlin/notes/app/ui/Glass.kt
+  s_6e390fbf5493aa::t_a7f23085a95f0d 25,32,36-37,70,72-74
+apps/android/app/src/main/kotlin/notes/app/MainActivity.kt
+  s_6e390fbf5493aa::t_e0ce743424008c 9-11,32-39
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_6e390fbf5493aa::t_1977a8a89417af 18,310-345
+  s_6e390fbf5493aa::t_2be34035de34e5 346
+docs/contributing/settings-guidelines.md
+  s_6e390fbf5493aa::t_fb704ba1074426 53,78-79
+apps/android/app/src/main/kotlin/notes/app/editor/EditorStyle.kt
+  s_6e390fbf5493aa::t_a36048236875f6 11,13-15,19-21,34-36,48-52,63,73-85,87-88,90-102,105-109,126-129,135,139-141
+  s_6e390fbf5493aa::t_635b7775583aea 103-104
+apps/android/app/src/main/kotlin/notes/app/settings/Appearance.kt
+  s_6e390fbf5493aa::t_fcdc530640579b 8-9,11,18-21,25-28,30-33,36-43,46-49,54-55
+apps/android/app/src/main/kotlin/notes/app/account/OnboardingScreen.kt
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 69
+  s_6e390fbf5493aa::t_1a0c34b5130d23 113
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_6e390fbf5493aa::t_1a0c34b5130d23 556,648,780
+  s_6e390fbf5493aa::t_547aac4a1ca2eb 122
+apps/android/app/src/main/kotlin/notes/app/ui/themes/Themes.generated.kt
+  s_6e390fbf5493aa::t_11e1641adb0247 52-56,337-338,354-355,506-507,524-525,690-691,707-708,861-862,878-879
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "cfbb6453e5f7873b1e74a68c8ce37e7f47ba5666",
+  "prompts": {},
+  "sessions": {
+    "s_6e390fbf5493aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b87c5a2d-f561-4d02-a5e1-4f55afd69612",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
