@@ -59,7 +59,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     group: 'writing',
     label: 'Started editing',
     rule: 'When you start editing a note',
-    when: 'At your first change after opening a note, or after 3 minutes without changes.',
+    when: 'At your first change after opening an existing note, or after 3 minutes without changes.',
     suggestion: 'If the note has no date, add today’s at the top.',
   },
   {

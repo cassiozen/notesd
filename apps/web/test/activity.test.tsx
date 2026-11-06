@@ -124,7 +124,7 @@ describe('Activity', () => {
     await user.click(await screen.findByRole('button', { name: /^Space:/ }))
     await user.click(await screen.findByRole('menuitem', { name: 'Agent…' }))
     const page = await screen.findByRole('dialog', { name: 'Notes agent' })
-    await user.click(within(page).getByRole('button', { name: 'Activity…' }))
+    await user.click(await within(page).findByRole('button', { name: 'Activity…' }))
     const activity = await screen.findByRole('dialog', { name: 'Activity' })
     await user.click(within(activity).getByRole('button', { name: 'Done' }))
     await screen.findByRole('dialog', { name: 'Notes agent' })

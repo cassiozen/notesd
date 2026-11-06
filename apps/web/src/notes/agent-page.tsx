@@ -62,7 +62,8 @@ export function AgentSheet({ spaceId, onClose }: { spaceId: string; onClose: () 
     setBusy(true)
     try {
       await saveAgentConfig(spaceId, draft)
-      setEdited(null)
+      // Edits made while it saved stay, still to be saved.
+      setEdited((cur) => (cur === draft ? null : cur))
       setSavedNote(true)
     } catch (err) {
       const fields = agentFieldError(err)
@@ -132,26 +133,27 @@ export function AgentSheet({ spaceId, onClose }: { spaceId: string; onClose: () 
 function OnOff({ draft, provider, onChange }: { draft: AgentDraft; provider: string | null; onChange: (p: Partial<AgentDraft>) => void }) {
   const why = useId()
   return (
-    <Surface className={[styles.card, styles.onOff].join(' ')}>
-      <div>
-        <p className={styles.lead}>{draft.enabled ? 'On' : 'Off'}</p>
-        <p id={why} className={styles.muted}>
-          {provider === null
-            ? 'Paused: AI isn’t set up on this server. Everything here is kept.'
-            : draft.enabled
-              ? `It acts on this space’s notes as your rules say. Notes go to ${provider}; locked notes never do. Everything it does is in Activity, and can be undone.`
-              : 'Turn it on to have it act on this space’s notes as your rules say.'}
-        </p>
-      </div>
-      <input
-        type="checkbox"
-        role="switch"
-        className={styles.switch}
-        aria-label="Agent"
-        aria-describedby={why}
-        checked={draft.enabled}
-        onChange={(e) => onChange({ enabled: e.target.checked })}
-      />
+    <Surface className={styles.card}>
+      <label className={styles.onOff}>
+        <span>
+          <span className={styles.lead}>{draft.enabled ? 'On' : 'Off'}</span>
+          <span id={why} className={styles.muted}>
+            {provider === null
+              ? 'Paused: AI isn’t set up on this server. Everything here is kept.'
+              : draft.enabled
+                ? `It acts on this space’s notes as your rules say. Notes go to ${provider}; locked notes never do. Everything it does is in Activity, and can be undone.`
+                : 'Turn it on to have it act on this space’s notes as your rules say.'}
+          </span>
+        </span>
+        <input
+          type="checkbox"
+          className={styles.check}
+          aria-label="Agent"
+          aria-describedby={why}
+          checked={draft.enabled}
+          onChange={(e) => onChange({ enabled: e.target.checked })}
+        />
+      </label>
     </Surface>
   )
 }

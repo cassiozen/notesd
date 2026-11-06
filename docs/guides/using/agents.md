@@ -37,7 +37,7 @@ or type over. Without rules, the agent does nothing.
 | Rule | When |
 | --- | --- |
 | **When a new note is opened** | Before anything is typed |
-| **When you start editing a note** | The first change to a note after it's opened, or after 3 minutes without changes |
+| **When you start editing a note** | The first change to an existing note after it's opened, or after 3 minutes without changes |
 | **When you ask, from the note's menu** | You pick the command in a note's ⋯ menu. Give it a name, such as *Fix typos* |
 | **When you finish a new note** | A new note is closed, or left for 2 minutes |
 | **When you finish editing a note** | The same, for a note that already existed |
