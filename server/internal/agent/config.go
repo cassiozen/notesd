@@ -6,6 +6,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -31,14 +32,7 @@ const (
 // Triggers is every trigger, in the order apps show them.
 var Triggers = []Trigger{NoteCreated, EditStarted, NewNoteDone, EditDone, NoteDeleted, MovedIn, MovedOut, Menu}
 
-func (t Trigger) valid() bool {
-	for _, k := range Triggers {
-		if t == k {
-			return true
-		}
-	}
-	return false
-}
+func (t Trigger) valid() bool { return slices.Contains(Triggers, t) }
 
 // Limits on what a user writes.
 const (
