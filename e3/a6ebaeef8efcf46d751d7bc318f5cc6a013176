@@ -3,6 +3,54 @@ apps/web/src/notes/agent-config.ts
 server/internal/agent/config.go
   s_cc6cacc0a6fc01::t_dda0333245f241 35
   s_cc6cacc0a6fc01::t_c16d69cc180034 9
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-248
+server/internal/userdata/userdata.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 35,39-40
+server/cmd/notesd/main.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 62,67,70,485-506,535-543,685-688,722-745,755-773
+server/internal/notes/notes_test.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 476
+server/migrations/0014_agent_runs.sql
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-28
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 419
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-234
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-677
+server/internal/agent/runner.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-219
+server/internal/search/tags.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 143-144,150-152,186,188-189,194-195
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-28
+server/internal/api/ai_test.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 150-156,238
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-269
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 12-14,35-36,42
+server/internal/llm/settings.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 51-52,54
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 153-167,470-505
+server/internal/agent/triggers_test.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-372
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 31-33
+server/internal/api/ai_handlers.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 49,59,101-105
+server/migrations/0015_agent_activity.sql
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-36
+server/internal/api/notes_handlers.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 265
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-97
+server/internal/notes/notes.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 219-230,314,814,821
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_23ef92913afe5a 1-281
 ---
 {
   "schema_version": "authorship/3.0.0",
