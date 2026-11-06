@@ -63,6 +63,15 @@ func decode(w http.ResponseWriter, r *http.Request, v any) error {
 
 // decodeBody is decode that also returns the body as received.
 func decodeBody(w http.ResponseWriter, r *http.Request, v any) ([]byte, error) {
+	body, err := readBody(w, r)
+	if err != nil {
+		return nil, err
+	}
+	return body, unmarshalBody(body, v)
+}
+
+// readBody reads the request body, up to maxBodyBytes.
+func readBody(w http.ResponseWriter, r *http.Request) ([]byte, error) {
 	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
 	if err != nil {
 		var tooBig *http.MaxBytesError
@@ -71,7 +80,7 @@ func decodeBody(w http.ResponseWriter, r *http.Request, v any) ([]byte, error) {
 		}
 		return nil, &notes.ValidationError{Field: "body", Message: "reading the request body: " + err.Error()}
 	}
-	return body, unmarshalBody(body, v)
+	return body, nil
 }
 
 func unmarshalBody(body []byte, v any) error {

@@ -2,12 +2,13 @@ import { useId, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { settings } from '../api/settings'
 import type { AiSettings, AiSettingsInput } from '../api/types'
-import { genericMessage } from '../auth/errors'
+import { genericMessage, sentence } from '../auth/errors'
 import { DEFAULT_DAILY_TOKEN_CAP, retryAiSettings, setAiSettings, useAiSettings, useAiSettingsFailed } from '../notes/ai-settings'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { AgentIcon } from '../ui/icons'
+import { DisconnectDialog } from './disconnect-dialog'
 import type { Integration, IntegrationStatus } from './integrations'
 import styles from './settings.module.css'
 
@@ -40,11 +41,6 @@ export function useAiStatus(): IntegrationStatus {
 type AiField = 'baseUrl' | 'apiKey' | 'model' | 'dailyTokenCap'
 type Errors = Partial<Record<AiField | 'form', string>>
 const aiFields: readonly string[] = ['baseUrl', 'apiKey', 'model', 'dailyTokenCap'] satisfies AiField[]
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
-}
 
 function hostOf(url: string): string {
   try {
@@ -141,7 +137,7 @@ function AiDialog({
     }
   }
 
-  const edit = (set: (v: string) => void) => (v: string) => {
+  const edit = (set: (v: string) => void, v: string) => {
     set(v)
     setErrors({})
     setTested(undefined)
@@ -166,7 +162,7 @@ function AiDialog({
           spellCheck={false}
           placeholder="https://api.openai.com/v1"
           value={baseUrl}
-          onChange={(e) => edit(setBaseUrl)(e.target.value)}
+          onChange={(e) => edit(setBaseUrl, e.target.value)}
           error={errors.baseUrl}
           readOnly={!!busy}
           autoFocus
@@ -179,7 +175,7 @@ function AiDialog({
           spellCheck={false}
           placeholder={configured ? `Saved · …${saved?.keyHint ?? ''}` : 'sk-…'}
           value={apiKey}
-          onChange={(e) => edit(setApiKey)(e.target.value)}
+          onChange={(e) => edit(setApiKey, e.target.value)}
           error={errors.apiKey}
           hint={configured ? 'Paste a new key to replace the saved one.' : undefined}
           readOnly={!!busy}
@@ -192,7 +188,7 @@ function AiDialog({
           spellCheck={false}
           placeholder="gpt-4.1-mini"
           value={model}
-          onChange={(e) => edit(setModel)(e.target.value)}
+          onChange={(e) => edit(setModel, e.target.value)}
           error={errors.model}
           readOnly={!!busy}
         />
@@ -202,7 +198,7 @@ function AiDialog({
           inputMode="numeric"
           autoComplete="off"
           value={cap}
-          onChange={(e) => edit(setCap)(e.target.value)}
+          onChange={(e) => edit(setCap, e.target.value)}
           error={errors.dailyTokenCap}
           readOnly={!!busy}
         />
@@ -238,7 +234,6 @@ function AiDialog({
 }
 
 function AiDisconnect({ saved, onBack, onClose }: { saved: AiSettings; onBack: () => void; onClose: () => void }) {
-  const titleId = useId()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
 
@@ -255,28 +250,8 @@ function AiDisconnect({ saved, onBack, onClose }: { saved: AiSettings; onBack: (
   }
 
   return (
-    <Dialog labelledBy={titleId} onClose={busy ? undefined : onBack}>
-      <div className={styles.dialog}>
-        <h2 id={titleId} className={styles.dialogTitle}>
-          Disconnect AI?
-        </h2>
-        <p className={styles.dialogText}>
-          Spaces’ agents stop until it’s connected again. The API key is removed from the server.
-        </p>
-        {error && (
-          <p role="alert" className={styles.error}>
-            {error}
-          </p>
-        )}
-        <div className={styles.dialogActions}>
-          <Button size="md" onClick={onBack} disabled={busy}>
-            Keep it
-          </Button>
-          <Button variant="danger" size="md" busy={busy} onClick={() => void disconnect()}>
-            Disconnect
-          </Button>
-        </div>
-      </div>
-    </Dialog>
+    <DisconnectDialog title="Disconnect AI?" error={error} busy={busy} onBack={onBack} onDisconnect={() => void disconnect()}>
+      Spaces’ agents stop until it’s connected again. The API key is removed from the server.
+    </DisconnectDialog>
   )
 }

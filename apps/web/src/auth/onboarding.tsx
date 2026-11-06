@@ -10,7 +10,7 @@ import { useShake } from '../ui/shake'
 import { Steps } from '../ui/steps'
 import { useAuth } from './auth-context'
 import { AuthLayout } from './auth-layout'
-import { genericMessage } from './errors'
+import { genericMessage, sentence } from './errors'
 import styles from './auth.module.css'
 
 type Step = 'welcome' | 'account'
@@ -166,9 +166,4 @@ export function Onboarding() {
       )}
     </AuthLayout>
   )
-}
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
 }

@@ -3,12 +3,10 @@ package api
 import (
 	"bytes"
 	"errors"
-	"io"
 	"net/http"
 	"time"
 
 	"notes/server/internal/llm"
-	"notes/server/internal/notes"
 )
 
 // GET /api/v1/settings/ai — the key itself is never returned. Like email,
@@ -68,9 +66,9 @@ const testWriteDeadline = 2*time.Minute + 30*time.Second
 // (apiKey omitted uses the saved key), or with the saved settings when there
 // is no body. 502 ai_test_failed carries the reason for the admin.
 func (s *Server) testAISettings(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxBodyBytes))
+	body, err := readBody(w, r)
 	if err != nil {
-		s.writeErr(w, r, &notes.ValidationError{Field: "body", Message: "reading the request body: " + err.Error()})
+		s.writeErr(w, r, err)
 		return
 	}
 	var st llm.Settings

@@ -65,10 +65,9 @@ type Usage struct {
 
 // ChatResponse is the provider's answer, reduced to its first choice.
 type ChatResponse struct {
-	Model        string  // the model that answered, as the provider names it
-	Message      Message // role assistant: text, tool calls, or both
-	FinishReason string
-	Usage        Usage
+	Model   string  // the model that answered, as the provider names it
+	Message Message // role assistant: text, tool calls, or both
+	Usage   Usage
 }
 
 // ProviderError is the provider refusing or failing a call, or not being
@@ -146,8 +145,7 @@ func (c *Client) Chat(ctx context.Context, s Settings, req ChatRequest) (*ChatRe
 	var out struct {
 		Model   string `json:"model"`
 		Choices []struct {
-			Message      Message `json:"message"`
-			FinishReason string  `json:"finish_reason"`
+			Message Message `json:"message"`
 		} `json:"choices"`
 		Usage Usage           `json:"usage"`
 		Error json.RawMessage `json:"error"`
@@ -166,12 +164,7 @@ func (c *Client) Chat(ctx context.Context, s Settings, req ChatRequest) (*ChatRe
 	if model == "" {
 		model = req.Model
 	}
-	return &ChatResponse{
-		Model:        model,
-		Message:      out.Choices[0].Message,
-		FinishReason: out.Choices[0].FinishReason,
-		Usage:        out.Usage,
-	}, nil
+	return &ChatResponse{Model: model, Message: out.Choices[0].Message, Usage: out.Usage}, nil
 }
 
 // errorMessage extracts the explanation from an error answer: OpenAI's

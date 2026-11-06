@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEven
 import { ApiError } from '../api/client'
 import { notes as api } from '../api/notes'
 import type { Space } from '../api/types'
-import { genericMessage } from '../auth/errors'
+import { genericMessage, sentence } from '../auth/errors'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
@@ -376,9 +376,4 @@ function sendError(err: unknown): string {
     if (err.status === 404) return 'This note was deleted.'
   }
   return genericMessage(err)
-}
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
 }

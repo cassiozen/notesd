@@ -1,13 +1,14 @@
 import { useId, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { settings } from '../api/settings'
-import { genericMessage } from '../auth/errors'
+import { genericMessage, sentence } from '../auth/errors'
 import { retryEmailSettings, setEmailSettings, useEmailSettings, useEmailSettingsFailed } from '../notes/email-settings'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { MailIcon, SendIcon } from '../ui/icons'
 import { Steps } from '../ui/steps'
+import { DisconnectDialog } from './disconnect-dialog'
 import type { Integration, IntegrationStatus } from './integrations'
 import styles from './settings.module.css'
 
@@ -66,11 +67,6 @@ export function formatFrom(name: string, address: string): string {
 }
 
 type Errors = Partial<Record<'apiKey' | 'address' | 'form', string>>
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
-}
 
 /** The server's refusal, on the field it's about. */
 function saveErrors(err: unknown): Errors {
@@ -267,29 +263,15 @@ function ResendManage({ onClose }: { onClose: () => void }) {
 
   if (disconnecting) {
     return (
-      <Dialog labelledBy={titleId} onClose={busy ? undefined : () => setDisconnecting(false)}>
-        <div className={styles.dialog}>
-          <h2 id={titleId} className={styles.dialogTitle}>
-            Disconnect Resend?
-          </h2>
-          <p className={styles.dialogText}>
-            Nobody on this server can email notes until it’s connected again. The API key is removed from the server.
-          </p>
-          {errors.form && (
-            <p role="alert" className={styles.error}>
-              {errors.form}
-            </p>
-          )}
-          <div className={styles.dialogActions}>
-            <Button size="md" onClick={() => setDisconnecting(false)} disabled={busy}>
-              Keep it
-            </Button>
-            <Button variant="danger" size="md" busy={busy} onClick={() => void disconnect()}>
-              Disconnect
-            </Button>
-          </div>
-        </div>
-      </Dialog>
+      <DisconnectDialog
+        title="Disconnect Resend?"
+        error={errors.form}
+        busy={busy}
+        onBack={() => setDisconnecting(false)}
+        onDisconnect={() => void disconnect()}
+      >
+        Nobody on this server can email notes until it’s connected again. The API key is removed from the server.
+      </DisconnectDialog>
     )
   }
 
