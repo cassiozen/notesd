@@ -40,6 +40,31 @@ func TestChatRedirectIsReported(t *testing.T) {
 	}
 }
 
+func TestChatCanceledWhileReadingIsNotAProviderError(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"model":`))
+		w.(http.Flusher).Flush()
+		<-r.Context().Done()
+	}))
+	defer srv.Close()
+	ctx, cancel := context.WithCancel(context.Background())
+	c := NewClient()
+	c.HTTP.Transport = cancelAfterHeaders{cancel}
+	_, err := c.Chat(ctx, Settings{BaseURL: srv.URL, APIKey: "k", Model: "m"}, ChatRequest{})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+// Cancels once the response's headers are in, so the body read is what fails.
+type cancelAfterHeaders struct{ cancel context.CancelFunc }
+
+func (c cancelAfterHeaders) RoundTrip(r *http.Request) (*http.Response, error) {
+	res, err := http.DefaultTransport.RoundTrip(r)
+	c.cancel()
+	return res, err
+}
+
 func TestChatUnreachable(t *testing.T) {
 	srv := httptest.NewServer(http.NotFoundHandler())
 	url := srv.URL
@@ -56,8 +81,10 @@ func TestValidate(t *testing.T) {
 	if err != nil || s.BaseURL != "https://api.example.com/v1" || s.APIKey != "k" || s.Model != "m" || s.DailyTokenCap != DefaultDailyTokenCap {
 		t.Fatalf("got %+v %v", s, err)
 	}
-	if _, err := validate(Input{BaseURL: "https://api.example.com/v1?x=1", APIKey: "k", Model: "m"}); err == nil {
-		t.Fatal("a query string must be refused")
+	for _, url := range []string{"https://api.example.com/v1?x=1", "https://api.example.com/v1?", "https://api.example.com/v1#", "https://api.example.com/v1#x"} {
+		if _, err := validate(Input{BaseURL: url, APIKey: "k", Model: "m"}); err == nil {
+			t.Fatalf("%s: a query or fragment must be refused", url)
+		}
 	}
 	for url, ok := range map[string]bool{
 		"http://localhost:11434/v1":  true,

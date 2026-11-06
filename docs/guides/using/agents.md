@@ -24,7 +24,7 @@ how an agent reads and changes notes.
      only accepted for a provider on your own network: a private address, a `.local` name, or a
      name with no dot, like a Docker Compose service.
    - **API key**: the provider's key. A local model that doesn't check keys still needs something
-     here; any text will do.
+     here; any word will do.
    - **Model**: the model's name as the provider spells it.
    - **Daily tokens per account**: how many tokens each account's agents may use in a day.
      1,000,000 unless you change it.

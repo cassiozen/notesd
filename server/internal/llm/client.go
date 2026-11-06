@@ -132,6 +132,9 @@ func (c *Client) Chat(ctx context.Context, s Settings, req ChatRequest) (*ChatRe
 	defer res.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes))
 	if err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, &ProviderError{Status: res.StatusCode, Message: "reading the answer: " + err.Error()}
 	}
 	if res.StatusCode/100 == 3 {

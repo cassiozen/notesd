@@ -144,7 +144,7 @@ export async function startFakeLLM(): Promise<FakeLLM> {
     req.on('data', (c: Buffer) => (raw += c.toString()))
     req.on('end', () => {
       res.setHeader('Content-Type', 'application/json')
-      if (req.url !== '/v1/chat/completions') {
+      if (req.method !== 'POST' || req.url !== '/v1/chat/completions') {
         res.statusCode = 404
         res.end(JSON.stringify({ error: { message: 'not found' } }))
         return

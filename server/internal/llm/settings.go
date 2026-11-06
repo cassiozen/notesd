@@ -173,7 +173,8 @@ func validate(in Input) (Settings, error) {
 		DailyTokenCap: in.DailyTokenCap,
 	}
 	u, err := url.Parse(s.BaseURL)
-	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
+	// /chat/completions is appended, so even an empty query or fragment ("v1?") would swallow it.
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || u.User != nil || strings.ContainsAny(s.BaseURL, "?#") {
 		return s, &InputError{Field: "baseUrl", Message: "enter the API's address, like https://api.openai.com/v1"}
 	}
 	// The key and notes go in every request: plain http only where it can't cross the internet.

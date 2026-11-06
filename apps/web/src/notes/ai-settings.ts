@@ -22,8 +22,9 @@ export function setAiSettings(next: AiSettings | null) {
   notify()
 }
 
-function load() {
-  const asked = fetches
+function load(asked = fetches) {
+  // Rendered before a forget: the render after it asks for the new session.
+  if (asked !== fetches) return
   loading ??= settings.ai().then(
     (s) => {
       if (asked === fetches) setAiSettings(s)
@@ -46,10 +47,12 @@ function subscribe(l: () => void) {
 /** The AI settings, or null until they've loaded. */
 export function useAiSettings(): AiSettings | null {
   const value = useSyncExternalStore(subscribe, () => current)
-  // Again after a forget, so screens left open across a new sign-in fetch for it.
+  const asked = useSyncExternalStore(subscribe, () => fetches)
+  // Again after a forget, so screens left open across a new sign-in fetch for it,
+  // even one still waiting on the dropped fetch (null before and after).
   useEffect(() => {
-    if (value === null) load()
-  }, [value])
+    if (value === null) load(asked)
+  }, [value, asked])
   return value
 }
 
