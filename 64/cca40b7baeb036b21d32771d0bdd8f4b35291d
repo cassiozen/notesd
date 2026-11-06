@@ -1,0 +1,66 @@
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_a5f822ed912f80 9,20-21,25,41-43,58-59
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_bf7bb06c6d7f34 33-37,104-111,117-123
+  s_cc6cacc0a6fc01::t_86ae4ab955c885 6,13
+  s_cc6cacc0a6fc01::t_cfe32e750934f9 124-125
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_d696aaf137829c 935-938,940-942,944-945,948-949,952-963,972,974-976,978-985
+  s_cc6cacc0a6fc01::t_576af71824d5e6 939,943,946-947,950-951,964-971,973,977
+apps/web/test/agent-triggers.test.tsx
+  s_cc6cacc0a6fc01::t_d931ad2478407a 100
+  s_cc6cacc0a6fc01::t_123b653fca8f89 2,122,129-131,136
+apps/web/src/notes/share.tsx
+  s_cc6cacc0a6fc01::t_12f07e23a64a19 148
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_872d4c6922de16 7
+  s_cc6cacc0a6fc01::t_a5f822ed912f80 154,162,165-166,204-231
+  s_cc6cacc0a6fc01::t_ad8f8874edd03c 232
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_d931ad2478407a 294,300
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_12f07e23a64a19 104-118
+server/internal/editors/hub_test.go
+  s_cc6cacc0a6fc01::t_70b24dda5985ac 86
+apps/web/src/agent/triggers.ts
+  s_cc6cacc0a6fc01::t_12f07e23a64a19 13,16-20
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_99ac71a0994e23 486-487,504-505
+apps/web/src/agent/triggers.test.ts
+  s_cc6cacc0a6fc01::t_12f07e23a64a19 10-11,13-16,18
+server/internal/agent/runner.go
+  s_cc6cacc0a6fc01::t_360dcf3842f858 175-176
+  s_cc6cacc0a6fc01::t_bca6bab07d9e89 240-256
+  s_cc6cacc0a6fc01::t_b9cc025fcbdab5 37-39
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_fdfde98c67f7f0 245-250,252-266,268-272
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_bf7bb06c6d7f34 120-123,126
+server/internal/agent/request.go
+  s_cc6cacc0a6fc01::t_d21a088007c0c8 65-67
+  s_cc6cacc0a6fc01::t_9a4d3e9834c327 8-9,33-35,74-77,84-123
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_99ac71a0994e23 440-445,456
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_52573712046922 82
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_c50b7b09e7b8a7 164-172
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_06b108c9a5396b 366-370,377
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "64cca40b7baeb036b21d32771d0bdd8f4b35291d",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
