@@ -99,11 +99,6 @@ Creating, updating and deleting a note are idempotent and checked against the no
   encrypted `content` can be somewhat longer.
 - **`createdAt` and `updatedAt`** may be sent, so edits made offline show when they happened. They
   are informational only, and a time more than a day in the future is replaced with the server's.
-- **`agent`**, optional, marks a write that holds an [agent's](../guides/using/agents.md) edit:
-  `{"runId": "…", "only": true}`. `runId` is the run that made it, with the same characters as an
-  operation ID. `only` is `true` when the save holds nothing but the agent's changes, and `false`
-  once the user has typed too. A save marked `only` doesn't count as the user's own editing. Part
-  of the body, so of the request hash.
 - **`X-Notesd-Sync`**, an optional header, says a write isn't someone editing: `initial` while a
   device makes its first sync, `import` for an import. Any other value also means that, so a later
   client can send a new reason. Agents don't react to these. It isn't part of the request hash.
@@ -202,10 +197,10 @@ Browsers get `csrfToken` instead of the four token fields, and the cookie.
 | Method | Path | Body → response |
 | --- | --- | --- |
 | `GET` | `/notes` | → `{notes: [summary], nextCursor, hasMore, total}`. Live notes, newest first |
-| `POST` | `/notes` | `{operationId, id, title, content, spaceId?, conflictOf?, imageIds?, createdAt?, updatedAt?, agent?}` → `201` [result](#writing-notes) |
+| `POST` | `/notes` | `{operationId, id, title, content, spaceId?, conflictOf?, imageIds?, createdAt?, updatedAt?}` → `201` [result](#writing-notes) |
 | `GET` | `/notes/{id}` | → the note. A deleted note is `410 note_deleted`, with the tombstone in `current` |
-| `PUT` | `/notes/{id}` | `{operationId, baseRevision, title, content, spaceId?, imageIds?, updatedAt?, agent?}` → [result](#writing-notes) |
-| `DELETE` | `/notes/{id}` | `{operationId, baseRevision, agent?}` → [result](#writing-notes) |
+| `PUT` | `/notes/{id}` | `{operationId, baseRevision, title, content, spaceId?, imageIds?, updatedAt?}` → [result](#writing-notes) |
+| `DELETE` | `/notes/{id}` | `{operationId, baseRevision}` → [result](#writing-notes) |
 
 A note:
 
@@ -404,7 +399,7 @@ space and how its agent behaves. `triggers` maps each trigger the agent acts on 
 exist is `404 not_found`. Deleting a space deletes its agent.
 
 The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)
-until a device says otherwise: any signed-in request, and sign-in itself, may carry `X-Notesd-Time-Zone` with an IANA
+until a device says otherwise: any signed-in request may carry `X-Notesd-Time-Zone` with an IANA
 name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
 a name that isn't a time zone is `400 invalid_request` on `timeZone`.
 

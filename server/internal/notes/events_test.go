@@ -49,7 +49,7 @@ func TestEvents(t *testing.T) {
 	ev := rec.last(t)
 	if ev.Kind != notes.EventCreated || ev.NoteID != "n1" || ev.OpID != "op-create-n1" || ev.Before != nil ||
 		ev.After.Title != "Title" || ev.After.Content != "Body" || ev.After.Revision != 1 || ev.After.SpaceID != spaces.Default ||
-		ev.Unchanged || ev.Agent != nil || ev.Origin != "" {
+		ev.Unchanged || ev.Origin != "" {
 		t.Fatalf("create: %+v", ev)
 	}
 
@@ -63,14 +63,13 @@ func TestEvents(t *testing.T) {
 		t.Fatalf("move: %+v", ev)
 	}
 
-	// An agent's write says so, and where it came from.
-	mark := &notes.AgentMark{RunID: "run_1", Only: true}
-	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "u2", ID: "n1", BaseRevision: 2, Title: "Title", Content: "Body 3", Agent: mark, Origin: "import"}); err != nil {
+	// A write says where it came from.
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "u2", ID: "n1", BaseRevision: 2, Title: "Title", Content: "Body 3", Origin: "import"}); err != nil {
 		t.Fatal(err)
 	}
 	ev = rec.last(t)
-	if ev.Agent == nil || ev.Agent.RunID != "run_1" || !ev.Agent.Only || ev.Origin != "import" || ev.SpaceChanged() || ev.After.SpaceID != "work" {
-		t.Fatalf("agent update: %+v", ev)
+	if ev.Origin != "import" || ev.SpaceChanged() || ev.After.SpaceID != "work" {
+		t.Fatalf("import update: %+v", ev)
 	}
 
 	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "u3", ID: "n1", BaseRevision: 3, Title: "Title", Content: "Body 3"}); err != nil {
@@ -173,14 +172,5 @@ func TestWriteHookSeesTheWrite(t *testing.T) {
 	create(t, s, "n1", "T", "inside")
 	if seen != "inside" {
 		t.Fatalf("hook read %q", seen)
-	}
-}
-
-func TestAgentMarkIsValidated(t *testing.T) {
-	_, s := setup(t)
-	_, err := s.Create(ctx, notes.CreateInput{OperationID: "o1", ID: "n1", Title: "T", Agent: &notes.AgentMark{RunID: "bad id"}})
-	var v *notes.ValidationError
-	if !errors.As(err, &v) || v.Field != "agent.runId" {
-		t.Fatalf("got %v", err)
 	}
 }

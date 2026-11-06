@@ -90,12 +90,6 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.limiter.Reset(key)
-	// A web app keeping notes on the device may next talk only to sync, which doesn't send it.
-	if r.Header.Get("X-Notesd-Time-Zone") != "" {
-		if data, err := s.users.Open(r.Context(), creds.Session.UserID); err == nil {
-			s.noteTimeZone(r, data)
-		}
-	}
 
 	resp := sessionResponse{Session: creds.Session, Username: creds.Session.Username, IsAdmin: creds.Session.IsAdmin, ServerVersion: s.version()}
 	if creds.Session.Kind == auth.KindWeb {

@@ -416,6 +416,8 @@ public final class ApiClient: Sendable {
         request.httpMethod = method
         request.setValue("ios/\(version)", forHTTPHeaderField: "X-Notesd-Client")
         request.setValue("notesd-ios/\(version)", forHTTPHeaderField: "User-Agent")
+        // The account takes the first zone it hears as the "today" its agents go by.
+        request.setValue(TimeZone.current.identifier, forHTTPHeaderField: "X-Notesd-Time-Zone")
         if let body {
             request.httpBody = try? jsonEncoder.encode(body)
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")

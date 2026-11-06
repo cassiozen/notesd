@@ -82,14 +82,13 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	var req struct {
-		OperationID  string           `json:"operationId"`
-		BaseRevision int64            `json:"baseRevision"`
-		Title        *string          `json:"title"`
-		Content      *string          `json:"content"`
-		UpdatedAt    *int64           `json:"updatedAt"`
-		SpaceID      *string          `json:"spaceId"`
-		ImageIDs     []string         `json:"imageIds"`
-		Agent        *notes.AgentMark `json:"agent"`
+		OperationID  string   `json:"operationId"`
+		BaseRevision int64    `json:"baseRevision"`
+		Title        *string  `json:"title"`
+		Content      *string  `json:"content"`
+		UpdatedAt    *int64   `json:"updatedAt"`
+		SpaceID      *string  `json:"spaceId"`
+		ImageIDs     []string `json:"imageIds"`
 	}
 	body, err := decodeBody(w, r, &req)
 	if err != nil {
@@ -115,7 +114,6 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:    req.UpdatedAt,
 		SpaceID:      req.SpaceID,
 		ImageIDs:     req.ImageIDs,
-		Agent:        req.Agent,
 		Origin:       syncOrigin(r),
 	})
 	s.writeMutation(w, r, res, err)
@@ -125,9 +123,8 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	var req struct {
-		OperationID  string           `json:"operationId"`
-		BaseRevision int64            `json:"baseRevision"`
-		Agent        *notes.AgentMark `json:"agent"`
+		OperationID  string `json:"operationId"`
+		BaseRevision int64  `json:"baseRevision"`
 	}
 	body, err := decodeBody(w, r, &req)
 	if err != nil {
@@ -144,7 +141,6 @@ func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 		OperationID:  req.OperationID,
 		ID:           r.PathValue("id"),
 		BaseRevision: req.BaseRevision,
-		Agent:        req.Agent,
 		Origin:       syncOrigin(r),
 	})
 	s.writeMutation(w, r, res, err)

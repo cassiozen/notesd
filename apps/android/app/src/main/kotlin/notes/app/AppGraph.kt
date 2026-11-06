@@ -7,6 +7,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import java.io.File
+import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -231,7 +232,7 @@ class AppGraph(
 }
 
 /** This app, as every request names it: the server may ask for a newer one. */
-val clientInfo = ClientInfo("android", BuildConfig.VERSION_NAME)
+val clientInfo = ClientInfo("android", BuildConfig.VERSION_NAME, ZoneId.systemDefault().id)
 
 /** Every client the app makes, signed in ([credentials]) or not. */
 fun apiClient(url: HttpUrl, credentials: Credentials? = null) = ApiClient(url, credentials, client = clientInfo)

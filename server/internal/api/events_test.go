@@ -7,7 +7,7 @@ import (
 	"notes/server/internal/notes"
 )
 
-func TestWritesCarryAgentMarkAndOrigin(t *testing.T) {
+func TestWritesCarryOrigin(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()
 	c, _ := e.deviceClient()
@@ -28,17 +28,17 @@ func TestWritesCarryAgentMarkAndOrigin(t *testing.T) {
 		"X-Notesd-Sync", "initial"); r.status != 201 {
 		t.Fatalf("create: %d %s", r.status, r.raw)
 	}
-	if ev := last(); ev.Origin != "initial" || ev.Agent != nil {
+	if ev := last(); ev.Origin != "initial" {
 		t.Fatalf("create: %+v", ev)
 	}
 
 	r := c.do("PUT", "/api/v1/notes/n1", map[string]any{
-		"operationId": "o2", "baseRevision": 1, "title": "T", "content": "b", "agent": map[string]any{"runId": "run_1", "only": true},
+		"operationId": "o2", "baseRevision": 1, "title": "T", "content": "b",
 	})
 	if r.status != 200 {
 		t.Fatalf("update: %d %s", r.status, r.raw)
 	}
-	if ev := last(); ev.Origin != "" || ev.Agent == nil || ev.Agent.RunID != "run_1" || !ev.Agent.Only {
+	if ev := last(); ev.Origin != "" {
 		t.Fatalf("update: %+v", ev)
 	}
 
@@ -47,11 +47,5 @@ func TestWritesCarryAgentMarkAndOrigin(t *testing.T) {
 	}
 	if ev := last(); ev.Kind != notes.EventDeleted || ev.Origin != "other" {
 		t.Fatalf("delete: %+v", ev)
-	}
-
-	if r := c.do("PUT", "/api/v1/notes/n2", map[string]any{
-		"operationId": "o4", "baseRevision": 1, "title": "T", "content": "b", "agent": map[string]any{"runId": "no spaces allowed"},
-	}); r.status != 400 || r.body["field"] != "agent.runId" {
-		t.Fatalf("bad mark: %d %s", r.status, r.raw)
 	}
 }
