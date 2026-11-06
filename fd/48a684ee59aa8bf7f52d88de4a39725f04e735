@@ -1,0 +1,32 @@
+apps/web/src/notes/tags-panel.tsx
+  s_cc6cacc0a6fc01::t_2d8837f2b17313 6,58,65
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_9098312e2e7d50 105
+apps/web/src/notes/local-storage.ts
+  s_cc6cacc0a6fc01::t_2d8837f2b17313 1-18
+apps/web/src/notes/failed-run.ts
+  s_cc6cacc0a6fc01::t_2d8837f2b17313 4,8,40-41
+server/migrations/0015_agent_activity.sql
+  s_cc6cacc0a6fc01::t_9098312e2e7d50 11
+server/internal/agent/activity.go
+  s_cc6cacc0a6fc01::t_9098312e2e7d50 107-114,118,120
+apps/web/src/notes/space-menu.tsx
+  s_cc6cacc0a6fc01::t_4aed6bc48d9d6c 26-29,131,133,135,143,147,149,151
+  s_cc6cacc0a6fc01::t_6b93b9c52dece7 47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd48a684ee59aa8bf7f52d88de4a39725f04e735",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
