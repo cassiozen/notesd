@@ -100,6 +100,8 @@ server/internal/agent/editors_test.go
   s_cc6cacc0a6fc01::t_ab55c0e2e24c2c 237
 server/internal/api/agent_socket_test.go
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 232-263
+apps/web/src/notes/agent-config.ts
+  s_cc6cacc0a6fc01::t_a41f10e178105a 11-15
 ---
 {
   "schema_version": "authorship/3.0.0",
