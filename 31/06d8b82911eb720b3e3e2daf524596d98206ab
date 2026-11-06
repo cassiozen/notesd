@@ -1,0 +1,121 @@
+server/internal/agent/runner.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 36-38,51,59,97-99,108,110-111,115,118-122,139,166-176,178,197,214,224,226-227
+apps/web/src/notes/share.tsx
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 13-14,28,52-53,141-153
+  s_cc6cacc0a6fc01::t_f1f0e184594768 154
+server/internal/agent/config_test.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 7,104-105,152-175
+  s_cc6cacc0a6fc01::t_c65d121a4db61f 176
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 150,485-489,495-496,499-505
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 19-20,25,64,70-85,100-107
+  s_cc6cacc0a6fc01::t_d49410e66e5fe6 108-109
+apps/web/src/editor/agent-presence.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-140
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 59-61,63-65,67-70,75-76,78,90
+server/cmd/notesd/main.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 510,769-774
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 125
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 128-151
+apps/web/test/helpers.tsx
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1,42-43,61,143,147-151
+apps/web/src/agent/triggers.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-31
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 12-14,35-36,42-53,72-76
+apps/web/src/notes/note-pane.module.css
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 47
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 8,10,40-43,54-57,113,130,141,143,148-150,173-187,189,191-192,245-261
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 10,16
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_380c2daa3337fa 153-172
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 116-122,127-133,146-147
+  s_cc6cacc0a6fc01::t_b3961f55623a02 134
+server/internal/agent/context.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-66
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 33-50,105-109,131-134,170-178,181,183,222-232
+  s_cc6cacc0a6fc01::t_2a961d877b5490 233
+apps/web/test/server.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 148-149,184-187
+server/internal/agent/request.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-86
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 388,395,398,403-405,440-446,457
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 193
+apps/web/test/setup.ts
+  s_cc6cacc0a6fc01::t_294952da503259 3
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 91
+apps/web/src/editor/agent-edit.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 5,8-10,51-52
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 73-79,116-132
+  s_cc6cacc0a6fc01::t_02f924de407868 133
+apps/web/src/editor/agent-presence.test.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-68
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 131-138
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 80,96-100,778,796-847
+  s_cc6cacc0a6fc01::t_d467cfec57743b 848
+  s_cc6cacc0a6fc01::t_ab55c0e2e24c2c 795
+apps/web/src/editor/editor.tsx
+  s_cc6cacc0a6fc01::t_294952da503259 53
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-2,20-21,102
+apps/web/src/notes/failed-run.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 2,12-13,22-28,31-47
+  s_cc6cacc0a6fc01::t_b3961f55623a02 29-30
+server/migrations/0018_agent_reference_notes.sql
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-2
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-98
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_6a9f3567ae69df 111-115
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-2,17-19,37-38,40-45,66-74,76,88-107,110,116-117,139-141,143,146-152,159-161,168-183,217-228
+  s_cc6cacc0a6fc01::t_6af1f969da43e7 229
+  s_cc6cacc0a6fc01::t_b3961f55623a02 145
+apps/web/test/agent-triggers.test.tsx
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-137
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 43,48,53-59
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 21-22,24,157-159,288-302,343,345,364-370,536-539
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 46-47,77-83
+  s_cc6cacc0a6fc01::t_26d47777f72510 84
+apps/web/src/editor/editor.module.css
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 562-648
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 21-22,26-27,108-110
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 5,7,185,238-285
+  s_cc6cacc0a6fc01::t_df3c4a9f467ef4 286
+  s_cc6cacc0a6fc01::t_ab55c0e2e24c2c 237
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_3608bfdb34d00b 232-263
+apps/web/src/notes/agent-config.ts
+  s_cc6cacc0a6fc01::t_a41f10e178105a 11-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3106d8b82911eb720b3e3e2daf524596d98206ab",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
