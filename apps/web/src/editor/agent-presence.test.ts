@@ -48,6 +48,29 @@ describe('the agent in the note', () => {
     expect(agentPresence(editor.state)?.landed).toBeNull()
   })
 
+  it('offers Undo for a change that only deleted', () => {
+    open('First\n\nSecond')
+    applyForAgent(editor, { title: 'T', content: 'First\n' })
+    expect(shown(styles.agentLanded)).toBeNull()
+    ;(shown(styles.agentUndo) as HTMLButtonElement).click()
+    expect(noteFields(editor.state.doc).content).toBe('First\n\nSecond\n')
+  })
+
+  it('keeps the next run’s marker when the last change’s highlight ends', async () => {
+    const wait = presenceTiming.landedMs
+    presenceTiming.landedMs = 10
+    try {
+      open('First')
+      applyForAgent(editor, { title: 'T', content: '## A question?\n\nFirst\n' })
+      setAgentWaiting(editor, 'Journal agent')
+      await new Promise((r) => setTimeout(r, 30))
+      expect(agentPresence(editor.state)?.landed).toBeNull()
+      expect(shown(styles.agentMark)?.textContent).toBe('Journal agent')
+    } finally {
+      presenceTiming.landedMs = wait
+    }
+  })
+
   it('stops offering Undo once the user types, or after a while', async () => {
     open('First')
     applyForAgent(editor, { title: 'T', content: '## A question?\n\nFirst\n' })

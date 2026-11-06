@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"regexp"
 
 	"notes/server/internal/locks"
 )
@@ -15,6 +16,9 @@ var (
 	ErrNoteLocked = errors.New("the note is locked")
 	ErrNoteGone   = errors.New("no such note")
 )
+
+// A draft's id is queued before the store has checked it.
+var noteIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 // RunRequest is an editor asking for a run: a new note opened, a note
 // started being edited, or the menu command.
@@ -35,8 +39,8 @@ func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) 
 	default:
 		return "", &InputError{Field: "trigger", Message: "must be noteCreated, editStarted or menu"}
 	}
-	if req.NoteID == "" || len(req.NoteID) > 64 {
-		return "", &InputError{Field: "noteId", Message: "required"}
+	if !noteIDPattern.MatchString(req.NoteID) {
+		return "", &InputError{Field: "noteId", Message: "must be 1-64 characters of [A-Za-z0-9_-]"}
 	}
 	var id string
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {

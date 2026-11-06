@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"notes/server/internal/agent"
 	"notes/server/internal/llm"
@@ -289,13 +290,16 @@ func TestFirstMessageHasWhatTheAgentNeeds(t *testing.T) {
 		{ID: "digest", Title: "Digest", Content: "## Themes\n- rest\n"},
 		{ID: "secret", Title: "Secret", Content: "notesd:locked:v1:" + strings.Repeat("A", 60)},
 		{ID: "tagged", Title: "Old", Content: "#mood/calm"},
+		// Newer, but locked: the older one goes instead.
+		{ID: "sealed-digest", Title: "Digest", Content: "notesd:locked:v1:" + strings.Repeat("B", 60)},
 	} {
+		h.advance(time.Second)
 		n.OperationID, n.SpaceID = h.op(), &space
 		if _, err := h.d.Notes.Create(ctx, n); err != nil {
 			t.Fatal(err)
 		}
 	}
-	h.openInEditor("draft", "", ip(0))
+	h.openInEditor("draft", "Hello", ip(2))
 	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.NoteCreated, NoteID: "draft", SpaceID: "work"}); err != nil {
 		t.Fatal(err)
 	}
@@ -315,10 +319,11 @@ func TestFirstMessageHasWhatTheAgentNeeds(t *testing.T) {
 	if err := json.Unmarshal([]byte(h.model.requests[0].Messages[1].Content), &first); err != nil {
 		t.Fatal(err)
 	}
-	if first.Note.Cursor == nil || len(first.SpaceTags) != 2 || first.SpaceTags[1]["tag"] != "#mood/calm" {
+	if first.Note.Cursor["before"] != "He" || first.Note.Cursor["after"] != "llo" || len(first.SpaceTags) != 2 || first.SpaceTags[1]["tag"] != "#mood/calm" {
 		t.Fatalf("cursor and tags: %+v", first)
 	}
-	if len(first.ReferenceNotes) != 1 || first.ReferenceNotes[0]["id"] != "digest" || !slices.Equal(first.Missing, []string{"Nowhere"}) {
+	if len(first.ReferenceNotes) != 1 || first.ReferenceNotes[0]["id"] != "digest" || first.ReferenceNotes[0]["title"] != "Digest" ||
+		first.ReferenceNotes[0]["content"] != "## Themes\n- rest\n" || !slices.Equal(first.Missing, []string{"Nowhere"}) {
 		t.Fatalf("reference notes (the locked one never sent): %+v", first)
 	}
 	if got := h.content("digest"); got != "## Themes\n- rest\n- walks\n" {

@@ -26,6 +26,8 @@ export async function requestRun(trigger: 'noteCreated' | 'editStarted' | 'menu'
     await agent.request({ trigger, noteId, spaceId, connectionId })
     return true
   } catch {
+    // The editor's next mount may try again.
+    if (trigger === 'noteCreated') created.delete(noteId)
     return false
   }
 }

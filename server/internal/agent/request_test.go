@@ -41,6 +41,10 @@ func TestRequestRun(t *testing.T) {
 			t.Errorf("%s: %v", tc.name, tc.err)
 		}
 	}
+	// Queued before the store has a note to check it against.
+	if err := req(agent.NoteCreated, "a/b", "work"); !errors.As(err, &in) || in.Field != "noteId" {
+		t.Errorf("not a note id: %v", err)
+	}
 
 	// A session's trigger first, then two asks for one run: it's one, and goes ahead.
 	h.advance(agent.IdleAfter)

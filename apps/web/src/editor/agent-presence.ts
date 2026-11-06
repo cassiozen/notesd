@@ -80,7 +80,8 @@ export const AgentPresence = Extension.create({
             if (meta?.waiting !== undefined) waiting = meta.waiting === null ? null : { at: likelySpot(state), label: meta.waiting }
             if (meta?.landed !== undefined) {
               landed = meta.landed
-              waiting = null
+              // Only the change landing ends the wait; its highlight expiring may come during the next run's.
+              if (meta.landed) waiting = null
             }
             return { waiting, landed }
           },
@@ -94,8 +95,9 @@ export const AgentPresence = Extension.create({
               const { label } = p.waiting
               decos.push(Decoration.widget(p.waiting.at, () => marker(label), { side: 1, key: `agent-${label}` }))
             }
-            if (p.landed && p.landed.to > p.landed.from) {
-              decos.push(Decoration.inline(p.landed.from, p.landed.to, { class: styles.agentLanded ?? '' }))
+            if (p.landed) {
+              // A deletion has nothing to highlight, but can still be undone.
+              if (p.landed.to > p.landed.from) decos.push(Decoration.inline(p.landed.from, p.landed.to, { class: styles.agentLanded ?? '' }))
               // At the end of its last line of text, not past it.
               const end = Selection.near(state.doc.resolve(p.landed.to), -1).head
               decos.push(Decoration.widget(Math.max(end, p.landed.from), () => undoButton(editor), { side: 1, key: 'agent-undo' }))

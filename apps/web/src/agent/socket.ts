@@ -79,6 +79,9 @@ class AgentSocket {
     const ws = this.ws
     this.ws = null
     this.connectionId = null
+    // Its close is ignored once this.ws is null, so forget the runs here.
+    this.landed.clear()
+    this.setRunning(new Map())
     ws?.close()
   }
 
@@ -88,8 +91,6 @@ class AgentSocket {
     this.close()
     this.open.clear()
     this.editors.clear()
-    this.landed.clear()
-    this.setRunning(new Map())
   }
 
   noteOpened(noteId: string) {

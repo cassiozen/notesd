@@ -103,6 +103,7 @@ func TestConfigValidation(t *testing.T) {
 		{agent.Config{MenuLabel: "Fix\x00"}, "menuLabel"},
 		{agent.Config{ReferenceNotes: []string{"a", "b", "c", "d", "e", "f"}}, "referenceNotes"},
 		{agent.Config{ReferenceNotes: []string{strings.Repeat("x", 201)}}, "referenceNotes"},
+		{agent.Config{ReferenceNotes: []string{"a\x00b"}}, "referenceNotes"},
 	} {
 		tc.c.SpaceID = spaces.Default
 		var ie *agent.InputError

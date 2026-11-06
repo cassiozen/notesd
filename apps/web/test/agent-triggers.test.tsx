@@ -99,7 +99,7 @@ describe('editor triggers', () => {
     await typeAtEnd(user, ', two')
     await new Promise((r) => setTimeout(r, 700))
     await typeAtEnd(user, ', three')
-    expect(server.answered('POST', '/agent/runs')).toBe(2)
+    await waitFor(() => expect(server.answered('POST', '/agent/runs')).toBe(2))
   })
 
   it('the menu command runs, and a failure shows on the note as it happens', async () => {

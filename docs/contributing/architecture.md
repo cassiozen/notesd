@@ -493,8 +493,9 @@ The user guide is [agents](../guides/using/agents.md).
   authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
   open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it
   shows has its agent on, and says which notes its editor opens and closes; leaving for a space
-  without one, it closes once the open note has said it closed. The server tells every editor of
-  the account when a run starts and ends (a marker in the note where the agent is likely to write, a failure on the note). The server pings every 25 seconds,
+  without one, it closes once the open note has said it closed. The server tells the account's
+  connected editors when a run starts and ends (a marker in the note where the agent is likely to write, a failure on the note),
+  in order but best-effort: an editor that's slow or reconnecting misses them. The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
 - **Runner.** Each account has two slots: one runs its queue in order, editor triggers first; the

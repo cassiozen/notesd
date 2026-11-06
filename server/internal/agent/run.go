@@ -179,16 +179,19 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	if note != nil && rs.inEditor[note.ID] != nil {
 		cursor = rs.inEditor[note.ID].cursor
 	}
-	rc, err := rs.gather(runCtx, c)
-	if err != nil {
-		return failed(FailInterrupted, err)
+	if rc, err := rs.gather(runCtx, c); err != nil {
+		if runCtx.Err() == nil {
+			return failed(FailInterrupted, err)
+		}
+		// Else the deadline or a shutdown, told apart below.
+	} else {
+		messages := []llm.Message{
+			{Role: "system", Content: systemPrompt(c, r.Trigger)},
+			{Role: "user", Content: eventMessage(r, now, note, cursor, rc, spaceName)},
+		}
+		f.timing.prep = time.Since(began)
+		rn.converse(runCtx, rs, st, messages, &f)
 	}
-	messages := []llm.Message{
-		{Role: "system", Content: systemPrompt(c, r.Trigger)},
-		{Role: "user", Content: eventMessage(r, now, note, cursor, rc, spaceName)},
-	}
-	f.timing.prep = time.Since(began)
-	rn.converse(runCtx, rs, st, messages, &f)
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) && f.Status == "" {
 		f.Status, f.Failure, f.Message = StatusFailed, FailTimeout, fmt.Sprintf("The run took longer than %s.", RunTimeout)
 	}

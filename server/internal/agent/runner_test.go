@@ -807,8 +807,12 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 	h.agent("work", agent.NewNoteDone, agent.EditStarted, agent.Menu)
 	h.done("n1", "a")
 	h.create("n2", "work", "b")
-	release := make(chan struct{})
+	h.create("n3", "work", "c")
+	entered, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	free := func() { once.Do(func() { close(release) }) }
 	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		close(entered)
 		<-release
 		return say("No change."), nil
 	})
@@ -816,6 +820,8 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 	done := make(chan struct{})
 	go func() { defer close(done); h.runner.Run(runCtx) }()
 	defer func() { stop(); <-done }()
+	// Before the runner's stopped, or a failed test waits on n1's run forever.
+	defer free()
 	status := func(trigger agent.Trigger, note string) string {
 		for _, r := range h.runs() {
 			if r.Trigger == string(trigger) && r.Note == note {
@@ -834,7 +840,12 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 			time.Sleep(5 * time.Millisecond)
 		}
 	}
-	waitFor("n1's run to start", func() bool { return status(agent.NewNoteDone, "n1") == agent.StatusRunning })
+	// At the model, not just running: before it gets there, n2's run could take this step.
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("n1's run never reached the model: %+v", h.runs())
+	}
 
 	// The other note's: done while n1's still runs.
 	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n2"}); err != nil {
@@ -847,13 +858,29 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: "n1"}); err != nil {
 		t.Fatal(err)
 	}
+	// Queued after it: done means the slot has passed n1's over.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n3"}); err != nil {
+		t.Fatal(err)
+	}
 	h.runner.Wake(1)
-	time.Sleep(50 * time.Millisecond)
+	waitFor("n3's run", func() bool { return status(agent.EditStarted, "n3") == agent.StatusDone })
 	if s := status(agent.Menu, "n1"); s != agent.StatusQueued {
 		t.Fatalf("ran beside another run on its note: %s", s)
 	}
-	close(release)
+	free()
 	waitFor("n1's menu run", func() bool { return status(agent.Menu, "n1") == agent.StatusDone })
+}
+
+func TestTimeoutBeforeTheModelIsATimeout(t *testing.T) {
+	timeout := agent.RunTimeout
+	agent.RunTimeout = time.Nanosecond
+	t.Cleanup(func() { agent.RunTimeout = timeout })
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	if r := h.next(); r.Status != agent.StatusFailed || r.Failure != agent.FailTimeout {
+		t.Fatalf("run: %+v", r)
+	}
 }
 
 func TestWorkersEndIdleSessionsWhenWoken(t *testing.T) {

@@ -157,3 +157,34 @@ func TestARunsOwnEndIsntTheEditorGoing(t *testing.T) {
 		t.Fatalf("got %v", err)
 	}
 }
+
+func TestBroadcastKeepsOrder(t *testing.T) {
+	h := editors.NewHub()
+	release := make(chan struct{})
+	got := make(chan any, 2)
+	c, err := h.Add(1, func(_ context.Context, msg any) error {
+		if msg == "running" {
+			<-release
+		}
+		got <- msg
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Remove(c)
+	// The start is slow to send; the end mustn't overtake it.
+	h.Broadcast(1, "running")
+	h.Broadcast(1, "done")
+	close(release)
+	for _, want := range []string{"running", "done"} {
+		select {
+		case m := <-got:
+			if m != want {
+				t.Fatalf("got %v, want %s", m, want)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("waiting for %s", want)
+		}
+	}
+}

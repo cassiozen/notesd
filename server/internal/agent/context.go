@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sort"
 
+	"notes/server/internal/locks"
 	"notes/server/internal/search"
 )
 
@@ -36,17 +37,20 @@ func (rs *runState) gather(ctx context.Context, c Config) (runContext, error) {
 	}
 	for _, title := range c.ReferenceNotes {
 		var id string
+		var locked bool
+		// The newest unlocked one, else a locked one: it's there, just never sent.
 		err := rs.acct.Agent.db.R.QueryRowContext(ctx, `
-			SELECT id FROM notes WHERE space_id = ? AND title = ? AND deleted_at IS NULL
-			ORDER BY updated_at DESC LIMIT 1`, rs.run.SpaceID, title).Scan(&id)
+			SELECT id, substr(content, 1, ?) = ? AS locked FROM notes
+			WHERE space_id = ? AND title = ? AND deleted_at IS NULL
+			ORDER BY locked, updated_at DESC LIMIT 1`, len(locks.Family), locks.Family, rs.run.SpaceID, title).Scan(&id, &locked)
 		switch {
 		case errors.Is(err, sql.ErrNoRows):
 			out.Missing = append(out.Missing, title)
 			continue
 		case err != nil:
 			return out, err
-		case id == rs.run.NoteID:
-			continue // it's in the message already
+		case locked || id == rs.run.NoteID:
+			continue // never sent, or in the message already
 		}
 		n, err := rs.read(ctx, id)
 		var refused *toolError

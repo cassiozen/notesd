@@ -39,6 +39,9 @@ type Conn struct {
 	ID     string
 	UserID int64
 	send   func(ctx context.Context, msg any) error
+	// outbox is Broadcast's messages, sent one at a time so a run's end
+	// never overtakes its start.
+	outbox chan any
 	gone   chan struct{}
 	// Under Hub.mu.
 	open    map[string]time.Time // note id → when the editor opened it
@@ -56,7 +59,7 @@ func (h *Hub) Add(userID int64, send func(ctx context.Context, msg any) error) (
 	var b [12]byte
 	_, _ = rand.Read(b[:])
 	c := &Conn{
-		ID: "c_" + hex.EncodeToString(b[:]), UserID: userID, send: send, gone: make(chan struct{}),
+		ID: "c_" + hex.EncodeToString(b[:]), UserID: userID, send: send, outbox: make(chan any, 16), gone: make(chan struct{}),
 		open: map[string]time.Time{}, pending: map[string]chan json.RawMessage{},
 	}
 	h.mu.Lock()
@@ -70,7 +73,21 @@ func (h *Hub) Add(userID int64, send func(ctx context.Context, msg any) error) (
 		h.users[userID] = conns
 	}
 	conns[c] = struct{}{}
+	go c.deliver()
 	return c, nil
+}
+
+func (c *Conn) deliver() {
+	for {
+		select {
+		case msg := <-c.outbox:
+			ctx, cancel := context.WithTimeout(context.Background(), CallTimeout)
+			_ = c.send(ctx, msg)
+			cancel()
+		case <-c.gone:
+			return
+		}
+	}
 }
 
 // Full reports whether the user has MaxConns connections already.
@@ -129,11 +146,10 @@ func (h *Hub) Broadcast(userID int64, msg any) {
 	}
 	h.mu.Unlock()
 	for _, c := range conns {
-		go func() {
-			ctx, cancel := context.WithTimeout(context.Background(), CallTimeout)
-			defer cancel()
-			_ = c.send(ctx, msg)
-		}()
+		select {
+		case c.outbox <- msg:
+		default:
+		}
 	}
 }
 

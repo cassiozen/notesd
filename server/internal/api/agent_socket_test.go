@@ -261,7 +261,7 @@ func TestRequestAgentRun(t *testing.T) {
 		}
 	}
 	r := c.do("POST", "/api/v1/agent/runs", map[string]any{"trigger": "noteCreated", "noteId": "draft", "spaceId": "default", "connectionId": "c_1"})
-	if r.status != 202 || r.body["runId"] == "" || woken.Load() != 1 {
+	if id, _ := r.body["runId"].(string); r.status != 202 || id == "" || woken.Load() != 1 {
 		t.Fatalf("draft: %d %s", r.status, r.raw)
 	}
 }

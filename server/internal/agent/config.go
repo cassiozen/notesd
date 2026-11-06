@@ -250,7 +250,7 @@ func clean(c Config) (Config, error) {
 			switch {
 			case t == "" || slices.Contains(refs, t):
 				continue
-			case utf8.RuneCountInString(t) > MaxReferenceTitle || !utf8.ValidString(t):
+			case utf8.RuneCountInString(t) > MaxReferenceTitle || !utf8.ValidString(t) || strings.ContainsRune(t, 0):
 				return c, &InputError{Field: "referenceNotes", Message: "a note's title, of up to 200 characters"}
 			}
 			refs = append(refs, t)

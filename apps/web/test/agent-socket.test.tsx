@@ -255,4 +255,25 @@ describe('the agent socket, connecting', () => {
     agentSocket.noteClosed('n1', 2)
     expect(socket.sent).toEqual([])
   })
+
+  it('forgets what was running when stopped', () => {
+    const make = socketFactory.make
+    socketFactory.make = () => new FakeSocket() as unknown as WebSocket
+    onTestFinished(() => {
+      agentSocket.stop()
+      socketFactory.make = make
+      FakeSocket.all = []
+    })
+    agentSocket.start()
+    const socket = FakeSocket.all.at(-1)
+    if (!socket) throw new Error('no socket')
+    socket.hello()
+    const running = { type: 'run', runId: 'r1', noteId: 'n1', trigger: 'menu', status: 'running' }
+    socket.dispatchEvent(new MessageEvent('message', { data: JSON.stringify(running) }))
+    expect(agentSocket.isWriting('n1')).toBe(true)
+    // The agent turned off and on again: the run's end went to a socket no longer listened to.
+    agentSocket.stop()
+    agentSocket.start()
+    expect(agentSocket.isWriting('n1')).toBe(false)
+  })
 })
