@@ -1,0 +1,72 @@
+server/internal/agent/context.go
+  s_154969644f2db1::t_da034054ecbce5 40-41,43-45,52-53
+  s_154969644f2db1::t_fc024425d888f3 9
+apps/web/src/agent/triggers.ts
+  s_154969644f2db1::t_f55c9f6f6da1f7 29-30
+apps/web/src/editor/agent-presence.ts
+  s_154969644f2db1::t_f55c9f6f6da1f7 83-84,98-100
+server/internal/agent/config.go
+  s_154969644f2db1::t_fc024425d888f3 252
+apps/web/test/agent-socket.test.tsx
+  s_154969644f2db1::t_d084cec8a48623 154-165,168-174
+  s_154969644f2db1::t_5f300fc61074ba 166-167
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_ce0ef6663954c6 802,806,834-839
+  s_154969644f2db1::t_3fc152e520ed8f 801,803-804,814-815,852-855,857,861,864-874
+  s_154969644f2db1::t_427aa813d47c1f 875
+apps/web/src/editor/agent-presence.test.ts
+  s_154969644f2db1::t_d084cec8a48623 51-73
+server/internal/api/agent_socket_test.go
+  s_154969644f2db1::t_25f80660fb52fd 260
+docs/guides/using/agents.md
+  s_154969644f2db1::t_7da0d0602e1663 52
+  s_154969644f2db1::t_2539735fb967d7 53-54
+apps/web/src/agent/triggers.test.ts
+  s_154969644f2db1::t_ae9ffce51b35a7 1-24
+server/internal/editors/hub.go
+  s_154969644f2db1::t_7b3045e68cdac8 40-42,60,74,78-90,144-147
+server/internal/agent/request.go
+  s_154969644f2db1::t_fc024425d888f3 7,20-22,42-43
+docs/contributing/architecture.md
+  s_154969644f2db1::t_7da0d0602e1663 495-497
+server/internal/agent/run.go
+  s_154969644f2db1::t_fc024425d888f3 176-179
+server/internal/agent/request_test.go
+  s_154969644f2db1::t_b7cf3e6d5d9dc8 47
+  s_154969644f2db1::t_c65330042d9f5d 44-46
+server/internal/agent/config_test.go
+  s_154969644f2db1::t_3a6ef77b23b966 106
+apps/web/src/agent/socket.ts
+  s_154969644f2db1::t_f55c9f6f6da1f7 63-65
+server/internal/editors/hub_test.go
+  s_154969644f2db1::t_7b3045e68cdac8 134-164
+server/internal/agent/editors_test.go
+  s_154969644f2db1::t_3fc152e520ed8f 10
+  s_154969644f2db1::t_3a6ef77b23b966 252-253,255,261,281,284-285
+apps/web/test/agent-triggers.test.tsx
+  s_154969644f2db1::t_f55c9f6f6da1f7 102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9f110c2fb28f4f2b4d1db6254ef0ce9283e5e166",
+  "prompts": {},
+  "sessions": {
+    "s_154969644f2db1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "c2d9378d-a3e0-4cfd-af71-00ddd999cc5a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
