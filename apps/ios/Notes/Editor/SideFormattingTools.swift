@@ -54,6 +54,7 @@ private struct ReadsSideBar: ViewModifier {
                 tool("Strikethrough", Image(systemName: "strikethrough"), on: state.strike) { $0.toggleStrike() }
                 ToolbarItem(placement: .bottomBar) {
                     SideTool(title: "Link", icon: Image(systemName: "link"), on: state.link) { controller.editLink() }
+                        .disabled(state.inTitle)
                 }
             } else {
                 ToolbarItem(placement: .bottomBar) { styleMenu }
