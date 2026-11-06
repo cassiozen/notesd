@@ -36,6 +36,7 @@ server/internal/agent/export_test.go
 apps/web/test/agent-socket.test.tsx
   s_cc6cacc0a6fc01::t_380c2daa3337fa 153-172
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 116-122,127-133,146-147
+  s_cc6cacc0a6fc01::t_b3961f55623a02 134
 server/internal/agent/context.go
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-66
 server/internal/agent/run.go
@@ -64,11 +65,13 @@ server/internal/api/respond.go
 server/internal/agent/runner_test.go
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 80,96-100,778,796-847
   s_cc6cacc0a6fc01::t_d467cfec57743b 848
+  s_cc6cacc0a6fc01::t_ab55c0e2e24c2c 795
 apps/web/src/editor/editor.tsx
   s_cc6cacc0a6fc01::t_294952da503259 53
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-2,20-21,102
 apps/web/src/notes/failed-run.ts
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 2,18-19,28-34,37-53
+  s_cc6cacc0a6fc01::t_b3961f55623a02 35-36
 server/migrations/0018_agent_reference_notes.sql
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-2
 server/internal/agent/request_test.go
@@ -77,6 +80,7 @@ apps/web/src/agent/socket.ts
   s_cc6cacc0a6fc01::t_6a9f3567ae69df 111-115
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 1-2,17-19,37-38,40-45,66-74,76,88-107,110,116-117,139-141,143,146-152,159-161,168-183,217-228
   s_cc6cacc0a6fc01::t_6af1f969da43e7 229
+  s_cc6cacc0a6fc01::t_b3961f55623a02 145
 apps/web/src/notes/agent-config.ts
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 38-42
 apps/web/test/agent-triggers.test.tsx
@@ -95,6 +99,7 @@ apps/web/src/api/agent.ts
 server/internal/agent/editors_test.go
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 5,7,185,238-285
   s_cc6cacc0a6fc01::t_df3c4a9f467ef4 286
+  s_cc6cacc0a6fc01::t_ab55c0e2e24c2c 237
 server/internal/api/agent_socket_test.go
   s_cc6cacc0a6fc01::t_3608bfdb34d00b 232-263
 ---
