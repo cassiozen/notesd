@@ -7,7 +7,20 @@ import UIKit
 @Observable
 final class EditorController {
     fileprivate(set) weak var view: NoteTextView?
-    var format = FormatState()
+    var format = FormatState() {
+        didSet { if format.tag != oldValue.tag { placeAccessory() } }
+    }
+    /// The window's bars run down its side (an iPhone Duo folded, or open in landscape): the tools are
+    /// toolbar items there, and above the keyboard there's only the tag suggestions, when there are some.
+    var toolsInSideBar = false {
+        didSet { if toolsInSideBar != oldValue { placeAccessory() } }
+    }
+    /// Every tag, to complete the one being typed.
+    var tags: [TagCount] = [] {
+        didSet { placeAccessory() }
+    }
+    /// The formatting bar's view, for the text view to show above the keyboard.
+    fileprivate var accessory: UIView?
     /// The link sheet's starting text and address, while it's open.
     var linkSheet: (text: String, href: String?)?
     /// The photo picker is open, to add a picture.
@@ -36,6 +49,16 @@ final class EditorController {
         let redo = view?.undoManager?.canRedo ?? false
         if undo != canUndo { canUndo = undo }
         if redo != canRedo { canRedo = redo }
+    }
+
+    /// Existing tags that complete the one at the cursor.
+    var suggestions: [TagCount] {
+        format.tag?.query.map { suggestTags(tags, query: $0) } ?? []
+    }
+
+    /// An empty band above the keyboard would look like a gap in the note, so with nothing to show it goes.
+    func placeAccessory() {
+        view?.setAccessory(toolsInSideBar && suggestions.isEmpty ? nil : accessory)
     }
 
     func run(_ command: (NoteTextView) -> Void) {
@@ -81,20 +104,22 @@ struct EditorView: UIViewRepresentable {
             controller?.barLeading = leading
             controller?.barTrailing = trailing
         }
-        let bar = UIHostingController(rootView: FormattingBar(controller: controller, tags: tags))
+        controller.tags = tags
+        let bar = UIHostingController(rootView: FormattingBar(controller: controller))
         bar.view.backgroundColor = .clear
         bar.sizingOptions = [.intrinsicContentSize]
         bar.view.frame = CGRect(x: 0, y: 0, width: 320, height: 52)
         bar.view.autoresizingMask = [.flexibleWidth]
         context.coordinator.bar = bar
-        view.inputAccessoryView = bar.view
+        controller.accessory = bar.view
+        controller.placeAccessory()
         if autofocus { DispatchQueue.main.async { view.becomeFirstResponder() } }
         context.coordinator.watchUndo(controller)
         return view
     }
 
     func updateUIView(_ view: NoteTextView, context: Context) {
-        context.coordinator.bar?.rootView = FormattingBar(controller: controller, tags: tags)
+        if controller.tags != tags { controller.tags = tags }
         if let incoming = model.incoming, incoming.version != context.coordinator.seenIncoming {
             context.coordinator.seenIncoming = incoming.version
             view.setDocument(incoming.document, keepSelection: true)

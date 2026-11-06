@@ -140,6 +140,16 @@ struct NotesListView: View {
                     Color.clear.frame(width: 1, height: 1).accessibilityHidden(true)
                 }
             }
+            if nav.wide {
+                // Beside the note, a big button at the list's foot outweighs it: a toolbar one, still amber.
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("New note", systemImage: "square.and.pencil", action: newNote)
+                        .buttonStyle(.glassProminent)
+                        .tint(Color.accent)
+                        .foregroundStyle(Color.onAccent)
+                        .keyboardShortcut("n", modifiers: .command)
+                }
+            }
         }
         .safeAreaBar(edge: .bottom) {
             // While searching, the keyboard needs the room more than the compose button does.
@@ -304,8 +314,10 @@ struct NotesListView: View {
                         .accessibilityShowsLargeContentViewer()
                 }
                 Spacer()
-                ComposeButton(action: newNote)
-                    .keyboardShortcut("n", modifiers: .command)
+                if !nav.wide {
+                    ComposeButton(action: newNote)
+                        .keyboardShortcut("n", modifiers: .command)
+                }
             }
             .padding(.leading, 24)
             .padding(.trailing, 16)
