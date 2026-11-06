@@ -32,6 +32,7 @@ apps/web/src/notes/saver.ts
 docs/contributing/architecture.md
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 66,484,488-493,501-502,505-520,599
   s_cc6cacc0a6fc01::t_5f4314c03899c0 485-486
+  s_cc6cacc0a6fc01::t_1bba6bf1315b94 503-504
 apps/web/src/notes/shell.tsx
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 1,50
 server/internal/agent/run.go
@@ -64,6 +65,7 @@ server/internal/agent/triggers.go
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 11,83-92,312-331
 server/internal/agent/tools.go
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 41,43-44,74-86,185-205,207,209-219,242-248,250-252,258-284,287-296,300-301,306-308,323-325,347-367,369
+  s_cc6cacc0a6fc01::t_6a9e7d7e1e57cd 42
 apps/web/src/notes/note-pane.tsx
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 21-22,155-156,159-165,362-381
 server/internal/api/api.go
