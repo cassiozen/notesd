@@ -1,0 +1,291 @@
+apps/android/licenses/OFL-ShipporiMincho.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+apps/web/src/ui/sheet.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 29
+apps/web/src/styles/tokens.css
+  s_6e390fbf5493aa::t_3eb49b6304ec81 3-7
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 32-33
+  s_6e390fbf5493aa::t_979fb35b97c126 1,9-11,15-16,19-21,24-31
+apps/web/src/styles/boot.css
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 9,11,27,29-30
+apps/web/src/ui/password-meter.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 3,11
+apps/android/README.md
+  s_6e390fbf5493aa::t_4aec71f467b342 72-73
+shared/themes/fonts.json
+  s_6e390fbf5493aa::t_9fe0990d92cb72 1-4,6-7,9-16,18-23,25-32,34-43,45-51,53-60,62-75,80-84,89-92,96-106,111-115,120-122,124-125,127-137,139-144,146-151,153,155-167,169-175,177-183,185-192,194-206,208-214,216-220,233,263,273-274
+  s_6e390fbf5493aa::t_59365ff0f03d0b 78,87,109-110,118-119
+  s_6e390fbf5493aa::t_f3bd0a70f9c44d 17,24,44,52,76-77,85-86,107-108,116-117,138,145,168,176,184,207,215
+  s_6e390fbf5493aa::t_b3b4d62800e67c 79,88
+  s_6e390fbf5493aa::t_6cb2a1cce7f47b 5,8,33,61,93-95,123,126,152,154,193,221-232,234-262,264-272
+apps/ios/licenses/OFL-ZenKakuGothicNew.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+pnpm-workspace.yaml
+  s_6e390fbf5493aa::t_b18b91958fd88e 5
+apps/web/src/ui/kicker.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 2
+shared/themes/styles/flush.json
+  s_6e390fbf5493aa::t_85e2e977c85d91 1-4,12-13,24,30,49-50,54,65
+  s_6e390fbf5493aa::t_aa409a3aec147f 5-11,14-23,25-29,31-48,51-53,55-64
+apps/ios/licenses/OFL-HankenGrotesk.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-94
+apps/web/src/ui/status-pill.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 7
+apps/web/src/ui/backdrop.module.css
+  s_6e390fbf5493aa::t_79d500c50858d6 1-2,18
+apps/android/licenses/OFL-ZenKakuGothicNew.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+apps/web/public/boot.js
+  s_6e390fbf5493aa::t_c234654c8b6925 1-2,5-14,18
+apps/web/src/ui/steps.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 10
+apps/web/src/auth/auth.module.css
+  s_6e390fbf5493aa::t_81e2ba45e43ee7 50,106,110
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 39,41
+  s_6e390fbf5493aa::t_754b0bda77e83f 40
+mise.toml
+  s_6e390fbf5493aa::t_138b230d847b12 105
+  s_6e390fbf5493aa::t_cc1cc84e1644a3 95-104,106-111
+docs/contributing/development.md
+  s_6e390fbf5493aa::t_4aec71f467b342 25
+shared/themes/lib/color.ts
+  s_6e390fbf5493aa::t_50244515944461 1-75
+shared/themes/styles/glass.json
+  s_6e390fbf5493aa::t_85e2e977c85d91 1-4,12-13,26,32,52-53,78,89
+  s_6e390fbf5493aa::t_aa409a3aec147f 5-11,14-25,27-31,33-51,54-77,79-88
+apps/web/src/notes/shell-skeleton.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 18,24
+apps/web/src/themes/themes.ts
+  s_6e390fbf5493aa::t_5fc83bc15886af 10,13-15
+  s_6e390fbf5493aa::t_d8ec6922cdfc3d 11-12,19-26
+  s_6e390fbf5493aa::t_d561918ab63d30 1,3-5,7-8,16,27
+apps/web/src/main.tsx
+  s_6e390fbf5493aa::t_79d500c50858d6 8
+  s_6e390fbf5493aa::t_e379c57ae815bf 5,12-16
+shared/themes/styles/lumen.json
+  s_6e390fbf5493aa::t_85e2e977c85d91 1-4,12-13,26,32,50-51,55,66
+  s_6e390fbf5493aa::t_aa409a3aec147f 5-11,14-25,27-31,33-49,52-54,56-65
+shared/themes/README.md
+  s_6e390fbf5493aa::t_94349bb1106a0e 1-4
+apps/web/src/editor/find.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 12,14,18,59,65,79,85,101,150,153
+apps/ios/Notes/UI/Theme.swift
+  s_6e390fbf5493aa::t_2d2d67fd1f7424 4-6
+apps/ios/licenses/OFL-Playfair.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+shared/themes/lib/kotlin.ts
+  s_6e390fbf5493aa::t_27d63697d3fc7a 57-63,151
+  s_6e390fbf5493aa::t_fa7cb87cf05861 1-56,64-150,152-313
+shared/themes/lib/web.ts
+  s_6e390fbf5493aa::t_1551d24cd59251 1-203
+apps/web/src/notes/shell.module.css
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 31-32
+apps/web/src/ui/banner.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 7
+apps/android/licenses/OFL-HankenGrotesk.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-94
+apps/web/src/notes/tags-panel.module.css
+  s_6e390fbf5493aa::t_754b0bda77e83f 122
+  s_6e390fbf5493aa::t_81e2ba45e43ee7 279
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 7,22-34,56-57
+  s_6e390fbf5493aa::t_7e4531733743aa 35-39
+  s_6e390fbf5493aa::t_8ce218d9c019dc 141,227
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 121,123
+apps/web/src/notes/share.module.css
+  s_6e390fbf5493aa::t_754b0bda77e83f 112
+  s_6e390fbf5493aa::t_8ce218d9c019dc 20,45,47,51,59,62
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 111,113
+apps/web/src/settings/settings.module.css
+  s_6e390fbf5493aa::t_815dffc4f7bbe1 342-343,389,452,465,480
+  s_6e390fbf5493aa::t_79d500c50858d6 392,397,409,442
+  s_6e390fbf5493aa::t_e8a30381aedf50 388,400,403,407-408,430,432-433,436-438,440-441,443,449-451,457-461,479,481
+  s_6e390fbf5493aa::t_754b0bda77e83f 11,109,173,662,725
+  s_6e390fbf5493aa::t_5721b5ed31be57 486-490
+  s_6e390fbf5493aa::t_605d61592c2d18 337-341,344-347,350-351,354-359,362-363,366-381,385-387,390-391,393-394,398-399,401-402,406,431,434-435,439,444-448,453,462-464,469-472,476-478,482,484-485,491-492
+  s_6e390fbf5493aa::t_8ce218d9c019dc 36,72,131,317,324,334,517,568,598,697,709
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 10,12,108,110,172,174,454,661,663,724,726
+  s_6e390fbf5493aa::t_a5356e7f9f1063 473
+  s_6e390fbf5493aa::t_c793562d14d454 493
+  s_6e390fbf5493aa::t_66379d71069523 412-419,422-423,426-429
+shared/themes/scripts/native_fonts.py
+  s_6e390fbf5493aa::t_f4c4335dc9311b 56-64
+  s_6e390fbf5493aa::t_264ea71358b5d0 74-75
+  s_6e390fbf5493aa::t_503129928474f8 1-4,6-20,22-55,76-111
+  s_6e390fbf5493aa::t_f3bd0a70f9c44d 69-73
+  s_6e390fbf5493aa::t_59365ff0f03d0b 5,21,65-68
+apps/web/src/ui/code.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 13,42
+apps/web/src/theme.ts
+  s_6e390fbf5493aa::t_0e8dcdbe81db3b 1,4,6-11,14-23,25,32-38,40-42,44-45,50-83,85-110
+  s_6e390fbf5493aa::t_5fc83bc15886af 2,13,84
+apps/web/src/settings/settings.tsx
+  s_6e390fbf5493aa::t_605d61592c2d18 433-435
+  s_6e390fbf5493aa::t_052e3a87ac7384 391
+  s_6e390fbf5493aa::t_66379d71069523 450
+  s_6e390fbf5493aa::t_e8a30381aedf50 445,448,452-455,457
+  s_6e390fbf5493aa::t_fbc7462d3fef08 13
+  s_6e390fbf5493aa::t_81583b734bc581 12,50,192,354-355,390,404-405,411-412,420-424,430-432,436-438,446-447,449,451,456,458-471,474-475,477-493,496
+  s_6e390fbf5493aa::t_df86c85f4ade5f 406-407,413-417,425,429
+  s_6e390fbf5493aa::t_5fc83bc15886af 203,426-428
+apps/web/src/locks/locks.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 49
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 9,11
+  s_6e390fbf5493aa::t_754b0bda77e83f 10
+apps/web/package.json
+  s_6e390fbf5493aa::t_edd570e60e635d 22
+  s_6e390fbf5493aa::t_1e32c215d42dfb 25-26
+  s_6e390fbf5493aa::t_61db022ae5654b 19
+  s_6e390fbf5493aa::t_709d08519a8999 27
+  s_6e390fbf5493aa::t_fd050056f65c31 23
+shared/themes/lib/model.ts
+  s_6e390fbf5493aa::t_f0dd154e0e12d8 1-248
+apps/web/src/themes/generated/themes.css
+  s_6e390fbf5493aa::t_82d247b873f59c 1-746
+shared/themes/palettes/nocturne.json
+  s_6e390fbf5493aa::t_bf9d9316e26d35 5-38
+  s_6e390fbf5493aa::t_d213e18703d7f5 1-4,39-48
+apps/ios/licenses/OFL-NunitoSans.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+apps/web/src/ui/toast.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 12,16,38
+shared/themes/palettes/amber.json
+  s_6e390fbf5493aa::t_bf9d9316e26d35 3,5-14,19-20,22-33,39
+  s_6e390fbf5493aa::t_d213e18703d7f5 1-2,4,15-18,21,34-38,40-49
+shared/themes/generate.ts
+  s_6e390fbf5493aa::t_8faa94f9f8a387 1-2
+  s_6e390fbf5493aa::t_9ce0359f4e01be 3-47
+shared/themes/lib/swift.ts
+  s_6e390fbf5493aa::t_9652e9f7a80c31 1-25,28-34,36-37,39-63,71-155,157-368
+  s_6e390fbf5493aa::t_82d247b873f59c 26-27,35,38,64-70,156
+apps/web/src/styles/base.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 17
+  s_6e390fbf5493aa::t_6afb9373a7799f 152-169
+shared/themes/palettes/carta.json
+  s_6e390fbf5493aa::t_bf9d9316e26d35 5-35,37-38
+  s_6e390fbf5493aa::t_d213e18703d7f5 1-4,36,39-48
+apps/web/index.html
+  s_6e390fbf5493aa::t_e379c57ae815bf 2-9,11-12,17
+  s_6e390fbf5493aa::t_af06c7634d1d13 10
+apps/web/src/notes/note-pane.module.css
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 63,65,224,226
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 7,9-10
+  s_6e390fbf5493aa::t_0457dcc22994e6 69,208
+  s_6e390fbf5493aa::t_8ce218d9c019dc 133,135,139,164,181,192,232,254
+  s_6e390fbf5493aa::t_754b0bda77e83f 64,225
+apps/web/src/notes/space-icon.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 34,48,62
+apps/web/test/settings.test.tsx
+  s_6e390fbf5493aa::t_0920fc354bbd4a 76-77,79,82-84
+  s_6e390fbf5493aa::t_fd050056f65c31 80
+  s_6e390fbf5493aa::t_607cfde9787b93 35-45
+  s_6e390fbf5493aa::t_d72694fc4248ab 46,48-49,51,55-58,60,62-65,68-69,71-75,78,81,85-90
+  s_6e390fbf5493aa::t_e6aec873b1172d 174
+apps/ios/Config/Info.plist
+  s_6e390fbf5493aa::t_8a5eca1c62b181 27-39
+shared/themes/schema/palette.schema.json
+  s_6e390fbf5493aa::t_e5c2a89001c271 1-254
+apps/web/README.md
+  s_6e390fbf5493aa::t_a82b1528910ca3 99,105-106
+  s_6e390fbf5493aa::t_4aec71f467b342 98,107-112
+  s_6e390fbf5493aa::t_6add1a10409984 113
+apps/web/src/ui/backdrop.tsx
+  s_6e390fbf5493aa::t_3e06b24ccd6a09 3
+apps/ios/licenses/OFL-ShipporiMincho.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+shared/themes/test/themes.test.ts
+  s_6e390fbf5493aa::t_3f63de8086664e 1-110
+shared/themes/palettes/den.json
+  s_6e390fbf5493aa::t_d213e18703d7f5 1-4,37-38,40-49
+  s_6e390fbf5493aa::t_bf9d9316e26d35 5-36,39
+apps/desktop/setup/setup.css
+  s_6e390fbf5493aa::t_2d2d67fd1f7424 1
+docs/contributing/settings-guidelines.md
+  s_6e390fbf5493aa::t_a82b1528910ca3 53,79
+  s_6e390fbf5493aa::t_4aec71f467b342 78
+apps/android/licenses/OFL-NunitoSans.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+apps/web/src/ui/dialog.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 5,7,15
+apps/android/licenses/OFL-Playfair.txt
+  s_6e390fbf5493aa::t_1a834bbea3ba79 1-93
+shared/themes/schema/style.schema.json
+  s_6e390fbf5493aa::t_e5c2a89001c271 1-637
+apps/web/src/ui/field.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 16,30
+apps/web/src/editor/editor.module.css
+  s_6e390fbf5493aa::t_9ce2e337fd616f 326,416,427,433,439,446,452,456,498-499
+  s_6e390fbf5493aa::t_1e32c215d42dfb 112
+  s_6e390fbf5493aa::t_f38cac9d92060d 496
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 341
+  s_6e390fbf5493aa::t_fbc7462d3fef08 194,211-213,239-241,246-248,253,277-279,477,481,485
+  s_6e390fbf5493aa::t_79d500c50858d6 193
+  s_6e390fbf5493aa::t_a5356e7f9f1063 500
+  s_6e390fbf5493aa::t_c793562d14d454 336
+  s_6e390fbf5493aa::t_754b0bda77e83f 97,103,113
+  s_6e390fbf5493aa::t_8ce218d9c019dc 8,69,108,136,147,159,348,370,400,461,507,528,542,566
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 96,98,102,104,114
+apps/web/src/themes/generated/themes.ts
+  s_6e390fbf5493aa::t_82d247b873f59c 1-11
+apps/web/src/ui/button.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 24,31,38
+shared/themes/themes.json
+  s_6e390fbf5493aa::t_9fe0990d92cb72 1-42
+apps/web/src/notes/note-list.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 57,73,193,219,235,268,294,369,416
+  s_6e390fbf5493aa::t_81e2ba45e43ee7 437
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 6
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 27,29,384,386
+  s_6e390fbf5493aa::t_754b0bda77e83f 28,385
+shared/themes/styles/paper.json
+  s_6e390fbf5493aa::t_85e2e977c85d91 1-4,12-13,24,30,65-66,70,81
+  s_6e390fbf5493aa::t_aa409a3aec147f 5-11,14-23,25-29,31-64,67-69,71-80
+shared/themes/package.json
+  s_6e390fbf5493aa::t_b18b91958fd88e 1-14
+apps/android/app/src/main/kotlin/notes/app/ui/Tokens.kt
+  s_6e390fbf5493aa::t_2d2d67fd1f7424 9
+  s_6e390fbf5493aa::t_94349bb1106a0e 6-8,10
+shared/themes/schema/themes.schema.json
+  s_6e390fbf5493aa::t_e5c2a89001c271 1-81
+apps/web/src/ui/surface.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 7,12
+shared/themes/schema/fonts.schema.json
+  s_6e390fbf5493aa::t_e5c2a89001c271 1-292
+apps/web/src/notes/empty.module.css
+  s_6e390fbf5493aa::t_cf07e12f9eb5a6 29,31
+  s_6e390fbf5493aa::t_8ce218d9c019dc 40
+  s_6e390fbf5493aa::t_3b7fcba8a89c94 8,10-11
+  s_6e390fbf5493aa::t_754b0bda77e83f 30
+apps/web/test/theme.test.ts
+  s_6e390fbf5493aa::t_d72694fc4248ab 1-17
+apps/web/src/notes/space-menu.module.css
+  s_6e390fbf5493aa::t_8ce218d9c019dc 19,62,64,68,79,82
+apps/android/app/src/test/kotlin/notes/app/ui/themes/ThemesTest.kt
+  s_6e390fbf5493aa::t_e4601fe788812e 1-19,22-45
+  s_6e390fbf5493aa::t_50ab510adb1a01 20-21
+apps/ios/NotesTests/ThemesTests.swift
+  s_6e390fbf5493aa::t_e4601fe788812e 1-33
+docs/contributing/themes.md
+  s_6e390fbf5493aa::t_36a0304aa20fda 1-143
+apps/android/app/src/main/kotlin/notes/app/ui/themes/Themes.generated.kt
+  s_6e390fbf5493aa::t_5ef261ded6c5cb 1-877
+apps/ios/Notes/UI/Themes.generated.swift
+  s_6e390fbf5493aa::t_ff67d77566028e 1-852
+pnpm-lock.yaml
+  s_6e390fbf5493aa::t_d8ac09ad4b66e6 19,28-31,37-42,158-163,515-516,524-528,533-538,1667-1669,1783-1785,1790-1792,1845-1847,2784,2790-2792,2796-2799,3613-3619,3739-3740,3743-3744,3815-3816
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9e9158c1be93ee96cc038d0b486647877c089438",
+  "prompts": {},
+  "sessions": {
+    "s_6e390fbf5493aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b87c5a2d-f561-4d02-a5e1-4f55afd69612",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
