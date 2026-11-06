@@ -114,12 +114,6 @@ class AgentSocket {
     }
   }
 
-  /** Whether a run is going on the note, as far as this tab heard. */
-  isRunning(noteId: string): boolean {
-    for (const n of this.running.values()) if (n === noteId) return true
-    return false
-  }
-
   /** Whether a run on the note is going and its change isn't in the editor yet. */
   isWriting(noteId: string): boolean {
     for (const [run, n] of this.running) if (n === noteId && !this.landed.has(run)) return true

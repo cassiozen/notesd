@@ -159,9 +159,9 @@ describe('the agent socket, connecting', () => {
     const run = (status: string) =>
       first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'run', runId: 'r1', noteId: 'n1', trigger: 'menu', status }) }))
     run('running')
-    expect(agentSocket.isRunning('n1')).toBe(true)
+    expect(agentSocket.isWriting('n1')).toBe(true)
     run('done')
-    expect(agentSocket.isRunning('n1')).toBe(false)
+    expect(agentSocket.isWriting('n1')).toBe(false)
     run('running')
 
     // Asked just before the drop: its answer must not reach the next connection.
@@ -176,7 +176,7 @@ describe('the agent socket, connecting', () => {
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
     const second = FakeSocket.all[1]
     // What was going is unknown once the connection drops.
-    expect(agentSocket.isRunning('n1')).toBe(false)
+    expect(agentSocket.isWriting('n1')).toBe(false)
     second?.hello()
     answer?.({})
     await new Promise((r) => setTimeout(r, 0))

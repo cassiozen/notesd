@@ -216,7 +216,7 @@ func draftInEditor(ctx context.Context, acct Account, r queuedRun) (notes.Note, 
 	if acct.Editors == nil {
 		return notes.Note{}, notes.ErrNotFound
 	}
-	en, err := acct.Editors.Read(ctx, r.NoteID, r.ConnectionID)
+	en, err := acct.Editors.Read(ctx, r.NoteID, r.Event.ConnectionID)
 	if err != nil {
 		return notes.Note{}, notes.ErrNotFound
 	}

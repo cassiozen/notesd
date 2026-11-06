@@ -76,9 +76,6 @@ func eventMessage(r queuedRun, now time.Time, n *notes.Note, cursor *int, rc run
 		m["note"] = v
 	}
 	m["spaceTags"] = rc.Tags
-	if rc.Tags == nil {
-		m["spaceTags"] = []any{}
-	}
 	if len(rc.References) > 0 {
 		m["referenceNotes"] = rc.References
 	}

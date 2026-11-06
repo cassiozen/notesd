@@ -171,11 +171,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		out := []map[string]any{}
-		for _, t := range tags {
-			out = append(out, map[string]any{"tag": "#" + t.Name, "notes": t.Count})
-		}
-		return jsonString(out), nil
+		return jsonString(tagViews(tags)), nil
 	case "set_title":
 		if args.Title == nil {
 			return "", refuse("title is required")
@@ -369,7 +365,7 @@ func (rs *runState) cursor(ctx context.Context) (notes.Note, error) {
 }
 
 // prefer is the editor this run talks to first: the one that asked for it.
-func (rs *runState) prefer() string { return rs.run.ConnectionID }
+func (rs *runState) prefer() string { return rs.run.Event.ConnectionID }
 
 // writeTries bounds how often a write is made again to a note that keeps
 // changing under it.

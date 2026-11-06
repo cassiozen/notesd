@@ -32,9 +32,7 @@ func (rs *runState) gather(ctx context.Context, c Config) (runContext, error) {
 		return out, err
 	}
 	sort.SliceStable(tags, func(i, j int) bool { return tags[i].Count > tags[j].Count })
-	for _, t := range tags[:min(len(tags), maxContextTags)] {
-		out.Tags = append(out.Tags, map[string]any{"tag": "#" + t.Name, "notes": t.Count})
-	}
+	out.Tags = tagViews(tags[:min(len(tags), maxContextTags)])
 	for _, title := range c.ReferenceNotes {
 		var id string
 		var locked bool
@@ -67,4 +65,13 @@ func (rs *runState) gather(ctx context.Context, c Config) (runContext, error) {
 		out.References = append(out.References, v)
 	}
 	return out, nil
+}
+
+// tagViews is tags as the agent is shown them; [] for none.
+func tagViews(tags []search.TagCount) []map[string]any {
+	out := make([]map[string]any, 0, len(tags))
+	for _, t := range tags {
+		out = append(out, map[string]any{"tag": "#" + t.Name, "notes": t.Count})
+	}
+	return out
 }

@@ -49,8 +49,6 @@ type queuedRun struct {
 	NoteID    string
 	Event     Event
 	Attempts  int
-	// ConnectionID is the editor that asked for the run, if one did.
-	ConnectionID string
 	// What earlier attempts used, counted against this one's caps.
 	PriorToolCalls int
 	PriorTokens    int64
@@ -73,7 +71,7 @@ func (s *Store) claim(ctx context.Context, editorOnly bool) (r queuedRun, ok boo
 		return tx.QueryRowContext(ctx, `
 			UPDATE agent_runs SET status = 'running', started_at = ?, attempts = attempts + 1
 			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ? AND priority >= ?
-			              AND note_id NOT IN (SELECT note_id FROM agent_runs WHERE status = 'running')
+			              AND NOT EXISTS (SELECT 1 FROM agent_runs b WHERE b.status = 'running' AND b.note_id = agent_runs.note_id)
 			            ORDER BY priority DESC, created_at, rowid LIMIT 1)
 			RETURNING id, created_at, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now, minPriority).
 			Scan(&r.ID, &r.CreatedAt, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts, &r.PriorToolCalls, &r.PriorTokens)
@@ -87,7 +85,6 @@ func (s *Store) claim(ctx context.Context, editorOnly bool) (r queuedRun, ok boo
 	if err := json.Unmarshal([]byte(ev), &r.Event); err != nil {
 		return r, true, err
 	}
-	r.ConnectionID = r.Event.ConnectionID
 	return r, true, nil
 }
 
