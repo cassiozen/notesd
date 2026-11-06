@@ -5,7 +5,7 @@
          <ExecutionAction ActionType = "Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
             <ActionContent title = "Version from git" scriptText = "&quot;$SRCROOT/scripts/version.sh&quot;&#10;">
                <EnvironmentBuildable>
-                  <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "Notes.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
+                  <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "notesd.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
                   </BuildableReference>
                </EnvironmentBuildable>
             </ActionContent>
@@ -13,7 +13,7 @@
       </PreActions>
       <BuildActionEntries>
          <BuildActionEntry buildForTesting = "YES" buildForRunning = "YES" buildForProfiling = "YES" buildForArchiving = "YES" buildForAnalyzing = "YES">
-            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "Notes.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
+            <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "notesd.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,13 +32,13 @@
    </TestAction>
    <LaunchAction buildConfiguration = "Debug" selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB" launchStyle = "0" useCustomWorkingDirectory = "NO" ignoresPersistentStateOnLaunch = "NO" debugDocumentVersioning = "YES" debugServiceExtension = "internal" allowLocationSimulation = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
-         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "Notes.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
+         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "notesd.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
    <ProfileAction buildConfiguration = "Release" shouldUseLaunchSchemeArgsEnv = "YES" savedToolIdentifier = "" useCustomWorkingDirectory = "NO" debugDocumentVersioning = "YES">
       <BuildableProductRunnable runnableDebuggingMode = "0">
-         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "Notes.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
+         <BuildableReference BuildableIdentifier = "primary" BlueprintIdentifier = "0A1000000000000000000010" BuildableName = "notesd.app" BlueprintName = "Notes" ReferencedContainer = "container:Notes.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>
