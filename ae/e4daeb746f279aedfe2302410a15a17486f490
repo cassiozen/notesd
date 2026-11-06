@@ -1,0 +1,19 @@
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_cc6cacc0a6fc01::t_885805cf7aff63 161-162
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aee4daeb746f279aedfe2302410a15a17486f490",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
