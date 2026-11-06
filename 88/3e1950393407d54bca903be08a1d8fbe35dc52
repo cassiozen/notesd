@@ -1,0 +1,41 @@
+apps/ios/Notes/Editor/NoteTextView.swift
+  s_3c3accefea2490::t_c4bdd722c40780 113-124,129-133
+apps/ios/Notes/Editor/EditorView.swift
+  s_3c3accefea2490::t_6c4b5473d8a69f 10-18,22-23
+  s_3c3accefea2490::t_22978bae7aa38f 19-21
+  s_3c3accefea2490::t_26c8d0e76d7038 54-63
+  s_3c3accefea2490::t_6f5c1e61b3bf8c 122
+  s_3c3accefea2490::t_d4c32cb1fd5962 107-108,114-115
+apps/ios/Notes/Editor/FormattingBar.swift
+  s_3c3accefea2490::t_461a042cc817c6 34,36,66-69,144,162-169
+  s_3c3accefea2490::t_3a733f87bbf201 170-172
+apps/ios/Notes/Notes/NotesListView.swift
+  s_3c3accefea2490::t_7cca10febcf12f 143-152,317-320
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_3c3accefea2490::t_371f2c03cc6dd6 128,130
+  s_3c3accefea2490::t_9c2f40c297d3db 127,129,131-132,134-136,206-249
+  s_3c3accefea2490::t_7cca10febcf12f 26-27,100-101,103-107
+  s_3c3accefea2490::t_9c77ffbda7aa24 250
+apps/ios/Notes/Editor/SideFormattingTools.swift
+  s_3c3accefea2490::t_1e0bc9da91661f 2-39,42-50,52,54-79,89,91,103-104,111,113-115,128-129,134-151,157-183
+  s_3c3accefea2490::t_371dd945252bab 1
+  s_3c3accefea2490::t_c2a4fe38ed87ce 40-41,80-82,88,90,92-102,105,112,116-127,130-133
+  s_3c3accefea2490::t_371f2c03cc6dd6 51,53
+  s_3c3accefea2490::t_c1e0e148e41b73 83-87,106-110,152-156
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "883e1950393407d54bca903be08a1d8fbe35dc52",
+  "prompts": {},
+  "sessions": {
+    "s_3c3accefea2490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a0119f7-960e-4ae9-a832-cae50a3ffaaa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
