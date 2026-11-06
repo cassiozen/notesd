@@ -2,7 +2,7 @@ import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import type { AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
 import { genericMessage } from '../auth/errors'
-import { navigate } from '../router'
+import { openOver } from '../router'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
@@ -83,7 +83,7 @@ export function AgentSheet({ spaceId, onClose }: { spaceId: string; onClose: () 
           <h2 id={titleId}>{name} agent</h2>
           <div className={styles.actions}>
             {saved && !dirty && (
-              <Button size="md" onClick={() => navigate('/activity', { state: { space: spaceId } })}>
+              <Button size="md" onClick={() => openOver('/activity', { space: spaceId })}>
                 Activity…
               </Button>
             )}

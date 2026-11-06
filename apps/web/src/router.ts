@@ -52,7 +52,7 @@ export function navigate(
 }
 
 /**
- * Settings and Activity open over a page, which closing them returns to: kept with the
+ * Settings, Activity and the Agent page open over a page, which closing them returns to: kept with the
  * history entry, so each of several open in turn returns to its own, and a reload still knows.
  */
 type Over = { returnTo?: string; returnState?: unknown }
