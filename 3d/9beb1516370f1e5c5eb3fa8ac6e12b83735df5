@@ -1,0 +1,86 @@
+docs/contributing/settings-guidelines.md
+  s_6e390fbf5493aa::t_e38edb5a388e08 53,78-79
+docs/guides/using/settings.md
+  s_6e390fbf5493aa::t_e38edb5a388e08 21
+apps/ios/Notes/Editor/NoteTextView.swift
+  s_6e390fbf5493aa::t_4b4e3b43fa6a71 136,138,220
+apps/ios/Notes/App/NotesApp.swift
+  s_6e390fbf5493aa::t_80bb433563adf2 25-27
+apps/ios/Notes/Settings/ThemePicker.swift
+  s_6e390fbf5493aa::t_0a43903e760ffa 62-63
+  s_6e390fbf5493aa::t_8c8166799732ea 1-61,64-82
+docs/contributing/themes.md
+  s_6e390fbf5493aa::t_e38edb5a388e08 144-155
+apps/ios/Notes/App/AppGraph.swift
+  s_6e390fbf5493aa::t_80bb433563adf2 69,74-81,111,141-143
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 53,65,218
+apps/ios/Notes/Editor/RawAttachment.swift
+  s_6e390fbf5493aa::t_1b81d2e4bf0bd6 126,138
+apps/ios/NotesTests/ThemesTests.swift
+  s_6e390fbf5493aa::t_15f024a431ccba 34-36,38,45-84
+  s_6e390fbf5493aa::t_06dcb44154628c 39-41
+  s_6e390fbf5493aa::t_18428c707a9353 27-31
+apps/ios/Notes/Editor/EditorStyle.swift
+  s_6e390fbf5493aa::t_4b4e3b43fa6a71 5-6,26-27,36-38,42,73,75,79-83,98-106,108
+apps/ios/Notes/Account/OnboardingView.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 22,66,136-137
+apps/ios/Notes/Settings/IntegrationsSection.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 88,378
+apps/ios/NotesUITests/FlowTests.swift
+  s_6e390fbf5493aa::t_80f8338b6bfc42 942-943
+  s_6e390fbf5493aa::t_8c1f04d5b78a9f 914-941,944-968
+apps/ios/Notes/Notes/TagsView.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 36,38
+  s_6e390fbf5493aa::t_6971c04b7c7cb8 24
+shared/themes/lib/swift.ts
+  s_6e390fbf5493aa::t_132600954d5dd5 181,198,208,214,219,225,231,237,242,249,257,272,276,280,287,297,303,355
+apps/ios/Notes/Editor/FormattingBar.swift
+  s_6e390fbf5493aa::t_5affc891d06849 67,70,74,91,97
+  s_6e390fbf5493aa::t_1aebb366643e91 113
+  s_6e390fbf5493aa::t_934720e9e7fa55 57
+  s_6e390fbf5493aa::t_6971c04b7c7cb8 117-123
+apps/ios/Notes/Settings/SettingsView.swift
+  s_6e390fbf5493aa::t_8c8166799732ea 28,144,147-151,153
+apps/ios/Notes/Notes/SpaceIconViews.swift
+  s_6e390fbf5493aa::t_06dcb44154628c 55-57
+  s_6e390fbf5493aa::t_1aebb366643e91 53
+apps/ios/Notes/UI/Theme.swift
+  s_6e390fbf5493aa::t_06dcb44154628c 169-170,405-406
+  s_6e390fbf5493aa::t_0a43903e760ffa 408,435,439
+  s_6e390fbf5493aa::t_934720e9e7fa55 276-296,298,300-314
+  s_6e390fbf5493aa::t_4bc07d24b4eebf 4-37,58,61,73-74,76-77,79,81-82,89,91,93-97,99,101-102,139,141,143,146-151,154-157,160-163,165-167,171-224,234-240,242-245,249-275,315-341
+  s_6e390fbf5493aa::t_5affc891d06849 297,299
+  s_6e390fbf5493aa::t_a31b8b27ac390b 39-54,56-57,59-60,62-72,75,78,83-88,90,92,98,100
+  s_6e390fbf5493aa::t_cf987f0eb1aa02 80
+apps/ios/Notes/Editor/BlockLayoutFragment.swift
+  s_6e390fbf5493aa::t_1b81d2e4bf0bd6 103-109,112-117,121-122,134-135
+apps/ios/Notes/Locks/LockViews.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 62,79-80
+apps/ios/Notes/Notes/NotesListView.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 201,573-574,600,634,666,708,724,746
+  s_6e390fbf5493aa::t_934720e9e7fa55 348
+  s_6e390fbf5493aa::t_06dcb44154628c 135-140
+apps/ios/Notes/Notes/NothingOpen.swift
+  s_6e390fbf5493aa::t_1aebb366643e91 11
+apps/ios/Notes/Notes/SpaceMenu.swift
+  s_6e390fbf5493aa::t_6971c04b7c7cb8 8,39
+apps/ios/Notes/UI/Themes.generated.swift
+  s_6e390fbf5493aa::t_e88d0c72f223c3 7,24,34,40,45,51,57,63,68,75,83,98,162,173,180,190,196,210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3d9beb1516370f1e5c5eb3fa8ac6e12b83735df5",
+  "prompts": {},
+  "sessions": {
+    "s_6e390fbf5493aa": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b87c5a2d-f561-4d02-a5e1-4f55afd69612",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
