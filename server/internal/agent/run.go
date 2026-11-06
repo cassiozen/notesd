@@ -45,8 +45,6 @@ type runState struct {
 	// or less when that's all the day has left (dailyLimited).
 	budget       int64
 	dailyLimited bool
-	// maxTools is the tool calls this attempt may make.
-	maxTools int
 }
 
 // execute runs r to its end and records how it went.
@@ -56,8 +54,7 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	if settings, err := acct.Agent.Settings(ctx); err != nil {
 		f = failed(FailInterrupted, err)
 	} else {
-		now := rn.now().In(settings.Location())
-		f = rn.attempt(ctx, acct, st, r, now, now.Format(time.DateOnly))
+		f = rn.attempt(ctx, acct, st, r, rn.now().In(settings.Location()))
 	}
 	if ctx.Err() != nil && f.Status == "" {
 		f = finished{Status: StatusFailed, Failure: FailInterrupted, Message: "The server stopped during the run."}
@@ -87,14 +84,14 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 }
 
 // attempt checks the run still makes sense, then talks to the model.
-func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r queuedRun, now time.Time, day string) finished {
-	skip := func(why, msg string) finished { return finished{Status: StatusSkipped, Failure: why, Message: msg} }
+func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r queuedRun, now time.Time) finished {
+	day := now.Format(time.DateOnly)
 	if _, ok := triggerNames[r.Trigger]; !ok {
-		return skip(FailUnknownEvent, "This server doesn't know the trigger "+string(r.Trigger)+".")
+		return skipped(FailUnknownEvent, "This server doesn't know the trigger "+string(r.Trigger)+".")
 	}
 	c, err := acct.Agent.Config(ctx, r.SpaceID)
 	if errors.Is(err, ErrSpaceNotFound) || (err == nil && !c.Acts(r.Trigger)) {
-		return skip(FailAgentOff, "The space's agent was turned off, or no longer acts on this.")
+		return skipped(FailAgentOff, "The space's agent was turned off, or no longer acts on this.")
 	}
 	if err != nil {
 		return failed(FailInterrupted, err)
@@ -103,15 +100,8 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	var note *notes.Note
 	if r.Event.Title == nil {
 		n, err := acct.Notes.Get(ctx, r.NoteID)
-		switch {
-		case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
-			return skip(FailNoteGone, "The note was deleted before the agent got to it.")
-		case err != nil:
-			return failed(FailInterrupted, err)
-		case n.SpaceID != r.SpaceID:
-			return skip(FailNoteMoved, "The note was moved to another space before the agent got to it.")
-		case locks.IsLocked(n.Content):
-			return skip(FailNoteLocked, "The note is locked. Locked notes are never sent.")
+		if f := unusable(n, err, r.SpaceID, false); f.Status != "" {
+			return f
 		}
 		note = &n
 	}
@@ -121,7 +111,7 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		return failed(FailInterrupted, err)
 	}
 	if used >= st.DailyTokenCap {
-		return skip(FailDailyCap, fmt.Sprintf("The account used its %d tokens for today.", st.DailyTokenCap))
+		return skipped(FailDailyCap, fmt.Sprintf("The account used its %d tokens for today.", st.DailyTokenCap))
 	}
 	left, today := MaxRunTokens-r.PriorTokens, st.DailyTokenCap-used
 	// Spent before a crash: another call would only go over.
@@ -135,7 +125,7 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	var f finished
 	for start := 0; start < 2; start++ {
 		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, ops: start * 1000, day: day,
-			budget: min(left, today), dailyLimited: today <= left, maxTools: MaxToolCalls - r.PriorToolCalls}
+			budget: min(left, today), dailyLimited: today <= left}
 		if note != nil {
 			rs.reads[note.ID] = *note
 		}
@@ -155,18 +145,9 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		// Start over from the note as it is now.
 		if note != nil {
 			n, err := acct.Notes.Get(ctx, r.NoteID)
-			// f keeps what the first try spent.
-			switch {
-			case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
-				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteGone, "The note was deleted while the agent worked on it."
-			case err != nil:
-				f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
-			case n.SpaceID != r.SpaceID:
-				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteMoved, "The note was moved to another space while the agent worked on it."
-			case locks.IsLocked(n.Content):
-				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteLocked, "The note was locked while the agent worked on it."
-			}
-			if f.Status != "" {
+			if u := unusable(n, err, r.SpaceID, true); u.Status != "" {
+				// f keeps what the first try spent.
+				f.Status, f.Failure, f.Message = u.Status, u.Failure, u.Message
 				return f
 			}
 			note = &n
@@ -193,6 +174,32 @@ func interrupted(ctx context.Context, f *finished, err error) {
 
 func failed(why string, err error) finished {
 	return finished{Status: StatusFailed, Failure: why, Message: err.Error()}
+}
+
+func skipped(why, msg string) finished {
+	return finished{Status: StatusSkipped, Failure: why, Message: msg}
+}
+
+// unusable is why a run can't go on with its note as read, before the model
+// is first called or after the note changed under it; no Status if it can.
+func unusable(n notes.Note, err error, spaceID string, started bool) finished {
+	when := "before the agent got to it"
+	if started {
+		when = "while the agent worked on it"
+	}
+	switch {
+	case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
+		return skipped(FailNoteGone, "The note was deleted "+when+".")
+	case err != nil:
+		return failed(FailInterrupted, err)
+	case n.SpaceID != spaceID:
+		return skipped(FailNoteMoved, "The note was moved to another space "+when+".")
+	case locks.IsLocked(n.Content) && started:
+		return skipped(FailNoteLocked, "The note was locked "+when+".")
+	case locks.IsLocked(n.Content):
+		return skipped(FailNoteLocked, "The note is locked. Locked notes are never sent.")
+	}
+	return finished{}
 }
 
 // converse talks to the model until it stops calling tools, filling in f.
@@ -234,7 +241,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		messages = append(messages, llm.Message{Role: "assistant", Content: res.Message.Content, ToolCalls: res.Message.ToolCalls})
 		for _, tc := range res.Message.ToolCalls {
 			f.ToolCalls++
-			if f.ToolCalls > rs.maxTools {
+			if f.ToolCalls > MaxToolCalls-rs.run.PriorToolCalls {
 				f.Status, f.Failure = StatusFailed, FailToolCap
 				f.Message = fmt.Sprintf("The run made more than %d tool calls.", MaxToolCalls)
 				return nil

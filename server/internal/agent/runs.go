@@ -23,18 +23,17 @@ const (
 
 // Why a run failed or was skipped.
 const (
-	FailAgentOff     = "agent_off"     // turned off, or the trigger's prompt removed, since it was queued
-	FailNoteGone     = "note_gone"     // deleted before the run started
-	FailNoteMoved    = "note_moved"    // moved to another space before the run started
-	FailNoteLocked   = "note_locked"   // locked notes are never sent
-	FailDailyCap     = "daily_cap"     // the account used its tokens for the day
-	FailTokenCap     = "token_cap"     // the run used more tokens than one run may
-	FailToolCap      = "tool_cap"      // the run made more tool calls than one run may
-	FailTimeout      = "timeout"       // the run took longer than one run may
-	FailProvider     = "provider"      // the provider refused or failed
-	FailNoteChanged  = "note_changed"  // the note kept changing under the run
-	FailInterrupted  = "interrupted"   // the server stopped during the run
-	FailNotSetUp     = "ai_not_set_up" // AI was removed
+	FailAgentOff     = "agent_off"    // turned off, or the trigger's prompt removed, since it was queued
+	FailNoteGone     = "note_gone"    // deleted before the run started
+	FailNoteMoved    = "note_moved"   // moved to another space before the run started
+	FailNoteLocked   = "note_locked"  // locked notes are never sent
+	FailDailyCap     = "daily_cap"    // the account used its tokens for the day
+	FailTokenCap     = "token_cap"    // the run used more tokens than one run may
+	FailToolCap      = "tool_cap"     // the run made more tool calls than one run may
+	FailTimeout      = "timeout"      // the run took longer than one run may
+	FailProvider     = "provider"     // the provider refused or failed
+	FailNoteChanged  = "note_changed" // the note kept changing under the run
+	FailInterrupted  = "interrupted"  // the server stopped during the run
 	FailQueueFull    = "queue_full"
 	FailUnknownEvent = "unknown_trigger"
 )
