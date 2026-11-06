@@ -1,0 +1,48 @@
+apps/web/src/router.ts
+  s_cc6cacc0a6fc01::t_faceeb8a6901d1 53-76
+  s_cc6cacc0a6fc01::t_e95e1653153114 77-79
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_daa2b1add882d4 513
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_6494b6ac6a395e 82,103-104
+apps/web/src/settings/spaces.tsx
+  s_cc6cacc0a6fc01::t_faceeb8a6901d1 11,276
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_daa2b1add882d4 392-393,418-419
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_a1b599cbbb2f3c 112
+apps/web/src/settings/settings.tsx
+  s_cc6cacc0a6fc01::t_faceeb8a6901d1 12,34,145
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_a1b599cbbb2f3c 94,109-114,126
+server/internal/api/agent_config_test.go
+  s_cc6cacc0a6fc01::t_daa2b1add882d4 82,85-87
+  s_cc6cacc0a6fc01::t_c248b2d6a7f86f 88
+apps/web/src/notes/shell.tsx
+  s_cc6cacc0a6fc01::t_faceeb8a6901d1 5,241,246,315,319
+apps/web/test/router.test.ts
+  s_cc6cacc0a6fc01::t_c696d7724cc667 2,74-94
+  s_cc6cacc0a6fc01::t_125fd6307a2a8d 95
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_6494b6ac6a395e 103-108,153,185
+  s_cc6cacc0a6fc01::t_28302c5662a4d1 102
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_faceeb8a6901d1 519
+  s_cc6cacc0a6fc01::t_917765684c6dfe 18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "257c30a6876cff1f7630d48b2db1e49184292819",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
