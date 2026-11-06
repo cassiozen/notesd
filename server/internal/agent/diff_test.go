@@ -37,6 +37,7 @@ func TestDiff(t *testing.T) {
 		{"create", "", "# Digest\n\nThemes\n", "+ # Digest\n+ \n+ Themes\n"},
 		{"tag added at the end", "Milk\nEggs", "Milk\nEggs\n\n#groceries\n", "= Milk\n= Eggs\n+ \n+ #groceries\n"},
 		{"line replaced", "a\nb\nc\n", "a\nB\nc\n", "= a\n- b\n+ B\n= c\n"},
+		{"line endings", "a\r\nb\r\n", "a\nb\nc\n", "= a\n= b\n+ c\n"},
 		{"far from the change is folded", long(10, "end"), long(10, "END"),
 			"… 7\n= line 7\n= line 8\n= line 9\n- end\n+ END\n"},
 		{"two changes apart", long(20) + "x\n", "y\n" + long(20),

@@ -197,14 +197,20 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		switch {
 		case err == nil && locks.IsLocked(n.Content):
 			f.Status, f.Failure, f.Message = StatusFailed, FailNoteLocked, "The note was locked, so the agent stopped."
-			if f.PromptTokens+f.CompletionTokens == 0 {
+			// Not tokens: a compatible provider may leave usage out. A
+			// later attempt follows one that called the model.
+			if !f.sent && rs.run.Attempts < 2 {
 				f.Status, f.Message = StatusSkipped, "The note is locked. Locked notes are never sent."
 			}
+			return
+		case err != nil && ctx.Err() != nil:
+			// The deadline or a shutdown; the caller says which.
 			return
 		case err != nil && !errors.Is(err, notes.ErrNotFound):
 			f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
 			return
 		}
+		f.sent = true
 		called := time.Now()
 		res, err := rn.chat(ctx, st, llm.ChatRequest{Messages: messages, Tools: tools})
 		f.timing.calls++

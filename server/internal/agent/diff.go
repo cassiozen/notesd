@@ -51,6 +51,9 @@ func splitLines(s string) []string {
 	if s == "" {
 		return nil
 	}
+	// The editor reads CRLF as LF, so an agent writing LF into an imported
+	// CRLF note changes no line the user would see.
+	s = strings.ReplaceAll(strings.ReplaceAll(s, "\r\n", "\n"), "\r", "\n")
 	return strings.Split(strings.TrimSuffix(s, "\n"), "\n")
 }
 

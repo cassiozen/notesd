@@ -142,6 +142,11 @@
   color: var(--ink-2);
 }
 
+.runBottom > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .card {
   display: flex;
   flex-direction: column;
@@ -178,6 +183,7 @@
 
 .message {
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   font-size: 14px;
   color: var(--ink-2);
 }

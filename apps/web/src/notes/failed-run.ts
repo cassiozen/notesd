@@ -28,7 +28,8 @@ export function useFailedRun(noteId: string | null): { run: AgentRun | null; dis
     agent.runs({ note: noteId, limit: 1 }, abort.signal).then(
       ({ runs }) => {
         const run = runs[0]
-        if (run?.status === 'failed' && !dismissed().includes(run.id)) setFound({ noteId, run })
+        // Cleared otherwise: coming back to a note shouldn't show a failure a later run replaced.
+        setFound(run?.status === 'failed' && !dismissed().includes(run.id) ? { noteId, run } : null)
       },
       () => {
         // Offline or no server: nothing to say.
@@ -37,7 +38,7 @@ export function useFailedRun(noteId: string | null): { run: AgentRun | null; dis
     return () => abort.abort()
   }, [noteId, any])
 
-  const run = found && found.noteId === noteId ? found.run : null
+  const run = any && found && found.noteId === noteId ? found.run : null
   return {
     run,
     dismiss: () => {

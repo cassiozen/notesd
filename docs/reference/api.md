@@ -418,7 +418,7 @@ changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where
 is `{day, tokens, runs, dailyTokenCap}` for today in the account's time zone.
 
 `GET /agent/runs/{id}` adds `diffs`, one per note changed: `{noteId, kind, titleBefore, titleAfter,
-lines}`. `lines` compares the content before the run's first change with after its last: each is
+lines, textRemoved}`. `lines` compares the content before the run's first change with after its last: each is
 `{op, text}` with `op` `=` (kept), `-` (removed) or `+` (added), `text` left out for a blank line;
 or `{op: "…", count}` for unchanged lines left out, three kept around each change. Each change lists
 its removed lines, then its added ones. `textRemoved` says the note was locked (its content) or

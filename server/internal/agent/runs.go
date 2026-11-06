@@ -116,7 +116,9 @@ type finished struct {
 	CompletionTokens int64
 	// RetryAt, when set, puts the run back in the queue until then.
 	RetryAt time.Time
-	timing  timing
+	// sent is whether this attempt has called the model.
+	sent   bool
+	timing timing
 }
 
 // timing is where a run's time went, for the log: getting ready (prep),

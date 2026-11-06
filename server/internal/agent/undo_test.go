@@ -205,6 +205,24 @@ func TestLockedDuringARunStopsIt(t *testing.T) {
 	}
 }
 
+func TestLockedAfterAModelCallWithoutUsageIsNotSkipped(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.MovedOut)
+	h.create("n1", "work", "Leaving")
+	h.update("n1", "Leaving", func(in *notes.UpdateInput) { in.SpaceID = ptr("home") })
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		h.update("n1", "notesd:locked:v1:"+strings.Repeat("A", 60), nil)
+		res := toolReply("list_tags", `{}`)
+		res.Usage = llm.Usage{}
+		return res, nil
+	})
+	h.next()
+	// The note was sent, so it isn't "never sent".
+	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailNoteLocked {
+		t.Fatalf("run: %+v", r)
+	}
+}
+
 func TestFinishedOrRecoveredRunsDropADeletedNotesText(t *testing.T) {
 	moved := func(h *harness) {
 		h.agent("work", agent.MovedOut)
