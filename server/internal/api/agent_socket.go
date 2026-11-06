@@ -17,9 +17,10 @@ import (
 // SocketProtocol is the agent socket's message format version.
 const SocketProtocol = 1
 
-// SocketPing is how often the server pings each socket: under the 60-second
-// idle timeout of common proxies (nginx's proxy_read_timeout).
-var SocketPing = 25 * time.Second
+// socketPing is how often the server pings each socket, unless
+// Config.SocketPing says otherwise: under the 60-second idle timeouts of
+// common proxies (nginx's proxy_read_timeout).
+const socketPing = 25 * time.Second
 
 // socketIn is a message from an editor.
 type socketIn struct {
@@ -101,7 +102,11 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 // the other side stops answering or its session ends: the socket was
 // authenticated only when it opened, and runs keep sending it notes.
 func (s *Server) pingSocket(ctx context.Context, cancel func(), c *websocket.Conn, sessionID string) {
-	t := time.NewTicker(SocketPing)
+	every := socketPing
+	if s.cfg.SocketPing > 0 {
+		every = s.cfg.SocketPing
+	}
+	t := time.NewTicker(every)
 	defer t.Stop()
 	for {
 		select {

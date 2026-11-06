@@ -179,8 +179,10 @@ type account struct {
 type reply struct {
 	Error string `json:"error"`
 	agent.EditorNote
-	// Shows is, after an apply, the note as the editor then shows it.
-	Shows *agent.Fields `json:"shows"`
+	// After an apply: what the editor showed just before (with Revision),
+	// and what it shows now.
+	Before *agent.Fields `json:"before"`
+	Shows  *agent.Fields `json:"shows"`
 }
 
 func (a account) Read(ctx context.Context, noteID, prefer string) (agent.EditorNote, error) {
@@ -192,19 +194,24 @@ func (a account) Read(ctx context.Context, noteID, prefer string) (agent.EditorN
 	return r.EditorNote, err
 }
 
-func (a account) Apply(ctx context.Context, noteID, prefer string, ch agent.EditorChange) (agent.Fields, error) {
+func (a account) Apply(ctx context.Context, noteID, prefer string, ch agent.EditorChange) (agent.EditorApplied, error) {
 	c := a.h.owner(a.userID, noteID, prefer)
 	if c == nil {
-		return agent.Fields{}, agent.ErrNotOpen
+		return agent.EditorApplied{}, agent.ErrNotOpen
 	}
-	r, err := a.do(ctx, c, map[string]any{"type": "apply", "noteId": noteID, "runId": ch.RunID, "before": ch.Before, "after": ch.After})
+	r, err := a.do(ctx, c, map[string]any{"type": "apply", "noteId": noteID, "runId": ch.RunID,
+		"before": ch.Before, "after": ch.After, "op": ch.Op})
 	if err != nil {
-		return agent.Fields{}, err
+		return agent.EditorApplied{}, err
 	}
-	if r.Shows == nil {
-		return ch.After, nil
+	applied := agent.EditorApplied{Before: ch.Before, Revision: r.Revision, Shows: ch.After}
+	if r.Before != nil {
+		applied.Before = *r.Before
 	}
-	return *r.Shows, nil
+	if r.Shows != nil {
+		applied.Shows = *r.Shows
+	}
+	return applied, nil
 }
 
 func (a account) do(ctx context.Context, c *Conn, msg map[string]any) (reply, error) {

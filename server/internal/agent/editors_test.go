@@ -40,23 +40,26 @@ func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, er
 	return *n, nil
 }
 
-func (e *fakeEditor) Apply(_ context.Context, id, _ string, ch agent.EditorChange) (agent.Fields, error) {
+func (e *fakeEditor) Apply(_ context.Context, id, _ string, ch agent.EditorChange) (agent.EditorApplied, error) {
 	if e.gone {
-		return agent.Fields{}, agent.ErrEditorGone
+		return agent.EditorApplied{}, agent.ErrEditorGone
 	}
 	n, ok := e.notes[id]
-	switch {
-	case !ok:
-		return agent.Fields{}, agent.ErrNotOpen
-	case n.Title != ch.Before.Title || n.Content != ch.Before.Content:
-		return agent.Fields{}, agent.ErrEditorChanged
+	if !ok {
+		return agent.EditorApplied{}, agent.ErrNotOpen
 	}
-	n.Title, n.Content, n.Revision = ch.After.Title, ch.After.Content, nil
+	before := agent.Fields{Title: n.Title, Content: n.Content}
+	after, ok := ch.MadeTo(before, n.Cursor)
+	if !ok {
+		return agent.EditorApplied{}, agent.ErrEditorChanged
+	}
+	revision := n.Revision
+	n.Title, n.Content, n.Revision = after.Title, after.Content, nil
 	if e.rewrite != nil {
 		n.Content = e.rewrite(n.Content)
 	}
 	e.changes = append(e.changes, ch)
-	return agent.Fields{Title: n.Title, Content: n.Content}, nil
+	return agent.EditorApplied{Before: before, Revision: revision, Shows: agent.Fields{Title: n.Title, Content: n.Content}}, nil
 }
 
 func ip(n int) *int { return &n }
@@ -113,18 +116,42 @@ func TestEditorSaveWithTypingIsntLinked(t *testing.T) {
 }
 
 func TestEditorChangedUnderTheRun(t *testing.T) {
-	h := newHarness(t)
-	h.agent("work", agent.NewNoteDone)
-	h.done("n1", "Milk")
-	n := h.openInEditor("n1", "Milk\n", nil)
-	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
-		n.Content = "Milk\nTea\n"
-		return toolReply("insert", `{"at": "end", "text": "#tag"}`), nil
-	}, call("insert", `{"at": "end", "text": "#tag"}`), final("Tagged."))
-	h.next()
-	if len(h.editor.changes) != 1 || n.Content != "Milk\nTea\n\n#tag\n" {
-		t.Fatalf("changes %+v, editor %q", h.editor.changes, n.Content)
-	}
+	t.Run("the change is made to what it shows now", func(t *testing.T) {
+		h := newHarness(t)
+		h.agent("work", agent.NewNoteDone)
+		h.done("n1", "Milk")
+		n := h.openInEditor("n1", "Milk\n", nil)
+		h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+			n.Content = "Milk\nTea\n"
+			return toolReply("insert", `{"at": "end", "text": "#tag"}`), nil
+		}, final("Tagged."))
+		h.next()
+		if len(h.editor.changes) != 1 || n.Content != "Milk\nTea\n\n#tag\n" || h.model.calls() != 2 {
+			t.Fatalf("changes %+v, editor %q, %d calls", h.editor.changes, n.Content, h.model.calls())
+		}
+		// Recorded from what the editor showed, the user's typing included.
+		var before string
+		if err := h.db.R.QueryRow(`SELECT before_content FROM agent_run_edits WHERE note_id = 'n1'`).Scan(&before); err != nil || before != "Milk\nTea\n" {
+			t.Fatalf("recorded before %q: %v", before, err)
+		}
+	})
+	t.Run("a find the user changed comes back with the note as it is now", func(t *testing.T) {
+		h := newHarness(t)
+		h.agent("work", agent.NewNoteDone)
+		h.done("n1", "Milk")
+		n := h.openInEditor("n1", "Milk\n", nil)
+		h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+			n.Content = "Oat milk\n"
+			return toolReply("edit_note", `{"find": "Milk", "replace": "Milk, 1 l"}`), nil
+		}, final("No change."))
+		h.next()
+		if len(h.editor.changes) != 0 || n.Content != "Oat milk\n" {
+			t.Fatalf("changes %+v, editor %q", h.editor.changes, n.Content)
+		}
+		if got := lastToolResult(h.model.requests[1]); !strings.Contains(got, `"content":"Oat milk\n"`) {
+			t.Fatalf("told: %s", got)
+		}
+	})
 }
 
 func TestEditorGoneMidChange(t *testing.T) {

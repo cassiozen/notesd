@@ -145,8 +145,11 @@ export type FakeLLM = {
   requests: { model: string; messages: unknown[]; tools?: unknown[] }[]
   /** When true, the model answers in text instead of calling a tool. */
   textOnly: boolean
-  /** An agent's turns, in order: a tool call, or its last words. Once done, agents get "No change." */
-  script: ({ tool: string; args: unknown } | { text: string })[]
+  /**
+   * An agent's turns, in order: a tool call, or its last words. Once done, agents get "No change."
+   * hold: the turn's answer waits for it, as a slow model would.
+   */
+  script: (({ tool: string; args: unknown } | { text: string }) & { hold?: Promise<unknown> })[]
 }
 
 /** Stands in for an OpenAI-compatible API: POST /v1/chat/completions, answering with a call to the first tool. */
@@ -181,7 +184,8 @@ export async function startFakeLLM(): Promise<FakeLLM> {
               role: 'assistant',
               tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.function.name, arguments: '{"ok":true}' } }],
             }
-      res.end(JSON.stringify({ model: 'fake-model-1', choices: [{ message, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 2 } }))
+      const answer = JSON.stringify({ model: 'fake-model-1', choices: [{ message, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 2 } })
+      void Promise.resolve(step?.hold).then(() => res.end(answer))
     })
   })
   await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r))

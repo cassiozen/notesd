@@ -3,6 +3,8 @@ package agent
 import (
 	"context"
 	"errors"
+
+	"notes/server/internal/notes"
 )
 
 // Editors reaches the account's open note editors (internal/editors), so a
@@ -11,10 +13,8 @@ import (
 type Editors interface {
 	// Read returns the note as an editor that has it open shows it.
 	Read(ctx context.Context, noteID, prefer string) (EditorNote, error)
-	// Apply changes the note in that editor from before to after, and
-	// returns it as the editor then shows it: after, unless the editor's
-	// Markdown writes some of it differently.
-	Apply(ctx context.Context, noteID, prefer string, change EditorChange) (Fields, error)
+	// Apply makes the change in that editor, and says what it did.
+	Apply(ctx context.Context, noteID, prefer string, change EditorChange) (EditorApplied, error)
 }
 
 // Errors from Editors.
@@ -35,11 +35,41 @@ type EditorNote struct {
 	Revision *int64 `json:"revision"`
 }
 
-// EditorChange is one change a run makes in an editor.
+// EditorChange is one change a run makes in an editor: After for Before.
+// An editor that no longer shows Before, the user having typed meanwhile,
+// makes Op to what it shows instead, as MadeTo does, rather than the run
+// reading it again.
 type EditorChange struct {
 	RunID  string `json:"runId"`
 	Before Fields `json:"before"`
 	After  Fields `json:"after"`
+	Op     edit   `json:"op"`
+}
+
+// MadeTo is now with the change made to it: After, if now is Before, else
+// Op made to now. Not ok when Op no longer fits: its find isn't there
+// exactly once, or an insert at the cursor has none (cursor).
+func (c EditorChange) MadeTo(now Fields, cursor *int) (after Fields, ok bool) {
+	if now == c.Before {
+		return c.After, true
+	}
+	if c.Op.Kind == "content" {
+		return now, false // made again, the whole content would wipe out what the user typed
+	}
+	n := notes.Note{Title: now.Title, Content: now.Content}
+	if err := c.Op.apply(&n, cursor); err != nil {
+		return now, false
+	}
+	return Fields{n.Title, n.Content}, true
+}
+
+// EditorApplied is what an editor did with a change: what it showed just
+// before (Revision: the server's revision of exactly that, nil when it had
+// unsaved changes), and what it shows after, as its Markdown writes it.
+type EditorApplied struct {
+	Before   Fields
+	Revision *int64
+	Shows    Fields
 }
 
 // Fields are a note's title and content.

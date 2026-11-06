@@ -446,10 +446,13 @@ ignored, so either may add some.
 | Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
-| Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}}` | A run changes the note. If the editor shows `before`, it changes it to `after` as one undoable step, saves it as any edit, and answers `{type: "result", id, shows: {title, content}}`: the note as it then saves it |
+| Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}, op}` | A run changes the note. If the editor shows `before`, it changes it to `after`; otherwise, the user having typed meanwhile, it makes `op` to what it shows. As one undoable step, saved as any edit. It answers `{type: "result", id, before, revision, shows}`: what it showed just before (`revision`: the server's revision of exactly that, or `null`), and the note as it then saves it |
 
-An editor that can't do a request answers `{type: "result", id, error}`: `changed` (it no longer
-shows `before`), `not_open` or `locked`. Ten seconds without an answer counts as gone. The server
+`op` is the change as the agent asked for it: `{kind: "title", title}`, `{kind: "replace", find,
+replace}` (find must appear exactly once), or `{kind: "insert", at, text}` with `at` `start` or
+`end` (as a block of its own) or `cursor` (at the editor's cursor), or `{kind: "content", text}`
+(the whole content, which never fits once the user has typed). An editor that can't do a request
+answers `{type: "result", id, error}`: `changed` (`op` no longer fits), `not_open` or `locked`. Ten seconds without an answer counts as gone. The server
 pings every 25 seconds; a proxy in front must pass WebSocket upgrades.
 
 ### AI

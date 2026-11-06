@@ -1,4 +1,5 @@
 import { useEffect } from 'react'
+import type { AgentChange, AgentOp } from '../editor/agent-edit'
 import type { Fields } from '../notes/saver'
 import { useAgentConfigs } from '../notes/agent-config'
 import { useAiSettings } from '../notes/ai-settings'
@@ -16,7 +17,7 @@ export const socketFactory = {
 /** What an open note's editor does for a run; each answer goes back as is, or { error }. */
 export type EditorHandler = {
   read: () => object
-  apply: (before: Fields, after: Fields) => Promise<object>
+  apply: (change: AgentChange) => Promise<object>
 }
 
 /**
@@ -110,7 +111,9 @@ class AgentSocket {
     const handler = typeof m.noteId === 'string' ? this.editors.get(m.noteId) : undefined
     try {
       if (handler && m.type === 'read') return handler.read()
-      if (handler && m.type === 'apply' && isFields(m.before) && isFields(m.after)) return await handler.apply(m.before, m.after)
+      if (handler && m.type === 'apply' && isFields(m.before) && isFields(m.after)) {
+        return await handler.apply({ before: m.before, after: m.after, op: isOp(m.op) ? m.op : undefined })
+      }
     } catch {
       // Closed meanwhile, say: the server reads the store instead.
     }
@@ -126,6 +129,22 @@ class AgentSocket {
 
 function isFields(v: unknown): v is Fields {
   return typeof v === 'object' && v !== null && typeof (v as Fields).title === 'string' && typeof (v as Fields).content === 'string'
+}
+
+function isOp(v: unknown): v is AgentOp {
+  if (typeof v !== 'object' || v === null) return false
+  const o = v as Record<string, unknown>
+  switch (o.kind) {
+    case 'title':
+      return typeof o.title === 'string'
+    case 'replace':
+      return typeof o.find === 'string' && typeof o.replace === 'string'
+    case 'insert':
+      return (o.at === 'start' || o.at === 'end' || o.at === 'cursor') && typeof o.text === 'string'
+    case 'content':
+      return typeof o.text === 'string'
+  }
+  return false
 }
 
 function parse(data: string): Record<string, unknown> | null {

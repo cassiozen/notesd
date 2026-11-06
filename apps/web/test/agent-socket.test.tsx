@@ -63,6 +63,36 @@ describe('a run on an open note', () => {
     await user.keyboard('{Control>}z{/Control}')
     expect(bodyText()).toBe('Items and more')
   })
+
+  it('makes its change to what the user typed while it worked, without starting over', async () => {
+    const llm = await startFakeLLM()
+    let digest = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await s.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
+        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'p', triggers: { noteDeleted: 'Add it to Digest.' } })
+        digest = await createNote(s, 'Digest', 'Items')
+        await s.api('POST', '/notes', { operationId: 'op-milk', id: 'milk', title: 'Milk', content: 'Milk' })
+      },
+    })
+    await openNote(user, 'Digest')
+    let answer: (() => void) | undefined
+    const thinking = new Promise<void>((r) => (answer = r))
+    llm.script.push({ tool: 'insert', args: { id: digest, at: 'end', text: '- Milk', done: 'Added Milk.' }, hold: thinking })
+    await server.api('DELETE', '/notes/milk', { operationId: 'op-del', baseRevision: 1 })
+
+    // The run read "Items"; the user types on while the model thinks.
+    await waitFor(() => expect(llm.requests.length).toBe(1), { timeout: 5000 })
+    await typeAtEnd(user, ' and more')
+    answer?.()
+
+    await waitFor(() => expect(bodyText()).toBe('Items and moreMilk'), { timeout: 5000 })
+    await waitFor(async () => {
+      const { runs } = (await server.api<{ runs: AgentRun[] }>('GET', '/agent/runs')).body
+      expect(runs[0]?.status).toBe('done')
+    })
+    expect(llm.requests.length).toBe(1)
+  })
 })
 
 class FakeSocket extends EventTarget {

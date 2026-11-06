@@ -234,10 +234,12 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 // it lands: changed since the agent read it, to what it is now, rather than
 // the run starting over.
 type edit struct {
-	Kind          string // "title", "replace", "insert" or "content"
-	Title         string
-	Find, Replace string
-	At, Text      string // At: "start", "end" or "cursor"; Text: the whole content, for "content"
+	Kind    string `json:"kind"` // "title", "replace", "insert" or "content"
+	Title   string `json:"title"`
+	Find    string `json:"find"`
+	Replace string `json:"replace"`
+	At      string `json:"at"`   // "start", "end" or "cursor"
+	Text    string `json:"text"` // the whole content, for "content"
 }
 
 // apply makes e to n, or refuses: find must appear exactly once, and an
@@ -413,7 +415,7 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 			return `{"ok": true, "changed": false}`, nil
 		}
 		if er, ok := rs.inEditor[id]; ok {
-			err = rs.writeInEditor(ctx, id, er, cur, next)
+			err = rs.writeInEditor(ctx, id, er, cur, next, e)
 		} else {
 			err = rs.writeStore(ctx, id, cur, next)
 		}
@@ -455,22 +457,27 @@ func (rs *runState) writeStore(ctx context.Context, id string, cur, next notes.N
 
 // writeInEditor makes the change in the editor that has the note open,
 // where the user sees it and can undo it; the editor saves it.
-func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead, cur, next notes.Note) error {
+func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead, cur, next notes.Note, e edit) error {
 	before, after := Fields{cur.Title, cur.Content}, Fields{next.Title, next.Content}
-	after, err := rs.acct.Editors.Apply(ctx, id, rs.prefer(), EditorChange{RunID: rs.run.ID, Before: before, After: after})
+	applied, err := rs.acct.Editors.Apply(ctx, id, rs.prefer(), EditorChange{RunID: rs.run.ID, Before: before, After: after, Op: e})
 	switch {
 	case errors.Is(err, ErrEditorChanged), errors.Is(err, ErrNotOpen):
-		// The user typed meanwhile, or closed it: read it again, from the store if need be.
+		// The change no longer fits what it shows, or it closed the note:
+		// read it again, from the store if need be.
 		return errChanged
 	case errors.Is(err, ErrEditorGone):
 		return errEditorGone
 	case err != nil:
 		return err
 	}
-	if err := rs.acct.Agent.recordEditorEdit(ctx, rs.run.ID, id, er.revision, before, after); err != nil {
+	rev := applied.Revision
+	if rev == nil && applied.Before == before {
+		rev = er.revision // an editor that doesn't say
+	}
+	if err := rs.acct.Agent.recordEditorEdit(ctx, rs.run.ID, id, rev, applied.Before, applied.Shows); err != nil {
 		return err
 	}
-	next.Title, next.Content = after.Title, after.Content
+	next.Title, next.Content = applied.Shows.Title, applied.Shows.Content
 	rs.reads[id] = next
 	// Unsaved now; the cursor stays where the user left it, which this
 	// change may have moved: read it again to know.

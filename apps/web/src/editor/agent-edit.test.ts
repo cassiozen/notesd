@@ -1,7 +1,7 @@
 import { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { afterEach, describe, expect, it } from 'vitest'
-import { applyForAgent, readForAgent } from './agent-edit'
+import { applyForAgent, madeTo, readForAgent, type AgentOp } from './agent-edit'
 import { editorExtensions } from './extensions'
 import { noteContent, noteFields } from './note-doc'
 
@@ -61,5 +61,38 @@ describe('applyForAgent', () => {
     open('Body')
     applyForAgent(editor, { title: 'Shopping', content: 'Body\n' })
     expect(noteFields(editor.state.doc)).toEqual({ title: 'Shopping', content: 'Body\n' })
+  })
+})
+
+describe('madeTo', () => {
+  const before = { title: 'T', content: 'Milk\n' }
+  const change = (op?: AgentOp) => ({ before, after: { title: 'T', content: 'Milk\n\n#tag\n' }, op })
+
+  it('is after while the editor still shows before', () => {
+    expect(madeTo(change(), before, null)).toEqual({ title: 'T', content: 'Milk\n\n#tag\n' })
+  })
+
+  it('makes the op to what the user typed meanwhile, as the server would', () => {
+    const now = { title: 'T', content: 'Milk\nTea\n' }
+    expect(madeTo(change({ kind: 'insert', at: 'end', text: '#tag' }), now, null)?.content).toBe('Milk\nTea\n\n#tag\n')
+    expect(madeTo(change({ kind: 'insert', at: 'start', text: '# List' }), now, null)?.content).toBe('# List\n\nMilk\nTea\n')
+    expect(madeTo(change({ kind: 'insert', at: 'end', text: 'First' }), { title: 'T', content: '\n' }, null)?.content).toBe('First\n')
+    expect(madeTo(change({ kind: 'insert', at: 'cursor', text: '🍵 ' }), { title: 'T', content: '🥛 Milk\nTea\n' }, 7)?.content).toBe(
+      '🥛 Milk\n🍵 Tea\n',
+    )
+    expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: 'Green tea' }), now, null)?.content).toBe('Milk\nGreen tea\n')
+    expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: '$&$&' }), now, null)?.content).toBe('Milk\n$&$&\n')
+    expect(madeTo(change({ kind: 'title', title: 'Shopping' }), now, null)).toEqual({ title: 'Shopping', content: 'Milk\nTea\n' })
+  })
+
+  it('is null where the op no longer fits', () => {
+    const now = { title: 'T', content: 'Tea\nTea\n' }
+    expect(madeTo(change({ kind: 'replace', find: 'Milk', replace: 'Oat milk' }), now, null)).toBeNull()
+    expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: 'Coffee' }), now, null)).toBeNull()
+    expect(madeTo(change({ kind: 'insert', at: 'cursor', text: 'x' }), now, null)).toBeNull()
+    expect(madeTo(change(), now, null)).toBeNull()
+    // The whole content, made again, would wipe out the typing.
+    expect(madeTo(change({ kind: 'content', text: 'Rewritten\n' }), now, null)).toBeNull()
+    expect(madeTo(change({ kind: 'content', text: 'Rewritten\n' }), before, null)?.content).toBe('Milk\n\n#tag\n')
   })
 })

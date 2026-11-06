@@ -511,8 +511,9 @@ The user guide is [agents](../guides/using/agents.md).
 - **In the editor.** A note an editor has open on the socket is read from it instead: unsaved
   typing and the cursor included (`internal/editors`; the run's own editor first, else the one that
   opened it last). A write to it is worked out on the server as above, then sent as before and
-  after; the editor applies it if it still shows before (else it's read again and the change made to
-  it as it is now), as one step
+  after, with the change as the agent asked for it; the editor applies it if it still shows before,
+  else makes the change itself to what it shows (only one that no longer fits, a find typed over, makes
+  the run read it again), as one step
   the user can undo there, and saves it as any edit, with the text its Markdown writes (which the
   run then records). The edit is recorded with no `after_revision` until a save holding exactly
   what the run left arrives. That save is the agent's alone, and fires nothing, if the server held

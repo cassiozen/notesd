@@ -19,7 +19,7 @@ import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
 import { agentSocket } from '../agent/socket'
-import { applyForAgent, composed, readForAgent } from '../editor/agent-edit'
+import { applyForAgent, composed, madeTo, readForAgent } from '../editor/agent-edit'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -368,13 +368,16 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
           const { fields, cursor } = readForAgent(editor.state)
           return { spaceId: saver.spaceId(), ...fields, cursor, revision: saver.knownRevision() }
         },
-        apply: async (before, after) => {
+        apply: async (change) => {
           if (saver.isLocked()) return { error: 'locked' }
           await composed(editor)
-          const now = noteFields(editor.state.doc)
-          if (now.title !== before.title || now.content !== before.content) return { error: 'changed' }
+          // What it shows now: the user may have typed since the run read it.
+          const { fields: before, cursor } = readForAgent(editor.state)
+          const revision = saver.knownRevision()
+          const after = madeTo(change, before, cursor)
+          if (!after) return { error: 'changed' }
           applyForAgent(editor, after)
-          return { shows: noteFields(editor.state.doc) }
+          return { before, revision, shows: noteFields(editor.state.doc) }
         },
       }),
     [saver, editor],

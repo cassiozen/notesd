@@ -114,9 +114,7 @@ func TestAgentSocketOutlivesTheWriteTimeout(t *testing.T) {
 }
 
 func TestSigningOutClosesTheSocket(t *testing.T) {
-	defer func(d time.Duration) { api.SocketPing = d }(api.SocketPing)
-	api.SocketPing = 20 * time.Millisecond
-	e := newEnv(t)
+	e := newEnvWith(t, api.Config{SocketPing: 20 * time.Millisecond})
 	e.setupOwner()
 	c := e.webClient()
 	conn, _ := e.editorSocket(c)
@@ -130,9 +128,7 @@ func TestSigningOutClosesTheSocket(t *testing.T) {
 }
 
 func TestAnExpiredSessionClosesTheSocket(t *testing.T) {
-	defer func(d time.Duration) { api.SocketPing = d }(api.SocketPing)
-	api.SocketPing = 20 * time.Millisecond
-	e := newEnv(t)
+	e := newEnvWith(t, api.Config{SocketPing: 20 * time.Millisecond})
 	e.setupOwner()
 	c := e.webClient()
 	conn, _ := e.editorSocket(c)

@@ -29,6 +29,8 @@ import (
 type Config struct {
 	// ResendURL overrides Resend's API base URL (tests).
 	ResendURL string
+	// SocketPing overrides how often the agent socket pings (tests).
+	SocketPing time.Duration
 	// OnAIChanged is called after the AI settings are saved or removed, so
 	// agents waiting for them resume or pause.
 	OnAIChanged func()
