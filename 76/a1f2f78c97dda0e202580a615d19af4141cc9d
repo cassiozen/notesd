@@ -33,10 +33,15 @@ docs/contributing/architecture.md
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 66,484,488-493,501-502,505,510-512,515-523,602
   s_cc6cacc0a6fc01::t_5f4314c03899c0 485-486
   s_cc6cacc0a6fc01::t_1bba6bf1315b94 503-504
+  s_cc6cacc0a6fc01::t_5fcfa2447791f0 506,513-514
 apps/web/src/notes/shell.tsx
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 1,50
 server/internal/agent/run.go
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 30-32,45-48,289-290
+  s_cc6cacc0a6fc01::t_5fcfa2447791f0 148
+  s_cc6cacc0a6fc01::t_9d6dab2be93eab 136,139-140,146-147,149,291
+  s_cc6cacc0a6fc01::t_7f6972eb387b94 220,223,226
+  s_cc6cacc0a6fc01::t_276ca05500a07c 141-145
 server/internal/agent/runner_test.go
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 79,90-95,266,273
 server/internal/api/agent_socket_test.go
@@ -66,6 +71,8 @@ server/internal/agent/triggers.go
 server/internal/agent/tools.go
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 41,43-44,89-101,191-197,200,202-212,273-279,281,294-320,323-332,336-337,342-344,393,418-419,421-424,427,429,431-432,434-439,441
   s_cc6cacc0a6fc01::t_6a9e7d7e1e57cd 42
+  s_cc6cacc0a6fc01::t_5fcfa2447791f0 201,398-404,412-414,416-417
+  s_cc6cacc0a6fc01::t_9d5507f96cb65b 190,198,229,232-234,248-255,282-283,349-355,363-367,377-381,383,385,387,396-397,405-411,415,420,425-426,428,430,433,440
 apps/web/src/notes/note-pane.tsx
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 21-22,155-156,159-165,362-381
 server/internal/api/api.go
