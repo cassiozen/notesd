@@ -20,6 +20,7 @@ server/internal/agent/runs.go
   s_cc6cacc0a6fc01::t_5ada401c73c0e4 41
 server/internal/agent/run.go
   s_cc6cacc0a6fc01::t_a8bee35df5f5a7 133,135,234-239
+  s_cc6cacc0a6fc01::t_54e7d9018b1dea 162-169
 server/internal/editors/hub.go
   s_cc6cacc0a6fc01::t_5ada401c73c0e4 286-287,289
 server/internal/agent/editors_test.go
@@ -31,6 +32,9 @@ server/internal/agent/tools.go
   s_cc6cacc0a6fc01::t_6cc0397c9839b4 342-344,368
   s_cc6cacc0a6fc01::t_a8bee35df5f5a7 93-99,286-287,290,295,324,340-341,345-366,439,470,472,476
   s_cc6cacc0a6fc01::t_635a1c80f0a153 367,369
+  s_cc6cacc0a6fc01::t_53256b660eaf10 338-339
+  s_cc6cacc0a6fc01::t_eb6e16b8e2ba3d 288-289,291-294,335-337,420-421,423-425
+  s_cc6cacc0a6fc01::t_54e7d9018b1dea 471,473-475,477
 apps/web/src/notes/activity.tsx
   s_cc6cacc0a6fc01::t_5404cdc16244b9 37
 server/internal/agent/editors.go
