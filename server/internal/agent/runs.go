@@ -76,12 +76,13 @@ func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
 	return r, true, nil
 }
 
-// nextDue is when the earliest queued run waiting for a retry is due, or
-// zero if none is.
+// nextDue is when the runner next has something to do unless woken: the
+// earliest queued run or writing session's end. Zero if there's neither.
 func (s *Store) nextDue(ctx context.Context) (time.Time, error) {
 	var at sql.NullInt64
-	err := s.db.R.QueryRowContext(ctx, `SELECT min(not_before) FROM agent_runs WHERE status = 'queued' AND not_before > ?`,
-		s.now().UnixMilli()).Scan(&at)
+	err := s.db.R.QueryRowContext(ctx, `SELECT min(t) FROM (
+		SELECT min(not_before) AS t FROM agent_runs WHERE status = 'queued'
+		UNION ALL SELECT min(last_user_save_at) + ? FROM agent_sessions)`, IdleAfter.Milliseconds()).Scan(&at)
 	if err != nil || !at.Valid {
 		return time.Time{}, err
 	}

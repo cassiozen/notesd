@@ -67,7 +67,6 @@ import (
 	"notes/server/internal/llm"
 	"notes/server/internal/locks"
 	"notes/server/internal/mirror"
-	"notes/server/internal/notes"
 	"notes/server/internal/search"
 	"notes/server/internal/userdata"
 )
@@ -509,7 +508,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		Provider: llm.NewClient(),
 		Log:      log,
 	})
-	users.OnNote(func(userID int64, _ notes.Event) { runner.Wake(userID) })
+	users.OnAgentScheduled(runner.Wake)
 	cfg := api.Config{ResendURL: o.resendURL, Version: version, OnAIChanged: runner.WakeAll}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
@@ -539,7 +538,6 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
 	go collectImages(ctx, authSvc, users, log)
-	go endWritingSessions(ctx, users, runner, log)
 	runnerCtx, stopRunner := context.WithCancel(ctx)
 	runnerDone := make(chan struct{})
 	go func() {
@@ -689,10 +687,6 @@ const (
 	collectEvery = 6 * time.Hour
 )
 
-// A writing session ends 2 minutes after its last change; this is how late
-// that can be noticed.
-const sessionSweepEvery = 15 * time.Second
-
 // collectImages deletes images no note has shown for images.Grace, from
 // every user's database, until ctx ends (§7.6).
 func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registry, log *slog.Logger) {
@@ -723,30 +717,6 @@ func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registr
 			}
 		}
 		t.Reset(collectEvery)
-	}
-}
-
-// endWritingSessions ends agents' writing sessions that have gone idle,
-// queuing their "done" triggers. Every account's database is open by now
-// (serve opens them at startup), and a session only starts on a write.
-func endWritingSessions(ctx context.Context, users *userdata.Registry, runner *agent.Runner, log *slog.Logger) {
-	t := time.NewTicker(sessionSweepEvery)
-	defer t.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-t.C:
-		}
-		users.Each(func(id int64, d *userdata.Data) {
-			n, err := d.Agent.CloseIdleSessions(ctx)
-			if err != nil && ctx.Err() == nil {
-				log.Error("end writing sessions", "user", id, "err", err)
-			}
-			if n > 0 {
-				runner.Wake(id)
-			}
-		})
 	}
 }
 

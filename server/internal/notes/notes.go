@@ -216,16 +216,15 @@ func (e Event) SpaceChanged() bool {
 	return e.Before != nil && e.Kind == EventUpdated && e.Before.SpaceID != e.After.SpaceID
 }
 
-// AgentMark is carried by a write an agent made, and by a client's save
-// holding an agent's edit to an open note.
+// AgentMark is carried by a write an agent made. Only the server sets it:
+// a client could otherwise keep its own writes from firing triggers.
 type AgentMark struct {
-	RunID string `json:"runId"`
-	// Only is true when the save holds nothing but the agent's changes; a
-	// save that also has the user's typing counts as the user's.
-	Only bool `json:"only"`
-	// Runner is set by the server's agent runner itself, never by a request:
-	// its writes are recorded as the run's edits in the same transaction.
-	Runner bool `json:"-"`
+	RunID string
+	// Only is true when the write holds nothing but the agent's changes.
+	Only bool
+	// Runner is the runner's own write: recorded as the run's edits in the
+	// same transaction.
+	Runner bool
 }
 
 // Store persists notes.
@@ -272,7 +271,7 @@ type CreateInput struct {
 	// request hash must tell absent (nil) from none ([]).
 	ImageIDs []string `json:"imageIds"`
 	// Agent marks an agent's write; see AgentMark.
-	Agent *AgentMark `json:"agent,omitempty"`
+	Agent *AgentMark `json:"-"`
 	// Fingerprint identifies the request as received (see Fingerprint);
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
@@ -297,7 +296,7 @@ type UpdateInput struct {
 	// a client that sends a locked body it can't read, such as a merge's.
 	ImageIDs []string `json:"imageIds"`
 	// As CreateInput.Agent.
-	Agent *AgentMark `json:"agent,omitempty"`
+	Agent *AgentMark `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 	// As CreateInput.Origin.
@@ -311,7 +310,7 @@ type DeleteInput struct {
 	ID           string `json:"id"`
 	BaseRevision int64  `json:"baseRevision"`
 	// As CreateInput.Agent.
-	Agent *AgentMark `json:"agent,omitempty"`
+	Agent *AgentMark `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 	// As CreateInput.Origin.
@@ -338,9 +337,6 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		return Result{}, err
 	}
 	if err := validateSpace(in.SpaceID); err != nil {
-		return Result{}, err
-	}
-	if err := validateAgent(in.Agent); err != nil {
 		return Result{}, err
 	}
 	now := s.now().UnixMilli()
@@ -410,9 +406,6 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		return Result{}, err
 	}
 	if err := validateSpace(in.SpaceID); err != nil {
-		return Result{}, err
-	}
-	if err := validateAgent(in.Agent); err != nil {
 		return Result{}, err
 	}
 	now := s.now().UnixMilli()
@@ -505,9 +498,6 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 	}
 	if in.BaseRevision < 1 {
 		return Result{}, &ValidationError{"baseRevision", "must be a positive revision"}
-	}
-	if err := validateAgent(in.Agent); err != nil {
-		return Result{}, err
 	}
 	now := s.now().UnixMilli()
 
@@ -808,17 +798,6 @@ func (s *Store) clientTime(t *int64, now int64) int64 {
 		return now
 	}
 	return *t
-}
-
-// validateAgent checks an agent mark, if any.
-func validateAgent(m *AgentMark) error {
-	if m == nil {
-		return nil
-	}
-	if !opPattern.MatchString(m.RunID) {
-		return &ValidationError{"agent.runId", "must be 1-128 letters, digits or . _ : -"}
-	}
-	return nil
 }
 
 // validateSpace checks a space id the client named, if any.

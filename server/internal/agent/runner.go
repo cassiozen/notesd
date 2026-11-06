@@ -29,8 +29,8 @@ type RunnerConfig struct {
 // MaxConcurrentCalls bounds calls to the provider across accounts.
 const MaxConcurrentCalls = 4
 
-// idleCheck is how often a worker looks at its queue with nothing to wake
-// it: for retries, and for AI coming back.
+// idleCheck is how often a worker looks again at a run it couldn't start:
+// for AI coming back, or an error clearing.
 var idleCheck = time.Minute
 
 // Runner runs every account's queued agent runs: one at a time per
@@ -72,7 +72,7 @@ func (rn *Runner) Run(ctx context.Context) {
 	rn.mu.Lock()
 	rn.ctx = ctx
 	rn.mu.Unlock()
-	// Until every account has a worker, queued runs wait for a note write to wake theirs.
+	// Until every account has a worker, queued runs wait for something new to wake theirs.
 	started := rn.startWorkers(ctx)
 	retry := time.NewTicker(startRetry)
 	defer retry.Stop()
@@ -161,22 +161,30 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 		if rn.step(ctx, userID, acct) {
 			continue
 		}
-		wait := idleCheck
-		if due, err := acct.Agent.nextDue(ctx); err == nil && !due.IsZero() {
-			wait = min(wait, max(due.Sub(rn.now()), 0))
+		// With nothing queued and no one writing, only a wake brings work.
+		var t *time.Timer
+		var timer <-chan time.Time
+		if due, err := acct.Agent.nextDue(ctx); err != nil || !due.IsZero() {
+			wait := due.Sub(rn.now())
+			if err != nil || wait <= 0 {
+				wait = idleCheck
+			}
+			t = time.NewTimer(wait)
+			timer = t.C
 		}
-		t := time.NewTimer(wait)
 		select {
 		case <-ctx.Done():
 		case <-wake:
-		case <-t.C:
+		case <-timer:
 		}
-		t.Stop()
+		if t != nil {
+			t.Stop()
+		}
 	}
 }
 
-// step runs the next due run, if AI is set up and there is one, and
-// reports whether it did.
+// step ends the writing sessions gone idle, then runs the next due run if
+// AI is set up and there is one, and reports whether it did.
 func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 	// remove-user runs beside the server and keeps the account's data, queue
 	// included: none of it may reach the provider after.
@@ -185,6 +193,10 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 			rn.log.Error("agent runner: account", "user", userID, "err", err)
 		}
 		return false
+	}
+	// Before AI is checked: while it's paused, the "done" runs still queue.
+	if _, err := acct.Agent.CloseIdleSessions(ctx); err != nil && ctx.Err() == nil {
+		rn.log.Error("agent runner: end writing sessions", "user", userID, "err", err)
 	}
 	st, err := rn.settings(ctx)
 	if errors.Is(err, llm.ErrNotConfigured) {

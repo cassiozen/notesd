@@ -777,3 +777,30 @@ func TestTimeoutDuringAModelCallIsATimeout(t *testing.T) {
 		t.Fatalf("run: %+v", r)
 	}
 }
+
+func TestWorkersEndIdleSessionsWhenWoken(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.d.Agent.OnScheduled(func() { h.runner.Wake(1) })
+	h.model.steps = append(h.model.steps, final("No change."))
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); h.runner.Run(runCtx) }()
+	defer func() { stop(); <-done }()
+
+	h.create("n1", "work", "a")
+	h.advance(agent.IdleAfter)
+	// The next session's start wakes the worker, which ends the first one's and runs it.
+	h.create("n2", "work", "b")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		runs := h.runs()
+		if len(runs) == 1 && runs[0].Note == "n1" && runs[0].Status == agent.StatusDone {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("runs: %+v", runs)
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+}

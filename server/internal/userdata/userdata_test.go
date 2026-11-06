@@ -5,7 +5,9 @@ import (
 	"sync"
 	"testing"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/notes"
+	"notes/server/internal/spaces"
 	"notes/server/internal/userdata"
 )
 
@@ -20,18 +22,15 @@ func TestHooksAddedAfterOpenHearWrites(t *testing.T) {
 
 	var mu sync.Mutex
 	var changed []int64
-	var events []notes.Event
+	var scheduled []int64
 	for range 2 {
 		r.OnChange(func(id int64) { mu.Lock(); changed = append(changed, id); mu.Unlock() })
 	}
-	r.OnNote(func(id int64, ev notes.Event) {
-		mu.Lock()
-		defer mu.Unlock()
-		if id != 7 {
-			t.Errorf("user %d", id)
-		}
-		events = append(events, ev)
-	})
+	r.OnAgentScheduled(func(id int64) { mu.Lock(); scheduled = append(scheduled, id); mu.Unlock() })
+	if _, err := d.Agent.Put(ctx, agent.Config{SpaceID: spaces.Default, Enabled: true, Prompt: "P",
+		Triggers: map[agent.Trigger]string{agent.NewNoteDone: "T"}}); err != nil {
+		t.Fatal(err)
+	}
 
 	if _, err := d.Notes.Create(ctx, notes.CreateInput{OperationID: "o1", ID: "n1", Title: "T"}); err != nil {
 		t.Fatal(err)
@@ -41,8 +40,9 @@ func TestHooksAddedAfterOpenHearWrites(t *testing.T) {
 	}
 	mu.Lock()
 	defer mu.Unlock()
-	if len(events) != 1 || events[0].NoteID != "n1" {
-		t.Fatalf("events: %+v", events)
+	// The new note started a writing session its agent waits on.
+	if len(scheduled) != 1 || scheduled[0] != 7 {
+		t.Fatalf("scheduled: %v", scheduled)
 	}
 	// Both change listeners, for the note and for the space.
 	if len(changed) != 4 {

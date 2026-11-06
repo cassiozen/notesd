@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -214,7 +215,7 @@ func TestAgentChangesAndNonEditsDontCount(t *testing.T) {
 	f.agent("work", agent.NewNoteDone, agent.EditDone, agent.NoteDeleted, agent.MovedIn)
 	f.create("n1", "home", "a")
 
-	// The agent's own write, and a save holding only its change.
+	// The agent's own write.
 	f.update("n1", "b", func(in *notes.UpdateInput) { in.Agent = &notes.AgentMark{RunID: "run_1", Only: true} })
 	// A device's first sync, and an import.
 	f.update("n1", "c", func(in *notes.UpdateInput) { in.Origin = "initial" })
@@ -229,10 +230,10 @@ func TestAgentChangesAndNonEditsDontCount(t *testing.T) {
 		t.Fatalf("sessions: %d", f.sessions())
 	}
 
-	// A save with the agent's change and the user's typing is the user's.
-	f.update("n1", "d", func(in *notes.UpdateInput) { in.Agent = &notes.AgentMark{RunID: "run_1", Only: false} })
+	// The user's own save does.
+	f.update("n1", "d", nil)
 	if f.sessions() != 1 {
-		t.Fatalf("sessions after a mixed save: %d", f.sessions())
+		t.Fatalf("sessions after the user's save: %d", f.sessions())
 	}
 	f.advance(agent.IdleAfter)
 	f.close()
@@ -370,3 +371,23 @@ func TestQueueIsBounded(t *testing.T) {
 }
 
 func ptr(s string) *string { return &s }
+
+func TestWritesScheduleOnlyWhatTheAgentWaitsFor(t *testing.T) {
+	f := newFixture(t)
+	f.agent("work", agent.NewNoteDone, agent.NoteDeleted)
+	var scheduled atomic.Int32
+	f.d.Agent.OnScheduled(func() { scheduled.Add(1) })
+
+	f.create("h1", "home", "a") // no agent
+	f.create("n1", "work", "a")
+	f.update("n1", "b", nil) // the session goes on
+	if n := scheduled.Load(); n != 1 {
+		t.Fatalf("after writing: %d", n)
+	}
+	f.advance(agent.IdleAfter)
+	f.close()
+	f.delete("n1")
+	if n := scheduled.Load(); n != 3 {
+		t.Fatalf("after the runs queued: %d", n)
+	}
+}

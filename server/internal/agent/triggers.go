@@ -44,6 +44,19 @@ type Event struct {
 	Content *string `json:"content,omitempty"`
 }
 
+// OnScheduled has fn called when a run is queued or a writing session
+// starts: the account's runner has something new to wait for. It's called
+// inside the write's transaction, which is safe as a wake-up: the database
+// has one writer, so the runner can't claim before the write commits, and
+// one rolled back only wakes it for nothing. fn must not block.
+func (s *Store) OnScheduled(fn func()) { s.onScheduled = fn }
+
+func (s *Store) scheduled() {
+	if s.onScheduled != nil {
+		s.onScheduled()
+	}
+}
+
 // OnWrite is the notes store's write hook (notes.Store.OnWrite): inside the
 // write's transaction it keeps writing sessions up to date and queues the
 // triggers a write fires, so neither is lost to a crash.
@@ -141,9 +154,12 @@ func (s *Store) extendSession(ctx context.Context, tx *sql.Tx, ev notes.Event, k
 	if !c.Acts(doneTrigger(kind)) {
 		return nil
 	}
-	_, err = tx.ExecContext(ctx, `INSERT INTO agent_sessions (note_id, kind, start_revision, last_revision, last_user_save_at)
-		VALUES (?, ?, ?, ?, ?)`, ev.NoteID, kind, startRevision, ev.After.Revision, now)
-	return err
+	if _, err = tx.ExecContext(ctx, `INSERT INTO agent_sessions (note_id, kind, start_revision, last_revision, last_user_save_at)
+		VALUES (?, ?, ?, ?, ?)`, ev.NoteID, kind, startRevision, ev.After.Revision, now); err != nil {
+		return err
+	}
+	s.scheduled()
+	return nil
 }
 
 func doneTrigger(kind string) Trigger {
@@ -169,8 +185,11 @@ func (s *Store) queueIfActs(ctx context.Context, tx *sql.Tx, spaceID string, e E
 	if !c.Acts(e.Trigger) {
 		return nil
 	}
-	_, err = queue(ctx, tx, spaceID, e, 0, now)
-	return err
+	if _, err = queue(ctx, tx, spaceID, e, 0, now); err != nil {
+		return err
+	}
+	s.scheduled()
+	return nil
 }
 
 // queue adds a run. Beyond MaxQueued it's recorded as skipped instead.
@@ -205,8 +224,8 @@ func newRunID(now int64) string {
 }
 
 // CloseIdleSessions ends the writing sessions that have gone IdleAfter
-// without a change, queuing each one's "done" trigger. It returns how many
-// runs it queued.
+// without a change, queuing each one's "done" trigger. The account's runner
+// calls it as each one comes due. It returns how many runs it queued.
 func (s *Store) CloseIdleSessions(ctx context.Context) (int, error) {
 	now := s.now().UnixMilli()
 	cutoff := now - IdleAfter.Milliseconds()
@@ -276,6 +295,9 @@ func (s *Store) closeSession(ctx context.Context, tx *sql.Tx, noteID string, cut
 	if !c.Acts(trigger) {
 		return false, nil
 	}
-	_, err = queue(ctx, tx, spaceID, Event{Trigger: trigger, NoteID: noteID}, 0, now)
-	return err == nil, err
+	if _, err = queue(ctx, tx, spaceID, Event{Trigger: trigger, NoteID: noteID}, 0, now); err != nil {
+		return false, err
+	}
+	s.scheduled()
+	return true, nil
 }

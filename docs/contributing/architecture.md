@@ -479,13 +479,13 @@ The user guide is [agents](../guides/using/agents.md).
 - **Triggers.** The notes store's in-transaction write hook (`notes.Store.OnWrite`) queues runs, so a
   trigger commits or rolls back with its write. A delete queues *note deleted* with the note's last
   title and content, since the tombstone has neither; a move queues *moved out* (as it left) and
-  *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); a sweep
+  *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); the runner
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
-  for the space the note is in then. Never a trigger: the agent's own writes and saves marked
-  `agent.only`, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
+  for the space the note is in then. Never a trigger: the agent's own writes, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
   locked notes, and conflicted or recovered copies.
 - **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
-  time, so one at a time per note. At most 4 provider calls run at once across accounts. With AI
+  time, so one at a time per note. It sleeps until a write queues a run or starts a session, or
+  the next of those is due. At most 4 provider calls run at once across accounts. With AI
   removed the queue waits. A run is told notesd's instructions and the date in the account's time
   zone, the space's prompt, the trigger's prompt, and the event with the note.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`. Write: `set_title`,
