@@ -1,0 +1,21 @@
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_b5f574d33d5c8a 299-301
+apps/web/test/activity.test.tsx
+  s_cc6cacc0a6fc01::t_a3c654928dd7d5 46-47
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "189eb1772ea5968a23f875649a77085193f0ae14",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
