@@ -55,6 +55,10 @@ apps/ios/
 `Notes.xcodeproj` uses folder-synchronized groups: a file added to one of
 those folders is in its target, with no project edit.
 
+The app target is `Notes` but its product is `notesd.app` (module still
+`Notes`): the product name becomes `CFBundleName`, and App Store Connect
+refuses "Notes" as the name of Apple's own app (ITMS-90129).
+
 ## How it differs from Android
 
 - **Markdown parsing** runs the web app's own tokenizer, markdown-it 14.3.2

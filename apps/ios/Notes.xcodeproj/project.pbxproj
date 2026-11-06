@@ -29,7 +29,7 @@
 
 /* Begin PBXFileReference section */
 		0A100000000000000000000C /* NotesUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NotesUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		0A1000000000000000000007 /* Notes.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Notes.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		0A1000000000000000000007 /* notesd.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = notesd.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A1000000000000000000008 /* NotesTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NotesTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		0A1000000000000000000009 /* Base.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Base.xcconfig; sourceTree = "<group>"; };
 		0A100000000000000000000A /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -95,7 +95,7 @@
 		0A1000000000000000000003 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				0A1000000000000000000007 /* Notes.app */,
+				0A1000000000000000000007 /* notesd.app */,
 				0A1000000000000000000008 /* NotesTests.xctest */,
 				0A100000000000000000000C /* NotesUITests.xctest */,
 			);
@@ -155,7 +155,7 @@
 				0A1000000000000000000019 /* NotesCore */,
 			);
 			productName = Notes;
-			productReference = 0A1000000000000000000007 /* Notes.app */;
+			productReference = 0A1000000000000000000007 /* notesd.app */;
 			productType = "com.apple.product-type.application";
 		};
 		0A1000000000000000000011 /* NotesTests */ = {
@@ -379,7 +379,8 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).notesd";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = Notes;
+				PRODUCT_NAME = notesd;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Debug;
@@ -402,7 +403,8 @@
 					"@executable_path/Frameworks",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).notesd";
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_MODULE_NAME = Notes;
+				PRODUCT_NAME = notesd;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
 			name = Release;
@@ -415,7 +417,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).notesd.tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Notes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Notes";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/notesd.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/notesd";
 			};
 			name = Debug;
 		};
@@ -427,7 +429,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = "$(BUNDLE_ID_PREFIX).notesd.tests";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = NO;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Notes.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Notes";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/notesd.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/notesd";
 			};
 			name = Release;
 		};
