@@ -89,6 +89,7 @@ apps/web/src/notes/agent-page.module.css
   s_cc6cacc0a6fc01::t_73c686c690e9fb 1-292
 apps/web/src/notes/space-menu.tsx
   s_cc6cacc0a6fc01::t_73c686c690e9fb 3,17,25-26,145-146,148-150,152,154
+  s_cc6cacc0a6fc01::t_cfd707e71885ba 31
 apps/web/src/notes/agent-examples.ts
   s_cc6cacc0a6fc01::t_73c686c690e9fb 1-73
 apps/web/src/notes/agent-page.tsx
