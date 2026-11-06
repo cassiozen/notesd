@@ -30,6 +30,7 @@ apps/web/src/notes/saver.ts
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 277-280,470-471,473
 docs/contributing/architecture.md
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 66,484,488-493,499-517,596
+  s_cc6cacc0a6fc01::t_5f4314c03899c0 485-486
 apps/web/src/notes/shell.tsx
   s_cc6cacc0a6fc01::t_4902ef5c0cfeca 1,50
 server/internal/agent/run.go
