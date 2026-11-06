@@ -196,9 +196,10 @@ func TestClosingTheEditorAfterItSavedTheAgentsChange(t *testing.T) {
 		t.Fatal(err)
 	}
 	// The editor has all the server has: the session ends now, not when idle.
-	if queued, err := h.d.Agent.EditorClosed(ctx, "n1", n.Revision); err != nil || !queued || h.sessions() != 0 {
-		t.Fatalf("queued %v, sessions %d, %v", queued, h.sessions(), err)
+	if err := h.d.Agent.EditorClosed(ctx, "n1", n.Revision); err != nil || h.sessions() != 0 {
+		t.Fatalf("sessions %d, %v", h.sessions(), err)
 	}
+	h.wantRuns("newNoteDone:n1@work", "editDone:n1@work")
 }
 
 func TestLockingOrDeletingDropsTheEditorsHash(t *testing.T) {

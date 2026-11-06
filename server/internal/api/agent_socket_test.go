@@ -145,9 +145,10 @@ func TestAnExpiredSessionClosesTheSocket(t *testing.T) {
 }
 
 func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
-	var woken atomic.Int32
-	e := newEnvWith(t, api.Config{OnRunQueued: func(int64) { woken.Add(1) }})
+	e := newEnv(t)
 	e.setupOwner()
+	var woken atomic.Int32
+	e.users.OnAgentScheduled(func(int64) { woken.Add(1) })
 	c := e.webClient()
 	if r := c.do("PUT", "/api/v1/agent/spaces/default", map[string]any{
 		"enabled": true, "prompt": "p", "triggers": map[string]any{"newNoteDone": "Add tags."},
@@ -190,6 +191,7 @@ func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
 		t.Fatalf("closed too soon: %d runs", n)
 	}
 
+	woken.Store(0) // the note's session starting
 	send(tab2, "editor.opened", nil)
 	send(tab2, "editor.closed", 1)
 	settle(tab2)

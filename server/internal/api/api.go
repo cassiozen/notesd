@@ -32,8 +32,6 @@ type Config struct {
 	// OnAIChanged is called after the AI settings are saved or removed, so
 	// agents waiting for them resume or pause.
 	OnAIChanged func()
-	// OnRunQueued is called when a request queued an agent run for the user.
-	OnRunQueued func(userID int64)
 	// Editors are the connected note editors, shared with the agent runner;
 	// nil gets a hub of the server's own.
 	Editors *editors.Hub

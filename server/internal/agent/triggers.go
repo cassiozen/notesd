@@ -86,12 +86,7 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 			return err
 		}
 		if agentOnly && !ev.SpaceChanged() {
-			// An editor saving just a run's change: not the user writing. The
-			// session still learns the revision, or closing the editor at it
-			// would look like a save still on its way.
-			_, err := tx.ExecContext(ctx, `UPDATE agent_sessions SET last_revision = ? WHERE note_id = ?`,
-				ev.After.Revision, ev.NoteID)
-			return err
+			return nil // an editor saving just a run's change: not the user writing
 		}
 	}
 	if ev.Agent != nil && ev.Agent.Only {
@@ -316,24 +311,25 @@ func (s *Store) CloseIdleSessions(ctx context.Context) (int, error) {
 
 // EditorClosed ends the note's writing session now, when an editor closed it
 // and the server has what it last saved (revision), rather than waiting
-// IdleAfter. It reports whether that queued a run.
-func (s *Store) EditorClosed(ctx context.Context, noteID string, revision int64) (bool, error) {
+// IdleAfter.
+func (s *Store) EditorClosed(ctx context.Context, noteID string, revision int64) error {
 	now := s.now().UnixMilli()
-	queued := false
-	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		var last int64
-		err := tx.QueryRowContext(ctx, `SELECT last_revision FROM agent_sessions WHERE note_id = ?`, noteID).Scan(&last)
-		if errors.Is(err, sql.ErrNoRows) || (err == nil && last < revision) {
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		// The note's own revision, not the session's: writes that aren't the
+		// user's (the agent's, a move) leave the session's behind.
+		var current int64
+		err := tx.QueryRowContext(ctx, `SELECT n.revision FROM agent_sessions s JOIN notes n ON n.id = s.note_id
+			WHERE s.note_id = ?`, noteID).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && current < revision) {
 			// No session, or a save still on its way: the idle timeout ends it.
 			return nil
 		}
 		if err != nil {
 			return err
 		}
-		queued, err = s.closeSession(ctx, tx, noteID, math.MaxInt64, now)
+		_, err = s.closeSession(ctx, tx, noteID, math.MaxInt64, now)
 		return err
 	})
-	return queued, err
 }
 
 // closeSession ends one session if it's still idle, and queues its trigger

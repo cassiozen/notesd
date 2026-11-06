@@ -89,12 +89,8 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			if !s.editors.Closed(ec, m.NoteID) || m.Revision == nil {
 				continue
 			}
-			queued, err := data.Agent.EditorClosed(ctx, m.NoteID, *m.Revision)
-			if err != nil {
+			if err := data.Agent.EditorClosed(ctx, m.NoteID, *m.Revision); err != nil {
 				s.log.Error("agent socket: end writing session", "error", err)
-			}
-			if queued && s.cfg.OnRunQueued != nil {
-				s.cfg.OnRunQueued(userID)
 			}
 		}
 		// Unknown types are skipped: a newer app may send more.

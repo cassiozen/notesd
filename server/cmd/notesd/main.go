@@ -513,7 +513,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		Log:      log,
 	})
 	users.OnAgentScheduled(runner.Wake)
-	cfg := api.Config{ResendURL: o.resendURL, Version: version, OnAIChanged: runner.WakeAll, OnRunQueued: runner.Wake, Editors: hub}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, OnAIChanged: runner.WakeAll, Editors: hub}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
