@@ -15,7 +15,7 @@ import { ComposeIcon, LockIcon, TrashIcon } from '../ui/icons'
 import { LockedError, UnsupportedLockError } from '../locks/crypto'
 import { lockSession, useLockStatus } from '../locks/session'
 import { UnlockForm } from '../locks/unlock'
-import { navigate } from '../router'
+import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
 import { useFailedRun } from './failed-run'
@@ -516,7 +516,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
               <Button
                 variant="solid"
                 size="sm"
-                onClick={() => navigate('/activity', { state: { space, run: failed.run?.id } })}
+                onClick={() => openOver('/activity', { space, run: failed.run?.id })}
               >
                 Activity
               </Button>

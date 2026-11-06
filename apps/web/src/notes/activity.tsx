@@ -29,7 +29,6 @@ const FAILURES: Record<string, string> = {
   tool_cap: 'it took too many steps',
   timeout: 'it took too long',
   provider: 'the AI provider failed',
-  note_changed: 'the note kept changing',
   interrupted: 'the server stopped',
   queue_full: 'too many runs were waiting',
   unknown_trigger: 'this server doesn’t know the trigger',
@@ -100,6 +99,13 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
   const was = useRef(open)
 
   useEffect(() => {
+    const abort = new AbortController()
+    // The log shows without it.
+    agent.usage(abort.signal).then(setUsage, () => {})
+    return () => abort.abort()
+  }, [])
+
+  useEffect(() => {
     if (was.current !== open) heading.current?.focus()
     was.current = open
   }, [open])
@@ -143,7 +149,7 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
             </p>
           )}
         </div>
-        <RunList key={`${space}:${listVersion}`} space={space} spaces={spaces} onUsage={setUsage} onOpen={setOpen} />
+        <RunList key={`${space}:${listVersion}`} space={space} spaces={spaces} onOpen={setOpen} />
       </div>
     </Sheet>
   )
@@ -152,12 +158,10 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
 function RunList({
   space,
   spaces,
-  onUsage,
   onOpen,
 }: {
   space: string
   spaces: ReturnType<typeof useSpaces>
-  onUsage: (u: AgentUsage) => void
   onOpen: (id: string) => void
 }) {
   const [runs, setRuns] = useState<AgentRun[] | null>(null)
@@ -170,7 +174,6 @@ function RunList({
     agent.runs({ space }, abort.signal).then(
       (page) => {
         setRuns(page.runs)
-        onUsage(page.usage)
         setNext(page.nextCursor)
       },
       (err: unknown) => {
@@ -178,7 +181,7 @@ function RunList({
       },
     )
     return () => abort.abort()
-  }, [space, onUsage])
+  }, [space])
 
   async function more() {
     setBusy(true)

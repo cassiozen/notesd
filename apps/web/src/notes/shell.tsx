@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { dragRegion } from '../desktop'
 import { TouchIdOffer } from '../locks/unlock'
 import type { SyncNotice } from '../offline/protocol'
-import { navigate, parseRoute, usePathname } from '../router'
+import { closeOver, navigate, openOver, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
 import { NewSpaceDialog } from '../settings/spaces'
 import { Backdrop } from '../ui/backdrop'
@@ -69,12 +69,6 @@ function ShellView({ username }: { username: string }) {
   if (!over && routeNote !== behind) setBehind(routeNote)
   const noteId = over ? behind : routeNote
   const selectedId = draft?.id ?? noteId
-  // Closing settings goes back to where it was opened, the tags screen included.
-  const [settingsFrom, setSettingsFrom] = useState(pathname)
-  if (route.name !== 'settings' && pathname !== settingsFrom) setSettingsFrom(pathname)
-  // Activity, opened from Settings too, closes back to where Settings was opened.
-  const [activityFrom, setActivityFrom] = useState(pathname)
-  if (route.name !== 'settings' && route.name !== 'activity' && pathname !== activityFrom) setActivityFrom(pathname)
   const listPath = behind ? `/notes/${behind}` : '/'
 
   // Grown wide enough for the sidebar: the tags screen has nothing left to show.
@@ -244,12 +238,12 @@ function ShellView({ username }: { username: string }) {
       lockedCount={lockedCount}
       filter={filter}
       onFilter={showFilter}
-      onSettings={() => navigate('/settings')}
+      onSettings={() => openOver('/settings')}
       spaces={spaces}
       space={space}
       onSpace={switchSpace}
       onNewSpace={() => setNewSpace(true)}
-      onActivity={() => navigate('/activity', { state: { space } })}
+      onActivity={() => openOver('/activity', { space })}
       onHide={docked?.onHide}
       hidden={docked?.hidden}
       hideRef={hideButton}
@@ -318,12 +312,11 @@ function ShellView({ username }: { username: string }) {
           username={username}
           section={route.section}
           onSpaceCreated={switchSpace}
-          // Opened straight from its address: there's nowhere to go back to but the list.
-          onClose={() => navigate(parseRoute(settingsFrom).name === 'settings' ? listPath : settingsFrom)}
+          onClose={() => closeOver(listPath)}
         />
       )}
 
-      {route.name === 'activity' && <ActivitySheet onClose={() => navigate(activityFrom === '/activity' ? listPath : activityFrom, { replace: true })} />}
+      {route.name === 'activity' && <ActivitySheet onClose={() => closeOver(listPath, { replace: true })} />}
 
       {newSpace && (
         <NewSpaceDialog

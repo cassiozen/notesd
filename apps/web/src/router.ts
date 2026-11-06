@@ -50,6 +50,33 @@ export function navigate(
   })
 }
 
+/**
+ * Settings and Activity open over a page, which closing them returns to: kept with the
+ * history entry, so each of several open in turn returns to its own, and a reload still knows.
+ */
+type Over = { returnTo?: string; returnState?: unknown }
+
+const over = () => window.history.state as Over | null
+
+/** Opens [path] over the current page. [state]: the page's own, as `window.history.state`. */
+export function openOver(path: string, state: Record<string, unknown> = {}) {
+  navigate(path, { state: { ...state, returnTo: window.location.pathname, returnState: window.history.state } })
+}
+
+/** Moves within a page opened over another, keeping where it returns to. */
+export function moveOver(
+  path: string,
+  { replace = false, state = {} }: { replace?: boolean; state?: Record<string, unknown> } = {},
+) {
+  navigate(path, { replace, state: { ...state, returnTo: over()?.returnTo, returnState: over()?.returnState } })
+}
+
+/** Closes a page opened over another: back to it, or to [fallback] when opened straight from its address. */
+export function closeOver(fallback: string, { replace = false }: { replace?: boolean } = {}) {
+  const s = over()
+  navigate(s?.returnTo ?? fallback, { replace, state: s?.returnState ?? null })
+}
+
 /** Phones: the tags, the list and a note stack like screens; deeper pushes, shallower pops. */
 const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null, activity: null })[route.name]
 

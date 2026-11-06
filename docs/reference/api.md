@@ -389,7 +389,8 @@ other accounts get `403 admin_only` when they change it.
 | `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
 | `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
-| `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore, usage}`, newest first |
+| `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore}`, newest first |
+| `GET` | `/agent/usage` | → `{day, tokens, runs, dailyTokenCap}` |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
 
@@ -414,8 +415,8 @@ why a run failed or was skipped, and `outcome` what a finished one did (`edited`
 `no_change`, or after undo `undone` or `partly_undone`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
 changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
 `create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked` or
-`changed` (the note changed since the run wrote it). `limit` is up to 100, 50 by default. `usage`
-is `{day, tokens, runs, dailyTokenCap}` for today in the account's time zone.
+`changed` (the note changed since the run wrote it). `limit` is up to 100, 50 by default. `GET /agent/usage`
+is today's, in the account's time zone.
 
 `GET /agent/runs/{id}` adds `diffs`, one per note changed: `{noteId, kind, titleBefore, titleAfter,
 lines, textRemoved}`. `lines` compares the content before the run's first change with after its last: each is

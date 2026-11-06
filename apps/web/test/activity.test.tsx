@@ -8,6 +8,8 @@ const DIGEST = 'Items\n'
 
 /** AI and an agent that, when a note is deleted, adds a line to Digest. */
 async function withDigestAgent(server: TestServer, llm: FakeLLM) {
+  // The page's, so the run's day is the one it shows usage for, even when UTC is on another.
+  await server.api('PUT', '/settings/account', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone })
   await server.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
   await server.api('PUT', '/agent/spaces/default', {
     enabled: true,
@@ -43,7 +45,8 @@ describe('Activity', () => {
     const row = within(runs).getByRole('button', { name: /Deleted note/ })
     expect(row.textContent).toContain('Note deleted')
     expect(row.textContent).toContain('Changed the note')
-    expect(within(sheet).getByText(/^Today: 24 of 1,000,000 tokens$/)).toBeTruthy()
+    // Its own request, beside the list's.
+    expect(await within(sheet).findByText(/^Today: 24 of 1,000,000 tokens$/)).toBeTruthy()
 
     await user.click(row)
     const changes = await within(sheet).findByRole('region', { name: 'Changes to Digest' })

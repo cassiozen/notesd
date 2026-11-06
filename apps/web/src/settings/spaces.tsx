@@ -8,7 +8,7 @@ import { providerHost, useAiSettings } from '../notes/ai-settings'
 import { notesSource } from '../notes/source'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
-import { navigate } from '../router'
+import { openOver } from '../router'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
@@ -273,7 +273,7 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
               size="sm"
               disabled={unsaved}
               aria-describedby={unsaved ? activityHint : undefined}
-              onClick={() => navigate('/activity', { state: { space: space.id } })}
+              onClick={() => openOver('/activity', { space: space.id })}
             >
               Activity…
             </Button>

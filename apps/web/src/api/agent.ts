@@ -79,7 +79,7 @@ export type AgentRunDetail = AgentRun & { diffs: NoteDiff[] }
 
 export type AgentUsage = { day: string; tokens: number; runs: number; dailyTokenCap: number }
 
-export type RunsPage = { runs: AgentRun[]; nextCursor: string; hasMore: boolean; usage: AgentUsage }
+export type RunsPage = { runs: AgentRun[]; nextCursor: string; hasMore: boolean }
 
 export type UndoResult = { undone: string[]; skipped: { noteId: string; reason: UndoBlock }[] }
 
@@ -100,6 +100,8 @@ export const agent = {
     return request<RunsPage>('GET', `/agent/runs?${q.toString()}`, undefined, { signal })
   },
   run: (id: string) => request<AgentRunDetail>('GET', `/agent/runs/${encodeURIComponent(id)}`),
+  /** Today's, against the daily cap. */
+  usage: (signal?: AbortSignal) => request<AgentUsage>('GET', '/agent/usage', undefined, { signal }),
   /** 409 nothing_to_undo when none of its changes can be: the run's edits then say why. */
   undo: (id: string) => request<UndoResult>('POST', `/agent/runs/${encodeURIComponent(id)}/undo`),
   account: () => request<AccountSettings>('GET', '/settings/account'),

@@ -91,8 +91,7 @@ func (s *Server) saveAccountSettings(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/v1/agent/runs?space=...&note=...&limit=50&cursor=...
 //
-// The activity log, newest first, with what each run changed and today's
-// usage against the daily cap.
+// The activity log, newest first, with what each run changed.
 func (s *Server) agentRuns(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
 	limit, err := queryInt(r, "limit", 50)
@@ -107,7 +106,12 @@ func (s *Server) agentRuns(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	usage, err := u.Agent.UsageToday(r.Context())
+	writeJSON(w, http.StatusOK, map[string]any{"runs": runs, "nextCursor": next, "hasMore": next != ""})
+}
+
+// GET /api/v1/agent/usage — today's usage against the daily cap.
+func (s *Server) agentUsage(w http.ResponseWriter, r *http.Request) {
+	usage, err := userFrom(r.Context()).Agent.UsageToday(r.Context())
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -119,10 +123,7 @@ func (s *Server) agentRuns(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{
-		"runs": runs, "nextCursor": next, "hasMore": next != "",
-		"usage": map[string]any{"day": usage.Day, "tokens": usage.Tokens, "runs": usage.Runs, "dailyTokenCap": limitCap},
-	})
+	writeJSON(w, http.StatusOK, map[string]any{"day": usage.Day, "tokens": usage.Tokens, "runs": usage.Runs, "dailyTokenCap": limitCap})
 }
 
 // POST /api/v1/agent/runs/{id}/undo — puts back what a run changed, where

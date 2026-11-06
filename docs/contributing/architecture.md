@@ -517,7 +517,7 @@ The user guide is [agents](../guides/using/agents.md).
 - **Activity and undo.** `GET /agent/runs` lists runs with their edits; a run's detail diffs
   each note line by line (Myers, after trimming the common start and end), computed on read.
   Undo writes each edited note back, and deletes each note the run created, based on the
-  revision the run left, marked `agent.only` so it fires nothing, with a fixed operation id so a
+  revision the run left, marked as the agent's alone so it fires nothing, with a fixed operation id so a
   retry replays; a note changed, locked or deleted since is skipped. The run's outcome becomes
   `undone`, or `partly_undone` while some of its changes stand.
 

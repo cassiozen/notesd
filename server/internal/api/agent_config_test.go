@@ -79,10 +79,12 @@ func TestAgentRunsEndpoints(t *testing.T) {
 	e.setupOwner()
 	c, _ := e.deviceClient()
 	r := c.do("GET", "/api/v1/agent/runs", nil)
-	usage, _ := r.body["usage"].(map[string]any)
-	if r.status != 200 || len(r.body["runs"].([]any)) != 0 || r.body["hasMore"] != false ||
-		usage["tokens"] != float64(0) || usage["dailyTokenCap"] != float64(1_000_000) {
+	if r.status != 200 || len(r.body["runs"].([]any)) != 0 || r.body["hasMore"] != false {
 		t.Fatalf("empty: %d %s", r.status, r.raw)
+	}
+	if r := c.do("GET", "/api/v1/agent/usage", nil); r.status != 200 || r.body["tokens"] != float64(0) ||
+		r.body["dailyTokenCap"] != float64(1_000_000) {
+		t.Fatalf("usage: %d %s", r.status, r.raw)
 	}
 	if r := c.do("GET", "/api/v1/agent/runs?cursor=nope", nil); r.status != 400 || r.body["field"] != "cursor" {
 		t.Fatalf("bad cursor: %d %s", r.status, r.raw)
