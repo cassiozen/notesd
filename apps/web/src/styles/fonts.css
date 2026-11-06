@@ -1,12 +1,3 @@
 /* Self-hosted (the CSP allows no font CDNs); Vite bundles the woff2 files
    into /assets. */
-@import '@fontsource-variable/instrument-sans/wght.css';
-@import '@fontsource-variable/instrument-sans/wght-italic.css';
-@import '@fontsource/instrument-serif/400.css';
-@import '@fontsource/instrument-serif/400-italic.css';
 @import '@fontsource-variable/jetbrains-mono/wght.css';
-/* Only for the note font picked in Settings (font.ts). */
-@import '@fontsource-variable/literata/wght.css';
-@import '@fontsource-variable/literata/wght-italic.css';
-@import '@fontsource-variable/atkinson-hyperlegible-next/wght.css';
-@import '@fontsource-variable/atkinson-hyperlegible-next/wght-italic.css';

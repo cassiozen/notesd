@@ -69,8 +69,8 @@ A note can be emailed through notesd, which sends it with Resend (`server/README
 
 The app follows the web app's design system, not Material defaults:
 
-- **Colours:** `ui/Tokens.kt` holds the web's `tokens.css` values converted from oklch to sRGB, with the oklch source beside each value.
-- **Typefaces:** Instrument Sans, Instrument Serif and JetBrains Mono, bundled so the app looks the same offline (SIL Open Font License; see `licenses/`).
+- **Colours:** `ui/Tokens.kt` holds the web's Amber theme converted from oklch to sRGB, with the oklch source beside each value. `ui/themes/Themes.generated.kt` has every theme, generated from `shared/themes`; adopting it replaces `Tokens` (`docs/contributing/themes.md`).
+- **Typefaces:** Instrument Sans, Instrument Serif and JetBrains Mono, plus every theme's fonts (`mise run themes:fonts`), bundled so the app looks the same offline (SIL Open Font License; see `licenses/`).
 - **Glass surfaces:** blurred on Android 12+ with [Haze](https://github.com/chrisbanes/haze), translucent on earlier versions.
 - **Motion:** stops when the system's "Remove animations" is on.
 

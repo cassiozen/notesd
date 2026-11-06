@@ -16,7 +16,7 @@
   margin: 0;
   padding: 4px 6px;
   border: 0;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--radius-scale));
   background: transparent;
   color: inherit;
   font: inherit;
@@ -59,13 +59,13 @@
   padding: 6px;
   display: flex;
   flex-direction: column;
-  border-radius: 16px;
+  border-radius: calc(16px * var(--radius-scale));
   background: var(--glass-hi);
-  backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: var(--blur-pop);
   border: 1px solid var(--edge);
   box-shadow:
     var(--inset),
-    0 24px 50px -16px rgb(0 0 0 / 0.35);
+    var(--shadow-pop);
   animation: pop-in 0.3s var(--spring);
 }
 
@@ -76,10 +76,10 @@
   align-items: center;
   gap: 10px;
   border: 0;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   background: transparent;
   color: var(--ink);
-  font: 400 14px/1.2 var(--font-sans);
+  font: 400 14px/1.2 var(--font-body);
   text-align: left;
   cursor: pointer;
 }

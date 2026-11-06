@@ -22,10 +22,21 @@
 	</array>
 	<key>UIAppFonts</key>
 	<array>
-		<string>InstrumentSans.ttf</string>
-		<string>InstrumentSans-Italic.ttf</string>
 		<string>InstrumentSerif.ttf</string>
 		<string>InstrumentSerif-Italic.ttf</string>
+		<string>ShipporiMincho-Regular.ttf</string>
+		<string>ShipporiMincho-Medium.ttf</string>
+		<string>Playfair.ttf</string>
+		<string>Playfair-Italic.ttf</string>
+		<string>NunitoSans.ttf</string>
+		<string>NunitoSans-Italic.ttf</string>
+		<string>InstrumentSans.ttf</string>
+		<string>InstrumentSans-Italic.ttf</string>
+		<string>ZenKakuGothicNew-Regular.ttf</string>
+		<string>ZenKakuGothicNew-Medium.ttf</string>
+		<string>ZenKakuGothicNew-Bold.ttf</string>
+		<string>HankenGrotesk.ttf</string>
+		<string>HankenGrotesk-Italic.ttf</string>
 		<string>JetBrainsMono.ttf</string>
 	</array>
 </dict>

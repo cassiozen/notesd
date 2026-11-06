@@ -1,0 +1,254 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "palette.schema.json",
+  "title": "notesd theme palette",
+  "description": "Colors only: every role, each the same in light and dark or as a pair. A palette never says how see-through or how deep anything is; styles do.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "colors"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "colors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bg",
+        "paper",
+        "ink",
+        "ink-2",
+        "ink-3",
+        "scrim",
+        "surface",
+        "line",
+        "shade",
+        "blob-1",
+        "accent",
+        "accent-deep",
+        "on-accent",
+        "tint",
+        "link",
+        "focus",
+        "solid",
+        "on-solid",
+        "danger",
+        "danger-bg",
+        "good",
+        "good-bg",
+        "err-bg",
+        "err-edge",
+        "err-ink",
+        "warn-bg",
+        "warn-edge",
+        "warn-ink",
+        "status-saved",
+        "status-unsaved",
+        "status-saving",
+        "status-failed",
+        "status-conflict",
+        "code",
+        "code-ink",
+        "code-dim",
+        "syntax-keyword",
+        "syntax-string",
+        "syntax-number",
+        "syntax-title",
+        "syntax-meta",
+        "syntax-deletion"
+      ],
+      "properties": {
+        "bg": {
+          "$ref": "#/$defs/value",
+          "description": "The window."
+        },
+        "paper": {
+          "$ref": "#/$defs/value",
+          "description": "The note's sheet."
+        },
+        "ink": {
+          "$ref": "#/$defs/value",
+          "description": "Text."
+        },
+        "ink-2": {
+          "$ref": "#/$defs/value",
+          "description": "Secondary text."
+        },
+        "ink-3": {
+          "$ref": "#/$defs/value",
+          "description": "Muted text (at least 4.5:1 on bg and paper)."
+        },
+        "scrim": {
+          "$ref": "#/$defs/value",
+          "description": "Over the app, behind a sheet or dialog (alpha included)."
+        },
+        "surface": {
+          "$ref": "#/$defs/value",
+          "description": "What floating panels are made of; styles set how see-through."
+        },
+        "line": {
+          "$ref": "#/$defs/value",
+          "description": "Hairlines and hover fills are this, faint."
+        },
+        "shade": {
+          "$ref": "#/$defs/value",
+          "description": "Shadows."
+        },
+        "blob-1": {
+          "$ref": "#/$defs/value",
+          "description": "The backdrop glow, for styles that have one."
+        },
+        "accent": {
+          "$ref": "#/$defs/value",
+          "description": "The main button, checked tasks."
+        },
+        "accent-deep": {
+          "$ref": "#/$defs/value",
+          "description": "Its pressed edge."
+        },
+        "on-accent": {
+          "$ref": "#/$defs/value",
+          "description": "Text on the accent."
+        },
+        "tint": {
+          "$ref": "#/$defs/value",
+          "description": "Icon buttons and the caret."
+        },
+        "link": {
+          "$ref": "#/$defs/value",
+          "description": "Links."
+        },
+        "focus": {
+          "$ref": "#/$defs/value",
+          "description": "Focus rings (alpha included)."
+        },
+        "solid": {
+          "$ref": "#/$defs/value",
+          "description": "Inverted buttons."
+        },
+        "on-solid": {
+          "$ref": "#/$defs/value",
+          "description": "Text on them."
+        },
+        "danger": {
+          "$ref": "#/$defs/value"
+        },
+        "danger-bg": {
+          "$ref": "#/$defs/value"
+        },
+        "good": {
+          "$ref": "#/$defs/value"
+        },
+        "good-bg": {
+          "$ref": "#/$defs/value"
+        },
+        "err-bg": {
+          "$ref": "#/$defs/value"
+        },
+        "err-edge": {
+          "$ref": "#/$defs/value"
+        },
+        "err-ink": {
+          "$ref": "#/$defs/value"
+        },
+        "warn-bg": {
+          "$ref": "#/$defs/value"
+        },
+        "warn-edge": {
+          "$ref": "#/$defs/value"
+        },
+        "warn-ink": {
+          "$ref": "#/$defs/value"
+        },
+        "status-saved": {
+          "$ref": "#/$defs/value"
+        },
+        "status-unsaved": {
+          "$ref": "#/$defs/value"
+        },
+        "status-saving": {
+          "$ref": "#/$defs/value"
+        },
+        "status-failed": {
+          "$ref": "#/$defs/value"
+        },
+        "status-conflict": {
+          "$ref": "#/$defs/value"
+        },
+        "code": {
+          "$ref": "#/$defs/value",
+          "description": "The code block (always dark)."
+        },
+        "code-ink": {
+          "$ref": "#/$defs/value",
+          "description": "Code."
+        },
+        "code-dim": {
+          "$ref": "#/$defs/value",
+          "description": "Comments."
+        },
+        "syntax-keyword": {
+          "$ref": "#/$defs/value"
+        },
+        "syntax-string": {
+          "$ref": "#/$defs/value"
+        },
+        "syntax-number": {
+          "$ref": "#/$defs/value"
+        },
+        "syntax-title": {
+          "$ref": "#/$defs/value"
+        },
+        "syntax-meta": {
+          "$ref": "#/$defs/value"
+        },
+        "syntax-deletion": {
+          "$ref": "#/$defs/value"
+        },
+        "check-ink": {
+          "$ref": "#/$defs/value",
+          "description": "Optional: the dot in a ticked box; defaults to on-accent."
+        },
+        "sidebar": {
+          "$ref": "#/$defs/value",
+          "description": "Optional: the sidebar's own color, for themes whose sidebar option asks for one; defaults to bg."
+        }
+      }
+    }
+  },
+  "$defs": {
+    "color": {
+      "type": "string",
+      "pattern": "^(#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?|rgb\\(\\d{1,3} \\d{1,3} \\d{1,3}( / (0|1|0?\\.\\d+))?\\)|oklch\\(\\d*\\.?\\d+ \\d*\\.?\\d+ \\d*\\.?\\d+( / (0|1|0?\\.\\d+))?\\))$",
+      "description": "A color: #rrggbb, #rrggbbaa, rgb(r g b / a) or oklch(l c h / a). The web keeps it as written; native gets it as sRGB."
+    },
+    "value": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/color"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "light",
+            "dark"
+          ],
+          "properties": {
+            "light": {
+              "$ref": "#/$defs/color"
+            },
+            "dark": {
+              "$ref": "#/$defs/color"
+            }
+          }
+        }
+      ]
+    }
+  }
+}

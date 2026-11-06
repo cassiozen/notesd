@@ -4,7 +4,7 @@
   flex-wrap: wrap;
   gap: 8px 12px;
   padding: 10px 10px 10px 16px;
-  border-radius: 14px;
+  border-radius: calc(14px * var(--radius-scale));
   border: 1px solid;
   font-size: 13.5px;
   animation: global(fade-in) 0.2s;

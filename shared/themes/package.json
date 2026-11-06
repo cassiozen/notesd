@@ -1,0 +1,14 @@
+{
+  "name": "@notes/themes",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "generate": "node generate.ts",
+    "check": "node generate.ts --check",
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "ajv": "^8.17.1"
+  }
+}

@@ -1,0 +1,89 @@
+{
+  "$schema": "../schema/style.schema.json",
+  "description": "Frosted panels over a warm glow, soft deep shadows, springy motion.",
+  "layout": {
+    "app-gap": 12,
+    "app-padding": 12,
+    "pane-radius": 24,
+    "pane-border": {"width": 1, "color": {"token": "edge"}},
+    "pane-shadow": ["inset", "shadow-lg"],
+    "column-rule": null
+  },
+  "shape": {"radius-scale": 1},
+  "material": {
+    "glass-hi": {"role": "surface", "alpha": 0.88},
+    "blur": {"radius": 18, "saturate": 1.3},
+    "blur-pop": {"radius": 24, "saturate": 1.4},
+    "blur-dialog": {"radius": 24, "saturate": 1.3},
+    "blur-scrim": {"radius": 10},
+    "edge": {"color": "#ffffff", "alpha": {"light": 0.85, "dark": 0.08}},
+    "inset": [
+      {"y": 1, "inset": true, "color": {"color": "#ffffff", "alpha": {"light": 0.9, "dark": 0.06}}}
+    ],
+    "field": {"color": "#ffffff", "alpha": {"light": 0.78, "dark": 0.06}},
+    "chip": {"color": "#ffffff", "alpha": {"light": 0.62, "dark": 0.07}}
+  },
+  "lines": {
+    "hair": {"role": "line", "alpha": {"light": 0.09, "dark": 0.08}},
+    "hair-strong": {"role": "line", "alpha": 0.16},
+    "hover": {"role": "line", "alpha": 0.07},
+    "on": {"role": "line", "alpha": {"light": 0.11, "dark": 0.13}}
+  },
+  "depth": {
+    "shadow": {
+      "light": [{"y": 12, "blur": 32, "spread": -18, "color": {"role": "shade", "alpha": 0.22}}],
+      "dark": [{"y": 14, "blur": 34, "spread": -18, "color": {"role": "shade", "alpha": 0.65}}]
+    },
+    "shadow-lg": {
+      "light": [{"y": 40, "blur": 90, "spread": -34, "color": {"role": "shade", "alpha": 0.35}}],
+      "dark": [{"y": 40, "blur": 90, "spread": -30, "color": {"role": "shade", "alpha": 0.75}}]
+    },
+    "shadow-pop": [
+      {"y": 24, "blur": 50, "spread": -16, "color": {"color": "#000000", "alpha": 0.35}}
+    ],
+    "shadow-bar": [
+      {"y": 24, "blur": 50, "spread": -16, "color": {"color": "#000000", "alpha": 0.3}}
+    ],
+    "shadow-toast": [
+      {"y": 16, "blur": 40, "spread": -12, "color": {"color": "#000000", "alpha": 0.4}}
+    ],
+    "shadow-thumb": [{"y": 1, "blur": 3, "color": {"color": "#000000", "alpha": 0.12}}]
+  },
+  "backdrop": {"wash": {"role": "blob-1", "alpha": {"light": 0.18, "dark": 0.2}}},
+  "motion": {
+    "spring": {
+      "linear": [
+        0,
+        0.084,
+        0.266,
+        0.471,
+        0.657,
+        0.805,
+        0.911,
+        0.979,
+        1.017,
+        1.035,
+        1.038,
+        1.034,
+        1.027,
+        1.019,
+        1.012,
+        1.007,
+        1.003,
+        1
+      ]
+    },
+    "ease-out": {"cubicBezier": [0.2, 0.8, 0.2, 1]}
+  },
+  "details": {
+    "focus-ring": [{"spread": 3, "color": {"role": "focus"}}],
+    "check-radius": "circle",
+    "check-mark": "dot",
+    "tag-bg": {"role": "accent", "alpha": 0.3},
+    "tag-ink": "currentColor",
+    "tag-radius": 6,
+    "tag-padding": [0.05, 0.3],
+    "selection": null,
+    "done-decoration": "none"
+  }
+}

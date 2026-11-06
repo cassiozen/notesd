@@ -1,187 +1,34 @@
-/* Design tokens. Light is the default; dark applies with the OS setting
-   unless the user picked a theme (data-theme on <html>, see theme.ts). */
+/* Tokens no theme changes, and the ones every theme derives the same way.
+
+   A theme (defined in shared/themes, generated into themes/generated/) is a palette, a title
+   font, a body font, one of the preset styles and a sidebar option, each picked by an attribute
+   on <html> (or any element, for a preview): data-palette, data-title-font, data-body-font,
+   data-style, data-sidebar. data-theme marks an element that carries a theme, so the derived
+   tokens below are worked out again from its own palette and style.
+
+   data-mode is always the resolved light or dark (theme.ts follows the system's when the
+   choice is System). Palettes give each color as light-dark(), which color-scheme resolves. */
 :root {
-  --font-sans: 'Instrument Sans Variable', system-ui, sans-serif;
+  color-scheme: light;
+}
+
+:root[data-mode='dark'] {
+  color-scheme: dark;
+}
+
+:root {
   --font-serif: 'Instrument Serif', Georgia, serif;
   --font-mono: 'JetBrains Mono Variable', ui-monospace, Menlo, monospace;
-  --font-book: 'Literata Variable', Georgia, serif;
-  --font-legible: 'Atkinson Hyperlegible Next Variable', system-ui, sans-serif;
+}
 
-  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  /* A damped spring, slight overshoot: things that appear or move settle into place. */
-  --spring: linear(0, 0.084, 0.266, 0.471, 0.657, 0.805, 0.911, 0.979, 1.017, 1.035, 1.038, 1.034, 1.027, 1.019, 1.012, 1.007, 1.003, 1);
-  --blur: blur(18px) saturate(1.3);
-
-  color-scheme: light;
-  --bg: oklch(0.965 0.0035 80);
-  /* The note's sheet: solid, one step lighter than the window. */
-  --paper: oklch(0.988 0.002 80);
-  --ink: oklch(0.24 0.006 60);
-  --ink-2: oklch(0.42 0.006 60);
-  --ink-3: oklch(0.5 0.006 60);
-  --glass: rgb(254 253 252 / 0.74);
-  --glass-hi: rgb(254 253 252 / 0.88);
-  --edge: rgb(255 255 255 / 0.85);
-  --hair: rgb(45 40 35 / 0.09);
-  --hair-strong: rgb(45 40 35 / 0.16);
-  --field: rgb(255 255 255 / 0.78);
-  --chip: rgb(255 255 255 / 0.62);
-  --hover: rgb(45 40 35 / 0.07);
-  --on: rgb(45 40 35 / 0.11);
-  --inset: inset 0 1px 0 rgb(255 255 255 / 0.9);
-  --shadow: 0 12px 32px -18px rgb(48 40 33 / 0.22);
-  --shadow-lg: 0 40px 90px -34px rgb(48 40 33 / 0.35);
-  --scrim: rgb(236 234 230 / 0.42);
-  --solid: oklch(0.25 0.006 60);
-  --on-solid: oklch(0.98 0.0025 80);
-  --code: oklch(0.25 0.006 60 / 0.93);
-  --code-ink: oklch(0.87 0.01 80);
-  --code-dim: oklch(0.64 0.01 80);
-  --accent: oklch(0.8 0.14 78);
-  --accent-deep: oklch(0.72 0.15 72);
-  --on-accent: oklch(0.22 0.012 60);
-  /* Icon buttons and the caret: iOS-style tinted controls. */
-  --tint: oklch(0.62 0.15 70);
-  --link: oklch(0.48 0.11 65);
-  --danger: oklch(0.5 0.16 27);
-  --danger-bg: oklch(0.6 0.17 27 / 0.1);
-  --good: oklch(0.36 0.08 155);
-  --good-bg: oklch(0.9 0.06 155 / 0.75);
-  --err-bg: oklch(0.95 0.03 30 / 0.85);
-  --err-edge: oklch(0.88 0.06 30);
-  --err-ink: oklch(0.4 0.11 30);
-  --warn-bg: oklch(0.95 0.04 65 / 0.88);
-  --warn-edge: oklch(0.87 0.07 62);
-  --warn-ink: oklch(0.38 0.08 55);
-  --focus: oklch(0.72 0.15 72 / 0.55);
-  --blob-1: oklch(0.895 0.07 82);
-  --blob-opacity: 0.18;
-
-  /* Save status: dot color, label color. */
-  --status-saved: oklch(0.68 0.13 150);
-  --status-unsaved: oklch(0.66 0.01 70);
-  --status-saving: oklch(0.76 0.15 75);
-  --status-failed: oklch(0.62 0.19 27);
-  --status-conflict: oklch(0.68 0.16 45);
+[data-theme] {
   --status-saved-ink: var(--good);
   --status-unsaved-ink: var(--ink-2);
   --status-saving-ink: var(--link);
   --status-failed-ink: var(--danger);
   --status-conflict-ink: var(--warn-ink);
-}
-
-/* The note font picked in Settings (font.ts): data-font on <html> sets it for the editor, and on
-   any element for a preview of one choice. Only the note reads these; the UI keeps --font-*. */
-:root,
-[data-font='sans'] {
-  --note-sans: var(--font-sans);
-  --note-serif: var(--font-serif);
-}
-
-[data-font='system'] {
-  --note-sans: system-ui, sans-serif;
-  --note-serif: system-ui, sans-serif;
-}
-
-[data-font='serif'] {
-  --note-sans: var(--font-serif);
-  --note-serif: var(--font-serif);
-}
-
-[data-font='book'] {
-  --note-sans: var(--font-book);
-  --note-serif: var(--font-book);
-}
-
-[data-font='legible'] {
-  --note-sans: var(--font-legible);
-  --note-serif: var(--font-legible);
-}
-
-[data-font='mono'] {
-  --note-sans: var(--font-mono);
-  --note-serif: var(--font-mono);
-}
-
-/* Same values twice: the OS preference when no theme was picked, and an
-   explicit pick. CSS can't share one block between the two selectors
-   without also matching an explicit light pick. */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme='light']) {
-    color-scheme: dark;
-    --bg: oklch(0.19 0.005 250);
-    --paper: oklch(0.225 0.005 250);
-    --ink: oklch(0.94 0.004 250);
-    --ink-2: oklch(0.77 0.005 250);
-    --ink-3: oklch(0.67 0.005 250);
-    --glass: rgb(39 41 43 / 0.72);
-    --glass-hi: rgb(45 47 49 / 0.88);
-    --edge: rgb(255 255 255 / 0.08);
-    --hair: rgb(255 255 255 / 0.08);
-    --hair-strong: rgb(255 255 255 / 0.16);
-    --field: rgb(255 255 255 / 0.06);
-    --chip: rgb(255 255 255 / 0.07);
-    --hover: rgb(255 255 255 / 0.07);
-    --on: rgb(255 255 255 / 0.13);
-    --inset: inset 0 1px 0 rgb(255 255 255 / 0.06);
-    --shadow: 0 14px 34px -18px rgb(0 0 0 / 0.65);
-    --shadow-lg: 0 40px 90px -30px rgb(0 0 0 / 0.75);
-    --scrim: rgb(11 13 14 / 0.5);
-    --solid: oklch(0.93 0.004 250);
-    --on-solid: oklch(0.2 0.005 250);
-    --code: oklch(0.13 0.004 250 / 0.85);
-    --link: oklch(0.82 0.12 78);
-    --tint: oklch(0.82 0.13 80);
-    --danger: oklch(0.74 0.15 27);
-    --danger-bg: oklch(0.6 0.17 27 / 0.16);
-    --good: oklch(0.85 0.09 155);
-    --good-bg: oklch(0.4 0.07 155 / 0.5);
-    --err-bg: oklch(0.32 0.06 30 / 0.7);
-    --err-edge: oklch(0.42 0.08 30);
-    --err-ink: oklch(0.88 0.06 30);
-    --warn-bg: oklch(0.33 0.05 60 / 0.75);
-    --warn-edge: oklch(0.45 0.07 60);
-    --warn-ink: oklch(0.9 0.06 70);
-    --blob-1: oklch(0.42 0.065 75);
-    --blob-opacity: 0.2;
-  }
-}
-
-:root[data-theme='dark'] {
-  color-scheme: dark;
-  --bg: oklch(0.19 0.005 250);
-  --paper: oklch(0.225 0.005 250);
-  --ink: oklch(0.94 0.004 250);
-  --ink-2: oklch(0.77 0.005 250);
-  --ink-3: oklch(0.67 0.005 250);
-  --glass: rgb(39 41 43 / 0.72);
-  --glass-hi: rgb(45 47 49 / 0.88);
-  --edge: rgb(255 255 255 / 0.08);
-  --hair: rgb(255 255 255 / 0.08);
-  --hair-strong: rgb(255 255 255 / 0.16);
-  --field: rgb(255 255 255 / 0.06);
-  --chip: rgb(255 255 255 / 0.07);
-  --hover: rgb(255 255 255 / 0.07);
-  --on: rgb(255 255 255 / 0.13);
-  --inset: inset 0 1px 0 rgb(255 255 255 / 0.06);
-  --shadow: 0 14px 34px -18px rgb(0 0 0 / 0.65);
-  --shadow-lg: 0 40px 90px -30px rgb(0 0 0 / 0.75);
-  --scrim: rgb(11 13 14 / 0.5);
-  --solid: oklch(0.93 0.004 250);
-  --on-solid: oklch(0.2 0.005 250);
-  --code: oklch(0.13 0.004 250 / 0.85);
-  --link: oklch(0.82 0.12 78);
-  --tint: oklch(0.82 0.13 80);
-  --danger: oklch(0.74 0.15 27);
-  --danger-bg: oklch(0.6 0.17 27 / 0.16);
-  --good: oklch(0.85 0.09 155);
-  --good-bg: oklch(0.4 0.07 155 / 0.5);
-  --err-bg: oklch(0.32 0.06 30 / 0.7);
-  --err-edge: oklch(0.42 0.08 30);
-  --err-ink: oklch(0.88 0.06 30);
-  --warn-bg: oklch(0.33 0.05 60 / 0.75);
-  --warn-edge: oklch(0.45 0.07 60);
-  --warn-ink: oklch(0.9 0.06 70);
-  --blob-1: oklch(0.42 0.065 75);
-  --blob-opacity: 0.2;
+  /* A palette may name its own; most read fine with the accent's ink. */
+  --check-ink: var(--on-accent);
+  /* Only themes with a sidebar option show it; a palette may name its own. */
+  --sidebar: var(--bg);
 }

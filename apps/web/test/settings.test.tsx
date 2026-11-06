@@ -32,49 +32,62 @@ function offer(prompt = vi.fn(async () => {})) {
 }
 const category = (name: string) => within(nav()).getByRole('link', { name: new RegExp(`^${name}`) })
 
+/** index.html's theme-color metas; jsdom doesn't load it. */
+function titleBar() {
+  const metas = (['light', 'dark'] as const).map((scheme) => {
+    const meta = document.createElement('meta')
+    meta.name = 'theme-color'
+    meta.media = `(prefers-color-scheme: ${scheme})`
+    document.head.append(meta)
+    return meta
+  })
+  return { colors: () => metas.map((m) => m.content), remove: () => metas.forEach((m) => m.remove()) }
+}
+
 describe('settings', () => {
-  it('switches the theme and remembers it', async () => {
-    // index.html's; jsdom doesn't load it.
-    const metas = (['light', 'dark'] as const).map((scheme) => {
-      const meta = document.createElement('meta')
-      meta.name = 'theme-color'
-      meta.media = `(prefers-color-scheme: ${scheme})`
-      document.head.append(meta)
-      return meta
-    })
-    const colors = () => metas.map((m) => m.content)
+  it('switches the mode and remembers it', async () => {
+    const bar = titleBar()
     const { user } = await inSettings('Appearance')
-    const group = screen.getByRole('radiogroup', { name: 'Theme' })
+    const group = screen.getByRole('radiogroup', { name: 'Mode' })
     expect(within(group).getByRole('radio', { name: 'System' }).getAttribute('aria-checked')).toBe('true')
 
     await user.click(within(group).getByRole('radio', { name: 'Dark' }))
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(localStorage.getItem('notes.theme')).toBe('dark')
-    // The title bar follows the picked theme, whatever the system's.
-    expect(colors()).toEqual(['#121416', '#121416'])
+    expect(document.documentElement.dataset.mode).toBe('dark')
+    expect(localStorage.getItem('notes.mode')).toBe('dark')
+    // The title bar follows the picked mode, whatever the system's.
+    expect(bar.colors()).toEqual(['#121416', '#121416'])
 
+    // jsdom's system is light.
     await user.click(within(group).getByRole('radio', { name: 'System' }))
-    expect(document.documentElement.dataset.theme).toBeUndefined()
-    expect(localStorage.getItem('notes.theme')).toBeNull()
-    expect(colors()).toEqual(['#F5F3F1', '#121416'])
-    for (const m of metas) m.remove()
+    expect(document.documentElement.dataset.mode).toBe('light')
+    expect(localStorage.getItem('notes.mode')).toBeNull()
+    expect(bar.colors()).toEqual(['#F5F3F1', '#121416'])
+    bar.remove()
   })
 
-  it('picks the font for notes and remembers it', async () => {
+  it('switches the theme and remembers it', async () => {
+    const bar = titleBar()
     const { user } = await inSettings('Appearance')
-    const group = screen.getByRole('radiogroup', { name: 'Font' })
-    const radio = (name: string) => within(group).getByRole<HTMLInputElement>('radio', { name })
-    expect(radio('Sans').checked).toBe(true)
+    const group = screen.getByRole('radiogroup', { name: 'Theme' })
+    const radio = (name: string) => within(group).getByRole<HTMLInputElement>('radio', { name: new RegExp(`^${name}`) })
+    expect(radio('Amber').checked).toBe(true)
+    expect(within(nav()).getByRole('link', { name: /^Appearance/ }).textContent).toContain('Amber')
 
-    await user.click(radio('Mono'))
-    expect(radio('Mono').checked).toBe(true)
-    expect(document.documentElement.dataset.font).toBe('mono')
-    expect(localStorage.getItem('notes.font')).toBe('mono')
+    await user.click(radio('Carta'))
+    expect(radio('Carta').checked).toBe(true)
+    const html = document.documentElement
+    expect([html.dataset.theme, html.dataset.palette, html.dataset.style]).toEqual(['carta', 'carta', 'paper'])
+    expect([html.dataset.titleFont, html.dataset.bodyFont]).toEqual(['playfair', 'hanken-grotesk'])
+    // As boot.js reads it before the next first paint.
+    expect(JSON.parse(localStorage.getItem('notes.theme') ?? '{}')).toMatchObject({ 'data-theme': 'carta', 'data-style': 'paper' })
+    expect(bar.colors()).toEqual(['#ECEBE7', '#0A0A0A'])
+    expect(within(nav()).getByRole('link', { name: /^Appearance/ }).textContent).toContain('Carta')
 
-    // Sans is the default: nothing to store.
-    await user.click(within(group).getByRole('radio', { name: 'Sans' }))
-    expect(document.documentElement.dataset.font).toBeUndefined()
-    expect(localStorage.getItem('notes.font')).toBeNull()
+    // The default: nothing to store.
+    await user.click(radio('Amber'))
+    expect(html.dataset.theme).toBe('amber')
+    expect(localStorage.getItem('notes.theme')).toBeNull()
+    bar.remove()
   })
 
   it('changes the password and signs out every other session', async () => {
@@ -158,7 +171,7 @@ describe('settings categories', () => {
     await waitFor(() => expect(category('Security').textContent).toBe('SecurityOff'))
     await waitFor(() => expect(category('Spaces').textContent).toBe('Spaces1'))
     await waitFor(() => expect(category('Integrations').textContent).toBe('IntegrationsResend'))
-    expect(category('Appearance').textContent).toBe('AppearanceSystem')
+    expect(category('Appearance').textContent).toBe('AppearanceAmber')
     expect(category('Sync & data').textContent).toBe('Sync & dataOff')
     // Each group says where its settings are kept.
     expect(within(nav()).getAllByRole('list', { name: 'Synced to your account' })).toHaveLength(1)

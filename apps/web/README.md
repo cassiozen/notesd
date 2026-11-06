@@ -95,11 +95,21 @@ src/
   editor/     Tiptap setup, Markdown ⇄ document, toolbar and text styles, tag styling and suggestions
   settings/   appearance, password, signed-in devices, sign out
   ui/         design-system primitives
-  styles/     tokens (light and dark), base styles, fonts
+  themes/     the theme list and helpers; generated/ holds what shared/themes makes (below)
+  styles/     tokens every theme shares, base styles, fonts
   offline/    the sync engine's worker and the tabs' side of it (below)
 test/         integration tests and the test server harness
 e2e/          Playwright tests
 ```
+
+## Themes
+
+Defined in `shared/themes` and generated into `src/themes/generated/` (`mise run themes`); the
+format and how to add one are in `docs/contributing/themes.md`. Each part is picked by an
+attribute (`data-palette`, `data-style`, `data-title-font`, `data-body-font`, `data-sidebar`,
+with `data-theme` marking the element), on `<html>` or on any element: the previews in Settings
+are real themes. `data-mode` is the resolved light or dark. `src/theme.ts` applies and stores the
+picked theme and mode, and `public/boot.js` sets them before the first paint.
 
 ## Editing
 

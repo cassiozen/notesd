@@ -5,12 +5,12 @@ import { ApiError } from '../api/client'
 import type { Session, UpdateStatus } from '../api/types'
 import { platformBadge, sessionName } from '../api/user-agent'
 import { genericMessage } from '../auth/errors'
-import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
 import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
 import { navigate } from '../router'
-import { applyTheme, readTheme, type ThemeChoice } from '../theme'
+import { applyMode, readMode, readTheme, switchTheme, type ModeChoice } from '../theme'
+import { THEMES, themeAttributes, themeFor, type ThemeId } from '../themes/themes'
 import { Button } from '../ui/button'
 import { Command } from '../ui/code'
 import { Dialog } from '../ui/dialog'
@@ -47,7 +47,7 @@ export function SettingsSheet({
   onSpaceCreated: (id: string) => void
 }) {
   const phone = useMediaQuery(PHONE)
-  const [theme, setTheme] = useState<ThemeChoice>(readTheme)
+  const [theme, setTheme] = useState<ThemeId>(readTheme)
   const values = useValues(theme)
   const shown = section ?? (phone ? null : 'server')
   const title = SECTIONS.find((s) => s.key === shown)?.title
@@ -189,7 +189,7 @@ function SettingsNav({
 }
 
 /** Each category's state in a word, as the list shows it (docs/contributing/settings-guidelines.md); empty while it loads. */
-function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
+function useValues(theme: ThemeId): Record<SettingsSection, string> {
   const locks = useLockStatus()
   const spaces = useSpaces()
   const integrations = useIntegrationStatuses()
@@ -200,7 +200,7 @@ function useValues(theme: ThemeChoice): Record<SettingsSection, string> {
     security: { unknown: '', none: 'Off', locked: 'Locked', unlocked: 'Unlocked' }[locks],
     spaces: spaces ? String(spaces.length) : '',
     integrations: integrationsValue(integrations),
-    appearance: themes.find((t) => t.value === theme)?.label ?? '',
+    appearance: themeFor(theme).name,
     device: kept ? syncSummary(sync) : 'Off',
   }
 }
@@ -351,8 +351,8 @@ function SettingsPage({
 }: {
   section: SettingsSection
   username: string
-  theme: ThemeChoice
-  onTheme: (theme: ThemeChoice) => void
+  theme: ThemeId
+  onTheme: (theme: ThemeId) => void
   onSpaceCreated: (id: string) => void
 }) {
   switch (section) {
@@ -387,8 +387,8 @@ function SettingsPage({
     case 'appearance':
       return (
         <>
-          <Appearance theme={theme} onChange={onTheme} />
-          <FontCard />
+          <ModeCard />
+          <ThemeCard theme={theme} onChange={onTheme} />
         </>
       )
     case 'device':
@@ -401,81 +401,99 @@ function SettingsPage({
   }
 }
 
-const themes: { value: ThemeChoice; label: string }[] = [
+/** Each theme as a small window in its own palette, fonts and style; picking one wipes it across the app. */
+function ThemeCard({ theme, onChange }: { theme: ThemeId; onChange: (theme: ThemeId) => void }) {
+  // Where the pointer went down, for the wipe to start there; picked from the keyboard, the card's middle.
+  const pointer = useRef<{ x: number; y: number } | null>(null)
+  return (
+    <Surface as="section" className={styles.card} aria-labelledby="theme-kicker">
+      <Kicker id="theme-kicker">Theme</Kicker>
+      <div className={styles.themes} role="radiogroup" aria-labelledby="theme-kicker">
+        {THEMES.map((t) => (
+          <label
+            key={t.id}
+            className={styles.themeOption}
+            onPointerDown={(e) => {
+              pointer.current = { x: e.clientX, y: e.clientY }
+            }}
+          >
+            <input
+              type="radio"
+              name="theme"
+              className="visually-hidden"
+              checked={theme === t.id}
+              onChange={(e) => {
+                const card = e.currentTarget.closest('label')?.getBoundingClientRect()
+                const origin =
+                  pointer.current ?? (card && { x: card.left + card.width / 2, y: card.top + card.height / 2 })
+                pointer.current = null
+                switchTheme(t.id, () => onChange(t.id), origin)
+              }}
+            />
+            <span className={styles.previewFrame}>
+              <ThemePreview id={t.id} />
+            </span>
+            <span className={styles.themeName}>{t.name}</span>
+            <span className={styles.themeMood}>{t.mood}</span>
+          </label>
+        ))}
+      </div>
+    </Surface>
+  )
+}
+
+/** A page of a note set in the theme, lying on its window: a specimen more than a screenshot. */
+function ThemePreview({ id }: { id: ThemeId }) {
+  return (
+    <span className={styles.preview} {...themeAttributes(themeFor(id))} aria-hidden="true">
+      <span className={styles.previewWash} />
+      <span className={styles.previewSide} />
+      <span className={styles.previewSheet}>
+        <span className={styles.previewTitle}>
+          Saturday market
+          <span className={styles.previewCaret} />
+        </span>
+        <span className={styles.previewText}>
+          Sourdough, ripe tomatoes and <span className={styles.previewTag}>#plums</span>
+        </span>
+        <span className={styles.previewTask}>
+          <span className={styles.previewCheck} />
+          Call the bakery
+        </span>
+      </span>
+    </span>
+  )
+}
+
+const modes: { value: ModeChoice; label: string }[] = [
   { value: 'system', label: 'System' },
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ]
 
-function Appearance({ theme, onChange }: { theme: ThemeChoice; onChange: (theme: ThemeChoice) => void }) {
+function ModeCard() {
+  const [mode, setMode] = useState<ModeChoice>(readMode)
   return (
-    <Surface as="section" className={styles.card} aria-labelledby="theme-kicker">
-      <Kicker id="theme-kicker">Theme</Kicker>
-      <div className={styles.segmented} role="radiogroup" aria-labelledby="theme-kicker">
-        {themes.map((t) => (
+    <Surface as="section" className={styles.card} aria-labelledby="mode-kicker">
+      <Kicker id="mode-kicker">Mode</Kicker>
+      <div className={styles.segmented} role="radiogroup" aria-labelledby="mode-kicker">
+        {modes.map((m) => (
           <button
-            key={t.value}
+            key={m.value}
             type="button"
             role="radio"
-            aria-checked={theme === t.value}
+            aria-checked={mode === m.value}
             className={styles.segment}
             onClick={() => {
-              onChange(t.value)
-              applyTheme(t.value)
+              setMode(m.value)
+              applyMode(m.value)
             }}
           >
-            {t.label}
+            {m.label}
           </button>
         ))}
       </div>
-      <span className={styles.muted}>Only in this browser. Your other devices keep their own theme.</span>
-    </Surface>
-  )
-}
-
-const fonts: { value: FontChoice; label: string; face: string }[] = [
-  { value: 'system', label: 'System', face: 'This device’s font' },
-  { value: 'sans', label: 'Sans', face: 'Instrument Sans' },
-  { value: 'serif', label: 'Serif', face: 'Instrument Serif' },
-  { value: 'book', label: 'Book', face: 'Literata' },
-  { value: 'legible', label: 'Legible', face: 'Atkinson Hyperlegible Next' },
-  { value: 'mono', label: 'Mono', face: 'JetBrains Mono' },
-]
-
-/** A short note in the picked font, then each choice set in its own face (tokens.css reads data-font). */
-function FontCard() {
-  const [font, setFont] = useState<FontChoice>(readFont)
-  return (
-    <Surface as="section" className={styles.card} aria-labelledby="font-kicker">
-      <Kicker id="font-kicker">Font</Kicker>
-      <div className={styles.fontSample} data-font={font} aria-hidden="true">
-        <span className={styles.fontSampleTitle}>Saturday market</span>
-        <span className={styles.fontSampleText}>
-          Sourdough, ripe tomatoes and <em>something green</em>. Ask about the late plums.
-        </span>
-        <span className={styles.fontSampleFace}>{fonts.find((f) => f.value === font)?.face}</span>
-      </div>
-      <div className={styles.fontOptions} role="radiogroup" aria-labelledby="font-kicker">
-        {fonts.map((f) => (
-          <label key={f.value} className={styles.fontOption} data-font={f.value}>
-            <input
-              type="radio"
-              name="note-font"
-              className="visually-hidden"
-              checked={font === f.value}
-              onChange={() => {
-                setFont(f.value)
-                applyFont(f.value)
-              }}
-            />
-            <span className={styles.fontGlyph} aria-hidden="true">
-              Aa
-            </span>
-            <span className={styles.fontName}>{f.label}</span>
-          </label>
-        ))}
-      </div>
-      <span className={styles.muted}>For the title and text of notes. Only in this browser.</span>
+      <span className={styles.muted}>Theme and mode are only in this browser. Your other devices keep their own.</span>
     </Surface>
   )
 }

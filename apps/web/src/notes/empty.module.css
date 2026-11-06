@@ -5,10 +5,10 @@
   align-items: center;
   justify-content: center;
   padding: 32px;
-  border-radius: 24px;
+  border-radius: var(--pane-radius);
   background: var(--paper);
-  border: 1px solid var(--edge);
-  box-shadow: var(--inset), var(--shadow-lg);
+  border: var(--pane-border);
+  box-shadow: var(--pane-shadow);
 }
 
 .text {
@@ -26,8 +26,9 @@
 
 .title {
   margin: 0;
-  font: 400 34px/1.05 var(--font-serif);
-  letter-spacing: -0.02em;
+  font: var(--title-style) var(--title-weight) calc(34px * var(--title-scale))/1.05 var(--font-title);
+  letter-spacing: calc(-0.02em + var(--title-tracking));
+  font-variation-settings: var(--title-axes);
   text-wrap: balance;
 }
 
@@ -36,6 +37,6 @@
   align-self: flex-start;
   height: 40px;
   padding: 0 18px;
-  border-radius: 13px;
+  border-radius: calc(13px * var(--radius-scale));
   font-size: 14px;
 }

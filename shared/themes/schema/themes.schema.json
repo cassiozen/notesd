@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "themes.schema.json",
+  "title": "notesd themes",
+  "description": "The themes people pick from: each a palette, a title and a body font from the library, one style, and how the sidebar sits.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "default",
+    "themes"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "default": {
+      "type": "string"
+    },
+    "themes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "name",
+          "mood",
+          "palette",
+          "style",
+          "fonts",
+          "sidebar"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "Stored on devices: never rename one."
+          },
+          "name": {
+            "type": "string"
+          },
+          "mood": {
+            "type": "string",
+            "description": "One line under the name in Settings."
+          },
+          "palette": {
+            "type": "string"
+          },
+          "style": {
+            "type": "string"
+          },
+          "fonts": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "title",
+              "body"
+            ],
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "body": {
+                "type": "string"
+              }
+            }
+          },
+          "sidebar": {
+            "enum": [
+              "theme",
+              "tinted",
+              "dark"
+            ],
+            "description": "Web only, for now. theme: on the window like the list. tinted: on the palette's sidebar color. dark: the palette's dark side, in light mode too."
+          }
+        }
+      }
+    }
+  }
+}

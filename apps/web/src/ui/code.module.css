@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  border-radius: 12px;
+  border-radius: calc(12px * var(--radius-scale));
   padding: 5px 5px 5px 13px;
   min-height: 40px;
 }
@@ -39,7 +39,7 @@
   height: 30px;
   padding: 0 12px;
   border: 0;
-  border-radius: 9px;
+  border-radius: calc(9px * var(--radius-scale));
   font-size: 12.5px;
   cursor: pointer;
 }

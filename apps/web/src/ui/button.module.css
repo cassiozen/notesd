@@ -21,21 +21,21 @@
 .lg {
   height: 50px;
   padding: 0 20px;
-  border-radius: 16px;
+  border-radius: calc(16px * var(--radius-scale));
   font-size: 15px;
 }
 
 .md {
   height: 42px;
   padding: 0 16px;
-  border-radius: 14px;
+  border-radius: calc(14px * var(--radius-scale));
   font-size: 14.5px;
 }
 
 .sm {
   height: 32px;
   padding: 0 14px;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   font-size: 13px;
 }
 

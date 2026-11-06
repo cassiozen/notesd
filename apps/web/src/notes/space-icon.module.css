@@ -31,7 +31,7 @@
   max-height: 264px;
   overflow-y: auto;
   padding: 4px;
-  border-radius: 14px;
+  border-radius: calc(14px * var(--radius-scale));
   border: 1px solid var(--hair);
   background: var(--field);
 }
@@ -45,7 +45,7 @@
   height: 54px;
   display: grid;
   place-items: center;
-  border-radius: 10px;
+  border-radius: calc(10px * var(--radius-scale));
   cursor: pointer;
 }
 
@@ -59,7 +59,7 @@
 }
 
 .choice:has(.radio:focus-visible) {
-  box-shadow: 0 0 0 3px var(--focus);
+  box-shadow: var(--focus-ring);
 }
 
 .choice:has(.radio:checked:focus-visible) {

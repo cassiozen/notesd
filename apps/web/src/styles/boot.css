@@ -6,9 +6,9 @@
 
 html[data-session] .boot {
   display: flex;
-  gap: 12px;
+  gap: var(--app-gap);
   height: 100dvh;
-  padding: 12px;
+  padding: var(--app-padding);
 }
 
 .boot-tags {
@@ -24,10 +24,10 @@ html[data-session] .boot {
 
 .boot-pane {
   flex: 1;
-  border-radius: 24px;
+  border-radius: var(--pane-radius);
   background: var(--paper);
-  border: 1px solid var(--edge);
-  box-shadow: var(--inset), var(--shadow-lg);
+  border: var(--pane-border);
+  box-shadow: var(--pane-shadow);
 }
 
 @media (min-width: 1100px) {

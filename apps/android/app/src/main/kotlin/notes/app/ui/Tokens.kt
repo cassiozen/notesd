@@ -3,10 +3,11 @@ package notes.app.ui
 import androidx.compose.ui.graphics.Color
 
 /**
- * The web app's design tokens (apps/web/src/styles/tokens.css), converted from
- * oklch to sRGB. The oklch source is kept beside each value so the two can be
- * compared when the web palette changes. Translucent web tokens (hair, hover,
- * glass) are rgb() there already and are copied as is.
+ * The web app's Amber theme (shared/themes), converted from oklch to sRGB. The oklch source is
+ * kept beside each value so the two can be compared when the web palette changes. Translucent web
+ * tokens (hair, hover, glass) are rgb() there already and are copied as is.
+ * ui/themes/Themes.generated.kt has every theme; adopting it replaces this
+ * (docs/contributing/themes.md).
  */
 data class Tokens(
     val bg: Color,

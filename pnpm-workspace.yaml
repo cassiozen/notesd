@@ -2,4 +2,5 @@ packages:
   - apps/web
   - apps/desktop
   - shared/sync-engine
+  - shared/themes
   - website

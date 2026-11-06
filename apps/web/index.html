@@ -1,10 +1,20 @@
 <!doctype html>
-<html lang="en">
+<!-- The default theme, until boot.js sets the picked one (src/themes/themes.ts). -->
+<html
+  lang="en"
+  data-theme="amber"
+  data-palette="amber"
+  data-style="glass"
+  data-title-font="instrument-serif"
+  data-body-font="instrument-sans"
+  data-sidebar="theme"
+  data-mode="light"
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
-    <!-- --bg from src/styles/tokens.css; theme.ts overrides both when a theme is picked in Settings. -->
+    <!-- Amber's --bg (src/themes/themes.ts); theme.ts sets both for the picked theme and mode. -->
     <meta name="theme-color" content="#F5F3F1" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#121416" media="(prefers-color-scheme: dark)" />
     <meta name="application-name" content="notesd" />

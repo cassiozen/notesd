@@ -1,4 +1,4 @@
-/* The web app's palette, surfaces and motion (apps/web/src/styles/tokens.css), with the system's own serif, sans
+/* The web app's Amber palette and Glass surfaces and motion (shared/themes), with the system's own serif, sans
    and mono: this page ships with the app and loads no fonts. Its sign-in page comes next, so this one looks like it. */
 :root {
   color-scheme: light dark;

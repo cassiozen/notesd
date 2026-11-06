@@ -1,0 +1,637 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "style.schema.json",
+  "title": "notesd theme style",
+  "description": "A preset way surfaces are made. Reads only palette roles, so any palette works with any style, in light and dark. Every value is data: each platform draws it its own way.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "description",
+    "layout",
+    "shape",
+    "material",
+    "lines",
+    "depth",
+    "backdrop",
+    "motion",
+    "details"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "layout": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "app-gap",
+        "app-padding",
+        "pane-radius",
+        "pane-border",
+        "pane-shadow",
+        "column-rule"
+      ],
+      "properties": {
+        "app-gap": {
+          "type": "number",
+          "minimum": 0
+        },
+        "app-padding": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pane-radius": {
+          "type": "number",
+          "minimum": 0
+        },
+        "pane-border": {
+          "$ref": "#/$defs/border"
+        },
+        "pane-shadow": {
+          "$ref": "#/$defs/shadow"
+        },
+        "column-rule": {
+          "$ref": "#/$defs/border"
+        }
+      },
+      "description": "Web only, for now: the window's columns and the note's sheet. Lengths in px."
+    },
+    "shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "radius-scale"
+      ],
+      "properties": {
+        "radius-scale": {
+          "type": "number",
+          "minimum": 0,
+          "description": "Multiplies every corner radius in the app."
+        }
+      },
+      "description": "Corners."
+    },
+    "material": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "glass-hi",
+        "blur",
+        "blur-pop",
+        "blur-dialog",
+        "blur-scrim",
+        "edge",
+        "inset",
+        "field",
+        "chip"
+      ],
+      "properties": {
+        "glass-hi": {
+          "$ref": "#/$defs/paint",
+          "description": "Floating panels: menus, dialogs, bars."
+        },
+        "blur": {
+          "$ref": "#/$defs/blur",
+          "description": "Behind see-through panels."
+        },
+        "blur-pop": {
+          "$ref": "#/$defs/blur",
+          "description": "Behind menus."
+        },
+        "blur-dialog": {
+          "$ref": "#/$defs/blur"
+        },
+        "blur-scrim": {
+          "$ref": "#/$defs/blur",
+          "description": "Over the app, behind a sheet or dialog."
+        },
+        "edge": {
+          "$ref": "#/$defs/paint",
+          "description": "A panel's border."
+        },
+        "inset": {
+          "$ref": "#/$defs/shadow",
+          "description": "A panel's top highlight."
+        },
+        "field": {
+          "$ref": "#/$defs/paint",
+          "description": "Text fields."
+        },
+        "chip": {
+          "$ref": "#/$defs/paint",
+          "description": "Small filled controls."
+        }
+      },
+      "description": "What panels are made of."
+    },
+    "lines": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "hair",
+        "hair-strong",
+        "hover",
+        "on"
+      ],
+      "properties": {
+        "hair": {
+          "$ref": "#/$defs/paint"
+        },
+        "hair-strong": {
+          "$ref": "#/$defs/paint"
+        },
+        "hover": {
+          "$ref": "#/$defs/paint"
+        },
+        "on": {
+          "$ref": "#/$defs/paint",
+          "description": "A selected row."
+        }
+      },
+      "description": "Hairlines and fills."
+    },
+    "depth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "shadow",
+        "shadow-lg",
+        "shadow-pop",
+        "shadow-bar",
+        "shadow-toast",
+        "shadow-thumb"
+      ],
+      "properties": {
+        "shadow": {
+          "$ref": "#/$defs/shadow"
+        },
+        "shadow-lg": {
+          "$ref": "#/$defs/shadow"
+        },
+        "shadow-pop": {
+          "$ref": "#/$defs/shadow",
+          "description": "Menus."
+        },
+        "shadow-bar": {
+          "$ref": "#/$defs/shadow",
+          "description": "The find bar."
+        },
+        "shadow-toast": {
+          "$ref": "#/$defs/shadow"
+        },
+        "shadow-thumb": {
+          "$ref": "#/$defs/shadow",
+          "description": "A picked segment."
+        }
+      },
+      "description": "Shadows."
+    },
+    "backdrop": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wash"
+      ],
+      "properties": {
+        "wash": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/paint"
+            }
+          ],
+          "description": "A large blurred glow behind the window; null for none."
+        }
+      },
+      "description": "Behind the window."
+    },
+    "motion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "spring",
+        "ease-out"
+      ],
+      "properties": {
+        "spring": {
+          "$ref": "#/$defs/curve",
+          "description": "Things that appear."
+        },
+        "ease-out": {
+          "$ref": "#/$defs/curve"
+        }
+      },
+      "description": "Timing curves."
+    },
+    "details": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "focus-ring",
+        "check-radius",
+        "check-mark",
+        "tag-bg",
+        "tag-ink",
+        "tag-radius",
+        "tag-padding",
+        "selection",
+        "done-decoration"
+      ],
+      "properties": {
+        "focus-ring": {
+          "$ref": "#/$defs/shadow"
+        },
+        "check-radius": {
+          "oneOf": [
+            {
+              "const": "circle"
+            },
+            {
+              "type": "number",
+              "minimum": 0
+            }
+          ]
+        },
+        "check-mark": {
+          "enum": [
+            "dot",
+            "fill"
+          ],
+          "description": "A ticked box: a dot in an accent ring, or filled."
+        },
+        "tag-bg": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/paint"
+            }
+          ]
+        },
+        "tag-ink": {
+          "oneOf": [
+            {
+              "const": "currentColor"
+            },
+            {
+              "$ref": "#/$defs/paint"
+            }
+          ]
+        },
+        "tag-radius": {
+          "type": "number",
+          "minimum": 0
+        },
+        "tag-padding": {
+          "type": "array",
+          "items": {
+            "type": "number",
+            "minimum": 0
+          },
+          "minItems": 2,
+          "maxItems": 2,
+          "description": "Vertical and horizontal, in em."
+        },
+        "selection": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/paint"
+            }
+          ],
+          "description": "Selected text; null keeps the platform's own."
+        },
+        "done-decoration": {
+          "enum": [
+            "none",
+            "line-through"
+          ],
+          "description": "A ticked task's text."
+        }
+      },
+      "description": "Small things that carry a lot of character."
+    }
+  },
+  "$defs": {
+    "alpha": {
+      "oneOf": [
+        {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "light",
+            "dark"
+          ],
+          "properties": {
+            "light": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "dark": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        }
+      ]
+    },
+    "paint": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "role"
+          ],
+          "properties": {
+            "role": {
+              "enum": [
+                "bg",
+                "paper",
+                "ink",
+                "ink-2",
+                "ink-3",
+                "scrim",
+                "surface",
+                "line",
+                "shade",
+                "blob-1",
+                "accent",
+                "accent-deep",
+                "on-accent",
+                "tint",
+                "link",
+                "focus",
+                "solid",
+                "on-solid",
+                "danger",
+                "danger-bg",
+                "good",
+                "good-bg",
+                "err-bg",
+                "err-edge",
+                "err-ink",
+                "warn-bg",
+                "warn-edge",
+                "warn-ink",
+                "status-saved",
+                "status-unsaved",
+                "status-saving",
+                "status-failed",
+                "status-conflict",
+                "code",
+                "code-ink",
+                "code-dim",
+                "syntax-keyword",
+                "syntax-string",
+                "syntax-number",
+                "syntax-title",
+                "syntax-meta",
+                "syntax-deletion",
+                "check-ink",
+                "sidebar"
+              ],
+              "description": "A palette role."
+            },
+            "alpha": {
+              "$ref": "#/$defs/alpha"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "color"
+          ],
+          "properties": {
+            "color": {
+              "enum": [
+                "#ffffff",
+                "#000000"
+              ],
+              "description": "Light and shadow only: white or black. Anything with a hue belongs in a palette."
+            },
+            "alpha": {
+              "$ref": "#/$defs/alpha"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "token"
+          ],
+          "properties": {
+            "token": {
+              "enum": [
+                "glass-hi",
+                "edge",
+                "field",
+                "chip",
+                "hair",
+                "hair-strong",
+                "hover",
+                "on"
+              ],
+              "description": "Another of this style's color tokens."
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "light",
+            "dark"
+          ],
+          "properties": {
+            "light": {
+              "$ref": "#/$defs/paint"
+            },
+            "dark": {
+              "$ref": "#/$defs/paint"
+            }
+          }
+        }
+      ]
+    },
+    "layer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "color"
+      ],
+      "properties": {
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        },
+        "blur": {
+          "type": "number",
+          "minimum": 0
+        },
+        "spread": {
+          "type": "number"
+        },
+        "inset": {
+          "type": "boolean"
+        },
+        "color": {
+          "$ref": "#/$defs/paint"
+        }
+      }
+    },
+    "layers": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$ref": "#/$defs/layer"
+          },
+          {
+            "enum": [
+              "inset",
+              "shadow",
+              "shadow-lg",
+              "shadow-pop",
+              "shadow-bar",
+              "shadow-toast",
+              "shadow-thumb",
+              "focus-ring"
+            ],
+            "description": "Another of this style's shadows, in its place."
+          }
+        ]
+      }
+    },
+    "shadow": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/layers"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "light",
+            "dark"
+          ],
+          "properties": {
+            "light": {
+              "$ref": "#/$defs/layers"
+            },
+            "dark": {
+              "$ref": "#/$defs/layers"
+            }
+          }
+        }
+      ],
+      "description": "Layers, first on top; empty for none. Or different layers per mode."
+    },
+    "blur": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "radius"
+          ],
+          "properties": {
+            "radius": {
+              "type": "number",
+              "minimum": 0
+            },
+            "saturate": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        }
+      ]
+    },
+    "border": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "width",
+            "color"
+          ],
+          "properties": {
+            "width": {
+              "type": "number",
+              "minimum": 0
+            },
+            "color": {
+              "$ref": "#/$defs/paint"
+            }
+          }
+        }
+      ]
+    },
+    "curve": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "cubicBezier"
+          ],
+          "properties": {
+            "cubicBezier": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 4,
+              "maxItems": 4
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "linear"
+          ],
+          "properties": {
+            "linear": {
+              "type": "array",
+              "items": {
+                "type": "number"
+              },
+              "minItems": 2,
+              "description": "Points of a linear() easing, evenly spaced: a spring."
+            }
+          }
+        }
+      ]
+    }
+  }
+}
