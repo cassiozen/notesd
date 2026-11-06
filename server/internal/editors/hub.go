@@ -44,7 +44,10 @@ type Conn struct {
 	outbox chan any
 	gone   chan struct{}
 	// Under Hub.mu.
-	open    map[string]time.Time // note id → when the editor opened it
+	open map[string]time.Time // note id → when the editor opened it
+	// claimed is the notes it asked a run for and hasn't said it opened yet:
+	// the request and the socket's "opened" can arrive in either order.
+	claimed map[string]struct{}
 	pending map[string]chan json.RawMessage
 	next    int
 }
@@ -60,7 +63,7 @@ func (h *Hub) Add(userID int64, send func(ctx context.Context, msg any) error) (
 	_, _ = rand.Read(b[:])
 	c := &Conn{
 		ID: "c_" + hex.EncodeToString(b[:]), UserID: userID, send: send, outbox: make(chan any, 16), gone: make(chan struct{}),
-		open: map[string]time.Time{}, pending: map[string]chan json.RawMessage{},
+		open: map[string]time.Time{}, claimed: map[string]struct{}{}, pending: map[string]chan json.RawMessage{},
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -117,6 +120,22 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 		return // an editor shows a few notes, not this many
 	}
 	c.open[noteID] = time.Now()
+	delete(c.claimed, noteID)
+}
+
+// Claim records that the user's connection connID asked for a run on the
+// note, so the run talks to it even before its "opened" arrives. Not an
+// open: it never keeps a writing session from ending. An id that isn't one
+// of the user's connections is ignored.
+func (h *Hub) Claim(userID int64, connID, noteID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	for c := range h.users[userID] {
+		if c.ID == connID {
+			c.claimed[noteID] = struct{}{}
+			return
+		}
+	}
 }
 
 // Closed records that c's editor closed the note, and reports whether it
@@ -124,6 +143,7 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 func (h *Hub) Closed(c *Conn, noteID string) (last bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	delete(c.claimed, noteID)
 	if _, ok := c.open[noteID]; !ok {
 		return false
 	}
@@ -165,7 +185,7 @@ func (h *Hub) Answer(c *Conn, id string, reply json.RawMessage) {
 }
 
 // owner is the editor a run talks to about a note: the connection prefer
-// names if it has the note open, else the one that opened it last.
+// names if it has the note open or claimed, else the one that opened it last.
 func (h *Hub) owner(userID int64, noteID, prefer string) *Conn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -173,10 +193,11 @@ func (h *Hub) owner(userID int64, noteID, prefer string) *Conn {
 	var at time.Time
 	for c := range h.users[userID] {
 		opened, ok := c.open[noteID]
+		_, claimed := c.claimed[noteID]
 		switch {
-		case !ok:
-		case c.ID == prefer:
+		case c.ID == prefer && (ok || claimed):
 			return c
+		case !ok:
 		case best == nil || opened.After(at):
 			best, at = c, opened
 		}

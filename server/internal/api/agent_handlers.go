@@ -139,6 +139,10 @@ func (s *Server) requestAgentRun(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	if req.ConnectionID != "" {
+		// Before the run is queued: its editor's "opened" may not have arrived yet.
+		s.editors.Claim(sessionFrom(r.Context()).UserID, req.ConnectionID, req.NoteID)
+	}
 	id, err := userFrom(r.Context()).Agent.RequestRun(r.Context(), agent.RunRequest(req))
 	if err != nil {
 		s.writeErr(w, r, err)

@@ -100,3 +100,38 @@ func TestNoteCreatedOnADraft(t *testing.T) {
 		t.Fatalf("runs: %+v", runs)
 	}
 }
+
+func TestMoreAgentChangesDontMakeANewNoteTheUsers(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NoteCreated, agent.NewNoteDone, agent.Menu)
+	space := "work"
+	// The agent asks in a new, blank note, which the editor then saves.
+	h.openInEditor("n1", "", ip(0)).Title = ""
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.NoteCreated, NoteID: "n1", SpaceID: space}); err != nil {
+		t.Fatal(err)
+	}
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "start", "text": "## Q"}`), final("Asked."))
+	h.next()
+	if _, err := h.d.Notes.Create(ctx, notes.CreateInput{OperationID: h.op(), ID: "n1", Content: h.editor.notes["n1"].Content, SpaceID: &space}); err != nil {
+		t.Fatal(err)
+	}
+	// The menu command changes it again, and the editor saves just that.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: "n1"}); err != nil {
+		t.Fatal(err)
+	}
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "end", "text": "#journal"}`), final("Tagged."))
+	h.next()
+	h.update("n1", h.editor.notes["n1"].Content, nil)
+	n, err := h.d.Notes.Get(ctx, "n1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.d.Agent.EditorClosed(ctx, "n1", n.Revision); err != nil {
+		t.Fatal(err)
+	}
+	h.advance(agent.IdleAfter)
+	h.close()
+	if runs := h.runs(); len(runs) != 2 || h.sessions() != 0 {
+		t.Fatalf("runs %+v, sessions %d", runs, h.sessions())
+	}
+}

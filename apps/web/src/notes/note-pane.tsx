@@ -155,8 +155,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
 
   const saver = load.kind === 'ready' ? load.saver : null
   // Leaving: save what's left, then the store forgets it; agents hear of both.
-  // Layout effect: open before the editor's effects ask for a run that reads it.
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (!saver) return
     agentSocket.noteOpened(saver.id)
     return () =>
