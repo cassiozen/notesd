@@ -7,7 +7,6 @@ struct NotesApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
-        Self.styleBars()
         let graph = AppGraph()
         _graph = State(initialValue: graph)
         // Registered before launch ends, as BGTaskScheduler requires.
@@ -23,6 +22,9 @@ struct NotesApp: App {
     var body: some Scene {
         WindowGroup {
             RootView()
+                // Fonts, corners and the editor's paints are read as screens are built: a new
+                // theme builds them again, back on the list.
+                .id(graph.theme.id)
                 .environment(graph)
                 .tint(Color.notesTint)
                 .onAppear { applyAppearance() }
@@ -42,18 +44,6 @@ struct NotesApp: App {
             default: break
             }
         }
-    }
-
-    /// Titles in the serif, as on the web and Android; bar buttons in the accent.
-    private static func styleBars() {
-        let bar = UINavigationBar.appearance()
-        bar.tintColor = Palette.tint
-        bar.largeTitleTextAttributes = [
-            .font: Typeface.scaled(Typeface.serif(36), as: .largeTitle), .foregroundColor: Palette.ink,
-        ]
-        bar.titleTextAttributes = [
-            .font: Typeface.scaled(Typeface.serif(21), as: .headline), .foregroundColor: Palette.ink,
-        ]
     }
 
     private func applyAppearance() {

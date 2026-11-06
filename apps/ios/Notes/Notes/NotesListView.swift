@@ -132,9 +132,12 @@ struct NotesListView: View {
             }
             ToolbarItem(placement: .principal) {
                 if collapsed {
-                    Text(title).font(.custom("InstrumentSerif-Regular", size: 21)).foregroundStyle(Color.ink)
-                        .lineLimit(1)
-                        .transition(.opacity)
+                    Text(title).font(Font(Typeface.title(21) as CTFont)).tracking(
+                        Typeface.titleKern(Typeface.title(21))
+                    )
+                    .foregroundStyle(Color.ink)
+                    .lineLimit(1)
+                    .transition(.opacity)
                 } else {
                     // Something must hold the place, or the bar shows the title anyway.
                     Color.clear.frame(width: 1, height: 1).accessibilityHidden(true)
@@ -195,7 +198,7 @@ struct NotesListView: View {
         HStack(spacing: 12) {
             SpaceIconImage(icon: graph.spaces.first { $0.id == graph.space }?.icon ?? "", size: 30)
             Text(title)
-                .font(.notesDisplay)
+                .titleFont(.display)
                 .foregroundStyle(Color.ink)
                 .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)
@@ -342,7 +345,7 @@ struct NotesListView: View {
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
-            .glassEffect(.regular, in: .capsule)
+            .floatingPanel()
             .padding(.horizontal, 16)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
@@ -567,8 +570,8 @@ private struct SearchField: View {
         .padding(.leading, 14)
         .padding(.trailing, query.isEmpty ? 14 : 0)
         .frame(height: 46)
-        .background(Color.field, in: .rect(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.hair))
+        .background(Color.field, in: .rect(cornerRadius: corner(14), style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: corner(14), style: .continuous).strokeBorder(Color.hair))
         .contentShape(.rect)
         .onTapGesture { focused.wrappedValue = true }
         .animation(.snappy(duration: 0.2), value: query.isEmpty)
@@ -594,7 +597,7 @@ private struct SyncSheet: View {
     private var content: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(pending == 0 ? "Not syncing" : pending == 1 ? "1 note not synced" : "\(pending) notes not synced")
-                .font(.notesTitle)
+                .titleFont(.title)
                 .foregroundStyle(Color.ink)
             Text(
                 "They’re saved on this iPhone and sync on their own once the server can be reached."
@@ -628,7 +631,7 @@ private struct EmptyList: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text(kicker).font(.notesKicker).foregroundStyle(Color.ink3)
-            Text(title).font(.notesHeading).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
+            Text(title).titleFont(.heading).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
             Text(text).font(.notesLede).foregroundStyle(Color.ink2)
             if let action {
                 Button(action: action) {
@@ -660,7 +663,7 @@ private struct NoNotes: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("No notes yet").font(.notesHeading).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
+            Text("No notes yet").titleFont(.heading).foregroundStyle(Color.ink).accessibilityAddTraits(.isHeader)
             if offline {
                 VStack(alignment: .leading, spacing: 10) {
                     Text("Working offline").font(.notesKicker).foregroundStyle(Color.ink3)
@@ -702,7 +705,7 @@ struct Notice: View {
                 Color.warnInk)
         }
         .padding(12)
-        .background(Color.warnBg, in: .rect(cornerRadius: 12))
+        .background(Color.warnBg, in: .rect(cornerRadius: corner(12)))
     }
 }
 
@@ -718,7 +721,7 @@ private struct SignedOutBanner: View {
             }
             .foregroundStyle(Color.warnInk)
             .padding(12)
-            .background(Color.warnBg, in: .rect(cornerRadius: 12))
+            .background(Color.warnBg, in: .rect(cornerRadius: corner(12)))
         }
         .buttonStyle(.plain)
     }
@@ -740,7 +743,7 @@ private struct Banner: View {
         }
         .foregroundStyle(Color.warnInk)
         .padding(12)
-        .background(Color.warnBg, in: .rect(cornerRadius: 12))
+        .background(Color.warnBg, in: .rect(cornerRadius: corner(12)))
     }
 }
 

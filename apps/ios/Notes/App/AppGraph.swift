@@ -66,8 +66,17 @@ final class AppGraph {
         if Date().timeIntervalSince(since) > Self.spaceReset && !editorOpen { switchSpace(Spaces.defaultId) }
     }
 
+    /// Light, dark, or as the system is: the mode, called Appearance in code from before themes.
     var appearance: Appearance {
         didSet { Self.defaults.set(appearance.rawValue, forKey: "appearance") }
+    }
+
+    /// The picked theme. Picking another rebuilds every screen (NotesApp).
+    var theme: NotesTheme {
+        didSet {
+            Self.defaults.set(theme.id, forKey: "theme")
+            CurrentTheme.set(theme)
+        }
     }
 
     /// Something sync did that the user should hear about, until they've seen it.
@@ -99,7 +108,7 @@ final class AppGraph {
         if Self.uiTesting {
             accounts.clear()
             for key in [
-                "listFilter", "listFilterSpace", "appearance", "openTags", BiometricUnlock.bound,
+                "listFilter", "listFilterSpace", "appearance", "theme", "openTags", BiometricUnlock.bound,
                 BiometricUnlock.declined,
             ] {
                 Self.defaults.removeObject(forKey: key)
@@ -129,6 +138,9 @@ final class AppGraph {
         email = EmailSetup(api: { [accounts] in accounts.client() })
         account = accounts.account.value
         appearance = Appearance(rawValue: Self.defaults.string(forKey: "appearance") ?? "") ?? .system
+        // UI tests pick one with the launch arguments `-theme <id>`, which removing the key keeps.
+        theme = Themes.theme(id: Self.defaults.string(forKey: "theme") ?? Themes.fallback.id)
+        CurrentTheme.set(theme)
         let savedIn = Self.defaults.string(forKey: "listFilterSpace") ?? Spaces.defaultId
         listFilter =
             savedIn == Spaces.defaultId

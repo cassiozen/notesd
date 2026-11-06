@@ -25,7 +25,7 @@ struct SettingsView: View {
                 SectionHeader(graph.account == .none ? "Synced once you connect" : "Synced to your account")
             }
             Section {
-                row(.appearance, graph.appearance.label)
+                row(.appearance, graph.theme.name)
                 row(.device, sync)
                 row(.about, appVersion)
             } header: {
@@ -141,11 +141,16 @@ struct SettingsSectionView: View {
             case .integrations: IntegrationsSection()
             case .appearance:
                 Section {
-                    Picker("Theme", selection: $graph.appearance) {
+                    Picker("Mode", selection: $graph.appearance) {
                         ForEach(Appearance.allCases) { Text($0.label).tag($0) }
                     }
+                }
+                Section {
+                    ThemePicker()
+                } header: {
+                    SectionHeader("Theme")
                 } footer: {
-                    Footnote("Only on this iPhone.")
+                    Footnote("Only on this iPhone. Your other devices keep their own theme and mode.")
                 }
             case .device: device
             case .about:

@@ -133,8 +133,9 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
         var sel = NSRange(location: 0, length: 0)
         Normalizer.normalize(text, selection: &sel)
         let blocks = Blocks.of(text)
-        style.apply(text, blocks: blocks, indices: IndexSet(blocks.indices))
+        // Tags first: styling colours a tag's text in a theme that does.
         applyTags(text)
+        style.apply(text, blocks: blocks, indices: IndexSet(blocks.indices))
         normalizing = true
         textStorage.setAttributedString(text)
         normalizing = false
@@ -215,8 +216,8 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
             let to = min(NSMaxRange(edit), max(storage.length - 1, 0))
             for k in Blocks.indices(in: blocks, from: min(edit.location, to), to: to) { restyle.insert(k) }
         }
-        style.apply(storage, blocks: blocks, indices: restyle)
         applyTags(storage)
+        style.apply(storage, blocks: blocks, indices: restyle)
         storage.endEditing()
         pendingEdit = nil
         if sel != selectedRange { selectedRange = clamp(sel) }

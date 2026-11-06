@@ -178,7 +178,7 @@ function theme(lib: Library, t: Theme): string {
 }
 
 const TYPES = `/// A color in light and dark appearance, each 0xAARRGGBB.
-struct ThemeColor: Sendable, Equatable {
+nonisolated struct ThemeColor: Sendable, Equatable {
     let light: UInt32
     let dark: UInt32
 
@@ -195,7 +195,7 @@ struct ThemeColor: Sendable, Equatable {
 }
 
 /// One layer of a shadow, as CSS's box-shadow describes it. color is 0xAARRGGBB.
-struct ThemeShadowLayer: Sendable, Equatable {
+nonisolated struct ThemeShadowLayer: Sendable, Equatable {
     let x: CGFloat
     let y: CGFloat
     let blur: CGFloat
@@ -205,48 +205,48 @@ struct ThemeShadowLayer: Sendable, Equatable {
 }
 
 /// A shadow's layers in each appearance, the first on top; none is an empty list.
-struct ThemeShadow: Sendable, Equatable {
+nonisolated struct ThemeShadow: Sendable, Equatable {
     let light: [ThemeShadowLayer]
     let dark: [ThemeShadowLayer]
 }
 
 /// A see-through panel's blur: the closest system material stands in for it.
-struct ThemeBlur: Sendable, Equatable {
+nonisolated struct ThemeBlur: Sendable, Equatable {
     let radius: CGFloat
     let saturation: CGFloat
 }
 
-enum ThemeCurve: Sendable, Equatable {
+nonisolated enum ThemeCurve: Sendable, Equatable {
     case cubicBezier(CGFloat, CGFloat, CGFloat, CGFloat)
     /// Evenly spaced points of a curve: a spring.
     case linear([CGFloat])
 }
 
-enum ThemeCorner: Sendable, Equatable {
+nonisolated enum ThemeCorner: Sendable, Equatable {
     case circle
     case radius(CGFloat)
 }
 
 /// A ticked box: a dot inside an accent ring, or filled.
-enum ThemeCheckMark: Sendable, Equatable {
+nonisolated enum ThemeCheckMark: Sendable, Equatable {
     case dot
     case fill
 }
 
 /// In em.
-struct ThemeInsets: Sendable, Equatable {
+nonisolated struct ThemeInsets: Sendable, Equatable {
     let vertical: CGFloat
     let horizontal: CGFloat
 }
 
-struct ThemeFontFace: Sendable, Equatable {
+nonisolated struct ThemeFontFace: Sendable, Equatable {
     let postScriptName: String
     /// One weight, or the range a variable font covers.
     let weights: ClosedRange<CGFloat>
     let italic: Bool
 }
 
-struct ThemeTypeface: Sendable, Equatable {
+nonisolated struct ThemeTypeface: Sendable, Equatable {
     let name: String
     let faces: [ThemeFontFace]
     /// Has an opsz axis: set it to the point size, as browsers do by themselves.
@@ -254,7 +254,7 @@ struct ThemeTypeface: Sendable, Equatable {
 }
 
 /// The title face and how titles are set in it. Quotes use it too, lighter.
-struct ThemeTitleFont: Sendable, Equatable {
+nonisolated struct ThemeTitleFont: Sendable, Equatable {
     let typeface: ThemeTypeface
     let weight: CGFloat
     let italic: Bool
@@ -269,22 +269,22 @@ struct ThemeTitleFont: Sendable, Equatable {
 }
 
 /// Palette roles, then the style's materials resolved on that palette.
-struct ThemeColors: Sendable, Equatable {
+nonisolated struct ThemeColors: Sendable, Equatable {
 __COLOR_FIELDS__
 }
 
-struct ThemeShadows: Sendable, Equatable {
+nonisolated struct ThemeShadows: Sendable, Equatable {
 __SHADOW_FIELDS__
 }
 
-struct ThemeBlurs: Sendable, Equatable {
+nonisolated struct ThemeBlurs: Sendable, Equatable {
     let panel: ThemeBlur?
     let pop: ThemeBlur?
     let dialog: ThemeBlur?
     let scrim: ThemeBlur?
 }
 
-struct ThemeShape: Sendable, Equatable {
+nonisolated struct ThemeShape: Sendable, Equatable {
     /// Multiplies every corner radius.
     let radiusScale: CGFloat
     let checkCorner: ThemeCorner
@@ -294,13 +294,13 @@ struct ThemeShape: Sendable, Equatable {
     let doneStrikethrough: Bool
 }
 
-struct ThemeMotion: Sendable, Equatable {
+nonisolated struct ThemeMotion: Sendable, Equatable {
     /// Things that appear.
     let spring: ThemeCurve
     let easeOut: ThemeCurve
 }
 
-struct NotesTheme: Sendable, Equatable, Identifiable {
+nonisolated struct NotesTheme: Sendable, Equatable, Identifiable {
     let id: String
     let name: String
     let mood: String
@@ -352,7 +352,7 @@ export function swift(lib: Library): string {
     '',
     types,
     '',
-    'enum Themes {',
+    'nonisolated enum Themes {',
     `    static let all: [NotesTheme] = [${lib.themes.map((t) => camel(t.id)).join(', ')}]`,
     `    static let fallback = ${camel(lib.default)}`,
     '',

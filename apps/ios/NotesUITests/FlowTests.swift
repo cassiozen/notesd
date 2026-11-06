@@ -911,4 +911,59 @@ final class FlowTests: XCTestCase {
         sleep(1)
         screenshot("09 settings security")
     }
+
+    /// Every theme picked from Appearance, in light and dark: the list and a note in each, for
+    /// looking at by hand. Only with TEST_RUNNER_SCREENSHOT_DIR set.
+    func testThemes() async throws {
+        try XCTSkipIf(env["SCREENSHOT_DIR"] == nil, "set TEST_RUNNER_SCREENSHOT_DIR to see the themes")
+        let content =
+            "## Saturday\n\nPick up the **bike** from the shop, then *maybe* the market. #errands\n\n"
+            + "- [x] Book the table\n- [ ] Call Sam\n\n> Rest is part of the plan.\n\n"
+            + "```sh\nrsync -av ~/photos /backup\n```\n"
+        let body = try JSONSerialization.data(withJSONObject: [
+            "operationId": UUID().uuidString.lowercased(), "id": UUID().uuidString.lowercased(),
+            "title": "Weekend plan", "content": content,
+        ])
+        _ = try await api("POST", "api/v1/notes", body: body)
+        try signIn()
+        let note = app.staticTexts["Weekend plan"]
+        XCTAssertTrue(note.waitForExistence(timeout: 15))
+
+        func openAppearance() {
+            app.buttons["Tags"].tap()
+            app.buttons["Settings"].tap()
+            let appearance = app.buttons["Appearance"]
+            XCTAssertTrue(appearance.waitForExistence(timeout: 5))
+            appearance.tap()
+        }
+
+        for mode in ["Light", "Dark"] {
+            openAppearance()
+            let picker = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Mode")).firstMatch
+            XCTAssertTrue(picker.waitForExistence(timeout: 5))
+            picker.tap()
+            app.buttons[mode].tap()
+            sleep(1)
+            screenshot("theme appearance \(mode.lowercased())")
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            app.navigationBars.buttons.element(boundBy: 0).tap()
+            for name in ["Nocturne", "Carta", "Den", "Amber"] {
+                openAppearance()
+                let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", name)).firstMatch
+                XCTAssertTrue(row.waitForExistence(timeout: 5))
+                row.tap()
+                // A new theme rebuilds the screens, back on the list.
+                XCTAssertTrue(note.waitForExistence(timeout: 5))
+                if name == "Amber" { continue }
+                sleep(1)
+                screenshot("theme \(name.lowercased()) list \(mode.lowercased())")
+                note.tap()
+                XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
+                sleep(1)
+                screenshot("theme \(name.lowercased()) note \(mode.lowercased())")
+                app.navigationBars.buttons.element(boundBy: 0).tap()
+                XCTAssertTrue(note.waitForExistence(timeout: 5))
+            }
+        }
+    }
 }
