@@ -51,13 +51,14 @@ type runState struct {
 
 // execute runs r to its end and records how it went.
 func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r queuedRun) {
-	settings, err := acct.Agent.Settings(ctx)
-	if err != nil {
-		rn.log.Error("agent run: account settings", "run", r.ID, "err", err)
+	var f finished
+	// Without the account's time zone, the day's usage would go to the wrong day.
+	if settings, err := acct.Agent.Settings(ctx); err != nil {
+		f = failed(FailInterrupted, err)
+	} else {
+		now := rn.now().In(settings.Location())
+		f = rn.attempt(ctx, acct, st, r, now, now.Format(time.DateOnly))
 	}
-	now := rn.now().In(settings.Location())
-	day := now.Format(time.DateOnly)
-	f := rn.attempt(ctx, acct, st, r, now, day)
 	if ctx.Err() != nil && f.Status == "" {
 		f = finished{Status: StatusFailed, Failure: FailInterrupted, Message: "The server stopped during the run."}
 	}
@@ -123,6 +124,10 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		return skip(FailDailyCap, fmt.Sprintf("The account used its %d tokens for today.", st.DailyTokenCap))
 	}
 	left, today := MaxRunTokens-r.PriorTokens, st.DailyTokenCap-used
+	// Spent before a crash: another call would only go over.
+	if left <= 0 {
+		return finished{Status: StatusFailed, Failure: FailTokenCap, Message: fmt.Sprintf("The run used its %d tokens.", MaxRunTokens)}
+	}
 
 	runCtx, cancel := context.WithTimeout(ctx, RunTimeout)
 	defer cancel()
@@ -130,7 +135,7 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	var f finished
 	for start := 0; start < 2; start++ {
 		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, ops: start * 1000, day: day,
-			budget: min(left, today), dailyLimited: today < left, maxTools: MaxToolCalls - r.PriorToolCalls}
+			budget: min(left, today), dailyLimited: today <= left, maxTools: MaxToolCalls - r.PriorToolCalls}
 		if note != nil {
 			rs.reads[note.ID] = *note
 		}
@@ -150,9 +155,18 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		// Start over from the note as it is now.
 		if note != nil {
 			n, err := acct.Notes.Get(ctx, r.NoteID)
-			if err != nil || n.DeletedAt != nil || n.SpaceID != r.SpaceID || locks.IsLocked(n.Content) {
-				// f keeps what the first try spent.
-				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteGone, "The note changed while the agent worked on it, and can't be read now."
+			// f keeps what the first try spent.
+			switch {
+			case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
+				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteGone, "The note was deleted while the agent worked on it."
+			case err != nil:
+				f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+			case n.SpaceID != r.SpaceID:
+				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteMoved, "The note was moved to another space while the agent worked on it."
+			case locks.IsLocked(n.Content):
+				f.Status, f.Failure, f.Message = StatusSkipped, FailNoteLocked, "The note was locked while the agent worked on it."
+			}
+			if f.Status != "" {
 				return f
 			}
 			note = &n
@@ -167,6 +181,14 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		}
 	}
 	return f
+}
+
+// interrupted fails f for err, unless the run's deadline or a shutdown
+// caused it: the caller tells those apart.
+func interrupted(ctx context.Context, f *finished, err error) {
+	if ctx.Err() == nil {
+		f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+	}
 }
 
 func failed(why string, err error) finished {
@@ -194,7 +216,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		f.PromptTokens += res.Usage.PromptTokens
 		f.CompletionTokens += res.Usage.CompletionTokens
 		if err := rs.acct.Agent.addUsage(ctx, rs.run.ID, rs.day, res.Model, res.Usage.PromptTokens, res.Usage.CompletionTokens); err != nil {
-			f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+			interrupted(ctx, f, err)
 			return err
 		}
 		if f.PromptTokens+f.CompletionTokens > rs.budget {
@@ -225,7 +247,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			case errors.As(err, &te):
 				out = jsonString(map[string]string{"error": te.msg})
 			case err != nil:
-				f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+				interrupted(ctx, f, err)
 				return err
 			}
 			messages = append(messages, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: out})

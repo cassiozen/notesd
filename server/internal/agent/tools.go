@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"html"
 	"strings"
 
 	"notes/server/internal/llm"
@@ -264,6 +265,5 @@ func jsonString(v any) string {
 
 // plainExcerpt drops the <mark> tags search adds for the web app, and its escaping.
 func plainExcerpt(s string) string {
-	s = strings.NewReplacer("<mark>", "", "</mark>", "").Replace(s)
-	return strings.NewReplacer("&lt;", "<", "&gt;", ">", "&quot;", `"`, "&#39;", "'", "&amp;", "&").Replace(s)
+	return html.UnescapeString(strings.NewReplacer("<mark>", "", "</mark>", "").Replace(s))
 }

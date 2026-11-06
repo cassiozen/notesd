@@ -75,6 +75,7 @@ type harness struct {
 	runner   *agent.Runner
 	settings llm.Settings
 	setupErr error
+	removed  bool
 }
 
 func newHarness(t *testing.T) *harness {
@@ -83,6 +84,7 @@ func newHarness(t *testing.T) *harness {
 		settings: llm.Settings{BaseURL: "http://fake", APIKey: "k", Model: "m", DailyTokenCap: llm.DefaultDailyTokenCap}}
 	h.runner = agent.NewRunner(agent.RunnerConfig{
 		Accounts: func(context.Context) ([]int64, error) { return []int64{1}, nil },
+		Exists:   func(context.Context, int64) (bool, error) { return !h.removed, nil },
 		Open: func(context.Context, int64) (agent.Account, error) {
 			return agent.Account{Notes: f.d.Notes, Agent: f.d.Agent,
 				SpaceName: func(_ context.Context, id string) string { return "space " + id }}, nil
@@ -337,6 +339,18 @@ func TestLimits(t *testing.T) {
 			t.Fatalf("run: %+v", r)
 		}
 	})
+	t.Run("tokens spent before a crash", func(t *testing.T) {
+		h := newHarness(t)
+		h.agent("work", agent.NewNoteDone)
+		h.done("n1", "a")
+		if _, err := h.db.W.Exec(`UPDATE agent_runs SET prompt_tokens = ?`, agent.MaxRunTokens); err != nil {
+			t.Fatal(err)
+		}
+		h.next()
+		if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailTokenCap || h.model.calls() != 0 {
+			t.Fatalf("run: %+v, calls %d", r, h.model.calls())
+		}
+	})
 }
 
 func TestDailyCapDuringARun(t *testing.T) {
@@ -348,6 +362,47 @@ func TestDailyCapDuringARun(t *testing.T) {
 	h.next()
 	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailDailyCap || h.model.calls() != 2 {
 		t.Fatalf("run: %+v, calls %d", r, h.model.calls())
+	}
+}
+
+func TestDailyCapWinsATie(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.settings.DailyTokenCap = agent.MaxRunTokens
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		r := toolReply("get_note", `{}`)
+		r.Usage.PromptTokens = agent.MaxRunTokens + 1
+		return r, nil
+	})
+	h.next()
+	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailDailyCap {
+		t.Fatalf("run: %+v", r)
+	}
+}
+
+func TestRemovedAccountRunsNothing(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.removed = true
+	if ok, err := h.runner.RunNext(ctx, 1); ok || err != nil {
+		t.Fatalf("ran: %v", err)
+	}
+	if r := h.only(); r.Status != agent.StatusQueued || h.model.calls() != 0 {
+		t.Fatalf("run: %+v, calls %d", r, h.model.calls())
+	}
+}
+
+func TestSearchExcerptIsPlainText(t *testing.T) {
+	h := newHarness(t)
+	h.create("q", "work", `Say "hi" & <wave>`)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.model.steps = append(h.model.steps, call("search_notes", `{"query": "hi"}`), final("No change."))
+	h.next()
+	if got := lastToolResult(h.model.requests[1]); !strings.Contains(got, `"excerpt":"Say \"hi\" \u0026 \u003cwave\u003e"`) {
+		t.Fatalf("search_notes: %s", got)
 	}
 }
 
@@ -413,6 +468,35 @@ func TestNoteChangedUnderTheRun(t *testing.T) {
 		// The second start saw the user's text.
 		if !strings.Contains(h.model.requests[1].Messages[1].Content, `"content": "ab"`) {
 			t.Fatalf("restart: %s", h.model.requests[1].Messages[1].Content)
+		}
+	})
+	t.Run("stops when the note can't be read again", func(t *testing.T) {
+		for _, tc := range []struct {
+			name    string
+			change  func(h *harness)
+			failure string
+		}{
+			{"deleted", func(h *harness) { h.delete("n1") }, agent.FailNoteGone},
+			{"moved", func(h *harness) {
+				h.update("n1", "ab", func(in *notes.UpdateInput) { in.SpaceID = ptr("home") })
+			}, agent.FailNoteMoved},
+			{"locked", func(h *harness) {
+				h.update("n1", "notesd:locked:v1:"+strings.Repeat("A", 60), nil)
+			}, agent.FailNoteLocked},
+		} {
+			t.Run(tc.name, func(t *testing.T) {
+				h := newHarness(t)
+				h.agent("work", agent.NewNoteDone)
+				h.done("n1", "a")
+				h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+					tc.change(h)
+					return toolReply("insert", `{"at": "end", "text": "#tag"}`), nil
+				})
+				h.next()
+				if r := h.only(); r.Status != agent.StatusSkipped || r.Failure != tc.failure || r.promptTokens != 100 || h.model.calls() != 1 {
+					t.Fatalf("run: %+v, calls %d", r, h.model.calls())
+				}
+			})
 		}
 	})
 	t.Run("then gives up", func(t *testing.T) {
@@ -621,6 +705,7 @@ func TestRunnerRetriesListingAccounts(t *testing.T) {
 			}
 			return []int64{1}, nil
 		},
+		Exists: func(context.Context, int64) (bool, error) { return true, nil },
 		Open: func(context.Context, int64) (agent.Account, error) {
 			return agent.Account{Notes: h.d.Notes, Agent: h.d.Agent, SpaceName: func(context.Context, string) string { return "" }}, nil
 		},
@@ -673,5 +758,22 @@ func TestListTagsLeavesLockedNotesOut(t *testing.T) {
 	h.next()
 	if got := lastToolResult(h.model.requests[1]); !strings.Contains(got, "open") || strings.Contains(got, "secret") {
 		t.Fatalf("list_tags: %s", got)
+	}
+}
+
+func TestTimeoutDuringAModelCallIsATimeout(t *testing.T) {
+	timeout := agent.RunTimeout
+	agent.RunTimeout = 20 * time.Millisecond
+	t.Cleanup(func() { agent.RunTimeout = timeout })
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	// A provider that answers past the deadline: recording its usage fails on the expired context.
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		time.Sleep(50 * time.Millisecond)
+		return say("Done."), nil
+	})
+	if r := h.next(); r.Status != agent.StatusFailed || r.Failure != agent.FailTimeout {
+		t.Fatalf("run: %+v", r)
 	}
 }

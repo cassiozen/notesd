@@ -491,6 +491,13 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			}
 			return ids, err
 		},
+		Exists: func(ctx context.Context, userID int64) (bool, error) {
+			_, err := authSvc.User(ctx, userID)
+			if errors.Is(err, auth.ErrNoUser) {
+				return false, nil
+			}
+			return err == nil, err
+		},
 		Open: func(ctx context.Context, userID int64) (agent.Account, error) {
 			d, err := users.Open(ctx, userID)
 			if err != nil {

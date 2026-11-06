@@ -14,6 +14,8 @@ import (
 type RunnerConfig struct {
 	// Accounts lists every account's id.
 	Accounts func(ctx context.Context) ([]int64, error)
+	// Exists reports whether an account is still there.
+	Exists func(ctx context.Context, userID int64) (bool, error)
 	// Open returns an account's data.
 	Open func(ctx context.Context, userID int64) (Account, error)
 	// Settings returns the AI provider's settings, or llm.ErrNotConfigured.
@@ -35,6 +37,7 @@ var idleCheck = time.Minute
 // account, which is also one at a time per note.
 type Runner struct {
 	accounts func(ctx context.Context) ([]int64, error)
+	exists   func(ctx context.Context, userID int64) (bool, error)
 	open     func(ctx context.Context, userID int64) (Account, error)
 	settings func(ctx context.Context) (llm.Settings, error)
 	provider Provider
@@ -51,7 +54,7 @@ type Runner struct {
 // NewRunner returns a runner; Run starts it.
 func NewRunner(c RunnerConfig) *Runner {
 	r := &Runner{
-		accounts: c.Accounts, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
+		accounts: c.Accounts, exists: c.Exists, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
 		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[int64]chan struct{}{},
 	}
 	if r.now == nil {
@@ -136,8 +139,23 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 		rn.mu.Unlock()
 		return
 	}
-	if err := acct.Agent.recoverRuns(ctx); err != nil {
+	// Until this succeeds, the runs a stopped server left running would stay so.
+	for {
+		err := acct.Agent.recoverRuns(ctx)
+		if err == nil {
+			break
+		}
+		if ctx.Err() != nil {
+			return
+		}
 		rn.log.Error("agent runner: recover runs", "user", userID, "err", err)
+		t := time.NewTimer(idleCheck)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return
+		case <-t.C:
+		}
 	}
 	for ctx.Err() == nil {
 		if rn.step(ctx, userID, acct) {
@@ -160,6 +178,14 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 // step runs the next due run, if AI is set up and there is one, and
 // reports whether it did.
 func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
+	// remove-user runs beside the server and keeps the account's data, queue
+	// included: none of it may reach the provider after.
+	if ok, err := rn.exists(ctx, userID); err != nil || !ok {
+		if err != nil && ctx.Err() == nil {
+			rn.log.Error("agent runner: account", "user", userID, "err", err)
+		}
+		return false
+	}
 	st, err := rn.settings(ctx)
 	if errors.Is(err, llm.ErrNotConfigured) {
 		return false // paused: the queue waits for AI to come back
