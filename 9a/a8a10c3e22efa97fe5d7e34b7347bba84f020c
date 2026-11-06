@@ -39,6 +39,7 @@ apps/web/test/setup.ts
   s_cc6cacc0a6fc01::t_bbf48164257491 3,91
 docs/contributing/architecture.md
   s_cc6cacc0a6fc01::t_1c8d25b0d85c12 150,485-489,495-496,499-502,507-508
+  s_cc6cacc0a6fc01::t_f03336cdeaf6a0 503,506
 docs/guides/using/agents.md
   s_cc6cacc0a6fc01::t_ade8109de66f6e 12-14,35-36,42-53,72-76
 docs/reference/api.md
@@ -57,16 +58,19 @@ server/internal/agent/export_test.go
   s_cc6cacc0a6fc01::t_48cfbf92f37a4d 10,16
 server/internal/agent/prompt.go
   s_cc6cacc0a6fc01::t_27f8fc3cd9dfeb 20,25,69-84,99-108
+  s_cc6cacc0a6fc01::t_f03336cdeaf6a0 19,59
 server/internal/agent/request_test.go
   s_cc6cacc0a6fc01::t_0a58a4fa19aa11 1-98
 server/internal/agent/run.go
   s_cc6cacc0a6fc01::t_bdd2bb5053d451 33-50,107-111,136-139,175-183,191,230-241
+  s_cc6cacc0a6fc01::t_f03336cdeaf6a0 186
 server/internal/agent/runner.go
   s_cc6cacc0a6fc01::t_df42e10144b028 36-38,51,59,97-99,108,110-111,115,118-122,139,166-176,178,203-206,216-219,229,239,241-242
 server/internal/agent/runner_test.go
   s_cc6cacc0a6fc01::t_72cc802932a338 80,96-100,802-855
 server/internal/agent/runs.go
   s_cc6cacc0a6fc01::t_a7e121e171143f 60-62,64-66,68-71,76-77,91
+  s_cc6cacc0a6fc01::t_f03336cdeaf6a0 79
 server/internal/agent/tools.go
   s_cc6cacc0a6fc01::t_5af39b295bbf5f 211
 server/internal/agent/triggers.go
