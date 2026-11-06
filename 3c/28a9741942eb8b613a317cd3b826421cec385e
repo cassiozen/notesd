@@ -98,8 +98,12 @@ apps/web/src/notes/activity.tsx
   s_cc6cacc0a6fc01::t_73c686c690e9fb 13
 apps/web/src/settings/spaces.tsx
   s_cc6cacc0a6fc01::t_73c686c690e9fb 5,7-9,121-122,133,136-139,141,145,167-174,202-205,217,220,242-252,254-261,263-266,268-269,293-294,296,300-307,309,312
+  s_cc6cacc0a6fc01::t_945c489a09dcb0 143,262
+  s_cc6cacc0a6fc01::t_fca2390fb15807 13,253
 apps/web/src/notes/shell.tsx
   s_cc6cacc0a6fc01::t_73c686c690e9fb 13,69,323-326
+  s_cc6cacc0a6fc01::t_3518988eb40960 328-330
+  s_cc6cacc0a6fc01::t_fca2390fb15807 6,250,327
 apps/web/src/notes/agent-rules.ts
   s_cc6cacc0a6fc01::t_73c686c690e9fb 1-121
 apps/web/src/settings/settings.module.css
