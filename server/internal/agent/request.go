@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"regexp"
+	"sync"
+	"time"
 
 	"notes/server/internal/locks"
 )
@@ -28,6 +30,9 @@ type RunRequest struct {
 	// SpaceID is the note's space as the editor shows it.
 	SpaceID      string
 	ConnectionID string
+	// Note is what the editor showed as it asked, if it said: the run
+	// starts from it rather than asking the editor again.
+	Note *EditorNote
 }
 
 // RequestRun queues a run an editor asked for, ahead of the others. Asked
@@ -57,16 +62,63 @@ func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) 
 		err = tx.QueryRowContext(ctx, `SELECT id FROM agent_runs WHERE note_id = ? AND trigger = ? AND status = 'queued'`,
 			req.NoteID, string(req.Trigger)).Scan(&id)
 		if !errors.Is(err, sql.ErrNoRows) {
+			if err == nil && req.Note != nil {
+				s.snapshots.keep(id, *req.Note, s.now()) // asked again before it started: the newer one
+			}
 			return err
 		}
 		if id, err = queue(ctx, tx, space, Event{Trigger: req.Trigger, NoteID: req.NoteID, ConnectionID: req.ConnectionID},
 			editorPriority, s.now().UnixMilli()); err != nil {
 			return err
 		}
+		// Before the runner can take it: scheduled wakes it.
+		if req.Note != nil {
+			s.snapshots.keep(id, *req.Note, s.now())
+		}
 		s.scheduled()
 		return nil
 	})
 	return id, err
+}
+
+// snapshotFresh is how long what an editor showed as it asked stands for
+// what it shows: past it, the user has likely typed on, and the run asks
+// the editor again.
+const snapshotFresh = 5 * time.Second
+
+// snapshots are what editors showed as they asked for runs, by run, kept
+// in memory until each run starts: a server restarted since asks again.
+type snapshots struct {
+	mu sync.Mutex
+	m  map[string]snapshot
+}
+
+type snapshot struct {
+	note EditorNote
+	at   time.Time
+}
+
+func (s *snapshots) keep(runID string, n EditorNote, now time.Time) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.m == nil {
+		s.m = map[string]snapshot{}
+	}
+	for id, sn := range s.m {
+		if now.Sub(sn.at) > snapshotFresh {
+			delete(s.m, id)
+		}
+	}
+	s.m[runID] = snapshot{n, now}
+}
+
+// take returns run's snapshot, if it's fresh, and forgets it.
+func (s *snapshots) take(runID string, now time.Time) (EditorNote, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	sn, ok := s.m[runID]
+	delete(s.m, runID)
+	return sn.note, ok && now.Sub(sn.at) <= snapshotFresh
 }
 
 // requestSpace is the space the editor says the note is in: the store may

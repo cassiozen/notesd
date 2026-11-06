@@ -291,13 +291,13 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const startedEditing = () => {
     const now = Date.now()
     if (!openedNew && (lastEdit.current === null || now - lastEdit.current > triggerTiming.idleMs)) {
-      void requestRun('editStarted', saver.id, saver.spaceId())
+      requestRun('editStarted', saver.id, saver.spaceId())
     }
     lastEdit.current = now
   }
 
   useEffect(() => {
-    if (openedNew) void requestRun('noteCreated', saver.id, saver.spaceId())
+    if (openedNew) requestRun('noteCreated', saver.id, saver.spaceId())
   }, [openedNew, saver])
   const [initial] = useState(() => saver.fields())
   const [linkOpen, setLinkOpen] = useState(false)

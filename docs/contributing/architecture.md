@@ -483,7 +483,8 @@ The user guide is [agents](../guides/using/agents.md).
   ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
   for the space the note is in then, or at once when an editor closes the note and the server has
   what it last saved (`editor.closed` on the socket below). The editor asks for *note created*,
-  *started editing* and the menu command (`POST /agent/runs`), queued ahead of the rest. Their runs
+  *started editing* and the menu command on the socket, sending what it shows, and the run starts
+  from that, at once. Their runs
   work on the note only as an editor shows it, the asking one's first, never the store's copy, which
   may not exist yet: with no editor showing it, before or during the run, the run is skipped
   (`note_closed`). A new note
@@ -501,8 +502,8 @@ The user guide is [agents](../guides/using/agents.md).
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
 - **Runner.** Each account has two slots: one runs its queue in order, editor triggers first; the
-  other runs only editor triggers, so a new note's run never waits behind a finished note's. A run
-  waits while another on its note runs. A slot sleeps until a write queues a run or starts a
+  other starts each editor trigger's run at once, beside the rest, so someone in a note never waits
+  behind other runs. A run waits while another on its note runs. A slot sleeps until a write queues a run or starts a
   session, or the next of those is due. At most 4 provider calls run at once across accounts. With
   AI removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
   prompt, which stay the same from run to run so the provider can cache them, then the event: the

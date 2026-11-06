@@ -84,16 +84,12 @@ func TestAClaimReachesTheEditorBeforeItsOpen(t *testing.T) {
 	a := connect(t, h, showing("from a"))
 	b := connect(t, h, showing("from b"))
 	h.Opened(b.c, "n1")
-	h.Claim(1, a.c.ID, "n1")
-	h.Claim(2, b.c.ID, "n2") // not user 2's connection
+	h.Claim(a.c, "n1")
 	if n, err := ed.Read(ctx, "n1", a.c.ID); err != nil || n.Content != "from a" {
 		t.Fatalf("the run's own, claimed: %+v %v", n, err)
 	}
 	if n, err := ed.Read(ctx, "n1", ""); err != nil || n.Content != "from b" {
 		t.Fatalf("no run's own: only an open counts: %+v %v", n, err)
-	}
-	if _, err := ed.Read(ctx, "n2", b.c.ID); !errors.Is(err, agent.ErrNotOpen) {
-		t.Fatalf("another user's claim: %v", err)
 	}
 	// A claim keeps no session going.
 	if !h.Closed(b.c, "n1") {

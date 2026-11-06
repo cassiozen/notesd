@@ -235,6 +235,7 @@ func TestRunsReadThroughTheSocket(t *testing.T) {
 
 func TestRequestAgentRun(t *testing.T) {
 	e := newEnv(t)
+	ctx := e.ctx
 	e.setupOwner()
 	var woken atomic.Int32
 	e.users.OnAgentScheduled(func(int64) { woken.Add(1) })
@@ -247,21 +248,33 @@ func TestRequestAgentRun(t *testing.T) {
 	if r := c.do("POST", "/api/v1/notes", map[string]any{"operationId": "o1", "id": "n1", "title": "T"}); r.status != 201 {
 		t.Fatalf("create: %d %s", r.status, r.raw)
 	}
-	for _, tc := range []struct {
-		body   map[string]any
-		status int
-		code   string
-	}{
-		{map[string]any{"trigger": "editStarted", "noteId": "n1"}, 409, "trigger_off"},
-		{map[string]any{"trigger": "noteDeleted", "noteId": "n1"}, 400, "invalid_request"},
-		{map[string]any{"trigger": "editStarted", "noteId": "nope"}, 404, "not_found"},
-	} {
-		if r := c.do("POST", "/api/v1/agent/runs", tc.body); r.status != tc.status || r.body["error"] != tc.code {
-			t.Errorf("%v: %d %s", tc.body, r.status, r.raw)
+	conn, _ := e.socket(c)
+	ask := func(m map[string]any) {
+		t.Helper()
+		m["type"] = "run.request"
+		if err := wsjson.Write(ctx, conn, m); err != nil {
+			t.Fatal(err)
+		}
+		// Messages are handled in order; a ping round trip waits for them.
+		if err := conn.Ping(ctx); err != nil {
+			t.Fatal(err)
 		}
 	}
-	r := c.do("POST", "/api/v1/agent/runs", map[string]any{"trigger": "noteCreated", "noteId": "draft", "spaceId": "default", "connectionId": "c_1"})
-	if id, _ := r.body["runId"].(string); r.status != 202 || id == "" || woken.Load() != 1 {
-		t.Fatalf("draft: %d %s", r.status, r.raw)
+	runs := func() []any {
+		r := c.do("GET", "/api/v1/agent/runs", nil)
+		return r.body["runs"].([]any)
+	}
+	// Turned down: the space's agent doesn't act on it, not an editor's trigger, no such note.
+	ask(map[string]any{"trigger": "editStarted", "noteId": "n1"})
+	ask(map[string]any{"trigger": "noteDeleted", "noteId": "n1"})
+	ask(map[string]any{"trigger": "editStarted", "noteId": "nope"})
+	if n := len(runs()); n != 0 || woken.Load() != 0 {
+		t.Fatalf("refused: %d runs, woken %d", n, woken.Load())
+	}
+	// A draft the server hasn't got, with what its editor shows.
+	ask(map[string]any{"trigger": "noteCreated", "noteId": "draft", "spaceId": "default",
+		"note": map[string]any{"spaceId": "default", "title": "", "content": "", "cursor": 0}})
+	if r := runs(); len(r) != 1 || r[0].(map[string]any)["trigger"] != "noteCreated" || woken.Load() != 1 {
+		t.Fatalf("draft: %v, woken %d", r, woken.Load())
 	}
 }

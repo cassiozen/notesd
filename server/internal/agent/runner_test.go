@@ -1016,3 +1016,54 @@ func TestNothingMoreIsDoneWithANoteDeletedMidRun(t *testing.T) {
 		t.Fatalf("run %+v after %d calls", r, h.model.calls())
 	}
 }
+
+func TestEditorRunsOnDifferentNotesGoAtOnce(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.Menu)
+	for id, content := range map[string]string{"n1": "a", "n2": "b", "n3": "c"} {
+		h.create(id, "work", content)
+		h.openInEditor(id, content, nil)
+	}
+	entered, release := make(chan struct{}, 2), make(chan struct{})
+	var once sync.Once
+	free := func() { once.Do(func() { close(release) }) }
+	held := func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		entered <- struct{}{}
+		<-release
+		return say("No change."), nil
+	}
+	h.model.steps = append(h.model.steps, held, held)
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); h.runner.Run(runCtx) }()
+	defer func() { stop(); <-done }()
+	defer free()
+	ask := func(id string) {
+		t.Helper()
+		if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: id}); err != nil {
+			t.Fatal(err)
+		}
+		h.runner.Wake(1)
+	}
+	// Two at the model, more than the account's slots could hold one each.
+	for _, id := range []string{"n1", "n2"} {
+		ask(id)
+		select {
+		case <-entered:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s's run never reached the model: %+v", id, h.runs())
+		}
+	}
+	ask("n3")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		runs := h.runs()
+		if len(runs) == 3 && runs[2].Note == "n3" && runs[2].Status == agent.StatusDone {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("runs: %+v", runs)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}

@@ -145,8 +145,7 @@ export function NoteMenu({
               className={styles.item}
               onClick={() => {
                 setOpen(false)
-                // The run reads what's saved, so save first.
-                void saver.flush().then(() => requestRun('menu', saver.id, saver.spaceId()))
+                requestRun('menu', saver.id, saver.spaceId())
               }}
             >
               {command}

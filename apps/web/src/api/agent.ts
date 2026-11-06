@@ -107,9 +107,6 @@ export const agent = {
   usage: (signal?: AbortSignal) => request<AgentUsage>('GET', '/agent/usage', undefined, { signal }),
   /** 409 nothing_to_undo when none of its changes can be: the run's edits then say why. */
   undo: (id: string) => request<UndoResult>('POST', `/agent/runs/${encodeURIComponent(id)}/undo`),
-  /** An editor asks for a run; 409 agent_disabled, trigger_off or note_locked when it can't be. */
-  request: (body: { trigger: 'noteCreated' | 'editStarted' | 'menu'; noteId: string; spaceId: string; connectionId?: string }) =>
-    request<{ runId: string }>('POST', '/agent/runs', body),
   account: () => request<AccountSettings>('GET', '/settings/account'),
   setTimeZone: (timeZone: string) => request<AccountSettings>('PUT', '/settings/account', { timeZone }),
 }

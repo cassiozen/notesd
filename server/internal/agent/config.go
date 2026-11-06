@@ -79,6 +79,7 @@ type Store struct {
 	now         func() time.Time
 	tz          tzCache
 	onScheduled func()
+	snapshots   snapshots
 }
 
 // NewStore returns a Store over an account's database.

@@ -34,8 +34,9 @@ const MaxConcurrentCalls = 4
 var idleCheck = time.Minute
 
 // Runner runs every account's queued agent runs, one at a time per note.
-// Each account has two slots: one for any run, and one only for runs an
-// open editor asked for, so those never wait behind the others.
+// Each account has two slots: one runs any run, one after another; the
+// other starts each run an open editor asked for at once, beside the rest,
+// so someone in a note never waits behind others.
 type Runner struct {
 	accounts func(ctx context.Context) ([]int64, error)
 	exists   func(ctx context.Context, userID int64) (bool, error)
@@ -171,8 +172,8 @@ func (rn *Runner) work(ctx context.Context, userID int64, w *worker) {
 	rn.slot(ctx, userID, acct, false, w.any)
 }
 
-// slot runs an account's runs one after another; editorOnly, only the
-// ones an open editor asked for.
+// slot runs an account's runs one after another; editorOnly, it starts
+// each one an open editor asked for, without waiting for it to end.
 func (rn *Runner) slot(ctx context.Context, userID int64, acct Account, editorOnly bool, wake <-chan struct{}) {
 	for ctx.Err() == nil {
 		if rn.step(ctx, userID, acct, editorOnly) {
@@ -236,10 +237,23 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOn
 	if !ok {
 		return false
 	}
-	acct.notify(RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: StatusRunning})
-	rn.execute(ctx, acct, st, r)
-	// The other slot may have passed over a run on this note.
-	rn.Wake(userID)
+	run := func() {
+		acct.notify(RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: StatusRunning})
+		rn.execute(ctx, acct, st, r)
+		// The other slot may have passed over a run on this note.
+		rn.Wake(userID)
+	}
+	if !editorOnly {
+		run()
+		return true
+	}
+	// Someone is in the note, waiting: each note's run starts at once, beside
+	// the others' (claim takes one per note at a time).
+	rn.wg.Add(1)
+	go func() {
+		defer rn.wg.Done()
+		run()
+	}()
 	return true
 }
 

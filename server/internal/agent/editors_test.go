@@ -6,6 +6,7 @@ import (
 	"errors"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -16,9 +17,12 @@ import (
 
 // fakeEditor is an editor with notes open, as the socket's would answer.
 type fakeEditor struct {
+	// Runs on different notes go at once.
+	mu      sync.Mutex
 	notes   map[string]*agent.EditorNote
 	gone    bool
 	locked  bool
+	reads   int
 	changes []agent.EditorChange
 	// rewrite is the editor's Markdown writing some text its own way.
 	rewrite func(string) string
@@ -34,6 +38,9 @@ func (h *harness) openInEditor(id, content string, cursor *int) *agent.EditorNot
 }
 
 func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.reads++
 	if e.gone {
 		return agent.EditorNote{}, agent.ErrEditorGone
 	}
@@ -48,6 +55,8 @@ func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, er
 }
 
 func (e *fakeEditor) Apply(_ context.Context, id, _ string, ch agent.EditorChange) (agent.EditorApplied, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	if e.gone {
 		return agent.EditorApplied{}, agent.ErrEditorGone
 	}

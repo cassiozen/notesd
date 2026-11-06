@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it, onTestFinished } from 'vitest'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import type { AgentConfigInput, AgentRun } from '../src/api/agent'
 import { bodyText, createNote, newNoteButton, openNote, signedIn, typeAtEnd } from './helpers'
 import { startFakeLLM, type FakeLLM, type TestServer } from './server'
@@ -58,7 +58,6 @@ describe('editor triggers', () => {
     await waitFor(async () => expect((await runs(server)).map((r) => [r.trigger, r.status])).toEqual([['noteCreated', 'done']]), {
       timeout: 5000,
     })
-    expect(server.answered('POST', '/agent/runs')).toBe(1)
   })
 
   it('started editing fires once, on the first change', async () => {
@@ -76,7 +75,6 @@ describe('editor triggers', () => {
     await waitFor(async () => expect((await runs(server)).map((r) => [r.trigger, r.status])).toEqual([['editStarted', 'done']]), {
       timeout: 5000,
     })
-    expect(server.answered('POST', '/agent/runs')).toBe(1)
   })
 
   it('started editing fires again after a pause', async () => {
@@ -97,9 +95,12 @@ describe('editor triggers', () => {
     await connected()
     await openNote(user, 'Plan')
     await typeAtEnd(user, ', two')
-    await new Promise((r) => setTimeout(r, 700))
+    // Done first: asked again while it's still queued, it's the same run.
+    await waitFor(async () => expect((await runs(server)).map((r) => r.status)).toEqual(['done']), { timeout: 5000 })
+    // Well past idleMs: under load the editor handles the last keystroke late.
+    await new Promise((r) => setTimeout(r, 1500))
     await typeAtEnd(user, ', three')
-    await waitFor(() => expect(server.answered('POST', '/agent/runs')).toBe(2))
+    await waitFor(async () => expect((await runs(server)).map((r) => r.trigger)).toEqual(['editStarted', 'editStarted']), { timeout: 5000 })
   })
 
   it('the menu command runs, and a failure shows on the note as it happens', async () => {
@@ -121,17 +122,20 @@ describe('editor triggers', () => {
 
   it('aren’t offered where the agent doesn’t act on them', async () => {
     const llm = await startFakeLLM()
-    const { server, user } = await signedIn({
+    const { user } = await signedIn({
       seed: async (s) => {
         await withAgent(s, llm, { triggers: { editDone: 'Tidy up.' } })
         await createNote(s, 'Plan', 'Step one')
       },
     })
     await connected()
+    const { agentSocket } = await import('../src/agent/socket')
+    const ask = vi.spyOn(agentSocket, 'requestRun')
+    onTestFinished(() => ask.mockRestore())
     await openNote(user, 'Plan')
     await typeAtEnd(user, ', two')
     await user.click(screen.getByRole('button', { name: 'More' }))
     expect(within(screen.getByRole('menu', { name: 'More' })).queryAllByRole('menuitem').map((b) => b.textContent)).not.toContain('Fix typos')
-    expect(server.answered('POST', '/agent/runs')).toBe(0)
+    expect(ask).not.toHaveBeenCalled()
   })
 })

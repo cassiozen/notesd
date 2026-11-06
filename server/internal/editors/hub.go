@@ -123,19 +123,13 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 	delete(c.claimed, noteID)
 }
 
-// Claim records that the user's connection connID asked for a run on the
-// note, so the run talks to it even before its "opened" arrives. Not an
-// open: it never keeps a writing session from ending. An id that isn't one
-// of the user's connections is ignored.
-func (h *Hub) Claim(userID int64, connID, noteID string) {
+// Claim records that c asked for a run on the note, so the run talks to it
+// even before its "opened" arrives: an editor's effects may send them in
+// either order. Not an open: it never keeps a writing session from ending.
+func (h *Hub) Claim(c *Conn, noteID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	for c := range h.users[userID] {
-		if c.ID == connID {
-			c.claimed[noteID] = struct{}{}
-			return
-		}
-	}
+	c.claimed[noteID] = struct{}{}
 }
 
 // Closed records that c's editor closed the note, and reports whether it

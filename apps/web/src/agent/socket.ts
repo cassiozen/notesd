@@ -120,6 +120,21 @@ class AgentSocket {
     return false
   }
 
+  /**
+   * Asks for a run on a note this tab's editor has open, sending what it shows so the run needn't ask
+   * first. False while not connected.
+   */
+  requestRun(trigger: 'noteCreated' | 'editStarted' | 'menu', noteId: string, spaceId: string): boolean {
+    if (!this.connectionId) return false
+    // After the effects that asked: one of them may be what serves the note.
+    queueMicrotask(() => {
+      const shown = this.editors.get(noteId)?.read()
+      const note = shown && !('error' in shown) ? shown : undefined
+      this.send({ type: 'run.request', trigger, noteId, spaceId, note })
+    })
+    return true
+  }
+
   /** revision: the server's revision of what the editor last showed, if it has it. */
   noteClosed(noteId: string, revision: number | null) {
     // A close lands after its save, so the note may have been opened again meanwhile.

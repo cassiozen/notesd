@@ -392,13 +392,18 @@ func (rs *runState) readEditor(ctx context.Context, id string) (notes.Note, erro
 	case err != nil:
 		return notes.Note{}, err
 	}
+	return rs.fromEditor(id, en), nil
+}
+
+// fromEditor is note id as an editor shows it, for the rest of the run.
+func (rs *runState) fromEditor(id string, en EditorNote) notes.Note {
 	n := notes.Note{ID: id, SpaceID: en.SpaceID, Title: en.Title, Content: en.Content}
 	if en.Revision != nil {
 		n.Revision = *en.Revision
 	}
 	rs.reads[id] = n
 	rs.inEditor[id] = &editorRead{revision: en.Revision, cursor: en.Cursor}
-	return n, nil
+	return n
 }
 
 // cursor reads the run's note again, for where the user's cursor is now.

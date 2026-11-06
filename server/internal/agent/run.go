@@ -161,7 +161,15 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		budget: min(left, today), dailyLimited: today <= left}
 	switch {
 	case r.Trigger.InEditor():
-		n, err := rs.readEditor(runCtx, r.NoteID)
+		// What the editor showed as it asked, if that's recent: else it's asked now.
+		en, fresh := acct.Agent.snapshots.take(r.ID, rn.now())
+		var n notes.Note
+		var err error
+		if fresh {
+			n = rs.fromEditor(r.NoteID, en)
+		} else {
+			n, err = rs.readEditor(runCtx, r.NoteID)
+		}
 		if u := unusable(n, err, r.SpaceID, false); u.Status != "" {
 			return u
 		}

@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"regexp"
 	"time"
@@ -10,6 +11,7 @@ import (
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/auth"
 )
 
@@ -32,6 +34,11 @@ type socketIn struct {
 	// Revision is, on editor.closed, the server's revision of what the
 	// editor last showed; absent when it doesn't know (offline, a conflict).
 	Revision *int64 `json:"revision"`
+	// On run.request: the trigger, the note's space, and what the editor
+	// shows, so the run needn't ask it first.
+	Trigger agent.Trigger     `json:"trigger"`
+	SpaceID string            `json:"spaceId"`
+	Note    *agent.EditorNote `json:"note"`
 }
 
 // agentSocket is the editors' connection for agents (architecture §7.8): an
@@ -98,9 +105,26 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			if err := data.Agent.EditorClosed(ctx, m.NoteID, *m.Revision); err != nil {
 				s.log.Error("agent socket: end writing session", "error", err)
 			}
+		case "run.request":
+			// Before the run is queued, which starts it.
+			s.editors.Claim(ec, m.NoteID)
+			_, err := data.Agent.RequestRun(ctx, agent.RunRequest{Trigger: m.Trigger, NoteID: m.NoteID, SpaceID: m.SpaceID,
+				ConnectionID: ec.ID, Note: m.Note})
+			if err != nil && !refusedRun(err) {
+				s.log.Error("agent socket: request a run", "error", err)
+			}
 		}
 		// Unknown types are skipped: a newer app may send more.
 	}
+}
+
+// refusedRun is a run request the space's agent or the note turns down:
+// the editor asked for what its own copy of the setup allowed, which can
+// be behind.
+func refusedRun(err error) bool {
+	var in *agent.InputError
+	return errors.As(err, &in) || errors.Is(err, agent.ErrAgentOff) || errors.Is(err, agent.ErrTriggerOff) ||
+		errors.Is(err, agent.ErrNoteLocked) || errors.Is(err, agent.ErrNoteGone) || errors.Is(err, agent.ErrSpaceNotFound)
 }
 
 // pingSocket keeps the connection alive through proxies, and ends it when

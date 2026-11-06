@@ -393,7 +393,6 @@ other accounts get `403 admin_only` when they change it.
 | `GET` | `/agent/usage` | → `{day, tokens, runs, dailyTokenCap}` |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
-| `POST` | `/agent/runs` | `{trigger, noteId, spaceId?, connectionId?}` → `202 {runId}`; see below |
 | `GET` | `/agent/socket` | WebSocket; see below |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, referenceNotes, updatedAt}`. `prompt` describes the
@@ -438,14 +437,12 @@ note is undone on its own, so one changed note doesn't stop the rest; `skipped` 
 undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
 `partly_undone` while some of its changes stand. Undo fires no triggers.
 
-**Asking for a run.** An editor asks for `noteCreated`, `editStarted` or `menu` runs; the others
-come from writes. `spaceId` is the note's space as the editor shows it, which the server may not
-have yet; and `connectionId` is the asking tab's socket. The run works on the note only as an editor
-shows it, that tab's first, never the server's copy: with no editor showing it, before or during
-the run, it's skipped as `note_closed`. It's queued ahead of other runs, and asked again before it
-starts, it's the same run. `409 agent_disabled` when the space's agent is off, `trigger_off` when
-it doesn't act on that trigger, `note_locked`; `404 not_found` for a note that's gone, or one the
-server hasn't got with no `spaceId`.
+**Asking for a run.** An editor asks for `noteCreated`, `editStarted` or `menu` runs on the socket
+below (`run.request`); the others come from writes. The run works on the note only as an editor
+shows it, the asking one's first, never the server's copy: with no editor showing it, before or
+during the run, it's skipped as `note_closed`. It starts at once, beside other runs, one at a time
+per note; asked again before it starts, it's the same run. A request the space's agent doesn't act
+on, for a note that's gone or locked, or one the server hasn't got with no `spaceId`, is dropped.
 
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
@@ -457,6 +454,7 @@ ignored, so either may add some, except that an editor answers a request it can'
 | --- | --- | --- |
 | Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
 | Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
+| Editor | `{type: "run.request", trigger, noteId, spaceId, note?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Server | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | A run started (`running`) or ended; to every editor of the account |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"notes/server/internal/agent"
 	"notes/server/internal/llm"
@@ -150,7 +151,7 @@ func (h *harness) editorRun(trigger agent.Trigger, id string, steps ...func(llm.
 	return runs[len(runs)-1]
 }
 
-func TestEditorTriggersStartOverFromTheEditor(t *testing.T) {
+func TestEditorTriggersWorkOnWhatTheUserTyped(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NoteCreated)
 	// Never saved: the store doesn't have it, and needn't.
@@ -158,13 +159,11 @@ func TestEditorTriggersStartOverFromTheEditor(t *testing.T) {
 	r := h.editorRun(agent.NoteCreated, "n1",
 		func(llm.ChatRequest) (*llm.ChatResponse, error) {
 			h.editor.notes["n1"].Content = "Dear diary" // the user types first
-			return toolReply("insert", `{"at": "start", "text": "## Today"}`), nil
+			return toolReply("insert", `{"at": "start", "text": "## Today", "done": "Added a heading."}`), nil
 		},
-		call("insert", `{"at": "start", "text": "## Today"}`),
-		final("Added a heading."),
 	)
-	if r.Status != agent.StatusDone || h.editor.notes["n1"].Content != "## Today\n\nDear diary" {
-		t.Fatalf("run %+v, editor %q", r, h.editor.notes["n1"].Content)
+	if r.Status != agent.StatusDone || h.editor.notes["n1"].Content != "## Today\n\nDear diary" || h.model.calls() != 1 {
+		t.Fatalf("run %+v, editor %q, %d calls", r, h.editor.notes["n1"].Content, h.model.calls())
 	}
 	if _, err := h.d.Notes.Get(ctx, "n1"); !errors.Is(err, notes.ErrNotFound) {
 		t.Fatalf("stored: %v", err)
@@ -200,5 +199,34 @@ func TestEditorTriggersStopWithoutTheirEditor(t *testing.T) {
 	calls := h.model.calls()
 	if r := h.editorRun(agent.Menu, "n1"); r.Status != agent.StatusSkipped || r.Failure != agent.FailNoteLocked || h.model.calls() != calls {
 		t.Fatalf("locked: %+v", r)
+	}
+}
+
+func TestEditorTriggersStartFromWhatTheEditorShowedAsItAsked(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.Menu)
+	h.create("n1", "work", "Milk")
+	h.openInEditor("n1", "Milk\nTea", nil)
+	shown := &agent.EditorNote{SpaceID: "work", Title: "T", Content: "Milk\nTea"}
+	ask := func() {
+		t.Helper()
+		if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: "n1", Note: shown}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	ask()
+	h.model.steps = append(h.model.steps, final("No change."))
+	h.next()
+	if user := h.model.requests[0].Messages[1].Content; h.editor.reads != 0 || !strings.Contains(user, "Tea") {
+		t.Fatalf("%d reads; told %s", h.editor.reads, user)
+	}
+
+	// Asked a while ago: the user has likely typed on, so the editor is asked again.
+	ask()
+	h.advance(10 * time.Second)
+	h.model.steps = append(h.model.steps, final("No change."))
+	h.next()
+	if h.editor.reads != 1 {
+		t.Fatalf("%d reads", h.editor.reads)
 	}
 }
