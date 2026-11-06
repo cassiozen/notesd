@@ -69,6 +69,9 @@ func TestReadsFromTheRightEditor(t *testing.T) {
 	if !h.Closed(b.c, "n1") {
 		t.Fatal("nobody has it open now")
 	}
+	if h.Closed(b.c, "n1") || h.Closed(a.c, "n2") {
+		t.Fatal("closed by an editor that didn't have it open")
+	}
 	if _, err := ed.Read(ctx, "n1", ""); !errors.Is(err, agent.ErrNotOpen) {
 		t.Fatalf("closed everywhere: %v", err)
 	}

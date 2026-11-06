@@ -60,7 +60,7 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 	c.SetReadLimit(4 << 20)
 	ctx, cancel := context.WithCancel(context.WithoutCancel(r.Context()))
 	defer cancel()
-	go s.pingSocket(ctx, cancel, c)
+	go s.pingSocket(ctx, cancel, c, sessionFrom(r.Context()).ID)
 
 	if err := wsjson.Write(ctx, c, map[string]any{"type": "hello", "connectionId": ec.ID, "protocol": SocketProtocol}); err != nil {
 		return
@@ -102,8 +102,9 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 // pingSocket keeps the connection alive through proxies, and ends it when
-// the other side stops answering.
-func (s *Server) pingSocket(ctx context.Context, cancel func(), c *websocket.Conn) {
+// the other side stops answering or its session ends: the socket was
+// authenticated only when it opened, and runs keep sending it notes.
+func (s *Server) pingSocket(ctx context.Context, cancel func(), c *websocket.Conn, sessionID string) {
 	t := time.NewTicker(SocketPing)
 	defer t.Stop()
 	for {
@@ -116,6 +117,12 @@ func (s *Server) pingSocket(ctx context.Context, cancel func(), c *websocket.Con
 		err := c.Ping(pctx)
 		pcancel()
 		if err != nil {
+			cancel()
+			return
+		}
+		// A failed check keeps the connection: the next tick tries again.
+		if live, err := s.auth.Live(ctx, sessionID); err == nil && !live {
+			_ = c.Close(websocket.StatusPolicyViolation, "signed out")
 			cancel()
 			return
 		}

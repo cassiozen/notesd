@@ -19,7 +19,8 @@ export function readForAgent(state: EditorState): { fields: Fields; cursor: numb
   if (!selection.empty || !selection.$head.parent.isTextblock || selection.$head.parent.type.name === 'title') {
     return { fields, cursor: null }
   }
-  const marked = noteFields(state.tr.insertText(MARK, selection.head).doc).content
+  // Not a pending bold or italic toggle's marks: those aren't in the saved text.
+  const marked = noteFields(state.tr.setStoredMarks(null).insertText(MARK, selection.head).doc).content
   const at = marked.indexOf(MARK)
   // Code points, not UTF-16 units: the server counts runes.
   return { fields, cursor: at < 0 ? null : Array.from(marked.slice(0, at)).length }

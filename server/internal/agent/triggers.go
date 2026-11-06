@@ -86,8 +86,12 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 			return err
 		}
 		if agentOnly && !ev.SpaceChanged() {
-			// An editor saving just a run's change: not the user writing.
-			return nil
+			// An editor saving just a run's change: not the user writing. The
+			// session still learns the revision, or closing the editor at it
+			// would look like a save still on its way.
+			_, err := tx.ExecContext(ctx, `UPDATE agent_sessions SET last_revision = ? WHERE note_id = ?`,
+				ev.After.Revision, ev.NoteID)
+			return err
 		}
 	}
 	if ev.Agent != nil && ev.Agent.Only {
@@ -144,8 +148,9 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 	}
 	switch {
 	case ev.Kind == notes.EventDeleted:
+		// applied_from too: a hash of short text can be guessed.
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_title = '', after_title = '',
-			before_content = '', after_content = '', text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
+			before_content = '', after_content = '', applied_from = NULL, text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
 			return err
 		}
 		// A queued run keeps its snapshot: a "note deleted" run needs it, and drops it when it finishes.
@@ -154,7 +159,7 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 		return err
 	case ev.Kind == notes.EventUpdated && locks.IsLocked(ev.After.Content) && !locks.IsLocked(ev.Before.Content):
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_content = '', after_content = '',
-			text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
+			applied_from = NULL, text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, finished_at = ?,

@@ -140,6 +140,10 @@ func TestEditorGoneMidChange(t *testing.T) {
 	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailEditorGone {
 		t.Fatalf("run: %+v", r)
 	}
+	// Not written to the store instead, under the user's unsaved typing.
+	if got := h.content("n1"); got != "Milk" {
+		t.Fatalf("stored: %q", got)
+	}
 }
 
 func TestInsertAtTheCursor(t *testing.T) {
@@ -174,5 +178,57 @@ func TestEditorSaveOfOnlyTheAgentsChange(t *testing.T) {
 	}
 	if _, err := h.undo(h.lastRunID()); err != nil || h.content("n1") != "Milk" {
 		t.Fatalf("undo: %v %q", err, h.content("n1"))
+	}
+}
+
+func TestClosingTheEditorAfterItSavedTheAgentsChange(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone, agent.EditDone)
+	h.done("n1", "Milk")
+	// The user's writing: a session.
+	h.update("n1", "Milk\nEggs", nil)
+	h.openInEditor("n1", "Milk\nEggs", nil)
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "end", "text": "#groceries"}`), final("Tagged."))
+	h.next()
+	h.update("n1", "Milk\nEggs\n\n#groceries\n", nil)
+	n, err := h.d.Notes.Get(ctx, "n1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	// The editor has all the server has: the session ends now, not when idle.
+	if queued, err := h.d.Agent.EditorClosed(ctx, "n1", n.Revision); err != nil || !queued || h.sessions() != 0 {
+		t.Fatalf("queued %v, sessions %d, %v", queued, h.sessions(), err)
+	}
+}
+
+func TestLockingOrDeletingDropsTheEditorsHash(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		do   func(h *harness)
+	}{
+		{"locked", func(h *harness) { h.update("n1", "notesd:locked:v1:"+strings.Repeat("A", 60), nil) }},
+		{"deleted", func(h *harness) { h.delete("n1") }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			h := newHarness(t)
+			h.agent("work", agent.NewNoteDone)
+			h.done("n1", "Milk")
+			h.openInEditor("n1", "Milk", nil)
+			h.model.steps = append(h.model.steps, call("insert", `{"at": "end", "text": "#tag"}`), final("Tagged."))
+			h.next()
+			hashes := func() (n int) {
+				if err := h.db.R.QueryRow(`SELECT count(*) FROM agent_run_edits WHERE applied_from IS NOT NULL`).Scan(&n); err != nil {
+					t.Fatal(err)
+				}
+				return n
+			}
+			if hashes() != 1 {
+				t.Fatal("no hash to drop")
+			}
+			tc.do(h)
+			if n := hashes(); n != 0 {
+				t.Fatalf("%d hashes left", n)
+			}
+		})
 	}
 }

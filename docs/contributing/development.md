@@ -12,7 +12,7 @@ internals. In brief:
 
 - **Simple sync.** Each note has a revision, and the server keeps a global change sequence.
   Clients push edits against the revision they started from, and pull everything changed since a
-  cursor. No CRDTs, no WebSockets.
+  cursor. No CRDTs, and no WebSockets for notes: the one socket is for agents and editors.
 - **No other services.** No Postgres, Redis, queue or search engine: search is SQLite's FTS5, and
   the whole state is one data directory (`system.db` and one database per account).
 

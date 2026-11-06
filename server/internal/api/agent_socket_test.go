@@ -113,6 +113,37 @@ func TestAgentSocketOutlivesTheWriteTimeout(t *testing.T) {
 	}
 }
 
+func TestSigningOutClosesTheSocket(t *testing.T) {
+	defer func(d time.Duration) { api.SocketPing = d }(api.SocketPing)
+	api.SocketPing = 20 * time.Millisecond
+	e := newEnv(t)
+	e.setupOwner()
+	c := e.webClient()
+	conn, _ := e.editorSocket(c)
+	if r := c.do("POST", "/api/v1/auth/logout", nil); r.status != 204 {
+		t.Fatalf("logout: %d", r.status)
+	}
+	var m map[string]any
+	if err := wsjson.Read(ctx, conn, &m); websocket.CloseStatus(err) != websocket.StatusPolicyViolation {
+		t.Fatalf("still open: %v %v", m, err)
+	}
+}
+
+func TestAnExpiredSessionClosesTheSocket(t *testing.T) {
+	defer func(d time.Duration) { api.SocketPing = d }(api.SocketPing)
+	api.SocketPing = 20 * time.Millisecond
+	e := newEnv(t)
+	e.setupOwner()
+	c := e.webClient()
+	conn, _ := e.editorSocket(c)
+	// Its row stays until the next sign-in clears it.
+	e.auth.SetClock(func() time.Time { return time.Now().Add(400 * 24 * time.Hour) })
+	var m map[string]any
+	if err := wsjson.Read(ctx, conn, &m); websocket.CloseStatus(err) != websocket.StatusPolicyViolation {
+		t.Fatalf("still open: %v %v", m, err)
+	}
+}
+
 func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
 	var woken atomic.Int32
 	e := newEnvWith(t, api.Config{OnRunQueued: func(int64) { woken.Add(1) }})

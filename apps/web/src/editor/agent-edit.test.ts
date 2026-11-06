@@ -29,6 +29,14 @@ describe('readForAgent', () => {
     expect(Array.from(fields.content).slice(0, cursor ?? 0).join('')).toBe('# Plan\n\nDear **Sam')
   })
 
+  it('leaves out a pending bold toggle, which the saved text lacks', () => {
+    open('Dear Sam', 'Dear')
+    editor.commands.toggleBold()
+    const { fields, cursor } = readForAgent(editor.state)
+    expect(fields.content).toBe('Dear Sam\n')
+    expect(Array.from(fields.content).slice(0, cursor ?? 0).join('')).toBe('Dear')
+  })
+
   it('has no cursor in the title', () => {
     open('Body')
     editor.view.dispatch(editor.state.tr.setSelection(TextSelection.create(editor.state.doc, 1)))

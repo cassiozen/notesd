@@ -493,6 +493,21 @@ func (s *Service) Revoke(ctx context.Context, userID int64, sessionID string) er
 	return nil
 }
 
+// Live reports whether a session is still good: not signed out, revoked or
+// expired. Expired rows stay until the next sign-in clears them.
+func (s *Service) Live(ctx context.Context, sessionID string) (bool, error) {
+	now := s.now().UnixMilli()
+	var one int
+	err := s.db.R.QueryRowContext(ctx, `
+		SELECT 1 FROM sessions WHERE id = ?
+		  AND ((kind = 'web' AND access_expires_at >= ?) OR (kind = 'device' AND refresh_expires_at >= ?))`,
+		sessionID, now, now).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
+}
+
 func validateUsername(u string) error {
 	if u == "" || utf8.RuneCountInString(u) > maxUsernameLen || strings.ContainsAny(u, "\x00\r\n\t") {
 		return &InputError{"username", "must be 1-64 characters without control characters"}

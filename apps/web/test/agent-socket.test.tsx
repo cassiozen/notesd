@@ -117,10 +117,20 @@ describe('the agent socket, connecting', () => {
     first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
     await waitFor(() => expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' }))
 
+    // Asked just before the drop: its answer must not reach the next connection.
+    let answer: ((v: object) => void) | undefined
+    const stop = agentSocket.serve('n1', { read: () => ({}), apply: () => new Promise((r) => (answer = r)) })
+    onTestFinished(stop)
+    const fields = { title: 'T', content: 'x' }
+    first.dispatchEvent(
+      new MessageEvent('message', { data: JSON.stringify({ type: 'apply', id: 's2', noteId: 'n1', before: fields, after: fields }) }),
+    )
     first.drop()
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
     const second = FakeSocket.all[1]
     second?.hello()
+    answer?.({})
+    await new Promise((r) => setTimeout(r, 0))
     expect(second?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
   })
 })

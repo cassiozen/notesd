@@ -91,10 +91,13 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 }
 
 // Closed records that c's editor closed the note, and reports whether it
-// was the last editor anywhere with it open.
+// was the last editor anywhere with it open; never for a note c didn't open.
 func (h *Hub) Closed(c *Conn, noteID string) (last bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if _, ok := c.open[noteID]; !ok {
+		return false
+	}
 	delete(c.open, noteID)
 	for other := range h.users[c.UserID] {
 		if _, ok := other.open[noteID]; ok {

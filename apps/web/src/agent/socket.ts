@@ -90,7 +90,10 @@ class AgentSocket {
         this.connectionId = m.connectionId
         for (const noteId of this.open) this.send({ type: 'editor.opened', noteId })
       } else if (m && typeof m.id === 'string') {
-        void this.answer(m).then((reply) => this.send({ type: 'result', id: m.id, ...reply }))
+        void this.answer(m).then((reply) => {
+          // Ids are per connection: on a newer one this would answer another call.
+          if (ws === this.ws) this.send({ type: 'result', id: m.id, ...reply })
+        })
       }
     })
     ws.addEventListener('close', () => {
