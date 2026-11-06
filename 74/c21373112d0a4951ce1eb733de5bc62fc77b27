@@ -1,0 +1,17 @@
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74c21373112d0a4951ce1eb733de5bc62fc77b27",
+  "prompts": {},
+  "sessions": {
+    "s_e8f99b7a15c6d1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "a65391e8-8130-4f7e-af6e-a94c7fd9c1b5",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
