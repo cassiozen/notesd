@@ -19,21 +19,22 @@
   container-type: inline-size;
 }
 
-/* A theme's sidebar option (themes.ts): tinted, on its own color; dark, the palette's dark side
-   in either mode. Switching color-scheme here makes every light-dark() color inside resolve dark. */
-:global(:root[data-sidebar='tinted']) .panel,
-:global(:root[data-sidebar='dark']) .panel {
+/* A theme's sidebar option (shared/themes), docked beside the list only: on a phone the sidebar is
+   a whole screen, and a dark one in light mode would just be the wrong mode. tinted: on its own
+   color; dark: the palette's dark side, as color-scheme makes every light-dark() inside resolve. */
+:global(:root[data-sidebar='tinted']) .docked,
+:global(:root[data-sidebar='dark']) .docked {
   border-radius: var(--pane-radius);
   background: var(--sidebar);
   color: var(--ink);
 }
 
-:global(:root[data-sidebar='dark']) .panel {
+:global(:root[data-sidebar='dark']) .docked {
   color-scheme: dark;
 }
 
 /* In dark mode the window is dark too: the sidebar sinks a step below it to stay its own column. */
-:global(:root[data-mode='dark'][data-sidebar='dark']) .panel {
+:global(:root[data-mode='dark'][data-sidebar='dark']) .docked {
   background: color-mix(in srgb, var(--sidebar) 80%, black);
 }
 
@@ -89,10 +90,11 @@
   gap: 13px 0;
 }
 
-/* The row's middle level with the buttons', which sit as far from the window's top as from its side. */
+/* The row's middle level with the buttons', which sit as far from the window's top as from its side,
+   wherever the style puts the columns (Flush has no window padding). */
 @media (min-width: 760px) {
   :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
-    padding-top: 2px;
+    padding-top: calc(14px - var(--app-padding));
   }
 }
 

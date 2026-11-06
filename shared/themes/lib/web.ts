@@ -24,6 +24,8 @@ const WEB_MODULES = resolve(ROOT, 'apps/web/node_modules')
 const HEADER = 'Generated from shared/themes by shared/themes/generate.ts. Change the JSON there and run `mise run themes`.'
 
 const px = (n: number) => (n === 0 ? '0' : `${round(n)}px`)
+/** Always with its unit: layout lengths go into calc(), where a bare 0 is invalid. */
+const length = (n: number) => `${round(n)}px`
 const pct = (a: number) => `${round(a * 100)}%`
 const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
@@ -76,9 +78,9 @@ function styleBlock(s: Style): string {
   const { layout, shape, material, lines, depth, backdrop, motion, details } = s
   const decls: [string, string][] = [
     ['radius-scale', round(shape['radius-scale'])],
-    ['app-gap', px(layout['app-gap'])],
-    ['app-padding', px(layout['app-padding'])],
-    ['pane-radius', px(layout['pane-radius'])],
+    ['app-gap', length(layout['app-gap'])],
+    ['app-padding', length(layout['app-padding'])],
+    ['pane-radius', length(layout['pane-radius'])],
     ['pane-border', border(layout['pane-border'])],
     ['pane-shadow', shadow(layout['pane-shadow'])],
     ['column-rule', border(layout['column-rule'])],

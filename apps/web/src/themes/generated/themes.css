@@ -700,9 +700,9 @@
 /* A desktop app's own window: columns edge to edge, split by hairlines, the note on a square sheet with no shadow. Small corners, menus with the system's frosted look, quick plain motion. Done tasks are struck through. */
 [data-style='flush'] {
   --radius-scale: 0.5;
-  --app-gap: 0;
-  --app-padding: 0;
-  --pane-radius: 0;
+  --app-gap: 0px;
+  --app-padding: 0px;
+  --pane-radius: 0px;
   --pane-border: 0 solid transparent;
   --pane-shadow: 0 0 transparent;
   --column-rule: 1px solid var(--hair);

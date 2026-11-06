@@ -6,7 +6,13 @@
 }
 
 .top h2 {
-  margin: 0;
+  min-width: 0;
+  /* Clipped for the ellipsis: room for descenders below the 1.0 line, given back in the margin. */
+  padding: 0.15em 0;
+  margin: -0.15em 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font: var(--title-style) var(--title-weight) calc(38px * var(--title-scale))/1 var(--font-title);
   letter-spacing: calc(-0.015em + var(--title-tracking));
   font-variation-settings: var(--title-axes);
@@ -636,7 +642,7 @@
 
 @media (max-width: 600px) {
   .top h2 {
-    font-size: 32px;
+    font-size: calc(32px * var(--title-scale));
   }
 
   .pair {

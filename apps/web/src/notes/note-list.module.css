@@ -128,19 +128,20 @@
     padding 0.34s var(--ease-out);
 }
 
-/* The title row's middle level with the buttons', which sit as far from the window's top as from its side. */
+/* The title row's middle level with the buttons', which sit as far from the window's top as from its side.
+   The window buttons are where they are; the 12px is the window padding these were set for. */
 @media (min-width: 760px) {
   :global(:root[data-desktop='macos']:not([data-fullscreen])) .header {
-    padding-top: 2px;
+    padding-top: calc(14px - var(--app-padding));
   }
 }
 
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden {
-  width: 366px;
+  width: calc(378px - var(--app-padding));
 }
 
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .sidebarHidden .titleRow {
-  padding-left: 66px;
+  padding-left: calc(78px - var(--app-padding));
 }
 
 :global(:root[data-desktop='macos']:not([data-fullscreen])) .showTags {
