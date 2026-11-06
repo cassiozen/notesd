@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -63,6 +62,7 @@ import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
 import notes.app.ui.Reveal
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.app.ui.pressScale
 
 enum class FindMode { Find, Replace }
@@ -221,7 +221,7 @@ private fun FindField(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val border by animateColorAsState(if (focused) t.accentDeep else t.hair, label = "border")
-    val shape = RoundedCornerShape(14.dp)
+    val shape = corners(14.dp)
     val style = Type.body.copy(fontSize = 16.sp, color = t.ink)
     Row(
         Modifier

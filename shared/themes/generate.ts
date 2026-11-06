@@ -4,7 +4,7 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { kotlin, KOTLIN } from './lib/kotlin.ts'
+import { androidFontFamilies, kotlin, KOTLIN } from './lib/kotlin.ts'
 import { ROOT, load } from './lib/model.ts'
 import { swift, SWIFT } from './lib/swift.ts'
 import { WEB_CSS, WEB_TS, webCss, webTs } from './lib/web.ts'
@@ -17,6 +17,7 @@ export function outputs(): Map<string, string> {
     [WEB_TS, webTs(lib)],
     [SWIFT, swift(lib)],
     [KOTLIN, kotlin(lib)],
+    ...androidFontFamilies(lib),
   ])
 }
 

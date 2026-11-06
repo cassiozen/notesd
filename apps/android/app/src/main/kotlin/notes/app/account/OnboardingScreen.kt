@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -67,6 +66,7 @@ import notes.app.ui.PasswordMeter
 import notes.app.ui.Reveal
 import notes.app.ui.Steps
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.app.ui.glass
 import notes.app.ui.shake
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -110,7 +110,7 @@ fun OnboardingScreen(vm: OnboardingViewModel, onDone: () -> Unit, onSkip: (() ->
                         if (vm.lockedServer == null) Steps(2, stepIndex)
                     }
                     Spacer(Modifier.height(20.dp))
-                    val shape = RoundedCornerShape(28.dp)
+                    val shape = corners(28.dp)
                     Box(
                         Modifier
                             .fillMaxWidth()

@@ -15,6 +15,7 @@ import java.io.File
 import kotlinx.coroutines.runBlocking
 import notes.app.editor.SAMPLE_MARKDOWN
 import notes.app.editor.SAMPLE_TITLE
+import notes.app.ui.themes.Themes
 import notes.core.api.RemoteNote
 import notes.core.api.Session
 import notes.core.api.SignIn
@@ -304,6 +305,43 @@ class ScreenshotTest {
             compose.onNode(hasContentDescription("Back")).performClick()
             compose.waitUntilExactlyOneExists(hasText(row))
         }
+    }
+
+    /** A theme other than Amber: the list, then the sample note. */
+    private fun themed(id: String, suffix: String, qualifiers: String?) {
+        graph.appearance.set(Themes.theme(id))
+        graph.setOnboardingDismissed(true)
+        seed()
+        launch(qualifiers)
+        compose.waitUntilExactlyOneExists(hasText(SAMPLE_TITLE))
+        shoot("theme-$id-list-$suffix")
+        compose.onNode(hasText(SAMPLE_TITLE)).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Undo"))
+        waitForEditor()
+        shoot("theme-$id-editor-$suffix")
+    }
+
+    @Test fun nocturneLight() = themed("nocturne", "light", null)
+
+    @Test fun nocturneDark() = themed("nocturne", "dark", "+night")
+
+    @Test fun cartaLight() = themed("carta", "light", null)
+
+    @Test fun cartaDark() = themed("carta", "dark", "+night")
+
+    @Test fun denLight() = themed("den", "light", null)
+
+    @Test fun denDark() = themed("den", "dark", "+night")
+
+    @Test
+    fun appearanceDark() {
+        graph.setOnboardingDismissed(true)
+        launch("+night")
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.onNode(hasContentDescription("Settings")).performClick()
+        compose.onNode(hasText("Appearance")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Nocturne"))
+        shoot("settings-appearance-dark")
     }
 
     @Test

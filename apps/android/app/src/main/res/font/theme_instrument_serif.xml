@@ -1,4 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Instrument Serif. Generated from shared/themes by shared/themes/generate.ts: run `mise run themes`. -->
 <font-family xmlns:android="http://schemas.android.com/apk/res/android">
     <font
         android:font="@font/instrument_serif"

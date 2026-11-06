@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -55,8 +54,8 @@ private fun Toast(data: SnackbarData) {
         Modifier
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .widthIn(max = 560.dp)
-            .shadow(24.dp, RoundedCornerShape(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
-            .clip(RoundedCornerShape(16.dp))
+            .shadow(24.dp, corners(16.dp), ambientColor = Color.Black, spotColor = Color.Black)
+            .clip(corners(16.dp))
             .background(t.solid)
             .heightIn(min = 52.dp)
             .padding(start = 18.dp, end = if (action != null || data.visuals.withDismissAction) 6.dp else 18.dp),
@@ -76,7 +75,7 @@ private fun Toast(data: SnackbarData) {
                 color = t.accent,
                 modifier = Modifier
                     .heightIn(min = 40.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(corners(12.dp))
                     .background(Color(0x38808080))
                     .clickable(role = Role.Button) { data.performAction() }
                     .padding(horizontal = 14.dp, vertical = 10.dp)
@@ -100,7 +99,7 @@ fun Sheet(onDismiss: () -> Unit, title: String? = null, content: @Composable () 
         containerColor = t.glassHi.compositeOverBg(t),
         contentColor = t.ink,
         scrimColor = t.scrim,
-        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+        shape = corners(topStart = 28.dp, topEnd = 28.dp),
         dragHandle = {
             Box(
                 Modifier.padding(
@@ -134,7 +133,7 @@ fun SheetItem(icon: ImageVector, label: String, onClick: () -> Unit, danger: Boo
         Modifier
             .fillMaxWidth()
             .heightIn(min = 56.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(corners(16.dp))
             .clickable(role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -182,8 +181,8 @@ fun NotesDialog(onDismiss: () -> Unit, title: String, content: @Composable () ->
     BasicAlertDialog(onDismissRequest = onDismiss) {
         Column(
             Modifier
-                .shadow(40.dp, RoundedCornerShape(28.dp))
-                .clip(RoundedCornerShape(28.dp))
+                .shadow(40.dp, corners(28.dp))
+                .clip(corners(28.dp))
                 .background(t.bg)
                 .padding(24.dp)
                 .semantics { paneTitle = title }

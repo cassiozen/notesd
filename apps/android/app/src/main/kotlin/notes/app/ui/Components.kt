@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -132,7 +131,7 @@ fun NotesButton(
         ButtonKind.DangerText -> Color.Transparent to t.danger
     }
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(if (small) 12.dp else 16.dp)
+    val shape = corners(if (small) 12.dp else 16.dp)
     val alpha by animateFloatAsState(if (enabled || busy) 1f else 0.5f, label = "enabled")
     Box(
         modifier
@@ -248,7 +247,7 @@ fun NotesField(
         label = "border"
     )
     val ring by animateFloatAsState(if (focused) 1f else 0f, label = "ring")
-    val shape = RoundedCornerShape(14.dp)
+    val shape = corners(14.dp)
     val textStyle = (if (mono) Type.mono.copy(fontSize = 15.sp) else Type.body.copy(fontSize = 16.sp))
         .copy(color = if (enabled) t.ink else t.ink2)
     // Label, input and message are all drawn by the text field itself, so they're one node: TalkBack reads
@@ -308,7 +307,7 @@ fun NotesField(
                             color = t.link,
                             modifier = Modifier
                                 .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(corners(10.dp))
                                 .clickable(role = Role.Button) { revealed = !revealed }
                                 .semantics {
                                     contentDescription = if (revealed) "Hide password" else "Show password"
@@ -349,7 +348,7 @@ fun Banner(
         BannerKind.Error -> Triple(t.errBg, t.errEdge, t.errInk)
         BannerKind.Info -> Triple(t.chip, t.edge, t.ink2)
     }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = corners(16.dp)
     Row(
         modifier
             .fillMaxWidth()
@@ -374,7 +373,7 @@ fun Banner(
                 color = ink,
                 modifier = Modifier
                     .heightIn(min = 48.dp)
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(corners(12.dp))
                     .clickable(role = Role.Button, onClick = onAction)
                     .padding(horizontal = 12.dp, vertical = 15.dp)
             )
@@ -501,7 +500,7 @@ fun BackLink(label: String?, onClick: () -> Unit, modifier: Modifier = Modifier,
         modifier
             .heightIn(min = 48.dp)
             .pressScale(interaction, 0.94f)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(corners(14.dp))
             .clickable(interaction, ripple(), role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = description }
             .padding(start = 6.dp, end = 12.dp),

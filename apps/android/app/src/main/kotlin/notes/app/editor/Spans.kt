@@ -130,19 +130,30 @@ class BlockSpan(val path: List<Container>, val leaf: Leaf, val marker: Marker?, 
         }
     }
 
+    /** The theme's box: round or with corners; ticked, a dot in an accent ring or filled. */
     private fun drawBox(c: Canvas, p: Paint, cx: Float, cy: Float, checked: Boolean) {
         val r = style.boxSize / 2f
+        fun shape(inset: Float) {
+            val corner = style.checkRadius
+            if (corner == null) {
+                c.drawCircle(cx, cy, r - inset, p)
+            } else {
+                c.drawRoundRect(cx - r + inset, cy - r + inset, cx + r - inset, cy + r - inset, corner, corner, p)
+            }
+        }
         p.style = Paint.Style.FILL
         if (checked) {
             p.color = style.accent
-            c.drawCircle(cx, cy, r, p)
-            p.color = style.onAccent
-            c.drawCircle(cx, cy, r * 0.45f, p)
+            shape(0f)
+            if (!style.checkFill) {
+                p.color = style.onAccent
+                c.drawCircle(cx, cy, r * 0.45f, p)
+            }
         }
         p.style = Paint.Style.STROKE
         p.strokeWidth = style.dp(1.5f)
         p.color = if (checked) style.accentDeep else style.ink3
-        c.drawCircle(cx, cy, r - p.strokeWidth / 2f, p)
+        shape(p.strokeWidth / 2f)
     }
 
     private fun markerCenterX(x: Float, dir: Int, column: Float): Float {
@@ -214,7 +225,10 @@ class LeafStyleSpan(val leaf: Leaf, val dim: Boolean, val quoted: Boolean, priva
             // A fence's colours come from the codec's spans (SpanCodec.codeSpans).
             leaf is Leaf.Raw -> if (fence == null) tp.color = style.ink2
 
-            dim -> tp.color = style.ink3
+            dim -> {
+                tp.color = style.ink3
+                tp.isStrikeThruText = style.doneStrike
+            }
 
             quoted && leaf == Leaf.Paragraph -> tp.color = style.ink2
         }
@@ -224,13 +238,20 @@ class LeafStyleSpan(val leaf: Leaf, val dim: Boolean, val quoted: Boolean, priva
         when (leaf) {
             Leaf.Title -> {
                 tp.textSize *= style.titleScale
-                tp.typeface = style.serif
-                tp.letterSpacing = -0.015f
+                tp.typeface = style.titleFace
+                tp.fontVariationSettings = style.titleAxes(tp.textSize)
+                tp.letterSpacing = style.titleTracking
             }
 
             is Leaf.Heading -> {
                 tp.textSize *= style.headingScale[leaf.level - 1]
-                tp.typeface = if (leaf.level < 3) style.serif else style.semibold
+                if (leaf.level < 3) {
+                    tp.typeface = style.titleFace
+                    tp.fontVariationSettings = style.titleAxes(tp.textSize)
+                    tp.letterSpacing = style.headingTracking
+                } else {
+                    tp.typeface = style.semibold
+                }
             }
 
             is Leaf.Raw -> {
@@ -241,6 +262,8 @@ class LeafStyleSpan(val leaf: Leaf, val dim: Boolean, val quoted: Boolean, priva
             Leaf.Paragraph -> if (quoted) {
                 tp.textSize *= style.quoteScale
                 tp.typeface = style.serifItalic
+                tp.fontVariationSettings = style.titleAxes(tp.textSize, style.quoteWeight)
+                tp.letterSpacing = style.headingTracking
             }
         }
     }
@@ -322,11 +345,14 @@ class LinkSpan(val href: String, val title: String?, private val style: EditorSt
  * reaches the document. [NoteEditText] draws the tint as a pill; a span's
  * bgColor would fill the whole line height, line spacing included.
  */
-class TagSpan(val name: String) :
+class TagSpan(val name: String, private val ink: Int? = null) :
     CharacterStyle(),
     UpdateAppearance {
-    // Still an UpdateAppearance so adding or moving one redraws the text.
-    override fun updateDrawState(tp: TextPaint) = Unit
+    // Still an UpdateAppearance so adding or moving one redraws the text. ink: a style that sets
+    // tags as coloured text rather than in a pill (EditorStyle.tagInk).
+    override fun updateDrawState(tp: TextPaint) {
+        ink?.let { tp.color = it }
+    }
 }
 
 /** Marks a "\n" that is a line break inside a paragraph, not the end of a block. */

@@ -49,8 +49,11 @@ data class ThemeInsets(val vertical: Float, val horizontal: Float)
 /** weights: one weight, or the range a variable font covers. */
 data class ThemeFontFace(val resource: Int, val weights: ClosedFloatingPointRange<Float>, val italic: Boolean)
 
-/** opticalSizing: has an opsz axis; set it to the text size, as browsers do by themselves. */
-data class ThemeTypeface(val name: String, val faces: List<ThemeFontFace>, val opticalSizing: Boolean)
+/**
+ * opticalSizing: has an opsz axis; set it to the text size, as browsers do by themselves. family:
+ * the font-family resource, every weight a real instance, for Views.
+ */
+data class ThemeTypeface(val name: String, val faces: List<ThemeFontFace>, val opticalSizing: Boolean, val family: Int)
 
 /**
  * The title face and how titles are set in it; quotes use it too, lighter. axes: variation axes
@@ -331,7 +334,8 @@ object Themes {
                     ThemeFontFace(R.font.instrument_serif, 400f..400f, italic = false),
                     ThemeFontFace(R.font.instrument_serif_italic, 400f..400f, italic = true)
                 ),
-                opticalSizing = false
+                opticalSizing = false,
+                family = R.font.theme_instrument_serif
             ),
             weight = 400f,
             italic = false,
@@ -347,7 +351,8 @@ object Themes {
                 ThemeFontFace(R.font.instrument_sans, 400f..700f, italic = false),
                 ThemeFontFace(R.font.instrument_sans_italic, 400f..700f, italic = true)
             ),
-            opticalSizing = false
+            opticalSizing = false,
+            family = R.font.theme_instrument_sans
         )
     )
 
@@ -498,7 +503,8 @@ object Themes {
                     ThemeFontFace(R.font.shippori_mincho_regular, 400f..400f, italic = false),
                     ThemeFontFace(R.font.shippori_mincho_medium, 500f..500f, italic = false)
                 ),
-                opticalSizing = false
+                opticalSizing = false,
+                family = R.font.theme_shippori_mincho
             ),
             weight = 500f,
             italic = false,
@@ -515,7 +521,8 @@ object Themes {
                 ThemeFontFace(R.font.zen_kaku_gothic_new_medium, 500f..500f, italic = false),
                 ThemeFontFace(R.font.zen_kaku_gothic_new_bold, 700f..700f, italic = false)
             ),
-            opticalSizing = false
+            opticalSizing = false,
+            family = R.font.theme_zen_kaku_gothic_new
         )
     )
 
@@ -680,7 +687,8 @@ object Themes {
                     ThemeFontFace(R.font.playfair, 400f..500f, italic = false),
                     ThemeFontFace(R.font.playfair_italic, 400f..500f, italic = true)
                 ),
-                opticalSizing = true
+                opticalSizing = true,
+                family = R.font.theme_playfair
             ),
             weight = 400f,
             italic = false,
@@ -696,7 +704,8 @@ object Themes {
                 ThemeFontFace(R.font.hanken_grotesk, 100f..900f, italic = false),
                 ThemeFontFace(R.font.hanken_grotesk_italic, 100f..900f, italic = true)
             ),
-            opticalSizing = false
+            opticalSizing = false,
+            family = R.font.theme_hanken_grotesk
         )
     )
 
@@ -849,7 +858,8 @@ object Themes {
                     ThemeFontFace(R.font.nunito_sans, 400f..800f, italic = false),
                     ThemeFontFace(R.font.nunito_sans_italic, 400f..800f, italic = true)
                 ),
-                opticalSizing = true
+                opticalSizing = true,
+                family = R.font.theme_nunito_sans
             ),
             weight = 750f,
             italic = false,
@@ -865,7 +875,8 @@ object Themes {
                 ThemeFontFace(R.font.nunito_sans, 400f..800f, italic = false),
                 ThemeFontFace(R.font.nunito_sans_italic, 400f..800f, italic = true)
             ),
-            opticalSizing = true
+            opticalSizing = true,
+            family = R.font.theme_nunito_sans
         )
     )
 

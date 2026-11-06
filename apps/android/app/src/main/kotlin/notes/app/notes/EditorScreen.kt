@@ -48,7 +48,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -118,6 +117,7 @@ import notes.app.ui.Reveal
 import notes.app.ui.Sheet
 import notes.app.ui.SheetItem
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.app.ui.hairline
 import notes.app.ui.pressScale
 import notes.app.ui.springPop
@@ -630,7 +630,7 @@ private fun BackLink(onClick: () -> Unit) {
         Modifier
             .heightIn(min = 48.dp)
             .pressScale(interaction, 0.94f)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(corners(14.dp))
             .clickable(interaction, ripple(), role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) { contentDescription = "Back" }
             .padding(start = 6.dp, end = 12.dp),

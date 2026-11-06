@@ -22,16 +22,19 @@ val LocalHaze = staticCompositionLocalOf<HazeState?> { null }
 /**
  * A translucent panel over the content behind it, like the web's backdrop-filter
  * surfaces. Real blur on Android 12+; earlier versions get the opaque glass colour.
+ * A style without blur (Paper) gets its panel colour as it is: opaque, in that style.
  */
 @Composable
 fun Modifier.glass(hi: Boolean = true): Modifier {
     val t = LocalTokens.current
     val tint = if (hi) t.glassHi else t.glass
     val state = LocalHaze.current ?: return background(tint)
+    val blur = t.theme.blurs.panel ?: return background(tint.compositeOverBg(t))
     return hazeBlur(
         HazeInput.Sources(state),
         HazeBlurStyle {
-            blurRadius(22.dp)
+            // Glass's 18px on the web reads as 22dp here; other styles in proportion.
+            blurRadius((blur.radius * 22f / 18f).dp)
             noiseFactor(0f)
             colorEffects(listOf(HazeColorEffect.tint(tint)))
             fallbackColorEffect(HazeColorEffect.tint(t.glassHi))
@@ -64,8 +67,11 @@ fun Color.compositeOverBg(t: Tokens): Color {
 @Composable
 fun Modifier.floating(): Modifier {
     val t = LocalTokens.current
+    // A capsule in every style, as the web's dock (999px, scaled, is still a capsule).
     val shape = RoundedCornerShape(28.dp)
-    return shadow(12.dp, shape)
+    // Only where the style gives floating things a shadow (Lumen keeps one, Flush a faint one).
+    val lift = if (t.theme.shadows.shadowPop.light.isEmpty()) 0.dp else 12.dp
+    return shadow(lift, shape)
         .clip(shape)
         .background(t.glassHi.compositeOverBg(t))
         .border(1.dp, t.edge, shape)

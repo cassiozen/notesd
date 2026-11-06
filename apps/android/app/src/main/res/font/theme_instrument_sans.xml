@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Instrument Sans is one variable font; each weight is an instance of it, so the editor's
-     Typeface.create(family, weight) and bold spans pick real weights instead of synthesising them. -->
+<!-- Instrument Sans. Generated from shared/themes by shared/themes/generate.ts: run `mise run themes`. -->
 <font-family xmlns:android="http://schemas.android.com/apk/res/android">
     <font
         android:font="@font/instrument_sans"
@@ -8,28 +7,13 @@
         android:fontVariationSettings="'wght' 400"
         android:fontWeight="400" />
     <font
-        android:font="@font/instrument_sans_italic"
-        android:fontStyle="italic"
-        android:fontVariationSettings="'wght' 400"
-        android:fontWeight="400" />
-    <font
         android:font="@font/instrument_sans"
         android:fontStyle="normal"
         android:fontVariationSettings="'wght' 500"
         android:fontWeight="500" />
     <font
-        android:font="@font/instrument_sans_italic"
-        android:fontStyle="italic"
-        android:fontVariationSettings="'wght' 500"
-        android:fontWeight="500" />
-    <font
         android:font="@font/instrument_sans"
         android:fontStyle="normal"
-        android:fontVariationSettings="'wght' 600"
-        android:fontWeight="600" />
-    <font
-        android:font="@font/instrument_sans_italic"
-        android:fontStyle="italic"
         android:fontVariationSettings="'wght' 600"
         android:fontWeight="600" />
     <font
@@ -37,6 +21,21 @@
         android:fontStyle="normal"
         android:fontVariationSettings="'wght' 700"
         android:fontWeight="700" />
+    <font
+        android:font="@font/instrument_sans_italic"
+        android:fontStyle="italic"
+        android:fontVariationSettings="'wght' 400"
+        android:fontWeight="400" />
+    <font
+        android:font="@font/instrument_sans_italic"
+        android:fontStyle="italic"
+        android:fontVariationSettings="'wght' 500"
+        android:fontWeight="500" />
+    <font
+        android:font="@font/instrument_sans_italic"
+        android:fontStyle="italic"
+        android:fontVariationSettings="'wght' 600"
+        android:fontWeight="600" />
     <font
         android:font="@font/instrument_sans_italic"
         android:fontStyle="italic"

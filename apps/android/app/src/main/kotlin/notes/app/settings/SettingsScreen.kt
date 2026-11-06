@@ -28,7 +28,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -65,6 +64,7 @@ import notes.app.ui.Icons
 import notes.app.ui.LocalReduceMotion
 import notes.app.ui.LocalTokens
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.core.crypto.LockSession
 import notes.core.db.Spaces
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -112,7 +112,7 @@ fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOp
                 CategoryRow(Icons.Mail, SettingsSection.Integrations, integrationsValue(email), onOpen)
             }
             GroupHeader("This phone only")
-            CategoryRow(Icons.Appearance, SettingsSection.Appearance, theme.label, onOpen)
+            CategoryRow(Icons.Appearance, SettingsSection.Appearance, theme.name, onOpen)
             CategoryRow(
                 Icons.Cloud,
                 SettingsSection.Device,
@@ -137,6 +137,7 @@ fun SettingsSectionScreen(
 ) {
     val t = LocalTokens.current
     val theme by graph.appearance.theme.collectAsStateWithLifecycle()
+    val mode by graph.appearance.mode.collectAsStateWithLifecycle()
     val account by graph.accounts.account.collectAsStateWithLifecycle()
     val lockState by graph.locks.state.collectAsStateWithLifecycle()
     val canFingerprint = remember { graph.fingerprint.available() }
@@ -206,8 +207,12 @@ fun SettingsSectionScreen(
             SettingsSection.Integrations -> IntegrationsPage(graph)
 
             SettingsSection.Appearance -> {
-                Segmented(Theme.entries, theme, { it.label }) { graph.appearance.set(it) }
-                Footnote("Only on this phone. Your other devices keep their own theme.")
+                PickerLabel("Mode")
+                Segmented(Mode.entries, mode, { it.label }) { graph.appearance.set(it) }
+                Spacer(Modifier.height(24.dp))
+                PickerLabel("Theme")
+                ThemeGallery(theme) { graph.appearance.set(it) }
+                Footnote("Only on this phone. Your other devices keep their own theme and mode.")
             }
 
             SettingsSection.Device -> {
@@ -359,6 +364,17 @@ private fun GroupHeader(label: String) {
     )
 }
 
+/** Above a control that isn't in a card: what it picks. */
+@Composable
+private fun PickerLabel(label: String) {
+    Text(
+        label,
+        style = Type.label,
+        color = LocalTokens.current.ink3,
+        modifier = Modifier.padding(start = 8.dp, bottom = 8.dp).semantics { heading() }
+    )
+}
+
 /** A category: its icon and title, and its state as a short value on the right. */
 @Composable
 private fun CategoryRow(icon: ImageVector, section: SettingsSection, value: String, onOpen: (SettingsSection) -> Unit) {
@@ -373,7 +389,7 @@ private fun CategoryRow(icon: ImageVector, section: SettingsSection, value: Stri
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(t.hover),
+            Modifier.size(32.dp).clip(corners(9.dp)).background(t.hover),
             contentAlignment = Alignment.Center
         ) {
             Icon(icon, null, Modifier.size(20.dp), tint = t.ink2)
@@ -412,7 +428,7 @@ private fun Who(username: String, server: String, note: String?) {
                     style = Type.label.copy(fontSize = 12.sp),
                     color = t.warnInk,
                     modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
+                        .clip(corners(8.dp))
                         .background(t.warnBg)
                         .padding(horizontal = 8.dp, vertical = 2.dp)
                 )
@@ -443,7 +459,7 @@ private fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, o
         Modifier
             .fillMaxWidth()
             .height(50.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(corners(16.dp))
             .background(t.hover)
     ) {
         val segment = maxWidth / options.size
@@ -458,9 +474,9 @@ private fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, o
                 .width(segment)
                 .fillMaxHeight()
                 .padding(3.dp)
-                .clip(RoundedCornerShape(11.dp))
+                .clip(corners(11.dp))
                 .background(t.bg)
-                .border(1.dp, t.edge, RoundedCornerShape(11.dp))
+                .border(1.dp, t.edge, corners(11.dp))
         )
         Row(Modifier.fillMaxSize().selectableGroup()) {
             for (option in options) {

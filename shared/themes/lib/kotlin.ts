@@ -19,6 +19,10 @@ import {
 import { camel } from './swift.ts'
 
 export const KOTLIN = 'apps/android/app/src/main/kotlin/notes/app/ui/themes/Themes.generated.kt'
+const FONT_RES = 'apps/android/app/src/main/res/font'
+
+/** theme_nunito_sans: the font-family resource the generator writes for a family. */
+const familyResource = (id: string) => `theme_${id.replace(/-/g, '_')}`
 
 const f = (n: number) => `${round(n)}f`
 const str = (s: string) => JSON.stringify(s)
@@ -62,7 +66,7 @@ function curve(c: Curve, depth: number): string {
   return `ThemeCurve.Linear(\n${inner}listOf(\n${rows.map((r) => `${item}${r}`).join(',\n')}\n${inner})\n${outer})`
 }
 
-function typeface(family: Family, depth: number): string {
+function typeface(id: string, family: Family, depth: number): string {
   const faces = family.native.faces.map((face) => {
     const [lo, hi] = typeof face.weight === 'number' ? [face.weight, face.weight] : face.weight
     return `ThemeFontFace(R.font.${face.android}, ${f(lo)}..${f(hi)}, italic = ${face.style === 'italic'})`
@@ -73,9 +77,50 @@ function typeface(family: Family, depth: number): string {
       ['name', str(family.name)],
       ['faces', list(faces, depth + 1)],
       ['opticalSizing', String(family.opticalSize === 'auto')],
+      ['family', `R.font.${familyResource(id)}`],
     ],
     depth,
   )
+}
+
+/**
+ * A font-family resource per family, as Views need one (Kotlin can't vary a font's axes for a
+ * TextView): each weight the UI sets, as a real instance, so bold text isn't drawn fake.
+ */
+export function androidFontFamilies(lib: Library): Map<string, string> {
+  const files = new Map<string, string>()
+  const titleWeights = Object.values(lib.fonts.title).flatMap((t) => [{ family: t.family, weight: t.weight }, { family: t.family, weight: t.quote.weight }])
+  for (const [id, family] of Object.entries(lib.fonts.families)) {
+    const wanted = [400, 500, 600, 700, ...titleWeights.filter((t) => t.family === id).map((t) => t.weight)]
+    const entries: string[] = []
+    for (const face of family.native.faces) {
+      const [lo, hi] = typeof face.weight === 'number' ? [face.weight, face.weight] : face.weight
+      const variable = lo !== hi
+      const weights = variable ? [...new Set(wanted)].filter((w) => w >= lo && w <= hi).toSorted((a, b) => a - b) : [lo]
+      for (const w of weights)
+        entries.push(
+          [
+            '    <font',
+            `        android:font="@font/${face.android}"`,
+            `        android:fontStyle="${face.style}"`,
+            ...(variable ? [`        android:fontVariationSettings="'wght' ${w}"`] : []),
+            `        android:fontWeight="${w}" />`,
+          ].join('\n'),
+        )
+    }
+    files.set(
+      `${FONT_RES}/${familyResource(id)}.xml`,
+      [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        `<!-- ${family.name}. Generated from shared/themes by shared/themes/generate.ts: run \`mise run themes\`. -->`,
+        '<font-family xmlns:android="http://schemas.android.com/apk/res/android">',
+        ...entries,
+        '</font-family>',
+        '',
+      ].join('\n'),
+    )
+  }
+  return files
 }
 
 function theme(lib: Library, t: Theme): string {
@@ -154,7 +199,7 @@ function theme(lib: Library, t: Theme): string {
         call(
           'ThemeTitleFont',
           [
-            ['typeface', typeface(titleFamily, 3)],
+            ['typeface', typeface(title.family, titleFamily, 3)],
             ['weight', f(title.weight)],
             ['italic', String(title.style === 'italic')],
             ['quoteWeight', f(title.quote.weight)],
@@ -166,7 +211,7 @@ function theme(lib: Library, t: Theme): string {
           2,
         ),
       ],
-      ['body', typeface(bodyFamily, 2)],
+      ['body', typeface(body.family, bodyFamily, 2)],
     ],
     1,
   )
@@ -215,8 +260,11 @@ data class ThemeInsets(val vertical: Float, val horizontal: Float)
 /** weights: one weight, or the range a variable font covers. */
 data class ThemeFontFace(val resource: Int, val weights: ClosedFloatingPointRange<Float>, val italic: Boolean)
 
-/** opticalSizing: has an opsz axis; set it to the text size, as browsers do by themselves. */
-data class ThemeTypeface(val name: String, val faces: List<ThemeFontFace>, val opticalSizing: Boolean)
+/**
+ * opticalSizing: has an opsz axis; set it to the text size, as browsers do by themselves. family:
+ * the font-family resource, every weight a real instance, for Views.
+ */
+data class ThemeTypeface(val name: String, val faces: List<ThemeFontFace>, val opticalSizing: Boolean, val family: Int)
 
 /**
  * The title face and how titles are set in it; quotes use it too, lighter. axes: variation axes

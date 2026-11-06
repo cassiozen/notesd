@@ -36,14 +36,17 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import notes.app.ui.Icons
+import notes.app.ui.InstrumentSerif
 import notes.app.ui.LocalReduceMotion
 import notes.app.ui.LocalTokens
 import notes.app.ui.Sans
-import notes.app.ui.Serif
+import notes.app.ui.Type
 import notes.app.ui.floating
 import notes.app.ui.pressScale
 import notes.core.doc.ListKind
@@ -89,8 +92,8 @@ private fun WritingTools(state: FormatState, editor: () -> NoteEditText?, onImag
     val body = !state.inTitle
     for (level in 1..3) {
         val style = when (level) {
-            1 -> TextStyle(fontFamily = Serif, fontSize = 21.sp)
-            2 -> TextStyle(fontFamily = Serif, fontSize = 18.sp)
+            1 -> Type.titleAt(21f).copy(lineHeight = TextUnit.Unspecified, lineBreak = LineBreak.Unspecified)
+            2 -> Type.titleAt(18f).copy(lineHeight = TextUnit.Unspecified, lineBreak = LineBreak.Unspecified)
             else -> TextStyle(fontFamily = Sans, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
         Glyph("Heading $level", "H$level", style, state.heading == level, body) { editor()?.toggleHeading(level) }
@@ -125,7 +128,7 @@ private fun SelectionTools(state: FormatState, editor: () -> NoteEditText?, onLi
     Glyph(
         "Italic",
         "I",
-        TextStyle(fontFamily = Serif, fontStyle = FontStyle.Italic, fontSize = 21.sp),
+        TextStyle(fontFamily = InstrumentSerif, fontStyle = FontStyle.Italic, fontSize = 21.sp),
         state.italic,
         body
     ) { editor()?.toggleItalic() }
