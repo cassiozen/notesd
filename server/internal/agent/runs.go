@@ -23,29 +23,29 @@ const (
 
 // Why a run failed or was skipped.
 const (
-	FailAgentOff     = "agent_off"    // turned off, or the trigger's prompt removed, since it was queued
-	FailNoteGone     = "note_gone"    // deleted before the run started
-	FailNoteMoved    = "note_moved"   // moved to another space before the run started
-	FailNoteLocked   = "note_locked"  // locked notes are never sent
-	FailDailyCap     = "daily_cap"    // the account used its tokens for the day
-	FailTokenCap     = "token_cap"    // the run used more tokens than one run may
-	FailToolCap      = "tool_cap"     // the run made more tool calls than one run may
-	FailTimeout      = "timeout"      // the run took longer than one run may
-	FailProvider     = "provider"     // the provider refused or failed
-	FailNoteChanged  = "note_changed" // the note kept changing under the run
-	FailInterrupted  = "interrupted"  // the server stopped during the run
+	FailAgentOff     = "agent_off"   // turned off, or the trigger's prompt removed, since it was queued
+	FailNoteGone     = "note_gone"   // deleted before the run started
+	FailNoteMoved    = "note_moved"  // moved to another space before the run started
+	FailNoteLocked   = "note_locked" // locked notes are never sent
+	FailDailyCap     = "daily_cap"   // the account used its tokens for the day
+	FailTokenCap     = "token_cap"   // the run used more tokens than one run may
+	FailToolCap      = "tool_cap"    // the run made more tool calls than one run may
+	FailTimeout      = "timeout"     // the run took longer than one run may
+	FailProvider     = "provider"    // the provider refused or failed
+	FailInterrupted  = "interrupted" // the server stopped during the run
 	FailQueueFull    = "queue_full"
 	FailUnknownEvent = "unknown_trigger"
 )
 
 // queuedRun is a run as the runner takes it from the queue.
 type queuedRun struct {
-	ID       string
-	Trigger  Trigger
-	SpaceID  string
-	NoteID   string
-	Event    Event
-	Attempts int
+	ID        string
+	CreatedAt int64
+	Trigger   Trigger
+	SpaceID   string
+	NoteID    string
+	Event     Event
+	Attempts  int
 	// What earlier attempts used, counted against this one's caps.
 	PriorToolCalls int
 	PriorTokens    int64
@@ -61,8 +61,8 @@ func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
 			UPDATE agent_runs SET status = 'running', started_at = ?, attempts = attempts + 1
 			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ?
 			            ORDER BY priority DESC, created_at, rowid LIMIT 1)
-			RETURNING id, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now).
-			Scan(&r.ID, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts, &r.PriorToolCalls, &r.PriorTokens)
+			RETURNING id, created_at, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now).
+			Scan(&r.ID, &r.CreatedAt, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts, &r.PriorToolCalls, &r.PriorTokens)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
 		return r, false, nil
@@ -116,6 +116,14 @@ type finished struct {
 	CompletionTokens int64
 	// RetryAt, when set, puts the run back in the queue until then.
 	RetryAt time.Time
+	timing  timing
+}
+
+// timing is where a run's time went, for the log: getting ready (prep),
+// the model's calls, and the tools'.
+type timing struct {
+	prep, model, tools time.Duration
+	calls              int
 }
 
 // maxMessage bounds a run's stored message.

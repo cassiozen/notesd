@@ -202,9 +202,15 @@ func TestAutoTagging(t *testing.T) {
 	// What the model was told.
 	req := h.model.requests[0]
 	system, user := req.Messages[0].Content, req.Messages[1].Content
-	for _, want := range []string{"Space.", "Do newNoteDone.", "Asia/Tokyo", "2023-11-15"} {
+	for _, want := range []string{"Space.", "Do newNoteDone."} {
 		if !strings.Contains(system, want) {
 			t.Errorf("system prompt lacks %q:\n%s", want, system)
+		}
+	}
+	// The time goes with the event, so the system prompt stays the same from run to run.
+	for _, want := range []string{"Asia/Tokyo", `"today": "2023-11-15"`} {
+		if !strings.Contains(user, want) || strings.Contains(system, want) {
+			t.Errorf("event lacks %q:\n%s", want, user)
 		}
 	}
 	if !strings.Contains(user, `"content": "Milk\nEggs"`) || !strings.Contains(user, `"trigger": "newNoteDone"`) {
@@ -453,21 +459,18 @@ func TestNoteChangedUnderTheRun(t *testing.T) {
 			return toolReply("insert", `{"at": "end", "text": "#tag"}`), nil
 		}
 	}
-	t.Run("starts over once", func(t *testing.T) {
+	t.Run("the change is made to the note as it is now", func(t *testing.T) {
 		h := newHarness(t)
 		h.agent("work", agent.NewNoteDone)
 		h.done("n1", "a")
-		h.model.steps = append(h.model.steps, userTypes(h, "ab"), call("insert", `{"at": "end", "text": "#tag"}`), final("Tagged."))
+		h.model.steps = append(h.model.steps, userTypes(h, "ab"), final("Tagged."))
 		h.next()
 		if got := h.content("n1"); got != "ab\n\n#tag\n" {
 			t.Fatalf("content: %q", got)
 		}
-		if r := h.only(); r.Status != agent.StatusDone || r.outcome != agent.OutcomeEdited {
-			t.Fatalf("run: %+v", r)
-		}
-		// The second start saw the user's text.
-		if !strings.Contains(h.model.requests[1].Messages[1].Content, `"content": "ab"`) {
-			t.Fatalf("restart: %s", h.model.requests[1].Messages[1].Content)
+		// Without starting over: no model call again.
+		if r := h.only(); r.Status != agent.StatusDone || r.outcome != agent.OutcomeEdited || h.model.calls() != 2 {
+			t.Fatalf("run: %+v after %d calls", r, h.model.calls())
 		}
 	})
 	t.Run("stops when the note can't be read again", func(t *testing.T) {
@@ -499,17 +502,20 @@ func TestNoteChangedUnderTheRun(t *testing.T) {
 			})
 		}
 	})
-	t.Run("then gives up", func(t *testing.T) {
+	t.Run("a find the user changed comes back with the note as it is now", func(t *testing.T) {
 		h := newHarness(t)
 		h.agent("work", agent.NewNoteDone)
-		h.done("n1", "a")
-		h.model.steps = append(h.model.steps, userTypes(h, "ab"), userTypes(h, "abc"))
+		h.done("n1", "a b")
+		h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+			h.update("n1", "a c", nil)
+			return toolReply("edit_note", `{"find": "b", "replace": "B"}`), nil
+		}, final("No change."))
 		h.next()
-		if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailNoteChanged {
-			t.Fatalf("run: %+v", r)
-		}
-		if h.content("n1") != "abc" {
+		if h.content("n1") != "a c" {
 			t.Fatal("the agent wrote over the user")
+		}
+		if got := lastToolResult(h.model.requests[1]); !strings.Contains(got, `"error"`) || !strings.Contains(got, `"content":"a c"`) {
+			t.Fatalf("told: %s", got)
 		}
 	})
 }
@@ -802,5 +808,27 @@ func TestWorkersEndIdleSessionsWhenWoken(t *testing.T) {
 			t.Fatalf("runs: %+v", runs)
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func TestDoneEndsTheRunWithItsLastChange(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "Milk")
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "end", "text": "#groceries", "done": "Tagged it."}`))
+	h.next()
+	r := h.only()
+	if r.Status != agent.StatusDone || r.message != "Tagged it." || r.outcome != agent.OutcomeEdited || h.model.calls() != 1 ||
+		h.content("n1") != "Milk\n\n#groceries\n" {
+		t.Fatalf("run %+v after %d calls: %q", r, h.model.calls(), h.content("n1"))
+	}
+
+	// A refused change: the model hears why, so the run goes on.
+	h.done("n2", "Eggs")
+	h.model.steps = append(h.model.steps, call("edit_note", `{"find": "Ham", "replace": "Jam", "done": "Fixed it."}`), final("No change: no ham."))
+	h.next()
+	runs := h.allRuns()
+	if r := runs[len(runs)-1]; r.message != "No change: no ham." || h.model.calls() != 3 {
+		t.Fatalf("run %+v after %d calls", r, h.model.calls())
 	}
 }

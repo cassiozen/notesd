@@ -17,7 +17,7 @@ Rules:
 - Never write notes for the user beyond what a prompt asks.
 - You can only see and change notes in this space.
 - Read a note before you change it. edit_note's find must match exactly once, so include enough of the text around what you change.
-- When you're done, answer with one short line saying what you did, or "No change" and why.
+- With your last change, give done: one short line saying what you did. The run ends there, so make your other changes before it or in the same reply. If you change nothing, answer with "No change" and why.
 
 Notes are Markdown: headings (#, ##, ###), **bold**, *italic*, ~~strikethrough~~, lists (- item, 1. item), task lists (- [ ] to do, - [x] done), > quotes and [links](https://example.com). A note's title is separate from its content: change it with set_title, never as a heading in the content.
 
@@ -34,18 +34,13 @@ var triggerNames = map[Trigger]string{
 	Menu:        "The user asked for this from a note's menu",
 }
 
-// systemPrompt is the fixed instructions, the time, the space's prompt and
-// the trigger's.
-func systemPrompt(c Config, t Trigger, now time.Time) string {
+// systemPrompt is the fixed instructions, the space's prompt and the
+// trigger's. Nothing in it changes from run to run, so the provider can
+// cache it: the time goes in the event message.
+func systemPrompt(c Config, t Trigger) string {
 	var b strings.Builder
 	b.WriteString(instructions)
-	b.WriteString("\n\nIt is ")
-	b.WriteString(now.Format("Monday, 2 January 2006, 15:04"))
-	b.WriteString(" (")
-	b.WriteString(now.Location().String())
-	b.WriteString("). Today's date is ")
-	b.WriteString(now.Format(time.DateOnly))
-	b.WriteString(".\n\n## This space\n\n")
+	b.WriteString("\n\n## This space\n\n")
 	if c.Prompt != "" {
 		b.WriteString(c.Prompt)
 	} else {
@@ -58,10 +53,14 @@ func systemPrompt(c Config, t Trigger, now time.Time) string {
 	return b.String()
 }
 
-// eventMessage tells the agent what happened, with the note when it can
-// still read it.
-func eventMessage(r queuedRun, n *notes.Note, spaceName func(string) string) string {
-	m := map[string]any{"trigger": r.Trigger, "noteId": r.NoteID}
+// eventMessage tells the agent what happened and when, with the note when
+// it can still read it.
+func eventMessage(r queuedRun, now time.Time, n *notes.Note, spaceName func(string) string) string {
+	m := map[string]any{
+		"trigger": r.Trigger, "noteId": r.NoteID,
+		"now":   now.Format("Monday, 2 January 2006, 15:04") + " (" + now.Location().String() + ")",
+		"today": now.Format(time.DateOnly),
+	}
 	switch {
 	case r.Event.Title != nil:
 		m["note"] = map[string]any{"id": r.NoteID, "title": *r.Event.Title, "content": deref(r.Event.Content)}

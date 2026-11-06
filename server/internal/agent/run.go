@@ -49,6 +49,8 @@ type runState struct {
 
 // execute runs r to its end and records how it went.
 func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r queuedRun) {
+	began := time.Now()
+	waited := rn.now().Sub(time.UnixMilli(r.CreatedAt))
 	var f finished
 	// Without the account's time zone, the day's usage would go to the wrong day.
 	if settings, err := acct.Agent.Settings(ctx); err != nil {
@@ -79,12 +81,15 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	if err := acct.Agent.finish(done, r.ID, f); err != nil {
 		rn.log.Error("agent run: record", "run", r.ID, "err", err)
 	}
+	t := f.timing
 	rn.log.Info("agent run", "run", r.ID, "trigger", r.Trigger, "status", f.Status, "failure", f.Failure,
-		"tools", f.ToolCalls, "tokens", f.PromptTokens+f.CompletionTokens)
+		"tools", f.ToolCalls, "tokens", f.PromptTokens+f.CompletionTokens,
+		"waited", waited, "prep", t.prep, "modelCalls", t.calls, "model", t.model, "toolTime", t.tools, "total", time.Since(began))
 }
 
 // attempt checks the run still makes sense, then talks to the model.
 func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r queuedRun, now time.Time) finished {
+	began := time.Now()
 	day := now.Format(time.DateOnly)
 	if _, ok := triggerNames[r.Trigger]; !ok {
 		return skipped(FailUnknownEvent, "This server doesn't know the trigger "+string(r.Trigger)+".")
@@ -123,36 +128,17 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	defer cancel()
 	spaceName := func(id string) string { return acct.SpaceName(ctx, id) }
 	var f finished
-	for start := 0; start < 2; start++ {
-		rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, ops: start * 1000, day: day,
-			budget: min(left, today), dailyLimited: today <= left}
-		if note != nil {
-			rs.reads[note.ID] = *note
-		}
-		messages := []llm.Message{
-			{Role: "system", Content: systemPrompt(c, r.Trigger, now)},
-			{Role: "user", Content: eventMessage(r, note, spaceName)},
-		}
-		err := rn.converse(runCtx, rs, st, messages, &f)
-		if !errors.Is(err, errRestart) {
-			break
-		}
-		if start == 1 {
-			f.Status, f.Failure = StatusFailed, FailNoteChanged
-			f.Message = "The note kept changing while the agent worked on it, so it gave up."
-			break
-		}
-		// Start over from the note as it is now.
-		if note != nil {
-			n, err := acct.Notes.Get(ctx, r.NoteID)
-			if u := unusable(n, err, r.SpaceID, true); u.Status != "" {
-				// f keeps what the first try spent.
-				f.Status, f.Failure, f.Message = u.Status, u.Failure, u.Message
-				return f
-			}
-			note = &n
-		}
+	rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, day: day,
+		budget: min(left, today), dailyLimited: today <= left}
+	if note != nil {
+		rs.reads[note.ID] = *note
 	}
+	messages := []llm.Message{
+		{Role: "system", Content: systemPrompt(c, r.Trigger)},
+		{Role: "user", Content: eventMessage(r, now, note, spaceName)},
+	}
+	f.timing.prep = time.Since(began)
+	rn.converse(runCtx, rs, st, messages, &f)
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) && f.Status == "" {
 		f.Status, f.Failure, f.Message = StatusFailed, FailTimeout, fmt.Sprintf("The run took longer than %s.", RunTimeout)
 	}
@@ -203,10 +189,12 @@ func unusable(n notes.Note, err error, spaceID string, started bool) finished {
 }
 
 // converse talks to the model until it stops calling tools, filling in f.
-// It returns errRestart when a note changed under a write.
-func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, messages []llm.Message, f *finished) error {
+func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, messages []llm.Message, f *finished) {
 	for {
+		called := time.Now()
 		res, err := rn.chat(ctx, st, llm.ChatRequest{Messages: messages, Tools: tools})
+		f.timing.calls++
+		f.timing.model += time.Since(called)
 		if err != nil {
 			var pe *llm.ProviderError
 			switch {
@@ -217,14 +205,14 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			default:
 				f.Status, f.Failure, f.Message = StatusFailed, FailProvider, err.Error()
 			}
-			return err
+			return
 		}
 		f.Model = res.Model
 		f.PromptTokens += res.Usage.PromptTokens
 		f.CompletionTokens += res.Usage.CompletionTokens
 		if err := rs.acct.Agent.addUsage(ctx, rs.run.ID, rs.day, res.Model, res.Usage.PromptTokens, res.Usage.CompletionTokens); err != nil {
 			interrupted(ctx, f, err)
-			return err
+			return
 		}
 		if f.PromptTokens+f.CompletionTokens > rs.budget {
 			f.Status, f.Failure = StatusFailed, FailTokenCap
@@ -232,32 +220,48 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			if rs.dailyLimited {
 				f.Failure, f.Message = FailDailyCap, "The account reached its tokens for today during the run."
 			}
-			return nil
+			return
 		}
 		if len(res.Message.ToolCalls) == 0 {
 			f.Status, f.Message = StatusDone, strings.TrimSpace(res.Message.Content)
-			return nil
+			return
 		}
 		messages = append(messages, llm.Message{Role: "assistant", Content: res.Message.Content, ToolCalls: res.Message.ToolCalls})
+		// The model's summary, when it said this reply holds its last change.
+		summary, refused := "", false
 		for _, tc := range res.Message.ToolCalls {
 			f.ToolCalls++
 			if f.ToolCalls > MaxToolCalls-rs.run.PriorToolCalls {
 				f.Status, f.Failure = StatusFailed, FailToolCap
 				f.Message = fmt.Sprintf("The run made more than %d tool calls.", MaxToolCalls)
-				return nil
+				return
 			}
+			ran := time.Now()
 			out, err := rs.call(ctx, tc)
+			f.timing.tools += time.Since(ran)
+			if d := doneWith(tc); d != "" {
+				summary = d
+			}
 			var te *toolError
+			var stop *stopError
 			switch {
-			case errors.Is(err, errRestart):
-				return err
+			case errors.As(err, &stop):
+				f.Status, f.Failure, f.Message = stop.f.Status, stop.f.Failure, stop.f.Message
+				return
 			case errors.As(err, &te):
-				out = jsonString(map[string]string{"error": te.msg})
+				refused = true
+				out = toolErrorResult(te)
 			case err != nil:
 				interrupted(ctx, f, err)
-				return err
+				return
 			}
 			messages = append(messages, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: out})
+		}
+		// Saves a model call just to say so. A refused call needs the model
+		// to hear why, so the run goes on.
+		if summary != "" && !refused {
+			f.Status, f.Message = StatusDone, summary
+			return
 		}
 	}
 }
