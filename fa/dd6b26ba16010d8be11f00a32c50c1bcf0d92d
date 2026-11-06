@@ -1,0 +1,55 @@
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_5ada401c73c0e4 38-42
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_ff2be68c56c277 9
+  s_cc6cacc0a6fc01::t_56662e7fc32819 139-204
+apps/web/src/agent/triggers.ts
+  s_cc6cacc0a6fc01::t_5404cdc16244b9 11-12,18
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_cae5e852d450a6 802-805
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_fca934e909252e 486-489,527-528
+server/internal/agent/request.go
+  s_cc6cacc0a6fc01::t_68c448ad178440 28,72-74,81,83-85,87-90,92
+  s_cc6cacc0a6fc01::t_5ada401c73c0e4 36
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_fca934e909252e 45-46
+server/internal/editors/hub_test.go
+  s_cc6cacc0a6fc01::t_cae5e852d450a6 113-114
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_5ada401c73c0e4 42
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_a8bee35df5f5a7 128,130,158-167,201-202,247-252,341-343
+  s_cc6cacc0a6fc01::t_b63f9c80fc5668 344
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_5ada401c73c0e4 286-287,289
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_56662e7fc32819 21,40-41
+  s_cc6cacc0a6fc01::t_5181ab59084bc6 42
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_fca934e909252e 442-448
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_6cc0397c9839b4 277-279,303,340-341
+  s_cc6cacc0a6fc01::t_a8bee35df5f5a7 60-66,234-240,264,275-276,280-301,342,370-377
+  s_cc6cacc0a6fc01::t_635a1c80f0a153 302,304
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_5404cdc16244b9 37
+server/internal/agent/editors.go
+  s_cc6cacc0a6fc01::t_5ada401c73c0e4 25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fadd6b26ba16010d8be11f00a32c50c1bcf0d92d",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
