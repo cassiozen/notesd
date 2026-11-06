@@ -1,0 +1,27 @@
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_07f32e5c724a16 44-47,63,117-132,140,182,190,192,194
+server/internal/editors/hub_test.go
+  s_cc6cacc0a6fc01::t_7d999065cd578c 80-102
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_07f32e5c724a16 142-145
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_07f32e5c724a16 158
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_70b5f77c8ef3e1 103-137
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cd2abcb337fad8bf7d03f39d9d82b30cb992c98",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
