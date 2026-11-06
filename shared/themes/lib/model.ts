@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs'
 import { resolve } from 'node:path'
-import Ajv2020 from 'ajv/dist/2020.js'
+import { Ajv2020 } from 'ajv/dist/2020.js'
 import { parse, withAlpha, type RGBA } from './color.ts'
 
 /** shared/themes, where the definitions are. */
@@ -18,7 +18,7 @@ export type Paint =
   | { role: string; alpha?: Alpha }
   | { color: string; alpha?: Alpha }
   | { token: string }
-  | PerMode<Paint>
+  | { light: Paint; dark: Paint }
 export type Layer = { x?: number; y?: number; blur?: number; spread?: number; inset?: boolean; color: Paint }
 export type Layers = (Layer | string)[]
 export type Shadow = Layers | PerMode<Layers>

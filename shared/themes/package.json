@@ -6,9 +6,12 @@
   "scripts": {
     "generate": "node generate.ts",
     "check": "node generate.ts --check",
+    "typecheck": "tsc",
     "test": "node --test"
   },
   "devDependencies": {
-    "ajv": "^8.17.1"
+    "@types/node": "^24.0.0",
+    "ajv": "^8.17.1",
+    "typescript": "^7.0.0"
   }
 }

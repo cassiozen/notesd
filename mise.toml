@@ -88,7 +88,13 @@ run = "pnpm deps"
 
 [tasks.typecheck]
 dir = "apps/web"
-depends = ["install", "build:deps"]
+depends = ["install", "build:deps", "typecheck:themes"]
+run = "pnpm typecheck"
+
+# Node runs the generator's TypeScript without checking its types.
+[tasks."typecheck:themes"]
+dir = "shared/themes"
+depends = ["install"]
 run = "pnpm typecheck"
 
 [tasks.test]
