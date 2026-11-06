@@ -23,6 +23,8 @@ struct NoteScreen: View {
     @State private var typedPassword = false
     /// Locked with this screen's Lock now: the placeholder doesn't ask for biometrics straight back.
     @State private var lockedHere = false
+    /// The bars run down the window's side (the iPhone Duo): the formatting tools are in it.
+    @State private var sideBar = false
 
     init(
         store: NoteStore, images: ImageStore? = nil, locks: LockSession? = nil, id: String, startTag: String?,
@@ -95,7 +97,14 @@ struct NoteScreen: View {
             if model.locked && scenePhase != .active { PrivacyCover() }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .readsSideBar($sideBar)
+        .onChange(of: sideBar, initial: true) { controller.toolsInSideBar = $1 }
         .toolbar {
+            #if canImport(SwiftUI, _version: 8.0.85)
+                if sideBar && showsText {
+                    if #available(iOS 27.1, *) { SideFormattingTools(controller: controller) }
+                }
+            #endif
             if model.locked && !model.needsUnlock {
                 ToolbarItem(placement: .topBarTrailing) {
                     Button("Lock now", systemImage: "lock") {
@@ -115,44 +124,16 @@ struct NoteScreen: View {
                 }
                 ToolbarSpacer(.fixed, placement: .topBarTrailing)
             }
-            ToolbarItem(placement: .topBarTrailing) {
-                Menu {
-                    if showsText {
-                        Section {
-                            Button("Find", systemImage: "magnifyingglass") { controller.find(replacing: false) }
-                            Button("Find and Replace", systemImage: "arrow.left.arrow.right") {
-                                controller.find(replacing: true)
-                            }
-                        }
-                    }
-                    if !model.needsUnlock, let doc = controller.document() {
-                        ShareLink(item: share(doc)) { Label("Share", systemImage: "square.and.arrow.up") }
-                    }
-                    if canEmail {
-                        Button("Email…", systemImage: "envelope") {
-                            saveNow()
-                            emailing = true
-                        }
-                    }
-                    if canChangeLock {
-                        if model.locked {
-                            Button("Remove lock", systemImage: "lock.open") { setLocked(false) }
-                        } else {
-                            Button("Lock note", systemImage: "lock") { setLocked(true) }
-                        }
-                    }
-                    if graph.spaces.count > 1 && model.status != .blank {
-                        Menu("Move to Space", systemImage: "arrow.right.square") {
-                            ForEach(graph.spaces.filter { $0.id != model.spaceId }) { space in
-                                Button(space.name) { move(to: space.id) }
-                            }
-                        }
-                    }
-                    Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
-                } label: {
-                    Label("More", systemImage: "ellipsis")
+            #if canImport(SwiftUI, _version: 8.0.85)
+                if sideBar {
+                    // Merged with the side bar's overflow: one ••• button, not two stacked.
+                    if #available(iOS 27.1, *) { ToolbarOverflowMenu { moreItems } }
+                } else {
+                    moreMenu
                 }
-            }
+            #else
+                moreMenu
+            #endif
         }
         .confirmationDialog("Delete this note?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -220,6 +201,51 @@ struct NoteScreen: View {
         .buttonStyle(.plain)
         .padding(.horizontal, 16)
         .padding(.top, 8)
+    }
+
+    private var moreMenu: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                moreItems
+            } label: {
+                Label("More", systemImage: "ellipsis")
+            }
+        }
+    }
+
+    @ViewBuilder private var moreItems: some View {
+        if showsText {
+            Section {
+                Button("Find", systemImage: "magnifyingglass") { controller.find(replacing: false) }
+                Button("Find and Replace", systemImage: "arrow.left.arrow.right") {
+                    controller.find(replacing: true)
+                }
+            }
+        }
+        if !model.needsUnlock, let doc = controller.document() {
+            ShareLink(item: share(doc)) { Label("Share", systemImage: "square.and.arrow.up") }
+        }
+        if canEmail {
+            Button("Email…", systemImage: "envelope") {
+                saveNow()
+                emailing = true
+            }
+        }
+        if canChangeLock {
+            if model.locked {
+                Button("Remove lock", systemImage: "lock.open") { setLocked(false) }
+            } else {
+                Button("Lock note", systemImage: "lock") { setLocked(true) }
+            }
+        }
+        if graph.spaces.count > 1 && model.status != .blank {
+            Menu("Move to Space", systemImage: "arrow.right.square") {
+                ForEach(graph.spaces.filter { $0.id != model.spaceId }) { space in
+                    Button(space.name) { move(to: space.id) }
+                }
+            }
+        }
+        Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
     }
 
     /// The editor is showing the note's text, not the locked placeholder or nothing yet.

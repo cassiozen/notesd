@@ -26,15 +26,14 @@ func suggestTags(_ tags: [TagCount], query: String) -> [TagCount] {
 /// the tags that complete the one being typed. In the title, nothing applies.
 struct FormattingBar: View {
     let controller: EditorController
-    let tags: [TagCount]
 
     private var state: FormatState { controller.format }
 
     var body: some View {
         Group {
-            if let tag = state.tag, !suggestions(tag).isEmpty {
+            if let tag = state.tag, !controller.suggestions.isEmpty {
                 tagStrip(tag)
-            } else {
+            } else if !controller.toolsInSideBar {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(spacing: 2) {
                         if state.selecting { selectionTools } else { writingTools }
@@ -64,16 +63,11 @@ struct FormattingBar: View {
     }
 
     @ViewBuilder private var writingTools: some View {
-        glyph("H1", "Heading 1", font: .custom("InstrumentSerif-Regular", size: 22), on: state.heading == 1) {
-            $0.toggleHeading(1)
+        ForEach(1...3, id: \.self) { level in
+            glyph("H\(level)", "Heading \(level)", font: .heading(level), on: state.heading == level) {
+                $0.toggleHeading(level)
+            }
         }
-        glyph("H2", "Heading 2", font: .custom("InstrumentSerif-Regular", size: 19), on: state.heading == 2) {
-            $0.toggleHeading(2)
-        }
-        glyph(
-            "H3", "Heading 3", font: .custom("InstrumentSans-Regular", size: 15).weight(.semibold),
-            on: state.heading == 3
-        ) { $0.toggleHeading(3) }
         divider
         button("list.bullet", "Bulleted list", on: state.list == .bullet) { $0.toggleList(.bullet) }
         button("list.number", "Numbered list", on: state.list == .ordered) { $0.toggleList(.ordered) }
@@ -144,14 +138,10 @@ struct FormattingBar: View {
         .accessibilityAddTraits(on ? .isSelected : [])
     }
 
-    private func suggestions(_ tag: TagAtCursor) -> [TagCount] {
-        tag.query.map { suggestTags(tags, query: $0) } ?? []
-    }
-
     private func tagStrip(_ tag: TagAtCursor) -> some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 6) {
-                ForEach(suggestions(tag), id: \.key) { suggestion in
+                ForEach(controller.suggestions, id: \.key) { suggestion in
                     Button {
                         controller.run { $0.insertTag(tag.range, name: suggestion.name) }
                     } label: {
@@ -166,6 +156,17 @@ struct FormattingBar: View {
                 }
             }
             .padding(.horizontal, 4)
+        }
+    }
+}
+
+extension Font {
+    /// The heading tools' faces: each level as it looks in the note, at a tool's size.
+    static func heading(_ level: Int) -> Font {
+        switch level {
+        case 1: .custom("InstrumentSerif-Regular", size: 22)
+        case 2: .custom("InstrumentSerif-Regular", size: 19)
+        default: .custom("InstrumentSans-Regular", size: 15).weight(.semibold)
         }
     }
 }

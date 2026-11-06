@@ -110,11 +110,27 @@ final class NoteTextView: UITextView, UITextViewDelegate, NSTextLayoutManagerDel
         reportMargins()
     }
 
+    override func safeAreaInsetsDidChange() {
+        super.safeAreaInsetsDidChange()
+        reportMargins()
+    }
+
+    /// Swaps what's above the keyboard; while it's up, the keyboard picks the change up straight away.
+    func setAccessory(_ accessory: UIView?) {
+        guard inputAccessoryView !== accessory else { return }
+        inputAccessoryView = accessory
+        if isFirstResponder { reloadInputViews() }
+    }
+
     /// After layout, and when the view moves without resizing (the sidebar pushing the note aside).
     func reportMargins() {
         guard let window else { return }
         let frame = convert(bounds, to: window)
-        let now = (leading: frame.minX.rounded(), trailing: (window.bounds.width - frame.maxX).rounded())
+        // Safe-area insets count too: running under the iPhone Duo's side bar, the text view's edge is the window's.
+        let now = (
+            leading: (frame.minX + safeAreaInsets.left).rounded(),
+            trailing: (window.bounds.width - frame.maxX + safeAreaInsets.right).rounded()
+        )
         if margins.map({ $0 != now }) ?? true {
             margins = now
             onMargins?(now.leading, now.trailing)
