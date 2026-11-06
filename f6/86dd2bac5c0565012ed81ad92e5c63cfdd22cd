@@ -1,0 +1,47 @@
+server/internal/api/ai_handlers.go
+  s_cc6cacc0a6fc01::t_08407da8e006a1 69,71
+apps/web/src/settings/ai.tsx
+  s_cc6cacc0a6fc01::t_aadf7db1eccb8b 5
+  s_cc6cacc0a6fc01::t_a0b7f09ac0badd 11,140,165,178,191,201,253-255
+apps/web/src/auth/errors.ts
+  s_cc6cacc0a6fc01::t_386fc2b7f4df91 20-25
+apps/web/src/auth/onboarding.tsx
+  s_cc6cacc0a6fc01::t_aadf7db1eccb8b 13
+apps/web/src/notes/account-store.ts
+  s_cc6cacc0a6fc01::t_12af704b167136 1-86
+apps/web/src/notes/email-settings.ts
+  s_cc6cacc0a6fc01::t_c4bbc7966bb6a8 5
+  s_cc6cacc0a6fc01::t_b6e8115da556c2 2,4,7-11
+apps/web/src/notes/ai-settings.ts
+  s_cc6cacc0a6fc01::t_c4bbc7966bb6a8 8
+  s_cc6cacc0a6fc01::t_b6e8115da556c2 2,7,9-22
+apps/web/src/settings/resend.tsx
+  s_cc6cacc0a6fc01::t_a0b7f09ac0badd 11,266-274
+  s_cc6cacc0a6fc01::t_aadf7db1eccb8b 4
+apps/web/src/settings/disconnect-dialog.tsx
+  s_cc6cacc0a6fc01::t_a0b7f09ac0badd 1-46
+apps/web/src/notes/share.tsx
+  s_cc6cacc0a6fc01::t_aadf7db1eccb8b 5
+apps/web/tsconfig.tsbuildinfo
+  s_cc6cacc0a6fc01::t_737c24220bf4c1 1
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_3361fc59ce9c68 66-74,83
+server/internal/llm/client.go
+  s_cc6cacc0a6fc01::t_ff318e088e483b 68-70,148,167
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f686dd2bac5c0565012ed81ad92e5c63cfdd22cd",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
