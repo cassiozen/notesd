@@ -1,5 +1,6 @@
 package notes.app.ui.themes
 
+import androidx.compose.ui.graphics.Color
 import androidx.core.content.res.ResourcesCompat
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -32,45 +33,45 @@ class ThemesTest {
     }
 
     @Test
-    fun `Amber is the palette the app draws today`() {
-        val amber = Themes.amber.colors
-        for ((dark, tokens) in listOf(false to Tokens.Light, true to Tokens.Dark)) {
-            // Every role both have; the backdrop glow is kept at a different strength on purpose.
-            val pairs = listOf(
-                "bg" to (tokens.bg to amber.bg),
-                "ink" to (tokens.ink to amber.ink),
-                "ink2" to (tokens.ink2 to amber.ink2),
-                "ink3" to (tokens.ink3 to amber.ink3),
-                "accent" to (tokens.accent to amber.accent),
-                "accentDeep" to (tokens.accentDeep to amber.accentDeep),
-                "onAccent" to (tokens.onAccent to amber.onAccent),
-                "tint" to (tokens.tint to amber.tint),
-                "link" to (tokens.link to amber.link),
-                "danger" to (tokens.danger to amber.danger),
-                "solid" to (tokens.solid to amber.solid),
-                "onSolid" to (tokens.onSolid to amber.onSolid),
-                "hair" to (tokens.hair to amber.hair),
-                "hairStrong" to (tokens.hairStrong to amber.hairStrong),
-                "hover" to (tokens.hover to amber.hover),
-                "on" to (tokens.on to amber.on),
-                "glassHi" to (tokens.glassHi to amber.glassHi),
-                "edge" to (tokens.edge to amber.edge),
-                "field" to (tokens.field to amber.field),
-                "chip" to (tokens.chip to amber.chip),
-                "scrim" to (tokens.scrim to amber.scrim),
-                "dangerBg" to (tokens.dangerBg to amber.dangerBg),
-                "good" to (tokens.good to amber.good),
-                "goodBg" to (tokens.goodBg to amber.goodBg),
-                "errBg" to (tokens.errBg to amber.errBg),
-                "errEdge" to (tokens.errEdge to amber.errEdge),
-                "errInk" to (tokens.errInk to amber.errInk),
-                "warnBg" to (tokens.warnBg to amber.warnBg),
-                "warnEdge" to (tokens.warnEdge to amber.warnEdge),
-                "warnInk" to (tokens.warnInk to amber.warnInk),
-                "focus" to (tokens.focus to amber.focus)
+    fun `Amber draws what the app drew before themes`() {
+        for ((dark, before) in listOf(false to amberLight, true to amberDark)) {
+            val tokens = Tokens.of(Themes.amber, dark)
+            val now = mapOf(
+                "bg" to tokens.bg,
+                "ink" to tokens.ink,
+                "ink2" to tokens.ink2,
+                "ink3" to tokens.ink3,
+                "accent" to tokens.accent,
+                "accentDeep" to tokens.accentDeep,
+                "onAccent" to tokens.onAccent,
+                "tint" to tokens.tint,
+                "link" to tokens.link,
+                "danger" to tokens.danger,
+                "solid" to tokens.solid,
+                "onSolid" to tokens.onSolid,
+                "hair" to tokens.hair,
+                "hairStrong" to tokens.hairStrong,
+                "hover" to tokens.hover,
+                "on" to tokens.on,
+                "glassHi" to tokens.glassHi,
+                "edge" to tokens.edge,
+                "field" to tokens.field,
+                "chip" to tokens.chip,
+                "scrim" to tokens.scrim,
+                "dangerBg" to tokens.dangerBg,
+                "good" to tokens.good,
+                "goodBg" to tokens.goodBg,
+                "errBg" to tokens.errBg,
+                "errEdge" to tokens.errEdge,
+                "errInk" to tokens.errInk,
+                "warnBg" to tokens.warnBg,
+                "warnEdge" to tokens.warnEdge,
+                "warnInk" to tokens.warnInk,
+                "focus" to tokens.focus
             )
-            for ((name, pair) in pairs) {
-                val (current, generated) = pair.first to pair.second.resolve(dark)
+            for ((name, value) in before) {
+                val current = Color(value)
+                val generated = now.getValue(name)
                 // Within one step of 255: 0.7 alpha is 178.5, which the hand-made value rounded down.
                 val apart = listOf(
                     current.red - generated.red,
@@ -80,6 +81,78 @@ class ThemesTest {
                 ).maxOf { abs(it) }
                 assertTrue(apart <= 1.01f / 255, "$name, dark = $dark: $current vs $generated")
             }
+            val glow = if (dark) 0xFF624821 else 0xFFF4D9A8
+            assertEquals(Color(glow), tokens.blob1, "glow, dark = $dark")
+            assertEquals(if (dark) 0.2f else 0.18f, tokens.blobOpacity, 0.002f, "glow strength, dark = $dark")
         }
     }
+
+    // The hand-kept colours Android drew with before shared/themes, kept to hold Amber to them.
+    private val amberLight = listOf<Pair<String, Long>>(
+        "bg" to 0xFFF5F3F1,
+        "ink" to 0xFF211F1C,
+        "ink2" to 0xFF504C4A,
+        "ink3" to 0xFF666260,
+        "accent" to 0xFFEFB146,
+        "accentDeep" to 0xFFDD9314,
+        "onAccent" to 0xFF1F1915,
+        "tint" to 0xFFBE7200,
+        "link" to 0xFF874E00,
+        "danger" to 0xFFAC312C,
+        "solid" to 0xFF24211F,
+        "onSolid" to 0xFFF9F8F6,
+        "hair" to 0x172D2823,
+        "hairStrong" to 0x292D2823,
+        "hover" to 0x122D2823,
+        "on" to 0x1C2D2823,
+        "glassHi" to 0xE0FEFDFC,
+        "edge" to 0xD9FFFFFF,
+        "field" to 0xC7FFFFFF,
+        "chip" to 0x9EFFFFFF,
+        "scrim" to 0x6BECEAE6,
+        "dangerBg" to 0x1AD24D45,
+        "good" to 0xFF0E492A,
+        "goodBg" to 0xBFC0EACD,
+        "errBg" to 0xD9FFE8E3,
+        "errEdge" to 0xFFFDCAC0,
+        "errInk" to 0xFF782B21,
+        "warnBg" to 0xE0FFEAD3,
+        "warnEdge" to 0xFFF6CBA5,
+        "warnInk" to 0xFF623512,
+        "focus" to 0x8CDD9314
+    )
+
+    private val amberDark = listOf<Pair<String, Long>>(
+        "bg" to 0xFF121416,
+        "ink" to 0xFFE9EBEE,
+        "ink2" to 0xFFB2B4B7,
+        "ink3" to 0xFF939598,
+        "accent" to 0xFFEFB146,
+        "accentDeep" to 0xFFDD9314,
+        "onAccent" to 0xFF1F1915,
+        "tint" to 0xFFF0BA59,
+        "link" to 0xFFEFBA64,
+        "danger" to 0xFFFB8276,
+        "solid" to 0xFFE6E8EA,
+        "onSolid" to 0xFF141618,
+        "hair" to 0x14FFFFFF,
+        "hairStrong" to 0x29FFFFFF,
+        "hover" to 0x12FFFFFF,
+        "on" to 0x21FFFFFF,
+        "glassHi" to 0xE02D2F31,
+        "edge" to 0x14FFFFFF,
+        "field" to 0x0FFFFFFF,
+        "chip" to 0x12FFFFFF,
+        "scrim" to 0x800B0D0E,
+        "dangerBg" to 0x29D24D45,
+        "good" to 0xFF9EE0B4,
+        "goodBg" to 0x80245337,
+        "errBg" to 0xB24D2620,
+        "errEdge" to 0xFF723B32,
+        "errInk" to 0xFFFDCAC0,
+        "warnBg" to 0xBF482F1A,
+        "warnEdge" to 0xFF724B2B,
+        "warnInk" to 0xFFF8D8B4,
+        "focus" to 0x8CDD9314
+    )
 }

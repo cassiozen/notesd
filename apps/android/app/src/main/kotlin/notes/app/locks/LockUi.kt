@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
@@ -47,6 +46,7 @@ import notes.app.ui.NotesDialog
 import notes.app.ui.NotesField
 import notes.app.ui.PasswordMeter
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.core.crypto.LockSession
 import notes.core.crypto.UnsupportedKdfException
 import notes.core.crypto.UnsupportedVersionException
@@ -180,7 +180,7 @@ fun LockedNote(
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Box(
-                Modifier.size(56.dp).clip(RoundedCornerShape(18.dp)).background(t.chip),
+                Modifier.size(56.dp).clip(corners(18.dp)).background(t.chip),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(Icons.Lock, null, Modifier.size(28.dp), tint = t.ink2)

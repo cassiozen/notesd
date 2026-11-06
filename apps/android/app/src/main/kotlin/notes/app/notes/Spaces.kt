@@ -21,7 +21,6 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -49,6 +48,7 @@ import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.Sheet
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.core.db.Space
 import notes.core.db.Spaces
 
@@ -79,7 +79,7 @@ private fun Picture(icon: SpaceIcon, size: Dp, modifier: Modifier = Modifier) {
 @Composable
 fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String? = null) {
     val t = LocalTokens.current
-    val shape = RoundedCornerShape(14.dp)
+    val shape = corners(14.dp)
     Column {
         Text("Icon", style = Type.label, color = t.ink2)
         Spacer(Modifier.height(6.dp))
@@ -96,7 +96,7 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
         ) {
             items(choices, key = { it.key }) { icon ->
                 val on = icon.key == selected
-                val cell = RoundedCornerShape(10.dp)
+                val cell = corners(10.dp)
                 Box(
                     Modifier
                         .height(58.dp)
@@ -136,7 +136,7 @@ fun SpaceSwitcher(
     val name = spaces.nameOf(current)
     Row(
         modifier
-            .clip(RoundedCornerShape(12.dp))
+            .clip(corners(12.dp))
             .clickable(role = Role.Button) { open = true }
             .semantics { contentDescription = "Space: $name" }
             .padding(horizontal = 6.dp, vertical = 4.dp),
@@ -196,7 +196,7 @@ fun SpacePicker(
                     Modifier
                         .fillMaxWidth()
                         .heightIn(min = 56.dp)
-                        .clip(RoundedCornerShape(16.dp))
+                        .clip(corners(16.dp))
                         .clickable(role = Role.Button, onClick = onCreate)
                         .padding(horizontal = 16.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -220,7 +220,7 @@ private fun SpaceRows(spaces: List<Space>, current: String?, onPick: (String) ->
             Modifier
                 .fillMaxWidth()
                 .heightIn(min = 56.dp)
-                .clip(RoundedCornerShape(16.dp))
+                .clip(corners(16.dp))
                 .clickable(role = Role.RadioButton) { onPick(s.id) }
                 .semantics { selected = s.id == current }
                 .padding(horizontal = 16.dp),

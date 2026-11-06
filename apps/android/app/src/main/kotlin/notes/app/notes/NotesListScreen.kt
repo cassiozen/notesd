@@ -37,7 +37,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -120,6 +119,7 @@ import notes.app.ui.Sheet
 import notes.app.ui.SheetItem
 import notes.app.ui.ToastHost
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.app.ui.glass
 import notes.app.ui.hairline
 import notes.app.ui.pressScale
@@ -553,7 +553,7 @@ private fun SearchField(query: String, scope: String?, onChange: (String) -> Uni
     val t = LocalTokens.current
     val focus = LocalFocusManager.current
     val requester = remember { FocusRequester() }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = corners(14.dp)
     Row(
         Modifier
             .padding(horizontal = 16.dp, vertical = 4.dp)
@@ -645,7 +645,7 @@ private fun NoteRow(
             onDelete()
         }
     }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = corners(16.dp)
     val bg by animateColorAsState(if (selected) t.on else Color.Transparent, label = "selected")
     val shownTitle = title.trim().ifEmpty { "New note" }
     SwipeToDismissBox(
@@ -777,7 +777,7 @@ private fun Footer(count: Int, searching: Boolean, onNew: () -> Unit) {
 private fun ComposeButton(onClick: () -> Unit) {
     val t = LocalTokens.current
     val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(16.dp)
+    val shape = corners(16.dp)
     Box(
         Modifier
             .size(52.dp)

@@ -6,6 +6,9 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -26,6 +29,14 @@ class MainActivity : AppCompatActivity() {
         // A recreated activity (rotation, theme change) must not open another note.
         if (savedInstanceState == null) handle(intent)
         val graph = (application as NotesApp).graph
+        // Fonts, shapes and the editor's paints are read once, as screens are built: a new theme
+        // starts them over, as a change of mode does (the screen and its state survive, as on rotation).
+        val shown = graph.appearance.theme.value.id
+        lifecycleScope.launch {
+            repeatOnLifecycle(Lifecycle.State.STARTED) {
+                graph.appearance.theme.collect { if (it.id != shown) recreate() }
+            }
+        }
         setContent {
             NotesTheme {
                 NotesNavigation(graph, newNote.receiveAsFlow(), emailNote.receiveAsFlow())

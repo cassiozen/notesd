@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -58,6 +57,7 @@ import notes.app.ui.NotesButton
 import notes.app.ui.NotesDialog
 import notes.app.ui.NotesField
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.core.api.ApiResult
 import notes.core.api.EmailSettings
 
@@ -159,7 +159,7 @@ private fun IntegrationRow(name: String, detail: String, trailing: @Composable (
         verticalAlignment = Alignment.CenterVertically
     ) {
         Box(
-            Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(t.ink),
+            Modifier.size(40.dp).clip(corners(12.dp)).background(t.ink),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Mail, null, Modifier.size(20.dp), tint = t.bg)
@@ -182,7 +182,7 @@ private fun Pill(text: String) {
         style = Type.label.copy(fontSize = 12.sp),
         color = t.good,
         modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
+            .clip(corners(999.dp))
             .background(t.goodBg)
             .padding(horizontal = 10.dp, vertical = 4.dp)
     )
@@ -448,8 +448,8 @@ private fun SenderFields(
     Row(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .border(1.dp, t.hair, RoundedCornerShape(16.dp))
+            .clip(corners(16.dp))
+            .border(1.dp, t.hair, corners(16.dp))
             .background(t.chip)
             .padding(14.dp)
             // A picture of what's typed below; the fields say it already.
@@ -554,7 +554,7 @@ private fun StepDots(current: Int, total: Int = 2) {
                 Modifier
                     .height(4.dp)
                     .width(if (i == current) 28.dp else 12.dp)
-                    .clip(RoundedCornerShape(4.dp))
+                    .clip(corners(4.dp))
                     .background(if (i <= current) t.accentDeep else t.hair)
             )
         }

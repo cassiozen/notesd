@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.app.ui.floating
 import notes.core.db.TagCount
 
@@ -84,7 +84,7 @@ fun TagStrip(tag: TagAtCursor, tags: List<TagCount>, onPick: (String) -> Unit, o
 @Composable
 private fun Chip(label: String, description: String, icon: Boolean = false, onClick: () -> Unit) {
     val t = LocalTokens.current
-    val shape = RoundedCornerShape(12.dp)
+    val shape = corners(12.dp)
     Row(
         Modifier
             .heightIn(min = 48.dp)

@@ -24,7 +24,6 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
@@ -67,6 +66,7 @@ import notes.app.ui.Backdrop
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.Type
+import notes.app.ui.corners
 import notes.app.ui.pressScale
 import notes.core.db.NoteFilter
 import notes.core.db.NoteStore
@@ -241,9 +241,9 @@ private fun SettingsButton(onClick: () -> Unit) {
         Box(
             Modifier
                 .size(38.dp)
-                .clip(RoundedCornerShape(12.dp))
+                .clip(corners(12.dp))
                 .background(t.chip)
-                .border(1.dp, t.edge, RoundedCornerShape(12.dp)),
+                .border(1.dp, t.edge, corners(12.dp)),
             contentAlignment = Alignment.Center
         ) {
             Icon(Icons.Settings, null, Modifier.size(20.dp), tint = t.ink)
@@ -338,7 +338,7 @@ private fun TagRow(
     icon: ImageVector? = null
 ) {
     val t = LocalTokens.current
-    val shape = RoundedCornerShape(12.dp)
+    val shape = corners(12.dp)
     Row(
         modifier.fillMaxWidth().padding(start = 4.dp + (depth * 16).dp, end = 8.dp),
         verticalAlignment = Alignment.CenterVertically
@@ -348,7 +348,7 @@ private fun TagRow(
             Box(
                 Modifier
                     .size(48.dp)
-                    .clip(RoundedCornerShape(24.dp))
+                    .clip(corners(24.dp))
                     .clickable(role = Role.Button, onClick = onExpand)
                     .semantics { contentDescription = "${if (expandedState) "Collapse" else "Expand"} $label" },
                 contentAlignment = Alignment.Center

@@ -34,6 +34,7 @@ The generated code is committed, so Xcode and Gradle never need Node:
 | `apps/web/src/themes/generated/themes.ts` | the web app's theme list (`src/themes/themes.ts` wraps it) |
 | `apps/ios/Notes/UI/Themes.generated.swift` | iOS: `Themes.all`, every value resolved |
 | `apps/android/app/src/main/kotlin/notes/app/ui/themes/Themes.generated.kt` | Android: `Themes.all`, every value resolved |
+| `apps/android/app/src/main/res/font/theme_*.xml` | Android: each family as a font resource, every weight an instance, for Views (the editor) |
 
 After changing anything in `shared/themes`, run `mise run themes`; after changing a font
 family's files or faces in `fonts.json`, also `mise run themes:fonts`. `mise run test:themes`
@@ -130,16 +131,24 @@ The tests check that every face is bundled and registered.
 `public/boot.js` applies them before the first paint. The Appearance settings show every theme
 as a preview built from the same attributes.
 
-**iOS and Android** (to adopt): the generated `Themes.all` has every value resolved per mode, so
-an app does no color math. To adopt:
+**Android** (done): `settings/Appearance.kt` stores the theme id next to the mode and sets
+`CurrentTheme`. `Tokens.of(theme, dark)` gives the colors the UI draws with; `Type` sets text in
+the theme's faces (weight, the title's axes, opsz from the size, the title's scale and
+tracking); `corners()` applies `radius-scale`; panels blur from Android 12 (opaque below it, and in a style
+without a blur); the editor (`EditorStyle`) takes code, tag and
+checkbox details from it. Fonts, shapes and paints are read as screens are built, so a new theme
+recreates the activity, as a change of mode does. Amber draws what the app drew before themes;
+`ThemesTest` holds it to the old values. Not used yet: shadows (Compose draws its own elevation),
+`motion`, `layout` and the sidebar option.
+
+**iOS** (to adopt): the generated `Themes.all` has every value resolved per mode, so the app
+does no color math. To adopt:
 
 - Store the picked theme id per device, next to the mode, and read it with
-  `Themes.theme(id: stored)` (Swift) or `Themes.theme(stored)` (Kotlin), which fall back to the
-  default for an id the build doesn't have.
+  `Themes.theme(id: stored)`, which falls back to the default for an id the build doesn't have.
 - Draw from `colors`, `shadows`, `blurs`, `shape` and `motion` in place of the hand-kept
-  `Palette` (iOS) and `Tokens` (Android). Amber matches them exactly; the native tests check it.
-- Blurs: iOS takes the closest system material; Android blurs from version 12 and draws the
-  panel opaque below it.
+  `Palette`. Amber matches it exactly; the native tests check it.
+- Blurs: take the closest system material.
 - Fonts: set weight, and the title's axes, on the variable faces; set opsz to the point size when
   `opticalSizing` is true; multiply title sizes by `scale` and add `tracking`.
 - `layout` and the sidebar option are web only until there's a layout with columns to apply them to.

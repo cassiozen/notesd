@@ -160,7 +160,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     /** The note as a document: title line first. Cheap enough per save, not per keystroke. */
     fun document(): Document = SpanCodec.toDocument(text!!)
 
-    private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.tagBg }
+    private val tagPaint = editorStyle.tagBg?.let { bg -> Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bg } }
     private val findPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.findBg }
     private val findCurrentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.findCurrentBg }
     private val pillMetrics = TextPaint()
@@ -179,7 +179,12 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         val found = t.getSpans(0, t.length, FindSpan::class.java)
         if (tags.isEmpty() && found.isEmpty()) return
         canvas.withTranslation(totalPaddingLeft.toFloat(), totalPaddingTop.toFloat()) {
-            for (tag in tags) drawPill(this, layout, t, t.getSpanStart(tag), t.getSpanEnd(tag), tagPaint)
+            // No pill for a style that sets tags as coloured text.
+            if (tagPaint !=
+                null
+            ) {
+                for (tag in tags) drawPill(this, layout, t, t.getSpanStart(tag), t.getSpanEnd(tag), tagPaint)
+            }
             for (f in found) {
                 val pill = if (f.current) findCurrentPaint else findPaint
                 drawPill(this, layout, t, t.getSpanStart(f), t.getSpanEnd(f), pill)
