@@ -1,0 +1,19 @@
+apps/ios/Notes/Editor/SideFormattingTools.swift
+  s_3c3accefea2490::t_b0f2161fa1b524 57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "eb8d95e7c906795328269eef3725ecca1528f45b",
+  "prompts": {},
+  "sessions": {
+    "s_3c3accefea2490": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a0119f7-960e-4ae9-a832-cae50a3ffaaa",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
