@@ -3,6 +3,7 @@
 
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { kotlin, KOTLIN } from './lib/kotlin.ts'
 import { ROOT, load } from './lib/model.ts'
 import { swift, SWIFT } from './lib/swift.ts'
@@ -30,7 +31,7 @@ export function stale(): string[] {
   }).map(([path]) => path)
 }
 
-if (import.meta.main) {
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.argv.includes('--check')) {
     const paths = stale()
     if (paths.length) {

@@ -253,7 +253,7 @@
     },
     "nunito-sans-bold": {
       "family": "nunito-sans",
-      "description": "The text face at its boldest weight, so headings and text read as one voice, as in a writing app whose headings are only bigger, bolder text.",
+      "description": "The text face, heavy, so headings and text read as one voice, as in a writing app whose headings are only bigger, bolder text.",
       "weight": 750,
       "style": "normal",
       "axes": {},

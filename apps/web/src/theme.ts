@@ -6,13 +6,14 @@ export type ModeChoice = 'system' | 'light' | 'dark'
 // Display preferences, not data: localStorage is fine and survives reloads. public/boot.js reads
 // both before the first paint, so the keys and formats are shared with it.
 const MODE_KEY = 'notes.mode'
-/** The theme's attributes as JSON, so boot.js can set them without knowing any theme. */
+/** The theme's attributes and title bar colors as JSON, so boot.js can set them without knowing any theme. */
 const THEME_KEY = 'notes.theme'
 const DARK = '(prefers-color-scheme: dark)'
 
 let theme: Theme = themeFor(DEFAULT_THEME)
 let mode: ModeChoice = 'system'
 let system: MediaQueryList | undefined
+let switches = 0
 
 /** Before themes, notes.theme held the mode itself. */
 function legacyMode(): ModeChoice | null {
@@ -83,7 +84,8 @@ export function applyMode(choice: ModeChoice) {
 export function applyTheme(id: ThemeId) {
   theme = themeFor(id)
   paint()
-  store(THEME_KEY, theme.id === DEFAULT_THEME ? null : JSON.stringify(themeAttributes(theme)))
+  // bar too, so boot.js colors the title bar before the bundle runs.
+  store(THEME_KEY, theme.id === DEFAULT_THEME ? null : JSON.stringify({ ...themeAttributes(theme), bar: theme.bar }))
 }
 
 /**
@@ -102,9 +104,11 @@ export function switchTheme(id: ThemeId, update: () => void, origin?: { x: numbe
   const root = document.documentElement
   root.style.setProperty('--wipe-x', `${origin.x}px`)
   root.style.setProperty('--wipe-y', `${origin.y}px`)
-  root.dataset.switching = ''
+  // Picked again mid-wipe, the older transition mustn't end the newer one's.
+  const token = String(++switches)
+  root.dataset.switching = token
   const transition = document.startViewTransition(() => flushSync(go))
   void transition.finished.finally(() => {
-    delete root.dataset.switching
+    if (root.dataset.switching === token) delete root.dataset.switching
   })
 }

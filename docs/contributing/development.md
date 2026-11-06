@@ -49,7 +49,7 @@ For the macOS app you need Xcode (or its command line tools) and
 [rustup](https://rustup.rs): `apps/desktop/src-tauri/rust-toolchain.toml` pins
 the Rust version, which rustup installs on first use.
 
-The repo root is a pnpm workspace (`apps/web`, `apps/desktop`, `shared/sync-engine` and `website`), with one lockfile.
+The repo root is a pnpm workspace (`apps/web`, `apps/desktop`, `shared/sync-engine`, `shared/themes` and `website`), with one lockfile.
 
 ## Server and web app
 

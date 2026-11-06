@@ -340,7 +340,7 @@
   --title-tracking: 0em;
 }
 
-/* The text face at its boldest weight, so headings and text read as one voice, as in a writing app whose headings are only bigger, bolder text. */
+/* The text face, heavy, so headings and text read as one voice, as in a writing app whose headings are only bigger, bolder text. */
 [data-title-font='nunito-sans-bold'] {
   --font-title: 'Nunito Sans Variable', system-ui, sans-serif;
   --title-style: normal;
@@ -479,7 +479,7 @@
   --on-accent: light-dark(#fbfaf7, #0a0a0a);
   --tint: light-dark(#121212, #ecebe6);
   --link: light-dark(#5c5c59, #a8a7a2);
-  --focus: light-dark(rgb(18 18 18 / 0.25), rgb(236 235 230 / 0.3));
+  --focus: light-dark(rgb(18 18 18 / 0.6), rgb(236 235 230 / 0.6));
   --solid: light-dark(#121212, #ecebe6);
   --on-solid: light-dark(#fbfaf7, #0a0a0a);
   --danger: light-dark(#b3261e, #f2847a);
@@ -599,7 +599,7 @@
   --done-decoration: none;
 }
 
-/* Light in a dark room, flat: matte surfaces told apart only by how much light they hold, and a hairline of light along each panel's top edge. No glows, no ambient shadows; menus alone keep one. Unhurried motion. */
+/* Light in a dark room, flat: matte surfaces told apart only by how much light they hold, and a hairline of light along each panel's top edge. No glows, no ambient shadows; only what floats over the page (menus, the find bar, toasts) keeps one. Unhurried motion. */
 [data-style='lumen'] {
   --radius-scale: 0.86;
   --app-gap: 12px;

@@ -3,6 +3,7 @@ import { relative, resolve } from 'node:path'
 import { hex, parse, rgb, round, withAlpha } from './color.ts'
 import {
   ROOT,
+  expandLayers,
   layersIn,
   paintIn,
   roleColor,
@@ -50,7 +51,7 @@ function geometry(l: Layer): string {
  * A layer list for box-shadow. Where light and dark have the same layers, each layer's color is
  * light-dark(); where they don't, both sets are drawn, each transparent in the other mode.
  */
-function shadow(s: Shadow): string {
+function shadow(style: Style, s: Shadow): string {
   const [light, dark] = [layersIn(s, 'light'), layersIn(s, 'dark')]
   const shape = (items: typeof light) => items.map((i) => (typeof i === 'string' ? i : { ...i, color: undefined }))
   const ref = (name: string) => `var(--${name})`
@@ -62,10 +63,11 @@ function shadow(s: Shadow): string {
       const [l, d] = [paintIn(item.color, 'light'), paintIn(other.color, 'dark')]
       return `${geometry(item)} ${same(l, d) ? simple(l) : `light-dark(${simple(l)}, ${simple(d)})`}`
     })
+  // A named shadow here would draw in both modes: its layers go in instead, each to its own mode.
   else
     parts = [
-      ...light.map((i) => (typeof i === 'string' ? ref(i) : `${geometry(i)} light-dark(${simple(paintIn(i.color, 'light'))}, transparent)`)),
-      ...dark.map((i) => (typeof i === 'string' ? ref(i) : `${geometry(i)} light-dark(transparent, ${simple(paintIn(i.color, 'dark'))})`)),
+      ...expandLayers(style, s, 'light').map((i) => `${geometry(i)} light-dark(${simple(paintIn(i.color, 'light'))}, transparent)`),
+      ...expandLayers(style, s, 'dark').map((i) => `${geometry(i)} light-dark(transparent, ${simple(paintIn(i.color, 'dark'))})`),
     ]
   return parts.length ? parts.join(',\n    ') : '0 0 transparent'
 }
@@ -82,7 +84,7 @@ function styleBlock(s: Style): string {
     ['app-padding', length(layout['app-padding'])],
     ['pane-radius', length(layout['pane-radius'])],
     ['pane-border', border(layout['pane-border'])],
-    ['pane-shadow', shadow(layout['pane-shadow'])],
+    ['pane-shadow', shadow(s, layout['pane-shadow'])],
     ['column-rule', border(layout['column-rule'])],
     ['glass-hi', paint(material['glass-hi'])],
     ['blur', blur(material.blur)],
@@ -90,18 +92,18 @@ function styleBlock(s: Style): string {
     ['blur-dialog', blur(material['blur-dialog'])],
     ['blur-scrim', blur(material['blur-scrim'])],
     ['edge', paint(material.edge)],
-    ['inset', shadow(material.inset)],
+    ['inset', shadow(s, material.inset)],
     ['field', paint(material.field)],
     ['chip', paint(material.chip)],
     ['hair', paint(lines.hair)],
     ['hair-strong', paint(lines['hair-strong'])],
     ['hover', paint(lines.hover)],
     ['on', paint(lines.on)],
-    ...Object.entries(depth).map(([name, s]): [string, string] => [name, shadow(s)]),
+    ...Object.entries(depth).map(([name, layers]): [string, string] => [name, shadow(s, layers)]),
     ['wash', backdrop.wash ? paint(backdrop.wash) : 'transparent'],
     ['spring', curve(motion.spring)],
     ['ease-out', curve(motion['ease-out'])],
-    ['focus-ring', shadow(details['focus-ring'])],
+    ['focus-ring', shadow(s, details['focus-ring'])],
     ['check-radius', details['check-radius'] === 'circle' ? '50%' : px(details['check-radius'])],
     ['check-mark', details['check-mark'] === 'dot' ? 'inset 0 0 0 3.5px var(--accent), inset 0 0 0 8px var(--check-ink)' : '0 0 transparent'],
     ['tag-bg', details['tag-bg'] ? paint(details['tag-bg']) : 'transparent'],

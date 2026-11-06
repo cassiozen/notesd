@@ -30,7 +30,8 @@ export function parse(color: string): RGBA {
   if (!fn) throw new Error(`Not a color: ${color}`)
   const [x = 0, y = 0, z = 0] = (fn[2] ?? '').trim().split(/\s+/).map(Number)
   const a = fn[3] ? Number(fn[3]) : 1
-  if (fn[1] === 'rgb') return { r: x / 255, g: y / 255, b: z / 255, a }
+  const clamp = (v: number) => Math.min(1, Math.max(0, v))
+  if (fn[1] === 'rgb') return { r: clamp(x / 255), g: clamp(y / 255), b: clamp(z / 255), a: clamp(a) }
   const [r, g, b] = oklch(x, y, z)
   return { r, g, b, a }
 }

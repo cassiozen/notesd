@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, it } from 'node:test'
 import { contrast, over, withAlpha, type RGBA } from '../lib/color.ts'
-import { MODES, ROOT, load, resolvePaint, roleColor, type Palette } from '../lib/model.ts'
+import { MODES, ROOT, load, resolvePaint, roleColor, type Palette, type Style } from '../lib/model.ts'
 import { stale } from '../generate.ts'
 
 const lib = load()
@@ -28,6 +28,8 @@ describe('definitions', () => {
       'data-title-font': t.fonts.title,
       'data-body-font': t.fonts.body,
       'data-sidebar': t.sidebar,
+      // boot.js resolves the mode; without it, the default's light side.
+      'data-mode': 'light',
     }
     for (const [name, value] of Object.entries(attrs)) assert.ok(html.includes(`${name}="${value}"`), `${name}="${value}"`)
   })
@@ -99,6 +101,15 @@ describe('contrast', () => {
         })
       })
   }
+})
+
+describe('references', () => {
+  it('fail on a circle instead of recursing forever', () => {
+    const glass = lib.styles.get('glass') as Style
+    const looped: Style = { ...glass, lines: { ...glass.lines, hair: { token: 'on' }, on: { token: 'hair' } } }
+    const palette = lib.palettes.get('amber') as Palette
+    assert.throws(() => resolvePaint(looped, palette, { token: 'hair' }, 'light'), /hair → on → hair goes round in a circle/)
+  })
 })
 
 describe('colors', () => {

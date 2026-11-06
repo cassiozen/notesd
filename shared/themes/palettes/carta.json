@@ -17,7 +17,7 @@
     "on-accent": {"light": "#fbfaf7", "dark": "#0a0a0a"},
     "tint": {"light": "#121212", "dark": "#ecebe6"},
     "link": {"light": "#5c5c59", "dark": "#a8a7a2"},
-    "focus": {"light": "rgb(18 18 18 / 0.25)", "dark": "rgb(236 235 230 / 0.3)"},
+    "focus": {"light": "rgb(18 18 18 / 0.6)", "dark": "rgb(236 235 230 / 0.6)"},
     "solid": {"light": "#121212", "dark": "#ecebe6"},
     "on-solid": {"light": "#fbfaf7", "dark": "#0a0a0a"},
     "danger": {"light": "#b3261e", "dark": "#f2847a"},

@@ -606,11 +606,27 @@
           "properties": {
             "cubicBezier": {
               "type": "array",
-              "items": {
-                "type": "number"
-              },
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "number"
+                },
+                {
+                  "type": "number",
+                  "minimum": 0,
+                  "maximum": 1
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "items": false,
               "minItems": 4,
-              "maxItems": 4
+              "description": "x1, y1, x2, y2; the x values within 0\u20131, as CSS requires."
             }
           }
         },

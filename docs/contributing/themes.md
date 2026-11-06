@@ -35,8 +35,10 @@ The generated code is committed, so Xcode and Gradle never need Node:
 | `apps/ios/Notes/UI/Themes.generated.swift` | iOS: `Themes.all`, every value resolved |
 | `apps/android/app/src/main/kotlin/notes/app/ui/themes/Themes.generated.kt` | Android: `Themes.all`, every value resolved |
 
-After changing anything in `shared/themes`, run `mise run themes`. `mise run test:themes`
-(part of `mise run test`) fails while any output is out of date.
+After changing anything in `shared/themes`, run `mise run themes`; after changing a font
+family's files or faces in `fonts.json`, also `mise run themes:fonts`. `mise run test:themes`
+(part of `mise run test`) fails while any generated code is out of date; the native tests fail if
+a font file can't be loaded.
 
 ## Palettes
 
@@ -132,7 +134,8 @@ as a preview built from the same attributes.
 an app does no color math. To adopt:
 
 - Store the picked theme id per device, next to the mode, and read it with
-  `Themes.theme(id:)`, which falls back to the default for an id the build doesn't have.
+  `Themes.theme(id: stored)` (Swift) or `Themes.theme(stored)` (Kotlin), which fall back to the
+  default for an id the build doesn't have.
 - Draw from `colors`, `shadows`, `blurs`, `shape` and `motion` in place of the hand-kept
   `Palette` (iOS) and `Tokens` (Android). Amber matches them exactly; the native tests check it.
 - Blurs: iOS takes the closest system material; Android blurs from version 12 and draws the

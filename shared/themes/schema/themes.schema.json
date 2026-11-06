@@ -34,8 +34,8 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9-]*$",
-            "description": "Stored on devices: never rename one."
+            "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*$",
+            "description": "Stored on devices: never rename one. Lowercase words joined by single hyphens: native code makes it an identifier."
           },
           "name": {
             "type": "string"

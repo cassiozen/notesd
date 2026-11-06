@@ -65,7 +65,7 @@
 .choice:has(.radio:checked:focus-visible) {
   box-shadow:
     inset 0 0 0 2px var(--tint),
-    0 0 0 3px var(--focus);
+    var(--focus-ring);
 }
 
 .radio {

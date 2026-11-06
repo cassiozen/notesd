@@ -182,6 +182,16 @@ export function load(): Library {
     if (!fonts.body[t.fonts.body]) problems.push(`themes.json: ${t.id}: no body font ${t.fonts.body}`)
   }
   if (!ids.has(registry.default)) problems.push(`themes.json: the default, ${registry.default}, isn't a theme`)
+  for (const [id, family] of Object.entries(fonts.families))
+    if (family.native.source)
+      for (const face of family.native.faces)
+        if (!face.file) problems.push(`fonts.json: ${id}: ${face.ios} has no file in ${family.native.source}`)
+  for (const style of styles.values())
+    try {
+      checkReferences(style)
+    } catch (e) {
+      problems.push(`styles/${style.id}.json: ${(e as Error).message}`)
+    }
   for (const [kind, roles] of [
     ['title', fonts.title],
     ['body', fonts.body],
@@ -224,9 +234,12 @@ export function colorToken(style: Style, token: string): Paint {
 }
 
 /** What a paint comes to on a theme's palette, in one mode: what native code is given. */
-export function resolvePaint(style: Style, palette: Palette, paint: Paint, mode: Mode): RGBA {
+export function resolvePaint(style: Style, palette: Palette, paint: Paint, mode: Mode, seen: string[] = []): RGBA {
   const p = paintIn(paint, mode)
-  if ('token' in p) return resolvePaint(style, palette, colorToken(style, p.token), mode)
+  if ('token' in p) {
+    if (seen.includes(p.token)) throw new Error(`${style.id}: ${[...seen, p.token].join(' → ')} goes round in a circle`)
+    return resolvePaint(style, palette, colorToken(style, p.token), mode, [...seen, p.token])
+  }
   return withAlpha('role' in p ? roleColor(palette, p.role, mode) : parse(p.color), p.alpha)
 }
 
@@ -243,6 +256,24 @@ export function layersIn(shadow: Shadow, mode: Mode): Layers {
 }
 
 /** A shadow's layers in one mode, other shadows it names spliced in. */
-export function expandLayers(style: Style, shadow: Shadow, mode: Mode): Layer[] {
-  return layersIn(shadow, mode).flatMap((item) => (typeof item === 'string' ? expandLayers(style, shadowToken(style, item), mode) : [item]))
+export function expandLayers(style: Style, shadow: Shadow, mode: Mode, seen: string[] = []): Layer[] {
+  return layersIn(shadow, mode).flatMap((item) => {
+    if (typeof item !== 'string') return [item]
+    if (seen.includes(item)) throw new Error(`${style.id}: ${[...seen, item].join(' → ')} goes round in a circle`)
+    return expandLayers(style, shadowToken(style, item), mode, [...seen, item])
+  })
+}
+
+/** Every token reference resolved once, in both modes, so a circle fails loading, not generating. */
+function checkReferences(style: Style): void {
+  const paints: Paint[] = [
+    style.material['glass-hi'], style.material.edge, style.material.field, style.material.chip,
+    ...Object.values(style.lines),
+  ]
+  const shadows: Shadow[] = [style.material.inset, ...Object.values(style.depth), style.details['focus-ring'], style.layout['pane-shadow']]
+  const any: Palette = { id: 'check', colors: new Proxy({}, { get: () => '#000000' }) }
+  for (const mode of MODES) {
+    for (const p of paints) resolvePaint(style, any, p, mode)
+    for (const s of shadows) expandLayers(style, s, mode)
+  }
 }

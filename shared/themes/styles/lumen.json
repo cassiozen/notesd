@@ -1,6 +1,6 @@
 {
   "$schema": "../schema/style.schema.json",
-  "description": "Light in a dark room, flat: matte surfaces told apart only by how much light they hold, and a hairline of light along each panel's top edge. No glows, no ambient shadows; menus alone keep one. Unhurried motion.",
+  "description": "Light in a dark room, flat: matte surfaces told apart only by how much light they hold, and a hairline of light along each panel's top edge. No glows, no ambient shadows; only what floats over the page (menus, the find bar, toasts) keeps one. Unhurried motion.",
   "layout": {
     "app-gap": 12,
     "app-padding": 12,

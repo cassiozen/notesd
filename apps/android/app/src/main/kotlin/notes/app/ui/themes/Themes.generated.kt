@@ -539,7 +539,7 @@ object Themes {
             onAccent = ThemeColor(0xFFFBFAF7, 0xFF0A0A0A),
             tint = ThemeColor(0xFF121212, 0xFFECEBE6),
             link = ThemeColor(0xFF5C5C59, 0xFFA8A7A2),
-            focus = ThemeColor(0x40121212, 0x4DECEBE6),
+            focus = ThemeColor(0x99121212, 0x99ECEBE6),
             solid = ThemeColor(0xFF121212, 0xFFECEBE6),
             onSolid = ThemeColor(0xFFFBFAF7, 0xFF0A0A0A),
             danger = ThemeColor(0xFFB3261E, 0xFFF2847A),
@@ -648,10 +648,10 @@ object Themes {
             ),
             focusRing = ThemeShadow(
                 light = listOf(
-                    ThemeShadowLayer(0f, 0f, 0f, 2f, 0x40121212, inset = false)
+                    ThemeShadowLayer(0f, 0f, 0f, 2f, 0x99121212, inset = false)
                 ),
                 dark = listOf(
-                    ThemeShadowLayer(0f, 0f, 0f, 2f, 0x4DECEBE6, inset = false)
+                    ThemeShadowLayer(0f, 0f, 0f, 2f, 0x99ECEBE6, inset = false)
                 )
             )
         ),

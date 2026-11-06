@@ -148,7 +148,7 @@
       "properties": {
         "file": {
           "type": "string",
-          "description": "The file in the source directory, for families built by scripts/native_fonts.py."
+          "description": "The file in the source directory. Required when the family has a source (the loader checks it)."
         },
         "ios": {
           "type": "string",
@@ -240,7 +240,12 @@
           "additionalProperties": {
             "type": "number"
           },
-          "description": "Variation axes for titles, e.g. {\"wdth\": 88}. Not opsz: that follows the size."
+          "description": "Variation axes for titles, e.g. {\"wdth\": 88}. Not opsz: that follows the size.",
+          "propertyNames": {
+            "not": {
+              "const": "opsz"
+            }
+          }
         },
         "scale": {
           "type": "number",

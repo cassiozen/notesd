@@ -528,7 +528,7 @@ enum Themes {
             onAccent: ThemeColor(light: 0xFFFB_FAF7, dark: 0xFF0A_0A0A),
             tint: ThemeColor(light: 0xFF12_1212, dark: 0xFFEC_EBE6),
             link: ThemeColor(light: 0xFF5C_5C59, dark: 0xFFA8_A7A2),
-            focus: ThemeColor(light: 0x4012_1212, dark: 0x4DEC_EBE6),
+            focus: ThemeColor(light: 0x9912_1212, dark: 0x99EC_EBE6),
             solid: ThemeColor(light: 0xFF12_1212, dark: 0xFFEC_EBE6),
             onSolid: ThemeColor(light: 0xFFFB_FAF7, dark: 0xFF0A_0A0A),
             danger: ThemeColor(light: 0xFFB3_261E, dark: 0xFFF2_847A),
@@ -636,8 +636,8 @@ enum Themes {
                 ]
             ),
             focusRing: ThemeShadow(
-                light: [ThemeShadowLayer(x: 0, y: 0, blur: 0, spread: 2, color: 0x4012_1212, inset: false)],
-                dark: [ThemeShadowLayer(x: 0, y: 0, blur: 0, spread: 2, color: 0x4DEC_EBE6, inset: false)]
+                light: [ThemeShadowLayer(x: 0, y: 0, blur: 0, spread: 2, color: 0x9912_1212, inset: false)],
+                dark: [ThemeShadowLayer(x: 0, y: 0, blur: 0, spread: 2, color: 0x99EC_EBE6, inset: false)]
             )
         ),
         blurs: ThemeBlurs(
