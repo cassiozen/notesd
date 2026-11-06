@@ -99,6 +99,7 @@ func TestConfigValidation(t *testing.T) {
 		{agent.Config{Triggers: map[agent.Trigger]string{agent.EditDone: strings.Repeat("x", agent.MaxPromptBytes+1)}}, "triggers.editDone"},
 		{agent.Config{Triggers: map[agent.Trigger]string{agent.Menu: "Fix typos."}}, "menuLabel"},
 		{agent.Config{MenuLabel: strings.Repeat("x", 41)}, "menuLabel"},
+		{agent.Config{MenuLabel: "Fix\x00"}, "menuLabel"},
 	} {
 		tc.c.SpaceID = spaces.Default
 		var ie *agent.InputError

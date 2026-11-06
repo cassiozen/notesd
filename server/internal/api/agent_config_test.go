@@ -35,7 +35,8 @@ func TestAgentConfigEndpoints(t *testing.T) {
 		"triggers": map[string]any{"newNoteDone": "Add tags.", "menu": "Fix typos."},
 	})
 	triggers, _ := r.body["triggers"].(map[string]any)
-	if r.status != 200 || r.body["spaceId"] != "default" || r.body["enabled"] != true || triggers["newNoteDone"] != "Add tags." {
+	if r.status != 200 || r.body["spaceId"] != "default" || r.body["enabled"] != true || r.body["prompt"] != "Keep notes findable." ||
+		triggers["newNoteDone"] != "Add tags." || triggers["menu"] != "Fix typos." {
 		t.Fatalf("put: %d %s", r.status, r.raw)
 	}
 	r = c.do("GET", "/api/v1/agent/spaces", nil)

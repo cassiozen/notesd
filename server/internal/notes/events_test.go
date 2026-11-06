@@ -93,7 +93,7 @@ func TestEvents(t *testing.T) {
 	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "u4", ID: "n1", BaseRevision: 1, Title: "x", Content: "y"}); conflictCode(err) != notes.CodeRevisionConflict {
 		t.Fatalf("stale update: %v", err)
 	}
-	if len(rec.committed) != n {
+	if len(rec.committed) != n || len(rec.written) != n {
 		t.Fatal("a conflict emitted an event")
 	}
 
@@ -134,6 +134,15 @@ func TestEventsCarryLockedImages(t *testing.T) {
 	}
 	if ev := rec.last(t); !ev.Unchanged || len(ev.After.ImageIDs) != 0 {
 		t.Fatalf("unchanged: %q", ev.After.ImageIDs)
+	}
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "o4", ID: "n1", BaseRevision: 2, Title: "T2", Content: sealedBody, ImageIDs: []string{a}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "o5", ID: "n1", BaseRevision: 2, Title: "T2", Content: "Plain"}); err != nil {
+		t.Fatal(err)
+	}
+	if ev := rec.last(t); !slices.Equal(ev.Before.ImageIDs, []string{a}) || ev.After.ImageIDs != nil {
+		t.Fatalf("unlocked: %q → %q", ev.Before.ImageIDs, ev.After.ImageIDs)
 	}
 }
 

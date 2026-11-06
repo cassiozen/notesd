@@ -208,6 +208,9 @@ func clean(c Config) (Config, error) {
 	if utf8.RuneCountInString(c.MenuLabel) > MaxMenuLabel {
 		return c, &InputError{Field: "menuLabel", Message: "keep the command's name to 40 characters"}
 	}
+	if !utf8.ValidString(c.MenuLabel) || strings.ContainsRune(c.MenuLabel, 0) {
+		return c, &InputError{Field: "menuLabel", Message: "must be text"}
+	}
 	triggers := map[Trigger]string{}
 	for t, p := range c.Triggers {
 		p = strings.TrimSpace(p)

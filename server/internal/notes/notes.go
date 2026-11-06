@@ -83,8 +83,10 @@ type queryer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-// FillImageIDs sets a locked note's ImageIDs from note_images.
+// FillImageIDs sets a locked note's ImageIDs from note_images, and clears a
+// plain note's: one copied from its locked self keeps them otherwise.
 func FillImageIDs(ctx context.Context, q queryer, n *Note) error {
+	n.ImageIDs = nil
 	if !locks.IsLocked(n.Content) {
 		return nil
 	}
@@ -94,7 +96,6 @@ func FillImageIDs(ctx context.Context, q queryer, n *Note) error {
 		return err
 	}
 	defer rows.Close()
-	n.ImageIDs = nil
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {

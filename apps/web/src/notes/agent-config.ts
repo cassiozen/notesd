@@ -5,8 +5,8 @@ import { agent, type AgentConfig, type AgentConfigInput } from '../api/agent'
 // in step with saves. Agents run on the server, so this is never on the device.
 let current: ReadonlyMap<string, AgentConfig> | null = null
 let loading: Promise<void> | null = null
-// Bumped on forget: a fetch started before it is for the account signed out.
-let fetches = 0
+// Bumped on forget: a fetch or save started before it is for the account signed out.
+let generation = 0
 const listeners = new Set<() => void>()
 
 function subscribe(listener: () => void) {
@@ -23,14 +23,14 @@ function set(next: ReadonlyMap<string, AgentConfig>) {
 
 function load() {
   if (loading) return
-  const n = ++fetches
+  const g = generation
   loading = agent.list().then(
     ({ spaces }) => {
-      if (n === fetches) set(new Map(spaces.map((c) => [c.spaceId, c])))
+      if (g === generation) set(new Map(spaces.map((c) => [c.spaceId, c])))
     },
     () => {
       // Retried the next time something asks.
-      if (n === fetches) loading = null
+      if (g === generation) loading = null
     },
   )
 }
@@ -50,8 +50,9 @@ export function useAgentConfigs(): ReadonlyMap<string, AgentConfig> | null {
 
 /** Saves a space's agent and keeps the list in step. */
 export async function saveAgentConfig(spaceId: string, input: AgentConfigInput): Promise<AgentConfig> {
+  const g = generation
   const stored = await agent.put(spaceId, input)
-  set(new Map(current ?? []).set(spaceId, stored))
+  if (g === generation) set(new Map(current ?? []).set(spaceId, stored))
   return stored
 }
 
@@ -59,6 +60,6 @@ export async function saveAgentConfig(spaceId: string, input: AgentConfigInput):
 export function forgetAgentConfigs() {
   current = null
   loading = null
-  fetches++
+  generation++
   listeners.forEach((l) => l())
 }
