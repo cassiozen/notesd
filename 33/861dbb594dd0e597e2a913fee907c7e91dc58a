@@ -1,0 +1,34 @@
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_a462b738f8a881 37-40,43,56-63
+  s_cc6cacc0a6fc01::t_a3fd453822bb61 20
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_a462b738f8a881 52-53,84,86-87,92,138-142,217,219-220,253-254,262,264-267,273,281-285
+  s_cc6cacc0a6fc01::t_ba9a4a191b7d3a 286
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_a462b738f8a881 23-25,38,40,42,44-59
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_a425de55ed6ee7 215,813-834
+  s_cc6cacc0a6fc01::t_a3fd453822bb61 205,210-213
+  s_cc6cacc0a6fc01::t_d051e88069f4fc 214
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_a462b738f8a881 43-45,65-66,120-127
+  s_cc6cacc0a6fc01::t_a3fd453822bb61 46-49
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_a633d309b29d08 489-492,494-495
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "33861dbb594dd0e597e2a913fee907c7e91dc58a",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
