@@ -32,6 +32,8 @@ type Account struct {
 	Editors Editors
 	// OnRun hears of each run starting and ending, for the user's editors.
 	OnRun func(RunUpdate)
+	// OnOverlays hears a note's open overlays whenever a run shows more.
+	OnOverlays func(noteID string, list []Overlay)
 }
 
 // RunUpdate is a run starting or ending.
@@ -68,6 +70,8 @@ type runState struct {
 	// or less when that's all the day has left (dailyLimited).
 	budget       int64
 	dailyLimited bool
+	// What this run has shown, against its limits.
+	cards, suggestions int
 }
 
 // execute runs r to its end and records how it went.
@@ -208,7 +212,10 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		f.Status, f.Failure, f.Message = StatusFailed, FailTimeout, fmt.Sprintf("The run took longer than %s.", RunTimeout)
 	}
 	if f.Status == StatusFailed && f.Failure == FailProvider && r.Attempts < 2 {
-		if edits, creates, err := acct.Agent.edited(ctx, r.ID); err == nil && edits+creates == 0 {
+		// Only a run that did nothing yet: a retry would make its changes, or show its overlays, twice.
+		edits, creates, err := acct.Agent.edited(ctx, r.ID)
+		shown, err2 := acct.Agent.showed(ctx, r.ID)
+		if err == nil && err2 == nil && edits+creates+shown == 0 {
 			f.RetryAt = rn.now().Add(RetryProvider)
 		}
 	}

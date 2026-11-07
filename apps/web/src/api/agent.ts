@@ -63,6 +63,8 @@ export type AgentRun = {
   startedAt: number | null
   finishedAt: number | null
   edits: RunEdit[]
+  /** What it showed beside its note, when it did: cards, and suggested changes with how many were accepted. */
+  overlays?: { cards: number; suggestions: number; accepted: number }
 }
 
 /** A line of a diff; "…" stands for count unchanged lines left out. */

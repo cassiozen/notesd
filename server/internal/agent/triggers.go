@@ -153,6 +153,9 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 	}
 	switch {
 	case ev.Kind == notes.EventDeleted:
+		if err := clearOverlays(ctx, tx, ev.NoteID); err != nil {
+			return err
+		}
 		// applied_from too: a hash of short text can be guessed.
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_title = '', after_title = '',
 			before_content = '', after_content = '', applied_from = NULL, text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
@@ -163,6 +166,9 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 			WHERE note_id = ? AND status NOT IN ('queued', 'running')`, ev.NoteID)
 		return err
 	case ev.Kind == notes.EventUpdated && locks.IsLocked(ev.After.Content) && !locks.IsLocked(ev.Before.Content):
+		if err := clearOverlays(ctx, tx, ev.NoteID); err != nil {
+			return err
+		}
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_content = '', after_content = '',
 			applied_from = NULL, text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
 			return err
@@ -176,6 +182,14 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 		return err
 	}
 	return nil
+}
+
+// clearOverlays ends what shows on a note and forgets its text, which
+// quotes the note; Activity keeps only that the run showed them.
+func clearOverlays(ctx context.Context, tx *sql.Tx, noteID string) error {
+	_, err := tx.ExecContext(ctx, `UPDATE agent_overlays SET place = '{}', body = '', change = NULL,
+		status = CASE status WHEN 'open' THEN 'closed' ELSE status END WHERE note_id = ?`, noteID)
+	return err
 }
 
 // anyAgent reports whether any space's agent is on, so accounts without one

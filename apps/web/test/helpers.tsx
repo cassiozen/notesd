@@ -144,6 +144,7 @@ export const noteTitle = () => body().querySelector('[data-title]')?.textContent
 export const bodyText = () =>
   [...body().children]
     .slice(1)
+    .filter((el) => !el.hasAttribute('data-agent-widget'))
     .map((el) => {
       const copy = el.cloneNode(true) as Element
       copy.querySelectorAll('[data-agent-widget]').forEach((w) => w.remove())

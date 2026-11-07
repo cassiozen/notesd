@@ -69,14 +69,14 @@ describe('a space’s agent', () => {
     await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
     await user.click(within(page).getByRole('button', { name: /^When you ask, from the note’s menu/ }))
     const added = document.activeElement as HTMLTextAreaElement
-    expect([added.value, added.selectionStart, added.selectionEnd]).toEqual(['Fix spelling and obvious typos only.', 0, added.value.length])
+    expect([added.value, added.selectionStart, added.selectionEnd]).toEqual(['Suggest fixes for spelling and obvious typos.', 0, added.value.length])
     // Taken: it isn't offered again.
     await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
     expect(within(page).queryByRole('button', { name: /^When you ask, from the note’s menu/ })).toBeNull()
     await user.click(within(page).getByRole('button', { name: 'Close' }))
     // It starts from a suggestion, selected: typing replaces it.
     const prompt = within(page).getByLabelText(/^When you ask, from the note’s menu: what the agent does/) as HTMLTextAreaElement
-    expect(prompt.value).toBe('Fix spelling and obvious typos only.')
+    expect(prompt.value).toBe('Suggest fixes for spelling and obvious typos.')
     expect((within(page).getByLabelText('Command name, as the menu shows it') as HTMLInputElement).value).toBe('Fix typos')
     prompt.focus()
     prompt.select()

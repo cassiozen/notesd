@@ -39,6 +39,12 @@ type socketIn struct {
 	Trigger agent.Trigger     `json:"trigger"`
 	SpaceID string            `json:"spaceId"`
 	Note    *agent.EditorNote `json:"note"`
+	// On overlay.answer: the answer to overlay ID, and for an accepted
+	// suggestion, what the editor showed before it and shows after (with
+	// Revision), as an apply's result says.
+	Answer string        `json:"answer"`
+	Before *agent.Fields `json:"before"`
+	Shows  *agent.Fields `json:"shows"`
 }
 
 // agentSocket is the editors' connection for agents (architecture §7.8): an
@@ -97,14 +103,41 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		switch m.Type {
 		case "editor.opened":
+			// Locked through queuing: a list read before a newer one went out would undo it here.
+			unlock := data.Agent.LockOverlays()
 			s.editors.Opened(ec, m.NoteID)
+			// Another tab's, still showing: this one shows them too.
+			if list, err := data.Agent.OpenOverlays(ctx, m.NoteID); err != nil {
+				s.log.Error("agent socket: overlays", "error", err)
+			} else if len(list) > 0 {
+				s.editors.Send(ec, agent.OverlaysMessage(m.NoteID, list))
+			}
+			unlock()
 		case "editor.closed":
-			if !s.editors.Closed(ec, m.NoteID) || m.Revision == nil {
+			// Locked with the check that it's the last editor, so a tab opening it meanwhile keeps them.
+			unlock := data.Agent.LockOverlays()
+			last := s.editors.Closed(ec, m.NoteID)
+			if last {
+				// The last editor closed it: nothing shows on it any more.
+				if closed, err := data.Agent.CloseOverlays(ctx, m.NoteID); err != nil {
+					s.log.Error("agent socket: close overlays", "error", err)
+				} else if closed {
+					s.editors.Broadcast(userID, agent.OverlaysMessage(m.NoteID, nil))
+				}
+			}
+			unlock()
+			if !last || m.Revision == nil {
 				continue
 			}
 			if err := data.Agent.EditorClosed(ctx, m.NoteID, *m.Revision); err != nil {
 				s.log.Error("agent socket: end writing session", "error", err)
 			}
+		case "overlay.answer":
+			var applied *agent.EditorApplied
+			if m.Before != nil && m.Shows != nil {
+				applied = &agent.EditorApplied{Before: *m.Before, Revision: m.Revision, Shows: *m.Shows}
+			}
+			s.answerOverlay(ctx, data.Agent, userID, m.ID, m.Answer, applied)
 		case "run.request":
 			// Before the run is queued, which starts it.
 			s.editors.Claim(ec, m.NoteID)
@@ -160,4 +193,24 @@ func (s *Server) pingSocket(ctx context.Context, cancel func(), c *websocket.Con
 			return
 		}
 	}
+}
+
+// answerOverlay records an answer and tells the account's editors what's
+// left, locked so answers from two tabs reach them in order.
+func (s *Server) answerOverlay(ctx context.Context, a *agent.Store, userID int64, id, answer string, applied *agent.EditorApplied) {
+	defer a.LockOverlays()()
+	noteID, err := a.AnswerOverlay(ctx, id, answer, applied)
+	switch {
+	case errors.Is(err, agent.ErrOverlayGone), errors.Is(err, agent.ErrBadAnswer):
+		return // answered elsewhere already, or not an answer it takes
+	case err != nil:
+		s.log.Error("agent socket: answer an overlay", "error", err)
+		return
+	}
+	list, err := a.OpenOverlays(ctx, noteID)
+	if err != nil {
+		s.log.Error("agent socket: overlays", "error", err)
+		return
+	}
+	s.editors.Broadcast(userID, agent.OverlaysMessage(noteID, list))
 }

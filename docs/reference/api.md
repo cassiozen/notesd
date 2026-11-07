@@ -416,9 +416,11 @@ a name that isn't a time zone is `400 invalid_request` on `timeZone`.
 The **activity log** lists every run: queued, running and finished, kept 30 days after it
 finishes. A **run** is `{id, trigger, status, spaceId, noteId, noteTitle, noteDeleted, outcome,
 failure, message, model, toolCalls, promptTokens, completionTokens, createdAt, startedAt,
-finishedAt, edits}`. `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
+finishedAt, edits, overlays?}`. `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
 why a run failed or was skipped, and `outcome` what a finished one did (`edited`, `created`,
-`no_change`, or after undo `undone` or `partly_undone`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
+`no_change`, or after undo `undone` or `partly_undone`; a suggestion accepted later makes a
+`no_change` run `edited`). `message` is the model's last words, or what went wrong. `overlays`, when
+the run showed any, counts them: `{cards, suggestions, accepted}`. `edits` lists the notes it
 changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
 `create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked`,
 `changed` (the note changed since the run wrote it) or `not_saved` (the run changed it in an open
@@ -460,6 +462,8 @@ ignored, so either may add some, except that an editor answers a request it can'
 | Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
 | Editor | `{type: "run.request", trigger, noteId, spaceId, note?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
+| Editor | `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered overlay `id`: `dismiss` for a card; `accept`, `reject` or `stale` (it no longer fits) for a suggestion. An accepted one's change was made in the editor as for an `apply`, and `before`, `revision` and `shows` are as its result's |
+| Server | `{type: "overlays", noteId, overlays}` | What runs show on the note now, all of it: on `editor.opened` when there's any, and to every editor of the account when a run shows more, one is answered, or the note's last editor closes it |
 | Server | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | A run started (`running`) or ended; to every editor of the account |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
 | Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}, op}` | A run changes the note. If the editor shows `before`, it changes it to `after`; otherwise, the user having typed meanwhile, it makes `op` to what it shows. As one undoable step, saved as any edit. It answers `{type: "result", id, before, revision, shows}`: what it showed just before (`revision`: the server's revision of exactly that, or `null`), and the note as it then saves it |
@@ -470,6 +474,16 @@ replace}` (find must appear exactly once), or `{kind: "insert", at, text}` with 
 (the whole content, which never fits once the user has typed). An editor that can't do a request
 answers `{type: "result", id, error}`: `changed` (`op` no longer fits), `not_open` or `locked`. Ten seconds without an answer counts as gone. The server
 pings every 25 seconds; a proxy in front must pass WebSocket upgrades.
+
+An **overlay** is something a run shows beside a note an editor has open, never in its text:
+`{id, runId, noteId, kind, place, body, change?}`. `kind` is `card`, with `body` Markdown to read,
+or `suggestion`, with `change` an `op` the user may accept and `body` why (possibly empty). `place`
+is `{at}` with `at` `top`, `end` or `cursor` (where the cursor was when it showed), or `{after}`, a
+quote from the note's content whose block it goes under; an editor that can't find the quote shows
+it at the top. Overlays close when the note's last editor closes it, when a later run of the same
+rule shows its own, or when the note is locked or deleted. Locking or deleting sends no `overlays`: an editor stops
+showing a note's overlays once it's locked, and closes a deleted one. An editor forgets them when its
+connection drops, and hears them again on `editor.opened`.
 
 ### AI
 
