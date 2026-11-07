@@ -1,0 +1,27 @@
+apps/web/src/editor/agent-overlays.test.ts
+  s_cc6cacc0a6fc01::t_f4efcc57454b1f 48-54
+apps/web/src/editor/agent-overlays.ts
+  s_cc6cacc0a6fc01::t_d47c3adf334811 68-72,89,104
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_bf5d2e8e0d8921 29-30,42-50
+server/internal/agent/overlays.go
+  s_cc6cacc0a6fc01::t_52d23062145483 10-12,85-95
+server/internal/agent/overlays_test.go
+  s_cc6cacc0a6fc01::t_e71e50748498da 340-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2a97255915ce568b83a2fb1955484cdac27659fa",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
