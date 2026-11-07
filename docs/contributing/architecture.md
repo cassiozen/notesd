@@ -510,8 +510,9 @@ The user guide is [agents](../guides/using/agents.md).
   prompt, which stay the same from run to run so the provider can cache them, then the event: the
   time in the account's time zone and the note. Each run logs where its time went: waiting, getting
   ready, the model's calls and the tools'. So the model can act
-  in its first call, the event also carries the cursor (in an editor), the space's tags, and the
-  space's reference notes.
+  in its first call, the event also carries the cursor (in an editor), the space's tags, the space's
+  reference notes, and which of the note's lines the agent wrote itself (`yourText`, from its recorded
+  edits), so it doesn't take its own question for the user's writing.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
   `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a

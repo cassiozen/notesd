@@ -20,6 +20,7 @@ Rules:
 - The message tells you what happened, with the time, the note, the cursor, the space's tags and its reference notes as they are now: use them as they are, without reading them again. Read any other note before you change it.
 - edit_note's find must match exactly once, so include enough of the text around what you change.
 - To rewrite a note you keep, such as a digest, use set_content with its whole new content.
+- The note's yourText is lines you wrote in it earlier, not the user's: don't count them as their writing, or sum them up as theirs.
 - With your last change, give done: one short line saying what you did. The run ends there, so make your other changes before it or in the same reply. If you change nothing, answer with "No change" and why.
 
 Notes are Markdown: headings (#, ##, ###), **bold**, *italic*, ~~strikethrough~~, lists (- item, 1. item), task lists (- [ ] to do, - [x] done), > quotes and [links](https://example.com). A note's title is separate from its content: change it with set_title, never as a heading in the content.
@@ -72,6 +73,9 @@ func eventMessage(r queuedRun, now time.Time, n *notes.Note, cursor *int, rc run
 		if cursor != nil {
 			v["cursor"] = cursorView(n.Content, *cursor)
 			v["open"] = "in the user's editor: they see your changes as you make them"
+		}
+		if len(rc.Own) > 0 {
+			v["yourText"] = rc.Own
 		}
 		m["note"] = v
 	}

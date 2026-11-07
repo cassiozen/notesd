@@ -1067,3 +1067,35 @@ func TestEditorRunsOnDifferentNotesGoAtOnce(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 }
+
+func TestTheModelIsToldWhichTextIsItsOwn(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone, agent.EditDone)
+	h.done("n1", "Milk")
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "start", "text": "## What went well today?", "done": "Asked."}`))
+	h.next()
+	event := func() string {
+		t.Helper()
+		return h.model.requests[len(h.model.requests)-1].Messages[1].Content
+	}
+
+	// The user writes under the agent's question: only the question is the agent's.
+	h.update("n1", "## What went well today?\n\nMilk, and a walk.\n", nil)
+	h.advance(agent.IdleAfter)
+	h.close()
+	h.model.steps = append(h.model.steps, final("No change."))
+	h.next()
+	if e := event(); !strings.Contains(e, `"yourText": [`+"\n"+`      "## What went well today?"`+"\n"+`    ]`) || strings.Contains(e, `"yourText": [`+"\n"+`      "Milk`) {
+		t.Fatalf("event: %s", e)
+	}
+
+	// Deleted since: nothing of the agent's is left.
+	h.update("n1", "Milk, and a walk.\n", nil)
+	h.advance(agent.IdleAfter)
+	h.close()
+	h.model.steps = append(h.model.steps, final("No change."))
+	h.next()
+	if e := event(); strings.Contains(e, "yourText") {
+		t.Fatalf("event: %s", e)
+	}
+}

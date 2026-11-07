@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"sort"
+	"strings"
 
 	"notes/server/internal/locks"
+	"notes/server/internal/notes"
 	"notes/server/internal/search"
 )
 
@@ -15,6 +17,9 @@ import (
 const (
 	maxContextTags    = 100
 	maxReferenceRunes = 8000
+	// maxOwnEdits is how many of the agent's latest edits to the run's note
+	// say which of its lines are the agent's own.
+	maxOwnEdits = 20
 )
 
 // runContext is the space's tags and reference notes, as of the run's start.
@@ -23,10 +28,19 @@ type runContext struct {
 	References []map[string]any
 	// Missing are reference notes' titles no note in the space has.
 	Missing []string
+	// Own is the lines of the run's note the agent wrote itself.
+	Own []string
 }
 
-func (rs *runState) gather(ctx context.Context, c Config) (runContext, error) {
+func (rs *runState) gather(ctx context.Context, c Config, note *notes.Note) (runContext, error) {
 	var out runContext
+	if note != nil {
+		own, err := rs.acct.Agent.ownLines(ctx, note.ID, note.Content)
+		if err != nil {
+			return out, err
+		}
+		out.Own = own
+	}
 	tags, err := search.ListTags(ctx, rs.acct.Agent.db, search.Filter{Space: rs.run.SpaceID, Unlocked: true})
 	if err != nil {
 		return out, err
@@ -74,4 +88,39 @@ func tagViews(tags []search.TagCount) []map[string]any {
 		out = append(out, map[string]any{"tag": "#" + t.Name, "notes": t.Count})
 	}
 	return out
+}
+
+// ownLines is the lines the agent added to a note in its latest edits that
+// content still has, in their order there: the agent's writing, not the
+// user's, such as the question it asked in a new note.
+func (s *Store) ownLines(ctx context.Context, noteID, content string) ([]string, error) {
+	rows, err := s.db.R.QueryContext(ctx, `SELECT before_content, after_content FROM agent_run_edits
+		WHERE note_id = ? AND undone_at IS NULL AND text_removed = 0 ORDER BY written_at DESC LIMIT ?`, noteID, maxOwnEdits)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	added := map[string]bool{}
+	for rows.Next() {
+		var before, after string
+		if err := rows.Scan(&before, &after); err != nil {
+			return nil, err
+		}
+		for _, l := range diffLines(before, after) {
+			if l.Op == "+" && strings.TrimSpace(l.Text) != "" {
+				added[l.Text] = true
+			}
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, l := range splitLines(content) {
+		if added[l] {
+			out = append(out, l)
+			delete(added, l) // once, however often it repeats
+		}
+	}
+	return out, nil
 }

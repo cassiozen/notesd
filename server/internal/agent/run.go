@@ -191,7 +191,7 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	if note != nil && rs.inEditor[note.ID] != nil {
 		cursor = rs.inEditor[note.ID].cursor
 	}
-	if rc, err := rs.gather(runCtx, c); err != nil {
+	if rc, err := rs.gather(runCtx, c, note); err != nil {
 		if runCtx.Err() == nil {
 			return failed(FailInterrupted, err)
 		}
