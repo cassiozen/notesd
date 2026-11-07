@@ -1,6 +1,7 @@
 package notes.app
 
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
@@ -13,6 +14,10 @@ import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.github.takahirom.roborazzi.captureRoboImage
 import java.io.File
 import kotlinx.coroutines.runBlocking
+import mockwebserver3.Dispatcher
+import mockwebserver3.MockResponse
+import mockwebserver3.MockWebServer
+import mockwebserver3.RecordedRequest
 import notes.app.editor.SAMPLE_MARKDOWN
 import notes.app.editor.SAMPLE_TITLE
 import notes.core.api.RemoteNote
@@ -303,6 +308,50 @@ class ScreenshotTest {
             shoot("settings-$name")
             compose.onNode(hasContentDescription("Back")).performClick()
             compose.waitUntilExactlyOneExists(hasText(row))
+        }
+    }
+
+    /** Server's People, as an admin: the list and a person's actions. (Its dialogs never go idle here.) */
+    @Test
+    fun settingsPeople() {
+        val day = 86_400_000L
+        val now = System.currentTimeMillis()
+        val people = """{"users":[
+            {"id":1,"username":"cassio","isAdmin":true,"createdAt":${now - 90 * day}},
+            {"id":2,"username":"sam","createdAt":${now - 30 * day}},
+            {"id":3,"username":"alex","pending":true,"createdAt":$now,"linkExpiresAt":${now + 6 * day}}]}"""
+        val server = MockWebServer()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse = MockResponse.Builder()
+                .addHeader("Content-Type", "application/json")
+                .body(
+                    when ("${request.method} ${request.url.encodedPath}") {
+                        "GET /api/v1/users" -> people
+                        else -> """{"configured":false}"""
+                    }
+                )
+                .build()
+        }
+        server.start()
+        try {
+            runBlocking {
+                graph.accounts.signedIn(
+                    server.url("/").toString(),
+                    SignIn(Session("s", "device", "P", 1, 1), "cassio", "a", Long.MAX_VALUE, "r", Long.MAX_VALUE, true)
+                )
+            }
+            launch()
+            compose.onNode(hasContentDescription("Sidebar")).performClick()
+            compose.onNode(hasContentDescription("Settings")).performClick()
+            compose.waitUntilAtLeastOneExists(hasText("cassio"))
+            compose.onNode(hasText("cassio")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("sam"))
+            shoot("settings-people")
+            compose.onNode(hasText("sam") and hasClickAction()).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Make admin"))
+            shoot("settings-people-actions")
+        } finally {
+            server.close()
         }
     }
 

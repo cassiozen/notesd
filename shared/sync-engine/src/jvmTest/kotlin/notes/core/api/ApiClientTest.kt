@@ -157,6 +157,48 @@ class ApiClientTest {
     }
 
     @Test
+    fun `people are listed, invited, sent new links, made admins and removed`() = runBlocking<Unit> {
+        val sam = """{"id":2,"username":"sam","isAdmin":false,"createdAt":5,"pending":true,"linkExpiresAt":9}"""
+        val me = """{"id":1,"username":"me","isAdmin":true,"createdAt":1,"pending":false}"""
+        server.enqueue(json(200, """{"users":[$me,$sam]}"""))
+        val people = assertIs<ApiResult.Ok<List<Person>>>(api.people()).value
+        assertEquals(listOf("me", "sam"), people.map { it.username })
+        assertEquals(Person(2, "sam", false, 5, pending = true, linkExpiresAt = 9), people[1])
+        assertNull(people[0].linkExpiresAt)
+
+        server.enqueue(json(201, """{"user":$sam,"link":{"token":"tok","expiresAt":9}}"""))
+        assertEquals(SetupLink("tok", 9), assertIs<ApiResult.Ok<Invitation>>(api.invite("sam")).value.link)
+        server.enqueue(json(200, """{"token":"tok2","expiresAt":10}"""))
+        assertEquals(ApiResult.Ok(SetupLink("tok2", 10)), api.newSetupLink(2))
+        server.enqueue(json(200, sam.replace("\"isAdmin\":false", "\"isAdmin\":true")))
+        assertEquals(true, assertIs<ApiResult.Ok<Person>>(api.setAdmin(2, true)).value.isAdmin)
+        server.enqueue(MockResponse.Builder().code(204).build())
+        assertEquals(ApiResult.Ok(Unit), api.removePerson(2))
+
+        val sent = List(5) {
+            server.takeRequest()
+        }.map { Triple(it.method, it.url.encodedPath, it.body?.utf8().orEmpty()) }
+        assertEquals(
+            listOf(
+                Triple("GET", "/api/v1/users", ""),
+                Triple("POST", "/api/v1/users", """{"username":"sam"}"""),
+                Triple("POST", "/api/v1/users/2/link", "{}"),
+                Triple("PATCH", "/api/v1/users/2", """{"isAdmin":true}"""),
+                Triple("DELETE", "/api/v1/users/2", "")
+            ),
+            sent
+        )
+    }
+
+    @Test
+    fun `managing people is refused to non-admins, and the last admin is kept`() = runBlocking<Unit> {
+        server.enqueue(json(403, """{"error":"admin_only","message":"only an admin can do this"}"""))
+        assertEquals(ApiResult.Rejected(403, "admin_only", "only an admin can do this", null), api.people())
+        server.enqueue(json(409, """{"error":"last_admin","message":"the server needs an admin who can sign in"}"""))
+        assertIs<ApiResult.Conflict>(api.setAdmin(1, false)).also { assertEquals("last_admin", it.code) }
+    }
+
+    @Test
     fun `every request says which app sent it`() = runBlocking<Unit> {
         val app = ApiClient(server.url("/"), creds, clock = { now }, client = ClientInfo("android", "v1.0.0"))
         server.enqueue(json(200, """{"setupRequired":false,"serverVersion":"v1.0.0","apiVersion":1}"""))

@@ -214,6 +214,28 @@ class ApiClient(
         Request.Builder().url(imageUrl(id)).header("Authorization", "Bearer $access").build()
     }) { ImageFile(it.type ?: "application/octet-stream", it.bytes) }
 
+    /** Admins only: everyone else gets 403 admin_only. */
+    suspend fun people(): ApiResult<List<Person>> =
+        authed({ request("GET", url("api/v1/users"), null, it) }) { json.decodeFromString<People>(it).users }
+
+    suspend fun invite(username: String): ApiResult<Invitation> =
+        authed({ post("api/v1/users", buildJsonObject { put("username", username) }, it) }) {
+            json.decodeFromString(it)
+        }
+
+    /** Replaces the account's link; its password keeps working until the new one is used. */
+    suspend fun newSetupLink(id: Long): ApiResult<SetupLink> = authed({
+        request("POST", userUrl(id).newBuilder().addPathSegment("link").build(), JsonObject(emptyMap()), it)
+    }) { json.decodeFromString(it) }
+
+    suspend fun setAdmin(id: Long, isAdmin: Boolean): ApiResult<Person> =
+        authed({ request("PATCH", userUrl(id), buildJsonObject { put("isAdmin", isAdmin) }, it) }) {
+            json.decodeFromString(it)
+        }
+
+    suspend fun removePerson(id: Long): ApiResult<Unit> =
+        authedReply({ request("DELETE", userUrl(id), null, it) }) { require(it.code == 204) { "Not a delete" } }
+
     // --- plumbing ------------------------------------------------------------
 
     private suspend fun <T> authed(build: (access: String) -> Request, decode: (String) -> T): ApiResult<T> =
@@ -303,6 +325,8 @@ class ApiClient(
     private fun imageUrl(id: String) = url("api/v1/images").newBuilder().addPathSegment(id).build()
 
     private fun spaceUrl(id: String) = url("api/v1/spaces").newBuilder().addPathSegment(id).build()
+
+    private fun userUrl(id: Long) = url("api/v1/users").newBuilder().addPathSegment(id.toString()).build()
 
     companion object {
         private const val REFRESH_EARLY_MS = 60_000L
