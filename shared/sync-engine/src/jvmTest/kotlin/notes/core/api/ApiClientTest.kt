@@ -166,8 +166,11 @@ class ApiClientTest {
         assertEquals(Person(2, "sam", false, 5, pending = true, linkExpiresAt = 9), people[1])
         assertNull(people[0].linkExpiresAt)
 
-        server.enqueue(json(201, """{"user":$sam,"link":{"token":"tok","expiresAt":9}}"""))
-        assertEquals(SetupLink("tok", 9), assertIs<ApiResult.Ok<Invitation>>(api.invite("sam")).value.link)
+        server.enqueue(json(201, """{"user":$sam,"link":{"token":"tok","expiresAt":9,"pending":true}}"""))
+        assertEquals(
+            SetupLink("tok", 9, pending = true),
+            assertIs<ApiResult.Ok<Invitation>>(api.invite("sam")).value.link
+        )
         server.enqueue(json(200, """{"token":"tok2","expiresAt":10}"""))
         assertEquals(ApiResult.Ok(SetupLink("tok2", 10)), api.newSetupLink(2))
         server.enqueue(json(200, sam.replace("\"isAdmin\":false", "\"isAdmin\":true")))

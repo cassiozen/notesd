@@ -66,9 +66,16 @@ class PeopleTest {
         serve { r ->
             when ("${r.method} ${r.url.encodedPath}") {
                 "GET /api/v1/users" -> json(200, """{"users":[$me,$sam]}""")
-                "POST /api/v1/users" -> json(201, """{"user":$alex,"link":{"token":"tok","expiresAt":9}}""")
+
+                "POST /api/v1/users" -> json(
+                    201,
+                    """{"user":$alex,"link":{"token":"tok","expiresAt":9,"pending":true}}"""
+                )
+
                 "PATCH /api/v1/users/2" -> json(200, sam.replace("\"isAdmin\":false", "\"isAdmin\":true"))
+
                 "DELETE /api/v1/users/2" -> MockResponse.Builder().code(204).build()
+
                 else -> json(404, """{"error":"no_such_endpoint"}""")
             }
         }
@@ -103,10 +110,31 @@ class PeopleTest {
                 "GET /api/v1/users",
                 "POST /api/v1/users",
                 "PATCH /api/v1/users/2",
+                // Fresh before asking: the row may be stale.
+                "GET /api/v1/users",
                 "DELETE /api/v1/users/2"
             ),
             synchronized(sent) { sent.filter { "/users" in it } }
         )
+    }
+
+    @Test
+    fun `a new link for someone who has joined since the list loaded says it's a reset`() {
+        serve { r ->
+            when ("${r.method} ${r.url.encodedPath}") {
+                "GET /api/v1/users" -> json(200, """{"users":[$me,$alex]}""")
+                "POST /api/v1/users/3/link" -> json(200, """{"token":"t2","expiresAt":9,"pending":false}""")
+                else -> json(404, """{"error":"no_such_endpoint"}""")
+            }
+        }
+        openServer(isAdmin = true)
+        compose.waitUntilExactlyOneExists(hasText("Invited · link expires in 7 days"))
+        compose.onNode(hasText("alex") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Share new link"))
+        compose.onNodeWithText("Share new link").performClick()
+        compose.waitUntilExactlyOneExists(hasText("choose a new password", substring = true))
+        compose.onNode(hasText("Done") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilDoesNotExist(hasText("Invited", substring = true))
     }
 
     @Test

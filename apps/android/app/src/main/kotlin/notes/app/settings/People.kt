@@ -147,8 +147,19 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
 
     fun newLink(person: Person) = act(person, { graph.api()?.newSetupLink(person.id) ?: ApiResult.Unauthenticated }) {
         val link = (it as ApiResult.Ok<*>).value as SetupLink
-        update { list -> list.map { p -> if (p.id == person.id) p.copy(linkExpiresAt = link.expiresAt) else p } }
-        open = Open.Link(person, link)
+        // The server's word on pending: this list may be from before they chose a password.
+        val fresh = person.copy(pending = link.pending, linkExpiresAt = link.expiresAt)
+        update { list -> list.map { p -> if (p.id == person.id) fresh else p } }
+        open = Open.Link(fresh, link)
+        null
+    }
+
+    // Fresh first: a stale "invited" would describe removing someone who has since joined as cancelling an invitation.
+    fun confirmRemove(person: Person) = act(person, { graph.api()?.people() ?: ApiResult.Unauthenticated }) {
+        @Suppress("UNCHECKED_CAST")
+        val latest = (it as ApiResult.Ok<*>).value as List<Person>
+        load = Load.Ready(latest)
+        latest.find { p -> p.id == person.id }?.let { fresh -> open = Open.Remove(fresh) }
         null
     }
 
@@ -242,7 +253,10 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
                     if (changed.isAdmin) "${p.username} is now an admin." else "${p.username} is no longer an admin."
                 }
             },
-            onRemove = { open = Open.Remove(o.person) }
+            onRemove = {
+                open = null
+                confirmRemove(o.person)
+            }
         )
 
         is Open.Link -> LinkDialog(account.server, o.person, o.link) { open = null }
