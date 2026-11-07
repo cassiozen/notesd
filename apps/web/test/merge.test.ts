@@ -1,13 +1,14 @@
 import { readFileSync, writeFileSync } from 'node:fs'
+import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import fixtures from '../../../shared/markdown-fixtures/merge.json'
 import { canonical, parse } from '../src/editor/markdown'
 import { type BodyMerge, mergeBody } from '../src/editor/merge'
 
-type Expect = { clean: string } | { partial: { theirs: string; mine: string } } | string
+type Expect = { clean: string } | { partial: { theirs: string; mine: string } } | 'conflict'
 
 function expected(e: Expect): BodyMerge {
-  if (typeof e === 'string') return { kind: 'conflict' }
+  if (e === 'conflict') return { kind: 'conflict' }
   if ('clean' in e) return { kind: 'clean', content: e.clean }
   return { kind: 'partial', theirs: e.partial.theirs, mine: e.partial.mine }
 }
@@ -136,8 +137,7 @@ describe('merge properties', () => {
 // Random cases with this implementation's answers, which the Kotlin and Swift ports must match.
 // NOTESD_REGENERATE=1 rewrites the file after a deliberate change to the algorithm.
 describe('generated merge corpus', () => {
-  // Tests run from apps/web.
-  const path = '../../shared/markdown-fixtures/merge-generated.json'
+  const path = resolve(import.meta.dirname, '../../../shared/markdown-fixtures/merge-generated.json')
   const next = random(7)
   const { doc, edit } = generator(next)
   const cases = Array.from({ length: 300 }, (_, n) => {

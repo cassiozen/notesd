@@ -33,7 +33,10 @@ class BlockMergeTest {
 
     private fun expected(c: Fixtures.MergeCase): BodyMerge {
         val e = c.expect
-        if (e is JsonPrimitive) return BodyMerge.Conflict
+        if (e is JsonPrimitive) {
+            require(e.content == "conflict") { "${c.name}: unknown expectation $e" }
+            return BodyMerge.Conflict
+        }
         e as JsonObject
         e["clean"]?.let { return BodyMerge.Clean(it.jsonPrimitive.content) }
         val partial = e.getValue("partial").jsonObject
