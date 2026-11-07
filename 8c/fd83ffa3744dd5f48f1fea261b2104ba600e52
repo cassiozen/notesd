@@ -1,0 +1,57 @@
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_5d985c8e9a3818 123-137
+apps/web/src/agent/triggers.test.ts
+  s_cc6cacc0a6fc01::t_6eb49fe72424cc 10-11,13-16,18
+apps/web/src/agent/triggers.ts
+  s_cc6cacc0a6fc01::t_23e5c1ce695bd1 13,16-20
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_dd5e4b288732c4 294,300
+apps/web/src/notes/share.tsx
+  s_cc6cacc0a6fc01::t_f25c44a9f0d555 148
+apps/web/test/agent-triggers.test.tsx
+  s_cc6cacc0a6fc01::t_eead1f554ade33 2,98-101,103,125,132-134,139
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_ef23f43cd7aa5e 486-487,505-506
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_37c3345ef10725 440-445,457
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_df5d548958de82 82
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_4d62b6e6379cdd 9,20-21,25,41-43,58-59
+server/internal/agent/request.go
+  s_cc6cacc0a6fc01::t_dc53a59a340992 8-9,33-35,65-67,74-77,84-123
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_8a2f05570eabd0 7,154,162,165-166,204-232
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_b7e11b69e7ea20 164-172
+server/internal/agent/runner.go
+  s_cc6cacc0a6fc01::t_0d6b5baa13d499 37-39,175-176,240-256
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_1df5fb6607c225 1019-1069
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_0f339241be2f03 395-399,406
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_a6fc0a9342f62a 6,14,37-41,108-115,121-129
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_caa9f2cf2080e4 238,251-256,258-272,274-278
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_157c3c94b9380d 126-129,132
+server/internal/editors/hub_test.go
+  s_cc6cacc0a6fc01::t_0f8b89c0a5cb83 87
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8cfd83ffa3744dd5f48f1fea261b2104ba600e52",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
