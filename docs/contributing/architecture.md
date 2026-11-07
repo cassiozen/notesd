@@ -16,7 +16,7 @@ A self-hosted note-taking system: one Go executable backed by SQLite serves a Re
 | Mobile | Native Swift and Kotlin apps with local SQLite + FTS5; fully usable offline |
 | Documents | Whole Markdown documents in a restricted CommonMark + GFM dialect |
 | Sync | State-based incremental replication using per-note revisions and a global change sequence |
-| Conflicts | Field-level auto-merge when safe; otherwise a conflict copy |
+| Conflicts | Field-level merge, bodies merged block by block when safe; otherwise a conflict copy |
 | Deletion | Permanent tombstones so stale devices cannot resurrect notes |
 | Search | FTS5 on every platform, title-weighted BM25 |
 | Reliability | Transactional writes, idempotent mutations, crash-safe sync, consistent backups |
@@ -64,7 +64,7 @@ The web app offers full note management, editing and search. By default it works
 | Excluded | Reason |
 | --- | --- |
 | Real-time collaboration, CRDTs, WebSockets | One active editor per note; HTTP sync is sufficient |
-| Full version history, automatic Markdown merge | Not needed to preserve conflicts; formatting-aware merging is complex |
+| Full version history, merging within a paragraph | Not needed to preserve conflicts; text merges inside a block duplicate and garble prose (§6.2) |
 | File attachments | Need their own storage and sync design; images are the exception (§7.6) |
 | Sharing or collaborating on notes between accounts, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
 | PostgreSQL, Redis, external search, job workers, Kubernetes | Unnecessary at this scale |
@@ -344,15 +344,32 @@ Title, content and space are merged independently by comparing base, local and s
 
 ### 6.2 Conflicting content
 
-When both sides changed the content differently, V1 does not merge text. The server version keeps the original note; the local version becomes a new note titled `<Title> (Conflicted copy)` with a new UUID, the local version's space and optional `conflictOf: <original id>` metadata. It then behaves like any other note.
+When both sides changed the content differently, the client merges it block by block. `apps/web/src/editor/merge.ts` is the reference implementation; the engine (`BlockMerge.kt`) and iOS (`BlockMerge.swift`) port it, and `shared/markdown-fixtures/merge.json` and `merge-generated.json` pin all three to the same output, byte for byte.
 
-The native apps make the copy automatically and say so (a notice, and a banner on the copy linking to the original), since sync runs in the background with no one to ask. The web app saves interactively and asks the user instead.
+- **Blocks.** Base, local and server are parsed into the editor document (§7.2), and each block list is merged with diff3 (Khanna, Kunal & Pierce): runs where all three agree are kept; between them, a run only one side changed takes that side, and one both changed the same way is taken once. Blocks are matched by a longest common subsequence whose ties go to deleting from the base, so every port pairs them the same way.
+- **Both changed one run.** If both sides edited its blocks in place (same count, same kinds), they pair up block by block. If only one did, the other side's added and removed blocks are applied around those edits, unless it removed a block the first side changed. Anything else is a conflict region.
+- **Within a block.** A heading's level, a task's checkbox and an ordered list's start number merge as fields (§6.1), separately from text. Lists, list items and blockquotes merge their children recursively. A paragraph's text, a heading's text and a raw block are atomic: changed differently on both sides, they conflict. List numbers are derived on output, so inserting an item never touches the others.
+- **Not merged.** Two insertions at the same place, a block moved on one side and edited on the other, or a block whose kind changed (a paragraph made a list item) are conflicts. Nothing merges within a paragraph.
+- **Checks.** Each output must serialize back to itself, and no paragraph, heading or raw block may occur more often than in any input; a merge that fails either, or would take more than 4 million LCS cells, is a conflict.
+- **Locked bodies** (§10.1) never merge block by block.
 
-Three-way Markdown merging is deferred: it must handle formatting syntax, lists, links and document structure.
+The result is one of three:
+
+| Result | What the client does |
+| --- | --- |
+| Clean | Stores and uploads the merged note, as for §6.1, and records it for Undo |
+| Partial: merged except at conflict regions | Two notes, each with every change that merged. The original takes the server's version of each region, the copy the local one |
+| Conflict: nothing merged, or a check failed | The server's version keeps the original note; the local version becomes the copy |
+
+A conflicted copy is a new note titled `<Title> (Conflicted copy)` with a new UUID, the local version's space and `conflictOf: <original id>`. It then behaves like any other note. A title both sides changed makes a partial result too, the body merging as above. Every client makes the copy by itself and says so (a notice, and a banner on the copy linking to the original). Only a conflict on the web, with notes on the server, asks the user: **Keep mine** makes the copy, **Use theirs** drops the local edit.
+
+When the editor's save meets a change sync stored meanwhile (§5.3), sides swap: the note keeps the editor's version of each conflict region, and the copy takes the stored one.
+
+**Undo.** A clean body merge can be split back apart for 14 days: the note returns to the version on the side that didn't merge (the server's, or the editor's text for a save, §5.3), unless edited since, and the other version becomes a conflicted copy, what a conflict would have made. The merge is kept in `merge_undo`, one row per note, on the device that merged; the web without a local copy keeps it in the open tab. Deleting or locking the note, and signing out, drop it: a locked note's undo would keep plain text. 14 days stays well inside the 30 a released image is kept (§7.6). Each client shows a banner on a merged note, with Undo.
 
 ### 6.3 Crash-safe conflict handling
 
-Creating a conflict copy, adding its creation to the outbox and updating the original note's sync state commit as one local transaction. A crash before commit leaves the original pending edit recoverable.
+Creating a conflict copy, adding its creation to the outbox, updating the original note's sync state and recording a merge for Undo commit as one local transaction. A crash before commit leaves the original pending edit recoverable.
 
 ### 6.4 Tombstones
 
@@ -552,7 +569,7 @@ Like Apple Notes' locked notes: the user locks chosen notes, and their bodies ar
 - **Versions.** Any content starting with `notesd:locked:` is locked; the next segment is its version (`v1`). Every client and the server recognize the whole family, so a later format can't be mistaken for plain text, edited, indexed, emailed or have its images collected by an older release. A client that doesn't know the version opens the note read-only and asks to update. The server stores an unknown version as an opaque locked body if it is `notesd:locked:v<n>:` + one line of base64url, and refuses anything else. Locked images do the same with their type: `application/vnd.notesd.locked` is v1, later versions are subtypes (`application/vnd.notesd.locked.v2`), never parameters.
 - Clients never re-encrypt unchanged text: an open note keeps the envelope it was stored as and replaces it only when the decrypted text changes, so the server's `unchanged` status and byte comparisons stay meaningful. A retried operation resends the same envelope (an operation ID's payload is fixed, §4.2).
 - The server checks only shape (prefix, one line of strict base64url, length), which is enough to refuse an edit made on the ciphertext as if it were text. The 1 MiB content cap applies to the plain body: an envelope may be as long as that of a 1 MiB body.
-- Merging (§6.1) compares envelopes as stored, never in canonical Markdown form, so sync merges without the key: a body changed on one side takes that side; changed on both, the local version becomes a conflicted copy, still locked. The web app, which merges interactively, decrypts first and merges text.
+- Merging (§6.1) compares envelopes as stored, never in canonical Markdown form, so sync merges without the key: a body changed on one side takes that side; changed on both, the local version becomes a conflicted copy, still locked. Locked bodies never merge block by block (§6.2), on any client.
 - Locked notes are excluded from search text, previews, excerpts and body tags (§8.1), and the server refuses to email them (`409 note_locked`).
 - A locked note's images (§7.6) are encrypted with the same key: `nonce ‖ ciphertext ‖ tag` of the image file, binary, with additional data `notesd:image:v1`, uploaded as `application/vnd.notesd.locked`. The image type is recovered by sniffing after decryption. Locking a note re-uploads each of its images encrypted and rewrites the references before the save; removing the lock does the reverse. If an image can't be fetched (offline and not cached), the change is refused rather than leaving a locked note pointing at plain images. The old blobs are released and deleted after 30 days (§7.6). Until then the plain copies of a newly locked note's images stay readable on the server, as do the plain images in backups made before. The `imageIds` a locked save lists tell the server which encrypted blobs belong to which locked note; it learns nothing of their content, and their sizes were already visible.
 
@@ -660,7 +677,8 @@ Testing emphasizes failure scenarios over happy paths, with multiple simulated c
 | Single device edits | Successful sync |
 | Two devices edit different notes | Both changes preserved |
 | Two devices edit different fields | Safe merge |
-| Two devices edit content | Conflict copy |
+| Two devices edit different blocks of the content | Merged, Undo offered |
+| Two devices edit the same block | Conflict copy, with every other change in both notes |
 | Request succeeds, response lost | Idempotent retry |
 | Client crashes during download | Resumes without skipping changes |
 | Client crashes during conflict handling | Pending edits preserved |

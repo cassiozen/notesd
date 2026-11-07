@@ -9,6 +9,8 @@ public enum SyncEvent: Hashable, Sendable {
     case recoveredCopy(copyId: String, title: String)
     /// Deleted here, edited elsewhere: the edit wins and the note is back.
     case restored(noteId: String, title: String)
+    /// Both sides changed the body and it merged (§6.2); `MergeUndo` can split it back.
+    case merged(noteId: String, title: String)
 }
 
 public struct SyncState: Hashable, Sendable {
@@ -329,6 +331,7 @@ public final class SyncStore: Sendable {
         let now = clock()
         try await db.write { sql in
             try sql.exec("UPDATE sync_state SET last_sync_at = ?, last_error = ? WHERE id = 1", now, error)
+            try sql.forgetOldMerges(now: now)
         }
     }
 
@@ -409,7 +412,13 @@ public final class SyncStore: Sendable {
         let space =
             Merge.field(base: baseSpace, mine: local.spaceId, theirs: remote.spaceId, same: Merge.sameText)
             ?? remote.spaceId
-        guard let title, let content else {
+        let body =
+            content.map { BodyMerge.clean($0) }
+            ?? Merge.body(base: baseContent, mine: local.content, theirs: remote.content)
+        let theirsSide: String
+        let mineSide: String
+        switch body {
+        case .conflict:
             let copyTitle = copyTitle(local.title, conflictedSuffix)
             let copy = try sql.insertCopy(
                 title: copyTitle, content: local.content, conflictOf: local.id, spaceId: local.spaceId, now: clock())
@@ -418,7 +427,35 @@ public final class SyncStore: Sendable {
             try overwrite(sql, local, remote)
             events.append(.conflictedCopy(noteId: local.id, copyId: copy, title: copyTitle))
             return
+        case .clean(let merged):
+            (theirsSide, mineSide) = (merged, merged)
+        case .partial(let theirs, let mine):
+            (theirsSide, mineSide) = (theirs, mine)
         }
+        guard let title, case .clean(let merged) = body else {
+            // Both get every change that merged, so the two differ only where both sides changed the same thing.
+            let copyTitle = copyTitle(title ?? local.title, conflictedSuffix)
+            let copy = try sql.insertCopy(
+                title: copyTitle, content: mineSide, conflictOf: local.id, spaceId: local.spaceId, now: clock())
+            try faultAfterCopy?()
+            try storeMerged(sql, local, remote, title ?? remote.title, theirsSide, space)
+            events.append(.conflictedCopy(noteId: local.id, copyId: copy, title: copyTitle))
+            return
+        }
+        try storeMerged(sql, local, remote, title, merged, space)
+        if content == nil {
+            try sql.recordMerge(
+                MergeUndo(
+                    noteId: local.id, keepTitle: remote.title, keepContent: remote.content, copyTitle: local.title,
+                    copyContent: local.content, mergedTitle: title, mergedContent: merged, mergedAt: clock()))
+            events.append(.merged(noteId: local.id, title: title))
+        }
+    }
+
+    /// The note becomes `title`/`content` in `space`, based on `remote` and queued, unless that's just `remote`.
+    private func storeMerged(
+        _ sql: Sql, _ local: Note, _ remote: RemoteNote, _ title: String, _ content: String, _ space: String
+    ) throws {
         if title.same(as: remote.title) && Merge.sameMarkdown(content, remote.content) && space == remote.spaceId {
             // Nothing of ours left to send.
             try dropOps(sql, local.id)
@@ -506,6 +543,8 @@ public final class SyncStore: Sendable {
                 remote.changeSeq, remote.spaceId, remote.id)
         }
         try sql.index(remote.id, title: remote.title, content: remote.content)
+        // Undo would keep the text from before the lock in plain text here.
+        if LockedNotes.isLocked(remote.content) { try sql.forgetMerge(remote.id) }
     }
 
     private func tombstone(_ sql: Sql, _ remote: RemoteNote) throws {
@@ -516,6 +555,7 @@ public final class SyncStore: Sendable {
     /// Matches the server's tombstone: no text, out of the index, nothing pending.
     private func markTombstone(_ sql: Sql, _ id: String, deletedAt: Int64, updatedAt: Int64) throws {
         try sql.unindex(id)
+        try sql.forgetMerge(id)
         try sql.forgetImages(id)
         try sql.exec(
             """

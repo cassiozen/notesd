@@ -42,6 +42,24 @@ struct EditorModelTests {
         #expect(model.title.hasPrefix("Two"))
     }
 
+    @Test func aMergedNoteOffersUndo() async throws {
+        let store = makeStore()
+        try await store.save("n", title: "Plan", content: "One\n\nTwo\n")
+        // Stands in for sync: the note changed underneath an editor that started from "One/Two".
+        try await store.save("n", title: "Plan", content: "One, elsewhere\n\nTwo\n")
+        try await store.save(
+            "n", title: "Plan", content: "One\n\nTwo, here\n", basedOn: (title: "Plan", content: "One\n\nTwo\n"))
+        let model = EditorModel(store: store, id: "n", initial: try await store.get("n"))
+        let running = Task { await model.run() }
+        defer { running.cancel() }
+        #expect(await eventually { model.merged })
+
+        await model.undoMerge()
+        #expect(!model.merged)
+        #expect(model.undoneAs == "Plan (Conflicted copy)")
+        #expect(try await store.get("n")?.content == "One\n\nTwo, here\n")
+    }
+
     @Test func modelIsFreedOnceRunIsCancelled() async throws {
         let store = makeStore()
         weak var weakModel: EditorModel?

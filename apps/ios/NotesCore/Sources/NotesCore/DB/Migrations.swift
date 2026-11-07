@@ -8,7 +8,7 @@ import Foundation
 enum Migrations {
     static let files = [
         "0001_init", "0002_pending_images", "0003_lock_keys", "0004_spaces", "0005_space_icons", "0006_parking",
-        "0007_lock_key_kdf",
+        "0007_lock_key_kdf", "0008_merge_undo",
     ]
 
     static func apply(_ conn: Connection) throws {

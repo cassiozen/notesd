@@ -61,10 +61,17 @@ Nothing is lost unless you choose to drop it.
 
 - **Different parts changed**, such as the title on one device and the text on another: both
   changes are kept.
-- **The text changed on both:** the phone apps keep the server's version as the note, and save
-  theirs as a new note titled "… (Conflicted copy)", which links back to the original. The web
+- **The text changed on both, in different paragraphs, list items or headings:** the changes are
+  merged. Ticking a checklist item on one device while adding items or rewording another on the
+  other merges too. The note says it was merged, and **Undo** (for 14 days) splits it back into
+  the other device's version and a copy of yours.
+- **The same paragraph changed on both:** the note keeps the other device's version of that
+  paragraph, and yours goes into a new note titled "… (Conflicted copy)", which links back to the
+  original. Both notes keep everything else that merged. If nothing could be merged, the web
   app, working on the server, asks instead: **Use theirs**, or **Keep mine**, which saves your
   version as a separate note.
+- **Locked notes** are never merged: when both devices changed the text, yours becomes a
+  conflicted copy.
 - **Edited on one device, deleted on another:** the edits come back as a new note titled
   "… (Recovered copy)". A deletion made offline doesn't delete a note that was edited elsewhere
   in the meantime.

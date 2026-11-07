@@ -42,6 +42,10 @@ final class EditorModel {
     private(set) var original: Original?
     /// The note was deleted elsewhere; any unsaved typing was kept as a recovered copy.
     private(set) var gone = false
+    /// Edits from another device were merged in (§6.2) and `undoMerge` can still split them apart.
+    private(set) var merged = false
+    /// The conflicted copy the last Undo made, until the banner saying so is dismissed.
+    var undoneAs: String?
     /// Its body is encrypted (or is about to be, once saved).
     private(set) var locked = false
     /// Locked with a key the keyring no longer has (it was reset), or it won't open: it can't be read.
@@ -127,6 +131,7 @@ final class EditorModel {
             apply(try? await store.get(id))
         }
         tags = (try? await store.tags()) ?? []
+        await refreshMerged()
         await withTaskGroup(of: Void.self) { group in
             if let locks {
                 let states = locks.state.stream()
@@ -137,6 +142,7 @@ final class EditorModel {
             for await _ in changes {
                 await refresh()
                 tags = (try? await store.tags()) ?? tags
+                await refreshMerged()
             }
             group.cancelAll()
         }
@@ -218,6 +224,20 @@ final class EditorModel {
         spaceId = target
         await flushed()
         return (try? await store.move(id, to: target)) == true
+    }
+
+    /// Splits the last automatic merge back apart once the typing is saved: the note as it was before,
+    /// unless edited since, and the other version as a conflicted copy.
+    func undoMerge() async {
+        if !needsUnlock, let doc = currentDocument?() { save(doc) }
+        await flushed()
+        guard let copy = try? await store.undoMerge(id) else { return }
+        merged = false
+        undoneAs = (try? await store.get(copy))?.title
+    }
+
+    private func refreshMerged() async {
+        merged = (try? await store.mergeUndo(id)) != nil
     }
 
     /// Waits for the saves started so far; they run in order, so the last one is enough.
