@@ -192,6 +192,7 @@ fun SettingsSectionScreen(
                 if (passwordChanged) {
                     Footnote("Password changed. Every other browser and device was signed out and needs the new one.")
                 }
+                (account as? Account.SignedIn)?.let { PeopleSection(graph, it) }
             }
 
             SettingsSection.Security -> {
@@ -388,7 +389,7 @@ private fun CategoryRow(icon: ImageVector, section: SettingsSection, value: Stri
     }
 }
 
-private fun hostOf(server: String) =
+internal fun hostOf(server: String) =
     server.toHttpUrlOrNull()?.let { it.host + if (it.port != 80 && it.port != 443) ":${it.port}" else "" } ?: server
 
 /** The server's address, then the account on it; [note] flags a problem, such as being signed out. */

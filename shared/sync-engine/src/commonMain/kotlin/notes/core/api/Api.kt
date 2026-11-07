@@ -79,10 +79,35 @@ data class SignIn(
     val accessToken: String = "",
     val accessExpiresAt: Long = 0,
     val refreshToken: String = "",
-    val refreshExpiresAt: Long = 0
+    val refreshExpiresAt: Long = 0,
+    /** May change server-wide settings and manage accounts. */
+    val isAdmin: Boolean = false
 ) {
     val tokens: Tokens get() = Tokens(accessToken, accessExpiresAt, refreshToken)
 }
+
+/** An account, as an admin sees it. [pending]: invited, no password chosen yet. */
+@Serializable
+data class Person(
+    val id: Long,
+    val username: String,
+    val isAdmin: Boolean = false,
+    val createdAt: Long = 0,
+    val pending: Boolean = false,
+    /** When its setup link stops working; null without one. */
+    val linkExpiresAt: Long? = null
+)
+
+/** A one-time link's secret; the app builds the URL around it. Shown once: the server keeps only a hash. */
+@Serializable
+data class SetupLink(val token: String, val expiresAt: Long)
+
+/** A link just made, with its account as it is now: [Person.pending] tells an invitation from a reset. */
+@Serializable
+data class IssuedLink(val user: Person, val link: SetupLink)
+
+@Serializable
+internal data class People(val users: List<Person> = emptyList())
 
 @Serializable
 internal data class ErrorBody(

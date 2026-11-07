@@ -33,20 +33,21 @@ This first account is an admin: it can set up [emailing notes](../using/email.md
 
 notesd can hold a few accounts, such as for family or friends. Each has its own notes, spaces, locked notes and pictures, which no other account can see.
 
-### From the web app
+### From the apps
 
-Admins see **People** in **Settings → Server**, in the web app and the Mac app:
+Admins see **People** in **Settings → Server**, in the web app, the Mac app and the Android app:
 
 1. Choose **Invite someone…** and enter the username they'll sign in with.
-2. Send them the link you get, however you like: a message, an email. It works once, for 7 days.
+2. Send them the link you get, however you like: a message, an email. On Android, **Share…** opens
+   the share sheet with a message ready. It works once, for 7 days.
 3. They open it, choose a password, and they're signed in. From then on they can sign in on a phone too.
 
-The link uses the address you opened notesd at. Open it at the address the other person will use
+The link uses the address you opened notesd at (on Android, the server address the app is connected to). Open it at the address the other person will use
 (your domain, say, or the machine's name on your network), not `localhost`, or the link won't work
 for them. An invitation shows in the list until it's used; **New invite link** replaces a lost or
 expired one.
 
-For someone who has set their password, the **…** menu has:
+For someone who has set their password, the **…** menu (on Android, tap their row) has:
 
 - **Reset password…** for someone who forgot theirs: a link like the invitation's, where they
   choose a new one. Their old password works until then, and using the link signs them out everywhere.

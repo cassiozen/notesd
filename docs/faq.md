@@ -210,7 +210,7 @@ ones stay unreadable.
 
 ### What if I forget my account password?
 
-Ask an admin: in the web app's **Settings → Server → People**, they can send
+Ask an admin: in **Settings → Server → People** (web or Android app), they can send
 you a link to choose a new one. The person running the server can also set
 one with `notesd reset-password --username NAME`. There are no reset emails.
 Neither affects locked notes, which use their own password.
@@ -223,7 +223,7 @@ another's.
 
 ### How do I add someone?
 
-An admin invites them from the web app, in **Settings → Server → People**, and
+An admin invites them from the web or Android app, in **Settings → Server → People**, and
 sends them the link it makes, where they choose their password
 ([details](guides/self-hosting/users.md#adding-people)). Or, on the server:
 `notesd add-user --username sam`. There's no public sign-up.

@@ -35,6 +35,36 @@ class AccountStoreTest {
     }
 
     @Test
+    fun `whether it's an admin is kept, and follows what the server says`() = runBlocking {
+        val store = AccountStore(file, sealer)
+        store.signedIn("https://n.example/", signIn.copy(isAdmin = true))
+        assertEquals(
+            Account.SignedIn("https://n.example/", "me", isAdmin = true),
+            AccountStore(file, sealer).account.value
+        )
+        store.refreshed(Tokens("a2", 200, "refresh-secret"))
+        assertEquals(
+            Account.SignedIn("https://n.example/", "me", isAdmin = true),
+            AccountStore(file, sealer).account.value
+        )
+        store.adminChanged(false)
+        assertEquals(Account.SignedIn("https://n.example/", "me"), AccountStore(file, sealer).account.value)
+    }
+
+    @Test
+    fun `an account saved before the app kept whether it's an admin doesn't know`() = runBlocking {
+        val old = """{"server":"https://n.example/","username":"me","access":"a","accessExpiresAt":1,"refresh":"r"}"""
+        file.writeBytes(sealer.seal(old.encodeToByteArray()))
+        val store = AccountStore(file, sealer)
+        assertEquals(Account.SignedIn("https://n.example/", "me", isAdmin = null), store.account.value)
+        store.adminChanged(true)
+        assertEquals(
+            Account.SignedIn("https://n.example/", "me", isAdmin = true),
+            AccountStore(file, sealer).account.value
+        )
+    }
+
+    @Test
     fun `refreshing replaces the tokens`() = runBlocking {
         val store = AccountStore(file, sealer)
         store.signedIn("https://n.example/", signIn)

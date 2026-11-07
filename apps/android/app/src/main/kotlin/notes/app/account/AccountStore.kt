@@ -17,7 +17,11 @@ sealed interface Account {
     /** Never connected (or all data removed): notes live on this device only. */
     data object None : Account
 
-    data class SignedIn(val server: String, val username: String) : Account
+    /**
+     * [isAdmin]: as of sign-in, or the last time the server said; People asks it again. Null: not known, for an
+     * account signed in before the app kept it.
+     */
+    data class SignedIn(val server: String, val username: String, val isAdmin: Boolean? = false) : Account
 
     /**
      * Connected once, no session now (signed out, or the session was revoked).
@@ -39,7 +43,9 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         val username: String,
         val access: String? = null,
         val accessExpiresAt: Long = 0,
-        val refresh: String? = null
+        val refresh: String? = null,
+        // Absent from files written before the app kept it: unknown, not "no".
+        val isAdmin: Boolean? = null
     )
 
     private val lock = Mutex()
@@ -48,7 +54,13 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
     val account: StateFlow<Account> = _account
 
     suspend fun signedIn(server: String, signIn: SignIn) = write {
-        Saved(server, signIn.username, signIn.accessToken, signIn.accessExpiresAt, signIn.refreshToken)
+        Saved(server, signIn.username, signIn.accessToken, signIn.accessExpiresAt, signIn.refreshToken, signIn.isAdmin)
+    }
+
+    /** What the server last said: another admin can change it at any time. */
+    suspend fun adminChanged(isAdmin: Boolean) {
+        if ((account.value as? Account.SignedIn)?.isAdmin == isAdmin) return
+        write { it?.copy(isAdmin = isAdmin) }
     }
 
     /** Forgets the tokens, keeps the server and username. */
@@ -97,7 +109,7 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
 
         fun accountOf(s: Saved?): Account = when {
             s == null -> Account.None
-            s.access != null && s.refresh != null -> Account.SignedIn(s.server, s.username)
+            s.access != null && s.refresh != null -> Account.SignedIn(s.server, s.username, s.isAdmin)
             else -> Account.SignedOut(s.server, s.username)
         }
     }
