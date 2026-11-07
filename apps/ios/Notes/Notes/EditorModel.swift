@@ -231,7 +231,15 @@ final class EditorModel {
     func undoMerge() async {
         if !needsUnlock, let doc = currentDocument?() { save(doc) }
         await flushed()
-        guard let copy = try? await store.undoMerge(id) else { return }
+        let copy: String?
+        do {
+            copy = try await store.undoMerge(id)
+        } catch {
+            saveProblem = "This merge couldn’t be undone. Try again."
+            return
+        }
+        // Nil: already undone, expired or deleted.
+        guard let copy else { return await refreshMerged() }
         merged = false
         undoneAs = (try? await store.get(copy))?.title
     }

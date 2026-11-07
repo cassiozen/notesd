@@ -393,6 +393,8 @@ public final class SyncStore: Sendable {
     }
 
     private func merge(_ sql: Sql, _ local: Note, _ remote: RemoteNote, _ events: inout [SyncEvent]) throws {
+        // Undo splits the last merge only: this one may be a conflict that records none.
+        try sql.forgetMerge(local.id)
         // A note this device created has no synced version yet. If its create went out (and the answer was
         // lost), what it sent is what the server may have: merge against that.
         var sentCreate: Payload?

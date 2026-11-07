@@ -63,8 +63,9 @@ Nothing is lost unless you choose to drop it.
   changes are kept.
 - **The text changed on both, in different paragraphs, list items or headings:** the changes are
   merged. Ticking a checklist item on one device while adding items or rewording another on the
-  other merges too. The note says it was merged, and **Undo** (for 14 days) splits it back into
-  the other device's version and a copy of yours.
+  other merges too. The note says it was merged, and **Undo** (for 14 days) splits it back in
+  two: one version stays in the note and the other becomes a conflicted copy. If the note was
+  edited after the merge, Undo keeps those edits and only adds the copy.
 - **The same paragraph changed on both:** the note keeps the other device's version of that
   paragraph, and yours goes into a new note titled "… (Conflicted copy)", which links back to the
   original. Both notes keep everything else that merged. If nothing could be merged, the web

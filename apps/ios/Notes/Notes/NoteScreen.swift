@@ -77,7 +77,7 @@ struct NoteScreen: View {
                     model.undoneAs = nil
                 } label: {
                     HStack(alignment: .top) {
-                        Text("Merge undone. Your version was kept as “\(copy)”.")
+                        Text("Merge undone. The other version was kept as “\(copy)”.")
                             .font(.notesSmall)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         Image(systemName: "xmark").accessibilityLabel("Dismiss")

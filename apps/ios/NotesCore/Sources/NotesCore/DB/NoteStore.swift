@@ -318,6 +318,7 @@ public final class NoteStore: Sendable {
         _ sql: Sql, _ current: Note, _ title: String, _ content: String, _ basedOn: (title: String, content: String),
         _ clock: Clock
     ) throws -> Note {
+        try sql.forgetMerge(current.id)
         let mergedTitle = Merge.field(base: basedOn.title, mine: title, theirs: current.title, same: Merge.sameText)
         let mergedContent = Merge.field(
             base: basedOn.content, mine: content, theirs: current.content, same: Merge.sameMarkdown)

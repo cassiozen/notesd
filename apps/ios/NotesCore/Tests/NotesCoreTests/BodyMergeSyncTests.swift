@@ -98,6 +98,17 @@ final class BodyMergeSyncTests {
         #expect(try await b.note(copyId)?.content == "One\n\nTwo!\n")
     }
 
+    @Test func aLaterConflictDropsTheEarlierMergesUndo() async throws {
+        let (a, b) = try await edited("Plan", "One\n\nTwo\n", "One!\n\nTwo\n", "One\n\nTwo!\n")
+        #expect(try await b.notes.mergeUndo("n") != nil)
+        try await a.save("n", "Plan", "One, a\n\nTwo!\n")
+        try await b.save("n", "Plan", "One, b\n\nTwo!\n")
+        #expect(await a.sync() == .done)
+        #expect(await b.sync() == .done)
+        #expect(try await b.live().count == 2)
+        #expect(try await b.notes.mergeUndo("n") == nil)
+    }
+
     @Test func undoIsGoneOnceTheNoteIsDeleted() async throws {
         let (_, b) = try await edited("Plan", "One\n\nTwo\n", "One!\n\nTwo\n", "One\n\nTwo!\n")
         try await b.notes.delete("n")

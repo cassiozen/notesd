@@ -63,7 +63,8 @@ mine** saves your version as a separate note, and **Use theirs** drops your edit
 dropped without you choosing it. (If both made the same change, there's nothing to resolve.)
 
 A merged note says so, and for 14 days **Undo** splits it back into what it would otherwise have
-been: the other device's version, and yours as a conflicted copy. Locked notes are never merged
+been: one version in the note and the other as a conflicted copy. If the note was edited after the
+merge, Undo keeps those edits and only makes the copy. Locked notes are never merged
 this way, since sync can't read them: changed on both sides, yours becomes the copy.
 
 ## Deletions
