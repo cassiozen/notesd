@@ -546,7 +546,10 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
 - **Overlays.** `show_card` and `suggest` show something on the run's note without changing it:
   a card to read and dismiss, or changes (each a write's `op`, checked to fit when suggested) to
   accept or reject. Only while an editor has the note open: otherwise the tool refuses, so the model
-  writes or does nothing, as its prompt says. Each is placed at the top, the end, the cursor or under
+  writes or does nothing, as its prompt says. An editor trigger's run (the user is in the note) is
+  told to suggest changes to the user's own words and to write its additions directly, with Undo,
+  unless the rule's prompt says otherwise; later triggers aren't, since nobody may be there to
+  answer. Each is placed at the top, the end, the cursor or under
   a quoted block, and kept in `agent_overlays`; the server tells the account's editors a note's whole
   open list (`overlays`) when it changes, and an editor opening the note gets it. An editor draws
   them as ProseMirror widget decorations between blocks, so they're never in the document or its

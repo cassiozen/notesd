@@ -76,7 +76,9 @@ and it goes when you close the note.
   any other change the agent makes; **✗** leaves the note as it is. A suggestion whose text you've
   changed since goes by itself.
 
-A rule's next run on the note replaces the cards its last one left. Cards show only in a note open on
+For the rules that run while you're in the note (a new note opened, editing started, the menu
+command), the agent suggests changes to your own words and adds its own text directly, unless the
+rule's prompt says otherwise. A rule's next run on the note replaces the cards its last one left. Cards show only in a note open on
 the web for now: an agent can't leave one on a note nobody has open. Activity counts what a run
 showed, and how many of its suggestions you accepted.
 

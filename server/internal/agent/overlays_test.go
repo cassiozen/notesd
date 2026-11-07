@@ -284,3 +284,18 @@ func TestOverlaysEnd(t *testing.T) {
 		})
 	}
 }
+
+func TestOnlyEditorRunsAreToldToSuggestChangesToTheUsersWords(t *testing.T) {
+	for _, tr := range agent.Triggers {
+		system := agent.SystemPrompt(agent.Config{Prompt: "p", Triggers: map[agent.Trigger]string{tr: "Fix typos."}}, tr)
+		told := strings.Contains(system, "Change their own words (fixes, rewording, cuts) with suggest") &&
+			strings.Contains(system, "add your own text (a title, tags, a list) directly")
+		if told != tr.InEditor() {
+			t.Errorf("%s: told %v", tr, told)
+		}
+		// Before the rule's prompt, which wins.
+		if told && strings.Index(system, "with suggest") > strings.Index(system, "Fix typos.") {
+			t.Errorf("%s: after the prompt", tr)
+		}
+	}
+}
