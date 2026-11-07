@@ -1,0 +1,30 @@
+apps/android/app/src/main/kotlin/notes/app/settings/People.kt
+  s_72b1d72037b200::t_269c5228815190 67,113,291-299
+  s_72b1d72037b200::t_caa2c22cdb8fcd 300-301
+apps/android/app/src/test/kotlin/notes/app/settings/PeopleTest.kt
+  s_72b1d72037b200::t_bc1c19bc60f31f 146
+apps/android/app/src/test/kotlin/notes/app/account/AccountStoreTest.kt
+  s_72b1d72037b200::t_bc1c19bc60f31f 61-64
+  s_72b1d72037b200::t_269c5228815190 45-49,52-60
+apps/android/app/src/main/kotlin/notes/app/account/AccountStore.kt
+  s_72b1d72037b200::t_269c5228815190 20-24,47-48
+apps/android/app/src/test/kotlin/notes/app/settings/PeopleLinkTest.kt
+  s_72b1d72037b200::t_269c5228815190 29-44
+  s_72b1d72037b200::t_768d5788e1be0a 28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "94925fcd3f067dcdf79df3045e6c54c2545e5eba",
+  "prompts": {},
+  "sessions": {
+    "s_72b1d72037b200": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d19a40f5-55e1-4a06-963d-87c03b88cc60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
