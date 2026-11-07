@@ -1,0 +1,39 @@
+apps/web/src/editor/agent-edit.test.ts
+  s_cc6cacc0a6fc01::t_6cd4e2068969fa 32-37,98-99
+apps/web/src/editor/agent-edit.ts
+  s_cc6cacc0a6fc01::t_e67548df93a8bb 24-27,29,57-58
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_c7bf2ad3fa7be2 59
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_e0e1541d034c4c 441-442
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_93a0f2cb1f365a 263-275
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_19055eb0248aeb 339-340
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_7cbb2f8cea7f3d 8,18-20,87
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_14bc574efcb6d9 22,46,55,104,119,134,148,206
+server/internal/api/api_test.go
+  s_cc6cacc0a6fc01::t_619bee9ed6d44d 18,36-38,71-73
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_482405d7500199 22-24,92-94,160,162-165,173-177
+server/internal/editors/hub_test.go
+  s_cc6cacc0a6fc01::t_ce945558482da7 7,135-159
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5531c172ad8584edc2a0a83f123897cc1bb5ffff",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
