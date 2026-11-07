@@ -89,6 +89,29 @@ describe('what a run shows beside the note', () => {
     expect(bodyText()).toBe('Teh plan is godo')
   })
 
+  it('a suggestion goes once accepting another changed its text', async () => {
+    const llm = await startFakeLLM()
+    const { user } = await signedIn({
+      seed: async (s) => {
+        await withAgent(s, llm, { menuLabel: 'Fix typos', triggers: { menu: 'Fix typos.' } })
+        await createNote(s, 'Plan', 'Teh plan')
+      },
+    })
+    await connected()
+    await openNote(user, 'Plan')
+    llm.script.push({
+      tool: 'suggest',
+      args: { changes: [{ find: 'Teh plan', replace: 'The plan' }, { find: 'Teh', replace: 'The' }], done: 'Suggested.' },
+    })
+    await fixTypos(user)
+    await waitFor(() => expect(screen.getAllByRole('note')).toHaveLength(2), { timeout: 5000 })
+    const [whole] = screen.getAllByRole('note')
+    if (!whole) throw new Error('no card')
+    await user.click(within(whole).getByRole('button', { name: 'Accept the change' }))
+    expect(bodyText()).toBe('The plan')
+    await waitFor(() => expect(screen.queryByRole('note')).toBeNull(), { timeout: 3000 })
+  })
+
   it('a suggestion goes once the user’s typing means it can’t be made', async () => {
     const llm = await startFakeLLM()
     const { user } = await signedIn({

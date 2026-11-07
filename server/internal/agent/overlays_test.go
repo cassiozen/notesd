@@ -299,3 +299,41 @@ func TestOnlyEditorRunsAreToldToSuggestChangesToTheUsersWords(t *testing.T) {
 		}
 	}
 }
+
+func TestARunThatShowedSomethingIsntRetried(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "Milk")
+	h.openInEditor("n1", "Milk", nil)
+	down := func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		return nil, &llm.ProviderError{Status: 503, Message: "overloaded"}
+	}
+	h.model.steps = append(h.model.steps, call("show_card", `{"body": "x"}`), down)
+	h.next()
+	if r := h.only(); r.Status != agent.StatusFailed || r.Failure != agent.FailProvider || len(h.open("n1")) != 1 {
+		t.Fatalf("run: %+v", r)
+	}
+}
+
+func TestASuggestionAcceptedWhileTheRunGoesOnIsItsChange(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "Mlik")
+	h.openInEditor("n1", "Mlik", nil)
+	h.model.steps = append(h.model.steps,
+		call("suggest", `{"changes": [{"find": "Mlik", "replace": "Milk"}]}`),
+		func(llm.ChatRequest) (*llm.ChatResponse, error) {
+			// The user accepts it before the run's last word.
+			list, _ := h.d.Agent.OpenOverlays(ctx, "n1")
+			_, err := h.d.Agent.AnswerOverlay(ctx, list[0].ID, "accept",
+				&agent.EditorApplied{Before: agent.Fields{Title: "T", Content: "Mlik"}, Shows: agent.Fields{Title: "T", Content: "Milk"}})
+			if err != nil {
+				t.Error(err)
+			}
+			return say("Suggested."), nil
+		})
+	h.next()
+	if r := h.only(); r.outcome != agent.OutcomeEdited {
+		t.Fatalf("outcome %q", r.outcome)
+	}
+}

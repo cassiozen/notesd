@@ -4,7 +4,7 @@ import { Plugin, PluginKey, type EditorState, type Transaction } from '@tiptap/p
 import { Decoration, DecorationSet } from '@tiptap/pm/view'
 import type { AgentOp } from './agent-edit'
 import { isAllowedLink } from './extensions'
-import { parse, schema } from './markdown'
+import { parse, schema, serialize } from './markdown'
 import styles from './editor.module.css'
 
 /** Where an overlay shows: at the top or end of the note, the cursor, or under the block quoted. */
@@ -48,26 +48,57 @@ function anchor(state: EditorState, place: OverlayPlace): number {
   return top(doc)
 }
 
+/** A textblock's Markdown as the note saves it, less what a list or quote around it adds. */
+const markdownOf = (node: PMNode) => serialize(schema.topNodeType.create(null, [node]))
+
+/** The quote's longest line, without the block syntax (heading, quote, list item) a single block's Markdown leaves out. */
+function longestLine(quote: string): string {
+  const lines = quote.split('\n').map((l) => l.replace(/^\s*(#{1,6}\s+|>\s*|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+)/, '').trim())
+  return lines.reduce((a, b) => (b.length > a.length ? b : a), '')
+}
+
+/** Whether a textblock's own Markdown holds the quote, or its longest line. */
+function holds(node: PMNode, quote: string): boolean {
+  const md = markdownOf(node)
+  if (md.includes(quote)) return true
+  const line = longestLine(quote)
+  return line !== '' && md.includes(line)
+}
+
+/** The quote's longest line as the editor shows it: without inline Markdown either. */
+const plainOf = (quote: string) => longestLine(quote).replace(/\]\([^)]*\)|\\(?=\S)|[*_~`[\]]/g, '')
+
 /**
- * Inside the first textblock showing the quote (Markdown, as the server has the note), or its longest
- * line with the syntax taken out: the editor shows text, not Markdown.
+ * Inside the first textblock whose Markdown holds the quote (Markdown, as the server has the note).
+ * Else, inside the one block whose text holds it with the Markdown taken out; more than one, and
+ * which was meant isn't known.
  */
 function find(doc: PMNode, quote: string): number | null {
-  const plain = quote.replace(/^\s*(#{1,6}\s+|>\s*|[-*+]\s+(\[[ xX]\]\s+)?|\d+[.)]\s+)/gm, '').replace(/\]\([^)]*\)|[*_~`[\]]/g, '')
-  const lines = plain.split('\n').map((l) => l.trim())
-  const longest = lines.reduce((a, b) => (b.length > a.length ? b : a), '')
-  for (const q of [quote, longest]) {
-    if (!q) continue
-    let at: number | null = null
-    doc.descendants((node, pos) => {
-      if (at !== null) return false
-      if (!node.isTextblock || node.type.name === 'title') return true
-      if (node.textContent.includes(q)) at = pos + 1
-      return false
-    })
-    if (at !== null) return at
-  }
-  return null
+  const blocks: { node: PMNode; pos: number }[] = []
+  doc.descendants((node, pos) => {
+    if (!node.isTextblock) return true
+    if (node.type.name !== 'title') blocks.push({ node, pos })
+    return false
+  })
+  const source = blocks.find((b) => holds(b.node, quote))
+  if (source) return source.pos + 1
+  const plain = plainOf(quote)
+  const shown = plain ? blocks.filter((b) => b.node.textContent.includes(plain)) : []
+  return shown.length === 1 && shown[0] ? shown[0].pos + 1 : null
+}
+
+/**
+ * Whether an overlay placed by a quote still has it: the block it's anchored in holds it as it did.
+ * Text the user changed there, or typed elsewhere, doesn't move it.
+ */
+export function stillQuoted(state: EditorState, id: string): boolean {
+  const shown = key.getState(state)?.shown.find((s) => s.overlay.id === id)
+  const quote = shown?.overlay.place.after
+  if (!shown || !quote) return true
+  const { parent } = state.doc.resolve(Math.min(shown.at, state.doc.content.size))
+  if (!parent.isTextblock || parent.type.name === 'title') return false
+  const plain = plainOf(quote)
+  return holds(parent, quote) || (plain !== '' && parent.textContent.includes(plain))
 }
 
 /** Where the card goes: at the top or end as they are now, else between blocks, under the textblock anchoring it. */

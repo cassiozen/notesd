@@ -1,7 +1,7 @@
 import { Editor } from '@tiptap/core'
 import { TextSelection } from '@tiptap/pm/state'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { AgentOverlays, agentOverlays, setAgentOverlays, type Overlay } from './agent-overlays'
+import { AgentOverlays, agentOverlays, setAgentOverlays, stillQuoted, type Overlay } from './agent-overlays'
 import { editorExtensions } from './extensions'
 import { noteContent, noteFields } from './note-doc'
 import styles from './editor.module.css'
@@ -37,6 +37,28 @@ describe('cards beside the note', () => {
     open('First')
     setAgentOverlays(editor, [card('lost', { after: 'Nowhere' })], 'A', () => {})
     expect(layout()).toEqual(['T', '[lost]', 'First'])
+  })
+
+  it('go by the Markdown quoted, not other text that looks the same', () => {
+    open('Milk is good\n\n**Milk** is good')
+    setAgentOverlays(editor, [card('bold', { after: '**Milk** is' })], 'A', () => {})
+    expect(layout()).toEqual(['T', 'Milk is good', 'Milk is good', '[bold]'])
+  })
+
+  it('go at the top when the text quoted shows in more than one block', () => {
+    open('Milk is *good*\n\nMilk is **good**')
+    setAgentOverlays(editor, [card('which', { after: 'Milk is _good_' })], 'A', () => {})
+    expect(layout()).toEqual(['T', '[which]', 'Milk is good', 'Milk is good'])
+  })
+
+  it('know when the block they quote no longer holds the quote, wherever else it is typed', () => {
+    open('Teh plan\n\nOther')
+    setAgentOverlays(editor, [card('fix', { after: 'Teh' })], 'A', () => {})
+    expect(stillQuoted(editor.state, 'fix')).toBe(true)
+    // "Teh" goes from its block, and is typed into another.
+    editor.commands.insertContentAt({ from: 4, to: 7 }, 'The')
+    editor.commands.insertContentAt(editor.state.doc.content.size - 1, ' Teh')
+    expect(stillQuoted(editor.state, 'fix')).toBe(false)
   })
 
   it('stay under their block while the user types, and the end stays the end', () => {

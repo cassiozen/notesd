@@ -189,6 +189,21 @@ func (s *Store) CloseOverlays(ctx context.Context, noteID string) (bool, error) 
 	return n > 0, err
 }
 
+// LockOverlays is held from before changing a note's overlays, or reading
+// its list to send, until the message is queued: each message then carries
+// a list at least as new as the one before it, to every editor. Queuing
+// doesn't block, so holding it is cheap.
+func (s *Store) LockOverlays() (unlock func()) {
+	s.overlays.Lock()
+	return s.overlays.Unlock
+}
+
+// showed counts the overlays a run left.
+func (s *Store) showed(ctx context.Context, runID string) (n int, err error) {
+	err = s.db.R.QueryRowContext(ctx, `SELECT count(*) FROM agent_overlays WHERE run_id = ?`, runID).Scan(&n)
+	return n, err
+}
+
 // newOverlayID sorts by time, like a run's.
 func newOverlayID(now int64) string {
 	return "ov_" + strings.TrimPrefix(newRunID(now), "run_")

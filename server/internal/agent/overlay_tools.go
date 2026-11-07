@@ -174,6 +174,7 @@ func placeOf(n notes.Note, at, after string) (Place, error) {
 
 // show records overlays on the run's note and tells its editors.
 func (rs *runState) show(ctx context.Context, list []Overlay) error {
+	defer rs.acct.Agent.LockOverlays()()
 	for i := range list {
 		list[i].RunID, list[i].NoteID = rs.run.ID, rs.run.NoteID
 	}

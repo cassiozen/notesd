@@ -56,6 +56,11 @@ class AgentSocket {
   private readonly held = new Map<string, { trigger: Trigger; noteId: string; spaceId: string; at: number }>()
   /** What runs show on the notes open here, as the server last said. */
   private overlays = new Map<string, Overlay[]>()
+  /**
+   * Answers to overlays not sent yet, by overlay: sent first once the server says hello, so the lists it
+   * sends then leave them out. Dropped, a dismissed card would come back, or an accepted change twice.
+   */
+  private readonly answers = new Map<string, object>()
   readonly overlayListeners = new Set<() => void>()
   /** The server's id for this connection, once it said hello. */
   connectionId: string | null = null
@@ -102,6 +107,7 @@ class AgentSocket {
     this.close()
     this.open.clear()
     this.editors.clear()
+    this.answers.clear()
   }
 
   noteOpened(noteId: string) {
@@ -185,6 +191,8 @@ class AgentSocket {
       if (m?.type === 'hello' && typeof m.connectionId === 'string') {
         this.failures = 0
         this.connectionId = m.connectionId
+        for (const a of this.answers.values()) this.send(a)
+        this.answers.clear()
         for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId })
         // Only for a note still open here, asked for recently enough.
         for (const h of this.held.values()) {
@@ -273,7 +281,9 @@ class AgentSocket {
     if (list.length) next.set(overlay.noteId, list)
     else next.delete(overlay.noteId)
     this.setOverlays(next)
-    this.send({ type: 'overlay.answer', noteId: overlay.noteId, id: overlay.id, answer, ...applied })
+    const m = { type: 'overlay.answer', noteId: overlay.noteId, id: overlay.id, answer, ...applied }
+    if (this.connected()) this.send(m)
+    else this.answers.set(overlay.id, m)
   }
 
   private dropOverlays(noteId: string) {
@@ -289,9 +299,13 @@ class AgentSocket {
     for (const l of this.overlayListeners) l()
   }
 
+  private connected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN && this.connectionId !== null
+  }
+
   private send(m: object) {
     // Before hello, nothing is lost: hello re-sends what's open.
-    if (this.ws?.readyState === WebSocket.OPEN && this.connectionId) this.ws.send(JSON.stringify(m))
+    if (this.connected()) this.ws?.send(JSON.stringify(m))
   }
 }
 

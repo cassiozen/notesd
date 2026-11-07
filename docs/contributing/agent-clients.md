@@ -237,17 +237,25 @@ model writes or does nothing. An overlay is:
 
 **Messages.** `overlays` carries the note's whole open list, so each one replaces the last; an empty
 list means nothing shows. The server sends it on `editor.opened` when there's anything, and to every
-socket of the account whenever the list changes. Keep it only for notes open in the app, and forget
+socket of the account when a run shows more, one is answered, or the note's last editor closes it.
+Locking or deleting the note sends nothing: stop showing a note's overlays once it's locked (a run
+never sees a locked note, and the server has dropped them), as the editor of a deleted note closes. Keep it only for notes open in the app, and forget
 it all when the connection drops: a reconnect's `editor.opened` brings it back.
 
 **Answering.** Send `overlay.answer` and take the overlay away at once; the server's next
-`overlays` confirms it, to other editors too. To accept a suggestion, make its `op` to what the editor
-shows, as for an `apply` whose `before` doesn't match (an insert at the cursor goes where the
-overlay is anchored now), as one undoable step marked as the agent's change, then send `accept` with
-`before`, `revision` and `shows` exactly as an `apply`'s result. The server records it as the run's
-edit, so Activity shows and undoes it. If the `op` doesn't fit, send `stale` instead. A suggested
-`replace` whose `find` the user typed over can't be made: the web app checks once typing pauses and
-answers `stale` without waiting for ✓.
+`overlays` confirms it, to other editors too. Not connected, keep the answer and send it as soon as
+`hello` comes, before saying again what's open, so the list that follows leaves it out: dropped, a
+dismissed card would come back, or an accepted change be made twice.
+
+To accept a suggestion, first check that the block the overlay is anchored in still holds its quote:
+if the user changed it there, the same words typed elsewhere aren't what was suggested. Then make its
+`op` to what the editor shows, as for an `apply` whose `before` doesn't match (an insert at the cursor
+goes where the overlay is anchored now), as one undoable step marked as the agent's change, and send
+`accept` with `before`, `revision` and `shows` exactly as an `apply`'s result. The server records it as
+the run's edit, so Activity shows and undoes it. If the quote is gone or the `op` doesn't fit, send
+`stale` instead. The web app makes the same check for every suggested `replace` once typing pauses,
+and when the list changes (accepting one suggestion can change another's text), and answers `stale`
+without waiting for ✓.
 
 **Lifetime.** Open overlays close when the note's last editor closes it (`editor.closed`), when a
 later run of the same rule shows its own on the note, or when the note is locked or deleted. A run

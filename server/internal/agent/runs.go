@@ -162,9 +162,12 @@ func (s *Store) finish(ctx context.Context, id string, f finished) error {
 				tool_calls = tool_calls + ? WHERE id = ?`, f.RetryAt.UnixMilli(), f.Message, f.ToolCalls, id)
 			return err
 		}
-		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, outcome = ?, message = ?,
-				tool_calls = tool_calls + ?, finished_at = ?, event_json = `+doneEvent+` WHERE id = ?`,
-			f.Status, f.Failure, f.Outcome, f.Message, f.ToolCalls, now, id)
+		// A suggestion accepted since the run counted its edits is one too.
+		_, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?,
+				outcome = CASE WHEN ? = 'no_change' AND EXISTS (SELECT 1 FROM agent_run_edits WHERE run_id = agent_runs.id)
+					THEN 'edited' ELSE ? END,
+				message = ?, tool_calls = tool_calls + ?, finished_at = ?, event_json = `+doneEvent+` WHERE id = ?`,
+			f.Status, f.Failure, f.Outcome, f.Outcome, f.Message, f.ToolCalls, now, id)
 		return err
 	})
 }

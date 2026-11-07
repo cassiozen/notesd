@@ -463,7 +463,7 @@ ignored, so either may add some, except that an editor answers a request it can'
 | Editor | `{type: "run.request", trigger, noteId, spaceId, note?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Editor | `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered overlay `id`: `dismiss` for a card; `accept`, `reject` or `stale` (it no longer fits) for a suggestion. An accepted one's change was made in the editor as for an `apply`, and `before`, `revision` and `shows` are as its result's |
-| Server | `{type: "overlays", noteId, overlays}` | What runs show on the note now, all of it: on `editor.opened` when there's any, and to every editor of the account whenever it changes |
+| Server | `{type: "overlays", noteId, overlays}` | What runs show on the note now, all of it: on `editor.opened` when there's any, and to every editor of the account when a run shows more, one is answered, or the note's last editor closes it |
 | Server | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | A run started (`running`) or ended; to every editor of the account |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
 | Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}, op}` | A run changes the note. If the editor shows `before`, it changes it to `after`; otherwise, the user having typed meanwhile, it makes `op` to what it shows. As one undoable step, saved as any edit. It answers `{type: "result", id, before, revision, shows}`: what it showed just before (`revision`: the server's revision of exactly that, or `null`), and the note as it then saves it |
@@ -481,7 +481,8 @@ or `suggestion`, with `change` an `op` the user may accept and `body` why (possi
 is `{at}` with `at` `top`, `end` or `cursor` (where the cursor was when it showed), or `{after}`, a
 quote from the note's content whose block it goes under; an editor that can't find the quote shows
 it at the top. Overlays close when the note's last editor closes it, when a later run of the same
-rule shows its own, or when the note is locked or deleted; an editor forgets them when its
+rule shows its own, or when the note is locked or deleted. Locking or deleting sends no `overlays`: an editor stops
+showing a note's overlays once it's locked, and closes a deleted one. An editor forgets them when its
 connection drops, and hears them again on `editor.opened`.
 
 ### AI

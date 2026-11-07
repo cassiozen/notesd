@@ -557,11 +557,13 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   any edit) and records it as the run's edit, so Activity diffs and undoes it; a suggestion whose
   `find` the user typed over is answered `stale`. They close when the note's last editor closes it,
   or a later run of the same rule shows its own; locking or deleting the note clears their text. At
-  most 3 cards and 20 suggestions per run.
+  most 3 cards and 20 suggestions per run. Changing a note's overlays and sending its list hold one
+  lock per account, from before the read to the message queued, so editors never get an older list
+  after a newer one.
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the
-  run changed nothing. The queue holds at most 500 runs per account.
+  run changed nothing and showed nothing. The queue holds at most 500 runs per account.
 - **Record.** Each run keeps its status, tokens, the model's last line or why it failed, and for
   each note it changed the text before and after (`agent_run_edits`), written in the same
   transaction as the change. A finished run drops the note's body from its event, and its title

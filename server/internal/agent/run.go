@@ -212,7 +212,10 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		f.Status, f.Failure, f.Message = StatusFailed, FailTimeout, fmt.Sprintf("The run took longer than %s.", RunTimeout)
 	}
 	if f.Status == StatusFailed && f.Failure == FailProvider && r.Attempts < 2 {
-		if edits, creates, err := acct.Agent.edited(ctx, r.ID); err == nil && edits+creates == 0 {
+		// Only a run that did nothing yet: a retry would make its changes, or show its overlays, twice.
+		edits, creates, err := acct.Agent.edited(ctx, r.ID)
+		shown, err2 := acct.Agent.showed(ctx, r.ID)
+		if err == nil && err2 == nil && edits+creates+shown == 0 {
 			f.RetryAt = rn.now().Add(RetryProvider)
 		}
 	}

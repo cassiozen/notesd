@@ -314,6 +314,35 @@ describe('the agent socket, connecting', () => {
     expect(agentSocket.overlaysOn('n1')).toEqual([])
   })
 
+  it('sends an answer given while disconnected once it reconnects, before saying what’s open', async () => {
+    const make = socketFactory.make
+    const base = socketTiming.retryBaseMs
+    socketFactory.make = () => new FakeSocket() as unknown as WebSocket
+    socketTiming.retryBaseMs = 1
+    onTestFinished(() => {
+      agentSocket.noteClosed('n1', null)
+      agentSocket.stop()
+      socketFactory.make = make
+      socketTiming.retryBaseMs = base
+      FakeSocket.all = []
+    })
+    agentSocket.start()
+    agentSocket.noteOpened('n1')
+    const first = FakeSocket.all.at(-1)
+    if (!first) throw new Error('no socket')
+    first.hello()
+    const card = { id: 'ov1', runId: 'r1', noteId: 'n1', kind: 'card' as const, place: { at: 'top' as const }, body: 'Hi' }
+    first.drop()
+    agentSocket.answerOverlay(card, 'dismiss')
+    await waitFor(() => expect(FakeSocket.all.length).toBe(2))
+    const second = FakeSocket.all[1]
+    second?.hello()
+    expect(second?.sent).toEqual([
+      { type: 'overlay.answer', noteId: 'n1', id: 'ov1', answer: 'dismiss' },
+      { type: 'editor.opened', noteId: 'n1' },
+    ])
+  })
+
   it('holds a run asked for while connecting until the server says hello', async () => {
     const make = socketFactory.make
     const { heldMs, retryBaseMs } = socketTiming

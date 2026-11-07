@@ -72,7 +72,8 @@ and it goes when you close the note.
 
 - A card to read, such as the Journal example's questions, has **×** to dismiss it.
 - A suggested change, such as *Fix typos* in the Tidy tags example, sits under the text it would
-  change and shows what goes and what comes. **✓** makes the change, as one step you can undo like
+  change (a new title at the top, an addition where it would go) and shows what goes and what
+  comes. **✓** makes the change, as one step you can undo like
   any other change the agent makes; **✗** leaves the note as it is. A suggestion whose text you've
   changed since goes by itself.
 
