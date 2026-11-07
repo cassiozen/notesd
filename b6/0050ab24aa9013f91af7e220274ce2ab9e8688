@@ -1,0 +1,25 @@
+apps/android/app/src/main/kotlin/notes/app/notes/FindBar.kt
+  s_30a2fddaf04cb6::t_ac6af1e11f9996 208
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_30a2fddaf04cb6::t_ac6af1e11f9996 626
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_30a2fddaf04cb6::t_ac6af1e11f9996 219,397
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_30a2fddaf04cb6::t_ac6af1e11f9996 194-195
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b60050ab24aa9013f91af7e220274ce2ab9e8688",
+  "prompts": {},
+  "sessions": {
+    "s_30a2fddaf04cb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc8ea43-9dde-413d-92a0-83ed85e07c4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
