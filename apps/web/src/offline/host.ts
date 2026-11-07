@@ -150,6 +150,12 @@ export function engineHost(
     async delete(id) {
       await (await engine()).delete(id)
     },
+    async mergedAt(id) {
+      return (await (await engine()).mergedAt(id)) ?? null
+    },
+    async undoMerge(id) {
+      return (await (await engine()).undoMerge(id)) ?? null
+    },
     async recover(id, title, content, imageIds, spaceId) {
       return (await engine()).recover(id, title, content, imageIds, spaceId)
     },
@@ -265,6 +271,8 @@ function notice(n: EngineNotice): SyncNotice | null {
       return { kind: 'RecoveredCopy', copyId: n.copyId ?? '', title: n.title }
     case 'Restored':
       return { kind: 'Restored', noteId: n.noteId ?? '', title: n.title }
+    case 'Merged':
+      return { kind: 'Merged', noteId: n.noteId ?? '', title: n.title }
     case 'Rejected':
       // The engine puts the message in title.
       return { kind: 'Rejected', message: n.title }

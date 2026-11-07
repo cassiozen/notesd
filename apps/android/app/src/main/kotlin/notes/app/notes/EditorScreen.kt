@@ -164,6 +164,8 @@ fun EditorScreen(
     val loaded by vm.document.collectAsStateWithLifecycle()
     val status by vm.status.collectAsStateWithLifecycle()
     val original by vm.original.collectAsStateWithLifecycle()
+    val merged by vm.merged.collectAsStateWithLifecycle()
+    var undoneAs by remember { mutableStateOf<String?>(null) }
     val gone by vm.gone.collectAsStateWithLifecycle()
     val tags by vm.tags.collectAsStateWithLifecycle()
     val locked by vm.locked.collectAsStateWithLifecycle()
@@ -434,6 +436,26 @@ fun EditorScreen(
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 action = "Open",
                 onAction = { onOpen(o.id) }
+            )
+        }
+        if (merged && !needsUnlock) {
+            Banner(
+                "Merged with changes from another device.",
+                BannerKind.Warn,
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                action = "Undo",
+                onAction = {
+                    editor?.document()?.let { doc -> vm.undoMerge(doc) { undoneAs = it } }
+                }
+            )
+        }
+        undoneAs?.let { copy ->
+            Banner(
+                "Merge undone. The other version was kept as “$copy”.",
+                BannerKind.Info,
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                action = "Dismiss",
+                onAction = { undoneAs = null }
             )
         }
         val doc = loaded

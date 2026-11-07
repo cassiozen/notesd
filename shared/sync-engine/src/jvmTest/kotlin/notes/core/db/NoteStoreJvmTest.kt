@@ -71,6 +71,7 @@ class NoteStoreJvmTest {
         conn.prepare("ALTER TABLE notes DROP COLUMN space_id").use { it.step() }
         conn.prepare("ALTER TABLE notes DROP COLUMN base_space_id").use { it.step() }
         conn.prepare("DROP TABLE spaces").use { it.step() }
+        conn.prepare("DROP TABLE merge_undo").use { it.step() }
         for ((table, column) in listOf(
             "sync_outbox" to "attempts",
             "sync_outbox" to "parked",

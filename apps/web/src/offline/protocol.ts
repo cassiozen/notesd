@@ -44,6 +44,8 @@ export type SyncNotice =
   | { kind: 'ConflictedCopy'; noteId: string; copyId: string; title: string }
   | { kind: 'RecoveredCopy'; copyId: string; title: string }
   | { kind: 'Restored'; noteId: string; title: string }
+  /** Both sides' edits combined (§6.2); the note can split them back apart. */
+  | { kind: 'Merged'; noteId: string; title: string }
   /** Dropped from the queue; [message] says what and why. */
   | { kind: 'Rejected'; message: string }
 
@@ -84,6 +86,10 @@ export type EngineApi = {
   save(note: SaveNote): Promise<LocalNote | null>
   move(id: string, spaceId: string): Promise<boolean>
   delete(id: string): Promise<void>
+  /** When the last automatic merge into [id] was, while it can still be split back apart; else null. */
+  mergedAt(id: string): Promise<number | null>
+  /** Splits the last automatic merge into [id] back apart; resolves with the conflicted copy's id, or null when there was nothing to split (undone, expired or deleted). */
+  undoMerge(id: string): Promise<string | null>
   /** Keeps text whose note was deleted elsewhere, as the new note [id]. Again with the same id does nothing. */
   recover(id: string, title: string, content: string, imageIds: string[] | null, spaceId: string): Promise<string>
   /** A picture added here, already encrypted for a locked note; sync uploads it before the notes showing it. */

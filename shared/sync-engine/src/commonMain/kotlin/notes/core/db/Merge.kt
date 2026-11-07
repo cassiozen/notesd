@@ -1,7 +1,9 @@
 package notes.core.db
 
 import notes.core.crypto.LockedEnvelope
+import notes.core.markdown.BodyMerge
 import notes.core.markdown.canonicalMarkdown
+import notes.core.markdown.mergeMarkdown
 
 /**
  * §6.1 per-field merge against the last synced version: a field changed on
@@ -24,5 +26,18 @@ internal object Merge {
     val sameMarkdown = { a: String, b: String ->
         a == b ||
             (!LockedEnvelope.isLocked(a) && !LockedEnvelope.isLocked(b) && canonicalMarkdown(a) == canonicalMarkdown(b))
+    }
+
+    /**
+     * §6.2: a body both sides changed, merged block by block. Locked bodies always conflict, and so does
+     * a merge that fails: a conflicted copy is the answer that can't lose text.
+     */
+    fun body(base: String?, mine: String, theirs: String): BodyMerge {
+        if (base == null || listOf(base, mine, theirs).any(LockedEnvelope::isLocked)) return BodyMerge.Conflict
+        return try {
+            mergeMarkdown(base, mine, theirs)
+        } catch (_: Exception) {
+            BodyMerge.Conflict
+        }
     }
 }

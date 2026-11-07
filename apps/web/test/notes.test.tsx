@@ -220,6 +220,60 @@ describe('editing', () => {
     expect(await within(list()).findByRole('link', { name: /^Trip \(Conflicted copy\)/ })).toBeTruthy()
   })
 
+  it('merges paragraphs changed in two places, and Undo splits them again', async () => {
+    let id = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        id = await createNote(s, 'Plan', 'One\n\nTwo')
+      },
+    })
+    await openNote(user, 'Plan')
+    await waitFor(() => expect(bodyText()).toBe('OneTwo'))
+
+    await editElsewhere(server, id, { content: 'One, elsewhere\n\nTwo\n' })
+    await typeAtEnd(user, ' here')
+
+    expect(await screen.findByText('Merged with changes from another device.')).toBeTruthy()
+    await waitFor(() => expect(bodyText()).toBe('One, elsewhereTwo here'))
+    await waitFor(async () => expect((await getNote(server, id)).content).toBe('One, elsewhere\n\nTwo here\n'))
+    expect(screen.queryByRole('button', { name: 'Keep mine' })).toBeNull()
+
+    await user.click(screen.getByRole('button', { name: 'Undo' }))
+    expect(await screen.findByText('Merge undone. The other version was kept as “Plan (Conflicted copy)”.')).toBeTruthy()
+    await waitFor(() => expect(bodyText()).toBe('One, elsewhereTwo'))
+    await waitFor(async () => {
+      expect((await getNote(server, id)).content).toBe('One, elsewhere\n\nTwo\n')
+      const copy = (await listNotes(server)).find((n) => n.title === 'Plan (Conflicted copy)')
+      expect(copy).toBeTruthy()
+      expect(await getNote(server, copy?.id ?? '')).toMatchObject({ content: 'One\n\nTwo here\n', conflictOf: id })
+    })
+    expect(screen.queryByText('Merged with changes from another device.')).toBeNull()
+  })
+
+  it('keeps what merged in both versions when only part of the content conflicts', async () => {
+    let id = ''
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        id = await createNote(s, 'Trip', 'Intro\n\nPack light')
+      },
+    })
+    await openNote(user, 'Trip')
+    await waitFor(() => expect(bodyText()).toBe('IntroPack light'))
+
+    await editElsewhere(server, id, { content: 'Intro, elsewhere\n\nPack light, bring a charger\n' })
+    await typeAtEnd(user, ', no laptop')
+
+    expect(await screen.findByText('Changed in two places. Your version was kept as “Trip (Conflicted copy)”.')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Keep mine' })).toBeNull()
+    await waitFor(() => expect(bodyText()).toBe('Intro, elsewherePack light, bring a charger'))
+    await waitFor(async () => {
+      const copy = (await listNotes(server)).find((n) => n.title === 'Trip (Conflicted copy)')
+      expect(copy).toBeTruthy()
+      expect(await getNote(server, copy?.id ?? '')).toMatchObject({ content: 'Intro, elsewhere\n\nPack light, no laptop\n', conflictOf: id })
+    })
+    expect((await getNote(server, id)).content).toBe('Intro, elsewhere\n\nPack light, bring a charger\n')
+  })
+
   it('can take the other version instead', async () => {
     let id = ''
     const { server, user } = await signedIn({

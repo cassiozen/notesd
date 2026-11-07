@@ -264,6 +264,9 @@ type EditorProps = {
 
 const APP_TITLE = 'notesd'
 
+// Savers outlive the pane: a split reopened later was already announced.
+const splitsShown = new WeakSet<NonNullable<Snapshot['split']>>()
+
 /** How often the list row follows the typing. */
 const TOUCH_MS = 150
 
@@ -381,6 +384,22 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
     onOpenDraft(gone.copy)
     onNotice(`Deleted on another device. Your edits were kept as “${gone.copy.fields().title}”.`)
   }, [snap.gone, onGone, onOpenDraft, onNotice])
+
+  useEffect(() => {
+    const split = snap.split
+    if (!split || splitsShown.has(split)) return
+    splitsShown.add(split)
+    onNotice(`Changed in two places. Your version was kept as “${split.title}”.`)
+  }, [snap.split, onNotice])
+
+  const undoMerge = useCallback(() => {
+    saver.undoMerge().then(
+      (title) => {
+        if (title) onNotice(`Merge undone. The other version was kept as “${title}”.`)
+      },
+      () => onNotice('The merge couldn’t be undone. Try again.'),
+    )
+  }, [saver, onNotice])
 
   useEffect(() => {
     if (!stylesOpen) return
@@ -547,6 +566,18 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
           }
         >
           {problem.message}
+        </Notice>
+      )}
+      {snap.merged && !problem && (
+        <Notice
+          tone="warn"
+          actions={
+            <Button size="sm" onClick={undoMerge}>
+              Undo
+            </Button>
+          }
+        >
+          Merged with changes from another device.
         </Notice>
       )}
       {problem?.kind === 'conflict' && (

@@ -1,6 +1,7 @@
 import { ApiError, NetworkError, UNEXPECTED, unexpectedMessage } from '../api/client'
 import { notes } from '../api/notes'
 import { canonical, parse } from '../editor/markdown'
+import { mergeBody } from '../editor/merge'
 import type { MutationResult, Note } from '../api/types'
 import { imageIds } from '../images/ref'
 import { LockedError, UnsupportedLockError, decryptBody, encryptBody, isLocked, isSupportedLock } from '../locks/crypto'
@@ -45,6 +46,10 @@ export type Snapshot = {
   spaceId: string
   /** Gone from the store underneath the editor; [copy] holds edits that were still unsaved. */
   gone: { copy: Saver | null } | null
+  /** Edits from another device were merged in (§6.2) and undoMerge() can still split them apart. */
+  merged: boolean
+  /** The latest conflicted copy a merge made by itself, to tell the user about once ([at] tells repeats apart). */
+  split: { title: string; at: number } | null
 }
 
 /** One save of the note, wherever it goes. */
@@ -122,6 +127,8 @@ export abstract class SaverCore implements Saver {
   protected failures = 0
   protected waitingForUnlock = false
   protected gone: Snapshot['gone'] = null
+  protected merged = false
+  protected split: Snapshot['split'] = null
   private imageError: string | null = null
   protected imagesBusy = 0
   /** Re-encrypts (or decrypts) the open note's images before a lock change (images/store.ts). */
@@ -163,6 +170,7 @@ export abstract class SaverCore implements Saver {
   abstract keepMine(): Saver | null
   abstract takeTheirs(): void
   abstract recover(): Saver | null
+  abstract undoMerge(): Promise<string | null>
   abstract delete(keepalive?: boolean): Promise<'deleted' | 'changed'>
 
   // --- for the editor -------------------------------------------------------
@@ -413,6 +421,8 @@ export abstract class SaverCore implements Saver {
       imagesBusy: this.imagesBusy > 0,
       spaceId: this.space,
       gone: this.gone,
+      merged: this.merged,
+      split: this.split,
     }
   }
 }
@@ -431,6 +441,8 @@ export class NoteSaver extends SaverCore {
   private retryTimer: ReturnType<typeof setTimeout> | undefined
   private attempts = 0
   private waitingForAuth = false
+  /** The last automatic body merge, for undoMerge(); in memory only, so for this tab's life. */
+  private undo: { keep: Fields; copy: Fields; merged: Fields } | null = null
 
   constructor(init: SaverInit, hooks: SaverHooks = {}) {
     super(init, hooks)
@@ -689,9 +701,16 @@ export class NoteSaver extends SaverCore {
     this.merge(opened)
   }
 
-  /** §6.1: take each field from whichever side changed it; give up only when both changed it differently. */
+  /**
+   * §6.1: take each field from whichever side changed it, and a body both changed block by block (§6.2).
+   * What doesn't merge goes to a conflicted copy by itself, as on the phones; only a body that merged
+   * nothing (or a locked one) asks the user.
+   */
   private merge(remote: Opened) {
     const current = remote.note
+    // Undo splits the last merge only: this one may record none.
+    this.undo = null
+    this.merged = false
     // The latest local text, including edits typed after the rejected request.
     const local = this.read()
     const base = this.base
@@ -704,7 +723,7 @@ export class NoteSaver extends SaverCore {
       return null
     }
     const title = pick('title')
-    const content = pick('content')
+    let content = pick('content')
     if (current.deletedAt !== null) {
       this.problem = { kind: 'deleted' }
       this.set('conflict')
@@ -714,18 +733,52 @@ export class NoteSaver extends SaverCore {
     const locked = this.locked === this.baseLocked ? remote.locked : this.locked
     // So is the space, except that the server's wins when both moved it.
     const space = this.space === this.baseSpace || current.spaceId !== this.baseSpace ? current.spaceId : this.space
-    if (title === null || content === null) {
+    // Locked bodies never merge block by block: either side's lock state could be the wrong one to keep.
+    const body = content === null && !this.locked && !this.baseLocked && !remote.locked ? mergeBody(base.content, local.content, server.content) : null
+    if (body?.kind === 'clean') content = body.content
+    if (content === null && body?.kind !== 'partial') {
       this.problem = { kind: 'conflict', current: remote }
       this.set('conflict')
       return
     }
+    const mySpace = this.space
     this.adopt(remote)
     this.locked = locked
     this.space = space
-    const merged = { title, content }
-    if (merged.title !== local.title || merged.content !== local.content) this.pushRemote(merged)
+    if (title === null || body?.kind === 'partial') {
+      // Both get every change that merged, so the two differ only where both sides changed the same thing.
+      const theirs = body?.kind === 'partial' ? body.theirs : (content as string)
+      const mine = body?.kind === 'partial' ? body.mine : (content as string)
+      const copy = this.copy(' (Conflicted copy)', this.id, { title: title ?? local.title, content: mine }, mySpace)
+      this.split = { title: copy.fields().title, at: Date.now() }
+      this.pushRemote({ title: title ?? server.title, content: theirs })
+    } else {
+      const merged = { title, content: content as string }
+      if (merged.title !== local.title || merged.content !== local.content) this.pushRemote(merged)
+      if (body?.kind === 'clean') {
+        this.undo = { keep: { title: current.title, content: current.content }, copy: local, merged }
+        this.merged = true
+      }
+    }
     this.dirty = true
     void Promise.resolve().then(() => this.flush())
+  }
+
+  /** Splits the last automatic merge back apart: the note as the server had it, unless edited since, and ours as a copy. */
+  async undoMerge(): Promise<string | null> {
+    const undo = this.undo
+    if (!undo) return null
+    this.undo = null
+    this.merged = false
+    const now = this.read()
+    if (now.title === undo.merged.title && canonical(now.content) === undo.merged.content) {
+      this.pushRemote(undo.keep)
+      this.dirty = true
+    }
+    const copy = this.copy(' (Conflicted copy)', this.id, undo.copy)
+    this.set(this.state === 'saved' && this.dirty ? 'unsaved' : this.state)
+    void this.flush()
+    return copy.fields().title
   }
 
   /** Make the server's version our base. */
@@ -770,8 +823,7 @@ export class NoteSaver extends SaverCore {
     return this.copy(' (Recovered copy)')
   }
 
-  private copy(suffix: string, conflictOf?: string): NoteSaver {
-    const local = this.read()
+  private copy(suffix: string, conflictOf?: string, local: Fields = this.read(), spaceId = this.space): NoteSaver {
     const copy = new NoteSaver(
       {
         id: crypto.randomUUID(),
@@ -779,7 +831,7 @@ export class NoteSaver extends SaverCore {
         ...(conflictOf !== undefined && { conflictOf }),
         // A copy of a locked note stays locked, in the same space.
         locked: this.locked,
-        spaceId: this.space,
+        spaceId,
       },
       this.hooks,
     )

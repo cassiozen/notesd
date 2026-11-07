@@ -342,6 +342,8 @@ function noticeText(n: SyncNotice): string {
       return `A note you edited was deleted elsewhere. It was kept as “${n.title}”.`
     case 'Restored':
       return `“${n.title || 'New note'}” changed on another device and wasn't deleted.`
+    case 'Merged':
+      return `“${n.title || 'New note'}” had changes from another device. They were merged.`
     case 'Rejected':
       return n.message
   }
