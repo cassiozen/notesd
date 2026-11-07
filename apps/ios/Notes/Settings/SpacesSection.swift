@@ -70,6 +70,7 @@ struct SpacesSection: View {
 struct SpaceSheet: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.spaceTheme) private var shownTheme
     var editing: Space?
     let onDone: (String) -> Void
 
@@ -100,6 +101,8 @@ struct SpaceSheet: View {
                 }
             }
             .font(.notesBody)
+            .scrollContentBackground(.hidden)
+            .background(Color.notesBg)
             .navigationTitle(editing == nil ? "New Space" : "Edit Space")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -111,6 +114,8 @@ struct SpaceSheet: View {
                 }
             }
         }
+        // The icon picked brings its colours: the sheet shows them before the space has them.
+        .environment(\.spaceTheme, icon.map(SpaceThemes.key) ?? shownTheme)
         .onAppear {
             if let editing {
                 name = editing.name

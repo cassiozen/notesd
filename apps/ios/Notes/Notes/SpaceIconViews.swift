@@ -31,7 +31,8 @@ struct SpaceIconImage: View {
     }
 }
 
-/// Every icon to choose from, the chosen one ringed.
+/// Every icon to choose from, the chosen one ringed. An icon comes with its colours (§7.7): each
+/// choice shows its theme's accent.
 struct SpaceIconPicker: View {
     @Binding var selection: String?
 
@@ -52,7 +53,15 @@ struct SpaceIconPicker: View {
                         .frame(maxWidth: .infinity, minHeight: 54)
                         .background(on ? Color.chip : .clear, in: .rect(cornerRadius: 10))
                         .overlay {
-                            if on { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.notesTint, lineWidth: 2) }
+                            if on { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.ink2, lineWidth: 2) }
+                        }
+                        .overlay(alignment: .bottomTrailing) {
+                            Circle().fill(Color.accent)
+                                .padding(2)
+                                .background(Color.notesBg, in: .circle)
+                                .frame(width: 12, height: 12)
+                                .padding(6)
+                                .environment(\.spaceTheme, icon.key)
                         }
                         .contentShape(.rect)
                 }

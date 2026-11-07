@@ -24,9 +24,14 @@ struct NotesApp: App {
         WindowGroup {
             RootView()
                 .environment(graph)
-                .tint(Color.notesTint)
-                .onAppear { applyAppearance() }
+                // Controls stay neutral, as on the web: the accent is kept for a few places.
+                .tint(Color.ink2)
+                .onAppear {
+                    applyAppearance()
+                    applySpaceTheme(animated: false)
+                }
                 .onChange(of: graph.appearance) { applyAppearance() }
+                .onChange(of: graph.spaceTheme) { applySpaceTheme(animated: true) }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
@@ -44,16 +49,32 @@ struct NotesApp: App {
         }
     }
 
-    /// Titles in the serif, as on the web and Android; bar buttons in the accent.
+    /// Titles in the serif, as on the web and Android; bar buttons neutral.
     private static func styleBars() {
         let bar = UINavigationBar.appearance()
-        bar.tintColor = Palette.tint
+        bar.tintColor = Palette.ink2
         bar.largeTitleTextAttributes = [
             .font: Typeface.scaled(Typeface.serif(36), as: .largeTitle), .foregroundColor: Palette.ink,
         ]
         bar.titleTextAttributes = [
             .font: Typeface.scaled(Typeface.serif(21), as: .headline), .foregroundColor: Palette.ink,
         ]
+    }
+
+    /// The space shown's colours (§7.7), on every window: Palette's colours resolve in them, so UIKit and
+    /// SwiftUI follow. Cross-faded, as the web and Android ease theirs, unless motion is reduced.
+    private func applySpaceTheme(animated: Bool) {
+        let key = graph.spaceTheme
+        for scene in UIApplication.shared.connectedScenes {
+            for window in (scene as? UIWindowScene)?.windows ?? [] {
+                let apply = { window.traitOverrides.spaceTheme = key }
+                if animated && !UIAccessibility.isReduceMotionEnabled {
+                    UIView.transition(with: window, duration: 0.3, options: .transitionCrossDissolve, animations: apply)
+                } else {
+                    apply()
+                }
+            }
+        }
     }
 
     private func applyAppearance() {

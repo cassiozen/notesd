@@ -110,7 +110,7 @@ private struct ReadsSideBar: ViewModifier {
                     styleIcon
                 }
             }
-            .tint(state.heading > 0 || state.quote || state.list != nil ? Color.accent : nil)
+            .tint(state.heading > 0 || state.quote || state.list != nil ? Color.ink : nil)
             .disabled(state.inTitle)
         }
 
@@ -159,7 +159,7 @@ private struct ReadsSideBar: ViewModifier {
             .symbolEffect(.bounce, value: on)
             .accessibilityAddTraits(on ? .isSelected : [])
             if on {
-                button.buttonStyle(.glassProminent).tint(Color.accent).foregroundStyle(Color.onAccent)
+                button.buttonStyle(.glassProminent).tint(Color.solid).foregroundStyle(Color.onSolid)
             } else {
                 button
             }

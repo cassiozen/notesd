@@ -32,7 +32,7 @@ struct LockedNotesSection: View {
                             })
                     )
                     .disabled(turningOn)
-                    .tint(Color.accent)
+                    .tint(Color.solid)
                     .sheet(isPresented: $unlocking) {
                         LockSheet(locks: graph.locks, exists: true, unlockFor: "Unlock locked notes") { _ in enable() }
                     }

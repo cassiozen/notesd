@@ -81,7 +81,7 @@ private struct AccountRow: View {
     var body: some View {
         HStack(spacing: 14) {
             ZStack {
-                Circle().fill(Color.accent)
+                Circle().fill(Color.on)
                 if let name {
                     Text(name.prefix(1).uppercased()).font(.notesRowTitle).foregroundStyle(Color.ink)
                 } else {

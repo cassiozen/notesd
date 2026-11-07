@@ -56,7 +56,7 @@ struct LockedNoteView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 14) {
-                Image(systemName: "lock.fill").font(.system(size: 34)).foregroundStyle(Color.accentDeep)
+                Image(systemName: "lock.fill").font(.system(size: 34)).foregroundStyle(Color.ink3)
                     .accessibilityHidden(true)
                     .padding(.top, 48)
                 Text(title.isEmpty ? "Locked note" : title).font(.notesTitle).foregroundStyle(Color.ink)
@@ -331,7 +331,7 @@ struct PrivacyCover: View {
     var body: some View {
         ZStack {
             Color.notesBg
-            Image(systemName: "lock.fill").font(.system(size: 34)).foregroundStyle(Color.accentDeep)
+            Image(systemName: "lock.fill").font(.system(size: 34)).foregroundStyle(Color.ink3)
         }
         .ignoresSafeArea()
         .accessibilityHidden(true)

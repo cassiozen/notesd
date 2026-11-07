@@ -49,6 +49,16 @@ final class AppGraph {
     /// Back after this long away with no note open, the list starts over in the default space.
     static let spaceReset: TimeInterval = 30 * 60
 
+    /// The theme of the space shown (§7.7), a key from `SpaceThemes.key`. Until the list loads, the
+    /// default space's from last time: a cold start always opens on that space.
+    var spaceTheme: String {
+        guard !spaces.isEmpty else {
+            guard space == Spaces.defaultId else { return "" }
+            return SpaceThemes.key(Self.defaults.string(forKey: "defaultSpaceTheme") ?? "")
+        }
+        return SpaceThemes.key(spaces.first { $0.id == space }?.icon ?? "")
+    }
+
     /// Shows another space, from All notes.
     func switchSpace(_ id: String) {
         guard space != id else { return }
@@ -170,6 +180,9 @@ final class AppGraph {
     private func reloadSpaces(_ engine: SyncEngine) async {
         guard let list = try? await engine.spaces.list() else { return }
         spaces = list
+        if let home = list.first(where: { $0.id == Spaces.defaultId }) {
+            Self.defaults.set(SpaceThemes.key(home.icon), forKey: "defaultSpaceTheme")
+        }
         // The space shown was deleted, here or on another device: back to the default.
         if !list.isEmpty && !list.contains(where: { $0.id == space }) { switchSpace(Spaces.defaultId) }
     }
