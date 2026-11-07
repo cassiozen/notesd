@@ -174,20 +174,6 @@ private fun IntegrationRow(name: String, detail: String, trailing: @Composable (
     }
 }
 
-@Composable
-private fun Pill(text: String) {
-    val t = LocalTokens.current
-    Text(
-        text,
-        style = Type.label.copy(fontSize = 12.sp),
-        color = t.good,
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(t.goodBg)
-            .padding(horizontal = 10.dp, vertical = 4.dp)
-    )
-}
-
 /** The server's own check, made here too: the key isn't sent until the sender's chosen. */
 internal fun keyError(key: String): String? = when {
     key.isEmpty() -> "Paste your Resend API key."
@@ -513,16 +499,6 @@ private fun SenderFields(
         hint = "On a domain you've verified in Resend.",
         enabled = enabled,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
-    )
-}
-
-@Composable
-private fun FormError(text: String) {
-    Text(
-        text,
-        style = Type.small,
-        color = LocalTokens.current.danger,
-        modifier = Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }
     )
 }
 

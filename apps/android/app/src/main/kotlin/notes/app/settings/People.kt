@@ -53,6 +53,7 @@ import notes.app.account.Account
 import notes.app.ui.ButtonKind
 import notes.app.ui.ConfirmDialog
 import notes.app.ui.Icons
+import notes.app.ui.Kicker
 import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
 import notes.app.ui.NotesDialog
@@ -60,7 +61,9 @@ import notes.app.ui.NotesField
 import notes.app.ui.Sheet
 import notes.app.ui.SheetItem
 import notes.app.ui.Type
+import notes.core.api.ApiClient
 import notes.core.api.ApiResult
+import notes.core.api.IssuedLink
 import notes.core.api.Person
 import notes.core.api.SetupLink
 
@@ -112,59 +115,49 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
 
     if (!peopleShown(load, account.isAdmin)) return
 
-    fun people() = (load as? Load.Ready)?.people.orEmpty()
     fun update(change: (List<Person>) -> List<Person>) {
         (load as? Load.Ready)?.let { load = Load.Ready(change(it.people)) }
     }
+    fun replace(person: Person) = update { list -> list.map { if (it.id == person.id) person else it } }
+    fun drop(id: Long) = update { list -> list.filter { it.id != id } }
+    fun hide() {
+        load = Load.Hidden
+        scope.launch { graph.accounts.adminChanged(false) }
+    }
 
-    /** One action at a time; its outcome under the card. */
-    fun act(person: Person, block: suspend () -> ApiResult<*>, done: (ApiResult<*>) -> String?) {
+    /** One action at a time; [done]'s message, if any, under the card. */
+    fun <T> act(person: Person, block: suspend ApiClient.() -> ApiResult<T>, done: (T) -> String?) {
         if (busy) return
         busy = true
         status = null
         scope.launch {
-            val r = block()
+            val r = graph.api()?.block() ?: ApiResult.Unauthenticated
             busy = false
             when {
-                r.isAdminOnly() -> {
-                    graph.accounts.adminChanged(false)
-                    load = Load.Hidden
-                }
-
-                r is ApiResult.Rejected && r.status == 404 -> update { list -> list.filter { it.id != person.id } }
-
-                r is ApiResult.Ok<*> -> status = done(r)?.let { it to false }
-
+                r is ApiResult.Ok -> status = done(r.value)?.let { it to false }
+                r.isAdminOnly() -> hide()
+                r is ApiResult.Rejected && r.status == 404 -> drop(person.id)
                 else -> status = failureMessage(r) to true
             }
         }
     }
 
-    fun newLink(person: Person) = act(person, { graph.api()?.newSetupLink(person.id) ?: ApiResult.Unauthenticated }) {
-        val link = (it as ApiResult.Ok<*>).value as SetupLink
-        // The server's word on pending: this list may be from before they chose a password.
-        val fresh = person.copy(pending = link.pending, linkExpiresAt = link.expiresAt)
-        update { list -> list.map { p -> if (p.id == person.id) fresh else p } }
-        open = Open.Link(fresh, link)
+    // The account comes back as it is now: this list may be from before they chose a password.
+    fun newLink(person: Person) = act(person, { newSetupLink(person.id) }) { issued ->
+        replace(issued.user)
+        open = Open.Link(issued.user, issued.link)
         null
     }
 
     // Fresh first: a stale "invited" would describe removing someone who has since joined as cancelling an invitation.
-    fun confirmRemove(person: Person) = act(person, { graph.api()?.people() ?: ApiResult.Unauthenticated }) {
-        @Suppress("UNCHECKED_CAST")
-        val latest = (it as ApiResult.Ok<*>).value as List<Person>
+    fun confirmRemove(person: Person) = act(person, { people() }) { latest ->
         load = Load.Ready(latest)
-        latest.find { p -> p.id == person.id }?.let { fresh -> open = Open.Remove(fresh) }
+        latest.find { it.id == person.id }?.let { open = Open.Remove(it) }
         null
     }
 
     Spacer(Modifier.height(20.dp))
-    Text(
-        "People",
-        style = Type.kicker,
-        color = t.ink3,
-        modifier = Modifier.padding(start = 8.dp, bottom = 8.dp).semantics { heading() }
-    )
+    Kicker("People", Modifier.padding(start = 8.dp, bottom = 8.dp).semantics { heading() })
     Card {
         when (val l = load) {
             is Load.Ready -> {
@@ -211,7 +204,8 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
             }
         )
     }
-    if (load is Load.Ready && people().size <= 1 && status == null) {
+    val ready = load as? Load.Ready
+    if (ready != null && ready.people.size <= 1 && status == null) {
         Footnote(
             "Only you use this server. Invite family or friends: each gets their own notes, which no one else can see."
         )
@@ -223,12 +217,11 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
             onDismiss = { open = null },
             onForbidden = {
                 open = null
-                load = Load.Hidden
-                scope.launch { graph.accounts.adminChanged(false) }
+                hide()
             }
-        ) { invitation ->
-            update { it + invitation.user }
-            open = Open.Link(invitation.user, invitation.link)
+        ) { issued ->
+            update { it + issued.user }
+            open = Open.Link(issued.user, issued.link)
         }
 
         is Open.Actions -> PersonActions(
@@ -242,9 +235,8 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
             onAdmin = {
                 open = null
                 val p = o.person
-                act(p, { graph.api()?.setAdmin(p.id, !p.isAdmin) ?: ApiResult.Unauthenticated }) {
-                    val changed = (it as ApiResult.Ok<*>).value as Person
-                    update { list -> list.map { x -> if (x.id == changed.id) changed else x } }
+                act(p, { setAdmin(p.id, !p.isAdmin) }) { changed ->
+                    replace(changed)
                     if (changed.isAdmin) "${p.username} is now an admin." else "${p.username} is no longer an admin."
                 }
             },
@@ -277,8 +269,8 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
                 danger = true,
                 onDismiss = { open = null }
             ) {
-                act(p, { graph.api()?.removePerson(p.id) ?: ApiResult.Unauthenticated }) {
-                    update { list -> list.filter { x -> x.id != p.id } }
+                act(p, { removePerson(p.id) }) {
+                    drop(p.id)
                     if (p.pending) "${p.username}'s invitation was cancelled." else "${p.username} was removed."
                 }
             }
@@ -355,15 +347,7 @@ private fun PersonRow(person: Person, you: Boolean, enabled: Boolean, onClick: (
             Text(describe(person), style = Type.rowMeta, color = t.ink2, maxLines = 2)
         }
         if (you) {
-            Text(
-                "You",
-                style = Type.label.copy(fontSize = 12.sp),
-                color = t.good,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(999.dp))
-                    .background(t.goodBg)
-                    .padding(horizontal = 10.dp, vertical = 4.dp)
-            )
+            Pill("You")
         } else {
             Icon(Icons.More, null, Modifier.size(22.dp), tint = t.ink3)
         }
@@ -400,7 +384,7 @@ private fun InviteDialog(
     graph: AppGraph,
     onDismiss: () -> Unit,
     onForbidden: () -> Unit,
-    onInvited: (notes.core.api.Invitation) -> Unit
+    onInvited: (IssuedLink) -> Unit
 ) {
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
@@ -450,19 +434,8 @@ private fun InviteDialog(
                 hint = "What they'll sign in with.",
                 enabled = !busy
             )
-            formError?.let {
-                Text(
-                    it,
-                    style = Type.small,
-                    color = t.danger,
-                    modifier = Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }
-                )
-            }
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip, enabled = !busy)
-                NotesButton("Invite", ::invite, Modifier.weight(1f), busy = busy)
-            }
+            formError?.let { FormError(it) }
+            DialogActions(onDismiss, "Invite", ::invite, busy)
         }
     }
 }

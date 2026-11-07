@@ -166,13 +166,20 @@ class ApiClientTest {
         assertEquals(Person(2, "sam", false, 5, pending = true, linkExpiresAt = 9), people[1])
         assertNull(people[0].linkExpiresAt)
 
-        server.enqueue(json(201, """{"user":$sam,"link":{"token":"tok","expiresAt":9,"pending":true}}"""))
-        assertEquals(
-            SetupLink("tok", 9, pending = true),
-            assertIs<ApiResult.Ok<Invitation>>(api.invite("sam")).value.link
+        server.enqueue(json(201, """{"user":$sam,"link":{"token":"tok","expiresAt":9}}"""))
+        assertEquals(SetupLink("tok", 9), assertIs<ApiResult.Ok<IssuedLink>>(api.invite("sam")).value.link)
+        server.enqueue(
+            json(
+                200,
+                """{"user":${sam.replace(
+                    "\"pending\":true",
+                    "\"pending\":false"
+                )},"link":{"token":"tok2","expiresAt":10}}"""
+            )
         )
-        server.enqueue(json(200, """{"token":"tok2","expiresAt":10}"""))
-        assertEquals(ApiResult.Ok(SetupLink("tok2", 10)), api.newSetupLink(2))
+        val issued = assertIs<ApiResult.Ok<IssuedLink>>(api.newSetupLink(2)).value
+        assertEquals(SetupLink("tok2", 10), issued.link)
+        assertEquals(false, issued.user.pending)
         server.enqueue(json(200, sam.replace("\"isAdmin\":false", "\"isAdmin\":true")))
         assertEquals(true, assertIs<ApiResult.Ok<Person>>(api.setAdmin(2, true)).value.isAdmin)
         server.enqueue(MockResponse.Builder().code(204).build())

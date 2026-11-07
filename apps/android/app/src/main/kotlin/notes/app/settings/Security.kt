@@ -336,34 +336,3 @@ private fun PasswordFields(
         )
     }
 }
-
-@Composable
-private fun FormError(text: String) {
-    Text(
-        text,
-        style = Type.small,
-        color = LocalTokens.current.danger,
-        modifier = Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }
-    )
-}
-
-@Composable
-private fun DialogActions(
-    onCancel: () -> Unit,
-    action: String,
-    onAction: () -> Unit,
-    busy: Boolean,
-    danger: Boolean = false
-) {
-    Spacer(Modifier.height(20.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NotesButton("Cancel", onCancel, Modifier.weight(1f), kind = ButtonKind.Chip, enabled = !busy)
-        NotesButton(
-            action,
-            onAction,
-            Modifier.weight(1f),
-            kind = if (danger) ButtonKind.Danger else ButtonKind.Solid,
-            busy = busy
-        )
-    }
-}

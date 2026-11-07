@@ -122,7 +122,15 @@ class PeopleTest {
         serve { r ->
             when ("${r.method} ${r.url.encodedPath}") {
                 "GET /api/v1/users" -> json(200, """{"users":[$me,$alex]}""")
-                "POST /api/v1/users/3/link" -> json(200, """{"token":"t2","expiresAt":9,"pending":false}""")
+
+                "POST /api/v1/users/3/link" -> json(
+                    200,
+                    """{"user":${alex.replace(
+                        "\"pending\":true",
+                        "\"pending\":false"
+                    )},"link":{"token":"t2","expiresAt":9}}"""
+                )
+
                 else -> json(404, """{"error":"no_such_endpoint"}""")
             }
         }

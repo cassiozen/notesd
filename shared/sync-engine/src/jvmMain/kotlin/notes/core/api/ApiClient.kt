@@ -218,13 +218,13 @@ class ApiClient(
     suspend fun people(): ApiResult<List<Person>> =
         authed({ request("GET", url("api/v1/users"), null, it) }) { json.decodeFromString<People>(it).users }
 
-    suspend fun invite(username: String): ApiResult<Invitation> =
+    suspend fun invite(username: String): ApiResult<IssuedLink> =
         authed({ post("api/v1/users", buildJsonObject { put("username", username) }, it) }) {
             json.decodeFromString(it)
         }
 
     /** Replaces the account's link; its password keeps working until the new one is used. */
-    suspend fun newSetupLink(id: Long): ApiResult<SetupLink> = authed({
+    suspend fun newSetupLink(id: Long): ApiResult<IssuedLink> = authed({
         request("POST", userUrl(id).newBuilder().addPathSegment("link").build(), JsonObject(emptyMap()), it)
     }) { json.decodeFromString(it) }
 

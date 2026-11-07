@@ -100,15 +100,11 @@ data class Person(
 
 /** A one-time link's secret; the app builds the URL around it. Shown once: the server keeps only a hash. */
 @Serializable
-data class SetupLink(
-    val token: String,
-    val expiresAt: Long,
-    /** For an invited account to choose its first password; else a reset. As the server had it when making it. */
-    val pending: Boolean = false
-)
+data class SetupLink(val token: String, val expiresAt: Long)
 
+/** A link just made, with its account as it is now: [Person.pending] tells an invitation from a reset. */
 @Serializable
-data class Invitation(val user: Person, val link: SetupLink)
+data class IssuedLink(val user: Person, val link: SetupLink)
 
 @Serializable
 internal data class People(val users: List<Person> = emptyList())
