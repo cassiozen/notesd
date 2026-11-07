@@ -36,16 +36,18 @@ var tools = []llm.Tool{
 		`{"type": "object", "properties": {}, "additionalProperties": false}`),
 	tool("set_title", "Change a note's title.",
 		`{"type": "object", "properties": {`+noteIDParam+`, "title": {"type": "string"}, `+doneParam+`}, "required": ["title"], "additionalProperties": false}`),
-	tool("edit_note", "Replace text in a note's Markdown content. find must appear exactly once.",
+	tool("edit_note", "Replace text in a note's Markdown content. find must appear exactly once; on an empty note, use insert.",
 		`{"type": "object", "properties": {`+noteIDParam+`, "find": {"type": "string"}, "replace": {"type": "string"}, `+doneParam+`}, "required": ["find", "replace"], "additionalProperties": false}`),
-	tool("insert", "Add text to a note's content: at its start or its end.",
+	tool("insert", "Add text to a note's content: at its start or its end. The way to write in an empty note.",
 		`{"type": "object", "properties": {`+noteIDParam+`, "at": {"type": "string", "enum": ["start", "end"]}, "text": {"type": "string"}, `+doneParam+`}, "required": ["at", "text"], "additionalProperties": false}`),
+	tool("set_content", "Replace a note's whole Markdown content. For a note you keep yourself, like a digest: for the user's writing, use edit_note or insert.",
+		`{"type": "object", "properties": {`+noteIDParam+`, "content": {"type": "string"}, `+doneParam+`}, "required": ["content"], "additionalProperties": false}`),
 	tool("create_note", "Create a note in this space.",
 		`{"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}, `+doneParam+`}, "required": ["title", "content"], "additionalProperties": false}`),
 }
 
 // writeTools are the tools that take done.
-var writeTools = map[string]bool{"set_title": true, "edit_note": true, "insert": true, "create_note": true}
+var writeTools = map[string]bool{"set_title": true, "edit_note": true, "insert": true, "set_content": true, "create_note": true}
 
 // doneWith is the summary a write call ends the run with, if it does.
 func doneWith(tc llm.ToolCall) string {
@@ -177,6 +179,11 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 			return "", refuse(`at must be "start" or "end"`)
 		}
 		return rs.write(ctx, id, edit{Kind: "insert", At: args.At, Text: text})
+	case "set_content":
+		if args.Content == nil {
+			return "", refuse("content is required")
+		}
+		return rs.write(ctx, id, edit{Kind: "content", Text: *args.Content})
 	case "create_note":
 		if args.Title == nil || args.Content == nil {
 			return "", refuse("title and content are required")
@@ -190,10 +197,10 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 // it lands: changed since the agent read it, to what it is now, rather than
 // the run starting over.
 type edit struct {
-	Kind          string // "title", "replace" or "insert"
+	Kind          string // "title", "replace", "insert" or "content"
 	Title         string
 	Find, Replace string
-	At, Text      string // At: "start" or "end"
+	At, Text      string // At: "start" or "end"; Text: the whole content, for "content"
 }
 
 // apply makes e to n, or refuses: find must appear exactly once.
@@ -212,6 +219,8 @@ func (e edit) apply(n *notes.Note) error {
 		}
 	case "insert":
 		n.Content = insertText(n.Content, e.Text, e.At == "start")
+	case "content":
+		n.Content = e.Text
 	}
 	return nil
 }
@@ -272,6 +281,10 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 		cur, err := rs.read(ctx, id)
 		if err != nil {
 			return "", err
+		}
+		if try > 1 && e.Kind == "content" {
+			// Made to what it is now, the whole content would wipe out what changed.
+			return "", &toolError{msg: "the note changed since you read it, so its content wasn't replaced; here it is now", note: &cur}
 		}
 		next := cur
 		if err := e.apply(&next); err != nil {

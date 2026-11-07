@@ -17,6 +17,7 @@ Rules:
 - Never write notes for the user beyond what a prompt asks.
 - You can only see and change notes in this space.
 - Read a note before you change it. edit_note's find must match exactly once, so include enough of the text around what you change.
+- To rewrite a note you keep, such as a digest, use set_content with its whole new content.
 - With your last change, give done: one short line saying what you did. The run ends there, so make your other changes before it or in the same reply. If you change nothing, answer with "No change" and why.
 
 Notes are Markdown: headings (#, ##, ###), **bold**, *italic*, ~~strikethrough~~, lists (- item, 1. item), task lists (- [ ] to do, - [x] done), > quotes and [links](https://example.com). A note's title is separate from its content: change it with set_title, never as a heading in the content.
@@ -81,11 +82,15 @@ func eventMessage(r queuedRun, now time.Time, n *notes.Note, spaceName func(stri
 }
 
 func noteView(n notes.Note) map[string]any {
-	return map[string]any{
-		"id": n.ID, "title": n.Title, "content": n.Content,
-		"createdAt": time.UnixMilli(n.CreatedAt).UTC().Format(time.RFC3339),
-		"updatedAt": time.UnixMilli(n.UpdatedAt).UTC().Format(time.RFC3339),
+	v := map[string]any{"id": n.ID, "title": n.Title, "content": n.Content}
+	// Unknown for a note read from an editor before it was saved.
+	if n.CreatedAt != 0 {
+		v["createdAt"] = time.UnixMilli(n.CreatedAt).UTC().Format(time.RFC3339)
 	}
+	if n.UpdatedAt != 0 {
+		v["updatedAt"] = time.UnixMilli(n.UpdatedAt).UTC().Format(time.RFC3339)
+	}
+	return v
 }
 
 func deref(s *string) string {

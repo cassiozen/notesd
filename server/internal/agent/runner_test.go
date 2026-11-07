@@ -832,3 +832,33 @@ func TestDoneEndsTheRunWithItsLastChange(t *testing.T) {
 		t.Fatalf("run %+v after %d calls", r, h.model.calls())
 	}
 }
+
+func TestSetContentRewritesANoteItKeeps(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	// Imported: no writing session of its own.
+	if _, err := h.d.Notes.Create(ctx, notes.CreateInput{OperationID: h.op(), ID: "digest", Title: "Digest", SpaceID: ptr("work"),
+		Content: "## Themes\n- Old\n\n## Open questions\n- One\n", Origin: "import"}); err != nil {
+		t.Fatal(err)
+	}
+	h.done("n1", "Milk")
+	h.model.steps = append(h.model.steps, call("set_content", `{"id": "digest", "content": "## Themes\n- Shopping\n\n## Open questions\n- One\n", "done": "Updated the Digest."}`))
+	h.next()
+	if got := h.content("digest"); got != "## Themes\n- Shopping\n\n## Open questions\n- One\n" || h.model.calls() != 1 {
+		t.Fatalf("digest %q after %d calls", got, h.model.calls())
+	}
+
+	// Changed since it was read: replacing all of it would wipe that out, so the model gets it back.
+	h.done("n2", "Eggs")
+	h.model.steps = append(h.model.steps, call("get_note", `{"id": "digest"}`), func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		h.update("digest", "## Themes\n- Shopping\n- Typed by the user\n", nil)
+		return toolReply("set_content", `{"id": "digest", "content": "## Themes\n- Eggs\n"}`), nil
+	}, final("No change."))
+	h.next()
+	if got := h.content("digest"); got != "## Themes\n- Shopping\n- Typed by the user\n" {
+		t.Fatalf("digest %q", got)
+	}
+	if got := lastToolResult(h.model.requests[len(h.model.requests)-1]); !strings.Contains(got, "Typed by the user") || !strings.Contains(got, `"error"`) {
+		t.Fatalf("told: %s", got)
+	}
+}

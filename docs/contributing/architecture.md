@@ -491,7 +491,9 @@ The user guide is [agents](../guides/using/agents.md).
   time in the account's time zone and the note. Each run logs where its time went: waiting, getting
   ready, the model's calls and the tools'.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`. Write: `set_title`,
-  `edit_note` (find must match exactly once), `insert` (start or end), `create_note`. A write
+  `edit_note` (find must match exactly once), `insert` (start or end),
+  `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a
+  note changed since), `create_note`. A write
   can carry `done`, the run's summary: the run ends with it, without a model call just to say so. Nothing
   deletes, moves or locks a note, or leaves the space; locked notes are left out of every listing
   and search, not only hidden from reads. `get_cursor` and inserting at the cursor come with
