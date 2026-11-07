@@ -77,6 +77,18 @@ final class FlowTests: XCTestCase {
         return n
     }
 
+    /// The colour behind the list at the screen's left edge, halfway down: the space's theme (§7.7).
+    private func background(_ image: UIImage) -> (Int, Int, Int) {
+        let cg = image.cgImage!
+        var px = [UInt8](repeating: 0, count: 4)
+        let ctx = CGContext(
+            data: &px, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let strip = cg.cropping(to: CGRect(x: 0, y: cg.height / 2, width: cg.width / 40, height: cg.height / 10))!
+        ctx.draw(strip, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        return (Int(px[0]), Int(px[1]), Int(px[2]))
+    }
+
     /// A note with a picture, made through the API as if on the web.
     private func notesWithAPicture() async throws {
         let picture = UIGraphicsImageRenderer(size: CGSize(width: 400, height: 250)).jpegData(
@@ -191,13 +203,16 @@ final class FlowTests: XCTestCase {
         screenshot("new space")
         app.buttons["Create"].tap()
 
-        // Straight to the new, empty space.
+        // Straight to the new, empty space, in its icon's colours.
         XCTAssertTrue(app.staticTexts["No notes in Work yet"].waitForExistence(timeout: 10))
         writeNewNote("Standup\nStatus")
+        screenshot("a note in the diary's theme")
         app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["Standup"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.staticTexts["Groceries"].exists)
         try audit("a second space")
+        screenshot("the diary's theme")
+        let diary = background(app.screenshot().image)
 
         app.buttons["Tags"].tap()
         let switcher = app.buttons["Space: Work"]
@@ -207,10 +222,14 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
         screenshot("space menu")
         notes.tap()
-        // The sidebar closes onto the space's list.
+        // The sidebar closes onto the space's list, back in the app icon's colours.
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Groceries"].isHittable)
         XCTAssertFalse(app.staticTexts["Standup"].exists)
+        sleep(1)
+        screenshot("the app icon's theme")
+        let home = background(app.screenshot().image)
+        XCTAssertNotEqual([diary.0, diary.1, diary.2], [home.0, home.1, home.2])
         app.buttons["Tags"].tap()
         XCTAssertTrue(app.buttons["Space: Notes"].waitForExistence(timeout: 5))
     }

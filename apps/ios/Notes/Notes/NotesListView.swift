@@ -94,7 +94,7 @@ struct NotesListView: View {
                             elsewhereShownFor = query.trimmed
                         }
                         .font(.notesButton)
-                        .foregroundStyle(Color.notesTint)
+                        .foregroundStyle(Color(Palette.link))
                         .frame(minHeight: 44)
                         .listRowInsets(EdgeInsets(top: 8, leading: 24, bottom: 8, trailing: 16))
                         .plainRow()
@@ -350,7 +350,7 @@ struct NotesListView: View {
                     .font(.notesBody)
                     .foregroundStyle(Color.ink)
                 Spacer()
-                Button("Undo") { undoDeletes() }.font(.notesButton).foregroundStyle(Color.notesTint)
+                Button("Undo") { undoDeletes() }.font(.notesButton).foregroundStyle(Color.ink)
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 12)
@@ -471,7 +471,7 @@ struct NotesListView: View {
         {
             var run = AttributedString(String(piece))
             if marked {
-                run.backgroundColor = Color.accent.opacity(0.45)
+                run.backgroundColor = Color.hairStrong
                 run.foregroundColor = Color.ink
             }
             out += run

@@ -378,7 +378,7 @@ private struct InboxPreview: View {
                 .font(.notesTitle)
                 .foregroundStyle(Color.ink)
                 .frame(width: 36, height: 36)
-                .background(Color.accent, in: .circle)
+                .background(Color.on, in: .circle)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(alignment: .firstTextBaseline, spacing: 6) {
                     Text(shown).font(.notesLabel).fontWeight(.semibold).foregroundStyle(Color.ink).lineLimit(1)

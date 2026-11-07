@@ -41,7 +41,7 @@ nonisolated final class BlockLayoutFragment: NSTextLayoutFragment {
             } else {
                 let top = level >= levels - attr.quoteEdges.starts ? textTop : point.y
                 let bottom = level >= levels - attr.quoteEdges.ends ? textBottom : point.y + height
-                context.setFillColor(Palette.accent.cgColor)
+                context.setFillColor(Palette.ink3.cgColor)
                 context.fill(CGRect(x: originX + offset, y: top, width: style.quoteBar, height: bottom - top))
                 offset += style.quoteIndent
                 level += 1

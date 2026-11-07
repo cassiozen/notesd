@@ -1,31 +1,37 @@
 import SwiftUI
 import UIKit
 
-/// The web app's design tokens (apps/web/src/styles/tokens.css) as sRGB,
-/// taken from Android's ui/Tokens.kt, which keeps the oklch source beside each
-/// value. Each colour follows the system light/dark appearance.
+/// The web app's design tokens (apps/web/src/styles/tokens.css and
+/// space-themes.css) as sRGB. Each colour follows the system light/dark
+/// appearance; the themed ones also follow the space shown ([SpaceThemeTrait],
+/// their values in SpaceThemes.swift). The rest, the same in every theme, are
+/// taken from Android's ui/Tokens.kt, which keeps the oklch source beside each.
 nonisolated enum Palette {
-    static let bg = pair(0xFFF5_F3F1, 0xFF12_1416)
-    static let ink = pair(0xFF21_1F1C, 0xFFE9_EBEE)
-    static let ink2 = pair(0xFF50_4C4A, 0xFFB2_B4B7)
-    static let ink3 = pair(0xFF66_6260, 0xFF93_9598)
-    static let accent = pair(0xFFEF_B146, 0xFFEF_B146)
-    static let accentDeep = pair(0xFFDD_9314, 0xFFDD_9314)
-    static let onAccent = pair(0xFF1F_1915, 0xFF1F_1915)
-    static let tint = pair(0xFFBE_7200, 0xFFF0_BA59)
-    static let link = pair(0xFF87_4E00, 0xFFEF_BA64)
+    static let bg = themed { $0.bg }
+    static let ink = themed { $0.ink }
+    static let ink2 = themed { $0.ink2 }
+    static let ink3 = themed { $0.ink3 }
+    static let accent = themed { $0.accent }
+    static let accentDeep = themed { $0.accentDeep }
+    static let onAccent = themed { $0.onAccent }
+    /// The caret.
+    static let tint = themed { $0.tint }
+    static let link = themed { $0.link }
     static let danger = pair(0xFFAC_312C, 0xFFFB_8276)
-    static let solid = pair(0xFF24_211F, 0xFFE6_E8EA)
-    static let onSolid = pair(0xFFF9_F8F6, 0xFF14_1618)
-    static let hair = pair(0x172D_2823, 0x14FF_FFFF)
-    static let hairStrong = pair(0x292D_2823, 0x29FF_FFFF)
-    static let hover = pair(0x122D_2823, 0x12FF_FFFF)
+    static let solid = themed { $0.solid }
+    static let onSolid = themed { $0.onSolid }
+    static let hair = themed { $0.hair }
+    static let hairStrong = themed { $0.hairStrong }
+    static let hover = themed { $0.hover }
     /// A selected row's fill.
-    static let on = pair(0x1C2D_2823, 0x21FF_FFFF)
+    static let on = themed { $0.on }
     static let edge = pair(0xD9FF_FFFF, 0x14FF_FFFF)
     static let dangerBg = pair(0x1AD2_4D45, 0x29D2_4D45)
-    /// The warm glow behind the list and the sidebar, at its full strength.
-    static let blob = pair(0x2EF4_D9A8, 0x3362_4821)
+    /// The glow behind the list and the sidebar, at its full strength (web: --blob-opacity).
+    static let blob = UIColor { traits in
+        let dark = traits.userInterfaceStyle == .dark
+        return color(SpaceThemes.colors(traits.spaceTheme, dark: dark).blob1).withAlphaComponent(dark ? 0.2 : 0.18)
+    }
     static let field = pair(0xC7FF_FFFF, 0x0FFF_FFFF)
     static let chip = pair(0x9EFF_FFFF, 0x12FF_FFFF)
     static let good = pair(0xFF0E_492A, 0xFF9E_E0B4)
@@ -38,7 +44,7 @@ nonisolated enum Palette {
     static let warnInk = pair(0xFF62_3512, 0xFFF8_D8B4)
 
     /// Behind #tags (web: .prose [data-tag]).
-    static let tagBg = pair(0x4DEF_B146, 0x4DEF_B146)
+    static let tagBg = themed { $0.tag }
 
     // A code fence is dark in both themes, as on the web (--code, --code-ink, --code-dim).
     static let code = pair(0xFF24_211F, 0xFF0B_0C0E)
@@ -52,10 +58,51 @@ nonisolated enum Palette {
         UIColor { $0.userInterfaceStyle == .dark ? color(dark) : color(light) }
     }
 
+    private static func themed(_ token: @escaping @Sendable (SpaceColors) -> UInt32) -> UIColor {
+        UIColor { traits in
+            color(token(SpaceThemes.colors(traits.spaceTheme, dark: traits.userInterfaceStyle == .dark)))
+        }
+    }
+
     private static func color(_ argb: UInt32) -> UIColor {
         UIColor(
             red: CGFloat((argb >> 16) & 0xFF) / 255, green: CGFloat((argb >> 8) & 0xFF) / 255,
             blue: CGFloat(argb & 0xFF) / 255, alpha: CGFloat((argb >> 24) & 0xFF) / 255)
+    }
+}
+
+/// The theme of the space shown (§7.7), a key from [SpaceThemes.key]: set on the
+/// window, so every [Palette] colour resolves in it, in UIKit and SwiftUI alike.
+nonisolated struct SpaceThemeTrait: UITraitDefinition {
+    static let defaultValue = ""
+    static let affectsColorAppearance = true
+    static let name = "SpaceTheme"
+}
+
+nonisolated extension UITraitCollection {
+    var spaceTheme: String { self[SpaceThemeTrait.self] }
+}
+
+nonisolated extension UIMutableTraits {
+    var spaceTheme: String {
+        get { self[SpaceThemeTrait.self] }
+        set { self[SpaceThemeTrait.self] = newValue }
+    }
+}
+
+/// [SpaceThemeTrait] in SwiftUI: read, and set on a subtree (a preview of another theme).
+nonisolated struct SpaceThemeKey: EnvironmentKey, UITraitBridgedEnvironmentKey {
+    static let defaultValue = ""
+
+    static func read(from traitCollection: UITraitCollection) -> String { traitCollection.spaceTheme }
+
+    static func write(to mutableTraits: inout UIMutableTraits, value: String) { mutableTraits.spaceTheme = value }
+}
+
+extension EnvironmentValues {
+    var spaceTheme: String {
+        get { self[SpaceThemeKey.self] }
+        set { self[SpaceThemeKey.self] = newValue }
     }
 }
 
@@ -78,6 +125,9 @@ extension Color {
     static let blob = Color(Palette.blob)
     static let field = Color(Palette.field)
     static let chip = Color(Palette.chip)
+    static let solid = Color(Palette.solid)
+    static let onSolid = Color(Palette.onSolid)
+    static let tag = Color(Palette.tagBg)
     static let errBg = Color(Palette.errBg)
     static let errInk = Color(Palette.errInk)
     static let warnBg = Color(Palette.warnBg)
@@ -151,15 +201,19 @@ struct SectionHeader: View {
     }
 }
 
-/// The web's backdrop: a warm amber glow from the top left corner, fading
-/// into the paper. Fixed behind the content; it doesn't scroll.
+/// The web's backdrop: a glow in the theme's hue from the top left corner,
+/// fading into the paper. Fixed behind the content; it doesn't scroll.
 struct Backdrop: View {
     @Environment(\.colorScheme) private var scheme
+    @Environment(\.spaceTheme) private var theme
 
     var body: some View {
         // Drawn into one bitmap: the paper and the glow over it, as the eye sees them.
         Canvas { context, size in
-            let traits = UITraitCollection(userInterfaceStyle: scheme == .dark ? .dark : .light)
+            let traits = UITraitCollection { traits in
+                traits.userInterfaceStyle = scheme == .dark ? .dark : .light
+                traits.spaceTheme = theme
+            }
             let paper = Color(Palette.bg.resolvedColor(with: traits))
             let glow = Color(Palette.blob.resolvedColor(with: traits))
             let rect = CGRect(origin: .zero, size: size)
@@ -217,7 +271,7 @@ struct PressScaleStyle: ButtonStyle {
     }
 }
 
-/// The big amber compose button (web: the mobile footer's pencil).
+/// The big compose button in the space's accent (web: the mobile footer's pencil).
 struct ComposeButton: View {
     let action: () -> Void
 
