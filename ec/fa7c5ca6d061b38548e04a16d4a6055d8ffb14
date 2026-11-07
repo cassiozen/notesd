@@ -1,0 +1,19 @@
+apps/web/src/editor/editor.module.css
+  s_cc6cacc0a6fc01::t_7d8251190012f1 614,617
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ecfa7c5ca6d061b38548e04a16d4a6055d8ffb14",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
