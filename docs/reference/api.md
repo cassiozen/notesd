@@ -381,6 +381,9 @@ other accounts get `403 admin_only` when they change it.
 
 ### Agents
 
+What an app does to take part (the socket, editor triggers, applying a run's changes) is in
+[agent clients](../contributing/agent-clients.md).
+
 | Method | Path | Body → response |
 | --- | --- | --- |
 | `GET` | `/agent/spaces` | → `{spaces: [config, …]}`, every space whose agent has been set up |

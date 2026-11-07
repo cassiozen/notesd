@@ -471,7 +471,8 @@ Spaces keep separate contexts, such as Work and Personal, apart: each note is in
 
 A space can have an agent: prompts the user writes, run by a model on the server when something
 happens to a note. It acts through tools on the notes in its own space and never sees a locked one.
-The user guide is [agents](../guides/using/agents.md).
+The user guide is [agents](../guides/using/agents.md); what an app does to take part is in
+[agent clients](agent-clients.md).
 
 - **Provider.** One OpenAI-compatible chat completions API per server, set up by an admin
   (`internal/llm`). The key stays in system.db. Test asks the model to call a tool; agents need

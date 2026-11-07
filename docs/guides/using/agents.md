@@ -15,33 +15,40 @@ and on deletes and moves.
 
 ## Give a space an agent
 
-Once an admin has [set up AI](#set-it-up-admins), every space that has synced to the server has an
-**Agent** switch: in **Edit
-space** (Settings → Spaces), and as **Add an agent** when you make a new space, which also offers
-examples to start from (Journal, Meeting notes, Recipes, Auto-tags). Turning it on says where your
-notes will be sent. [Locked notes](locked-notes.md) never are.
+Once an admin has [set up AI](#set-it-up-admins), every space that has synced to the server can have
+an agent. Open its page from the space's menu (its name, at the top of the sidebar) with
+**Agent…**, from **Edit space** in Settings → Spaces, or by ticking **Set up an agent next** when
+you make a new space. Turning it on says where your notes will be sent.
+[Locked notes](locked-notes.md) never are.
+
+A new agent can start from an example (Journal, Meeting notes, Recipes, Tidy tags), which fills in
+everything below for you to change.
 
 **What this space is for** describes the space and how the agent should behave. It goes with every
-prompt, and on its own does nothing:
+rule, and on its own does nothing:
 
 - *This is my journal. Never change what I wrote. Keep notes findable with a small, stable set of tags.*
 - *Recipes. I cook mostly vegetarian. Quantities in metric.*
 
-Then write a prompt for each moment you want the agent to act. A moment without a prompt does
-nothing.
+Then add **rules**. A rule is a moment and what the agent does then; **Add rule** offers the
+moments a space doesn't have a rule for yet, and starts the rule from a suggestion you can change
+or type over. Without rules, the agent does nothing.
 
-| Trigger | When |
+| Rule | When |
 | --- | --- |
-| **Note created** | A new note is opened, before anything is typed |
-| **Started editing** | The first change to a note after it's opened, or after 3 minutes without changes |
-| **New note done** | A new note is closed, or left for 2 minutes |
-| **Note edit done** | The same, for a note that already existed |
-| **Note deleted** | A note in the space is deleted |
-| **Note moved in** | A note is moved here from another space |
-| **Note moved out** | A note is moved from here to another space |
-| **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos* |
+| **When a new note is opened** | Before anything is typed |
+| **When you start editing a note** | The first change to an existing note after it's opened, or after 3 minutes without changes |
+| **When you ask, from the note's menu** | You pick the command in a note's ⋯ menu. Give it a name, such as *Fix typos* |
+| **When you finish a new note** | A new note is closed, or left for 2 minutes |
+| **When you finish editing a note** | The same, for a note that already existed |
+| **When a note is deleted** | A note in the space is deleted |
+| **When a note is moved here** | A note is moved here from another space |
+| **When a note is moved away** | A note is moved from here to another space |
 
-Note created, started editing and the menu command happen in the editor, and need a connection to
+**Notes it always reads** are up to 5 notes, by title, that go with every rule, such as a *Digest*
+the agent keeps. The agent acts faster when it doesn't have to look for them.
+
+A new note opened, editing started and the menu command happen in the editor, and need a connection to
 the server: offline, they're skipped, unless the connection comes back within about 10 seconds. The agent works on the note as you see it there, unsaved
 typing included; close the note before it's done and it stops.
 
@@ -60,7 +67,7 @@ agent is paused until it's back.
 ## See what it did, and undo it
 
 Everything an agent does is in **Activity**: open the space's menu (its name, at the top of the
-sidebar) and pick **Activity…**, or **Activity…** in **Edit space**. On the web for now.
+sidebar) and pick **Activity…**, or **Activity…** on the agent's page or in **Edit space**. On the web for now.
 
 Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
 changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it
