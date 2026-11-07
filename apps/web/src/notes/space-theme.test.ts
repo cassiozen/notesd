@@ -1,6 +1,7 @@
 import { renderHook } from '@testing-library/react'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Space } from '../api/types'
+import { rememberSession } from '../auth/session-hint'
 import { SPACE_ICONS, SPACE_THEME_BG } from './space-icons'
 import { themeKey, useSpaceTheme } from './space-theme'
 import { DEFAULT_SPACE } from './spaces'
@@ -58,5 +59,11 @@ describe('space themes', () => {
     delete html.dataset.space
     renderHook(() => useSpaceTheme(DEFAULT_SPACE, null))
     expect(html.dataset.space).toBe('comet')
+  })
+
+  it("forgets the default space's theme with the session: another account's first frame isn't in it", () => {
+    localStorage.setItem('notes.space-theme', 'comet')
+    rememberSession(false)
+    expect(localStorage.getItem('notes.space-theme')).toBeNull()
   })
 })

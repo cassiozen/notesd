@@ -216,7 +216,7 @@ fun IconAction(
 // --- fields ------------------------------------------------------------------
 
 /**
- * The web's field: a label above a 52dp rounded input, an amber ring when
+ * The web's field: a label above a 52dp rounded input, a neutral ring when
  * focused, the error or hint below. Secret fields get a Show/Hide toggle.
  */
 @Composable
@@ -394,7 +394,7 @@ fun Reveal(visible: Boolean, content: @Composable () -> Unit) {
 
 // --- onboarding bits ---------------------------------------------------------
 
-/** Progress pills: done ones amber, the current one wider (web: Steps). */
+/** Progress pills: done ones solid, the current one wider (web: Steps). */
 @Composable
 fun Steps(count: Int, current: Int, modifier: Modifier = Modifier) {
     val t = LocalTokens.current

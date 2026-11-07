@@ -1,5 +1,11 @@
 const KEY = 'notes.signed-in'
 
+/**
+ * The default space's theme (notes/space-theme.ts), for public/boot.js's first frame. Part of the
+ * hint: it belongs to the account signed in, so it goes when the session does.
+ */
+export const SPACE_THEME_KEY = 'notes.space-theme'
+
 // Only says the last visit ended signed in, so boot can draw the shell before
 // the server confirms. Not a credential.
 export function hadSession(): boolean {
@@ -13,7 +19,10 @@ export function hadSession(): boolean {
 export function rememberSession(signedIn: boolean) {
   try {
     if (signedIn) localStorage.setItem(KEY, 'true')
-    else localStorage.removeItem(KEY)
+    else {
+      localStorage.removeItem(KEY)
+      localStorage.removeItem(SPACE_THEME_KEY)
+    }
   } catch {
     // Storage blocked: boot just shows nothing until the server answers.
   }
