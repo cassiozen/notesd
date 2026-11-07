@@ -12,6 +12,7 @@ import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
 import { notesSource, type Saver } from './source'
+import { useSpaceTheme } from './space-theme'
 import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
 import { NotesProvider, useNotes, type ListFilter } from './store'
 import { SyncBanners } from './sync-banners'
@@ -54,6 +55,7 @@ function ShellView({ username }: { username: string }) {
   const { items, status, newDraft, remove, undoRemove, removed, tags, lockedCount, filter, setFilter, space, setSpace, move } =
     useNotes()
   const spaces = useSpaces()
+  useSpaceTheme(space, spaces)
   // A note the server doesn't have yet: open, but not in the URL until it's saved.
   const [draft, setDraft] = useState<Saver | null>(null)
   const [query, setQuery] = useState('')

@@ -5,11 +5,13 @@ type Props = {
   labelledBy: string
   /** Omit to make the dialog impossible to dismiss with Escape. */
   onClose?: () => void
+  /** A space theme's key (styles/space-themes.css), to show the dialog in it rather than the app's. */
+  space?: string
   children: ReactNode
 }
 
 /** Modal built on <dialog>: the browser traps focus and restores it on close. */
-export function Dialog({ labelledBy, onClose, children }: Props) {
+export function Dialog({ labelledBy, onClose, space, children }: Props) {
   const ref = useRef<HTMLDialogElement>(null)
 
   // Layout effect: open before children's effects run, or showModal()'s
@@ -25,6 +27,7 @@ export function Dialog({ labelledBy, onClose, children }: Props) {
       ref={ref}
       className={styles.dialog}
       aria-labelledby={labelledBy}
+      data-space={space}
       onCancel={(e) => {
         e.preventDefault()
         onClose?.()

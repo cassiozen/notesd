@@ -171,7 +171,7 @@
   padding: 0 8px 0 2px;
   border: 0;
   background: transparent;
-  color: var(--tint);
+  color: var(--ink-2);
   font-size: 15px;
   cursor: pointer;
   display: flex;
@@ -229,7 +229,7 @@
 
 .searchInput:focus-visible {
   outline: none;
-  border-color: var(--accent-deep);
+  border-color: var(--ink-3);
   box-shadow: 0 0 0 3px var(--focus);
 }
 
@@ -349,7 +349,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
-  color: var(--tint);
+  color: var(--ink-2);
 }
 
 .rowPreview {
@@ -362,7 +362,7 @@
 }
 
 .rowPreview mark {
-  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  background: var(--hair-strong);
   color: inherit;
   border-radius: 3px;
   padding: 0 1px;

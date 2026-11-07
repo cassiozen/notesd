@@ -114,7 +114,7 @@
 
 .check {
   flex: none;
-  color: var(--tint);
+  color: var(--ink);
 }
 
 @keyframes pop-in {

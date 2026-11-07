@@ -3,6 +3,7 @@ import { ApiError } from '../api/client'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
+import { themeKey } from '../notes/space-theme'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -131,8 +132,9 @@ export function NewSpaceDialog({ onClose, onCreated }: { onClose: () => void; on
     }
   }
 
+  // The icon picked brings its colours: the dialog shows them before the space exists.
   return (
-    <Dialog labelledBy={titleId} onClose={onClose}>
+    <Dialog labelledBy={titleId} onClose={onClose} space={icon === null ? undefined : themeKey(icon)}>
       <form className={styles.dialog} onSubmit={(e) => void submit(e)} noValidate>
         <h2 id={titleId} className={styles.dialogTitle}>
           New space
@@ -191,7 +193,7 @@ function EditDialog({ space, onClose }: { space: Space; onClose: () => void }) {
   }
 
   return (
-    <Dialog labelledBy={titleId} onClose={onClose}>
+    <Dialog labelledBy={titleId} onClose={onClose} space={themeKey(icon)}>
       <form className={styles.dialog} onSubmit={(e) => void submit(e)} noValidate>
         <h2 id={titleId} className={styles.dialogTitle}>
           Edit space
