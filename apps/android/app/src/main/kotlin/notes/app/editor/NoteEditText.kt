@@ -34,6 +34,7 @@ import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withTranslation
 import kotlin.math.abs
+import notes.app.ui.Tokens
 import notes.core.doc.Container
 import notes.core.doc.Document
 import notes.core.doc.Leaf
@@ -137,11 +138,29 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         background = null
         setTextSize(TypedValue.COMPLEX_UNIT_SP, 17f)
         setLineSpacing(0f, editorStyle.lineSpacing)
+        typeface = editorStyle.typeface
+        applyColors()
+        filters = arrayOf(EditorFilter())
+        addTextChangedListener(Watcher())
+        ready = true
+        setDocument(Document.forNote("", Document.EMPTY))
+    }
+
+    /** A space's theme: the view's own colours change here, and spans read theirs as they draw. */
+    fun applyTokens(tokens: Tokens) {
+        if (editorStyle.tokens == tokens) return
+        editorStyle.tokens = tokens
+        applyColors()
+        invalidate()
+    }
+
+    // A changed text, hint or link colour also rebuilds TextView's cached drawing of the text, where the spans'
+    // colours are; the link colour comes from the accent, so even a theme with the same ink redraws them.
+    private fun applyColors() {
         setTextColor(editorStyle.ink)
         setHintTextColor(editorStyle.ink3)
         setLinkTextColor(editorStyle.link)
         highlightColor = ColorUtils.setAlphaComponent(editorStyle.accent, 0x66)
-        typeface = editorStyle.typeface
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             // The web app's caret is the tint colour; handles match it.
             textCursorDrawable?.mutate()?.setTint(editorStyle.tint)
@@ -149,10 +168,6 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
                 handle?.mutate()?.setTint(editorStyle.accentDeep)
             }
         }
-        filters = arrayOf(EditorFilter())
-        addTextChangedListener(Watcher())
-        ready = true
-        setDocument(Document.forNote("", Document.EMPTY))
     }
 
     // --- content -------------------------------------------------------------
@@ -160,9 +175,10 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     /** The note as a document: title line first. Cheap enough per save, not per keystroke. */
     fun document(): Document = SpanCodec.toDocument(text!!)
 
-    private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.tagBg }
-    private val findPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.findBg }
-    private val findCurrentPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = editorStyle.findCurrentBg }
+    // Coloured as they draw: the theme can change between draws.
+    private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val findPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    private val findCurrentPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val pillMetrics = TextPaint()
     private val pillRect = RectF()
 
@@ -178,6 +194,9 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         val tags = t.getSpans(0, t.length, TagSpan::class.java)
         val found = t.getSpans(0, t.length, FindSpan::class.java)
         if (tags.isEmpty() && found.isEmpty()) return
+        tagPaint.color = editorStyle.tagBg
+        findPaint.color = editorStyle.findBg
+        findCurrentPaint.color = editorStyle.findCurrentBg
         canvas.withTranslation(totalPaddingLeft.toFloat(), totalPaddingTop.toFloat()) {
             for (tag in tags) drawPill(this, layout, t, t.getSpanStart(tag), t.getSpanEnd(tag), tagPaint)
             for (f in found) {
@@ -556,7 +575,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         val t = text ?: return
         clearFindSpans()
         matches.forEachIndexed { i, m ->
-            t.setSpan(FindSpan(i == current, editorStyle.onAccent), m.start, m.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+            t.setSpan(FindSpan(i == current, editorStyle), m.start, m.end, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
         }
     }
 

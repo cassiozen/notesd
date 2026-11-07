@@ -5,7 +5,9 @@ import android.os.Bundle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
+import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
@@ -27,7 +29,8 @@ class MainActivity : AppCompatActivity() {
         if (savedInstanceState == null) handle(intent)
         val graph = (application as NotesApp).graph
         setContent {
-            NotesTheme {
+            val space by graph.spaceTheme.collectAsStateWithLifecycle()
+            NotesTheme(space = space) {
                 NotesNavigation(graph, newNote.receiveAsFlow(), emailNote.receiveAsFlow())
             }
         }

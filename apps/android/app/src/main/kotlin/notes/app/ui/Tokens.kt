@@ -3,10 +3,10 @@ package notes.app.ui
 import androidx.compose.ui.graphics.Color
 
 /**
- * The web app's design tokens (apps/web/src/styles/tokens.css), converted from
- * oklch to sRGB. The oklch source is kept beside each value so the two can be
- * compared when the web palette changes. Translucent web tokens (hair, hover,
- * glass) are rgb() there already and are copied as is.
+ * The web app's design tokens (apps/web/src/styles/tokens.css and
+ * space-themes.css), converted from oklch to sRGB. The colours a space's theme
+ * sets come from [SpaceThemes]; the ones every theme shares are here, the oklch
+ * source beside each so the two can be compared when the web palette changes.
  */
 data class Tokens(
     val bg: Color,
@@ -43,6 +43,8 @@ data class Tokens(
     val focus: Color,
     val blob1: Color,
     val blobOpacity: Float,
+    /** Behind #tags. */
+    val tag: Color,
     val dark: Boolean
 ) {
     // Password strength (apps/web/src/ui/password-meter.module.css), same in both themes.
@@ -51,80 +53,55 @@ data class Tokens(
     val meterStrong get() = Color(0xFF5DAD70) // oklch(0.68 0.12 150)
 
     companion object {
-        val Light = Tokens(
-            bg = Color(0xFFF5F3F1), // oklch(0.965 0.0035 80)
-            ink = Color(0xFF211F1C), // oklch(0.24 0.006 60)
-            ink2 = Color(0xFF504C4A), // oklch(0.42 0.006 60)
-            ink3 = Color(0xFF666260), // oklch(0.5 0.006 60)
-            accent = Color(0xFFEFB146), // oklch(0.8 0.14 78)
-            accentDeep = Color(0xFFDD9314), // oklch(0.72 0.15 72)
-            onAccent = Color(0xFF1F1915), // oklch(0.22 0.012 60)
-            tint = Color(0xFFBE7200), // oklch(0.62 0.15 70)
-            link = Color(0xFF874E00), // oklch(0.48 0.11 65)
-            danger = Color(0xFFAC312C), // oklch(0.5 0.16 27)
-            solid = Color(0xFF24211F), // oklch(0.25 0.006 60)
-            onSolid = Color(0xFFF9F8F6), // oklch(0.98 0.0025 80)
-            hair = Color(0x172D2823), // rgb(45 40 35 / 0.09)
-            hairStrong = Color(0x292D2823), // rgb(45 40 35 / 0.16)
-            hover = Color(0x122D2823), // rgb(45 40 35 / 0.07)
-            on = Color(0x1C2D2823), // rgb(45 40 35 / 0.11)
-            glass = Color(0xBDFEFDFC), // rgb(254 253 252 / 0.74)
-            glassHi = Color(0xE0FEFDFC), // rgb(254 253 252 / 0.88)
-            edge = Color(0xD9FFFFFF), // rgb(255 255 255 / 0.85)
-            field = Color(0xC7FFFFFF), // rgb(255 255 255 / 0.78)
-            chip = Color(0x9EFFFFFF), // rgb(255 255 255 / 0.62)
-            scrim = Color(0x6BECEAE6), // rgb(236 234 230 / 0.42)
-            dangerBg = Color(0x1AD24D45), // oklch(0.6 0.17 27 / 0.1)
-            good = Color(0xFF0E492A), // oklch(0.36 0.08 155)
-            goodBg = Color(0xBFC0EACD), // oklch(0.9 0.06 155 / 0.75)
-            errBg = Color(0xD9FFE8E3), // oklch(0.95 0.03 30 / 0.85)
-            errEdge = Color(0xFFFDCAC0), // oklch(0.88 0.06 30)
-            errInk = Color(0xFF782B21), // oklch(0.4 0.11 30)
-            warnBg = Color(0xE0FFEAD3), // oklch(0.95 0.04 65 / 0.88)
-            warnEdge = Color(0xFFF6CBA5), // oklch(0.87 0.07 62)
-            warnInk = Color(0xFF623512), // oklch(0.38 0.08 55)
-            focus = Color(0x8CDD9314), // oklch(0.72 0.15 72 / 0.55)
-            blob1 = Color(0xFFF4D9A8), // oklch(0.895 0.07 82)
-            blobOpacity = 0.18f,
-            dark = false
-        )
+        /** A space theme's tokens (its key from [SpaceThemes.key]) in light or dark. */
+        fun forSpace(key: String, dark: Boolean): Tokens = of(SpaceThemes.colors(key, dark), dark)
 
-        val Dark = Tokens(
-            bg = Color(0xFF121416), // oklch(0.19 0.005 250)
-            ink = Color(0xFFE9EBEE), // oklch(0.94 0.004 250)
-            ink2 = Color(0xFFB2B4B7), // oklch(0.77 0.005 250)
-            ink3 = Color(0xFF939598), // oklch(0.67 0.005 250)
-            accent = Color(0xFFEFB146), // oklch(0.8 0.14 78)
-            accentDeep = Color(0xFFDD9314), // oklch(0.72 0.15 72)
-            onAccent = Color(0xFF1F1915), // oklch(0.22 0.012 60)
-            tint = Color(0xFFF0BA59), // oklch(0.82 0.13 80)
-            link = Color(0xFFEFBA64), // oklch(0.82 0.12 78)
-            danger = Color(0xFFFB8276), // oklch(0.74 0.15 27)
-            solid = Color(0xFFE6E8EA), // oklch(0.93 0.004 250)
-            onSolid = Color(0xFF141618), // oklch(0.2 0.005 250)
-            hair = Color(0x14FFFFFF), // rgb(255 255 255 / 0.08)
-            hairStrong = Color(0x29FFFFFF), // rgb(255 255 255 / 0.16)
-            hover = Color(0x12FFFFFF), // rgb(255 255 255 / 0.07)
-            on = Color(0x21FFFFFF), // rgb(255 255 255 / 0.13)
-            glass = Color(0xB827292B), // rgb(39 41 43 / 0.72)
-            glassHi = Color(0xE02D2F31), // rgb(45 47 49 / 0.88)
-            edge = Color(0x14FFFFFF), // rgb(255 255 255 / 0.08)
-            field = Color(0x0FFFFFFF), // rgb(255 255 255 / 0.06)
-            chip = Color(0x12FFFFFF), // rgb(255 255 255 / 0.07)
-            scrim = Color(0x800B0D0E), // rgb(11 13 14 / 0.5)
-            dangerBg = Color(0x29D24D45), // oklch(0.6 0.17 27 / 0.16)
-            good = Color(0xFF9EE0B4), // oklch(0.85 0.09 155)
-            goodBg = Color(0x80245337), // oklch(0.4 0.07 155 / 0.5)
-            errBg = Color(0xB24D2620), // oklch(0.32 0.06 30 / 0.7)
-            errEdge = Color(0xFF723B32), // oklch(0.42 0.08 30)
-            errInk = Color(0xFFFDCAC0), // oklch(0.88 0.06 30)
-            warnBg = Color(0xBF482F1A), // oklch(0.33 0.05 60 / 0.75)
-            warnEdge = Color(0xFF724B2B), // oklch(0.45 0.07 60)
-            warnInk = Color(0xFFF8D8B4), // oklch(0.9 0.06 70)
-            focus = Color(0x8CDD9314), // oklch(0.72 0.15 72 / 0.55)
-            blob1 = Color(0xFF624821), // oklch(0.42 0.065 75)
-            blobOpacity = 0.2f,
-            dark = true
+        /** The app icon's theme. */
+        val Light = forSpace("", dark = false)
+        val Dark = forSpace("", dark = true)
+
+        fun of(c: SpaceColors, dark: Boolean) = Tokens(
+            bg = c.bg,
+            ink = c.ink,
+            ink2 = c.ink2,
+            ink3 = c.ink3,
+            accent = c.accent,
+            accentDeep = c.accentDeep,
+            onAccent = c.onAccent,
+            tint = c.tint,
+            link = c.link,
+            solid = c.solid,
+            onSolid = c.onSolid,
+            hair = c.hair,
+            hairStrong = c.hairStrong,
+            hover = c.hover,
+            on = c.on,
+            glass = c.glass,
+            glassHi = c.glassHi,
+            scrim = c.scrim,
+            focus = c.focus,
+            blob1 = c.blob1,
+            tag = c.tag,
+            dark = dark,
+            // The same in every theme; sources dark, then light.
+            danger = if (dark) Color(0xFFFB8276) else Color(0xFFAC312C), // oklch(0.74 0.15 27), oklch(0.5 0.16 27)
+            edge = if (dark) Color(0x14FFFFFF) else Color(0xD9FFFFFF), // rgb(255 255 255 / 0.08), / 0.85
+            field = if (dark) Color(0x0FFFFFFF) else Color(0xC7FFFFFF), // rgb(255 255 255 / 0.06), / 0.78
+            chip = if (dark) Color(0x12FFFFFF) else Color(0x9EFFFFFF), // rgb(255 255 255 / 0.07), / 0.62
+            // oklch(0.6 0.17 27 / 0.16), / 0.1
+            dangerBg = if (dark) Color(0x29D24D45) else Color(0x1AD24D45),
+            good = if (dark) Color(0xFF9EE0B4) else Color(0xFF0E492A), // oklch(0.85 0.09 155), oklch(0.36 0.08 155)
+            // oklch(0.4 0.07 155 / 0.5), oklch(0.9 0.06 155 / 0.75)
+            goodBg = if (dark) Color(0x80245337) else Color(0xBFC0EACD),
+            // oklch(0.32 0.06 30 / 0.7), oklch(0.95 0.03 30 / 0.85)
+            errBg = if (dark) Color(0xB24D2620) else Color(0xD9FFE8E3),
+            errEdge = if (dark) Color(0xFF723B32) else Color(0xFFFDCAC0), // oklch(0.42 0.08 30), oklch(0.88 0.06 30)
+            errInk = if (dark) Color(0xFFFDCAC0) else Color(0xFF782B21), // oklch(0.88 0.06 30), oklch(0.4 0.11 30)
+            // oklch(0.33 0.05 60 / 0.75), oklch(0.95 0.04 65 / 0.88)
+            warnBg = if (dark) Color(0xBF482F1A) else Color(0xE0FFEAD3),
+            warnEdge = if (dark) Color(0xFF724B2B) else Color(0xFFF6CBA5), // oklch(0.45 0.07 60), oklch(0.87 0.07 62)
+            warnInk = if (dark) Color(0xFFF8D8B4) else Color(0xFF623512), // oklch(0.9 0.06 70), oklch(0.38 0.08 55)
+            blobOpacity = if (dark) 0.2f else 0.18f
         )
     }
 }

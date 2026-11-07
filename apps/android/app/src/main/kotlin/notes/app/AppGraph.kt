@@ -33,6 +33,7 @@ import notes.app.notes.Deletions
 import notes.app.notes.TagTreeState
 import notes.app.settings.Appearance
 import notes.app.sync.SyncScheduler
+import notes.app.ui.SpaceThemes
 import notes.core.api.ApiClient
 import notes.core.api.ClientInfo
 import notes.core.api.Credentials
@@ -122,6 +123,22 @@ class AppGraph(
         if (_space.value == id) return
         _space.value = id
         listFilter.value = null
+    }
+
+    /**
+     * The theme of the space shown (§7.7), a key from [SpaceThemes.key]. Until the list loads, the
+     * default space's from last time: a cold start always opens on that space.
+     */
+    val spaceTheme: StateFlow<String> = combine(spaces, _space) { list, id ->
+        if (list.isEmpty()) return@combine if (id == Spaces.DEFAULT) savedDefaultTheme() else ""
+        list.firstOrNull { it.id == Spaces.DEFAULT }?.let { saveDefaultTheme(SpaceThemes.key(it.icon)) }
+        SpaceThemes.key(list.firstOrNull { it.id == id }?.icon.orEmpty())
+    }.stateIn(scope, SharingStarted.WhileSubscribed(), savedDefaultTheme())
+
+    private fun savedDefaultTheme() = SpaceThemes.key(prefs.getString(DEFAULT_SPACE_THEME, null).orEmpty())
+
+    private fun saveDefaultTheme(key: String) {
+        if (key != savedDefaultTheme()) prefs.edit { putString(DEFAULT_SPACE_THEME, key) }
     }
 
     /** A note is open in the editor: coming back after a while doesn't move the list from under it. */
@@ -225,6 +242,7 @@ class AppGraph(
         const val ONBOARDING_DISMISSED = "onboarding_dismissed"
         const val LIST_FILTER = "list_filter"
         const val LIST_FILTER_SPACE = "list_filter_space"
+        const val DEFAULT_SPACE_THEME = "default_space_theme"
         const val SPACE_RESET_MS = 30 * 60_000L
         const val LOGOUT_WAIT_MS = 5_000L
     }

@@ -12,13 +12,13 @@ import android.text.style.UpdateAppearance
  * [EditorSpan], so the codec, normaliser and undo stack never see it, and a
  * [NoCopySpan], so copied text doesn't carry it to the clipboard.
  */
-class FindSpan(val current: Boolean, private val ink: Int) :
+class FindSpan(val current: Boolean, private val style: EditorStyle) :
     CharacterStyle(),
     UpdateAppearance,
     NoCopySpan {
     override fun updateDrawState(tp: TextPaint) {
-        // The current match sits on solid accent: the ink keeps it readable in both themes.
-        if (current) tp.color = ink
+        // The current match sits on the solid neutral, in whatever theme the editor shows.
+        if (current) tp.color = style.onSolid
     }
 }
 

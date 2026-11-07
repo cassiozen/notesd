@@ -31,10 +31,13 @@ import notes.app.AppGraph
 import notes.app.notes.SpaceIconImage
 import notes.app.notes.SpaceIconPicker
 import notes.app.ui.ButtonKind
+import notes.app.ui.LocalSpaceTheme
 import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
 import notes.app.ui.NotesDialog
 import notes.app.ui.NotesField
+import notes.app.ui.SpaceTheme
+import notes.app.ui.SpaceThemes
 import notes.app.ui.Type
 import notes.core.db.Space
 import notes.core.db.Spaces
@@ -205,46 +208,49 @@ private fun SpaceDialog(
     var icon by remember { mutableStateOf(initialIcon) }
     var iconError by remember { mutableStateOf<String?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
-    NotesDialog(onDismiss, title) {
-        ScrollingBody {
-            NotesField(name, {
-                name = it
-                error = null
-            }, "Name", placeholder = "Work", error = error)
-            Spacer(Modifier.height(12.dp))
-            SpaceIconPicker(icon, {
-                icon = it
-                iconError = null
-            }, iconError)
-            Spacer(Modifier.height(20.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
-                NotesButton(action, {
-                    val n = Spaces.normalize(name)
-                    error = when {
-                        n == null -> "Enter a name."
+    // The icon picked brings its colours: the dialog shows them before the space has them.
+    SpaceTheme(icon?.let(SpaceThemes::key) ?: LocalSpaceTheme.current) {
+        NotesDialog(onDismiss, title) {
+            ScrollingBody {
+                NotesField(name, {
+                    name = it
+                    error = null
+                }, "Name", placeholder = "Work", error = error)
+                Spacer(Modifier.height(12.dp))
+                SpaceIconPicker(icon, {
+                    icon = it
+                    iconError = null
+                }, iconError)
+                Spacer(Modifier.height(20.dp))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
+                    NotesButton(action, {
+                        val n = Spaces.normalize(name)
+                        error = when {
+                            n == null -> "Enter a name."
 
-                        n.codePointCount(0, n.length) > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
+                            n.codePointCount(0, n.length) > Spaces.MAX_NAME -> "At most ${Spaces.MAX_NAME} characters."
 
-                        taken(n) -> "Another space has this name."
+                            taken(n) -> "Another space has this name."
 
-                        // The server refuses them, so the store does too; a paste can bring them in.
-                        n.any { Character.isISOControl(it) } -> "Remove the special characters from the name."
+                            // The server refuses them, so the store does too; a paste can bring them in.
+                            n.any { Character.isISOControl(it) } -> "Remove the special characters from the name."
 
-                        else -> null
-                    }
-                    iconError = if (icon == null) "Choose an icon." else null
-                    val chosen = icon
-                    if (n != null && chosen != null && error == null) onDone(n, chosen)
-                }, Modifier.weight(1f))
-            }
-            failure?.let {
-                Text(
-                    it,
-                    style = Type.small,
-                    color = LocalTokens.current.danger,
-                    modifier = Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }
-                )
+                            else -> null
+                        }
+                        iconError = if (icon == null) "Choose an icon." else null
+                        val chosen = icon
+                        if (n != null && chosen != null && error == null) onDone(n, chosen)
+                    }, Modifier.weight(1f))
+                }
+                failure?.let {
+                    Text(
+                        it,
+                        style = Type.small,
+                        color = LocalTokens.current.danger,
+                        modifier = Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
             }
         }
     }

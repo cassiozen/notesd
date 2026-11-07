@@ -220,7 +220,7 @@ private fun FindField(
     val t = LocalTokens.current
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
-    val border by animateColorAsState(if (focused) t.accentDeep else t.hair, label = "border")
+    val border by animateColorAsState(if (focused) t.ink3 else t.hair, label = "border")
     val shape = RoundedCornerShape(14.dp)
     val style = Type.body.copy(fontSize = 16.sp, color = t.ink)
     Row(
@@ -269,6 +269,6 @@ private fun ReplaceToggle(on: Boolean, onToggle: (Boolean) -> Unit) {
             .semantics { contentDescription = "Replace" },
         contentAlignment = Alignment.Center
     ) {
-        Icon(Icons.Replace, null, Modifier.size(22.dp), tint = t.tint)
+        Icon(Icons.Replace, null, Modifier.size(22.dp), tint = t.ink2)
     }
 }

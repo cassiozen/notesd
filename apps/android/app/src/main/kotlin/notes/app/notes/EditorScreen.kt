@@ -479,6 +479,8 @@ fun EditorScreen(
                     }
                     scroller
                 },
+                // The space's theme, as it changes too: the view's spans read the colours as they draw.
+                update = { (it.getChildAt(0) as? NoteEditText)?.applyTokens(t) },
                 onRelease = { editor = null },
                 // Compose doesn't clip a native view: the edge stretch would draw the text over the top bar.
                 modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()
@@ -636,10 +638,10 @@ private fun BackLink(onClick: () -> Unit) {
             .padding(start = 6.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Back, null, Modifier.size(22.dp), tint = t.tint)
+        Icon(Icons.Back, null, Modifier.size(22.dp), tint = t.ink2)
         // At very large text the word would crowd the status out of the bar; the chevron says enough.
         if (LocalDensity.current.fontScale <= 1.3f) {
-            Text("Notes", style = Type.body.copy(fontSize = 16.sp), color = t.tint)
+            Text("Notes", style = Type.body.copy(fontSize = 16.sp), color = t.ink2)
         }
     }
 }

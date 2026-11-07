@@ -456,7 +456,7 @@ private fun SenderFields(
             .clearAndSetSemantics {}
     ) {
         Box(
-            Modifier.size(34.dp).clip(CircleShape).background(t.accent),
+            Modifier.size(34.dp).clip(CircleShape).background(t.on),
             contentAlignment = Alignment.Center
         ) {
             Text(shown.take(1).uppercase(), style = Type.title.copy(fontSize = 18.sp), color = t.ink)
@@ -555,7 +555,7 @@ private fun StepDots(current: Int, total: Int = 2) {
                     .height(4.dp)
                     .width(if (i == current) 28.dp else 12.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(if (i <= current) t.accentDeep else t.hair)
+                    .background(if (i <= current) t.solid else t.hair)
             )
         }
     }

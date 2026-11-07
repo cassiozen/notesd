@@ -73,7 +73,7 @@ private fun Toast(data: SnackbarData) {
             Text(
                 action,
                 style = Type.label.copy(fontSize = 14.sp, fontWeight = FontWeight.SemiBold),
-                color = t.accent,
+                color = t.onSolid,
                 modifier = Modifier
                     .heightIn(min = 40.dp)
                     .clip(RoundedCornerShape(12.dp))
@@ -140,7 +140,7 @@ fun SheetItem(icon: ImageVector, label: String, onClick: () -> Unit, danger: Boo
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Icon(icon, null, Modifier.size(22.dp), tint = if (danger) t.danger else t.tint)
+        Icon(icon, null, Modifier.size(22.dp), tint = if (danger) t.danger else t.ink2)
         Text(label, style = Type.body.copy(fontSize = 16.sp), color = color)
     }
 }

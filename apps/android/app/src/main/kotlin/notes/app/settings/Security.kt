@@ -145,7 +145,7 @@ internal fun LockedNotesCard(locks: LockSession, state: LockSession.State, finge
                     // The row toggles it, so the whole line is the target.
                     onCheckedChange = null,
                     enabled = !turningOn,
-                    colors = SwitchDefaults.colors(checkedTrackColor = t.accentDeep, checkedThumbColor = t.bg)
+                    colors = SwitchDefaults.colors(checkedTrackColor = t.solid, checkedThumbColor = t.onSolid)
                 )
             }
         }
