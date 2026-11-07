@@ -18,8 +18,8 @@ export function genericMessage(err: unknown): string {
   return 'Something went wrong on the server. Try again.'
 }
 
-/** A server message as a sentence: capitalised, with a full stop. */
+/** A server message as a sentence: capitalised, ending in a full stop unless it already ends a sentence. */
 export function sentence(message: string): string {
   const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
+  return /[.!?]$/.test(s) ? s : `${s}.`
 }
