@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
@@ -32,6 +33,9 @@ type env struct {
 	srv   *httptest.Server
 	auth  *auth.Service
 	users *userdata.Registry
+	// ctx bounds the test's socket calls, so a missed reply fails it
+	// instead of hanging it: from the test's start, not the binary's.
+	ctx context.Context
 }
 
 func newEnv(t *testing.T) *env {
@@ -40,6 +44,12 @@ func newEnv(t *testing.T) *env {
 }
 
 func newEnvWith(t *testing.T, cfg api.Config) *env {
+	t.Helper()
+	return newEnvServer(t, cfg, nil)
+}
+
+// newEnvServer also lets the test set up the HTTP server before it starts.
+func newEnvServer(t *testing.T, cfg api.Config, setup func(*http.Server)) *env {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -52,9 +62,15 @@ func newEnvWith(t *testing.T, cfg api.Config) *env {
 	t.Cleanup(func() { users.Close() })
 	a := auth.NewService(system)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(api.New(system, users, a, log, cfg).Handler())
+	srv := httptest.NewUnstartedServer(api.New(system, users, a, log, cfg).Handler())
+	if setup != nil {
+		setup(srv.Config)
+	}
+	srv.Start()
 	t.Cleanup(srv.Close)
-	return &env{t: t, srv: srv, auth: a, users: users}
+	calls, cancel := context.WithTimeout(context.Background(), time.Minute)
+	t.Cleanup(cancel)
+	return &env{t: t, srv: srv, auth: a, users: users, ctx: calls}
 }
 
 // userDB is a user's notes database; the owner is user 1.

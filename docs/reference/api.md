@@ -393,6 +393,7 @@ other accounts get `403 admin_only` when they change it.
 | `GET` | `/agent/usage` | → `{day, tokens, runs, dailyTokenCap}` |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
+| `GET` | `/agent/socket` | WebSocket; see below |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
@@ -414,8 +415,9 @@ finishedAt, edits}`. `status` is `queued`, `running`, `done`, `failed` or `skipp
 why a run failed or was skipped, and `outcome` what a finished one did (`edited`, `created`,
 `no_change`, or after undo `undone` or `partly_undone`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
 changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
-`create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked` or
-`changed` (the note changed since the run wrote it). `limit` is up to 100, 50 by default. `GET /agent/usage`
+`create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked`,
+`changed` (the note changed since the run wrote it) or `not_saved` (the run changed it in an open
+editor, which hasn't saved exactly that). `limit` is up to 100, 50 by default. `GET /agent/usage`
 is today's, in the account's time zone.
 
 `GET /agent/runs/{id}` adds `diffs`, one per note changed: `{noteId, kind, titleBefore, titleAfter,
@@ -432,6 +434,27 @@ note is undone on its own, so one changed note doesn't stop the rest; `skipped` 
 `reason`, as `blocked` above. Undoing again retries only what was skipped. When nothing can be
 undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
 `partly_undone` while some of its changes stand. Undo fires no triggers.
+
+**The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
+browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
+account is `429 rate_limited`. Messages are JSON text with a `type`; a type a side doesn't know is
+ignored, so either may add some, except that an editor answers a request it can't do (one with an
+`id`) with `{type: "result", id, error: "not_open"}`, so the server doesn't wait out its timeout.
+
+| From | Message | Meaning |
+| --- | --- | --- |
+| Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
+| Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
+| Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
+| Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
+| Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}, op}` | A run changes the note. If the editor shows `before`, it changes it to `after`; otherwise, the user having typed meanwhile, it makes `op` to what it shows. As one undoable step, saved as any edit. It answers `{type: "result", id, before, revision, shows}`: what it showed just before (`revision`: the server's revision of exactly that, or `null`), and the note as it then saves it |
+
+`op` is the change as the agent asked for it: `{kind: "title", title}`, `{kind: "replace", find,
+replace}` (find must appear exactly once), or `{kind: "insert", at, text}` with `at` `start` or
+`end` (as a block of its own) or `cursor` (at the editor's cursor), or `{kind: "content", text}`
+(the whole content, which never fits once the user has typed). An editor that can't do a request
+answers `{type: "result", id, error}`: `changed` (`op` no longer fits), `not_open` or `locked`. Ten seconds without an answer counts as gone. The server
+pings every 25 seconds; a proxy in front must pass WebSocket upgrades.
 
 ### AI
 

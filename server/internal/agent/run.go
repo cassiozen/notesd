@@ -27,6 +27,9 @@ type Account struct {
 	Agent *Store
 	// SpaceName names a space for the agent, by id.
 	SpaceName func(ctx context.Context, id string) string
+	// Editors are the account's open note editors; nil reads and writes
+	// only the store.
+	Editors Editors
 }
 
 // Provider is the model: llm.Client, or a fake in tests.
@@ -39,8 +42,10 @@ type runState struct {
 	acct  Account
 	run   queuedRun
 	reads map[string]notes.Note // as last read or written in this run
-	ops   int                   // writes so far, for their operation ids
-	day   string                // in the account's time zone, for usage
+	// inEditor holds the notes read from an editor; their writes go back to it.
+	inEditor map[string]*editorRead
+	ops      int    // writes so far, for their operation ids
+	day      string // in the account's time zone, for usage
 	// budget is the tokens this attempt may use: what's left of MaxRunTokens,
 	// or less when that's all the day has left (dailyLimited).
 	budget       int64
@@ -128,10 +133,20 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	defer cancel()
 	spaceName := func(id string) string { return acct.SpaceName(ctx, id) }
 	var f finished
-	rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, day: day,
+	rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, inEditor: map[string]*editorRead{}, day: day,
 		budget: min(left, today), dailyLimited: today <= left}
 	if note != nil {
-		rs.reads[note.ID] = *note
+		// As the user sees it, if an editor has it open.
+		n, err := rs.read(runCtx, note.ID)
+		var stop *stopError
+		switch {
+		case errors.As(err, &stop):
+			return stop.f
+		case err != nil:
+			n = *note
+			rs.reads[n.ID] = n
+		}
+		note = &n
 	}
 	messages := []llm.Message{
 		{Role: "system", Content: systemPrompt(c, r.Trigger)},
@@ -286,6 +301,9 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			case errors.As(err, &te):
 				refused = true
 				out = toolErrorResult(te)
+			case errors.Is(err, errEditorGone):
+				f.Status, f.Failure, f.Message = StatusFailed, FailEditorGone, "The note's editor went away while the agent was changing it."
+				return
 			case err != nil:
 				interrupted(ctx, f, err)
 				return

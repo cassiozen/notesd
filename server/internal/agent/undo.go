@@ -60,7 +60,7 @@ func (s *Store) Undo(ctx context.Context, ns *notes.Store, runID string) (UndoRe
 		case status == StatusQueued || status == StatusRunning:
 			reason = BlockedRunning
 		case !e.afterRev.Valid:
-			reason = BlockedChanged
+			reason = BlockedNotSaved
 		default:
 			reason, err = undoOne(ctx, ns, runID, e)
 			if err != nil {

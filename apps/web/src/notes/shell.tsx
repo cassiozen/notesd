@@ -1,3 +1,4 @@
+import { useAgentSocket } from '../agent/socket'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { dragRegion } from '../desktop'
 import { TouchIdOffer } from '../locks/unlock'
@@ -54,6 +55,7 @@ function ShellView({ username }: { username: string }) {
   const [sidebarHidden, setSidebarHidden] = useState(loadSidebarHidden)
   const { items, status, newDraft, remove, undoRemove, removed, tags, lockedCount, filter, setFilter, space, setSpace, move } =
     useNotes()
+  useAgentSocket(space)
   const spaces = useSpaces()
   // A note the server doesn't have yet: open, but not in the URL until it's saved.
   const [draft, setDraft] = useState<Saver | null>(null)

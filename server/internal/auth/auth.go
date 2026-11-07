@@ -458,12 +458,16 @@ func (s *Service) Logout(ctx context.Context, userID int64, sessionID string) er
 	return s.Revoke(ctx, userID, sessionID)
 }
 
+// unexpired is a session row still in date at ? (twice): a web session's
+// access token, a device's refresh token.
+const unexpired = `((kind = 'web' AND access_expires_at >= ?) OR (kind = 'device' AND refresh_expires_at >= ?))`
+
 // Sessions lists a user's active sessions, most recently used first.
 func (s *Service) Sessions(ctx context.Context, userID int64) ([]Session, error) {
 	now := s.now().UnixMilli()
 	rows, err := s.db.R.QueryContext(ctx, `
 		SELECT id, kind, name, created_at, last_used_at FROM sessions
-		WHERE user_id = ? AND ((kind = 'web' AND access_expires_at > ?) OR (kind = 'device' AND refresh_expires_at > ?))
+		WHERE user_id = ? AND `+unexpired+`
 		ORDER BY last_used_at DESC`, userID, now, now)
 	if err != nil {
 		return nil, err
@@ -491,6 +495,20 @@ func (s *Service) Revoke(ctx context.Context, userID int64, sessionID string) er
 		return ErrNotFound
 	}
 	return nil
+}
+
+// Live reports whether a session is still good: not signed out, revoked or
+// expired. Expired rows stay until the next sign-in clears them.
+func (s *Service) Live(ctx context.Context, sessionID string) (bool, error) {
+	now := s.now().UnixMilli()
+	var one int
+	err := s.db.R.QueryRowContext(ctx, `
+		SELECT 1 FROM sessions WHERE id = ? AND `+unexpired+``,
+		sessionID, now, now).Scan(&one)
+	if errors.Is(err, sql.ErrNoRows) {
+		return false, nil
+	}
+	return err == nil, err
 }
 
 func validateUsername(u string) error {

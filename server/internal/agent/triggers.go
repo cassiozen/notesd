@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"time"
 
 	"notes/server/internal/locks"
@@ -79,6 +80,15 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 			return err
 		}
 	}
+	if (ev.Agent == nil || !ev.Agent.Runner) && ev.Kind != notes.EventDeleted {
+		agentOnly, err := linkEditorEdit(ctx, tx, ev)
+		if err != nil {
+			return err
+		}
+		if agentOnly && !ev.SpaceChanged() {
+			return nil // an editor saving just a run's change: not the user writing
+		}
+	}
 	if ev.Agent != nil && ev.Agent.Only {
 		// The agent's own change, or a save holding only that: never a trigger.
 		return nil
@@ -133,8 +143,9 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 	}
 	switch {
 	case ev.Kind == notes.EventDeleted:
+		// applied_from too: a hash of short text can be guessed.
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_title = '', after_title = '',
-			before_content = '', after_content = '', text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
+			before_content = '', after_content = '', applied_from = NULL, text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
 			return err
 		}
 		// A queued run keeps its snapshot: a "note deleted" run needs it, and drops it when it finishes.
@@ -143,7 +154,7 @@ func removeText(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 		return err
 	case ev.Kind == notes.EventUpdated && locks.IsLocked(ev.After.Content) && !locks.IsLocked(ev.Before.Content):
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_run_edits SET before_content = '', after_content = '',
-			text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
+			applied_from = NULL, text_removed = 1 WHERE note_id = ?`, ev.NoteID); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE agent_runs SET status = ?, failure = ?, finished_at = ?,
@@ -296,6 +307,29 @@ func (s *Store) CloseIdleSessions(ctx context.Context) (int, error) {
 		}
 	}
 	return queued, nil
+}
+
+// EditorClosed ends the note's writing session now, when an editor closed it
+// and the server has what it last saved (revision), rather than waiting
+// IdleAfter.
+func (s *Store) EditorClosed(ctx context.Context, noteID string, revision int64) error {
+	now := s.now().UnixMilli()
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		// The note's own revision, not the session's: writes that aren't the
+		// user's (the agent's, a move) leave the session's behind.
+		var current int64
+		err := tx.QueryRowContext(ctx, `SELECT n.revision FROM agent_sessions s JOIN notes n ON n.id = s.note_id
+			WHERE s.note_id = ?`, noteID).Scan(&current)
+		if errors.Is(err, sql.ErrNoRows) || (err == nil && current < revision) {
+			// No session, or a save still on its way: the idle timeout ends it.
+			return nil
+		}
+		if err != nil {
+			return err
+		}
+		_, err = s.closeSession(ctx, tx, noteID, math.MaxInt64, now)
+		return err
+	})
 }
 
 // closeSession ends one session if it's still idle, and queues its trigger

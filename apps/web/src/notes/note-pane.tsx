@@ -18,6 +18,8 @@ import { UnlockForm } from '../locks/unlock'
 import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
+import { agentSocket } from '../agent/socket'
+import { applyForAgent, composed, madeTo, readForAgent } from '../editor/agent-edit'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -150,10 +152,17 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   }, [id, load.kind, saverFor, removed, space, setSpace])
 
   const saver = load.kind === 'ready' ? load.saver : null
-  // Leaving the note: save what's left, then let the store forget it.
+  // Leaving the note: save what's left, then let the store forget it. Agents
+  // hear of both, so closing a note ends its writing session at once.
   useEffect(() => {
     if (!saver) return
-    return () => void saver.flush().finally(() => release(saver.id))
+    agentSocket.noteOpened(saver.id)
+    return () =>
+      void saver
+        .savedRevision()
+        .catch(() => null)
+        .then((revision) => agentSocket.noteClosed(saver.id, revision))
+        .finally(() => release(saver.id))
   }, [saver, release])
 
   return (
@@ -349,6 +358,30 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       detach()
     }
   }, [saver, editor, touch])
+
+  // Agents' runs read and change the note here, where the user sees it and can undo it.
+  useEffect(
+    () =>
+      agentSocket.serve(saver.id, {
+        read: () => {
+          if (saver.isLocked()) return { error: 'locked' }
+          const { fields, cursor } = readForAgent(editor.state)
+          return { spaceId: saver.spaceId(), ...fields, cursor, revision: saver.knownRevision() }
+        },
+        apply: async (change) => {
+          if (saver.isLocked()) return { error: 'locked' }
+          await composed(editor)
+          // What it shows now: the user may have typed since the run read it.
+          const { fields: before, cursor } = readForAgent(editor.state)
+          const revision = saver.knownRevision()
+          const after = madeTo(change, before, cursor)
+          if (!after) return { error: 'changed' }
+          applyForAgent(editor, after)
+          return { before, revision, shows: noteFields(editor.state.doc) }
+        },
+      }),
+    [saver, editor],
+  )
 
   useEffect(() => () => clearTimeout(touchTimer.current), [])
 

@@ -4,7 +4,9 @@ import { createServer } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import NodeWebSocket from 'ws'
 import { inject, onTestFinished } from 'vitest'
+import { socketFactory } from '../src/agent/socket'
 
 export type TestServer = {
   url: string
@@ -45,6 +47,11 @@ export async function startServer({ resendUrl }: { resendUrl?: string } = {}): P
 
   const browser = cookieFetch(url)
   globalThis.fetch = browser
+  // jsdom's WebSocket can't carry the jar; Node's can, as the browser would.
+  socketFactory.make = (path) =>
+    new NodeWebSocket(new URL(path, url.replace(/^http/, 'ws')), {
+      headers: { Cookie: browser.cookie(), Origin: browser.origin ?? url },
+    }) as unknown as WebSocket
 
   const other = cookieFetch(url)
   const server: TestServer = {
@@ -138,8 +145,11 @@ export type FakeLLM = {
   requests: { model: string; messages: unknown[]; tools?: unknown[] }[]
   /** When true, the model answers in text instead of calling a tool. */
   textOnly: boolean
-  /** An agent's turns, in order: a tool call, or its last words. Once done, agents get "No change." */
-  script: ({ tool: string; args: unknown } | { text: string })[]
+  /**
+   * An agent's turns, in order: a tool call, or its last words. Once done, agents get "No change."
+   * hold: the turn's answer waits for it, as a slow model would.
+   */
+  script: (({ tool: string; args: unknown } | { text: string }) & { hold?: Promise<unknown> })[]
 }
 
 /** Stands in for an OpenAI-compatible API: POST /v1/chat/completions, answering with a call to the first tool. */
@@ -174,7 +184,8 @@ export async function startFakeLLM(): Promise<FakeLLM> {
               role: 'assistant',
               tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.function.name, arguments: '{"ok":true}' } }],
             }
-      res.end(JSON.stringify({ model: 'fake-model-1', choices: [{ message, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 2 } }))
+      const answer = JSON.stringify({ model: 'fake-model-1', choices: [{ message, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 2 } })
+      void Promise.resolve(step?.hold).then(() => res.end(answer))
     })
   })
   await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r))
@@ -209,6 +220,7 @@ function readStartup(proc: ChildProcess): Promise<string> {
 }
 
 type CookieFetch = typeof fetch & {
+  cookie: () => string
   csrf?: string
   offline?: boolean
   origin?: string
@@ -228,7 +240,7 @@ function cookieFetch(base: string): CookieFetch {
     const headers = new Headers(init.headers)
     // Same-origin browser requests carry Origin on mutations.
     headers.set('Origin', fn.origin ?? base)
-    if (jar.size > 0) headers.set('Cookie', [...jar].map(([k, v]) => `${k}=${v}`).join('; '))
+    if (jar.size > 0) headers.set('Cookie', fn.cookie())
 
     // jsdom's AbortSignal isn't Node's; bridge it so aborts still reach fetch.
     const controller = new AbortController()
@@ -253,5 +265,6 @@ function cookieFetch(base: string): CookieFetch {
   }) as CookieFetch
   fn.log = []
   fn.answered = []
+  fn.cookie = () => [...jar].map(([k, v]) => `${k}=${v}`).join('; ')
   return fn
 }
