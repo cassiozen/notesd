@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { navigate, parseRoute, transitionFor } from '../src/router'
+import { closeOver, moveOver, navigate, openOver, parseRoute, transitionFor } from '../src/router'
 import { phoneLayout } from './helpers'
 
 describe('routes', () => {
@@ -69,5 +69,27 @@ describe('navigation transitions', () => {
     expect(start).not.toHaveBeenCalled()
     expect(window.location.pathname).toBe('/notes/a')
     vi.restoreAllMocks()
+  })
+})
+
+describe('pages opened over others', () => {
+  afterEach(() => window.history.replaceState(null, '', '/'))
+
+  it('each closes back to where it was opened, nested ones in turn', () => {
+    window.history.replaceState(null, '', '/notes/a')
+    openOver('/settings')
+    moveOver('/settings/spaces')
+    openOver('/activity', { space: 'work' })
+    expect(window.history.state).toMatchObject({ space: 'work', returnTo: '/settings/spaces' })
+    closeOver('/', { replace: true })
+    expect(window.location.pathname).toBe('/settings/spaces')
+    closeOver('/')
+    expect(window.location.pathname).toBe('/notes/a')
+  })
+
+  it('opened straight from its address, closes to the fallback', () => {
+    window.history.replaceState(null, '', '/activity')
+    closeOver('/notes/b', { replace: true })
+    expect(window.location.pathname).toBe('/notes/b')
   })
 })

@@ -191,6 +191,31 @@ func unusable(n notes.Note, err error, spaceID string, started bool) finished {
 // converse talks to the model until it stops calling tools, filling in f.
 func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, messages []llm.Message, f *finished) {
 	for {
+		// Locked since the run began (its event may carry a copy of the
+		// note): nothing more of it is sent. Deleted or moved, for a run
+		// whose trigger wasn't that: nothing more is done with it.
+		n, err := rs.acct.Notes.Get(ctx, rs.run.NoteID)
+		switch {
+		case err == nil && locks.IsLocked(n.Content):
+			f.Status, f.Failure, f.Message = StatusFailed, FailNoteLocked, "The note was locked, so the agent stopped."
+			// Not tokens: a compatible provider may leave usage out. A
+			// later attempt follows one that called the model.
+			if !f.sent && rs.run.Attempts < 2 {
+				f.Status, f.Message = StatusSkipped, "The note is locked. Locked notes are never sent."
+			}
+			return
+		case err != nil && ctx.Err() != nil:
+			// The deadline or a shutdown; the caller says which.
+			return
+		case rs.run.Event.Title == nil && unusable(n, err, rs.run.SpaceID, true).Status != "":
+			u := unusable(n, err, rs.run.SpaceID, true)
+			f.Status, f.Failure, f.Message = u.Status, u.Failure, u.Message
+			return
+		case err != nil && !errors.Is(err, notes.ErrNotFound):
+			f.Status, f.Failure, f.Message = StatusFailed, FailInterrupted, err.Error()
+			return
+		}
+		f.sent = true
 		called := time.Now()
 		res, err := rn.chat(ctx, st, llm.ChatRequest{Messages: messages, Tools: tools})
 		f.timing.calls++

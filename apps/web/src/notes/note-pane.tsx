@@ -15,7 +15,10 @@ import { ComposeIcon, LockIcon, TrashIcon } from '../ui/icons'
 import { LockedError, UnsupportedLockError } from '../locks/crypto'
 import { lockSession, useLockStatus } from '../locks/session'
 import { UnlockForm } from '../locks/unlock'
+import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
+import { failureText } from './activity'
+import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
 import { notesSource, type Saver } from './source'
@@ -269,7 +272,8 @@ const TOUCH_MS = 150
 
 function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete, onMove, onGone, onOpenDraft, onNotice }: EditorProps) {
   const snap = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
-  const { touch, tags, setFilter } = useNotes()
+  const { touch, tags, setFilter, space } = useNotes()
+  const failed = useFailedRun(isDraft ? null : saver.id)
   const [initial] = useState(() => saver.fields())
   const [linkOpen, setLinkOpen] = useState(false)
   const [stylesOpen, setStylesOpen] = useState(false)
@@ -501,6 +505,27 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
         </div>
       )}
 
+      {failed.run && (
+        <Notice
+          tone="warn"
+          actions={
+            <>
+              <Button size="sm" onClick={failed.dismiss}>
+                Dismiss
+              </Button>
+              <Button
+                variant="solid"
+                size="sm"
+                onClick={() => openOver('/activity', { space, run: failed.run?.id })}
+              >
+                Activity
+              </Button>
+            </>
+          }
+        >
+          The agent’s last run on this note failed: {failureText(failed.run)}.
+        </Notice>
+      )}
       {offlineNotice(snap) && (
         <Notice
           tone="error"
