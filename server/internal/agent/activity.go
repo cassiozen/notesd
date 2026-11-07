@@ -250,7 +250,7 @@ func parseRunCursor(c string) (at, rowid int64, err error) {
 		_, err = fmt.Sscanf(string(raw), "%d.%d", &at, &rowid)
 	}
 	// Only what Runs writes: Sscanf would accept anything after the numbers.
-	if err != nil || fmt.Sprintf("%d.%d", at, rowid) != string(raw) {
+	if err != nil || fmt.Sprintf("%d.%d", at, rowid) != string(raw) || at < 0 || rowid <= 0 {
 		return 0, 0, &InputError{Field: "cursor", Message: "not a cursor from this list"}
 	}
 	return at, rowid, nil

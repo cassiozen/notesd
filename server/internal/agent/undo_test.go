@@ -156,7 +156,7 @@ func TestLockingOrDeletingRemovesTheAgentsCopies(t *testing.T) {
 		id := h.lastRunID()
 		h.delete("n1")
 		d, _ := h.d.Agent.Run(ctx, id)
-		if !d.Diffs[0].TextRemoved || d.Diffs[0].TitleBefore != "" || len(d.Diffs[0].Lines) != 0 {
+		if !d.Diffs[0].TextRemoved || d.Diffs[0].TitleBefore != "" || d.Diffs[0].TitleAfter != "" || len(d.Diffs[0].Lines) != 0 {
 			t.Fatalf("diff: %+v", d.Diffs[0])
 		}
 		var leftover int

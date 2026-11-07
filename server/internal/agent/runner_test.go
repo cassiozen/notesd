@@ -905,3 +905,17 @@ func TestNegativeUsageIsntGivenBack(t *testing.T) {
 		t.Fatalf("tokens: %+v", r)
 	}
 }
+
+func TestNothingMoreIsDoneWithANoteDeletedMidRun(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "Milk")
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		h.delete("n1")
+		return toolReply("list_tags", `{}`), nil
+	}, final("Tagged."))
+	h.next()
+	if r := h.only(); r.Status != agent.StatusSkipped || r.Failure != agent.FailNoteGone || h.model.calls() != 1 {
+		t.Fatalf("run %+v after %d calls", r, h.model.calls())
+	}
+}

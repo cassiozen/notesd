@@ -53,7 +53,8 @@ func TestActivityLists(t *testing.T) {
 		t.Fatalf("by space: %+v %v", runs, err)
 	}
 	var in *agent.InputError
-	for _, c := range []string{"nope", base64.RawURLEncoding.EncodeToString([]byte("1.2junk")), base64.RawURLEncoding.EncodeToString([]byte("01.2"))} {
+	for _, c := range []string{"nope", base64.RawURLEncoding.EncodeToString([]byte("1.2junk")), base64.RawURLEncoding.EncodeToString([]byte("01.2")),
+		base64.RawURLEncoding.EncodeToString([]byte("-1.2")), base64.RawURLEncoding.EncodeToString([]byte("5.0"))} {
 		if _, _, err := h.d.Agent.Runs(ctx, agent.RunFilter{}, 10, c); !errors.As(err, &in) || in.Field != "cursor" {
 			t.Fatalf("bad cursor %q: %v", c, err)
 		}

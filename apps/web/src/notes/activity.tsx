@@ -315,7 +315,7 @@ function RunView({ id, onUndone }: { id: string; onUndone: () => void }) {
 }
 
 function ChangeView({ diff, blocked }: { diff: NoteDiff; blocked: UndoBlock | undefined }) {
-  const title = diff.titleAfter || diff.titleBefore || 'Untitled'
+  const title = diff.titleAfter || 'Untitled'
   return (
     <Surface as="section" className={styles.card} aria-label={`Changes to ${title}`}>
       <h3 className={styles.title}>
