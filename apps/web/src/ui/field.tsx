@@ -1,7 +1,8 @@
-import { useId, type InputHTMLAttributes, type ReactNode } from 'react'
+import { useId, type InputHTMLAttributes, type ReactNode, type Ref } from 'react'
 import styles from './field.module.css'
 
 type Props = InputHTMLAttributes<HTMLInputElement> & {
+  ref?: Ref<HTMLInputElement>
   label: string
   /** Visually hide the label (it stays for screen readers). */
   hideLabel?: boolean

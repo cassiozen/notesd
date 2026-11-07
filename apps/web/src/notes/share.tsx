@@ -7,6 +7,7 @@ import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { findKeys } from '../editor/find-bar'
+import { copyText } from '../ui/copy'
 import { MoreIcon, ShareIcon } from '../ui/icons'
 import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
@@ -167,7 +168,7 @@ export function NoteMenu({
             role="menuitem"
             className={styles.item}
             onClick={() => {
-              void navigator.clipboard.writeText(exportMarkdown(saver)).then(() => setCopied(true))
+              void copyText(exportMarkdown(saver)).then(setCopied)
             }}
           >
             {copied ? 'Copied' : 'Copy as Markdown'}

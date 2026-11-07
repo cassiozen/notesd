@@ -23,6 +23,7 @@ import { Surface } from '../ui/surface'
 import { DeviceCard, InstallCard, SignOutItem, syncSummary, useKeptHere, useSyncState } from './device'
 import { IntegrationsPage, integrationsValue, useIntegrationStatuses } from './integrations'
 import { LockedNotesCard } from './locked-notes'
+import { PeopleCard } from './people'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
 import styles from './settings.module.css'
@@ -370,6 +371,7 @@ function SettingsPage({
               <SignOutItem />
             </ul>
           </Surface>
+          <PeopleCard username={username} />
           <UpdateCard />
         </>
       )
@@ -597,7 +599,7 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
           </p>
         )}
         <div className={styles.forgot}>
-          <span className={styles.muted}>Forgot it? Reset it on the server:</span>
+          <span className={styles.muted}>Forgot it? An admin can send you a reset link from Settings, or run on the server:</span>
           <Command command="notesd reset-password" tone="dark" />
         </div>
         <div className={styles.dialogActions}>

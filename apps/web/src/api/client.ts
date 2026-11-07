@@ -68,7 +68,7 @@ export function sessionGone() {
 type Options = { signal?: AbortSignal; keepalive?: boolean }
 
 export async function request<T>(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
   options: Options = {},
@@ -104,7 +104,7 @@ export async function download(path: string, options: Options = {}): Promise<Blo
 
 /** One request: CSRF, connection failures and error bodies handled; resolves only with an OK response. */
 async function send(
-  method: 'GET' | 'POST' | 'PUT' | 'DELETE',
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   headers: Record<string, string>,
   body: BodyInit | undefined,

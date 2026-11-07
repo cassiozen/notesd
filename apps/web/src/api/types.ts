@@ -84,10 +84,27 @@ export type Session = {
 export type SessionInfo = {
   session: Session
   username: string
+  /** May change server-wide settings and manage accounts. */
+  isAdmin: boolean
   csrfToken: string
   /** The server's build version, such as v0.11.0. */
   serverVersion?: string
 }
+
+/** An account, as an admin sees it in Settings. */
+export type Person = {
+  id: number
+  username: string
+  isAdmin: boolean
+  createdAt: number
+  /** Invited: no password chosen yet. */
+  pending: boolean
+  /** When its setup link stops working; absent without one. */
+  linkExpiresAt?: number
+}
+
+/** A one-time link's secret; the app builds the URL around it (people-link.ts). */
+export type SetupLink = { token: string; expiresAt: number }
 
 export type ErrorBody = {
   error: string

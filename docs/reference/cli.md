@@ -106,7 +106,8 @@ notesd add-user --username NAME [--admin]
 ```
 
 Creates another account. It has its own notes, which no other account can see. `--admin` also
-lets it change server-wide settings, such as email.
+lets it change server-wide settings, such as email, and manage accounts. Admins can also
+[invite people from the web app](../guides/self-hosting/users.md#from-the-web-app).
 
 ### list-users
 
@@ -114,7 +115,8 @@ lets it change server-wide settings, such as email.
 notesd list-users
 ```
 
-Lists the accounts, which are admins, and when each was created.
+Lists the accounts, which are admins, when each was created, and which are invited from the web
+app but haven't chosen a password yet.
 
 ### remove-user
 
@@ -132,8 +134,9 @@ to keep a copy. The last admin can't be removed.
 notesd reset-password [--username NAME]
 ```
 
-Sets a new password and signs the account out everywhere. notesd can't email a reset link, so
-this is how a forgotten password is recovered. `--username` can be left out while there's only
+Sets a new password and signs the account out everywhere. notesd can't email a reset link: an
+admin can send one from the web app's People, or recover a forgotten password with this. On an
+invited account, it sets the password the invitation was waiting for. `--username` can be left out while there's only
 one account. Locked notes use their own password, which this doesn't change.
 
 ## Data commands

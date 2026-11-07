@@ -747,3 +747,32 @@
     animation: none;
   }
 }
+
+/* A person's row: their initial, larger than a device's platform badge. */
+.initial {
+  border-radius: 50%;
+  font: 500 15px var(--font-sans);
+}
+
+/* A setup link and its Copy button. */
+.linkRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.linkRow > :first-child {
+  flex: 1;
+  min-width: 0;
+}
+
+.warn {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--warn-bg);
+  border: 1px solid var(--warn-edge);
+  color: var(--warn-ink);
+  font-size: 13.5px;
+  line-height: 1.45;
+}

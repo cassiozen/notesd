@@ -69,6 +69,7 @@ the list is its own screen and a category opens on top of it with a back button.
 | Connect to a server / Sign in again | Server | – | – | ✓ | ✓ |
 | Sign out | Server | – | ✓ | ✓ | ✓ |
 | Change password (+ `notesd reset-password` hint on the web) | Server | account | ✓ | ✓ | ✓ |
+| People: invite (a setup link to send), new link, reset password, admin on/off, remove (admins only; hidden from everyone else) | Server | **server** | ✓ | – | – |
 | Lock password: create hint, lock now, change, forgot/reset | Security | account | ✓ | ✓ | ✓ |
 | Passkeys for locked notes | Security | account | ✓ | – | – |
 | Unlock with Face ID / Touch ID / fingerprint | Security | **device** | – | ✓ | ✓ |

@@ -40,8 +40,10 @@ var (
 	ErrNoUser             = errors.New("no such user")
 	ErrNoOwner            = errors.New("there's no account yet: create the first one, an admin, with create-owner or the app's setup")
 	ErrUsernameTaken      = errors.New("that username is taken")
-	ErrLastAdmin          = errors.New("can't remove the last admin")
+	ErrLastAdmin          = errors.New("the server needs an admin who can sign in")
 	ErrNotFound           = errors.New("session not found")
+	ErrLinkInvalid        = errors.New("the link has expired or was already used")
+	ErrSelf               = errors.New("can't change your own account here")
 )
 
 // InputError reports an invalid username or password.
@@ -68,10 +70,14 @@ type Session struct {
 
 // User is an account.
 type User struct {
-	ID        int64
-	Username  string
-	IsAdmin   bool
-	CreatedAt int64
+	ID        int64  `json:"id"`
+	Username  string `json:"username"`
+	IsAdmin   bool   `json:"isAdmin"`
+	CreatedAt int64  `json:"createdAt"`
+	// Pending: invited, no password chosen yet, so it can't sign in.
+	Pending bool `json:"pending"`
+	// LinkExpiresAt is when its setup link stops working; 0 without one.
+	LinkExpiresAt int64 `json:"linkExpiresAt,omitempty"`
 }
 
 // Credentials are the secrets issued at login. Fields that do not apply to
@@ -122,15 +128,14 @@ func (s *Service) CreateOwner(ctx context.Context, username, password string) er
 	return err
 }
 
-// AddUser creates another account, once the first exists. Only the command
-// line calls it.
+// AddUser creates another account, once the first exists, with a password
+// the command line was given. Invite is the apps' way.
 func (s *Service) AddUser(ctx context.Context, username, password string, admin bool) (User, error) {
 	return s.create(ctx, username, password, admin, false)
 }
 
 func (s *Service) create(ctx context.Context, username, password string, admin, first bool) (User, error) {
-	username = strings.TrimSpace(username)
-	if err := validateUsername(username); err != nil {
+	if err := validateUsername(strings.TrimSpace(username)); err != nil {
 		return User{}, err
 	}
 	if err := validatePassword(password); err != nil {
@@ -140,29 +145,41 @@ func (s *Service) create(ctx context.Context, username, password string, admin, 
 	if err != nil {
 		return User{}, err
 	}
-	u := User{Username: username, IsAdmin: admin, CreatedAt: s.now().UnixMilli()}
+	var u User
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		var n, taken int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*), count(*) FILTER (WHERE username_key = ?) FROM users`,
-			usernameKey(username)).Scan(&n, &taken); err != nil {
-			return err
-		}
-		if first && n > 0 {
-			return ErrOwnerExists
-		}
-		// Setup creates the first account, the admin; added ones come after,
-		// or the server could be left with no admin at all.
-		if !first && n == 0 {
-			return ErrNoOwner
-		}
-		if taken > 0 {
-			return ErrUsernameTaken
-		}
-		return tx.QueryRowContext(ctx, `
-			INSERT INTO users (username, username_key, password_hash, is_admin, created_at, updated_at)
-			VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
-			username, usernameKey(username), hash, admin, u.CreatedAt, u.CreatedAt).Scan(&u.ID)
+		u, err = s.insert(ctx, tx, username, hash, admin, first)
+		return err
 	})
+	return u, err
+}
+
+// insert adds an account; hash ” makes it an invited one.
+func (s *Service) insert(ctx context.Context, tx *sql.Tx, username, hash string, admin, first bool) (User, error) {
+	username = strings.TrimSpace(username)
+	if err := validateUsername(username); err != nil {
+		return User{}, err
+	}
+	var n, taken int
+	if err := tx.QueryRowContext(ctx, `SELECT count(*), count(*) FILTER (WHERE username_key = ?) FROM users`,
+		usernameKey(username)).Scan(&n, &taken); err != nil {
+		return User{}, err
+	}
+	if first && n > 0 {
+		return User{}, ErrOwnerExists
+	}
+	// Setup creates the first account, the admin; added ones come after,
+	// or the server could be left with no admin at all.
+	if !first && n == 0 {
+		return User{}, ErrNoOwner
+	}
+	if taken > 0 {
+		return User{}, ErrUsernameTaken
+	}
+	u := User{Username: username, IsAdmin: admin, CreatedAt: s.now().UnixMilli(), Pending: hash == ""}
+	err := tx.QueryRowContext(ctx, `
+		INSERT INTO users (username, username_key, password_hash, is_admin, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
+		username, usernameKey(username), hash, admin, u.CreatedAt, u.CreatedAt).Scan(&u.ID)
 	return u, err
 }
 
@@ -193,6 +210,9 @@ func (s *Service) CheckPassword(ctx context.Context, userID int64, password stri
 	if err != nil {
 		return err
 	}
+	if hash == "" {
+		return ErrInvalidCredentials
+	}
 	ok, err := VerifyPassword(password, hash)
 	if err != nil {
 		return err
@@ -220,6 +240,10 @@ func (s *Service) setPassword(ctx context.Context, userID int64, password, keepS
 		if n, _ := res.RowsAffected(); n == 0 {
 			return ErrNoUser
 		}
+		// A link sent before would otherwise replace the password just chosen.
+		if _, err := tx.ExecContext(ctx, `DELETE FROM setup_links WHERE user_id = ?`, userID); err != nil {
+			return err
+		}
 		_, err = tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND id != ?`, userID, keepSessionID)
 		return err
 	})
@@ -233,7 +257,9 @@ func (s *Service) User(ctx context.Context, id int64) (User, error) {
 
 // ListUsers returns every account, oldest first.
 func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
-	rows, err := s.db.R.QueryContext(ctx, `SELECT id, username, is_admin, created_at FROM users ORDER BY id`)
+	rows, err := s.db.R.QueryContext(ctx, `
+		SELECT u.id, u.username, u.is_admin, u.created_at, u.password_hash = '', coalesce(l.expires_at, 0)
+		FROM users u LEFT JOIN setup_links l ON l.user_id = u.id ORDER BY u.id`)
 	if err != nil {
 		return nil, err
 	}
@@ -241,7 +267,7 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	var out []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &u.Pending, &u.LinkExpiresAt); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -250,13 +276,16 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 }
 
 // RemoveUser deletes an account and signs out its sessions. Their notes
-// database is left for the caller to deal with. The last admin can't be
-// removed: someone must be able to change server-wide settings.
+// database is left for the caller to deal with.
 func (s *Service) RemoveUser(ctx context.Context, username string) (User, error) {
+	return s.remove(ctx, `username_key = ?`, usernameKey(username))
+}
+
+func (s *Service) remove(ctx context.Context, where string, arg any) (User, error) {
 	var u User
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		err := tx.QueryRowContext(ctx, `SELECT id, username, is_admin, created_at FROM users WHERE username_key = ?`,
-			usernameKey(username)).Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt)
+		err := tx.QueryRowContext(ctx, `SELECT id, username, is_admin, created_at FROM users WHERE `+where,
+			arg).Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNoUser
 		}
@@ -264,18 +293,29 @@ func (s *Service) RemoveUser(ctx context.Context, username string) (User, error)
 			return err
 		}
 		if u.IsAdmin {
-			var admins int
-			if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM users WHERE is_admin`).Scan(&admins); err != nil {
+			if err := keepAnAdmin(ctx, tx, u.ID); err != nil {
 				return err
-			}
-			if admins == 1 {
-				return ErrLastAdmin
 			}
 		}
 		_, err = tx.ExecContext(ctx, `DELETE FROM users WHERE id = ?`, u.ID)
 		return err
 	})
 	return u, err
+}
+
+// keepAnAdmin refuses to take admin away from userID when no other admin
+// could sign in: someone must be able to change server-wide settings.
+// Invited admins don't count until they've chosen a password.
+func keepAnAdmin(ctx context.Context, tx *sql.Tx, userID int64) error {
+	var others int
+	if err := tx.QueryRowContext(ctx,
+		`SELECT count(*) FROM users WHERE is_admin AND password_hash != '' AND id != ?`, userID).Scan(&others); err != nil {
+		return err
+	}
+	if others == 0 {
+		return ErrLastAdmin
+	}
+	return nil
 }
 
 // UserByName returns an account by username, ignoring case.
@@ -295,6 +335,7 @@ func (s *Service) user(ctx context.Context, where string, arg any) (u User, hash
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrNoUser
 	}
+	u.Pending = hash == ""
 	return
 }
 
@@ -308,8 +349,8 @@ func (s *Service) Login(ctx context.Context, username, password, kind, name stri
 		return Credentials{}, ErrInvalidCredentials
 	}
 	u, hash, err := s.userByName(ctx, username)
-	userOK := err == nil
-	if errors.Is(err, ErrNoUser) {
+	userOK := err == nil && hash != ""
+	if errors.Is(err, ErrNoUser) || (err == nil && hash == "") {
 		hash = dummyHash
 	} else if err != nil {
 		return Credentials{}, err

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
+import { copyText } from './copy'
 import styles from './code.module.css'
 
-/** A shell command to run on the server, with a copy button where the browser allows it. */
+/** A shell command to run on the server, with a copy button. */
 export function Command({ command, tone = 'light' }: { command: string; tone?: 'light' | 'dark' }) {
   const [copied, setCopied] = useState(false)
-  // The Clipboard API only exists in secure contexts (https or localhost).
-  const canCopy = typeof navigator !== 'undefined' && navigator.clipboard !== undefined
 
   useEffect(() => {
     if (!copied) return
@@ -19,18 +18,16 @@ export function Command({ command, tone = 'light' }: { command: string; tone?: '
         {tone === 'dark' && <span className={styles.dim}>$ </span>}
         {command}
       </code>
-      {canCopy && (
-        <button
-          type="button"
-          className={styles.copy}
-          onClick={() => {
-            void navigator.clipboard.writeText(command).then(() => setCopied(true))
-          }}
-        >
-          {copied ? 'Copied' : 'Copy'}
-          <span className="visually-hidden"> command</span>
-        </button>
-      )}
+      <button
+        type="button"
+        className={styles.copy}
+        onClick={() => {
+          void copyText(command).then(setCopied)
+        }}
+      >
+        {copied ? 'Copied' : 'Copy'}
+        <span className="visually-hidden"> command</span>
+      </button>
     </div>
   )
 }

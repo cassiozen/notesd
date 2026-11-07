@@ -19,10 +19,13 @@ description: What the server can read, how accounts and sessions are protected, 
 - Each account's notes, search index, spaces, locked-notes keyring and pictures are in their own
   database file. A request only ever opens the file of the account it's signed in as, so one
   account can't reach another's notes, even through a bug in a single check.
-- Accounts are added on the server with `notesd add-user`. There's no public sign-up and no email,
-  so a forgotten password is reset on the server, with `notesd reset-password`.
-- **Admins** can change settings that apply to the whole server (email) and update the server
-  from Settings. The first account is one. Admins can't see other accounts' notes.
+- Accounts are added by an admin, in the web app or with `notesd add-user`. There's no public
+  sign-up and no email. An admin invites someone with a **setup link** they send themselves: it
+  works once, for 7 days, and only a hash of it is kept on the server. A forgotten password is
+  reset the same way, or on the server with `notesd reset-password`. Whoever has a link can set
+  that account's password, so it should be sent privately.
+- **Admins** can change settings that apply to the whole server (email), manage accounts, and
+  update the server from Settings. The first account is one. Admins can't see other accounts' notes.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
   reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
   and create the account before putting HTTPS in front. On a hosting platform, create it right

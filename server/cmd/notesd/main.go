@@ -215,7 +215,11 @@ func run(args []string) error {
 			if u.IsAdmin {
 				role = "admin"
 			}
-			fmt.Printf("%-24s %-6s created %s\n", u.Username, role, time.UnixMilli(u.CreatedAt).Format(time.DateOnly))
+			state := ""
+			if u.Pending {
+				state = " (invited; no password yet)"
+			}
+			fmt.Printf("%-24s %-6s created %s%s\n", u.Username, role, time.UnixMilli(u.CreatedAt).Format(time.DateOnly), state)
 		}
 	case "remove-user":
 		u, err := authSvc.RemoveUser(ctx, o.username)

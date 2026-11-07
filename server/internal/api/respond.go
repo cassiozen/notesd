@@ -154,6 +154,14 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusConflict, "already_set_up", "the owner account already exists")
 	case errors.Is(err, auth.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "session not found")
+	case errors.Is(err, auth.ErrNoUser):
+		writeError(w, http.StatusNotFound, "not_found", "user not found")
+	case errors.Is(err, auth.ErrLinkInvalid):
+		writeError(w, http.StatusGone, "link_invalid", err.Error())
+	case errors.Is(err, auth.ErrSelf):
+		writeError(w, http.StatusConflict, "cannot_change_self", err.Error())
+	case errors.Is(err, auth.ErrLastAdmin):
+		writeError(w, http.StatusConflict, "last_admin", err.Error())
 	case errors.Is(err, r.Context().Err()) && r.Context().Err() != nil:
 		// The client went away; nobody will read this.
 		writeError(w, 499, "client_closed_request", "")

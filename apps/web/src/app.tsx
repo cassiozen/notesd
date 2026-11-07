@@ -3,9 +3,11 @@ import { AuthLayout } from './auth/auth-layout'
 import { Login, LoginForm } from './auth/login'
 import { Onboarding } from './auth/onboarding'
 import { hadSession } from './auth/session-hint'
+import { SETUP_PATH, SetupLinkPage } from './auth/setup-link'
 import { Shell } from './notes/shell'
 import { useNotesSourceVersion } from './notes/source'
 import { ShellSkeleton } from './notes/shell-skeleton'
+import { usePathname } from './router'
 import { Button } from './ui/button'
 import { Dialog } from './ui/dialog'
 import { Kicker } from './ui/kicker'
@@ -22,6 +24,8 @@ export function App() {
 function AuthGate() {
   const { state, retry } = useAuth()
   const notesVersion = useNotesSourceVersion()
+  // Whoever is or isn't signed in here: a setup link is for the person it was sent to.
+  if (usePathname() === SETUP_PATH && state.status !== 'setup') return <SetupLinkPage />
   switch (state.status) {
     case 'loading':
       // Signed out last time: blank beats a shell that turns into the login screen.
