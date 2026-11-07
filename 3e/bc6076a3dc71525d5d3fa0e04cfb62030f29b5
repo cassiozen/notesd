@@ -1,0 +1,60 @@
+apps/ios/Notes/Editor/FormattingBar.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 105,107,153
+apps/ios/Notes/Notes/NotesListView.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 97,353,474
+apps/ios/Notes/UI/SpaceThemes.swift
+  s_30a2fddaf04cb6::t_841b42c71d204f 1-988
+apps/ios/Notes/App/NotesApp.swift
+  s_30a2fddaf04cb6::t_8227dd67a32f43 69
+  s_30a2fddaf04cb6::t_60cdfcbb2ad06a 27-32,34,52,55,64-68,70-77
+  s_30a2fddaf04cb6::t_0d09b1b4424916 78-79
+apps/ios/Notes/Locks/LockViews.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 59,334
+apps/ios/Notes/Settings/IntegrationsSection.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 381
+apps/ios/Notes/Settings/SpacesSection.swift
+  s_30a2fddaf04cb6::t_6987ee2db4ad2d 73,104-105,117-118
+apps/ios/Notes/Settings/LockedNotesSection.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 35
+docs/contributing/architecture.md
+  s_30a2fddaf04cb6::t_d6bc19c8743062 440
+apps/ios/Notes/Editor/BlockLayoutFragment.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 44
+apps/ios/Notes/Editor/SideFormattingTools.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 113,162
+apps/ios/Notes/Settings/SettingsView.swift
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 84
+apps/ios/Notes/App/AppGraph.swift
+  s_30a2fddaf04cb6::t_60cdfcbb2ad06a 52-55,58-61,183-185
+  s_30a2fddaf04cb6::t_226ddc40f7879a 56-57
+scripts/space_icons.py
+  s_30a2fddaf04cb6::t_841b42c71d204f 15-16,56,580-624,707
+apps/ios/Notes/UI/Theme.swift
+  s_30a2fddaf04cb6::t_f976a5cae128ef 4-8,10-19,21-25,27,30-34,47,61-66,74-107,204-205,208,213-216
+  s_30a2fddaf04cb6::t_f7def35129dbf9 128-130,274
+  s_30a2fddaf04cb6::t_6b2d904f469460 108
+apps/ios/NotesUITests/FlowTests.swift
+  s_30a2fddaf04cb6::t_70d9139d37ef06 80-91,206,209,214-215,225,229-232
+apps/ios/Notes/Notes/SpaceIconViews.swift
+  s_30a2fddaf04cb6::t_6987ee2db4ad2d 34-35,57-64
+  s_30a2fddaf04cb6::t_f1be3d4b15e22d 56
+apps/ios/NotesTests/SpaceThemeTests.swift
+  s_30a2fddaf04cb6::t_0625bd3b226de5 1-11,14-32
+  s_30a2fddaf04cb6::t_226ddc40f7879a 12-13
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ebc6076a3dc71525d5d3fa0e04cfb62030f29b5",
+  "prompts": {},
+  "sessions": {
+    "s_30a2fddaf04cb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc8ea43-9dde-413d-92a0-83ed85e07c4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
