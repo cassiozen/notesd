@@ -137,6 +137,27 @@ describe('a space’s agent', () => {
     }
   })
 
+  it('asks before Back leaves unsaved changes', async () => {
+    const { user } = await signedIn({ seed: withAI })
+    const dialog = await openSpaceDialog(user, 'Edit Notes', 'Edit space')
+    await user.click(await within(dialog).findByRole('button', { name: 'Set up an agent…' }))
+    const page = await screen.findByRole('dialog', { name: 'Notes agent' })
+    await user.type(within(page).getByLabelText('What this space is for'), 'My notes.')
+    const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+    try {
+      const at = window.location.pathname
+      window.history.back()
+      await waitFor(() => expect(confirm).toHaveBeenCalledTimes(1))
+      // Kept: still the page, with what was typed.
+      expect(window.location.pathname).toBe(at)
+      expect(screen.getByRole('dialog', { name: 'Notes agent' })).toBeTruthy()
+      window.history.back()
+      await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Notes agent' })).toBeNull())
+    } finally {
+      confirm.mockRestore()
+    }
+  })
+
   it('shows as paused when AI is removed', async () => {
     const { user } = await signedIn({
       seed: async (s) => {

@@ -189,7 +189,7 @@ input.
 | `op` | Made to `now` |
 | --- | --- |
 | `{kind: "title", title}` | The title becomes `title`; the content is unchanged |
-| `{kind: "replace", find, replace}` | `find` must appear **exactly once** in the content (counting occurrences that don't overlap); that one is replaced with `replace`, taken literally. None, or more than one: it doesn't fit |
+| `{kind: "replace", find, replace}` | `find` must appear **exactly once** in the content (overlapping occurrences count: `aa` is in `aaa` twice); that one is replaced with `replace`, taken literally. None, or more than one: it doesn't fit |
 | `{kind: "insert", at: "start", text}` | `text` as a block of its own at the start: if the content is empty or only newlines, it becomes `text` + `\n`; otherwise `text` + `\n\n` + the content without its leading newlines |
 | `{kind: "insert", at: "end", text}` | Likewise at the end: the content without its trailing newlines + `\n\n` + `text` + `\n` (or `text` + `\n` for an empty one) |
 | `{kind: "insert", at: "cursor", text}` | `text` exactly at the editor's caret **now**, in code points, clamped to the content. No caret: it doesn't fit |

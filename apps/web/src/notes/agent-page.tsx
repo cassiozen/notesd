@@ -28,6 +28,8 @@ import styles from './agent-page.module.css'
 
 const MAX_REFERENCES = 5
 
+const discard = () => window.confirm('Discard your changes to this agent?')
+
 /** A space's agent: on or off, what the space is for, its rules, and the notes it always reads. */
 export function AgentSheet({ spaceId, onClose }: { spaceId: string; onClose: () => void }) {
   const configs = useAgentConfigs()
@@ -51,9 +53,22 @@ export function AgentSheet({ spaceId, onClose }: { spaceId: string; onClose: () 
   }
 
   const close = () => {
-    if (dirty && !window.confirm('Discard your changes to this agent?')) return
+    if (dirty && !discard()) return
     onClose()
   }
+
+  // Browser Back leaves without close(): it asks too, and puts the page back if the answer is no. The
+  // router hears the same popstate first, but reads the address only when it renders, by then this one.
+  useEffect(() => {
+    if (!dirty) return
+    const here = window.location.pathname
+    const state: unknown = window.history.state
+    const onPop = () => {
+      if (window.location.pathname !== here && !discard()) window.history.pushState(state, '', here)
+    }
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [dirty])
 
   async function save(e?: FormEvent) {
     e?.preventDefault()

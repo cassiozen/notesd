@@ -18,6 +18,8 @@
   margin: 0;
   font: 400 38px/1 var(--font-serif);
   letter-spacing: -0.015em;
+  /* A space's name can be one 64-character word. */
+  overflow-wrap: anywhere;
 }
 
 .actions {
