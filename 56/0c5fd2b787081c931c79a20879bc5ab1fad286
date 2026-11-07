@@ -71,6 +71,7 @@ apps/android/app/src/main/kotlin/notes/app/notes/Spaces.kt
   s_a0fc22670a88c5::t_4c9acc789f3efb 7-8,33,200,202,204,218-221,227-233,236-244
   s_a0fc22670a88c5::t_733e038690915c 164-165,167-168,173-187
   s_a0fc22670a88c5::t_61467e2c6e205c 56,59-60,298-303,305-323
+  s_a0fc22670a88c5::t_6f40eb83fc9b2e 235
 apps/android/app/src/main/res/drawable/trait_published.xml
   s_a0fc22670a88c5::t_175097b239cba9 1-11
 apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
@@ -116,6 +117,7 @@ apps/ios/Notes/Notes/SpaceSwitcher.swift
   s_a0fc22670a88c5::t_2f5590f1ab6397 1-47,51-54,57-82,86-117,119-121,128,137-205,209-225,227-241,244-293,296-312
   s_a0fc22670a88c5::t_8720ad78a03610 122
   s_a0fc22670a88c5::t_c5d9da94dcc888 48-50,55-56,118,242-243,294-295
+  s_a0fc22670a88c5::t_6a252b23425b3d 206-208,226
 apps/web/src/notes/note-list.tsx
   s_a0fc22670a88c5::t_2ebbde2ca651d2 14-18,57,212,292,328
   s_a0fc22670a88c5::t_ba524cd79d69a5 120-131
@@ -130,6 +132,7 @@ apps/android/app/src/main/kotlin/notes/app/notes/SpaceSwitcher.kt
   s_a0fc22670a88c5::t_5742b5a183d12d 361-366
   s_a0fc22670a88c5::t_0c78f4d6a357f5 1-140,148-217,219-236,238-242,247-252,255,258,272-273,275-278,280-281,284-310,314-360,367-384,386-419
   s_a0fc22670a88c5::t_7a5fce61336e19 141-147
+  s_a0fc22670a88c5::t_6a252b23425b3d 311-313,385
 apps/android/app/src/main/kotlin/notes/app/notes/TagTree.kt
   s_a0fc22670a88c5::t_4190359b2c849f 152-153,208
   s_a0fc22670a88c5::t_5742b5a183d12d 154-159,209-215
@@ -155,6 +158,7 @@ apps/android/app/src/test/kotlin/notes/app/notes/SpacesFlowTest.kt
   s_a0fc22670a88c5::t_4d43b5643614ed 150-157,203-204,239,255
   s_a0fc22670a88c5::t_e148c871f85716 208-210
   s_a0fc22670a88c5::t_6d691d33177e06 201,225,258,260,267-270,273
+  s_a0fc22670a88c5::t_7878497bdb6e7d 149
 apps/web/src/settings/space-info.module.css
   s_a0fc22670a88c5::t_c019da555b3446 1-151
   s_a0fc22670a88c5::t_f74382a11c1dcc 152-157
@@ -163,9 +167,11 @@ apps/web/src/notes/space-menu.module.css
   s_a0fc22670a88c5::t_0778509d7627da 51-55,66-67,73-124,126-133,136-151,153-164,168-207,211-212,217-222,226-245,247-250,252-256,259-269,271-293,295-301,307-327
   s_a0fc22670a88c5::t_b8917612d1d749 345-351
   s_a0fc22670a88c5::t_40284b7e2f3412 294
+  s_a0fc22670a88c5::t_6a252b23425b3d 165-167,246
 apps/web/src/settings/space-info.tsx
   s_a0fc22670a88c5::t_bf98beb60e253e 87-102
   s_a0fc22670a88c5::t_33cf418c80c9bb 1-5,7-63,65-86,103-182,185-210
+  s_a0fc22670a88c5::t_9d14478f78d898 6,64,183-184
 apps/web/src/notes/space-menu.tsx
   s_a0fc22670a88c5::t_9401dc724524b6 87-89,106-107,121,128
   s_a0fc22670a88c5::t_3e95cf816a6042 5,26,33,59
@@ -178,6 +184,7 @@ apps/web/src/notes/share.tsx
   s_a0fc22670a88c5::t_2402d530284421 4,16,18,33-34,56,254,257-270,278,288-289,303-344
   s_a0fc22670a88c5::t_f204ff3cf666e3 256
   s_a0fc22670a88c5::t_ee5b956c659267 345-350
+  s_a0fc22670a88c5::t_6f40eb83fc9b2e 300-302
 apps/ios/Notes/App/AppGraph.swift
   s_a0fc22670a88c5::t_834341c5e5e3ef 184-189
   s_a0fc22670a88c5::t_e42774b1b598a5 190-191
@@ -230,6 +237,7 @@ apps/web/src/notes/traits.tsx
 apps/web/src/settings/settings.module.css
   s_a0fc22670a88c5::t_e51af7586e0d09 773
   s_a0fc22670a88c5::t_eacecf43a12510 750,769-772,774-799
+  s_a0fc22670a88c5::t_f52406939a7fad 768
 apps/android/app/src/main/res/drawable/trait_unknown.xml
   s_a0fc22670a88c5::t_175097b239cba9 1-11
 apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
@@ -257,6 +265,8 @@ apps/web/src/api/spaces.test.ts
   s_a0fc22670a88c5::t_e53ef87e6c37f9 1-25
 apps/android/app/src/test/kotlin/notes/app/SetTraits.kt
   s_a0fc22670a88c5::t_2c0e767174272b 1-11
+apps/ios/NotesCore/Sources/NotesCore/DB/Migrations.swift
+  s_a0fc22670a88c5::t_1642fe6d1a686b 11
 ---
 {
   "schema_version": "authorship/3.0.0",
