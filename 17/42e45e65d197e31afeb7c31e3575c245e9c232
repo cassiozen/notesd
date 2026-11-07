@@ -1,0 +1,98 @@
+docs/reference/cli.md
+  s_72b1d72037b200::t_1cd806dfd04109 109-110,118-119,137-139
+server/internal/auth/auth.go
+  s_72b1d72037b200::t_c61adb7672ec19 43,156
+  s_72b1d72037b200::t_f312c0386c60ca 148,150-151,157-159,165,177-178
+  s_72b1d72037b200::t_b8d4ab29e6192b 45-46,73-80,131-132,184,213-215,243-246,260-262,270,279,281-284,287-288,296,306-320,338,352-353
+  s_72b1d72037b200::t_493f0506c2b58a 138,160-164,166-176,179-182
+  s_72b1d72037b200::t_494da4f2ae9d0c 183,185
+apps/web/src/api/users.ts
+  s_72b1d72037b200::t_1c6f68b78a15b9 1-22
+apps/web/src/app.tsx
+  s_72b1d72037b200::t_be2847c60b8acc 6,10,27-28
+apps/web/src/ui/copy.ts
+  s_72b1d72037b200::t_450d1ec371308b 28
+  s_72b1d72037b200::t_98bce1c35febeb 1-27,29-39
+apps/web/src/settings/people-link.ts
+  s_72b1d72037b200::t_5b3bdddddacaf0 1-17,19-20,24
+  s_72b1d72037b200::t_a40914a0c09b31 18,21-23
+docs/reference/api.md
+  s_72b1d72037b200::t_0b7f4c8ffe899c 68-69,81,174-175,381-404,440,447-448,459
+docs/contributing/settings-guidelines.md
+  s_72b1d72037b200::t_1cd806dfd04109 72
+docs/guides/self-hosting/users.md
+  s_72b1d72037b200::t_1cd806dfd04109 34-60,70
+apps/web/src/settings/people.tsx
+  s_72b1d72037b200::t_5ee4795f7f0d3a 19,396,418,427-438
+  s_72b1d72037b200::t_b765494a1dc185 1-18,20-395,397-417,419-426,439-536
+apps/web/src/auth/setup-link.tsx
+  s_72b1d72037b200::t_8926b42363b2bd 44-46,50,83,128-136
+  s_72b1d72037b200::t_15cadb88feae37 1-43,47-49,51-82,84-127,137-252
+apps/web/src/settings/settings.module.css
+  s_72b1d72037b200::t_bdc9b3798ae35b 750-778
+docs/faq.md
+  s_72b1d72037b200::t_1cd806dfd04109 213-216,226-229
+server/internal/api/people_test.go
+  s_72b1d72037b200::t_d6e3cbebe951f1 1-273
+server/internal/api/api.go
+  s_72b1d72037b200::t_2ac9827baff10e 78-79,98-103,229,233
+apps/web/src/notes/share.tsx
+  s_72b1d72037b200::t_7be34ec361b507 10
+  s_72b1d72037b200::t_5ee4795f7f0d3a 171
+apps/web/src/ui/code.tsx
+  s_72b1d72037b200::t_5ee4795f7f0d3a 2,5,21-30
+apps/web/src/settings/settings.tsx
+  s_72b1d72037b200::t_0e46c9e7509e96 26,374,602
+server/internal/api/user_handlers.go
+  s_72b1d72037b200::t_36cb5e0c569a8e 1-161
+server/internal/auth/users.go
+  s_72b1d72037b200::t_98bdc3c0c90e73 1-36,39-160
+  s_72b1d72037b200::t_c61adb7672ec19 37-38
+server/migrations/system/0002_setup_links.sql
+  s_72b1d72037b200::t_3f97f174e65d9a 1-2,5
+  s_72b1d72037b200::t_2774cfeafbdfb2 3-4,6-8
+apps/web/src/api/client.ts
+  s_72b1d72037b200::t_57f07eba43a5c4 71,107
+apps/web/e2e/people.spec.ts
+  s_72b1d72037b200::t_66f3968d014666 1-8,10-28,31-46,49-60,89-96
+  s_72b1d72037b200::t_97020d6ee1216c 9,29-30,61-71,73-88
+  s_72b1d72037b200::t_721db5a5bff5d6 47-48
+  s_72b1d72037b200::t_e48cf669211110 72
+apps/web/src/settings/people-link.test.ts
+  s_72b1d72037b200::t_a40914a0c09b31 26,28-30
+  s_72b1d72037b200::t_5b3bdddddacaf0 1-25,27,31-36
+apps/web/src/ui/field.tsx
+  s_72b1d72037b200::t_7be34ec361b507 1,5
+server/internal/api/respond.go
+  s_72b1d72037b200::t_2ac9827baff10e 157-164
+apps/web/src/api/types.ts
+  s_72b1d72037b200::t_1c6f68b78a15b9 87-88,94-107
+  s_72b1d72037b200::t_c44d6a2292bd6a 108
+docs/contributing/architecture.md
+  s_72b1d72037b200::t_1cd806dfd04109 532-533
+docs/concepts/security-model.md
+  s_72b1d72037b200::t_1cd806dfd04109 22-28
+apps/web/src/auth/auth-context.tsx
+  s_72b1d72037b200::t_dc004d67580021 22-23,86,146
+apps/web/src/ui/copy.test.ts
+  s_72b1d72037b200::t_d3cf6a9c691e06 63
+  s_72b1d72037b200::t_4faa0ded72e63e 1-62,64-80
+server/cmd/notesd/main.go
+  s_72b1d72037b200::t_91386d3bb6c776 218-222
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1742e45e65d197e31afeb7c31e3575c245e9c232",
+  "prompts": {},
+  "sessions": {
+    "s_72b1d72037b200": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d19a40f5-55e1-4a06-963d-87c03b88cc60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
