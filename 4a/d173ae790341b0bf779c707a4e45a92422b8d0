@@ -1,0 +1,25 @@
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_2aa50c392ec8f5 494-496
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_97867d31f4256e 20,85-88,90-93
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_462e734e3875b4 835-864
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_75e15ca024a61b 39,41,43-44,50,182-186,200,203,222-223,285-288
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4ad173ae790341b0bf779c707a4e45a92422b8d0",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
