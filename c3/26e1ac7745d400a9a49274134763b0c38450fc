@@ -1,0 +1,42 @@
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_8e1d37af026457::t_41f4a16c744ac2 454
+apps/android/app/src/test/kotlin/notes/app/notes/MergeUndoFlowTest.kt
+  s_8e1d37af026457::t_edf6716bfa71dc 61-62
+  s_8e1d37af026457::t_41f4a16c744ac2 33,48
+apps/web/src/notes/note-pane.tsx
+  s_8e1d37af026457::t_41f4a16c744ac2 390-391,396-401
+  s_8e1d37af026457::t_4183b0755c8bd2 267-269
+apps/web/test/notes.test.tsx
+  s_8e1d37af026457::t_41f4a16c744ac2 242
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_8e1d37af026457::t_41f4a16c744ac2 368
+apps/web/src/notes/saver.ts
+  s_8e1d37af026457::t_41f4a16c744ac2 711-713
+apps/web/README.md
+  s_8e1d37af026457::t_ff22097757bf02 189-191
+  s_8e1d37af026457::t_b6eb0997efe2b3 180-183,188
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/BodyMergeSyncTest.kt
+  s_8e1d37af026457::t_76d5f9252095a7 138-148
+  s_8e1d37af026457::t_209e6275e91515 137
+apps/web/src/offline/protocol.ts
+  s_8e1d37af026457::t_41f4a16c744ac2 91
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_8e1d37af026457::t_41f4a16c744ac2 417
+  s_8e1d37af026457::t_de35a228fe35a7 418
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c326e1ac7745d400a9a49274134763b0c38450fc",
+  "prompts": {},
+  "sessions": {
+    "s_8e1d37af026457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ed58fb-dbc1-4c4d-a767-e89a079555f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
