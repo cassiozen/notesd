@@ -1,0 +1,21 @@
+apps/web/src/notes/agent-examples.ts
+  s_cc6cacc0a6fc01::t_9cc115e5a0cf1c 20,22
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_ef363a150de6b8 196
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fd1fe1755fcd452d7a5dbe3e58ae7bcfc1e40496",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
