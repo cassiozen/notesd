@@ -1,0 +1,51 @@
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_708feebd372f22 59-63,110,194-195,284-286,302-305,308
+apps/web/src/editor/agent-overlays.test.ts
+  s_cc6cacc0a6fc01::t_48044e8e85f895 4,42-63
+apps/web/src/editor/agent-overlays.ts
+  s_cc6cacc0a6fc01::t_532b35c917ee61 7,51-70,72-74,77-101
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_6787ded3634672 24,285,415-417,426,434-437,442,447-449,452-455
+apps/web/test/agent-overlays.test.tsx
+  s_cc6cacc0a6fc01::t_6813780e26b23d 92-114
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_78e434420f463e 317-345
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_d66da58be729b0 240-242,246-258
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_3dee15d8cf9d25 75-76
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_421c28512d0347 466,484-485
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_1159f244b7c1e8 12,84-85
+server/internal/agent/overlay_tools.go
+  s_cc6cacc0a6fc01::t_26bca2aa91f3b9 177
+server/internal/agent/overlays.go
+  s_cc6cacc0a6fc01::t_b054ca1569ae3d 192-206
+server/internal/agent/overlays_test.go
+  s_cc6cacc0a6fc01::t_b9e944696b9ef4 302-339
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_fa539f00691e3e 215-218
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_998a6f0e49e357 165-170
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_73a26a1ebeff81 106-107,115,117-126,128-129,140,197-216
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_3b46de8d528eda 560-562,566
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "822d753f32d789a42b7f45bd758c16bac02f9f90",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
