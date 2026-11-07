@@ -1,36 +1,31 @@
-import { useEffect, useState } from 'react'
+import { useRef } from 'react'
+import { useCopy } from './copy'
 import styles from './code.module.css'
 
-/** A shell command to run on the server, with a copy button where the browser allows it. */
+/** A shell command to run on the server, with a copy button. */
 export function Command({ command, tone = 'light' }: { command: string; tone?: 'light' | 'dark' }) {
-  const [copied, setCopied] = useState(false)
-  // The Clipboard API only exists in secure contexts (https or localhost).
-  const canCopy = typeof navigator !== 'undefined' && navigator.clipboard !== undefined
-
-  useEffect(() => {
-    if (!copied) return
-    const t = setTimeout(() => setCopied(false), 1600)
-    return () => clearTimeout(t)
-  }, [copied])
+  const [copied, copy] = useCopy()
+  const text = useRef<HTMLSpanElement>(null)
 
   return (
     <div className={[styles.command, styles[tone]].join(' ')}>
       <code>
         {tone === 'dark' && <span className={styles.dim}>$ </span>}
-        {command}
+        <span ref={text}>{command}</span>
       </code>
-      {canCopy && (
-        <button
-          type="button"
-          className={styles.copy}
-          onClick={() => {
-            void navigator.clipboard.writeText(command).then(() => setCopied(true))
-          }}
-        >
-          {copied ? 'Copied' : 'Copy'}
-          <span className="visually-hidden"> command</span>
-        </button>
-      )}
+      <button
+        type="button"
+        className={styles.copy}
+        onClick={() => {
+          void copy(command).then((ok) => {
+            // Selected, for ⌘C, if the browser refused.
+            if (!ok && text.current) window.getSelection()?.selectAllChildren(text.current)
+          })
+        }}
+      >
+        {copied ? 'Copied' : 'Copy'}
+        <span className="visually-hidden"> command</span>
+      </button>
     </div>
   )
 }

@@ -65,7 +65,8 @@ other way round. These rules keep them working together.
 ### Authentication
 
 There are two kinds of session. Get either from [`POST /auth/login`](#auth); every endpoint
-except `/auth/status`, `/auth/setup`, `/auth/login` and `/auth/refresh` needs one.
+except `/auth/status`, `/auth/setup`, `/auth/login`, `/auth/refresh` and the two
+[`/auth/setup-link`](#people) ones needs one.
 
 **Browsers** (`"client": "web"`) get an HttpOnly session cookie that expires after 30 days
 without use, and a `csrfToken`. Every request other than `GET`, `HEAD` and `OPTIONS` must send it
@@ -77,7 +78,7 @@ that lasts 180 days from its last use. Send the access token as `Authorization: 
 and trade the refresh token for a new one at [`POST /auth/refresh`](#auth). The refresh token
 isn't rotated, so retrying a refresh whose response was lost is safe.
 
-**Rate limit.** After 10 failed sign-ins (or password changes) in 15 minutes from one address,
+**Rate limit.** After 10 failed sign-ins (or password changes, or unknown setup links) in 15 minutes from one address,
 those requests get `429 rate_limited` with `Retry-After`. Behind a reverse proxy every client has
 the proxy's address, so they share the limit.
 
@@ -170,7 +171,8 @@ Paths are relative to `/api/v1`.
 | `DELETE` | `/auth/sessions/{id}` | → `204`. Signs that session out |
 
 Usernames are 1–64 characters without control characters; passwords at least 8 characters.
-Accounts after the first are added with [`notesd add-user`](cli.md#add-user).
+Accounts after the first are added by an admin, from [People](#people) or with
+[`notesd add-user`](cli.md#add-user).
 
 #### Session response
 
@@ -376,6 +378,31 @@ account. `apiKey` starts with `re_`, and can be left out to keep the saved one. 
 returned: `keyHint` is its last 4 characters. `editable` says whether this account is an admin;
 other accounts get `403 admin_only` when they change it.
 
+### People
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `GET` | `/users` | → `{users: [{id, username, isAdmin, createdAt, pending, linkExpiresAt?}]}`, oldest first. Admins only |
+| `POST` | `/users` | `{username}` → `201 {user, link: {token, expiresAt}}`. Invites someone. Admins only |
+| `POST` | `/users/{id}/link` | → `{user, link: {token, expiresAt}}`, a new setup link replacing the account's last, and the account as it is now. Admins only |
+| `PATCH` | `/users/{id}` | `{isAdmin}` → the account. Admins only |
+| `DELETE` | `/users/{id}` | → `204`. Removes the account and signs it out. Admins only |
+| `POST` | `/auth/setup-link` | `{token}` → `{username, pending}`: whose the link is. No session needed |
+| `POST` | `/auth/setup-link/use` | `{token, password}` → `204`. Sets the password and signs the account out everywhere; sign in after. No session needed |
+
+**Invited** accounts (`pending`) have no password until their setup link is used, so they can't
+sign in. A **setup link** works once, for 7 days, and an account has at most one: a new one, or
+the account's password changing, ends the last. Making one for an account that has a password
+changes nothing until it's used, so it doubles as a password reset; the `user` that comes back
+with it says which (`pending`), even if the app's list is older. Only a hash of the token is
+stored, so it's returned once; the app builds the URL to send (the web app's is
+`<its address>/setup#<token>`). A used, replaced or expired link is `410 link_invalid`.
+
+An admin can't change, remove or make a link for their own account here (`409
+cannot_change_self`), and the server always keeps an admin who can sign in (`409 last_admin`).
+Removing an account leaves its notes database on disk, as
+[`remove-user`](cli.md#remove-user) does.
+
 ### Updates
 
 | Method | Path | Response |
@@ -411,13 +438,15 @@ Outside `/api/v1`, need no session, and expose no data:
 | `csrf_failed` | 403 | A browser request without the right `X-CSRF-Token`, or from another origin |
 | `admin_only` | 403 | Only an admin can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
-| `not_found` | 404 | No such note, session, lock key or image |
+| `not_found` | 404 | No such note, session, lock key, image or account |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
 | `already_set_up` | 409 | The server already has an account |
 | `username_taken` | 409 | Another account has this username |
+| `cannot_change_self` | 409 | An admin can't change, remove or make a setup link for their own account from People |
+| `last_admin` | 409 | That would leave no admin who can sign in |
 | `space_not_empty` | 409 | The space still holds notes; see `count` |
 | `space_default` | 409 | The default space can't be deleted |
 | `no_lock_password` | 409 | The keyring's first entry must be the password |
@@ -428,6 +457,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `generation_mismatch` | 409 | The server was restored; reconcile in full |
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |
+| `link_invalid` | 410 | The setup link was used, replaced or has expired |
 | `image_too_large` | 413 | Images can be up to 10 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |

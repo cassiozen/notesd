@@ -75,6 +75,8 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/v1/auth/setup", s.setup)
 	mux.HandleFunc("POST /api/v1/auth/login", s.login)
 	mux.HandleFunc("POST /api/v1/auth/refresh", s.refresh)
+	mux.HandleFunc("POST /api/v1/auth/setup-link", s.peekSetupLink)
+	mux.HandleFunc("POST /api/v1/auth/setup-link/use", s.useSetupLink)
 
 	// Authenticated endpoints.
 	mux.Handle("POST /api/v1/auth/logout", s.authed(s.logout))
@@ -92,6 +94,12 @@ func (s *Server) Handler() http.Handler {
 
 	mux.Handle("GET /api/v1/update", s.authed(s.updateStatus))
 	mux.Handle("POST /api/v1/update", s.authed(adminOnly(s.requestUpdate)))
+
+	mux.Handle("GET /api/v1/users", s.authed(adminOnly(s.listUsers)))
+	mux.Handle("POST /api/v1/users", s.authed(adminOnly(s.inviteUser)))
+	mux.Handle("POST /api/v1/users/{id}/link", s.authed(adminOnly(s.newSetupLink)))
+	mux.Handle("PATCH /api/v1/users/{id}", s.authed(adminOnly(s.updateUser)))
+	mux.Handle("DELETE /api/v1/users/{id}", s.authed(adminOnly(s.removeUser)))
 
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
 	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))
@@ -218,11 +226,11 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 }
 
 // adminOnly limits a handler behind authed to admins: server-wide settings
-// apply to every user.
+// and accounts concern every user.
 func adminOnly(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if !sessionFrom(r.Context()).IsAdmin {
-			writeError(w, http.StatusForbidden, "admin_only", "only an admin can change this setting")
+			writeError(w, http.StatusForbidden, "admin_only", "only an admin can do this")
 			return
 		}
 		h(w, r)

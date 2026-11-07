@@ -31,7 +31,36 @@ This first account is an admin: it can set up [emailing notes](../using/email.md
 
 ## Adding people
 
-notesd can hold a few accounts, such as for family or friends. Each has its own notes, spaces, locked notes and pictures, which no other account can see. Accounts are added on the server, not from the apps:
+notesd can hold a few accounts, such as for family or friends. Each has its own notes, spaces, locked notes and pictures, which no other account can see.
+
+### From the web app
+
+Admins see **People** in **Settings → Server**, in the web app and the Mac app:
+
+1. Choose **Invite someone…** and enter the username they'll sign in with.
+2. Send them the link you get, however you like: a message, an email. It works once, for 7 days.
+3. They open it, choose a password, and they're signed in. From then on they can sign in on a phone too.
+
+The link uses the address you opened notesd at. Open it at the address the other person will use
+(your domain, say, or the machine's name on your network), not `localhost`, or the link won't work
+for them. An invitation shows in the list until it's used; **New invite link** replaces a lost or
+expired one.
+
+For someone who has set their password, the **…** menu has:
+
+- **Reset password…** for someone who forgot theirs: a link like the invitation's, where they
+  choose a new one. Their old password works until then, and using the link signs them out everywhere.
+- **Make admin** / **Remove admin**: admins change server-wide settings such as email, and manage
+  people. The server always keeps one admin who can sign in.
+- **Remove from server…** signs them out everywhere and deletes the account. Their notes stay in
+  `users/<id>.db` on the server, as with `remove-user` below.
+
+For an invitation still waiting, it has **New invite link** and **Cancel invitation…**, which
+ends the link and frees the username.
+
+You can't change or remove your own account there; another admin can, or the command line.
+
+### From the command line
 
 ```bash
 docker exec -it notesd notesd add-user --username sam
@@ -41,7 +70,7 @@ notesd add-user --username sam
 
 It asks for the new account's password (or reads `NOTESD_PASSWORD`). Add `--admin` to let them change server-wide settings too. They can then sign in from the web app or a phone.
 
-notesd doesn't send password-reset emails. If someone forgets their password, set a new one for them. That signs them out everywhere:
+notesd doesn't send password-reset emails. If someone forgets their password, an admin can send them a reset link from People, or set a new one on the server. That signs them out everywhere:
 
 ```bash
 docker exec -it notesd notesd reset-password --username sam

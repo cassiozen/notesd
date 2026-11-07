@@ -1,0 +1,59 @@
+import { useCallback, useEffect, useState } from 'react'
+
+/**
+ * Copies text, reporting whether it worked. Call it straight from a click: the fallback needs the
+ * click's user activation.
+ *
+ * navigator.clipboard only exists in secure contexts (https, localhost), and notesd is often reached
+ * over plain http on a home network, so it falls back to execCommand('copy'), which works there.
+ */
+export async function copyText(text: string): Promise<boolean> {
+  // Not awaited before the fallback when there's no API: Safari only allows it in the click's own task.
+  if (navigator.clipboard === undefined) return legacyCopy(text)
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return legacyCopy(text)
+  }
+}
+
+function legacyCopy(text: string): boolean {
+  const focused = document.activeElement instanceof HTMLElement ? document.activeElement : null
+  const field = document.createElement('textarea')
+  field.value = text
+  field.readOnly = true
+  field.setAttribute('aria-hidden', 'true')
+  Object.assign(field.style, { position: 'fixed', top: '0', left: '0', opacity: '0', pointerEvents: 'none' })
+  // A modal <dialog> makes everything outside it inert, and an inert field can't be selected. Safari doesn't
+  // focus a clicked button, so the focused element doesn't always say which dialog: the top one open does.
+  const dialogs = document.querySelectorAll('dialog[open]')
+  ;(focused?.closest('dialog') ?? dialogs[dialogs.length - 1] ?? document.body).append(field)
+  field.focus({ preventScroll: true })
+  field.select()
+  let copied = false
+  try {
+    copied = document.execCommand('copy')
+  } catch {
+    copied = false
+  }
+  field.remove()
+  focused?.focus({ preventScroll: true })
+  return copied
+}
+
+/** A Copy button's state: [copied, for a moment after it worked; copy, reporting whether it did]. */
+export function useCopy(): [boolean, (text: string) => Promise<boolean>] {
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1600)
+    return () => clearTimeout(t)
+  }, [copied])
+  const copy = useCallback(async (text: string) => {
+    const ok = await copyText(text)
+    setCopied(ok)
+    return ok
+  }, [])
+  return [copied, copy]
+}

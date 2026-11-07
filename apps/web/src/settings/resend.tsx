@@ -1,7 +1,7 @@
 import { useId, useState, type ClipboardEvent, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { settings } from '../api/settings'
-import { genericMessage } from '../auth/errors'
+import { genericMessage, sentence } from '../auth/errors'
 import { retryEmailSettings, setEmailSettings, useEmailSettings, useEmailSettingsFailed } from '../notes/email-settings'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -66,11 +66,6 @@ export function formatFrom(name: string, address: string): string {
 }
 
 type Errors = Partial<Record<'apiKey' | 'address' | 'form', string>>
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
-}
 
 /** The server's refusal, on the field it's about. */
 function saveErrors(err: unknown): Errors {

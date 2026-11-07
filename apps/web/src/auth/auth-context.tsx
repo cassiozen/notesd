@@ -19,7 +19,8 @@ export type AuthState =
   | { status: 'expired'; username: string }
   // firstRun: just finished onboarding, for the welcome empty state.
   // offline: opened from this device's copy, the server not yet reached.
-  | { status: 'signed-in'; username: string; firstRun?: boolean; offline?: boolean }
+  // isAdmin: unknown (undefined) until the server answers.
+  | { status: 'signed-in'; username: string; isAdmin?: boolean; firstRun?: boolean; offline?: boolean }
 
 type AuthContextValue = {
   state: AuthState
@@ -82,7 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signedIn = useCallback((info: SessionInfo, opts: { firstRun?: boolean } = {}) => {
     setCsrfToken(info.csrfToken)
     openNotes(info.username)
-    setState({ status: 'signed-in', username: info.username, firstRun: opts.firstRun ?? false })
+    setState({ status: 'signed-in', username: info.username, isAdmin: info.isAdmin, firstRun: opts.firstRun ?? false })
   }, [])
 
   const account = useRef<string | null>(null)
@@ -142,7 +143,7 @@ async function fromServer(): Promise<{ status: 'setup' | 'signed-out' | 'unreach
 function adopt(info: SessionInfo): AuthState {
   setCsrfToken(info.csrfToken)
   openNotes(info.username)
-  return { status: 'signed-in', username: info.username }
+  return { status: 'signed-in', username: info.username, isAdmin: info.isAdmin }
 }
 
 async function offlineBoot(): Promise<AuthState> {

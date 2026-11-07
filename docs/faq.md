@@ -210,9 +210,10 @@ ones stay unreadable.
 
 ### What if I forget my account password?
 
-The person running the server sets a new one with
-`notesd reset-password --username NAME`. There are no reset emails. That
-doesn't affect locked notes, which use their own password.
+Ask an admin: in the web app's **Settings → Server → People**, they can send
+you a link to choose a new one. The person running the server can also set
+one with `notesd reset-password --username NAME`. There are no reset emails.
+Neither affects locked notes, which use their own password.
 
 ### Can I have multiple users on the same server?
 
@@ -222,8 +223,10 @@ another's.
 
 ### How do I add someone?
 
-On the server: `notesd add-user --username sam`. There's no public sign-up.
-Add `--admin` to let them change server-wide settings such as email.
+An admin invites them from the web app, in **Settings → Server → People**, and
+sends them the link it makes, where they choose their password
+([details](guides/self-hosting/users.md#adding-people)). Or, on the server:
+`notesd add-user --username sam`. There's no public sign-up.
 
 ### How do I sign out a lost device?
 

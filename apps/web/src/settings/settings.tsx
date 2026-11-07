@@ -4,7 +4,7 @@ import { settings } from '../api/settings'
 import { ApiError } from '../api/client'
 import type { Session, UpdateStatus } from '../api/types'
 import { platformBadge, sessionName } from '../api/user-agent'
-import { genericMessage } from '../auth/errors'
+import { genericMessage, newPasswordErrors, sentence } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
 import { relativeTime } from '../notes/relative-time'
@@ -23,6 +23,7 @@ import { Surface } from '../ui/surface'
 import { DeviceCard, InstallCard, SignOutItem, syncSummary, useKeptHere, useSyncState } from './device'
 import { IntegrationsPage, integrationsValue, useIntegrationStatuses } from './integrations'
 import { LockedNotesCard } from './locked-notes'
+import { PeopleCard } from './people'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
 import styles from './settings.module.css'
@@ -370,6 +371,7 @@ function SettingsPage({
               <SignOutItem />
             </ul>
           </Surface>
+          <PeopleCard username={username} />
           <UpdateCard />
         </>
       )
@@ -532,10 +534,12 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const found: PasswordErrors = {}
-    if (!current) found.current = 'Enter your current password.'
-    if (next.length < 8) found.next = 'Use at least 8 characters.'
-    else if (confirm !== next) found.confirm = "The passwords don't match."
+    const fresh = newPasswordErrors(next, confirm)
+    const found: PasswordErrors = {
+      ...(!current && { current: 'Enter your current password.' }),
+      ...(fresh.password && { next: fresh.password }),
+      ...(fresh.confirm && { confirm: fresh.confirm }),
+    }
     setErrors(found)
     setFormError(undefined)
     if (Object.keys(found).length > 0) return
@@ -548,7 +552,7 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
       if (err instanceof ApiError && err.code === 'invalid_credentials') {
         setErrors({ current: 'That isn’t your current password.' })
       } else if (err instanceof ApiError && err.status === 400 && err.field === 'password') {
-        setErrors({ next: err.message.charAt(0).toUpperCase() + err.message.slice(1) + '.' })
+        setErrors({ next: sentence(err.message) })
       } else {
         setFormError(genericMessage(err))
       }
@@ -597,7 +601,7 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
           </p>
         )}
         <div className={styles.forgot}>
-          <span className={styles.muted}>Forgot it? Reset it on the server:</span>
+          <span className={styles.muted}>Forgot it? An admin can send you a reset link from Settings, or run on the server:</span>
           <Command command="notesd reset-password" tone="dark" />
         </div>
         <div className={styles.dialogActions}>
