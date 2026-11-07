@@ -440,7 +440,8 @@ undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `
 **Asking for a run.** An editor asks for `noteCreated`, `editStarted` or `menu` runs on the socket
 below (`run.request`); the others come from writes. The run works on the note only as an editor
 shows it, the asking one's first, never the server's copy: with no editor showing it, before or
-during the run, it's skipped as `note_closed`. It starts at once, beside other runs, one at a time
+during the run, it's skipped as `note_closed`; an editor that disconnects while the run is changing
+the note fails it as `editor_disconnected`, since the change may or may not have landed. It starts at once, beside other runs, one at a time
 per note; asked again before it starts, it's the same run. A request the space's agent doesn't act
 on, for a note that's gone or locked, or one the server hasn't got with no `spaceId`, is dropped.
 

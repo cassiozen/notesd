@@ -110,6 +110,9 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			s.editors.Claim(ec, m.NoteID)
 			_, err := data.Agent.RequestRun(ctx, agent.RunRequest{Trigger: m.Trigger, NoteID: m.NoteID, SpaceID: m.SpaceID,
 				ConnectionID: ec.ID, Note: m.Note})
+			if err != nil {
+				s.editors.Unclaim(ec, m.NoteID)
+			}
 			if err != nil && !refusedRun(err) {
 				s.log.Error("agent socket: request a run", "error", err)
 			}

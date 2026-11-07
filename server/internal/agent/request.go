@@ -71,8 +71,13 @@ func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) 
 			editorPriority, s.now().UnixMilli()); err != nil {
 			return err
 		}
-		// Before the runner can take it: scheduled wakes it.
-		if req.Note != nil {
+		// Before the runner can take it: scheduled wakes it. Not for a run
+		// skipped as the queue was full: it never starts to use it.
+		var status string
+		if err := tx.QueryRowContext(ctx, `SELECT status FROM agent_runs WHERE id = ?`, id).Scan(&status); err != nil {
+			return err
+		}
+		if req.Note != nil && status == StatusQueued {
 			s.snapshots.keep(id, *req.Note, s.now())
 		}
 		s.scheduled()

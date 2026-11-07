@@ -207,3 +207,13 @@ func TestBroadcastKeepsOrder(t *testing.T) {
 		}
 	}
 }
+
+func TestAClaimForARefusedRunIsDropped(t *testing.T) {
+	h := editors.NewHub()
+	a := connect(t, h, showing("from a"))
+	h.Claim(a.c, "n1")
+	h.Unclaim(a.c, "n1")
+	if _, err := h.For(1).Read(ctx, "n1", a.c.ID); !errors.Is(err, agent.ErrNotOpen) {
+		t.Fatalf("got %v", err)
+	}
+}

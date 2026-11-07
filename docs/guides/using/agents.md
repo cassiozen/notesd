@@ -42,7 +42,7 @@ nothing.
 | **Run from menu** | You pick the command in a note's menu. Give it a name, such as *Fix typos* |
 
 Note created, started editing and the menu command happen in the editor, and need a connection to
-the server: offline, they're skipped. The agent works on the note as you see it there, unsaved
+the server: offline, they're skipped, unless the connection comes back within about 10 seconds. The agent works on the note as you see it there, unsaved
 typing included; close the note before it's done and it stops.
 
 ## While you write

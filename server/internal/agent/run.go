@@ -278,7 +278,8 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		case err != nil && ctx.Err() != nil:
 			// The deadline or a shutdown; the caller says which.
 			return
-		case rs.run.Event.Title == nil && unusable(n, err, rs.run.SpaceID, true).Status != "":
+		// An editor trigger's note is its editor's, which the store may not have yet.
+		case rs.run.Event.Title == nil && !rs.run.Trigger.InEditor() && unusable(n, err, rs.run.SpaceID, true).Status != "":
 			u := unusable(n, err, rs.run.SpaceID, true)
 			f.Status, f.Failure, f.Message = u.Status, u.Failure, u.Message
 			return

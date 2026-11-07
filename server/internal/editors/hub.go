@@ -129,7 +129,17 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 func (h *Hub) Claim(c *Conn, noteID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if _, ok := c.claimed[noteID]; !ok && len(c.claimed) >= MaxOpen {
+		return
+	}
 	c.claimed[noteID] = struct{}{}
+}
+
+// Unclaim forgets c's claim on the note: the run it asked for wasn't queued.
+func (h *Hub) Unclaim(c *Conn, noteID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(c.claimed, noteID)
 }
 
 // Closed records that c's editor closed the note, and reports whether it

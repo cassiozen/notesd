@@ -12,6 +12,7 @@ import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
 import { requestRun } from '../agent/triggers'
 import { useAgentConfigs } from './agent-config'
+import { useAiSettings } from './ai-settings'
 import { useEmailSettings } from './email-settings'
 import type { Saver } from './source'
 import { SpaceIcon } from './space-icon'
@@ -50,7 +51,9 @@ export function NoteMenu({
   const email = useEmailSettings()
   const spaces = useSpaces()
   const agentConfig = useAgentConfigs()?.get(saver.spaceId())
-  const command = agentConfig?.enabled && agentConfig.triggers.menu ? agentConfig.menuLabel : ''
+  // With AI paused there's no socket to ask on: the command would do nothing.
+  const aiOn = Boolean(useAiSettings()?.configured)
+  const command = aiOn && agentConfig?.enabled && agentConfig.triggers.menu ? agentConfig.menuLabel : ''
   const [open, setOpen] = useState(false)
   const [emailing, setEmailing] = useState(false)
   const [moving, setMoving] = useState(false)
