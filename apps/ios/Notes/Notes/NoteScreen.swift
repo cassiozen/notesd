@@ -15,6 +15,8 @@ struct NoteScreen: View {
     @State private var model: EditorModel
     @State private var controller = EditorController()
     @State private var confirmDelete = false
+    /// A move that would show the note to more people, waiting for a yes.
+    @State private var confirmMove: MoveCheck?
     @State private var emailing = false
     @State private var picked: PhotosPickerItem?
     /// Lock note was chosen, and the session needs a password created or entered first.
@@ -167,6 +169,16 @@ struct NoteScreen: View {
                 moreMenu
             #endif
         }
+        .alert(
+            confirmMove.map { "Move “\($0.title)” to \($0.space.name)?" } ?? "",
+            isPresented: Binding(get: { confirmMove != nil }, set: { if !$0 { confirmMove = nil } }),
+            presenting: confirmMove
+        ) { check in
+            Button("Cancel", role: .cancel) {}
+            Button("Move") { move(to: check.space.id) }
+        } message: { check in
+            Text("In \(check.space.name), this note will be:\n" + check.exposure.joined(separator: "\n"))
+        }
         .confirmationDialog("Delete this note?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
                 Task {
@@ -273,7 +285,12 @@ struct NoteScreen: View {
         if graph.spaces.count > 1 && model.status != .blank {
             Menu("Move to Space", systemImage: "arrow.right.square") {
                 ForEach(graph.spaces.filter { $0.id != model.spaceId }) { space in
-                    Button(space.name) { move(to: space.id) }
+                    Button {
+                        askToMove(to: space)
+                    } label: {
+                        Text(verbatim: space.name)
+                        space.menuSubtitle
+                    }
                 }
             }
         }
@@ -337,6 +354,15 @@ struct NoteScreen: View {
         Binding(get: { controller.linkSheet != nil }, set: { if !$0 { controller.linkSheet = nil } })
     }
 
+    /// Moves the note, first asking when `space` would show it to people its own space doesn't (§7.8).
+    private func askToMove(to space: Space) {
+        let current = graph.spaces.first { $0.id == model.spaceId }?.traits ?? []
+        let exposure = Traits.newExposure(from: current, to: space.traits).compactMap(\.exposure)
+        guard !exposure.isEmpty else { return move(to: space.id) }
+        let title = (controller.document()?.title ?? model.title).trimmed
+        confirmMove = MoveCheck(space: space, title: title.isEmpty ? "Untitled" : title, exposure: exposure)
+    }
+
     /// Moves the note to another space (§7.7) and leaves it: it's no longer in the list behind.
     private func move(to space: String) {
         saveNow()
@@ -357,6 +383,13 @@ struct NoteScreen: View {
         let body = Markdown.serialize(doc)
         return title.isEmpty ? body : "# \(title)\n\n\(body)"
     }
+}
+
+/// A move into a space that exposes the note more: where, and the destination's sentences the current space lacks.
+private struct MoveCheck {
+    let space: Space
+    let title: String
+    let exposure: [String]
 }
 
 /// Add, change or remove the link on the selection.

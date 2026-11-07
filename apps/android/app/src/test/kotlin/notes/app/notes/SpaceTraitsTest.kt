@@ -1,0 +1,88 @@
+package notes.app.notes
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+import notes.app.R
+import notes.core.api.SpaceTrait
+import notes.core.db.Space
+
+class SpaceTraitsTest {
+    private val shared = SpaceTrait("shared", "Shared", "With Ana and Ben", exposure = "Visible to Ana and Ben")
+    private val published =
+        SpaceTrait("published", "Published", "family.example", exposure = "Public at family.example")
+    private val agent = SpaceTrait("agent", "Agent", "Local model")
+
+    private fun space(vararg traits: SpaceTrait) = Space("s", "Family", 0, traits = traits.toList())
+
+    @Test
+    fun `the registry keeps the fixed order`() {
+        assertEquals(listOf("shared", "published", "agent"), SpaceTraits.entries.map { it.key })
+    }
+
+    @Test
+    fun `nothing can be turned on yet, and nothing has settings`() {
+        assertTrue(SpaceTraits.entries.none { it.canTurnOn || it.settings != null })
+    }
+
+    @Test
+    fun `an unknown key gets the generic glyph and the server's label`() {
+        val later = SpaceTrait("archived", "Archived", "Read only")
+        assertEquals(R.drawable.trait_unknown, SpaceTraits.glyph(later.key))
+        assertEquals(R.drawable.trait_shared, SpaceTraits.glyph("shared"))
+        assertEquals("Archived", later.name())
+        assertEquals("archived", SpaceTrait("archived").name())
+        assertEquals("Shared", SpaceTrait("shared").name())
+    }
+
+    @Test
+    fun `the description joins labels and says what's wrong`() {
+        assertEquals("Shared, Published", describeTraits(listOf(shared, published)))
+        assertEquals(
+            "Shared, Published (Publishing failed)",
+            describeTraits(listOf(shared, published.copy(problem = "Publishing failed")))
+        )
+    }
+
+    @Test
+    fun `a move asks with the exposures the current space lacks`() {
+        assertEquals(listOf(shared, published), newExposures(space(), space(shared, published, agent)))
+        assertEquals(listOf(published), newExposures(space(shared), space(shared, published)))
+        // Shared with more people is a new exposure.
+        val wider = shared.copy(exposure = "Visible to Ana, Ben and Cy")
+        assertEquals(listOf(wider), newExposures(space(shared), space(wider)))
+    }
+
+    @Test
+    fun `a move to a space that exposes the same or less doesn't ask`() {
+        assertEquals(emptyList(), newExposures(space(shared), space(shared)))
+        assertEquals(emptyList(), newExposures(space(shared, published), space(shared)))
+        assertEquals(emptyList(), newExposures(space(), space(agent)), "no exposure: kept to the account")
+        assertEquals(emptyList(), newExposures(space(), space()))
+    }
+
+    @Test
+    fun `an unknown trait's exposure still asks`() {
+        val later = SpaceTrait("mirror", "Mirrored", "To a printer", exposure = "Printed at the office")
+        assertEquals(listOf(later), newExposures(null, space(later)))
+    }
+
+    @Test
+    fun `space info lists known traits in order, off ones only when they can be turned on, unknown last`() {
+        val later = SpaceTrait("archived", "Archived", "Read only")
+        // Sent out of order: the registry's order wins for known keys.
+        assertEquals(
+            listOf(
+                TraitRow.On(SpaceTraits.entries[0], shared),
+                TraitRow.On(SpaceTraits.entries[2], agent),
+                TraitRow.Unknown(later)
+            ),
+            traitRows(listOf(later, agent, shared))
+        )
+        assertEquals(emptyList(), traitRows(emptyList()))
+
+        val canPublish = TraitEntry("published", R.drawable.trait_published, "Published", turnOn = { _, _ -> })
+        val registry = listOf(SpaceTraits.entries[0], canPublish)
+        assertEquals(listOf(TraitRow.Off(canPublish)), traitRows(emptyList(), registry))
+    }
+}

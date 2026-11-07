@@ -271,7 +271,7 @@ private var appVersion: String {
 
 extension View {
     /// Settings' forms: the app's fonts and paper, and a tint that reads on white rows.
-    fileprivate func settingsForm(title: String) -> some View {
+    func settingsForm(title: String) -> some View {
         font(.notesBody)
             // The tint is too light for text on white rows; link brown reads as a button and passes contrast.
             .tint(Color(Palette.link))

@@ -71,7 +71,24 @@ class LocalHit(
 class LocalTag(val key: String, val name: String, val count: Int)
 
 @JsExport
-class LocalSpace(val id: String, val name: String, val icon: String, val noteCount: Int, val createdAt: Double)
+class LocalSpace(
+    val id: String,
+    val name: String,
+    val icon: String,
+    val noteCount: Int,
+    val createdAt: Double,
+    val traits: Array<LocalSpaceTrait>
+)
+
+/** §7.8; [exposure] and [problem] undefined when absent, as the server's JSON has them. */
+@JsExport
+class LocalSpaceTrait(
+    val key: String,
+    val label: String,
+    val summary: String,
+    val exposure: String?,
+    val problem: String?
+)
 
 /** One wrapped copy of the locked-notes key, as the server's keyring has it (§10.1). */
 @JsExport
@@ -229,7 +246,10 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
 
     fun spaces(): Promise<Array<LocalSpace>> = scope.promise {
         engine.spaces.list()
-            .map { LocalSpace(it.id, it.name, it.icon, it.noteCount, it.createdAt.toDouble()) }
+            .map { sp ->
+                val traits = sp.traits.map { LocalSpaceTrait(it.key, it.label, it.summary, it.exposure, it.problem) }
+                LocalSpace(sp.id, sp.name, sp.icon, sp.noteCount, sp.createdAt.toDouble(), traits.toTypedArray())
+            }
             .toTypedArray()
     }
 

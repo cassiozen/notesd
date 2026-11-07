@@ -175,7 +175,7 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.buttons["Connect to a server"].waitForExistence(timeout: 5))
     }
 
-    /// Spaces (§7.7) work offline: the sidebar always names the space, and its menu makes new ones.
+    /// Spaces (§7.7) work offline: the sidebar always names the space, and its switcher makes new ones.
     func testSpaces() throws {
         app.launch()
         XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
@@ -191,7 +191,10 @@ final class FlowTests: XCTestCase {
         notesSwitcher.tap()
         let newSpace = app.buttons["New Space…"]
         XCTAssertTrue(newSpace.waitForExistence(timeout: 5))
-        screenshot("space menu, one space")
+        // One space: the card and New Space only. The caption shows uppercased, so matched without case.
+        let switchTo = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Switch to")).firstMatch
+        XCTAssertFalse(switchTo.exists)
+        screenshot("space switcher, one space")
         newSpace.tap()
         let name = app.textFields["Name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
@@ -218,9 +221,27 @@ final class FlowTests: XCTestCase {
         let switcher = app.buttons["Space: Work"]
         XCTAssertTrue(switcher.waitForExistence(timeout: 5))
         switcher.tap()
-        let notes = app.buttons["Notes"]
+        // The current space is the card; the others are listed to switch to.
+        let notes = app.buttons["Notes, only you"]
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
-        screenshot("space menu")
+        XCTAssertTrue(switchTo.exists)
+        XCTAssertFalse(app.buttons["Work, only you"].exists)
+        screenshot("space switcher")
+        try audit("space switcher", [.sufficientElementDescription, .hitRegion])
+
+        // Holding a row opens that space's info (§7.8) without switching: the default can't be deleted.
+        notes.press(forDuration: 1)
+        XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Name and Icon"].exists)
+        XCTAssertFalse(app.buttons["Delete Space"].isEnabled)
+        screenshot("space info")
+        try audit("space info", [.sufficientElementDescription, .hitRegion])
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        app.buttons["Tags"].tap()
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        switcher.tap()
+        XCTAssertTrue(notes.waitForExistence(timeout: 5))
         notes.tap()
         // The sidebar closes onto the space's list, back in the app icon's colours.
         XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
@@ -230,8 +251,28 @@ final class FlowTests: XCTestCase {
         screenshot("the app icon's theme")
         let home = background(app.screenshot().image)
         XCTAssertNotEqual([diary.0, diary.1, diary.2], [home.0, home.1, home.2])
+
+        // The card's Info is the current space's.
         app.buttons["Tags"].tap()
         XCTAssertTrue(app.buttons["Space: Notes"].waitForExistence(timeout: 5))
+        app.buttons["Space: Notes"].tap()
+        let info = app.buttons["Space info"]
+        XCTAssertTrue(info.waitForExistence(timeout: 5))
+        info.tap()
+        XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // Settings › Spaces: each row opens its Space info.
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let spaces = app.buttons["Spaces"]
+        XCTAssertTrue(spaces.waitForExistence(timeout: 5))
+        spaces.tap()
+        let work = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Work")).firstMatch
+        XCTAssertTrue(work.waitForExistence(timeout: 5))
+        work.tap()
+        XCTAssertTrue(app.staticTexts["Move or delete its notes to delete this space."].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Delete Space"].isEnabled)
     }
 
     /// Wide (an unfolded iPhone Duo), a note opens beside the list, and another one takes its place.

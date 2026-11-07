@@ -211,13 +211,18 @@ public struct RemoteSpace: Codable, Sendable, Hashable {
     public var icon: String
     public var createdAt: Int64
     public var noteCount: Int
+    /// Absent from servers older than traits: none.
+    public var traits: [SpaceTrait]
 
-    public init(id: String, name: String, icon: String = "", createdAt: Int64 = 0, noteCount: Int = 0) {
+    public init(
+        id: String, name: String, icon: String = "", createdAt: Int64 = 0, noteCount: Int = 0, traits: [SpaceTrait] = []
+    ) {
         self.id = id
         self.name = name
         self.icon = icon
         self.createdAt = createdAt
         self.noteCount = noteCount
+        self.traits = traits
     }
 
     public init(from decoder: Decoder) throws {
@@ -227,6 +232,35 @@ public struct RemoteSpace: Codable, Sendable, Hashable {
         icon = try c.decodeIfPresent(String.self, forKey: .icon) ?? ""
         createdAt = try c.decode(Int64.self, forKey: .createdAt)
         noteCount = try c.decode(Int.self, forKey: .noteCount)
+        traits = try c.decodeIfPresent([SpaceTrait].self, forKey: .traits) ?? []
+    }
+}
+
+/// A feature on for a whole space (§7.8), worked out by the server. `exposure` is the sentence a move into the
+/// space asks with, nil when the trait keeps notes to the account; `problem` is set when it needs attention.
+public struct SpaceTrait: Codable, Sendable, Hashable {
+    public var key: String
+    public var label: String
+    public var summary: String
+    public var exposure: String?
+    public var problem: String?
+
+    public init(key: String, label: String = "", summary: String = "", exposure: String? = nil, problem: String? = nil)
+    {
+        self.key = key
+        self.label = label
+        self.summary = summary
+        self.exposure = exposure
+        self.problem = problem
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        key = try c.decode(String.self, forKey: .key)
+        label = try c.decodeIfPresent(String.self, forKey: .label) ?? ""
+        summary = try c.decodeIfPresent(String.self, forKey: .summary) ?? ""
+        exposure = try c.decodeIfPresent(String.self, forKey: .exposure)
+        problem = try c.decodeIfPresent(String.self, forKey: .problem)
     }
 }
 

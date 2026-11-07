@@ -92,6 +92,31 @@
   grid-column: 2;
 }
 
+/* Docked at 220px, the tools get a row of their own, as on macOS: beside them, the space's name and its
+   trait glyphs (§7.8) don't fit. The macOS rules above win where both apply. */
+.docked .header {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  grid-template-rows: 28px auto;
+  gap: 6px 0;
+  padding-top: 10px;
+}
+
+.docked .title {
+  grid-row: 2;
+  grid-column: 1 / -1;
+}
+
+.docked .tool {
+  grid-row: 1;
+  grid-column: 3;
+  margin-left: 8px;
+}
+
+.docked .hide {
+  grid-column: 2;
+}
+
 /* The space, as the list's title is set: the switcher looks like a heading until hovered. */
 .title {
   flex: 1;

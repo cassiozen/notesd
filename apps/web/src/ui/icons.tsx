@@ -198,3 +198,13 @@ export function SendIcon({ size = 16 }: Props) {
     </svg>
   )
 }
+
+export function InfoIcon({ size = 15 }: Props) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" aria-hidden="true">
+      <circle cx="8" cy="8" r="5.8" />
+      <path d="M8 7.3v3.7" />
+      <circle cx="8" cy="5" r="0.9" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}

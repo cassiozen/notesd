@@ -20,6 +20,8 @@ type Props = {
   space: string
   onSpace: (id: string) => void
   onNewSpace: () => void
+  /** A space's Space info. */
+  onSpaceInfo: (id: string) => void
   /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
   onHide?: () => void
   /** Docked and hidden: kept in place, out of reach, so hiding and showing can animate. */
@@ -30,7 +32,7 @@ type Props = {
 
 const EXPANDED_KEY = 'notes.tags.expanded'
 
-const DEFAULT: Space = { id: DEFAULT_SPACE, name: 'Notes', icon: '', createdAt: 0, noteCount: 0 }
+const DEFAULT: Space = { id: DEFAULT_SPACE, name: 'Notes', icon: '', createdAt: 0, noteCount: 0, traits: [] }
 
 // Per-browser conveniences: storage can be missing or throw (private windows).
 function load<T>(key: string, fallback: T): T {
@@ -51,7 +53,7 @@ function save(key: string, value: unknown) {
 }
 
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
-export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onHide, hidden = false, hideRef }: Props) {
+export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onSpaceInfo, onHide, hidden = false, hideRef }: Props) {
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
@@ -136,7 +138,7 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
         <div className={styles.header} {...dragRegion('deep')}>
           {/* Before the list loads, the default space: the switcher keeps its place. */}
           <h1 className={styles.title}>
-            <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} />
+            <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} onInfo={onSpaceInfo} />
           </h1>
           {onHide && (
             <button

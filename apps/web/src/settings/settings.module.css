@@ -765,3 +765,35 @@
   flex: 1;
   min-width: 0;
 }
+
+/* A Settings › Spaces row: the whole row opens the space's Space info. */
+.spaceRow {
+  width: 100%;
+  margin: 0;
+  padding-inline: 6px;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spaceRow:hover {
+  background: var(--hover);
+}
+
+.spaceLine {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rowChevron {
+  flex: none;
+  display: grid;
+  color: var(--ink-3);
+}

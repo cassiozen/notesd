@@ -1,36 +1,20 @@
 import NotesCore
 import SwiftUI
 
-/// Spaces (§7.7): create, edit and delete them. The sidebar's switcher can make one too.
+/// Spaces (§7.7): each opens its Space info (§7.8), where it's renamed or deleted; and New Space. The sidebar's
+/// switcher can make one too.
 struct SpacesSection: View {
     @Environment(AppGraph.self) private var graph
     /// A new space was made and switched to.
     let onCreated: () -> Void
     @State private var creating = false
-    @State private var editing: Space?
 
     var body: some View {
         Section {
             ForEach(graph.spaces) { space in
-                HStack(spacing: 12) {
-                    SpaceIconImage(icon: space.icon, size: 28)
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(space.name).font(.notesRowTitle).foregroundStyle(Color.ink).lineLimit(1)
-                        Text(detail(space)).font(.notesSmall).foregroundStyle(Color.ink2)
-                    }
-                    Spacer()
-                    Menu {
-                        Button("Edit", systemImage: "pencil") { editing = space }
-                        if space.id != Spaces.defaultId {
-                            Button("Delete", systemImage: "trash", role: .destructive) { delete(space) }
-                                .disabled(space.noteCount > 0)
-                        }
-                    } label: {
-                        Image(systemName: "ellipsis.circle").frame(width: 44, height: 44).contentShape(.rect)
-                    }
-                    .accessibilityLabel("Edit \(space.name)")
+                NavigationLink(value: Route.spaceInfo(space.id)) {
+                    SpaceLabel(space: space, iconSize: 28, detail: space.noteCountLabel)
                 }
-                .accessibilityElement(children: .combine)
             }
             Button("New Space") { creating = true }
                 .sheet(isPresented: $creating) {
@@ -40,28 +24,12 @@ struct SpacesSection: View {
                         onCreated()
                     }
                 }
-                .sheet(item: $editing) { space in
-                    SpaceSheet(editing: space) { _ in editing = nil }
-                }
         } footer: {
             Text(
                 "Keep separate contexts, like Work and Personal, apart. Each space has its own notes and tags, "
                     + "and new notes go to the one you’re in."
             )
             .font(.notesSmall).foregroundStyle(Color.ink2)
-        }
-    }
-
-    private func detail(_ space: Space) -> String {
-        let count = space.noteCount == 1 ? "1 note" : "\(space.noteCount) notes"
-        if space.id == Spaces.defaultId { return count + " · Can be renamed, not deleted" }
-        if space.noteCount > 0 { return count + " · Move or delete its notes to delete it" }
-        return count
-    }
-
-    private func delete(_ space: Space) {
-        Task {
-            if (try? await graph.engine.spaces.delete(space.id)) == true { graph.scheduler.request() }
         }
     }
 }

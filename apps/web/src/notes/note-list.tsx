@@ -1,13 +1,20 @@
 import { memo, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type Ref } from 'react'
+import type { Space } from '../api/types'
 import { dragRegion } from '../desktop'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime, useMidnight } from './list-time'
 import { useSearch } from './search'
 import { SpaceIcon } from './space-icon'
+import { SpaceIdentity, TraitGroup } from './space-identity'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import styles from './note-list.module.css'
+
+type Badge = Pick<Space, 'icon' | 'name' | 'traits'>
+
+/** A result's space while the list loads: spaceName's fallback. */
+const LOADING: Badge = { icon: '', name: 'Notes', traits: [] }
 
 type Props = {
   selectedId: string | null
@@ -26,9 +33,11 @@ type Props = {
   /** The Show sidebar button, for focus to land on when the sidebar goes. */
   showTagsRef?: Ref<HTMLButtonElement>
   mobile: boolean
+  /** Space info for the space shown. */
+  onSpaceInfo: () => void
 }
 
-export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onNew, tags, onTags, showTagsRef, mobile }: Props) {
+export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhere, onNew, tags, onTags, showTagsRef, mobile, onSpaceInfo }: Props) {
   const { items, status, hasMore, total, loadMore, refresh, version, filter, setFilter, space } = useNotes()
   const spaces = useSpaces()
   const many = (spaces?.length ?? 0) > 1
@@ -45,7 +54,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   // With two spaces, the other one by name.
   const others = spaces?.filter((s) => s.id !== space) ?? []
   const elsewhere = others.length === 1 && others[0] ? others[0].name : 'other spaces'
-  const current = spaces?.find((s) => s.id === space) ?? { icon: '' }
+  const current = spaces?.find((s) => s.id === space) ?? LOADING
   // The sidebar beside the list, showing.
   const docked = tags === null
 
@@ -82,6 +91,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               <SpaceIcon space={current} size={22} />
             </span>
           )}
+          {!docked && <TraitGroup traits={current.traits} onOpen={onSpaceInfo} />}
           {/* What the list shows: All Notes, or the filter, which × clears. */}
           <h1 className={[styles.heading, styles.scoped].join(' ')}>
             <span className={styles.scope} title={scope ?? undefined}>
@@ -107,12 +117,18 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               <SidebarIcon />
             </button>
           )}
-          {!mobile && (
-            <Button variant="accent" size="sm" className={styles.newNote} onClick={onNew}>
-              <PlusIcon />
-              New note
-            </Button>
-          )}
+          {!mobile &&
+            // Sidebar hidden, the column is narrow: the label goes so the space's traits and the title fit, in every space alike.
+            (tags === 'show' ? (
+              <Button variant="accent" size="sm" className={[styles.newNote, styles.newNoteIcon].join(' ')} onClick={onNew} aria-label="New note" title="New note">
+                <PlusIcon />
+              </Button>
+            ) : (
+              <Button variant="accent" size="sm" className={styles.newNote} onClick={onNew}>
+                <PlusIcon />
+                New note
+              </Button>
+            ))}
         </div>
         <div className={styles.search}>
           <span className={styles.searchIcon}>
@@ -193,7 +209,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     selected={r.id === selectedId}
                     midnight={midnight}
                     onSelect={(id) => onSelectElsewhere(id, r.spaceId)}
-                    badge={spaceName(spaces, r.spaceId)}
+                    badge={spaces?.find((s) => s.id === r.spaceId) ?? LOADING}
                     locked={r.locked}
                     excerpt={r.excerpt}
                   />
@@ -273,7 +289,7 @@ type RowProps = {
   title: string
   time: number
   /** The space a result from another space is in. */
-  badge?: string
+  badge?: Badge
   locked: boolean
   /** A listed note's first lines… */
   preview?: string
@@ -309,7 +325,7 @@ const Row = memo(function Row({ id, title, time, badge, locked, preview, excerpt
       >
         <span className={styles.rowTitle}>{title.trim() || 'New note'}</span>
         <span className={styles.rowMeta}>
-          {badge && <span className={styles.rowSpace}>{badge}</span>}
+          {badge && <SpaceIdentity space={badge} icon={false} nameClassName={styles.rowSpace} glyphSize={12} />}
           <span className={styles.rowTime}>{listTime(time)}</span>
           <span className={styles.rowPreview}>
             {locked ? (

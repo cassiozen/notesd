@@ -20,9 +20,11 @@ import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import notes.app.editor.SAMPLE_MARKDOWN
 import notes.app.editor.SAMPLE_TITLE
+import notes.app.notes.SpaceInvite
 import notes.core.api.RemoteNote
 import notes.core.api.Session
 import notes.core.api.SignIn
+import notes.core.api.SpaceTrait
 import notes.core.api.SyncPage
 import notes.core.db.Spaces
 import org.junit.After
@@ -394,5 +396,111 @@ class ScreenshotTest {
         launch("w1280dp-h800dp")
         compose.waitUntilExactlyOneExists(hasContentDescription("Expand travel"))
         shoot("wide")
+    }
+
+    /** A space with traits (§7.8): the list's title, the space menu, then Space info, one trait failing. */
+    private fun traits(suffix: String, qualifiers: String?) {
+        graph.setOnboardingDismissed(true)
+        seed()
+        runBlocking {
+            graph.sync.spaces.create("Work", "ledger")
+            graph.setTraits(
+                Spaces.DEFAULT,
+                SpaceTrait("shared", "Shared", "With Ana and Ben", exposure = "Visible to Ana and Ben"),
+                SpaceTrait(
+                    "published",
+                    "Published",
+                    "family.example.com",
+                    exposure = "Public at family.example.com",
+                    problem = "Publishing failed. Check the address."
+                ),
+                SpaceTrait("archived", "Archived", "Read only")
+            )
+        }
+        launch(qualifiers)
+        compose.waitUntilExactlyOneExists(hasText("Groceries"))
+        val glyphs = hasContentDescription(
+            "Space info: Shared, Published (Publishing failed. Check the address.), Archived"
+        )
+        compose.waitUntilExactlyOneExists(glyphs)
+        shoot("list-traits-$suffix")
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
+        compose.onNode(hasContentDescription("Space: Notes")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("New space…"))
+        shoot("space-menu-$suffix")
+        compose.onNode(hasContentDescription("Space info")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+        shoot("space-info-$suffix")
+    }
+
+    @Test fun traitsLight() = traits("light", null)
+
+    /** Docked sidebar: the switcher's traits button and the list title's, side by side. */
+    @Test
+    fun traitsWide() {
+        graph.setOnboardingDismissed(true)
+        seed()
+        runBlocking {
+            graph.setTraits(
+                Spaces.DEFAULT,
+                SpaceTrait("shared", "Shared", "With Ana and Ben", exposure = "Visible to Ana and Ben"),
+                SpaceTrait("published", "Published", "family.example.com", exposure = "Public at family.example.com")
+            )
+        }
+        launch("w1280dp-h800dp")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
+        compose.waitUntilExactlyOneExists(hasText("Groceries"))
+        shoot("wide-traits")
+    }
+
+    @Test fun traitsDark() = traits("dark", "+night")
+
+    /** The switcher with an invitation and a change line, as sharing will fill them. */
+    private fun switcherSeed() {
+        graph.setOnboardingDismissed(true)
+        seed()
+        val ids = runBlocking {
+            val family = graph.sync.spaces.create("Family", "sunset")
+            val journal = graph.sync.spaces.create("Journal", "journal")
+            val work = graph.sync.spaces.create("Work", "ledger")
+            graph.sync.spaces.create("Health", "health")
+            graph.setTraits(
+                family,
+                SpaceTrait("shared", "Shared", "With Ana and Ben", exposure = "Visible to Ana and Ben"),
+                SpaceTrait("published", "Published", "family.example.com", problem = "Publishing failed")
+            )
+            graph.setTraits(journal, SpaceTrait("agent", "Agent", "Local model"))
+            graph.setTraits(work, SpaceTrait("shared", "Shared", "With Ben", exposure = "Visible to Ben"))
+            family to work
+        }
+        graph.switchSpace(ids.first)
+        graph.spaceInvites.value = listOf(SpaceInvite("i1", "Book club", "open-book", "Ana"))
+        graph.spaceChanges.value = mapOf(ids.second to "Ben edited 3 notes · 2h")
+    }
+
+    private fun switcherPhone(suffix: String, qualifiers: String?) {
+        switcherSeed()
+        launch(qualifiers)
+        compose.waitUntilExactlyOneExists(hasContentDescription("Sidebar"))
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Family"))
+        compose.onNode(hasContentDescription("Space: Family")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("New space…"))
+        shoot("switcher-phone-$suffix")
+    }
+
+    @Test fun switcherPhoneLight() = switcherPhone("light", null)
+
+    @Test fun switcherPhoneDark() = switcherPhone("dark", "+night")
+
+    @Test
+    fun switcherWide() {
+        switcherSeed()
+        launch("w1280dp-h800dp")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Family"))
+        compose.onNode(hasContentDescription("Space: Family")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("New space…"))
+        shoot("switcher-wide")
     }
 }

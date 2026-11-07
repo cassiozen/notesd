@@ -60,6 +60,19 @@ export type Space = {
   icon: string
   createdAt: number
   noteCount: number
+  /** On, in the server's order (§7.8); [] for none. */
+  traits: SpaceTrait[]
+}
+
+/** A feature on for a whole space (§7.8), worded by the server. */
+export type SpaceTrait = {
+  key: string
+  label: string
+  summary: string
+  /** Who else can see the space's notes; absent when they stay with the account. */
+  exposure?: string
+  /** Something wrong with it (publishing failed): shown in the danger colour. */
+  problem?: string
 }
 
 export type MutationResult = {

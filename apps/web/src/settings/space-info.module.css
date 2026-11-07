@@ -1,0 +1,157 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.name {
+  max-width: 100%;
+  margin: 2px 0 0;
+  font: 400 26px/1.15 var(--font-serif);
+  overflow-wrap: anywhere;
+}
+
+.group {
+  list-style: none;
+  margin: 0;
+  padding: 2px 0;
+  border-radius: 14px;
+  background: var(--field);
+  border: 1px solid var(--hair);
+}
+
+.trait {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+.trait + .trait,
+.action + .action {
+  border-top: 1px solid var(--hair);
+}
+
+.tile {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--hover);
+  color: var(--ink-2);
+}
+
+.traitText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.traitLabel {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.summary {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.problem {
+  font-size: 13px;
+  color: var(--danger);
+}
+
+/* Off, but it could be on: there to be found, not to compete with what's on. */
+.trait[data-off] .tile,
+.trait[data-off] .traitLabel {
+  opacity: 0.45;
+}
+
+.trait[data-off] .summary {
+  color: var(--ink-3);
+}
+
+.manage {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 4px 6px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink-3);
+  font: 400 13px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.manage:hover {
+  background: var(--hover);
+}
+
+.action {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 400 14.5px/1.2 var(--font-sans);
+  text-align: left;
+  cursor: pointer;
+}
+
+.group > .action:first-of-type {
+  border-top-left-radius: 13px;
+  border-top-right-radius: 13px;
+}
+
+.group > .action:last-of-type {
+  border-bottom-left-radius: 13px;
+  border-bottom-right-radius: 13px;
+}
+
+.action:not(:disabled):hover {
+  background: var(--hover);
+}
+
+.action[data-danger] {
+  color: var(--danger);
+}
+
+.action:disabled {
+  color: var(--ink-3);
+  cursor: default;
+}
+
+.chevron {
+  flex: none;
+  display: grid;
+  color: var(--ink-3);
+}
+
+.why {
+  margin: -6px 0 0;
+  padding: 0 12px 10px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}

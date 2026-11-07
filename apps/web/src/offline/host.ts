@@ -175,6 +175,14 @@ export function engineHost(
         icon: s.icon,
         createdAt: s.createdAt,
         noteCount: s.noteCount,
+        // The engine's objects keep their fields behind getters, which postMessage drops: copied out.
+        traits: s.traits.map((t) => ({
+          key: t.key,
+          label: t.label,
+          summary: t.summary,
+          ...(t.exposure != null && { exposure: t.exposure }),
+          ...(t.problem != null && { problem: t.problem }),
+        })),
       }))
     },
     async createSpace(id, name, icon) {

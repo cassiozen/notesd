@@ -1,6 +1,7 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import type { Note, Space } from '../src/api/types'
+import { spaces as spacesApi } from '../src/api/spaces'
+import type { Note, Space, SpaceTrait } from '../src/api/types'
 import { SPACE_RESET_MS } from '../src/notes/shell'
 import { reloadSpaces } from '../src/notes/spaces'
 import duck from '../src/notes/space-icons/duck.svg?url'
@@ -49,10 +50,23 @@ const rowTitles = () =>
     .queryAllByRole('link')
     .map((a) => a.querySelector('span')?.textContent)
 const switcher = () => within(panel()).getByRole('button', { name: /^Space: / })
+const popover = () => screen.getByRole('dialog', { name: 'Spaces' })
+/** A space in the switcher's list: its name, then what it is ("Work, only you"). */
+const spaceRow = (name: string) => within(popover()).getByRole('button', { name: new RegExp(`^${name}, `) })
 
-async function switchTo(user: Awaited<ReturnType<typeof signedIn>>['user'], name: string) {
+type User = Awaited<ReturnType<typeof signedIn>>['user']
+
+async function switchTo(user: User, name: string) {
   await user.click(await waitFor(() => switcher()))
-  await user.click(screen.getByRole('menuitemradio', { name }))
+  await user.click(spaceRow(name))
+}
+
+/** Settings › Spaces, then the named space's row: its Space info. */
+async function infoFromSettings(user: User, name: string) {
+  if (!screen.queryByRole('region', { name: 'Spaces' })) await openSettings(user, 'Spaces')
+  const card = await screen.findByRole('region', { name: 'Spaces' })
+  await user.click(await within(card).findByRole('button', { name: new RegExp(`^${name}, `) }))
+  return screen.findByRole('dialog', { name })
 }
 
 async function spaces(server: TestServer) {
@@ -62,11 +76,12 @@ async function spaces(server: TestServer) {
 describe('one space', () => {
   it('looks like there are no spaces', async () => {
     const { user } = await signedIn({ seed: (s) => createNote(s, 'Only', 'text\n').then(() => undefined) })
-    // The space is named all the same, and its menu offers only a new one.
+    // The space is named all the same, and its switcher offers only a new one.
     await user.click(await waitFor(() => switcher()))
     expect(switcher().getAttribute('aria-label')).toBe('Space: Notes')
-    expect(screen.getAllByRole('menuitemradio').map((i) => i.textContent)).toEqual(['Notes✓'])
-    expect(screen.getByRole('menuitem', { name: 'New space…' })).toBeTruthy()
+    expect(within(popover()).getByRole('region', { name: 'Notes' }).textContent).toBe('NotesInfoOnly you')
+    expect(within(popover()).queryByRole('heading', { name: 'Switch to' })).toBeNull()
+    expect(within(popover()).getByRole('button', { name: 'New space…' })).toBeTruthy()
     await user.keyboard('{Escape}')
     expect(within(list()).getByRole('heading', { name: 'All Notes' })).toBeTruthy()
     expect(screen.getByRole('searchbox', { name: 'Search notes' }).getAttribute('placeholder')).toBe('Search all notes')
@@ -80,7 +95,7 @@ describe('creating spaces', () => {
   it('starts from the switcher too', async () => {
     const { server, user } = await signedIn({ seed: (s) => createNote(s, 'Old', 'text\n').then(() => undefined) })
     await user.click(await waitFor(() => switcher()))
-    await user.click(screen.getByRole('menuitem', { name: 'New space…' }))
+    await user.click(within(popover()).getByRole('button', { name: 'New space…' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'New space' })
     await user.type(within(dialog).getByLabelText('Name'), 'Work')
@@ -126,11 +141,10 @@ describe('creating spaces', () => {
     })
   })
 
-  it('changes a space’s name and icon', async () => {
+  it('changes a space’s name and icon from its Space info', async () => {
     const { server, user } = await withWork()
-    await openSettings(user, 'Spaces')
-    const card = await screen.findByRole('region', { name: 'Spaces' })
-    await user.click(await within(card).findByRole('button', { name: 'Edit Notes' }))
+    const info = await infoFromSettings(user, 'Notes')
+    await user.click(within(info).getByRole('button', { name: 'Name and icon' }))
 
     const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
     // The default space starts with the app's icon.
@@ -141,6 +155,8 @@ describe('creating spaces', () => {
     await user.click(within(dialog).getByRole('button', { name: 'Save' }))
 
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit space' })).toBeNull())
+    // Back on Space info, which follows the change.
+    expect(await screen.findByRole('dialog', { name: 'Home' })).toBeTruthy()
     expect((await spaces(server)).map((s) => [s.name, s.icon])).toEqual([
       ['Home', 'castle'],
       ['Work', ''],
@@ -150,29 +166,161 @@ describe('creating spaces', () => {
   it('shows the notes that stopped a delete', async () => {
     const { server, user } = await withWork()
     await server.api('PUT', '/spaces/empty', { name: 'Empty' })
-    await openSettings(user, 'Spaces')
-    const card = await screen.findByRole('region', { name: 'Spaces' })
-    const remove = await waitFor(() => within(card).getByRole('button', { name: 'Delete Empty' }))
+    const info = await infoFromSettings(user, 'Empty')
+    const remove = within(info).getByRole('button', { name: 'Delete space' })
+    expect(remove.hasAttribute('disabled')).toBe(false)
     // Another device files a note there meanwhile.
     await noteIn(server, 'empty', 'Late', 'x\n')
     await user.click(remove)
 
-    expect((await within(card).findByRole('alert')).textContent).toMatch(/another device/)
-    await waitFor(() => expect(within(card).getByRole('button', { name: 'Delete Empty' }).hasAttribute('disabled')).toBe(true))
+    expect((await within(info).findByRole('alert')).textContent).toMatch(/another device/)
+    await waitFor(() => expect(within(info).getByRole('button', { name: 'Delete space' }).hasAttribute('disabled')).toBe(true))
+    expect(within(info).getByText('1 note')).toBeTruthy()
   })
 
-  it('only deletes an empty space', async () => {
+  it('only deletes an empty space, and says why not', async () => {
     const { server, user } = await withWork()
     await server.api('PUT', '/spaces/empty', { name: 'Empty' })
-    await openSettings(user, 'Spaces')
-    const card = await screen.findByRole('region', { name: 'Spaces' })
-    await waitFor(() => within(card).getByRole('button', { name: 'Delete Empty' }))
 
-    expect(within(card).getByRole('button', { name: 'Delete Work' }).hasAttribute('disabled')).toBe(true)
-    expect(within(card).queryByRole('button', { name: 'Delete Notes' })).toBeNull()
-    await user.click(within(card).getByRole('button', { name: 'Delete Empty' }))
+    let info = await infoFromSettings(user, 'Work')
+    let remove = within(info).getByRole('button', { name: 'Delete space' })
+    expect(remove.hasAttribute('disabled')).toBe(true)
+    expect(remove.getAttribute('aria-describedby')).toBeTruthy()
+    expect(within(info).getByText('Move or delete its notes to delete it.')).toBeTruthy()
+    await user.click(within(info).getByRole('button', { name: 'Done' }))
+
+    info = await infoFromSettings(user, 'Notes')
+    expect(within(info).getByRole('button', { name: 'Delete space' }).hasAttribute('disabled')).toBe(true)
+    expect(within(info).getByText(/can be renamed, not deleted/)).toBeTruthy()
+    await user.click(within(info).getByRole('button', { name: 'Done' }))
+
+    info = await infoFromSettings(user, 'Empty')
+    remove = within(info).getByRole('button', { name: 'Delete space' })
+    await user.click(remove)
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Empty' })).toBeNull())
+    const card = screen.getByRole('region', { name: 'Spaces' })
     await waitFor(() => expect(within(card).queryByText('Empty')).toBeNull())
     expect((await spaces(server)).map((s) => s.id)).toEqual(['default', 'work'])
+  })
+})
+
+describe('Space info', () => {
+  it('opens from the switcher’s card, for the space shown', async () => {
+    const { user } = await withWork()
+    await switchTo(user, 'Work')
+    // No traits: nothing beside the switcher.
+    expect(within(panel()).queryByRole('button', { name: /^Space info/ })).toBeNull()
+    await user.click(switcher())
+    await user.click(within(popover()).getByRole('button', { name: 'Space info' }))
+
+    const info = await screen.findByRole('dialog', { name: 'Work' })
+    expect(within(info).getByText('2 notes')).toBeTruthy()
+    // Without traits, no group for them.
+    expect(within(info).queryByRole('list', { name: 'Features' })).toBeNull()
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Work' })).toBeNull())
+  })
+})
+
+describe('traits', () => {
+  afterEach(() => vi.restoreAllMocks())
+
+  const shared: SpaceTrait = { key: 'shared', label: 'Shared', summary: 'With Ana and Ben', exposure: 'Visible to Ana and Ben' }
+  const published: SpaceTrait = {
+    key: 'published',
+    label: 'Published',
+    summary: 'At notes.example',
+    exposure: 'Public at notes.example',
+    problem: 'Publishing failed',
+  }
+  const calendar: SpaceTrait = { key: 'calendar', label: 'Calendar', summary: 'Synced with iCloud', exposure: 'Sent to Apple' }
+
+  /** Work as a newer server would send it: shared, published (failing), and a trait this app doesn't know. */
+  async function withTraits() {
+    const fetchList = spacesApi.list
+    vi.spyOn(spacesApi, 'list').mockImplementation(async () => {
+      const body = await fetchList()
+      const work = body.spaces.find((s) => s.id === 'work')
+      if (work) work.traits = [shared, published, calendar]
+      return body
+    })
+    return withWork()
+  }
+
+  it('shows beside the switcher and in its list and card, and open Space info', async () => {
+    const { user } = await withTraits()
+    await user.click(await waitFor(() => switcher()))
+    // Another space's row: each trait's label, a problem in its place.
+    const row = spaceRow('Work')
+    expect(row.getAttribute('aria-label')).toBe('Work, Shared, Published (Publishing failed), Calendar')
+    expect(row.textContent).toBe('WorkShared· Publishing failed· Calendar')
+    await user.click(row)
+
+    // In Work, the card words each trait; Notes is the one to switch to.
+    await user.click(switcher())
+    const card = within(popover()).getByRole('region', { name: 'Work' })
+    expect(within(card).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Shared · With Ana and Ben',
+      'Publishing failed',
+      'Calendar · Synced with iCloud',
+    ])
+    expect(spaceRow('Notes').getAttribute('aria-label')).toBe('Notes, only you')
+    expect(within(popover()).queryByRole('button', { name: /^Work, / })).toBeNull()
+    await user.keyboard('{Escape}')
+
+    const glyphs = await within(panel()).findByRole('button', { name: 'Space info: Shared, Published (Publishing failed), Calendar' })
+    await user.click(glyphs)
+    const info = await screen.findByRole('dialog', { name: 'Work' })
+    const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
+    expect(rows.map((r) => r.textContent)).toEqual([
+      'SharedWith Ana and Ben',
+      'PublishedPublishing failed',
+      'CalendarSynced with iCloudUpdate the app to change this.',
+    ])
+    // Nothing to manage or turn on yet.
+    expect(within(info).queryByRole('button', { name: /^(Manage|Turn on)/ })).toBeNull()
+  })
+
+  it('asks before moving a note where more people see it', async () => {
+    const { server, user } = await withTraits()
+    await openNote(user, 'Groceries')
+    const moveTo = async () => {
+      await user.click(await screen.findByRole('button', { name: 'More' }))
+      await user.click(screen.getByRole('menuitem', { name: 'Move to space…' }))
+      const dialog = await screen.findByRole('dialog', { name: 'Move to space' })
+      await user.click(within(dialog).getByRole('button', { name: /^Work/ }))
+      return screen.findByRole('dialog', { name: 'Move “Groceries” to Work?' })
+    }
+
+    let confirm = await moveTo()
+    expect(within(confirm).getByText('In Work, this note will be:')).toBeTruthy()
+    expect(within(confirm).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Visible to Ana and Ben',
+      'Public at notes.example',
+      'Sent to Apple',
+    ])
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
+    expect(rowTitles()).toEqual(['Groceries'])
+
+    confirm = await moveTo()
+    await user.click(within(confirm).getByRole('button', { name: 'Move' }))
+    expect(await screen.findByText('Moved to Work')).toBeTruthy()
+    await waitFor(async () => {
+      const work = (await server.api<{ notes: Note[] }>('GET', '/notes?space=work')).body.notes
+      expect(work.map((n) => n.title)).toContain('Groceries')
+    })
+  })
+
+  it('moves to a space that exposes less without asking', async () => {
+    const { user } = await withTraits()
+    await switchTo(user, 'Work')
+    await openNote(user, 'Budget')
+    await user.click(await screen.findByRole('button', { name: 'More' }))
+    await user.click(screen.getByRole('menuitem', { name: 'Move to space…' }))
+    const dialog = await screen.findByRole('dialog', { name: 'Move to space' })
+    await user.click(within(dialog).getByRole('button', { name: 'Notes' }))
+    expect(await screen.findByText('Moved to Notes')).toBeTruthy()
   })
 })
 
@@ -194,15 +342,20 @@ describe('switching spaces', () => {
     const button = await waitFor(() => switcher())
     button.focus()
     await user.keyboard('{ArrowDown}')
-    // Focus goes to the space shown, then the arrows move through the others.
-    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Notes' }))
-    await user.keyboard('{ArrowDown}')
-    expect(document.activeElement).toBe(screen.getByRole('menuitemradio', { name: 'Work' }))
+    // Focus goes to the first space to switch to; → reaches its info, ↑ the card's.
+    expect(document.activeElement).toBe(spaceRow('Work'))
+    await user.keyboard('{ArrowRight}')
+    expect(document.activeElement).toBe(within(popover()).getByRole('button', { name: 'Space info: Work' }))
+    await user.keyboard('{ArrowUp}')
+    expect(document.activeElement).toBe(within(popover()).getByRole('button', { name: 'Space info' }))
+    await user.keyboard('{End}')
+    expect(document.activeElement).toBe(within(popover()).getByRole('button', { name: 'New space…' }))
     await user.keyboard('{Escape}')
-    expect(screen.queryByRole('menu', { name: 'Spaces' })).toBeNull()
+    expect(screen.queryByRole('dialog', { name: 'Spaces' })).toBeNull()
     expect(document.activeElement).toBe(switcher())
 
-    await user.keyboard('{ArrowDown}{ArrowDown}{Enter}')
+    // Typing a name's first letter jumps to it.
+    await user.keyboard('{ArrowDown}w{Enter}')
     await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Work'))
     expect(document.activeElement).toBe(switcher())
   })

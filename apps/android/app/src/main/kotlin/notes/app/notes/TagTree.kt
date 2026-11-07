@@ -149,7 +149,14 @@ fun TagsPane(
     spaces: List<Space> = emptyList(),
     space: String = Spaces.DEFAULT,
     onSpace: (String) -> Unit = {},
-    onNewSpace: () -> Unit = {}
+    onNewSpace: () -> Unit = {},
+    /** A space's Space info (§7.8). */
+    onSpaceInfo: (String) -> Unit = {},
+    /** For the switcher: invitations to answer, and each space's "what changed" line. */
+    invites: List<SpaceInvite> = emptyList(),
+    changes: Map<String, String> = emptyMap(),
+    onJoin: (String) -> Unit = {},
+    onDecline: (String) -> Unit = {}
 ) {
     val t = LocalTokens.current
     val tags by vm.tags.collectAsStateWithLifecycle()
@@ -198,7 +205,14 @@ fun TagsPane(
                         onNewSpace,
                         Modifier.weight(1f).offset(x = (-6).dp).semantics { heading() },
                         style = Type.title.copy(fontSize = 26.sp, lineHeight = 30.sp),
-                        iconSize = 30.dp
+                        iconSize = 30.dp,
+                        onInfo = onSpaceInfo,
+                        // Docked, a sheet from the bottom would land far from the sidebar's top corner.
+                        popup = docked,
+                        invites = invites,
+                        changes = changes,
+                        onJoin = onJoin,
+                        onDecline = onDecline
                     )
                     SettingsButton(onSettings)
                 }

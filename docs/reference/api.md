@@ -285,7 +285,7 @@ parents of nested tags. `count` is the number of notes with the tag or one neste
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `GET` | `/spaces` | → `{spaces: [{id, name, icon, createdAt, noteCount}]}`: `default` first, then by name |
+| `GET` | `/spaces` | → `{spaces: [{id, name, icon, createdAt, noteCount, traits}]}`: `default` first, then by name. `traits` is `[{key, label, summary, exposure?, problem?}]` in a fixed order ([space traits](../contributing/architecture.md#78-space-traits)) |
 | `PUT` | `/spaces/{id}` | `{name, icon?}` → the space. Creates it, or renames it |
 | `DELETE` | `/spaces/{id}` | → `204`, also if it's already gone |
 

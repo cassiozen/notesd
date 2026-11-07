@@ -74,7 +74,8 @@ the list is its own screen and a category opens on top of it with a back button.
 | Passkeys for locked notes | Security | account | ✓ | – | – |
 | Unlock with Face ID / Touch ID / fingerprint | Security | **device** | – | ✓ | ✓ |
 | Signed-in devices (list, sign one out) | Security | account | ✓ | – | – |
-| Spaces: list, new, edit, delete | Spaces | account | ✓ | ✓ | ✓ |
+| Spaces: list (each row opens its Space info), new | Spaces | account | ✓ | ✓ | ✓ |
+| A space's name and icon, delete, and its traits' settings: in Space info, not Settings ([architecture §7.8](architecture.md#78-space-traits)) | Spaces | account | ✓ | ✓ | ✓ |
 | Email via Resend (API key, From): listed as connected or available, connected in two steps (key, then sender) | Integrations | **server** | ✓ | ✓ | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |

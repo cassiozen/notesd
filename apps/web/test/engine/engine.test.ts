@@ -146,6 +146,8 @@ describe('engine', () => {
       ['Notes', 0],
       ['Work', 1],
     ])
+    // None until the server registers a trait.
+    expect((await engine.call('spaces')).map((s) => s.traits)).toEqual([[], []])
     const remote = (await server.api<{ spaces: Space[] }>('GET', '/spaces')).body.spaces
     expect(remote.filter((s) => s.name === 'Work')).toEqual([expect.objectContaining({ id: space, icon: 'briefcase' })])
     expect((await server.api<Note>('GET', `/notes/${id}`)).body.spaceId).toBe(space)

@@ -133,7 +133,9 @@ fun SettingsSectionScreen(
     onConnect: () -> Unit,
     onSignIn: () -> Unit,
     /** A new space: the app switches to it (§7.7). */
-    onSpaceCreated: (String) -> Unit = {}
+    onSpaceCreated: (String) -> Unit = {},
+    /** A space's row: its Space info (§7.8). */
+    onSpaceInfo: (String) -> Unit = {}
 ) {
     val t = LocalTokens.current
     val theme by graph.appearance.theme.collectAsStateWithLifecycle()
@@ -202,7 +204,7 @@ fun SettingsSectionScreen(
                 }
             }
 
-            SettingsSection.Spaces -> SpacesCard(graph, onSpaceCreated)
+            SettingsSection.Spaces -> SpacesCard(graph, onSpaceCreated, onSpaceInfo)
 
             SettingsSection.Integrations -> IntegrationsPage(graph)
 
@@ -275,12 +277,15 @@ fun SettingsSectionScreen(
     }
 }
 
-/** The list and each category's page: a back link, the title, then the content in a readable column. */
+/**
+ * The list and each category's page: a back link, the title, then the content in a readable column.
+ * Without [title], the content heads the page itself.
+ */
 @Composable
-private fun SettingsFrame(
+internal fun SettingsFrame(
     backLabel: String?,
     onBack: () -> Unit,
-    title: String,
+    title: String?,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val t = LocalTokens.current
@@ -300,12 +305,14 @@ private fun SettingsFrame(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Column(Modifier.widthIn(max = 560.dp).fillMaxWidth()) {
-                Text(
-                    title,
-                    style = Type.display,
-                    color = t.ink,
-                    modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp).semantics { heading() }
-                )
+                if (title != null) {
+                    Text(
+                        title,
+                        style = Type.display,
+                        color = t.ink,
+                        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 16.dp).semantics { heading() }
+                    )
+                }
                 content()
             }
         }

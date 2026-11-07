@@ -1,14 +1,16 @@
 package notes.app.settings
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -19,18 +21,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
-import notes.app.notes.SpaceIconImage
 import notes.app.notes.SpaceIconPicker
+import notes.app.notes.SpaceIdentity
 import notes.app.ui.ButtonKind
+import notes.app.ui.Icons
 import notes.app.ui.LocalSpaceTheme
 import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
@@ -42,83 +44,46 @@ import notes.app.ui.Type
 import notes.core.db.Space
 import notes.core.db.Spaces
 
-private fun notesIn(space: Space) = "${space.noteCount} ${if (space.noteCount == 1) "note" else "notes"}" +
-    when {
-        space.id == Spaces.DEFAULT -> " · Can be renamed, not deleted"
-        space.noteCount > 0 -> " · Move or delete its notes to delete it"
-        else -> ""
-    }
+/** How many notes a space has here, "1 note" or "3 notes". */
+internal fun noteCount(space: Space) = "${space.noteCount} ${if (space.noteCount == 1) "note" else "notes"}"
 
-/** Spaces (§7.7): create, rename and delete them. The sidebar's switcher can make one too. */
+/**
+ * Spaces (§7.7): each opens its Space info, where it's renamed and deleted (§7.8); New space last. The sidebar's
+ * switcher can make one too.
+ */
 @Composable
-internal fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
+internal fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit, onOpen: (String) -> Unit) {
     val t = LocalTokens.current
     val spaces by graph.spaces.collectAsStateWithLifecycle()
-    val scope = rememberCoroutineScope()
-    var editing by remember { mutableStateOf<Space?>(null) }
-    var error by remember { mutableStateOf<String?>(null) }
     var creating by remember { mutableStateOf(false) }
 
     Card {
         for ((i, s) in spaces.withIndex()) {
             if (i > 0) Divider()
             Row(
-                Modifier.fillMaxWidth().heightIn(
-                    min = 64.dp
-                ).padding(start = 16.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 64.dp)
+                    .clickable(role = Role.Button) { onOpen(s.id) }
+                    .semantics(mergeDescendants = true) {}
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                SpaceIconImage(s.icon, 28.dp)
-                Spacer(Modifier.width(14.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(s.name, style = Type.rowTitle, color = t.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(notesIn(s), style = Type.rowMeta, color = t.ink2)
-                }
-                NotesButton(
-                    "Edit",
-                    { editing = s },
-                    Modifier.semantics { contentDescription = "Edit ${s.name}" },
-                    kind = ButtonKind.Ghost,
-                    small = true
+                SpaceIdentity(
+                    s.icon,
+                    s.name,
+                    s.traits,
+                    Modifier.weight(1f),
+                    style = Type.rowTitle,
+                    iconSize = 28.dp,
+                    subtitle = { Text(noteCount(s), style = Type.rowMeta, color = t.ink2) }
                 )
-                if (s.id != Spaces.DEFAULT) {
-                    NotesButton(
-                        "Delete",
-                        {
-                            error = null
-                            scope.launch {
-                                val deleted = runCatching { graph.sync.spaces.delete(s.id) }
-                                if (deleted.getOrNull() == true) {
-                                    graph.scheduler.request()
-                                } else {
-                                    error = if (deleted.isFailure) {
-                                        "The space couldn't be deleted on this phone. Try again."
-                                    } else {
-                                        "Notes arrived in that space from another device. Move or delete them first."
-                                    }
-                                }
-                            }
-                        },
-                        Modifier.semantics { contentDescription = "Delete ${s.name}" },
-                        kind = ButtonKind.DangerText,
-                        enabled = s.noteCount == 0,
-                        small = true
-                    )
-                }
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Chevron, null, Modifier.size(16.dp), tint = t.ink3)
             }
         }
         Divider()
         Action("New space", t.link, enabled = spaces.isNotEmpty()) { creating = true }
-    }
-    error?.let {
-        Text(
-            it,
-            style = Type.small,
-            color = t.danger,
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-            }
-        )
     }
     Text(
         "Keep separate contexts, like Work and Personal, apart. Each space has its own notes and tags, " +
@@ -128,26 +93,6 @@ internal fun SpacesCard(graph: AppGraph, onCreated: (String) -> Unit) {
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp)
     )
 
-    editing?.let { space ->
-        SpaceDialog(
-            title = "Edit space",
-            action = "Save",
-            initial = space.name,
-            initialIcon = space.icon,
-            taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
-            onDismiss = { editing = null }
-        ) { name, icon ->
-            editing = null
-            error = null
-            scope.launch {
-                if (runCatching { graph.sync.spaces.update(space.id, name, icon) }.isFailure) {
-                    error = "${space.name} couldn't be saved on this phone. Try again."
-                    return@launch
-                }
-                graph.scheduler.request()
-            }
-        }
-    }
     if (creating) {
         NewSpaceDialog(graph, onDismiss = { creating = false }) { id ->
             creating = false
@@ -193,7 +138,7 @@ fun NewSpaceDialog(graph: AppGraph, onDismiss: () -> Unit, onCreated: (String) -
 
 /** A space's name and icon. */
 @Composable
-private fun SpaceDialog(
+internal fun SpaceDialog(
     title: String,
     action: String,
     initial: String,

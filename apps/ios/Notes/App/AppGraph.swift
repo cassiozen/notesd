@@ -181,7 +181,14 @@ final class AppGraph {
     }
 
     private func reloadSpaces(_ engine: SyncEngine) async {
-        guard let list = try? await engine.spaces.list() else { return }
+        guard var list = try? await engine.spaces.list() else { return }
+        #if DEBUG
+            if FakeSwitcher.on {
+                for i in list.indices where list[i].traits.isEmpty {
+                    list[i].traits = FakeSwitcher.traits(list[i].name)
+                }
+            }
+        #endif
         spaces = list
         if let home = list.first(where: { $0.id == Spaces.defaultId }) {
             Self.defaults.set(SpaceThemes.key(home.icon), forKey: Self.defaultSpaceThemeKey)

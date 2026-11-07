@@ -123,6 +123,7 @@ import notes.app.ui.Type
 import notes.app.ui.glass
 import notes.app.ui.hairline
 import notes.app.ui.pressScale
+import notes.core.api.SpaceTrait
 import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.db.NoteFilter
 import notes.core.db.Search
@@ -153,7 +154,9 @@ fun NotesListScreen(
     spaces: List<Space> = emptyList(),
     space: String = Spaces.DEFAULT,
     /** A search result from another space: switch to its space, then open it. */
-    onOpenElsewhere: (id: String, space: String) -> Unit = { id, _ -> onOpen(id) }
+    onOpenElsewhere: (id: String, space: String) -> Unit = { id, _ -> onOpen(id) },
+    /** A space's Space info (§7.8), from the title's trait glyphs. */
+    onSpaceInfo: (String) -> Unit = {}
 ) {
     val t = LocalTokens.current
     val state by vm.state.collectAsStateWithLifecycle()
@@ -262,8 +265,11 @@ fun NotesListScreen(
                             notSynced?.pending,
                             scope,
                             icon = spaces.iconOf(space),
+                            // A docked sidebar's switcher already shows them.
+                            traits = if (onTags == null) emptyList() else spaces.traitsOf(space),
                             onClear = { vm.filter(null) },
-                            onNotSynced = { syncSheet = true }
+                            onNotSynced = { syncSheet = true },
+                            onTraits = { onSpaceInfo(space) }
                         )
                     }
                     // Nothing to search before the first note.
@@ -360,14 +366,18 @@ fun NotesListScreen(
                             val others = state.elsewhere
                             if (state.elsewhereCount > 0 && elsewhereFor != state.query) {
                                 item(key = "elsewhere") {
-                                    val where = spaces.filter { it.id != space }.singleOrNull()?.name ?: "other spaces"
-                                    NotesButton(
-                                        "${state.elsewhereCount} more in $where",
-                                        { elsewhereFor = state.query },
-                                        Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                        kind = ButtonKind.Chip,
-                                        small = true
-                                    )
+                                    val other = spaces.filter { it.id != space }.singleOrNull()
+                                    if (other == null) {
+                                        NotesButton(
+                                            "${state.elsewhereCount} more in other spaces",
+                                            { elsewhereFor = state.query },
+                                            Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                            kind = ButtonKind.Chip,
+                                            small = true
+                                        )
+                                    } else {
+                                        MoreInSpace(state.elsewhereCount, other) { elsewhereFor = state.query }
+                                    }
                                 }
                             }
                             if (others.isNotEmpty() && elsewhereFor == state.query) {
@@ -510,11 +520,20 @@ private fun TopBar(collapsed: Boolean, title: String, onTags: (() -> Unit)?, mod
 
 /**
  * The large title: what the list shows, All Notes or the filter, with a way back to all notes.
- * [icon]: the space's, leading the title, so the space shows even with the sidebar away.
+ * [icon] and [traits]: the space's, leading the title, so the space shows even with the sidebar away;
+ * the traits' button opens its Space info. [traits] is empty while the sidebar is docked.
  * [notSynced]: notes stuck on this phone; a quiet icon at the end, and nothing when sync is fine.
  */
 @Composable
-private fun Header(notSynced: Int?, scope: String?, icon: String, onClear: () -> Unit, onNotSynced: () -> Unit) {
+private fun Header(
+    notSynced: Int?,
+    scope: String?,
+    icon: String,
+    traits: List<SpaceTrait>,
+    onClear: () -> Unit,
+    onNotSynced: () -> Unit,
+    onTraits: () -> Unit
+) {
     val t = LocalTokens.current
     Row(
         Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, bottom = 12.dp),
@@ -522,6 +541,11 @@ private fun Header(notSynced: Int?, scope: String?, icon: String, onClear: () ->
     ) {
         SpaceIconImage(icon, 28.dp)
         Spacer(Modifier.width(12.dp))
+        // No name here to follow, so the traits follow the icon.
+        if (traits.isNotEmpty()) {
+            TraitGroup(traits, onTraits)
+            Spacer(Modifier.width(8.dp))
+        }
         Text(
             scope ?: "All Notes",
             style = Type.display,
@@ -548,6 +572,38 @@ private fun Header(notSynced: Int?, scope: String?, icon: String, onClear: () ->
             Spacer(Modifier.weight(1f))
             IconAction(Icons.CloudOff, notSyncedLabel(notSynced), onNotSynced, tint = t.ink3)
         }
+    }
+}
+
+/** Search's other-spaces row when there's one other space: named as everywhere else, icon and traits too. */
+@Composable
+private fun MoreInSpace(count: Int, other: Space, onClick: () -> Unit) {
+    val t = LocalTokens.current
+    val shape = RoundedCornerShape(12.dp)
+    Row(
+        Modifier
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .heightIn(min = 40.dp)
+            .clip(shape)
+            .background(t.chip)
+            .border(1.dp, t.edge, shape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {}
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        val label = Type.button.copy(fontSize = 14.sp, fontWeight = FontWeight.Medium)
+        Text("$count more in", style = label, color = t.ink, maxLines = 1)
+        Spacer(Modifier.width(6.dp))
+        SpaceIdentity(
+            other.icon,
+            other.name,
+            other.traits,
+            style = label,
+            iconSize = 18.dp,
+            iconGap = 6.dp,
+            glyphSize = 14.dp
+        )
     }
 }
 
@@ -819,3 +875,5 @@ internal fun parkedMessage(n: Int): String {
     if (n == 1) return "1 change couldn’t sync. It’s kept on this device."
     return "$n changes couldn’t sync. They’re kept on this device."
 }
+
+private fun List<Space>.traitsOf(id: String): List<SpaceTrait> = firstOrNull { it.id == id }?.traits.orEmpty()
