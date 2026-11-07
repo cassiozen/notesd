@@ -484,7 +484,8 @@ The user guide is [agents](../guides/using/agents.md).
   for the space the note is in then, or at once when an editor closes the note and the server has
   what it last saved (`editor.closed` on the socket below). The editor asks for *note created*,
   *started editing* and the menu command on the socket, sending what it shows, and the run starts
-  from that, at once. Their runs
+  from that, at once; asked while the socket is still connecting, the request waits for it (up to
+  10 seconds, and only while the note is still open). Their runs
   work on the note only as an editor shows it, the asking one's first, never the store's copy, which
   may not exist yet: with no editor showing it, before or during the run, the run is skipped
   (`note_closed`). A new note

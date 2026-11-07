@@ -276,4 +276,44 @@ describe('the agent socket, connecting', () => {
     agentSocket.start()
     expect(agentSocket.isWriting('n1')).toBe(false)
   })
+
+  it('holds a run asked for while connecting until the server says hello', async () => {
+    const make = socketFactory.make
+    const { heldMs, retryBaseMs } = socketTiming
+    socketFactory.make = () => new FakeSocket() as unknown as WebSocket
+    socketTiming.retryBaseMs = 1
+    onTestFinished(() => {
+      agentSocket.noteClosed('n1', null)
+      agentSocket.stop()
+      socketFactory.make = make
+      Object.assign(socketTiming, { heldMs, retryBaseMs })
+      FakeSocket.all = []
+    })
+    expect(agentSocket.requestRun('menu', 'n1', 's1')).toBe(false) // no socket wanted
+
+    agentSocket.start()
+    agentSocket.noteOpened('n1')
+    const shown = { spaceId: 's1', title: 'T', content: 'Typed', cursor: 5, revision: null }
+    const stop = agentSocket.serve('n1', { read: () => shown, apply: () => Promise.resolve({}) })
+    onTestFinished(stop)
+    expect(agentSocket.requestRun('noteCreated', 'n1', 's1')).toBe(true)
+    expect(agentSocket.requestRun('noteCreated', 'n2', 's1')).toBe(true) // closed before hello
+    const [first] = FakeSocket.all
+    if (!first) throw new Error('no socket')
+    expect(first.sent).toEqual([])
+    first.hello()
+    expect(first.sent).toEqual([
+      { type: 'editor.opened', noteId: 'n1' },
+      { type: 'run.request', trigger: 'noteCreated', noteId: 'n1', spaceId: 's1', note: shown },
+    ])
+
+    // Asked while reconnecting, but too long ago by the time it's back.
+    socketTiming.heldMs = -1
+    first.drop()
+    expect(agentSocket.requestRun('editStarted', 'n1', 's1')).toBe(true)
+    await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
+    const again = FakeSocket.all[1]
+    again?.hello()
+    expect(again?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
+  })
 })

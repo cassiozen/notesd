@@ -8,10 +8,13 @@ import { useAiSettings } from '../notes/ai-settings'
 export const SOCKET_PATH = '/api/v1/agent/socket'
 
 /**
- * Reconnect backoff, and how long a socket no longer wanted waits for the notes open here to say they
- * closed; tests shorten them.
+ * Reconnect backoff; how long a socket no longer wanted waits for the notes open here to say they
+ * closed; and how long a run asked for while connecting waits to be sent: later, the moment it was
+ * for has passed. Tests shorten them.
  */
-export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000, closeWaitMs: 5000 }
+export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000, closeWaitMs: 5000, heldMs: 10_000 }
+
+type Trigger = 'noteCreated' | 'editStarted' | 'menu'
 
 /** Opens the socket; tests swap in one that carries their cookie jar. */
 export const socketFactory = {
@@ -48,6 +51,8 @@ class AgentSocket {
   private running = new Map<string, string>()
   /** Runs whose change already shows in this tab's editor. */
   private readonly landed = new Set<string>()
+  /** Runs asked for before hello, by trigger and note: sent once it comes. */
+  private readonly held = new Map<string, { trigger: Trigger; noteId: string; spaceId: string; at: number }>()
   /** The server's id for this connection, once it said hello. */
   connectionId: string | null = null
 
@@ -68,6 +73,7 @@ class AgentSocket {
     this.wanted = false
     window.removeEventListener('online', this.online)
     clearTimeout(this.timer)
+    this.held.clear()
     // Stopped again while waiting (a sign-out resets it): one wait, or it would close a later socket.
     clearTimeout(this.closing)
     if (this.open.size === 0 || !this.connectionId) this.close()
@@ -122,17 +128,23 @@ class AgentSocket {
 
   /**
    * Asks for a run on a note this tab's editor has open, sending what it shows so the run needn't ask
-   * first. False while not connected.
+   * first. Still connecting, it's sent once the server says hello. False with no socket wanted.
    */
-  requestRun(trigger: 'noteCreated' | 'editStarted' | 'menu', noteId: string, spaceId: string): boolean {
-    if (!this.connectionId) return false
+  requestRun(trigger: Trigger, noteId: string, spaceId: string): boolean {
+    if (!this.wanted) return false
+    if (!this.connectionId) {
+      this.held.set(`${trigger}:${noteId}`, { trigger, noteId, spaceId, at: Date.now() })
+      return true
+    }
     // After the effects that asked: one of them may be what serves the note.
-    queueMicrotask(() => {
-      const shown = this.editors.get(noteId)?.read()
-      const note = shown && !('error' in shown) ? shown : undefined
-      this.send({ type: 'run.request', trigger, noteId, spaceId, note })
-    })
+    queueMicrotask(() => this.sendRequest(trigger, noteId, spaceId))
     return true
+  }
+
+  private sendRequest(trigger: Trigger, noteId: string, spaceId: string) {
+    const shown = this.editors.get(noteId)?.read()
+    const note = shown && !('error' in shown) ? shown : undefined
+    this.send({ type: 'run.request', trigger, noteId, spaceId, note })
   }
 
   /** revision: the server's revision of what the editor last showed, if it has it. */
@@ -168,6 +180,11 @@ class AgentSocket {
         this.failures = 0
         this.connectionId = m.connectionId
         for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId })
+        // Only for a note still open here, asked for recently enough.
+        for (const h of this.held.values()) {
+          if (this.open.has(h.noteId) && Date.now() - h.at <= socketTiming.heldMs) this.sendRequest(h.trigger, h.noteId, h.spaceId)
+        }
+        this.held.clear()
       } else if (m?.type === 'run' && typeof m.runId === 'string' && typeof m.noteId === 'string') {
         this.heard(m as unknown as RunUpdate)
       } else if (m && typeof m.id === 'string') {
