@@ -1,0 +1,24 @@
+apps/ios/Notes/Notes/SpaceIconViews.swift
+  s_30a2fddaf04cb6::t_ae499228d91ea2 59-65
+apps/ios/Notes/Editor/FormattingBar.swift
+  s_30a2fddaf04cb6::t_ae499228d91ea2 105,107
+apps/ios/Notes/App/AppGraph.swift
+  s_30a2fddaf04cb6::t_ae499228d91ea2 57,101-103,115-116,187
+  s_30a2fddaf04cb6::t_8e40c6b45bc901 260-261
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11d8d35bb8b19351ecff7dfc1df4a134529b65f6",
+  "prompts": {},
+  "sessions": {
+    "s_30a2fddaf04cb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc8ea43-9dde-413d-92a0-83ed85e07c4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
