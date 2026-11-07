@@ -1,0 +1,35 @@
+apps/android/app/src/main/kotlin/notes/app/notes/FindBar.kt
+  s_30a2fddaf04cb6::t_400f23148318fe 208
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_30a2fddaf04cb6::t_400f23148318fe 626
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_30a2fddaf04cb6::t_400f23148318fe 194-195
+docs/contributing/architecture.md
+  s_30a2fddaf04cb6::t_7b3a2cd629ec31 440
+apps/web/src/notes/space-theme.test.ts
+  s_30a2fddaf04cb6::t_c424a0087981fd 4,63-67
+  s_30a2fddaf04cb6::t_bd77e38d4b67c4 68
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_30a2fddaf04cb6::t_ba99b224324ede 219
+  s_30a2fddaf04cb6::t_400f23148318fe 397
+apps/web/src/notes/space-theme.ts
+  s_30a2fddaf04cb6::t_c424a0087981fd 3,22,30-32
+apps/web/src/auth/session-hint.ts
+  s_30a2fddaf04cb6::t_c424a0087981fd 3-8,22-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4b0a8e27a368dd1a3f931213850be85b5306eaa8",
+  "prompts": {},
+  "sessions": {
+    "s_30a2fddaf04cb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc8ea43-9dde-413d-92a0-83ed85e07c4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
