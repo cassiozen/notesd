@@ -1,11 +1,10 @@
 import { useEffect, useRef } from 'react'
 import type { Space } from '../api/types'
+import { SPACE_THEME_KEY } from '../auth/session-hint'
 import { paintWindowColor } from '../theme'
 import { DEFAULT_SPACE } from './default-space'
 import { SPACE_ICONS } from './space-icons'
 
-// The default space's theme, for public/boot.js: the app always opens on that space.
-const KEY = 'notes.space-theme'
 const FADE_MS = 300
 
 const known = new Set(SPACE_ICONS.map((i) => i.key))
@@ -20,7 +19,7 @@ export function themeKey(icon: string): string {
 
 function readDefault(): string {
   try {
-    return themeKey(localStorage.getItem(KEY) ?? '')
+    return themeKey(localStorage.getItem(SPACE_THEME_KEY) ?? '')
   } catch {
     return ''
   }
@@ -28,8 +27,9 @@ function readDefault(): string {
 
 function saveDefault(key: string) {
   try {
-    if (key) localStorage.setItem(KEY, key)
-    else localStorage.removeItem(KEY)
+    // The default space's, for public/boot.js: the app always opens on that space.
+    if (key) localStorage.setItem(SPACE_THEME_KEY, key)
+    else localStorage.removeItem(SPACE_THEME_KEY)
   } catch {
     // The first frame shows the app icon's colours until the spaces load.
   }
