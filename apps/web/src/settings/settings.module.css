@@ -776,3 +776,10 @@
   font-size: 13.5px;
   line-height: 1.45;
 }
+
+.retryNote {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}

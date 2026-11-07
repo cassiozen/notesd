@@ -182,7 +182,7 @@ function PasswordForm({
       setBusy(false)
       if (err instanceof ApiError && err.code === 'link_invalid') onInvalid()
       else if (err instanceof ApiError && err.field === 'password') {
-        setErrors({ password: 'Use at least 8 characters.' })
+        setErrors({ password: 'Use at least 8 characters, and at most 1024 bytes.' })
         shake()
       } else {
         setFormError(genericMessage(err))

@@ -17,7 +17,7 @@ func (e *env) invite(admin *client, name string) (int64, string) {
 	link, _ := r.body["link"].(map[string]any)
 	id, _ := user["id"].(float64)
 	token, _ := link["token"].(string)
-	if id == 0 || token == "" || user["pending"] != true || user["isAdmin"] != false {
+	if id == 0 || token == "" || user["pending"] != true || user["isAdmin"] != false || link["pending"] != true {
 		e.t.Fatalf("invite response: %s", r.raw)
 	}
 	return int64(id), token
@@ -81,7 +81,7 @@ func TestSetupLinkExpiresAndIsReplaced(t *testing.T) {
 
 	r := admin.do("POST", usersPath(id, "/link"), nil)
 	second, _ := r.body["token"].(string)
-	if r.status != 200 || second == "" || second == first {
+	if r.status != 200 || second == "" || second == first || r.body["pending"] != true {
 		t.Fatalf("new link: %d %s", r.status, r.raw)
 	}
 	if r := e.client().do("POST", "/api/v1/auth/setup-link", map[string]string{"token": first}); r.status != 410 {
@@ -104,7 +104,8 @@ func TestResetLinkSignsOutOnlyWhenUsed(t *testing.T) {
 
 	r := admin.do("POST", usersPath(id, "/link"), nil)
 	token, _ := r.body["token"].(string)
-	if r.status != 200 {
+	// An account with a password: a reset, whatever an app's list last said.
+	if r.status != 200 || r.body["pending"] != false {
 		t.Fatalf("reset link: %d %s", r.status, r.raw)
 	}
 	if r := kidApp.do("GET", "/api/v1/auth/session", nil); r.status != 200 {

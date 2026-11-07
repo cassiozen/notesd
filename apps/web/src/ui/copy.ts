@@ -23,8 +23,10 @@ function legacyCopy(text: string): boolean {
   field.readOnly = true
   field.setAttribute('aria-hidden', 'true')
   Object.assign(field.style, { position: 'fixed', top: '0', left: '0', opacity: '0', pointerEvents: 'none' })
-  // A modal <dialog> makes everything outside it inert, and an inert field can't be selected.
-  ;(focused?.closest('dialog') ?? document.body).append(field)
+  // A modal <dialog> makes everything outside it inert, and an inert field can't be selected. Safari doesn't
+  // focus a clicked button, so the focused element doesn't always say which dialog: the top one open does.
+  const dialogs = document.querySelectorAll('dialog[open]')
+  ;(focused?.closest('dialog') ?? dialogs[dialogs.length - 1] ?? document.body).append(field)
   field.focus({ preventScroll: true })
   field.select()
   let copied = false

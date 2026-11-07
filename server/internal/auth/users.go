@@ -15,6 +15,9 @@ const SetupLinkTTL = 7 * 24 * time.Hour
 type Link struct {
 	Token     string `json:"token"`
 	ExpiresAt int64  `json:"expiresAt"`
+	// Pending: for an invited account, to choose its first password; else a reset. As of the link's making,
+	// so the app that asked describes it right even if its list of accounts is stale.
+	Pending bool `json:"pending"`
 }
 
 // Invite adds a non-admin account with no password yet, and a link for
@@ -28,6 +31,7 @@ func (s *Service) Invite(ctx context.Context, username string) (User, Link, erro
 			return err
 		}
 		l, err = s.putLink(ctx, tx, u.ID)
+		l.Pending = true
 		u.LinkExpiresAt = l.ExpiresAt
 		return err
 	})
@@ -42,11 +46,16 @@ func (s *Service) NewSetupLink(ctx context.Context, actorID, userID int64) (Link
 	}
 	var l Link
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		if err := exists(ctx, tx, userID); err != nil {
+		var hash string
+		err := tx.QueryRowContext(ctx, `SELECT password_hash FROM users WHERE id = ?`, userID).Scan(&hash)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNoUser
+		}
+		if err != nil {
 			return err
 		}
-		var err error
 		l, err = s.putLink(ctx, tx, userID)
+		l.Pending = hash == ""
 		return err
 	})
 	return l, err

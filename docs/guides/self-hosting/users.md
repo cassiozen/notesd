@@ -46,7 +46,7 @@ The link uses the address you opened notesd at. Open it at the address the other
 for them. An invitation shows in the list until it's used; **New invite link** replaces a lost or
 expired one.
 
-Each person's **…** menu also has:
+For someone who has set their password, the **…** menu has:
 
 - **Reset password…** for someone who forgot theirs: a link like the invitation's, where they
   choose a new one. Their old password works until then, and using the link signs them out everywhere.
@@ -54,6 +54,9 @@ Each person's **…** menu also has:
   people. The server always keeps one admin who can sign in.
 - **Remove from server…** signs them out everywhere and deletes the account. Their notes stay in
   `users/<id>.db` on the server, as with `remove-user` below.
+
+For an invitation still waiting, it has **New invite link** and **Cancel invitation…**, which
+ends the link and frees the username.
 
 You can't change or remove your own account there; another admin can, or the command line.
 

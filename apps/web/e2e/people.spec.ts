@@ -48,6 +48,15 @@ test('an admin invites someone, who joins from the link, and is removed later', 
   await expect(again.getByRole('heading', { name: 'This link doesn’t work anymore' })).toBeVisible()
   await again.close()
 
+  // The admin's list still says invited: the server's answer decides what the new link does.
+  await expect(row).toContainText('Invited')
+  await row.getByRole('button', { name: `Actions for ${name}` }).click()
+  await page.getByRole('menuitem', { name: 'New invite link' }).click()
+  const reset = page.getByRole('dialog', { name: `Send ${name} this link` })
+  await expect(reset).toContainText('choose a new password, which signs them out everywhere')
+  await reset.getByRole('button', { name: 'Done' }).click()
+  await expect(row).toContainText('Joined')
+
   await page.reload()
   await expect(row).toContainText('Joined')
   await row.getByRole('button', { name: `Actions for ${name}` }).click()

@@ -47,20 +47,23 @@ function People({ username }: { username: string }) {
 
   useEffect(() => {
     let cancelled = false
-    users.list().then(
-      ({ users: people }) => {
-        if (!cancelled) setLoad({ status: 'ready', people })
-      },
-      (err: unknown) => {
-        if (cancelled) return
-        if (isAdminOnly(err)) setGone(true)
-        else setLoad({ status: 'error' })
-      },
-    )
+    void fetchPeople().then((next) => {
+      if (cancelled) return
+      if (next) setLoad(next)
+      else setGone(true)
+    })
     return () => {
       cancelled = true
     }
   }, [])
+
+  function retry() {
+    setLoad({ status: 'loading' })
+    void fetchPeople().then((next) => {
+      if (next) setLoad(next)
+      else setGone(true)
+    })
+  }
 
   const people = load.status === 'ready' ? sortPeople(load.people, username) : []
   const replace = (p: Person) =>
@@ -85,8 +88,19 @@ function People({ username }: { username: string }) {
   const newLink = (p: Person) =>
     act(p, async () => {
       const link = await users.newLink(p.id)
-      replace({ ...p, linkExpiresAt: link.expiresAt })
-      setOpen({ kind: 'link', person: p, link })
+      // The server's word on pending: this list may be from before they chose a password.
+      const fresh = { ...p, pending: link.pending, linkExpiresAt: link.expiresAt }
+      replace(fresh)
+      setOpen({ kind: 'link', person: fresh, link })
+    })
+
+  // Fresh first: a stale "invited" would describe removing someone who has since joined as cancelling an invitation.
+  const confirmRemove = (p: Person) =>
+    act(p, async () => {
+      const { users: latest } = await users.list()
+      setLoad({ status: 'ready', people: latest })
+      const fresh = latest.find((x) => x.id === p.id)
+      if (fresh) setOpen({ kind: 'remove', person: fresh })
     })
 
   const setAdmin = (p: Person, isAdmin: boolean) => act(p, async () => replace(await users.setAdmin(p.id, isAdmin)))
@@ -102,7 +116,14 @@ function People({ username }: { username: string }) {
         </Button>
       </div>
       {load.status === 'loading' && <p className={styles.deviceNote}>Loading…</p>}
-      {load.status === 'error' && <p className={styles.deviceNote}>Couldn’t load who uses this server.</p>}
+      {load.status === 'error' && (
+        <div className={[styles.deviceNote, styles.retryNote].join(' ')}>
+          <span role="alert">Couldn’t load who uses this server.</span>
+          <Button size="sm" onClick={retry}>
+            Try again
+          </Button>
+        </div>
+      )}
       {load.status === 'ready' && n <= 1 && (
         <p className={styles.deviceNote}>
           Only you use this server. Invite family or friends: each gets their own notes, which no one else can see.
@@ -135,7 +156,7 @@ function People({ username }: { username: string }) {
                     onNewLink={() => void newLink(p)}
                     onReset={() => setOpen({ kind: 'reset', person: p })}
                     onAdmin={(isAdmin) => void setAdmin(p, isAdmin)}
-                    onRemove={() => setOpen({ kind: 'remove', person: p })}
+                    onRemove={() => void confirmRemove(p)}
                   />
                 )}
               </li>
@@ -178,6 +199,16 @@ function People({ username }: { username: string }) {
       )}
     </Surface>
   )
+}
+
+/** null: not an admin, as the server says. */
+async function fetchPeople(): Promise<Load | null> {
+  try {
+    const { users: people } = await users.list()
+    return { status: 'ready', people }
+  } catch (err) {
+    return isAdminOnly(err) ? null : { status: 'error' }
+  }
 }
 
 /** You first, then everyone in the order they were added. */
@@ -408,7 +439,7 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
           Send {person.username} this link
         </h2>
         <p className={styles.dialogText}>
-          {person.pending
+          {link.pending
             ? 'They open it to choose a password, and they’re signed in.'
             : 'They open it to choose a new password, which signs them out everywhere. Until then, their current password still works.'}{' '}
           It works once, for 7 days. Send it privately: whoever has it can set the password.

@@ -70,6 +70,17 @@ describe('copyText', () => {
     expect(document.activeElement).toBe(button)
   })
 
+  it('copies inside the open dialog when the click left focus on the page, as in Safari', async () => {
+    setClipboard(undefined)
+    const seen = stubExecCommand(true)
+    const dialog = document.createElement('dialog')
+    dialog.open = true
+    document.body.append(dialog)
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    expect(await copyText('link')).toBe(true)
+    expect(seen).toEqual([{ text: 'link', inDialog: true }])
+  })
+
   it('reports failure when neither works', async () => {
     setClipboard(undefined)
     stubExecCommand(false)
