@@ -1,0 +1,25 @@
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_499a4d448a6ceb 16
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_19927b4eaeeec2 211-219,223-231
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_68f7272b2d698e 777,785-787,868-904
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_eb2329246fb306 82-85,216,232-246,316-318,347-349
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0952122f64ebcd5ba7c4b4ad073f18bae5252cfd",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
