@@ -64,7 +64,7 @@ import notes.core.api.ApiResult
 import notes.core.api.Person
 import notes.core.api.SetupLink
 
-private sealed interface Load {
+internal sealed interface Load {
     data object Loading : Load
 
     data object Failed : Load
@@ -110,12 +110,7 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
         }
     }
 
-    val shown = when (load) {
-        is Load.Ready -> true
-        Load.Hidden -> false
-        Load.Loading, Load.Failed -> account.isAdmin
-    }
-    if (!shown) return
+    if (!peopleShown(load, account.isAdmin)) return
 
     fun people() = (load as? Load.Ready)?.people.orEmpty()
     fun update(change: (List<Person>) -> List<Person>) {
@@ -291,6 +286,17 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
 
         null -> Unit
     }
+}
+
+/**
+ * Until the server answers, what the account last knew decides. Not known (signed in before the app kept it), the
+ * card stays out of the way while loading, but shows a failure: an admin offline then still has Try again.
+ */
+internal fun peopleShown(load: Load, isAdmin: Boolean?): Boolean = when (load) {
+    is Load.Ready -> true
+    Load.Hidden -> false
+    Load.Loading -> isAdmin == true
+    Load.Failed -> isAdmin != false
 }
 
 private fun ApiResult<*>.isAdminOnly() = this is ApiResult.Rejected && status == 403 && error == "admin_only"

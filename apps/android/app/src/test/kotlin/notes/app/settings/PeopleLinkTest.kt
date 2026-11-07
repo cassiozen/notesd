@@ -26,6 +26,23 @@ class PeopleLinkTest {
     }
 
     @Test
+    fun `before the server answers, what the account last knew decides`() {
+        val ready = Load.Ready(emptyList())
+        for (admin in listOf(true, false, null)) {
+            assertEquals(true, peopleShown(ready, admin))
+            assertEquals(false, peopleShown(Load.Hidden, admin))
+        }
+        assertEquals(true, peopleShown(Load.Loading, true))
+        assertEquals(false, peopleShown(Load.Loading, false))
+        // Not known: nothing while loading, so non-admins see no flash.
+        assertEquals(false, peopleShown(Load.Loading, null))
+        assertEquals(true, peopleShown(Load.Failed, true))
+        assertEquals(false, peopleShown(Load.Failed, false))
+        // Not known: an admin who can't reach the server still gets Try again.
+        assertEquals(true, peopleShown(Load.Failed, null))
+    }
+
+    @Test
     fun `the shared message says what the link is for, then the link`() {
         val invite = shareText("notes.example.com", pending = true, url = "https://x/setup#t")
         assertTrue(invite.startsWith("You're invited to notesd at notes.example.com."))

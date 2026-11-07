@@ -17,8 +17,11 @@ sealed interface Account {
     /** Never connected (or all data removed): notes live on this device only. */
     data object None : Account
 
-    /** [isAdmin]: as of sign-in, or the last time the server said; People asks it again. */
-    data class SignedIn(val server: String, val username: String, val isAdmin: Boolean = false) : Account
+    /**
+     * [isAdmin]: as of sign-in, or the last time the server said; People asks it again. Null: not known, for an
+     * account signed in before the app kept it.
+     */
+    data class SignedIn(val server: String, val username: String, val isAdmin: Boolean? = false) : Account
 
     /**
      * Connected once, no session now (signed out, or the session was revoked).
@@ -41,7 +44,8 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         val access: String? = null,
         val accessExpiresAt: Long = 0,
         val refresh: String? = null,
-        val isAdmin: Boolean = false
+        // Absent from files written before the app kept it: unknown, not "no".
+        val isAdmin: Boolean? = null
     )
 
     private val lock = Mutex()

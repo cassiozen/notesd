@@ -14,7 +14,6 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
 import kotlinx.coroutines.runBlocking
 import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
@@ -144,7 +143,7 @@ class PeopleTest {
         openServer(isAdmin = true)
         compose.waitUntil { graph.accounts.account.value == Account.SignedIn(server.url("/").toString(), "me") }
         compose.waitUntilDoesNotExist(hasText("People"))
-        assertFalse((graph.accounts.account.value as Account.SignedIn).isAdmin)
+        assertEquals(false, (graph.accounts.account.value as Account.SignedIn).isAdmin)
     }
 
     @Test
