@@ -1,0 +1,61 @@
+apps/ios/NotesCore/Tests/NotesCoreTests/Fixtures.swift
+  s_8e1d37af026457::t_f4ebc152683135 44-93
+shared/markdown-fixtures/merge.json
+  s_8e1d37af026457::t_65484277a9d303 1-42
+apps/ios/NotesCore/Sources/NotesCore/Markdown/BlockMerge.swift
+  s_8e1d37af026457::t_5129c1b67049c2 201-206,230-231,233-234,257,261
+  s_8e1d37af026457::t_91479508a04162 209-211,213-215,217-221
+  s_8e1d37af026457::t_da1e0f208b6efc 349-350
+  s_8e1d37af026457::t_8caee6658030c2 1-200,207-208,212,216,222-229,232,235-256,258-260,262-348,351-371
+shared/sync-engine/src/commonTest/kotlin/notes/core/Fixtures.kt
+  s_8e1d37af026457::t_a15a631b8d7933 5,30-31,39-42,49
+  s_8e1d37af026457::t_cd109c34d587b9 32-38,50-52
+apps/web/src/offline/host.ts
+  s_8e1d37af026457::t_114ddd7d171f20 11,45
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/MergeMarkdown.jvm.kt
+  s_8e1d37af026457::t_dc04e37ef24698 1-2
+  s_8e1d37af026457::t_cd109c34d587b9 3-4
+apps/web/src/editor/merge.ts
+  s_8e1d37af026457::t_990967694f399e 268
+  s_8e1d37af026457::t_0f2d8ef15b94e3 4-7,39-40,61,98,164
+  s_8e1d37af026457::t_1947be915d85d6 18-24,63,65,74,77,83,87,96,108-109,117-118,151,161,169-170,174-175,177,233,269
+  s_8e1d37af026457::t_1ff8e2572df2b5 1-3,8-17,25-38,41-60,62,64,66-73,75-76,78-82,84-86,88-95,97,99-107,110-116,119-150,152-160,162-163,165,167,173,178-232,234-267,270-271
+  s_8e1d37af026457::t_085b4b523fede8 166,168,171-172,176
+apps/web/test/merge.test.ts
+  s_8e1d37af026457::t_7822f11888e1e2 1-46,48-75,79-124,126-152,154-160
+  s_8e1d37af026457::t_546837273cab47 47,76-78,125,153
+shared/markdown-fixtures/merge-generated.json
+  s_8e1d37af026457::t_548762fd647a1d 1,3-305
+  s_8e1d37af026457::t_546837273cab47 2
+shared/sync-engine/src/jvmMain/kotlin/notes/core/markdown/BlockMerge.kt
+  s_8e1d37af026457::t_cd109c34d587b9 214-220,299-301,303,305,307
+  s_8e1d37af026457::t_6834021f8f7de7 1-213,221-298,302,304,306,308-325
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_8e1d37af026457::t_42594e38be5df7 23
+  s_8e1d37af026457::t_7ff20921331125 302-303,312,317
+shared/sync-engine/src/jsMain/kotlin/notes/core/markdown/MergeMarkdown.js.kt
+  s_8e1d37af026457::t_a15a631b8d7933 1-14
+apps/ios/NotesCore/Tests/NotesCoreTests/BlockMergeTests.swift
+  s_8e1d37af026457::t_f4ebc152683135 1-37
+shared/sync-engine/src/jvmTest/kotlin/notes/core/markdown/BlockMergeTest.kt
+  s_8e1d37af026457::t_cd109c34d587b9 40-43
+  s_8e1d37af026457::t_a15a631b8d7933 1-39,44-45
+shared/sync-engine/src/commonMain/kotlin/notes/core/markdown/BodyMerge.kt
+  s_8e1d37af026457::t_79d7ecfbff6164 1-14
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0ce4f9f4126e8109e19caae18c9333676de11971",
+  "prompts": {},
+  "sessions": {
+    "s_8e1d37af026457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ed58fb-dbc1-4c4d-a767-e89a079555f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
