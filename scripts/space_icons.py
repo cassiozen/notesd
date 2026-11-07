@@ -308,40 +308,43 @@ def legible(t: dict[str, str], mode: str) -> dict[str, str]:
 
 
 def derive(theme: Theme, mode: str) -> tuple[dict[str, str], tuple[float, float, float]]:
-    """A theme's tokens in one mode, and its background (for window colours)."""
+    """A theme's tokens in one mode, and its background (for window colours).
+    The neutrals stay a soft tint, capped, so every theme could be the app's own
+    style: the seed's chroma sets how far each leans, not how loud it gets."""
     aL, aC, aH = theme.accent
     if mode == "light":
         h, c = theme.light
-        ink_c = min(c * 1.8, 0.03)
-        bg, paper = (0.958, c * 1.8, h), (0.986, c * 0.8, h)
+        ink_c = min(c * 1.2, 0.02)
+        bg, paper = (0.958, min(c * 0.8, 0.016), h), (0.986, c * 0.35, h)
         accent = (aL, aC, aH)
-        shade = f"{_num(0.3)} {_num(c * 3)} {_num(h)}"
+        shade = f"{_num(0.3)} {_num(c * 2)} {_num(h)}"
         t = {
             "bg": oklch(*bg),
             "paper": oklch(*paper),
             "ink": oklch(0.24, ink_c, h),
             "ink-2": oklch(0.42, ink_c, h),
             "ink-3": oklch(0.5, ink_c, h),
-            "glass": oklch(0.993, c * 0.5, h, 0.74),
-            "glass-hi": oklch(0.993, c * 0.5, h, 0.88),
-            "hair": oklch(0.3, c * 2, h, 0.09),
-            "hair-strong": oklch(0.3, c * 2, h, 0.16),
-            "hover": oklch(0.3, c * 2, h, 0.07),
-            "on": oklch(0.3, c * 2, h, 0.11),
+            "glass": oklch(0.993, c * 0.25, h, 0.74),
+            "glass-hi": oklch(0.993, c * 0.25, h, 0.88),
+            "hair": oklch(0.3, c * 1.5, h, 0.09),
+            "hair-strong": oklch(0.3, c * 1.5, h, 0.16),
+            "hover": oklch(0.3, c * 1.5, h, 0.07),
+            "on": oklch(0.3, c * 1.5, h, 0.11),
             "shadow": f"0 12px 32px -18px oklch({shade} / 0.22)",
             "shadow-lg": f"0 40px 90px -34px oklch({shade} / 0.35)",
-            "scrim": oklch(0.93, c * 1.5, h, 0.42),
+            "scrim": oklch(0.93, c * 0.8, h, 0.42),
             "solid": oklch(0.25, ink_c, h),
-            "on-solid": oklch(0.98, c * 0.7, h),
-            "blob-1": oklch(0.895, _clamp(c * 5, 0.04, 0.09), h),
-            "tag": oklch(0.6, _clamp(c * 6, 0.03, 0.1), h, 0.2),
+            "on-solid": oklch(0.98, c * 0.35, h),
+            "blob-1": oklch(0.895, _clamp(c * 3, 0.03, 0.06), h),
+            "tag": oklch(0.6, _clamp(c * 4, 0.03, 0.08), h, 0.2),
             "focus": oklch(0.55, _clamp(c * 4, 0.02, 0.1), h, 0.75),
         }
         # Starting points: legible() takes them further if they need it.
         caret = (min(aL, 0.62), aC, aH)
         link = (min(aL, 0.5), min(aC, 0.14), aH)
     else:
-        h, c = theme.dark
+        h, seed = theme.dark
+        c = min(seed * 0.55, 0.014)
         bg, paper = (0.19, c, h), (0.225, c, h)
         accent = (max(aL, 0.66), aC, aH)
         t = {
@@ -361,9 +364,9 @@ def derive(theme: Theme, mode: str) -> tuple[dict[str, str], tuple[float, float,
             "scrim": oklch(0.13, c, h, 0.5),
             "solid": oklch(0.93, c * 0.8, h),
             "on-solid": oklch(0.2, c, h),
-            "blob-1": oklch(0.42, _clamp(c * 3, 0.04, 0.09), h),
-            "tag": oklch(0.6, _clamp(c * 4, 0.03, 0.1), h, 0.28),
-            "focus": oklch(0.8, _clamp(c * 3, 0.02, 0.1), h, 0.75),
+            "blob-1": oklch(0.42, _clamp(seed * 2, 0.03, 0.06), h),
+            "tag": oklch(0.6, _clamp(seed * 3, 0.03, 0.08), h, 0.28),
+            "focus": oklch(0.8, _clamp(seed * 3, 0.02, 0.1), h, 0.75),
         }
         caret = (max(aL, 0.78), aC * 0.9, aH)
         link = (max(aL, 0.8), min(aC, 0.14), aH)
