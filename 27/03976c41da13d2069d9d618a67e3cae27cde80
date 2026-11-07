@@ -1,0 +1,21 @@
+apps/web/src/auth/errors.test.ts
+  s_cc6cacc0a6fc01::t_b4d3e330dfc3e0 1-11
+apps/web/src/auth/errors.ts
+  s_cc6cacc0a6fc01::t_0e650fc6dc4005 21,24
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2703976c41da13d2069d9d618a67e3cae27cde80",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
