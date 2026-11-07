@@ -26,7 +26,8 @@ export function sentence(message: string): string {
 
 /** A new password and its confirmation, checked as every form checks them before the server does. */
 export function newPasswordErrors(password: string, confirm: string): { password?: string; confirm?: string } {
-  if (password.length < 8) return { password: 'Use at least 8 characters.' }
+  // Code points, as the server counts: four emoji are 8 UTF-16 units but 4 characters.
+  if ([...password].length < 8) return { password: 'Use at least 8 characters.' }
   if (confirm !== password) return { confirm: "The passwords don't match." }
   return {}
 }
