@@ -78,4 +78,5 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 - [Development](contributing/development.md): building from source and working on notesd
 - [Architecture](contributing/architecture.md): the specification (data model, sync protocol, conflicts, security)
 - [Settings guidelines](contributing/settings-guidelines.md): how Settings is organized, and where a new setting goes
+- [Agent clients](contributing/agent-clients.md): what an app does to take part in agents: the socket, editor triggers, applying a run's changes
 - [Releasing](contributing/releasing.md)
