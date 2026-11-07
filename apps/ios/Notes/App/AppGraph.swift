@@ -268,6 +268,8 @@ final class AppGraph {
         case .recoveredCopy(_, let title):
             "A note you edited was deleted on another device. Your edits are kept as “\(title)”."
         case .restored(_, let title): "“\(title)” changed on another device, so it’s back."
+        case .merged(_, let title):
+            "“\(title.isEmpty ? "Untitled" : title)” changed on another device too. The changes were merged."
         }
     }
 }

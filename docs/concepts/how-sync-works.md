@@ -44,11 +44,28 @@ version, and merges field by field, comparing each with the version both started
 A field only one side changed takes that side's value. The note's space works the same way; if
 both moved it, the server's move wins.
 
-When **both changed the text differently**, notesd doesn't try to merge the words. The phones keep
-the server's version as the note and save their own as a new note, "… (Conflicted copy)", linked
-to the original, so both versions exist. The web app, working on the server, asks you instead:
-**Keep mine** saves your version as a separate note, and **Use theirs** drops your edit. Nothing
-is dropped without you choosing it. (If both made the same change, there's nothing to resolve.)
+When **both changed the text**, it merges block by block: paragraphs, headings, list items and
+quotes, again against the version both started from.
+
+| | Started from | This device | Server | Result |
+| --- | --- | --- | --- | --- |
+| Paragraphs | One / Two | One / Two, edited | One, edited / Two | **One, edited / Two, edited** |
+| Checklist | ☐ milk | ☑ milk | ☐ oat milk | **☑ oat milk** |
+
+A heading's level, a checkbox and a numbered list's start merge apart from the words next to them,
+so ticking an item on one device and rewording it on another both stick. notesd never merges the
+words of one paragraph: two edits to the same paragraph (or two items added at the same spot, or
+a block moved on one device and edited on the other) are a conflict for that block. Then the note
+keeps the server's version of it, and this device's goes into a new note, "… (Conflicted copy)",
+linked to the original. Both notes keep every change that did merge, so they differ only where the
+edits clash. When nothing merged at all, the web app working on the server asks instead: **Keep
+mine** saves your version as a separate note, and **Use theirs** drops your edit. Nothing is
+dropped without you choosing it. (If both made the same change, there's nothing to resolve.)
+
+A merged note says so, and for 14 days **Undo** splits it back into what it would otherwise have
+been: one version in the note and the other as a conflicted copy. If the note was edited after the
+merge, Undo keeps those edits and only makes the copy. Locked notes are never merged
+this way, since sync can't read them: changed on both sides, yours becomes the copy.
 
 ## Deletions
 

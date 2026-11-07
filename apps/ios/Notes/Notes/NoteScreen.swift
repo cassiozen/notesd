@@ -58,6 +58,38 @@ struct NoteScreen: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
             }
+            if model.merged && !model.needsUnlock {
+                HStack {
+                    Text("Merged with changes from another device.")
+                        .font(.notesSmall)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button("Undo") { Task { await model.undoMerge() } }
+                        .font(.notesSmall.weight(.semibold))
+                }
+                .foregroundStyle(Color.warnInk)
+                .padding(12)
+                .background(Color.warnBg, in: .rect(cornerRadius: 12))
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
+            if let copy = model.undoneAs {
+                Button {
+                    model.undoneAs = nil
+                } label: {
+                    HStack(alignment: .top) {
+                        Text("Merge undone. The other version was kept as “\(copy)”.")
+                            .font(.notesSmall)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Image(systemName: "xmark").accessibilityLabel("Dismiss")
+                    }
+                    .foregroundStyle(Color.warnInk)
+                    .padding(12)
+                    .background(Color.warnBg, in: .rect(cornerRadius: 12))
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 16)
+                .padding(.top, 8)
+            }
             if model.gone {
                 Text("This note was deleted on another device. Anything you hadn’t synced is kept as a recovered copy.")
                     .font(.notesSmall)

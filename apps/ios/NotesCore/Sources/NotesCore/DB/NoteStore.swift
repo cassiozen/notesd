@@ -280,6 +280,8 @@ public final class NoteStore: Sendable {
         )
         try sql.index(current.id, title: title, content: content)
         try sql.queueText(current.id, title: title, content: content, spaceId: space, now: now)
+        // Undo would keep the text from before the lock in plain text here.
+        if LockedNotes.isLocked(content) { try sql.forgetMerge(current.id) }
         return try sql.note(current.id)!
     }
 
@@ -316,18 +318,70 @@ public final class NoteStore: Sendable {
         _ sql: Sql, _ current: Note, _ title: String, _ content: String, _ basedOn: (title: String, content: String),
         _ clock: Clock
     ) throws -> Note {
+        try sql.forgetMerge(current.id)
         let mergedTitle = Merge.field(base: basedOn.title, mine: title, theirs: current.title, same: Merge.sameText)
         let mergedContent = Merge.field(
             base: basedOn.content, mine: content, theirs: current.content, same: Merge.sameMarkdown)
-        if mergedTitle == nil || mergedContent == nil {
+        let body =
+            mergedContent.map { BodyMerge.clean($0) }
+            ?? Merge.body(base: basedOn.content, mine: content, theirs: current.content)
+        // The editor's side stays in the note: it's what's being typed. The other side goes to a copy.
+        let t = mergedTitle ?? title
+        let c: String
+        switch body {
+        case .conflict:
             try sql.insertCopy(
                 title: copyTitle(current.title, conflictedSuffix), content: current.content, conflictOf: current.id,
                 spaceId: current.spaceId, now: clock())
+            c = content
+        case .partial(let theirs, let mine):
+            try sql.insertCopy(
+                title: copyTitle(mergedTitle ?? current.title, conflictedSuffix), content: theirs,
+                conflictOf: current.id, spaceId: current.spaceId, now: clock())
+            c = mine
+        case .clean(let merged):
+            if mergedTitle == nil {
+                try sql.insertCopy(
+                    title: copyTitle(current.title, conflictedSuffix), content: merged, conflictOf: current.id,
+                    spaceId: current.spaceId, now: clock())
+            }
+            c = merged
         }
-        let t = mergedTitle ?? title
-        let c = mergedContent ?? content
-        if t.same(as: current.title) && c.same(as: current.content) { return current }
-        return try update(sql, current, t, c, clock())
+        let saved =
+            t.same(as: current.title) && c.same(as: current.content) ? current : try update(sql, current, t, c, clock())
+        if mergedContent == nil, mergedTitle != nil, case .clean = body {
+            try sql.recordMerge(
+                MergeUndo(
+                    noteId: current.id, keepTitle: title, keepContent: content, copyTitle: current.title,
+                    copyContent: current.content, mergedTitle: t, mergedContent: c, mergedAt: clock()))
+        }
+        return saved
+    }
+
+    /// The last automatic merge into `id`, if Undo can still split it (§6.2).
+    public func mergeUndo(_ id: String) async throws -> MergeUndo? {
+        let clock = clock
+        return try await db.read { try $0.mergeUndo(id, now: clock()) }
+    }
+
+    /// Splits the last automatic merge into `id` back apart: the note returns to its side, unless it was
+    /// edited since, and the other side becomes a conflicted copy. Returns the copy's id.
+    @discardableResult
+    public func undoMerge(_ id: String) async throws -> String? {
+        let clock = clock
+        let copy = try await db.write { sql -> String? in
+            guard let undo = try sql.mergeUndo(id, now: clock()) else { return nil }
+            try sql.forgetMerge(id)
+            guard let note = try sql.note(id), note.deletedAt == nil else { return nil }
+            if note.title.same(as: undo.mergedTitle) && note.content.same(as: undo.mergedContent) {
+                _ = try Self.update(sql, note, undo.keepTitle, undo.keepContent, clock())
+            }
+            return try sql.insertCopy(
+                title: copyTitle(undo.copyTitle, conflictedSuffix), content: undo.copyContent, conflictOf: id,
+                spaceId: note.spaceId, now: clock())
+        }
+        if copy != nil { localEditFeed.send(()) }
+        return copy
     }
 
     /// Keeps text whose note was deleted elsewhere while it was being edited:
@@ -356,6 +410,7 @@ public final class NoteStore: Sendable {
             let sent = try sql.int64("SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1", id) > 0
             try sql.unindex(id)
             try sql.forgetImages(id)
+            try sql.forgetMerge(id)
             if current.serverRevision == nil && !sent {
                 try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
                 try sql.exec("DELETE FROM notes WHERE id = ?", id)
@@ -391,6 +446,7 @@ public final class NoteStore: Sendable {
             try sql.exec("DELETE FROM notes")
             try sql.exec("DELETE FROM sync_outbox")
             try sql.exec("DELETE FROM locked_images")
+            try sql.exec("DELETE FROM merge_undo")
             try sql.exec("DELETE FROM pending_images")
             try sql.exec("DELETE FROM lock_keys")
             try sql.exec("DELETE FROM spaces")

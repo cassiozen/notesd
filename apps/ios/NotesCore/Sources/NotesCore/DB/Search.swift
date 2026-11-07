@@ -57,4 +57,11 @@ enum Merge {
         if LockedNotes.isLocked(a) || LockedNotes.isLocked(b) { return false }
         return Markdown.canonical(a).same(as: Markdown.canonical(b))
     }
+
+    /// §6.2: a body both sides changed, merged block by block. Locked bodies always conflict: sync
+    /// merges without the key, and a conflicted copy is the answer that can't lose text.
+    static func body(base: String?, mine: String, theirs: String) -> BodyMerge {
+        guard let base, ![base, mine, theirs].contains(where: LockedNotes.isLocked) else { return .conflict }
+        return BlockMerge.merge(base: base, mine: mine, theirs: theirs)
+    }
 }

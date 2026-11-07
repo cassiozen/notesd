@@ -161,10 +161,15 @@ Nothing is lost.
 
 - If one device changed the title and the other the text, both changes are
   kept.
-- If both changed the text, one version stays as the note and the other
-  becomes a new note titled "… (Conflicted copy)", linked to the original.
-  The web app, when it's working directly on the server, asks you which to
-  keep instead.
+- If both changed the text in different places (other paragraphs, list
+  items or headings, or one ticked a checkbox while the other reworded it),
+  the changes are merged, and the note offers Undo.
+- If both changed the same paragraph or heading, added list items at the
+  same spot, or one moved a block the other edited, one version stays as
+  the note and the other becomes a new note titled "… (Conflicted copy)",
+  linked to the original; both keep everything else that merged. When
+  nothing could be merged, the web app working directly on the server asks
+  you which to keep instead.
 - If a note was deleted on one device and edited on another, the edits come
   back as "… (Recovered copy)".
 
