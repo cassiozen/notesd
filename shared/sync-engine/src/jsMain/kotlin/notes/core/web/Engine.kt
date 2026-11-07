@@ -96,8 +96,9 @@ class EngineStatus(val kind: String, val at: Double?, val message: String?, val 
 
 /**
  * Something sync did that the user should hear about. [kind]: ConflictedCopy
- * ([noteId] and [copyId]), RecoveredCopy ([copyId]), Restored ([noteId]) or
- * Rejected (a change the server refused for good; [title] says what and why).
+ * ([noteId] and [copyId]), RecoveredCopy ([copyId]), Restored ([noteId]), Merged
+ * ([noteId]: both sides' edits combined) or Rejected (a change the server refused
+ * for good; [title] says what and why).
  */
 @JsExport
 class EngineNotice(val kind: String, val noteId: String?, val copyId: String?, val title: String)
@@ -204,6 +205,12 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
     fun move(id: String, spaceId: String): Promise<Boolean> = scope.promise { notes.move(id, spaceId) }
 
     fun delete(id: String): Promise<Unit> = scope.promise { notes.delete(id) }
+
+    /** When the last automatic merge into [id] was, if Undo can still split it (§6.2); null otherwise. */
+    fun mergedAt(id: String): Promise<Double?> = scope.promise { notes.mergeUndo(id)?.mergedAt?.toDouble() }
+
+    /** Splits the last automatic merge into [id] back apart; resolves with the conflicted copy's id. */
+    fun undoMerge(id: String): Promise<String?> = scope.promise { notes.undoMerge(id) }
 
     /** Keeps text whose note was deleted elsewhere as a new note [id]; again with the same [id] does nothing. */
     fun recover(
@@ -366,5 +373,6 @@ private fun SyncEvent.export(): EngineNotice = when (this) {
     is SyncEvent.ConflictedCopy -> EngineNotice("ConflictedCopy", noteId, copyId, title)
     is SyncEvent.RecoveredCopy -> EngineNotice("RecoveredCopy", null, copyId, title)
     is SyncEvent.Restored -> EngineNotice("Restored", noteId, null, title)
+    is SyncEvent.Merged -> EngineNotice("Merged", noteId, null, title)
     is SyncEvent.Rejected -> EngineNotice("Rejected", null, null, message)
 }

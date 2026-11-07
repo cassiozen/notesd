@@ -23,8 +23,11 @@ export class LocalSaver extends SaverCore {
     super(init, hooks)
     this.stored = this.created ? { title: init.fields.title, content: init.envelope ?? init.fields.content } : null
     this.offChange = engine.on((e) => {
-      if (e.type === 'change') void this.refresh()
+      if (e.type !== 'change') return
+      void this.refresh()
+      void this.refreshMerged()
     })
+    void this.refreshMerged()
   }
 
   protected blocked(): boolean {
@@ -77,6 +80,27 @@ export class LocalSaver extends SaverCore {
 
   recover() {
     return null
+  }
+
+  async undoMerge(): Promise<string | null> {
+    await this.flush()
+    const copyId = await this.engine.call('undoMerge', this.id)
+    this.merged = false
+    this.set(this.state)
+    const copy = copyId ? await this.engine.call('get', copyId) : null
+    return copy?.title ?? null
+  }
+
+  /** Whether the engine can still split the last merge into this note (§6.2). */
+  private async refreshMerged() {
+    if (!this.created || this.gone) return
+    const merged = await this.engine.call('mergedAt', this.id).then(
+      (at) => at !== null,
+      () => false,
+    )
+    if (merged === this.merged) return
+    this.merged = merged
+    this.set(this.state)
   }
 
   async delete(): Promise<'deleted'> {

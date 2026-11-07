@@ -192,6 +192,9 @@ fun NotesListScreen(
                 is SyncEvent.Restored ->
                     "“${event.title.ifBlank { "New note" }}” changed on another device and wasn't deleted."
 
+                is SyncEvent.Merged ->
+                    "“${event.title.ifBlank { "New note" }}” had changes from another device. They were merged."
+
                 is SyncEvent.Rejected -> event.message
             }
             toasts.showSnackbar(message, withDismissAction = true, duration = SnackbarDuration.Long)

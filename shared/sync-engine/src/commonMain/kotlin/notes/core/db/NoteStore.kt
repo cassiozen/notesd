@@ -4,6 +4,7 @@ import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import notes.core.crypto.LockedEnvelope
+import notes.core.markdown.BodyMerge
 import notes.core.text.Uuid7
 import notes.core.text.isServerId
 import notes.core.text.nowMillis
@@ -246,9 +247,10 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
      * and leaving leaves nothing behind.
      *
      * [basedOn] is the stored title and content the editor's text grew from.
-     * If sync changed the note since, the two are merged per field; where both
-     * changed the same field the editor's text wins and the other version
-     * becomes a conflicted copy, so nothing is lost either way.
+     * If sync changed the note since, the two are merged per field, the body
+     * block by block (§6.2); where both changed the same thing the editor's
+     * text wins and the other version becomes a conflicted copy, so nothing is
+     * lost either way.
      *
      * Returns the stored note, or null when nothing was stored (blank draft,
      * deleted note).
@@ -332,6 +334,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         )
         sql.index(current.id, title, content)
         sql.queueText(current.id, title, content, spaceId, now)
+        // Undo would keep the text from before the lock in plain text here.
+        if (LockedEnvelope.isLocked(content)) sql.forgetMerge(current.id)
         return sql.note(current.id)!!
     }
 
@@ -364,12 +368,58 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         val (baseTitle, baseContent) = basedOn
         val mergedTitle = Merge.field(baseTitle, title, current.title, Merge.sameText)
         val mergedContent = Merge.field(baseContent, content, current.content, Merge.sameMarkdown)
-        if (mergedTitle == null || mergedContent == null) {
-            sql.insertCopy(copyTitle(current.title, CONFLICTED), current.content, current.id, current.spaceId, clock())
+        val body = mergedContent?.let { BodyMerge.Clean(it) } ?: Merge.body(baseContent, content, current.content)
+        // The editor's side stays in the note: it's what's being typed. The other side goes to a copy.
+        val (t, c) = when {
+            body is BodyMerge.Conflict -> {
+                sql.insertCopy(
+                    copyTitle(current.title, CONFLICTED),
+                    current.content,
+                    current.id,
+                    current.spaceId,
+                    clock()
+                )
+                (mergedTitle ?: title) to content
+            }
+
+            mergedTitle == null || body is BodyMerge.Partial -> {
+                val (mine, theirs) = when (body) {
+                    is BodyMerge.Partial -> body.mine to body.theirs
+                    is BodyMerge.Clean -> body.markdown to body.markdown
+                }
+                val copyTitle = copyTitle(mergedTitle ?: current.title, CONFLICTED)
+                sql.insertCopy(copyTitle, theirs, current.id, current.spaceId, clock())
+                (mergedTitle ?: title) to mine
+            }
+
+            else -> mergedTitle to (body as BodyMerge.Clean).markdown
         }
-        val t = mergedTitle ?: title
-        val c = mergedContent ?: content
-        return if (t == current.title && c == current.content) current else update(sql, current, t, c)
+        val saved = if (t == current.title && c == current.content) current else update(sql, current, t, c)
+        if (mergedContent == null && body is BodyMerge.Clean && mergedTitle != null) {
+            sql.recordMerge(MergeUndo(current.id, title, content, current.title, current.content, t, c, clock()))
+        }
+        return saved
+    }
+
+    /** The last automatic merge into [id], if Undo can still split it (§6.2). */
+    suspend fun mergeUndo(id: String): MergeUndo? = db.read { it.mergeUndo(id, clock()) }
+
+    /**
+     * Splits the last automatic merge into [id] back apart: the note returns to its side, unless it was
+     * edited since, and the other side becomes a conflicted copy. Returns the copy's id.
+     */
+    suspend fun undoMerge(id: String): String? {
+        val copy = db.write { sql ->
+            val undo = sql.mergeUndo(id, clock()) ?: return@write null
+            sql.forgetMerge(id)
+            val note = sql.note(id)?.takeIf { it.deletedAt == null } ?: return@write null
+            if (note.title == undo.mergedTitle && note.content == undo.mergedContent) {
+                update(sql, note, undo.keepTitle, undo.keepContent)
+            }
+            sql.insertCopy(copyTitle(undo.copyTitle, CONFLICTED), undo.copyContent, id, note.spaceId, clock())
+        }
+        if (copy != null) _localEdits.tryEmit(Unit)
+        return copy
     }
 
     /**
@@ -406,6 +456,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
             val sent = sql.long("SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1", id) > 0
             sql.unindex(id)
             sql.forgetImages(id)
+            sql.forgetMerge(id)
             if (current.serverRevision == null && !sent) {
                 sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
                 sql.exec("DELETE FROM notes WHERE id = ?", id)
@@ -442,6 +493,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
             sql.exec("DELETE FROM lock_keys")
             sql.exec("DELETE FROM pending_images")
             sql.exec("DELETE FROM locked_images")
+            sql.exec("DELETE FROM merge_undo")
             sql.exec("DELETE FROM spaces")
             sql.exec("INSERT INTO spaces (id, name, created_at) VALUES (?, ?, 0)", Spaces.DEFAULT, Spaces.DEFAULT_NAME)
             sql.exec(

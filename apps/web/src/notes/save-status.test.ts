@@ -13,6 +13,8 @@ const snap = (s: Partial<Snapshot>): Snapshot => ({
   imagesBusy: false,
   spaceId: 'default',
   gone: null,
+  merged: false,
+  split: null,
   ...s,
 })
 

@@ -382,6 +382,20 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
     onNotice(`Deleted on another device. Your edits were kept as “${gone.copy.fields().title}”.`)
   }, [snap.gone, onGone, onOpenDraft, onNotice])
 
+  const splitSeen = useRef<Snapshot['split']>(null)
+  useEffect(() => {
+    const split = snap.split
+    if (!split || splitSeen.current === split) return
+    splitSeen.current = split
+    onNotice(`Changed in two places. Your version was kept as “${split.title}”.`)
+  }, [snap.split, onNotice])
+
+  const undoMerge = useCallback(() => {
+    void saver.undoMerge().then((title) => {
+      if (title) onNotice(`Merge undone. Your version was kept as “${title}”.`)
+    })
+  }, [saver, onNotice])
+
   useEffect(() => {
     if (!stylesOpen) return
     const close = (e: Event) => {
@@ -547,6 +561,18 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
           }
         >
           {problem.message}
+        </Notice>
+      )}
+      {snap.merged && !problem && (
+        <Notice
+          tone="warn"
+          actions={
+            <Button size="sm" onClick={undoMerge}>
+              Undo
+            </Button>
+          }
+        >
+          Merged with changes from another device.
         </Notice>
       )}
       {problem?.kind === 'conflict' && (

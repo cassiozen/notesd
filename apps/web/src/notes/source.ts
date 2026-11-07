@@ -80,6 +80,8 @@ export interface Saver {
   keepMine(): Saver | null
   takeTheirs(): void
   recover(): Saver | null
+  /** Splits the last automatic merge (Snapshot.merged) back apart; resolves with the conflicted copy's title. */
+  undoMerge(): Promise<string | null>
 
   delete(keepalive?: boolean): Promise<'deleted' | 'changed'>
   dispose(): void

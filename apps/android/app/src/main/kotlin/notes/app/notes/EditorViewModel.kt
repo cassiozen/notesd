@@ -101,6 +101,11 @@ class EditorViewModel(
         store.changes.onSubscription { emit(Unit) }.mapLatest { store.tags() }
             .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    /** Edits from another device were merged in (§6.2) and [undoMerge] can still split them apart. */
+    val merged: StateFlow<Boolean> =
+        store.changes.onSubscription { emit(Unit) }.mapLatest { store.mergeUndo(id) != null }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     private val _gone = MutableStateFlow(false)
 
     /** The note was deleted elsewhere; any unsaved typing was kept as a recovered copy. */
@@ -316,6 +321,19 @@ class EditorViewModel(
         appScope.launch {
             saved()
             saveLock.withLock { store.move(id, target) }
+        }
+    }
+
+    /**
+     * Splits the last automatic merge back apart once [doc] is saved: the note as it was before, unless
+     * edited since, and the other version as a conflicted copy. [done] gets the copy's title.
+     */
+    fun undoMerge(doc: Document, done: (String) -> Unit) {
+        save(doc)
+        appScope.launch {
+            if (!saved()) return@launch
+            val copy = saveLock.withLock { store.undoMerge(id) } ?: return@launch
+            store.get(copy)?.let { done(it.title) }
         }
     }
 

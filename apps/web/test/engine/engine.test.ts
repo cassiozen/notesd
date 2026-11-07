@@ -75,6 +75,32 @@ describe('engine', () => {
     expect((await server.api<Note>('GET', `/notes/${copy}`)).body).toMatchObject({ content: 'Wednesday\n', conflictOf: id })
   })
 
+  test('both sides changed different paragraphs: merged, and Undo splits them again', async () => {
+    const { server, engine } = await engineSignedIn()
+    const id = crypto.randomUUID()
+    await engine.call('save', note(id, 'Plan', 'One\n\nTwo\n'))
+    await engine.call('sync')
+    await server.api('PUT', `/notes/${id}`, { operationId: op(), baseRevision: 1, title: 'Plan', content: 'One, elsewhere\n\nTwo\n' })
+
+    await engine.call('save', note(id, 'Plan', 'One\n\nTwo, here\n'))
+    await engine.call('sync')
+
+    const notice = engine.events.find((e) => e.type === 'notice')
+    expect(notice).toMatchObject({ notice: { kind: 'Merged', noteId: id, title: 'Plan' } })
+    expect(await engine.call('get', id)).toMatchObject({ content: 'One, elsewhere\n\nTwo, here\n' })
+    expect(await engine.call('mergedAt', id)).toEqual(expect.any(Number))
+
+    const copy = await engine.call('undoMerge', id)
+    expect(await engine.call('mergedAt', id)).toBeNull()
+    await engine.call('sync')
+    expect((await server.api<Note>('GET', `/notes/${id}`)).body).toMatchObject({ content: 'One, elsewhere\n\nTwo\n' })
+    expect((await server.api<Note>('GET', `/notes/${copy}`)).body).toMatchObject({
+      title: 'Plan (Conflicted copy)',
+      content: 'One\n\nTwo, here\n',
+      conflictOf: id,
+    })
+  })
+
   test('syncs by itself after an edit, and keeps retrying while offline', async () => {
     const { server, engine } = await engineSignedIn()
     Object.assign(syncTiming, { afterEditMs: 50, firstRetryMs: 50, maxRetryMs: 100 })

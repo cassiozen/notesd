@@ -4,6 +4,8 @@ import androidx.sqlite.SQLiteStatement
 import notes.core.api.MutationResult
 import notes.core.api.RemoteNote
 import notes.core.api.SyncPage
+import notes.core.crypto.LockedEnvelope
+import notes.core.markdown.BodyMerge
 import notes.core.text.Uuid7
 import notes.core.text.nowMillis
 
@@ -14,6 +16,9 @@ sealed interface SyncEvent {
 
     /** Edited here, deleted elsewhere: [copyId] keeps the edits. */
     data class RecoveredCopy(val copyId: String, val title: String) : SyncEvent
+
+    /** Both sides changed the body and it merged (§6.2); [MergeUndo] can split it back. */
+    data class Merged(val noteId: String, val title: String) : SyncEvent
 
     /** Deleted here, edited elsewhere: the edit wins and the note is back. */
     data class Restored(val noteId: String, val title: String) : SyncEvent
@@ -335,6 +340,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     suspend fun finished(error: String?) {
         db.write { sql ->
             sql.exec("UPDATE sync_state SET last_sync_at = ?, last_error = ? WHERE id = 1", clock(), error)
+            sql.forgetOldMerges(clock())
         }
     }
 
@@ -426,7 +432,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         val content = Merge.field(baseContent, local.content, remote.content, Merge.sameMarkdown)
         // Moved differently on both sides: the server's space wins; a move holds no text to keep (§6.1).
         val space = Merge.field(baseSpace, local.spaceId, remote.spaceId, Merge.sameText) ?: remote.spaceId
-        if (title == null || content == null) {
+        val body = content?.let { BodyMerge.Clean(it) } ?: Merge.body(baseContent, local.content, remote.content)
+        if (body is BodyMerge.Conflict) {
             val copyTitle = copyTitle(local.title, CONFLICTED)
             val copy = sql.insertCopy(copyTitle, local.content, local.id, local.spaceId, clock())
             faultAfterCopy?.invoke()
@@ -435,6 +442,38 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             events += SyncEvent.ConflictedCopy(local.id, copy, copyTitle)
             return
         }
+        if (title == null || body is BodyMerge.Partial) {
+            // Both get every change that merged, so the two differ only where both sides changed the same thing.
+            val (theirs, mine) = when (body) {
+                is BodyMerge.Partial -> body.theirs to body.mine
+                is BodyMerge.Clean -> body.markdown to body.markdown
+            }
+            val copyTitle = copyTitle(title ?: local.title, CONFLICTED)
+            val copy = sql.insertCopy(copyTitle, mine, local.id, local.spaceId, clock())
+            faultAfterCopy?.invoke()
+            storeMerged(sql, local, remote, title ?: remote.title, theirs, space)
+            events += SyncEvent.ConflictedCopy(local.id, copy, copyTitle)
+            return
+        }
+        val merged = (body as BodyMerge.Clean).markdown
+        storeMerged(sql, local, remote, title, merged, space)
+        if (content == null) {
+            sql.recordMerge(
+                MergeUndo(local.id, remote.title, remote.content, local.title, local.content, title, merged, clock())
+            )
+            events += SyncEvent.Merged(local.id, title)
+        }
+    }
+
+    /** The note becomes [title]/[content] in [space], based on [remote] and queued, unless that's just [remote]. */
+    private suspend fun storeMerged(
+        sql: Sql,
+        local: Note,
+        remote: RemoteNote,
+        title: String,
+        content: String,
+        space: String
+    ) {
         if (title == remote.title && Merge.sameMarkdown(content, remote.content) && space == remote.spaceId) {
             // Nothing of ours left to send.
             dropOps(sql, local.id)
@@ -562,6 +601,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             )
         }
         sql.index(remote.id, remote.title, remote.content)
+        // Undo would keep the text from before the lock in plain text here.
+        if (LockedEnvelope.isLocked(remote.content)) sql.forgetMerge(remote.id)
     }
 
     private suspend fun tombstone(sql: Sql, remote: RemoteNote) {
@@ -577,6 +618,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     /** Matches the server's tombstone: no text, out of the index, nothing pending. */
     private suspend fun markTombstone(sql: Sql, id: String, deletedAt: Long, updatedAt: Long) {
         sql.unindex(id)
+        sql.forgetMerge(id)
         sql.exec(
             """
             UPDATE notes SET title = '', content = '', deleted_at = ?, updated_at = ?, dirty = 0,
