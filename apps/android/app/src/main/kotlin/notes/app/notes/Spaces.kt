@@ -21,6 +21,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -48,6 +49,7 @@ import notes.app.R
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.Sheet
+import notes.app.ui.SpaceThemes
 import notes.app.ui.Type
 import notes.core.db.Space
 import notes.core.db.Spaces
@@ -80,6 +82,8 @@ private fun Picture(icon: SpaceIcon, size: Dp, modifier: Modifier = Modifier) {
 fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String? = null) {
     val t = LocalTokens.current
     val shape = RoundedCornerShape(14.dp)
+    // An icon comes with its colours: each choice shows its theme's accent.
+    val accents = remember(t.dark) { choices.associate { it.key to SpaceThemes.colors(it.key, t.dark).accent } }
     Column {
         Text("Icon", style = Type.label, color = t.ink2)
         Spacer(Modifier.height(6.dp))
@@ -101,12 +105,23 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
                     Modifier
                         .height(58.dp)
                         .clip(cell)
-                        .then(if (on) Modifier.background(t.chip).border(2.dp, t.tint, cell) else Modifier)
+                        .then(if (on) Modifier.background(t.chip).border(2.dp, t.ink2, cell) else Modifier)
                         .selectable(on, role = Role.RadioButton) { onSelect(icon.key) }
                         .semantics { contentDescription = icon.name },
                     contentAlignment = Alignment.Center
                 ) {
                     Picture(icon, 40.dp)
+                    Box(
+                        Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(6.dp)
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(t.bg)
+                            .padding(2.dp)
+                            .clip(CircleShape)
+                            .background(accents.getValue(icon.key))
+                    )
                 }
             }
         }
@@ -236,7 +251,7 @@ private fun SpaceRows(spaces: List<Space>, current: String?, onPick: (String) ->
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
-            if (s.id == current) Icon(Icons.Check, null, Modifier.size(20.dp), tint = t.tint)
+            if (s.id == current) Icon(Icons.Check, null, Modifier.size(20.dp), tint = t.ink)
         }
     }
 }

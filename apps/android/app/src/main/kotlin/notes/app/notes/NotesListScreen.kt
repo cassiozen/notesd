@@ -344,7 +344,7 @@ fun NotesListScreen(
                                     time = listTime(hit.updatedAt),
                                     preview = highlight(
                                         hit.excerpt,
-                                        SpanStyle(background = t.accent.copy(alpha = 0.45f))
+                                        SpanStyle(background = t.hairStrong)
                                     ),
                                     locked = hit.locked,
                                     selected = hit.id == selected,
@@ -374,12 +374,12 @@ fun NotesListScreen(
                                         title = hit.title,
                                         time = listTime(hit.updatedAt),
                                         preview = buildAnnotatedString {
-                                            withStyle(SpanStyle(color = t.tint)) { append(spaces.nameOf(hit.spaceId)) }
+                                            withStyle(SpanStyle(color = t.ink2)) { append(spaces.nameOf(hit.spaceId)) }
                                             append(" · ")
                                             append(
                                                 highlight(
                                                     hit.excerpt,
-                                                    SpanStyle(background = t.accent.copy(alpha = 0.45f))
+                                                    SpanStyle(background = t.hairStrong)
                                                 )
                                             )
                                         },

@@ -177,14 +177,14 @@ fun NotesButton(
     }
 }
 
-/** A 48dp round target with a line icon in the tint colour. */
+/** A 48dp round target with a line icon, neutral unless [tint] says otherwise. */
 @Composable
 fun IconAction(
     icon: ImageVector,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
-    tint: Color = LocalTokens.current.tint,
+    tint: Color = LocalTokens.current.ink2,
     enabled: Boolean = true,
     iconSize: Dp = 22.dp
 ) {
@@ -216,7 +216,7 @@ fun IconAction(
 // --- fields ------------------------------------------------------------------
 
 /**
- * The web's field: a label above a 52dp rounded input, an amber ring when
+ * The web's field: a label above a 52dp rounded input, a neutral ring when
  * focused, the error or hint below. Secret fields get a Show/Hide toggle.
  */
 @Composable
@@ -242,7 +242,7 @@ fun NotesField(
     val border by animateColorAsState(
         when {
             error != null -> t.danger
-            focused -> t.accentDeep
+            focused -> t.ink3
             else -> t.hair
         },
         label = "border"
@@ -394,7 +394,7 @@ fun Reveal(visible: Boolean, content: @Composable () -> Unit) {
 
 // --- onboarding bits ---------------------------------------------------------
 
-/** Progress pills: done ones amber, the current one wider (web: Steps). */
+/** Progress pills: done ones solid, the current one wider (web: Steps). */
 @Composable
 fun Steps(count: Int, current: Int, modifier: Modifier = Modifier) {
     val t = LocalTokens.current
@@ -405,7 +405,7 @@ fun Steps(count: Int, current: Int, modifier: Modifier = Modifier) {
     ) {
         for (i in 0 until count) {
             val width by animateFloatAsState(if (i == current) 28f else 12f, tween(300, easing = EaseOut), label = "w")
-            val color by animateColorAsState(if (i <= current) t.accentDeep else t.hairStrong, tween(300), label = "c")
+            val color by animateColorAsState(if (i <= current) t.solid else t.hairStrong, tween(300), label = "c")
             Box(Modifier.height(4.dp).width(width.dp).clip(CircleShape).background(color))
         }
     }
@@ -507,7 +507,7 @@ fun BackLink(label: String?, onClick: () -> Unit, modifier: Modifier = Modifier,
             .padding(start = 6.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(Icons.Back, null, Modifier.size(22.dp), tint = t.tint)
-        if (label != null) Text(label, style = Type.body.copy(fontSize = 16.sp), color = t.tint)
+        Icon(Icons.Back, null, Modifier.size(22.dp), tint = t.ink2)
+        if (label != null) Text(label, style = Type.body.copy(fontSize = 16.sp), color = t.ink2)
     }
 }

@@ -1,5 +1,6 @@
 package notes.app.notes
 
+import android.content.Context
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -120,5 +121,24 @@ class SpacesFlowTest {
         compose.runOffMain { graph.sync.spaces.delete(work) }
         compose.waitUntilExactlyOneExists(hasText("Groceries"))
         assertEquals(Spaces.DEFAULT, graph.space.value)
+    }
+
+    @Test
+    fun `the space shown sets the theme, and the default space's is kept for the next start`() {
+        val dragons = runBlocking {
+            graph.store.save("a", "Groceries", "Milk\n")
+            graph.sync.spaces.update(Spaces.DEFAULT, Spaces.DEFAULT_NAME, "comet")
+            graph.sync.spaces.create("Dragons", "dragon")
+        }
+        launch("Groceries")
+        compose.waitUntil { graph.spaceTheme.value == "comet" }
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val prefs = context.getSharedPreferences("app", Context.MODE_PRIVATE)
+        assertEquals("comet", prefs.getString("default_space_theme", null))
+
+        graph.switchSpace(dragons)
+        compose.waitUntil { graph.spaceTheme.value == "dragon" }
+        // The next start opens on the default space, so it's still the default's that's kept.
+        assertEquals("comet", prefs.getString("default_space_theme", null))
     }
 }

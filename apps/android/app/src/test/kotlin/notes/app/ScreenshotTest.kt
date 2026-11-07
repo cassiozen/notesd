@@ -24,6 +24,7 @@ import notes.core.api.RemoteNote
 import notes.core.api.Session
 import notes.core.api.SignIn
 import notes.core.api.SyncPage
+import notes.core.db.Spaces
 import org.junit.After
 import org.junit.Assume.assumeTrue
 import org.junit.Before
@@ -172,6 +173,37 @@ class ScreenshotTest {
         compose.waitUntilDoesNotExist(hasText("Groceries"))
         shoot("search")
     }
+
+    /** A space theme (§7.7): the default space given [icon], its list and then its sample note. */
+    private fun themed(icon: String, qualifiers: String?) {
+        val mode = if (qualifiers == null) "light" else "dark"
+        graph.setOnboardingDismissed(true)
+        seed()
+        runBlocking { graph.sync.spaces.update(Spaces.DEFAULT, Spaces.DEFAULT_NAME, icon) }
+        launch(qualifiers)
+        compose.waitUntilExactlyOneExists(hasText(SAMPLE_TITLE))
+        shoot("theme-$icon-list-$mode")
+        compose.onNode(hasText(SAMPLE_TITLE)).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Undo"))
+        waitForEditor()
+        shoot("theme-$icon-editor-$mode")
+    }
+
+    @Test fun themeDragonLight() = themed("dragon", null)
+
+    @Test fun themeDragonDark() = themed("dragon", "+night")
+
+    @Test fun themeIdeaLight() = themed("idea", null)
+
+    @Test fun themeIdeaDark() = themed("idea", "+night")
+
+    @Test fun themeFlamingoLight() = themed("flamingo", null)
+
+    @Test fun themeFlamingoDark() = themed("flamingo", "+night")
+
+    @Test fun themeCometLight() = themed("comet", null)
+
+    @Test fun themeCometDark() = themed("comet", "+night")
 
     private fun editor(suffix: String, qualifiers: String?) {
         graph.setOnboardingDismissed(true)

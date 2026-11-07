@@ -11,13 +11,14 @@ import notes.app.R
 import notes.app.ui.Tokens
 
 /**
- * Sizes, faces and colours the editor's spans draw with, resolved once per
- * view. Typography follows the web app's phone sizes (editor.module.css):
- * serif title and H1/H2, a sans H3, italic serif quotes.
+ * Sizes, faces and colours the editor's spans draw with. Sizes and faces are
+ * resolved once per view; colours follow [tokens], which change with the space's
+ * theme, and spans read them as they draw. Typography follows the web app's
+ * phone sizes (editor.module.css): serif title and H1/H2, a sans H3, italic serif quotes.
  */
 class EditorStyle(
     val density: Float,
-    val tokens: Tokens,
+    var tokens: Tokens,
     val typeface: Typeface,
     val serif: Typeface = Typeface.SERIF,
     val monospace: Typeface = Typeface.MONOSPACE,
@@ -26,26 +27,24 @@ class EditorStyle(
 ) {
     fun dp(v: Float) = v * density
 
-    val ink = tokens.ink.toArgb()
-    val ink2 = tokens.ink2.toArgb()
-    val ink3 = tokens.ink3.toArgb()
-    val accent = tokens.accent.toArgb()
-    val accentDeep = tokens.accentDeep.toArgb()
-    val onAccent = tokens.onAccent.toArgb()
-    val tint = tokens.tint.toArgb()
-    val link = tokens.link.toArgb()
-    val hover = tokens.hover.toArgb()
-    val hairStrong = tokens.hairStrong.toArgb()
+    val ink get() = tokens.ink.toArgb()
+    val ink2 get() = tokens.ink2.toArgb()
+    val ink3 get() = tokens.ink3.toArgb()
+    val accent get() = tokens.accent.toArgb()
+    val accentDeep get() = tokens.accentDeep.toArgb()
+    val onAccent get() = tokens.onAccent.toArgb()
+    val tint get() = tokens.tint.toArgb()
+    val link get() = tokens.link.toArgb()
+    val hover get() = tokens.hover.toArgb()
+    val hairStrong get() = tokens.hairStrong.toArgb()
+    val onSolid get() = tokens.onSolid.toArgb()
 
     /** Behind #tags (web: .prose [data-tag]). */
-    val tagBg = tokens.accent.copy(alpha = 0.3f).toArgb()
+    val tagBg get() = tokens.tag.toArgb()
 
-    /**
-     * Behind find matches: neutral, so they don't read as tags; the current
-     * one solid accent with [onAccent] text.
-     */
-    val findBg = hairStrong
-    val findCurrentBg = accent
+    /** Behind find matches: neutral, so they don't read as tags; the current one solid, as on the web. */
+    val findBg get() = hairStrong
+    val findCurrentBg get() = tokens.solid.toArgb()
 
     // Under half a space: two tags in a row keep a gap between their pills.
     val tagPadX = dp(2f)
@@ -66,7 +65,7 @@ class EditorStyle(
     val rawScale = 0.82f
 
     // A code fence is dark in both themes, as on the web (--code, --code-ink, --code-dim).
-    val code = if (tokens == Tokens.Dark) 0xFF0B0C0E.toInt() else 0xFF24211F.toInt()
+    val code get() = if (tokens.dark) 0xFF0B0C0E.toInt() else 0xFF24211F.toInt()
     val codeInk = 0xFFD8D4CD.toInt()
     val codeDim = 0xFF8F8C85.toInt()
     val codeKeyword = 0xFFC3A5F9.toInt()
@@ -91,6 +90,7 @@ class EditorStyle(
     val serifItalic: Typeface = Typeface.create(serif, Typeface.ITALIC)
 
     companion object {
+        /** The app icon's colours to begin with: the editor's screen sets the space's ([NoteEditText.applyTokens]). */
         fun from(context: Context): EditorStyle {
             val night = context.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK ==
                 Configuration.UI_MODE_NIGHT_YES

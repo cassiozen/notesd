@@ -77,7 +77,7 @@ class BlockSpan(val path: List<Container>, val leaf: Leaf, val marker: Marker?, 
         var offset = 0f
         for (container in path) {
             if (container is Container.Quote) {
-                p.color = style.accent
+                p.color = style.ink3
                 p.style = Paint.Style.FILL
                 val left = if (dir > 0) x + offset else x - offset - style.quoteBar
                 c.drawRect(left, top.toFloat(), left + style.quoteBar, bottom.toFloat(), p)
