@@ -1,0 +1,31 @@
+apps/web/src/notes/agent-rules.ts
+  s_cc6cacc0a6fc01::t_6a62396427dd6e 72
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_6d2f6e23473b59 72,79
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_8802e45ead281f 32-34
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_7fa2f1935bbcf7 31-35,62-64
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_f40ecab860a826 549-552
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_bcadcaea25dc6d 79-81
+server/internal/agent/overlays_test.go
+  s_cc6cacc0a6fc01::t_59d89fed2e18cf 287-301
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7e6803397ffe125ad161277b77992346fecaab3a",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
