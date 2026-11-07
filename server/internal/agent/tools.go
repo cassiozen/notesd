@@ -79,6 +79,10 @@ func toolErrorResult(te *toolError) string {
 	return jsonString(m)
 }
 
+// errNoLocking refuses a write whose content is a locked note's: agents
+// never lock a note.
+var errNoLocking = refuse("that content is a locked note's, and agents never lock a note")
+
 func refuse(format string, a ...any) error { return &toolError{msg: fmt.Sprintf(format, a...)} }
 
 // stopError ends the run as f says: its own note can't be worked on any more.
@@ -209,7 +213,7 @@ func (e edit) apply(n *notes.Note) error {
 	case "title":
 		n.Title = e.Title
 	case "replace":
-		switch c := strings.Count(n.Content, e.Find); c {
+		switch c := occurrences(n.Content, e.Find); c {
 		case 1:
 			n.Content = strings.Replace(n.Content, e.Find, e.Replace, 1)
 		case 0:
@@ -223,6 +227,21 @@ func (e edit) apply(n *notes.Note) error {
 		n.Content = e.Text
 	}
 	return nil
+}
+
+// occurrences counts where sub starts in s, overlapping ones too: "aa"
+// is twice in "aaa", so a find for it doesn't say which.
+func occurrences(s, sub string) int {
+	n := 0
+	for i := strings.Index(s, sub); i >= 0; {
+		n++
+		j := strings.Index(s[i+1:], sub)
+		if j < 0 {
+			break
+		}
+		i += 1 + j
+	}
+	return n
 }
 
 // insertText adds text as its own block at the start or end of content,
@@ -294,6 +313,9 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 			}
 			return "", err
 		}
+		if locks.IsLocked(next.Content) {
+			return "", errNoLocking
+		}
 		if next.Title == cur.Title && next.Content == cur.Content {
 			return `{"ok": true, "changed": false}`, nil
 		}
@@ -322,6 +344,9 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 }
 
 func (rs *runState) create(ctx context.Context, title, content string) (string, error) {
+	if locks.IsLocked(content) {
+		return "", errNoLocking
+	}
 	rs.ops++
 	id := strings.TrimPrefix(newRunID(rs.acct.Agent.now().UnixMilli()), "run_")
 	space := rs.run.SpaceID

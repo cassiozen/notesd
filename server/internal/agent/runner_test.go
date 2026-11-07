@@ -774,13 +774,16 @@ func TestTimeoutDuringAModelCallIsATimeout(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NewNoteDone)
 	h.done("n1", "a")
-	// A provider that answers past the deadline: recording its usage fails on the expired context.
+	// A provider that answers past the deadline: its tokens still count.
 	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
 		time.Sleep(50 * time.Millisecond)
 		return say("Done."), nil
 	})
 	if r := h.next(); r.Status != agent.StatusFailed || r.Failure != agent.FailTimeout {
 		t.Fatalf("run: %+v", r)
+	}
+	if r := h.only(); r.promptTokens != 100 || r.completion != 10 {
+		t.Fatalf("tokens: %+v", r)
 	}
 }
 
@@ -860,5 +863,42 @@ func TestSetContentRewritesANoteItKeeps(t *testing.T) {
 	}
 	if got := lastToolResult(h.model.requests[len(h.model.requests)-1]); !strings.Contains(got, "Typed by the user") || !strings.Contains(got, `"error"`) {
 		t.Fatalf("told: %s", got)
+	}
+}
+
+func TestWritesAgentsMayNotMake(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "aaa")
+	locked := "notesd:locked:v1:" + strings.Repeat("A", 60)
+	h.model.steps = append(h.model.steps,
+		call("set_content", `{"content": "`+locked+`"}`),
+		call("create_note", `{"title": "Secret", "content": "`+locked+`"}`),
+		// "aa" is in "aaa" twice, overlapping: it doesn't say which.
+		call("edit_note", `{"find": "aa", "replace": "b"}`),
+		final("No change."))
+	h.next()
+	for i, want := range []string{"never lock a note", "never lock a note", "appears 2 times"} {
+		if got := lastToolResult(h.model.requests[i+1]); !strings.Contains(got, want) {
+			t.Errorf("call %d told %s", i, got)
+		}
+	}
+	if h.content("n1") != "aaa" || len(h.allRuns()) != 1 {
+		t.Fatalf("content %q, %d runs", h.content("n1"), len(h.allRuns()))
+	}
+}
+
+func TestNegativeUsageIsntGivenBack(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		r := say("No change.")
+		r.Usage = llm.Usage{PromptTokens: -1000, CompletionTokens: -10}
+		return r, nil
+	})
+	h.next()
+	if r := h.only(); r.promptTokens != 0 || r.completion != 0 {
+		t.Fatalf("tokens: %+v", r)
 	}
 }

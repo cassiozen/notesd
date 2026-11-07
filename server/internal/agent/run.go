@@ -208,22 +208,32 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			return
 		}
 		f.Model = res.Model
-		f.PromptTokens += res.Usage.PromptTokens
-		f.CompletionTokens += res.Usage.CompletionTokens
-		if err := rs.acct.Agent.addUsage(ctx, rs.run.ID, rs.day, res.Model, res.Usage.PromptTokens, res.Usage.CompletionTokens); err != nil {
+		// A provider's negative count would hand tokens back to the caps.
+		prompt, completion := max(res.Usage.PromptTokens, 0), max(res.Usage.CompletionTokens, 0)
+		f.PromptTokens += prompt
+		f.CompletionTokens += completion
+		// Recorded even if the run's time ran out as the answer came back: they were spent.
+		saved, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
+		err = rs.acct.Agent.addUsage(saved, rs.run.ID, rs.day, res.Model, prompt, completion)
+		cancel()
+		if err != nil {
 			interrupted(ctx, f, err)
 			return
 		}
-		if f.PromptTokens+f.CompletionTokens > rs.budget {
+		if ctx.Err() != nil {
+			return // the deadline or a shutdown, told apart by the caller
+		}
+		if len(res.Message.ToolCalls) == 0 {
+			f.Status, f.Message = StatusDone, strings.TrimSpace(res.Message.Content)
+			return
+		}
+		// At the budget, not only past it: the tools would lead to another call.
+		if f.PromptTokens+f.CompletionTokens >= rs.budget {
 			f.Status, f.Failure = StatusFailed, FailTokenCap
 			f.Message = fmt.Sprintf("The run used more than %d tokens.", MaxRunTokens)
 			if rs.dailyLimited {
 				f.Failure, f.Message = FailDailyCap, "The account reached its tokens for today during the run."
 			}
-			return
-		}
-		if len(res.Message.ToolCalls) == 0 {
-			f.Status, f.Message = StatusDone, strings.TrimSpace(res.Message.Content)
 			return
 		}
 		messages = append(messages, llm.Message{Role: "assistant", Content: res.Message.Content, ToolCalls: res.Message.ToolCalls})
