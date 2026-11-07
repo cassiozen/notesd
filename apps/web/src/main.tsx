@@ -6,6 +6,7 @@ import { captureInstallPrompt } from './install'
 import { applyTheme, readTheme } from './theme'
 import './styles/fonts.css'
 import './styles/tokens.css'
+import './styles/space-themes.css'
 import './styles/base.css'
 import './styles/boot.css'
 

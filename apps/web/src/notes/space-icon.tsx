@@ -36,7 +36,10 @@ export function SpaceIcon({ space, size = 20 }: { space: Pick<Space, 'icon'>; si
   return <Picture icon={space.icon} size={size} className={styles.icon} />
 }
 
-/** Every icon to choose from: native radios, so arrow keys move between them. */
+/**
+ * Every icon to choose from: native radios, so arrow keys move between them.
+ * An icon comes with its colours (styles/space-themes.css): each choice shows its accent.
+ */
 export function SpaceIconPicker({
   value,
   onChange,
@@ -52,7 +55,7 @@ export function SpaceIconPicker({
       <legend className={styles.legend}>Icon</legend>
       <div className={styles.grid}>
         {[{ key: '', name: 'App icon' }, ...SPACE_ICONS].map((icon) => (
-          <label key={icon.key} className={styles.choice} title={icon.name}>
+          <label key={icon.key} className={styles.choice} title={icon.name} data-space={icon.key}>
             <input
               type="radio"
               name={name}
@@ -63,6 +66,7 @@ export function SpaceIconPicker({
               className={styles.radio}
             />
             <Picture icon={icon.key} size={36} />
+            <span className={styles.swatch} />
           </label>
         ))}
       </div>

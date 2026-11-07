@@ -30,7 +30,7 @@
 .buttonMobile {
   width: 44px;
   height: 44px;
-  color: var(--tint);
+  color: var(--ink-2);
 }
 
 .menu {

@@ -83,7 +83,7 @@
   flex: none;
   width: 14px;
   font-size: 12px;
-  color: var(--tint);
+  color: var(--ink-2);
 }
 
 .glyph {
@@ -137,7 +137,7 @@
 
 .linkInput:focus-visible {
   outline: none;
-  border-color: var(--accent-deep);
+  border-color: var(--ink-3);
   box-shadow: 0 0 0 3px var(--focus);
 }
 
@@ -264,7 +264,7 @@
 .prose blockquote {
   margin: 0.6em 0;
   padding: 0 0 0 18px;
-  border-left: 2px solid var(--accent);
+  border-left: 2px solid var(--ink-3);
   font: italic 400 20px/1.45 var(--note-serif);
   color: var(--ink-2);
 }
@@ -324,7 +324,7 @@
   border-color: var(--accent-deep);
   box-shadow:
     inset 0 0 0 3.5px var(--accent),
-    inset 0 0 0 8px oklch(0.25 0.012 60);
+    inset 0 0 0 8px var(--on-accent);
 }
 
 .prose li[data-checked='true'] > div {
@@ -486,7 +486,7 @@
   padding: 0.05em 0.3em;
   margin: 0 -0.1em;
   border-radius: 6px;
-  background: color-mix(in srgb, var(--accent) 30%, transparent);
+  background: var(--tag);
   box-decoration-break: clone;
   -webkit-box-decoration-break: clone;
 }
@@ -500,9 +500,9 @@
 }
 
 .prose [data-find='current'] {
-  background: var(--accent);
-  color: var(--on-accent);
-  box-shadow: 0 0 0 1.5px var(--accent-deep);
+  background: var(--solid);
+  color: var(--on-solid);
+  box-shadow: 0 0 0 1.5px var(--solid);
 }
 
 /* Suggestions while typing a tag; mounted on <body> by the suggestion plugin. */
@@ -537,8 +537,8 @@
 }
 
 :global([data-tag-option][aria-selected='true']) {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--on);
+  color: var(--ink);
 }
 
 /* --- images (spec §7.6): one per line, as wide as the text at most --- */

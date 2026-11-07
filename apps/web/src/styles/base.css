@@ -140,6 +140,18 @@ code {
   animation: nav-leave-back 0.32s var(--ease-out);
 }
 
+/* Another space shown: its colours ease in. Set only for the fade (notes/space-theme.ts): it
+   replaces elements' own transitions while it lasts. */
+:root[data-space-fade],
+:root[data-space-fade] *,
+:root[data-space-fade] *::before,
+:root[data-space-fade] *::after {
+  transition:
+    background-color 0.3s,
+    color 0.3s,
+    border-color 0.3s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

@@ -50,7 +50,7 @@
   height: 44px;
   border: 0;
   background: transparent;
-  color: var(--tint);
+  color: var(--ink-2);
   cursor: pointer;
   display: flex;
   align-items: center;
@@ -73,7 +73,7 @@
   padding: 0 10px 0 4px;
   border: 0;
   background: transparent;
-  color: var(--tint);
+  color: var(--ink-2);
   font-size: 16px;
   cursor: pointer;
   display: flex;
@@ -189,7 +189,7 @@
   border: 0;
   border-radius: 12px;
   background: transparent;
-  color: var(--tint);
+  color: var(--ink-2);
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -259,7 +259,7 @@
 .lockNowMobile {
   width: 44px;
   height: 44px;
-  color: var(--tint);
+  color: var(--ink-2);
 }
 
 .muted {

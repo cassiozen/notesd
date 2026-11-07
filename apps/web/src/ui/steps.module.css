@@ -13,7 +13,7 @@
 }
 
 .done {
-  background: var(--accent-deep);
+  background: var(--solid);
 }
 
 .current {

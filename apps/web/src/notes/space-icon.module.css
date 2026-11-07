@@ -22,7 +22,7 @@
   color: var(--ink-2);
 }
 
-/* Scrolls inside the dialog: 50 icons are more than a phone shows at once. Half a row peeks
+/* Scrolls inside the dialog: 25 icons are more than a phone shows at once. Half a row peeks
    out at the bottom, so it reads as more to scroll to. */
 .grid {
   display: grid;
@@ -55,7 +55,7 @@
 
 .choice:has(.radio:checked) {
   background: var(--chip);
-  box-shadow: inset 0 0 0 2px var(--tint);
+  box-shadow: inset 0 0 0 2px var(--ink-2);
 }
 
 .choice:has(.radio:focus-visible) {
@@ -64,8 +64,19 @@
 
 .choice:has(.radio:checked:focus-visible) {
   box-shadow:
-    inset 0 0 0 2px var(--tint),
+    inset 0 0 0 2px var(--ink-2),
     0 0 0 3px var(--focus);
+}
+
+.swatch {
+  position: absolute;
+  right: 7px;
+  bottom: 7px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--paper);
 }
 
 .radio {
