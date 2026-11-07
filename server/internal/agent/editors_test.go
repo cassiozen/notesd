@@ -260,3 +260,16 @@ func TestLockingOrDeletingDropsTheEditorsHash(t *testing.T) {
 		})
 	}
 }
+
+func TestADeletedNoteIsntReadFromAStaleEditor(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NoteDeleted)
+	h.create("n1", "work", "Milk")
+	h.openInEditor("n1", "Milk, as a tab left open showed it", nil)
+	h.delete("n1")
+	h.model.steps = append(h.model.steps, call("get_note", `{}`), final("No change."))
+	h.next()
+	if got := lastToolResult(h.model.requests[1]); strings.Contains(got, "tab left open") || !strings.Contains(got, "no note") {
+		t.Fatalf("told: %s", got)
+	}
+}

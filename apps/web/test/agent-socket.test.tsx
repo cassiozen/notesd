@@ -56,6 +56,7 @@ describe('a run on an open note', () => {
     await waitFor(async () => expect((await getNote(server, digest)).content).toBe('Items and more\n\n- Milk\n'))
     await waitFor(async () => {
       const { runs } = (await server.api<{ runs: AgentRun[] }>('GET', '/agent/runs')).body
+      expect(runs[0]?.edits).toHaveLength(1)
       expect(runs[0]?.edits[0]?.blocked).toBe(undefined)
     })
 

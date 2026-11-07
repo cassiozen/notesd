@@ -29,6 +29,12 @@ describe('readForAgent', () => {
     expect(Array.from(fields.content).slice(0, cursor ?? 0).join('')).toBe('# Plan\n\nDear **Sam')
   })
 
+  it('isn\'t thrown by the marker character already in the note', () => {
+    open('A \uE000 mark, then Sam', 'Sam')
+    const { fields, cursor } = readForAgent(editor.state)
+    expect(Array.from(fields.content).slice(0, cursor ?? 0).join('')).toBe('A \uE000 mark, then Sam')
+  })
+
   it('leaves out a pending bold toggle, which the saved text lacks', () => {
     open('Dear Sam', 'Dear')
     editor.commands.toggleBold()
@@ -89,6 +95,8 @@ describe('madeTo', () => {
     const now = { title: 'T', content: 'Tea\nTea\n' }
     expect(madeTo(change({ kind: 'replace', find: 'Milk', replace: 'Oat milk' }), now, null)).toBeNull()
     expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: 'Coffee' }), now, null)).toBeNull()
+    // Overlapping, "aa" is in "aaa" twice.
+    expect(madeTo(change({ kind: 'replace', find: 'aa', replace: 'b' }), { title: 'T', content: 'aaa\n' }, null)).toBeNull()
     expect(madeTo(change({ kind: 'insert', at: 'cursor', text: 'x' }), now, null)).toBeNull()
     expect(madeTo(change(), now, null)).toBeNull()
     // The whole content, made again, would wipe out the typing.

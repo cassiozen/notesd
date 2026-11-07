@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"regexp"
 	"time"
 
 	"github.com/coder/websocket"
@@ -13,6 +14,9 @@ import (
 	"notes/server/internal/auth"
 	"notes/server/internal/editors"
 )
+
+// noteIDPattern is a note id, as the notes API takes one.
+var noteIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 
 // SocketProtocol is the agent socket's message format version.
 const SocketProtocol = 1
@@ -80,7 +84,7 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			s.editors.Answer(ec, m.ID, raw)
 			continue
 		}
-		if m.NoteID == "" || len(m.NoteID) > 64 {
+		if !noteIDPattern.MatchString(m.NoteID) {
 			continue
 		}
 		switch m.Type {

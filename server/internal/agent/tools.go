@@ -336,7 +336,8 @@ func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
 	case locks.IsLocked(n.Content):
 		return n, refuse("that note is locked: its content is encrypted, and agents never see it")
 	}
-	if rs.acct.Editors != nil {
+	// Not for a note the store has deleted: a stale editor would bring it back.
+	if rs.acct.Editors != nil && !missing {
 		en, err := rs.acct.Editors.Read(ctx, id, rs.prefer())
 		switch {
 		case err == nil && en.SpaceID != rs.run.SpaceID:

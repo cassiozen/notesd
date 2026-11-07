@@ -438,7 +438,8 @@ undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
 account is `429 rate_limited`. Messages are JSON text with a `type`; a type a side doesn't know is
-ignored, so either may add some.
+ignored, so either may add some, except that an editor answers a request it can't do (one with an
+`id`) with `{type: "result", id, error: "not_open"}`, so the server doesn't wait out its timeout.
 
 | From | Message | Meaning |
 | --- | --- | --- |

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -129,5 +130,30 @@ func TestConnectionsAreBounded(t *testing.T) {
 	}
 	if _, err := h.Add(2, nil); err != nil {
 		t.Fatalf("another account: %v", err)
+	}
+}
+
+func TestAConnectionOpensSoManyNotes(t *testing.T) {
+	h := editors.NewHub()
+	a := connect(t, h, showing("x"))
+	for i := range editors.MaxOpen + 10 {
+		h.Opened(a.c, fmt.Sprintf("n%d", i))
+	}
+	if _, err := h.For(1).Read(ctx, fmt.Sprintf("n%d", editors.MaxOpen), ""); !errors.Is(err, agent.ErrNotOpen) {
+		t.Fatalf("past the limit: %v", err)
+	}
+	if _, err := h.For(1).Read(ctx, "n0", ""); err != nil {
+		t.Fatalf("within it: %v", err)
+	}
+}
+
+func TestARunsOwnEndIsntTheEditorGoing(t *testing.T) {
+	h := editors.NewHub()
+	a := connect(t, h, nil) // never answers
+	h.Opened(a.c, "n1")
+	stopped, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := h.For(1).Read(stopped, "n1", ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v", err)
 	}
 }

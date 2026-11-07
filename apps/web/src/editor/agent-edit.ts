@@ -21,9 +21,12 @@ export function readForAgent(state: EditorState): { fields: Fields; cursor: numb
   }
   // Not a pending bold or italic toggle's marks: those aren't in the saved text.
   const marked = noteFields(state.tr.setStoredMarks(null).insertText(MARK, selection.head).doc).content
-  const at = marked.indexOf(MARK)
+  // Where the two first differ, not where MARK first is: the note may hold MARK itself.
+  let at = 0
+  while (at < fields.content.length && fields.content[at] === marked[at]) at++
+  if (marked[at] !== MARK) return { fields, cursor: null }
   // Code points, not UTF-16 units: the server counts runes.
-  return { fields, cursor: at < 0 ? null : Array.from(marked.slice(0, at)).length }
+  return { fields, cursor: Array.from(marked.slice(0, at)).length }
 }
 
 /** A run's change as the agent asked for it (the server's agent.edit). */
@@ -51,7 +54,8 @@ export function madeTo(change: AgentChange, now: Fields, cursor: number | null):
       return { title: op.title, content }
     case 'replace': {
       const at = content.indexOf(op.find)
-      if (op.find === '' || at < 0 || content.indexOf(op.find, at + op.find.length) >= 0) return null
+      // Overlapping matches count too, as on the server.
+      if (op.find === '' || at < 0 || content.indexOf(op.find, at + 1) >= 0) return null
       return { title, content: content.slice(0, at) + op.replace + content.slice(at + op.find.length) }
     }
     case 'insert': {

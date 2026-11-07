@@ -177,7 +177,6 @@ function parse(data: string): Record<string, unknown> | null {
 
 export const agentSocket = new AgentSocket()
 
-/** Keeps the socket open while AI is set up and some space's agent is on. */
 /** Keeps the tab's socket open while AI is set up and the space it shows (spaceId) has its agent on. */
 export function useAgentSocket(spaceId: string) {
   const ai = useAiSettings()

@@ -19,6 +19,9 @@ import (
 // MaxConns bounds one account's connections: a tab or an app each.
 const MaxConns = 50
 
+// MaxOpen bounds the notes one connection says it has open.
+const MaxOpen = 100
+
 // CallTimeout bounds the wait for an editor to answer.
 var CallTimeout = 10 * time.Second
 
@@ -86,6 +89,9 @@ func (h *Hub) Remove(c *Conn) {
 func (h *Hub) Opened(c *Conn, noteID string) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	if _, ok := c.open[noteID]; !ok && len(c.open) >= MaxOpen {
+		return // an editor shows a few notes, not this many
+	}
 	c.open[noteID] = time.Now()
 }
 
@@ -151,9 +157,12 @@ func (h *Hub) call(ctx context.Context, c *Conn, msg map[string]any) (json.RawMe
 		h.mu.Unlock()
 	}()
 	msg["id"] = id
-	ctx, cancel := context.WithTimeout(ctx, CallTimeout)
+	callCtx, cancel := context.WithTimeout(ctx, CallTimeout)
 	defer cancel()
-	if err := c.send(ctx, msg); err != nil {
+	if err := c.send(callCtx, msg); err != nil {
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		return nil, agent.ErrEditorGone
 	}
 	select {
@@ -161,7 +170,11 @@ func (h *Hub) call(ctx context.Context, c *Conn, msg map[string]any) (json.RawMe
 		return reply, nil
 	case <-c.gone:
 		return nil, agent.ErrEditorGone
-	case <-ctx.Done():
+	case <-callCtx.Done():
+		// The run's own end (its deadline, a shutdown) isn't the editor's.
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		// No answer in time counts as gone: the run can't tell it apart.
 		return nil, agent.ErrEditorGone
 	}

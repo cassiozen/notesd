@@ -17,11 +17,9 @@ import (
 	"notes/server/internal/editors"
 )
 
-// Bounds every socket call, so a missed reply fails the test instead of hanging it.
-var ctx, _ = context.WithTimeout(context.Background(), time.Minute) //nolint:govet // lives for the test binary
-
 // dialSocket connects; status is the refusal's, when there is one.
 func (e *env) dialSocket(c *client, origin string) (conn *websocket.Conn, status int, err error) {
+	ctx := e.ctx
 	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	h := http.Header{}
@@ -45,6 +43,7 @@ func (e *env) dialSocket(c *client, origin string) (conn *websocket.Conn, status
 // socket connects and reads the server's hello, then keeps reading so
 // pings are answered.
 func (e *env) socket(c *client) (*websocket.Conn, string) {
+	ctx := e.ctx
 	e.t.Helper()
 	conn, id := e.editorSocket(c)
 	conn.CloseRead(ctx)
@@ -53,6 +52,7 @@ func (e *env) socket(c *client) (*websocket.Conn, string) {
 
 // editorSocket connects and reads the hello; the test reads what follows.
 func (e *env) editorSocket(c *client) (*websocket.Conn, string) {
+	ctx := e.ctx
 	e.t.Helper()
 	origin := e.srv.URL
 	if c.bearer != "" {
@@ -101,6 +101,7 @@ func TestAgentSocketOutlivesTheWriteTimeout(t *testing.T) {
 	// As main's server, if shorter; long enough for sign-in under -race.
 	const timeout = 2 * time.Second
 	e := newEnvServer(t, api.Config{}, func(s *http.Server) { s.WriteTimeout = timeout })
+	ctx := e.ctx
 	e.setupOwner()
 	conn, _ := e.socket(e.webClient())
 	time.Sleep(timeout + 200*time.Millisecond)
@@ -115,6 +116,7 @@ func TestAgentSocketOutlivesTheWriteTimeout(t *testing.T) {
 
 func TestSigningOutClosesTheSocket(t *testing.T) {
 	e := newEnvWith(t, api.Config{SocketPing: 20 * time.Millisecond})
+	ctx := e.ctx
 	e.setupOwner()
 	c := e.webClient()
 	conn, _ := e.editorSocket(c)
@@ -129,6 +131,7 @@ func TestSigningOutClosesTheSocket(t *testing.T) {
 
 func TestAnExpiredSessionClosesTheSocket(t *testing.T) {
 	e := newEnvWith(t, api.Config{SocketPing: 20 * time.Millisecond})
+	ctx := e.ctx
 	e.setupOwner()
 	c := e.webClient()
 	conn, _ := e.editorSocket(c)
@@ -142,6 +145,7 @@ func TestAnExpiredSessionClosesTheSocket(t *testing.T) {
 
 func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
 	e := newEnv(t)
+	ctx := e.ctx
 	e.setupOwner()
 	var woken atomic.Int32
 	e.users.OnAgentScheduled(func(int64) { woken.Add(1) })
@@ -199,6 +203,7 @@ func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
 func TestRunsReadThroughTheSocket(t *testing.T) {
 	hub := editors.NewHub()
 	e := newEnvWith(t, api.Config{Editors: hub})
+	ctx := e.ctx
 	e.setupOwner()
 	conn, connID := e.editorSocket(e.webClient())
 	if err := wsjson.Write(ctx, conn, map[string]any{"type": "editor.opened", "noteId": "n1"}); err != nil {
