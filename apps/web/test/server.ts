@@ -127,6 +127,47 @@ export async function startFakeResend(): Promise<FakeResend> {
   return fake
 }
 
+export type FakeLLM = {
+  /** The base URL to save as the API address. */
+  url: string
+  /** Bodies of chat completion requests, in order. */
+  requests: { model: string; messages: unknown[]; tools?: unknown[] }[]
+  /** When true, the model answers in text instead of calling a tool. */
+  textOnly: boolean
+}
+
+/** Stands in for an OpenAI-compatible API: POST /v1/chat/completions, answering with a call to the first tool. */
+export async function startFakeLLM(): Promise<FakeLLM> {
+  const fake: FakeLLM = { url: '', requests: [], textOnly: false }
+  const srv = createServer((req, res) => {
+    let raw = ''
+    req.on('data', (c: Buffer) => (raw += c.toString()))
+    req.on('end', () => {
+      res.setHeader('Content-Type', 'application/json')
+      if (req.method !== 'POST' || req.url !== '/v1/chat/completions') {
+        res.statusCode = 404
+        res.end(JSON.stringify({ error: { message: 'not found' } }))
+        return
+      }
+      const body = JSON.parse(raw) as FakeLLM['requests'][number] & { tools?: { function: { name: string } }[] }
+      fake.requests.push(body)
+      const tool = body.tools?.[0]
+      const message =
+        fake.textOnly || !tool
+          ? { role: 'assistant', content: 'pong' }
+          : {
+              role: 'assistant',
+              tool_calls: [{ id: 'call_1', type: 'function', function: { name: tool.function.name, arguments: '{"ok":true}' } }],
+            }
+      res.end(JSON.stringify({ model: 'fake-model-1', choices: [{ message, finish_reason: 'stop' }], usage: { prompt_tokens: 10, completion_tokens: 2 } }))
+    })
+  })
+  await new Promise<void>((r) => srv.listen(0, '127.0.0.1', r))
+  fake.url = `http://127.0.0.1:${(srv.address() as AddressInfo).port}/v1`
+  onTestFinished(() => new Promise<void>((r) => srv.close(() => r())))
+  return fake
+}
+
 /** Creates the owner account through the API, as another device would. */
 export async function createOwner(server: TestServer, username = 'me', password = 'correct horse') {
   const res = await server.api('POST', '/auth/setup', { username, password })

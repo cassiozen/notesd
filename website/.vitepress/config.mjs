@@ -125,6 +125,7 @@ export default defineConfig({
           { text: "Tags, spaces and search", link: "/guides/using/organize-and-find" },
           { text: "Locked notes", link: "/guides/using/locked-notes" },
           { text: "Emailing notes", link: "/guides/using/email" },
+          { text: "Agents", link: "/guides/using/agents" },
           { text: "Offline and sync", link: "/guides/using/offline-and-sync" },
           { text: "Settings", link: "/guides/using/settings" },
         ],

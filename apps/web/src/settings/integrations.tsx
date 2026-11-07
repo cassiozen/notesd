@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ComponentType, type ReactNode } from 
 import { Button } from '../ui/button'
 import { Kicker } from '../ui/kicker'
 import { Surface } from '../ui/surface'
+import { ai, useAiStatus } from './ai'
 import { resend, useResendStatus } from './resend'
 import styles from './settings.module.css'
 
@@ -22,13 +23,13 @@ export type Integration = {
   Manage: ComponentType<{ onClose: () => void }>
 }
 
-type IntegrationId = 'resend'
+type IntegrationId = 'resend' | 'ai'
 
-export const INTEGRATIONS: Integration[] = [resend]
+export const INTEGRATIONS: Integration[] = [resend, ai]
 
 /** Spelled out per integration rather than mapped over the list: each status is a hook. */
 export function useIntegrationStatuses(): Record<IntegrationId, IntegrationStatus> {
-  return { resend: useResendStatus() }
+  return { resend: useResendStatus(), ai: useAiStatus() }
 }
 
 /** Off, the one connected by name, or how many are. */
