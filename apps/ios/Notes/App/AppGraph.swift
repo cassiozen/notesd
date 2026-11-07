@@ -54,7 +54,7 @@ final class AppGraph {
     var spaceTheme: String {
         guard !spaces.isEmpty else {
             guard space == Spaces.defaultId else { return "" }
-            return SpaceThemes.key(Self.defaults.string(forKey: "defaultSpaceTheme") ?? "")
+            return SpaceThemes.key(Self.defaults.string(forKey: Self.defaultSpaceThemeKey) ?? "")
         }
         return SpaceThemes.key(spaces.first { $0.id == space }?.icon ?? "")
     }
@@ -98,6 +98,9 @@ final class AppGraph {
 
     private static let defaults = UserDefaults.standard
 
+    /// The default space's theme, for a cold start's first frame (`spaceTheme`).
+    private static let defaultSpaceThemeKey = "defaultSpaceTheme"
+
     /// UI tests start from nothing: a new database and Keychain item each launch, and no saved preferences.
     static let uiTesting = ProcessInfo.processInfo.arguments.contains("--ui-testing")
 
@@ -109,8 +112,8 @@ final class AppGraph {
         if Self.uiTesting {
             accounts.clear()
             for key in [
-                "listFilter", "listFilterSpace", "appearance", "openTags", BiometricUnlock.bound,
-                BiometricUnlock.declined,
+                "listFilter", "listFilterSpace", "appearance", "openTags", Self.defaultSpaceThemeKey,
+                BiometricUnlock.bound, BiometricUnlock.declined,
             ] {
                 Self.defaults.removeObject(forKey: key)
             }
@@ -181,7 +184,7 @@ final class AppGraph {
         guard let list = try? await engine.spaces.list() else { return }
         spaces = list
         if let home = list.first(where: { $0.id == Spaces.defaultId }) {
-            Self.defaults.set(SpaceThemes.key(home.icon), forKey: "defaultSpaceTheme")
+            Self.defaults.set(SpaceThemes.key(home.icon), forKey: Self.defaultSpaceThemeKey)
         }
         // The space shown was deleted, here or on another device: back to the default.
         if !list.isEmpty && !list.contains(where: { $0.id == space }) { switchSpace(Spaces.defaultId) }
@@ -254,6 +257,8 @@ final class AppGraph {
         biometrics.disable()
         listFilter = nil
         switchSpace(Spaces.defaultId)
+        // The default space's colours belonged to the notes just wiped.
+        Self.defaults.removeObject(forKey: Self.defaultSpaceThemeKey)
     }
 
     private static func describe(_ event: SyncEvent) -> String {

@@ -102,9 +102,9 @@ struct FormattingBar: View {
     /// A 44-point tool, filled while on (web: .tool[aria-pressed]).
     private func tool(on: Bool, @ViewBuilder _ label: () -> some View) -> some View {
         label()
-            .foregroundStyle(on ? Color.onSolid : Color.ink)
+            .foregroundStyle(Color.ink)
             .frame(width: 44, height: 40)
-            .background(on ? Color.solid : .clear, in: .rect(cornerRadius: 12, style: .continuous))
+            .background(on ? Color.on : .clear, in: .rect(cornerRadius: 12, style: .continuous))
             .contentShape(.rect)
     }
 

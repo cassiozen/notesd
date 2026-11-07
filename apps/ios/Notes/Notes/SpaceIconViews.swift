@@ -56,12 +56,13 @@ struct SpaceIconPicker: View {
                             if on { RoundedRectangle(cornerRadius: 10).strokeBorder(Color.ink2, lineWidth: 2) }
                         }
                         .overlay(alignment: .bottomTrailing) {
-                            Circle().fill(Color.accent)
-                                .padding(2)
-                                .background(Color.notesBg, in: .circle)
-                                .frame(width: 12, height: 12)
-                                .padding(6)
-                                .environment(\.spaceTheme, icon.key)
+                            // The halo in the sheet's paper; only the dot in the icon's theme.
+                            ZStack {
+                                Circle().fill(Color.notesBg)
+                                Circle().fill(Color.accent).padding(2).environment(\.spaceTheme, icon.key)
+                            }
+                            .frame(width: 12, height: 12)
+                            .padding(6)
                         }
                         .contentShape(.rect)
                 }
