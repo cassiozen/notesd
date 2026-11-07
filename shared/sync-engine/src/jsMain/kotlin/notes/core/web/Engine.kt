@@ -80,7 +80,7 @@ class LocalSpace(
     val traits: Array<LocalSpaceTrait>
 )
 
-/** §7.8; [exposure] and [problem] undefined when absent, as the server's JSON has them. */
+/** §7.8; [exposure] and [problem] null when absent (the server omits them; the web's host drops nulls). */
 @JsExport
 class LocalSpaceTrait(
     val key: String,

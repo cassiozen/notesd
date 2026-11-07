@@ -58,6 +58,7 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+    var saveError by remember { mutableStateOf<String?>(null) }
     // The list starts empty while it loads: only a space seen here and then missing is gone.
     var seen by remember { mutableStateOf(false) }
     LaunchedEffect(space != null) {
@@ -101,15 +102,19 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
             initial = space.name,
             initialIcon = space.icon,
             taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
-            onDismiss = { editing = false }
+            onDismiss = {
+                editing = false
+                saveError = null
+            },
+            failure = saveError
         ) { name, icon ->
-            editing = false
-            error = null
+            saveError = null
             scope.launch {
                 if (runCatching { graph.sync.spaces.update(space.id, name, icon) }.isFailure) {
-                    error = "${space.name} couldn't be saved on this phone. Try again."
+                    saveError = "Couldn't save on this phone. Try again."
                     return@launch
                 }
+                editing = false
                 graph.scheduler.request()
             }
         }
@@ -240,11 +245,17 @@ private fun TraitLine(
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(Modifier.weight(1f).alpha(if (dimmed) 0.5f else 1f), verticalAlignment = Alignment.CenterVertically) {
-            Icon(painterResource(glyph), null, Modifier.size(22.dp), tint = if (problem) t.danger else t.ink3)
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            // Off: the glyph dims; the words stay at a readable contrast.
+            Icon(
+                painterResource(glyph),
+                null,
+                Modifier.size(22.dp).alpha(if (dimmed) 0.5f else 1f),
+                tint = if (problem) t.danger else t.ink3
+            )
             Spacer(Modifier.width(14.dp))
             Column {
-                Text(label, style = Type.rowTitle, color = t.ink)
+                Text(label, style = Type.rowTitle, color = if (dimmed) t.ink2 else t.ink)
                 if (summary.isNotEmpty()) {
                     Text(summary, style = Type.rowMeta, color = if (problem) t.danger else t.ink2)
                 }

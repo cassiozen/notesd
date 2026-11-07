@@ -49,6 +49,8 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
     setError(undefined)
     try {
       await deleteSpace(id)
+      // Not left to the list's refresh, which can fail and would keep the deleted space here.
+      onClose()
     } catch (err) {
       const notEmpty = err instanceof ApiError && err.code === 'space_not_empty'
       setError(notEmpty ? 'Notes arrived in this space from another device. Move or delete them first.' : genericMessage(err))

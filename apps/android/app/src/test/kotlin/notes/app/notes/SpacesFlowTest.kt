@@ -31,6 +31,7 @@ import org.junit.After
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 
 /** Spaces (§7.7) on a phone: hidden with one, switched from the list's title with two. */
@@ -254,6 +255,27 @@ class SpacesFlowTest {
         compose.onNode(hasText("Work") and hasClickAction()).performClick()
         movedTo(work)
         compose.onNodeWithText("Move “Groceries” to Work?").assertDoesNotExist()
+    }
+
+    @Test
+    fun `Space info opened from the tags screen keeps the list beneath when the window widens`() {
+        runBlocking {
+            graph.store.save("a", "Groceries", "Milk\n")
+            graph.sync.spaces.create("Work")
+        }
+        launch("Groceries")
+        compose.onNodeWithContentDescription("Sidebar").performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
+        compose.onNodeWithContentDescription("Space: Notes").performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Work, only you"))
+        compose.onNodeWithContentDescription("Work, only you").performTouchInput { longClick() }
+        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+
+        RuntimeEnvironment.setQualifiers("w1280dp-h800dp")
+        scenario.recreate()
+        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+        scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntilExactlyOneExists(hasText("Groceries"))
     }
 
     @Test

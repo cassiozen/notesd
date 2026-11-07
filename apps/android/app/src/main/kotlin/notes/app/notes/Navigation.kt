@@ -203,7 +203,9 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
     // Folded, unfolded, resized: the tags move between sidebar and screen.
     LaunchedEffect(wide) {
         if (wide) {
-            if (backStack.lastOrNull() == TagsKey) backStack += NotesKey
+            // The list takes the tags' place, so a page opened from them (Space info) keeps it beneath.
+            val at = backStack.indexOf(TagsKey)
+            if (at >= 0 && NotesKey !in backStack) backStack[at] = NotesKey
             backStack.removeAll { it == TagsKey }
         }
     }

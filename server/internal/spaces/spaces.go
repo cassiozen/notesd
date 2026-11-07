@@ -122,6 +122,12 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 		return Space{}, err
 	}
 	var out Space
+	// Before the write: a trait source failing after it would report a failed PUT that was stored.
+	// Traits depend on the space's id, not its name or icon.
+	pre := []Space{{ID: id}}
+	if err := s.withTraits(ctx, pre); err != nil {
+		return Space{}, err
+	}
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		stored := name
 		for i := 2; ; i++ {
@@ -150,11 +156,8 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 		return Space{}, err
 	}
 	s.committed()
-	one := []Space{out}
-	if err := s.withTraits(ctx, one); err != nil {
-		return Space{}, err
-	}
-	return one[0], nil
+	out.Traits = pre[0].Traits
+	return out, nil
 }
 
 // Delete removes an empty space. Deleting one that is already gone succeeds.

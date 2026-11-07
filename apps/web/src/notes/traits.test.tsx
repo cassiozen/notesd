@@ -59,6 +59,11 @@ describe('newExposure', () => {
     expect(newExposure(space(shared), space())).toEqual([])
   })
 
+  it('names an audience once when two traits expose to it', () => {
+    const family: SpaceTrait = { key: 'calendar', label: 'Calendar', summary: 'Synced', exposure: 'Visible to Ana and Ben' }
+    expect(newExposure(space(), space(shared, family))).toEqual([shared])
+  })
+
   it('ignores traits that keep the notes to the account', () => {
     expect(newExposure(space(), space(agent))).toEqual([])
   })

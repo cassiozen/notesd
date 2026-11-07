@@ -580,14 +580,16 @@ private fun Header(
 private fun MoreInSpace(count: Int, other: Space, onClick: () -> Unit) {
     val t = LocalTokens.current
     val shape = RoundedCornerShape(12.dp)
+    val interaction = remember { MutableInteractionSource() }
     Row(
         Modifier
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .heightIn(min = 40.dp)
+            .pressScale(interaction)
             .clip(shape)
             .background(t.chip)
             .border(1.dp, t.edge, shape)
-            .clickable(role = Role.Button, onClick = onClick)
+            .clickable(interaction, ripple(color = t.ink), role = Role.Button, onClick = onClick)
             .semantics(mergeDescendants = true) {}
             .padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically

@@ -88,7 +88,13 @@ export function traitsLabel(traits: readonly SpaceTrait[]): string {
  */
 export function newExposure(from: Pick<Space, 'traits'> | undefined, to: Pick<Space, 'traits'>): SpaceTrait[] {
   const had = new Set(from?.traits.map((t) => t.exposure).filter(Boolean))
-  return to.traits.filter((t) => t.exposure && !had.has(t.exposure))
+  // Two traits can expose to the same people; the dialog says so once.
+  const seen = new Set<string>()
+  return to.traits.filter((t) => {
+    if (!t.exposure || had.has(t.exposure) || seen.has(t.exposure)) return false
+    seen.add(t.exposure)
+    return true
+  })
 }
 
 export type TraitRow =

@@ -75,14 +75,14 @@
   color: var(--danger);
 }
 
-/* Off, but it could be on: there to be found, not to compete with what's on. */
-.trait[data-off] .tile,
-.trait[data-off] .traitLabel {
+/* Off, but it could be on: there to be found, not to compete with what's on. Only the tile
+   dims: the words stay at a readable contrast. */
+.trait[data-off] .tile {
   opacity: 0.45;
 }
 
-.trait[data-off] .summary {
-  color: var(--ink-3);
+.trait[data-off] .traitLabel {
+  color: var(--ink-2);
 }
 
 .manage {

@@ -10,6 +10,7 @@ struct SpaceInfoView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var editing = false
     @State private var left = false
+    @State private var deleteError: String?
 
     var body: some View {
         let space = graph.spaces.first { $0.id == id }
@@ -54,7 +55,11 @@ struct SpaceInfoView: View {
             Button("Delete Space", role: .destructive) { delete(space) }
                 .disabled(whyNotDeletable(space) != nil)
         } footer: {
-            if let why = whyNotDeletable(space) { Text(why).font(.notesSmall).foregroundStyle(Color.ink2) }
+            if let deleteError {
+                Text(deleteError).font(.notesSmall).foregroundStyle(Color.danger)
+            } else if let why = whyNotDeletable(space) {
+                Text(why).font(.notesSmall).foregroundStyle(Color.ink2)
+            }
         }
     }
 
@@ -75,7 +80,7 @@ struct SpaceInfoView: View {
             }
         case .off(let kind):
             HStack {
-                TraitRowLabel(symbol: kind.symbol, label: kind.label, detail: "Off").opacity(0.45)
+                TraitRowLabel(symbol: kind.symbol, label: kind.label, detail: "Off", off: true)
                 Spacer()
                 Button("Turn On") { kind.turnOn?(space) }
                     .buttonStyle(.bordered)
@@ -91,9 +96,19 @@ struct SpaceInfoView: View {
     }
 
     private func delete(_ space: Space) {
+        deleteError = nil
         Task {
-            // Leaves once the list no longer has it.
-            if (try? await graph.engine.spaces.delete(space.id)) == true { graph.scheduler.request() }
+            do {
+                // False: notes arrived from another device since the count was shown.
+                guard try await graph.engine.spaces.delete(space.id) else {
+                    deleteError = "Notes arrived in this space from another device. Move or delete them first."
+                    return
+                }
+                graph.scheduler.request()
+                leave()
+            } catch {
+                deleteError = "The space couldn't be deleted on this iPhone. Try again."
+            }
         }
     }
 
@@ -111,6 +126,8 @@ private struct TraitRowLabel: View {
     let label: String
     let detail: String
     var problem = false
+    /// Off, but it could be on: the glyph dims; the words stay readable.
+    var off = false
 
     var body: some View {
         HStack(spacing: 12) {
@@ -119,9 +136,10 @@ private struct TraitRowLabel: View {
                 .foregroundStyle(problem ? Color.danger : Color.ink2)
                 .frame(width: 30, height: 30)
                 .background(Color.on, in: .rect(cornerRadius: 8, style: .continuous))
+                .opacity(off ? 0.45 : 1)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
-                Text(label).font(.notesRowTitle).foregroundStyle(Color.ink)
+                Text(label).font(.notesRowTitle).foregroundStyle(off ? Color.ink2 : Color.ink)
                 Text(detail).font(.notesSmall).foregroundStyle(problem ? Color.danger : Color.ink2)
             }
         }

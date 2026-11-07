@@ -97,3 +97,28 @@ func TestUnknownTraitKeyPanics(t *testing.T) {
 	}()
 	open(t).AddTrait("glitter", nil)
 }
+
+func TestTraitSourceErrorStoresNothing(t *testing.T) {
+	ctx := context.Background()
+	s := open(t)
+	boom := errors.New("boom")
+	fail := true
+	s.AddTrait("shared", func(context.Context, []string) (map[string]spaces.Trait, error) {
+		if fail {
+			return nil, boom
+		}
+		return nil, nil
+	})
+	// A failed PUT must not have been stored, or the client would retry or park a change that succeeded.
+	if _, err := s.Put(ctx, "work", "Work", nil); !errors.Is(err, boom) {
+		t.Fatalf("put: %v", err)
+	}
+	fail = false
+	list, err := s.List(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 {
+		t.Fatalf("stored: %+v", list)
+	}
+}
