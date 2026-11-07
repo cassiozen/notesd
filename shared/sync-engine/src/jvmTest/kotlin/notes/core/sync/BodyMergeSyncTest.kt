@@ -135,6 +135,18 @@ class BodyMergeSyncTest {
     }
 
     @Test
+    fun `a later conflict drops the earlier merge's undo`() = runBlocking<Unit> {
+        val (a, b) = edited("Plan", "One\n\nTwo\n", "One!\n\nTwo\n", "One\n\nTwo!\n")
+        assertNotNull(b.notes.mergeUndo("n"))
+        a.save("n", "Plan", "One, a\n\nTwo!\n")
+        b.save("n", "Plan", "One, b\n\nTwo!\n")
+        assertEquals(SyncOutcome.Done, a.sync())
+        assertEquals(SyncOutcome.Done, b.sync())
+        assertEquals(2, b.live().size)
+        assertNull(b.notes.mergeUndo("n"))
+    }
+
+    @Test
     fun `undo is gone once the note is deleted`() = runBlocking<Unit> {
         val (_, b) = edited("Plan", "One\n\nTwo\n", "One!\n\nTwo\n", "One\n\nTwo!\n")
         b.notes.delete("n")

@@ -88,7 +88,7 @@ export type EngineApi = {
   delete(id: string): Promise<void>
   /** When the last automatic merge into [id] was, while it can still be split back apart; else null. */
   mergedAt(id: string): Promise<number | null>
-  /** Splits the last automatic merge into [id] back apart; resolves with the conflicted copy's id. */
+  /** Splits the last automatic merge into [id] back apart; resolves with the conflicted copy's id, or null when there was nothing to split (undone, expired or deleted). */
   undoMerge(id: string): Promise<string | null>
   /** Keeps text whose note was deleted elsewhere, as the new note [id]. Again with the same id does nothing. */
   recover(id: string, title: string, content: string, imageIds: string[] | null, spaceId: string): Promise<string>

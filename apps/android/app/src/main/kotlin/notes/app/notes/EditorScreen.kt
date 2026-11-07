@@ -451,7 +451,7 @@ fun EditorScreen(
         }
         undoneAs?.let { copy ->
             Banner(
-                "Merge undone. Your version was kept as “$copy”.",
+                "Merge undone. The other version was kept as “$copy”.",
                 BannerKind.Info,
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
                 action = "Dismiss",

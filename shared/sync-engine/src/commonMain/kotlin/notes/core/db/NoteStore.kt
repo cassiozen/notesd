@@ -365,6 +365,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         content: String,
         basedOn: Pair<String, String>
     ): Note {
+        sql.forgetMerge(current.id)
         val (baseTitle, baseContent) = basedOn
         val mergedTitle = Merge.field(baseTitle, title, current.title, Merge.sameText)
         val mergedContent = Merge.field(baseContent, content, current.content, Merge.sameMarkdown)

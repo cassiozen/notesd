@@ -414,6 +414,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     }
 
     private suspend fun merge(sql: Sql, local: Note, remote: RemoteNote, events: MutableList<SyncEvent>) {
+        // Undo splits the last merge only: this one may be a conflict that records none.
+        sql.forgetMerge(local.id)
         // A note this device created has no synced version yet. If its create went out (and the answer was
         // lost), what it sent is what the server may have: merge against that.
         val sentCreate = if (local.baseTitle == null) {

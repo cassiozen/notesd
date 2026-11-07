@@ -708,6 +708,9 @@ export class NoteSaver extends SaverCore {
    */
   private merge(remote: Opened) {
     const current = remote.note
+    // Undo splits the last merge only: this one may record none.
+    this.undo = null
+    this.merged = false
     // The latest local text, including edits typed after the rejected request.
     const local = this.read()
     const base = this.base

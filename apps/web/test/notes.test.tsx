@@ -239,7 +239,7 @@ describe('editing', () => {
     expect(screen.queryByRole('button', { name: 'Keep mine' })).toBeNull()
 
     await user.click(screen.getByRole('button', { name: 'Undo' }))
-    expect(await screen.findByText('Merge undone. Your version was kept as “Plan (Conflicted copy)”.')).toBeTruthy()
+    expect(await screen.findByText('Merge undone. The other version was kept as “Plan (Conflicted copy)”.')).toBeTruthy()
     await waitFor(() => expect(bodyText()).toBe('One, elsewhereTwo'))
     await waitFor(async () => {
       expect((await getNote(server, id)).content).toBe('One, elsewhere\n\nTwo\n')

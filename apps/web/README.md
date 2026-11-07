@@ -177,17 +177,18 @@ of React, so saves outlive the editor.
   client's formatting style doesn't count as a change. If only one side
   changed a field, that side wins, and the merge is saved without asking.
 - **Both sides changed the content.** It merges block by block
-  (`src/editor/merge.ts`, §6.2), the reference the engine and iOS port. A
-  clean merge is saved, with a banner offering Undo while the tab is open:
-  the server's version back in the note, the local one as a conflicted copy.
+  (`src/editor/merge.ts`, §6.2), the reference for the engine and iOS port.
+  A clean merge is saved, with a banner offering Undo while the tab is open.
+  Undo puts the server's version back in the note, unless it was edited
+  since, and saves the local one as a conflicted copy.
   When only some blocks conflict, or the title does, both notes get every
   change that merged: the note keeps the server's version of the conflicting
   blocks and "<Title> (Conflicted copy)", linked by `conflictOf`, takes the
   local one, without asking.
-- **Nothing merged** (the only block both changed, or a locked note). Nothing
-  is saved until the user picks: "Use theirs" drops the local edits; "Keep
-  mine" saves the local version as the conflicted copy and shows the server's
-  version in the original.
+- **Nothing merged** (every change clashes, the body is too large to merge,
+  or the note is locked). Nothing is saved until the user picks: "Use
+  theirs" drops the local edits; "Keep mine" saves the local version as the
+  conflicted copy and shows the server's version in the original.
 - **Deleted on another device** (`409 note_deleted`). "Discard" drops the
   edits; "Keep as new note" saves them as "<Title> (Recovered copy)".
 - **Deleting.** The note disappears at once and "Note deleted · Undo" shows

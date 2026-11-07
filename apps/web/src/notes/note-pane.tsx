@@ -264,6 +264,9 @@ type EditorProps = {
 
 const APP_TITLE = 'notesd'
 
+// Savers outlive the pane: a split reopened later was already announced.
+const splitsShown = new WeakSet<NonNullable<Snapshot['split']>>()
+
 /** How often the list row follows the typing. */
 const TOUCH_MS = 150
 
@@ -382,18 +385,20 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
     onNotice(`Deleted on another device. Your edits were kept as “${gone.copy.fields().title}”.`)
   }, [snap.gone, onGone, onOpenDraft, onNotice])
 
-  const splitSeen = useRef<Snapshot['split']>(null)
   useEffect(() => {
     const split = snap.split
-    if (!split || splitSeen.current === split) return
-    splitSeen.current = split
+    if (!split || splitsShown.has(split)) return
+    splitsShown.add(split)
     onNotice(`Changed in two places. Your version was kept as “${split.title}”.`)
   }, [snap.split, onNotice])
 
   const undoMerge = useCallback(() => {
-    void saver.undoMerge().then((title) => {
-      if (title) onNotice(`Merge undone. Your version was kept as “${title}”.`)
-    })
+    saver.undoMerge().then(
+      (title) => {
+        if (title) onNotice(`Merge undone. The other version was kept as “${title}”.`)
+      },
+      () => onNotice('The merge couldn’t be undone. Try again.'),
+    )
   }, [saver, onNotice])
 
   useEffect(() => {

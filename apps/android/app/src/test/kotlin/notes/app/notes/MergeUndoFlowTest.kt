@@ -30,7 +30,7 @@ class MergeUndoFlowTest {
     val compose = createEmptyComposeRule()
 
     private val graph = ApplicationProvider.getApplicationContext<NotesApp>().graph
-    private lateinit var scenario: ActivityScenario<MainActivity>
+    private var scenario: ActivityScenario<MainActivity>? = null
 
     @Before
     fun seed() {
@@ -45,7 +45,7 @@ class MergeUndoFlowTest {
 
     @After
     fun tearDown() {
-        scenario.close()
+        scenario?.close()
         graph.shutDown()
     }
 
@@ -58,7 +58,8 @@ class MergeUndoFlowTest {
         compose.waitUntilExactlyOneExists(hasText("Merged with changes from another device."))
 
         compose.onNodeWithText("Undo").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Merge undone. Your version was kept as “Plan (Conflicted copy)”."))
+        val undone = "Merge undone. The other version was kept as “Plan (Conflicted copy)”."
+        compose.waitUntilExactlyOneExists(hasText(undone))
         compose.waitUntilDoesNotExist(hasText("Merged with changes from another device."))
         val notes = runBlocking { graph.store.list().map { graph.store.get(it.id)!! } }
         assertEquals("One\n\nTwo, here\n", notes.single { it.id == "n" }.content)
