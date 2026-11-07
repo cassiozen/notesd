@@ -1,0 +1,30 @@
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_530664708756c3 129,167-205
+  s_cc6cacc0a6fc01::t_5cdfff993e120d 219
+  s_cc6cacc0a6fc01::t_082e3d27744e7d 206-218
+apps/web/src/notes/shell.tsx
+  s_cc6cacc0a6fc01::t_70cf190a3e5810 58
+apps/web/test/agent-socket-space.test.tsx
+  s_cc6cacc0a6fc01::t_530664708756c3 2-3,7,12-13,15-16,20-22,25,27,29-36
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_8fff27fd64a4a1 490-492
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_70cf190a3e5810 9-13,30,37,47-49,52-55,62-67,91,181-182,185
+  s_cc6cacc0a6fc01::t_b7f27f1024d2c1 60-61
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8c32411f679bb8183c6b43eabb0c958ae282fdaf",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
