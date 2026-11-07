@@ -1,0 +1,113 @@
+shared/sync-engine/src/jvmTest/kotlin/notes/core/db/NoteStoreJvmTest.kt
+  s_8e1d37af026457::t_37d50ef6b2eecf 74
+apps/web/test/notes.test.tsx
+  s_8e1d37af026457::t_e00e7803440686 223-276
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_8e1d37af026457::t_36b1d0f185e778 167-168,441-460
+apps/web/test/engine/engine.test.ts
+  s_8e1d37af026457::t_86e211fd29470d 78-103
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_8e1d37af026457::t_a7944d4998d282 7-8,20-22,343,435-436,445-476,604-605,621
+shared/sync-engine/src/commonMain/migrations/0012_merge_undo.sql
+  s_8e1d37af026457::t_f5311eaa7fa62f 1-12
+apps/web/src/notes/local-saver.ts
+  s_8e1d37af026457::t_198dcbb10630df 26-28,30,85-104
+  s_8e1d37af026457::t_718dd29d16188b 105
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/MergeUndo.kt
+  s_8e1d37af026457::t_cd109c34d587b9 39-42
+  s_8e1d37af026457::t_f5311eaa7fa62f 1-38,43-62
+apps/web/src/notes/source.ts
+  s_8e1d37af026457::t_198dcbb10630df 83-84
+apps/web/README.md
+  s_8e1d37af026457::t_8afa176cafccc4 179-190
+apps/web/src/notes/save-status.test.ts
+  s_8e1d37af026457::t_ccaf84eabcabe8 16-17
+apps/web/src/notes/shell.tsx
+  s_8e1d37af026457::t_20ab69b2e24dc4 343-344
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_8e1d37af026457::t_36b1d0f185e778 195-197
+apps/android/app/src/test/kotlin/notes/app/notes/MergeUndoFlowTest.kt
+  s_8e1d37af026457::t_851f0ab7e64c94 1-67
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Merge.kt
+  s_8e1d37af026457::t_f5311eaa7fa62f 4,6,30-41
+  s_8e1d37af026457::t_b62bee0b563e57 42
+shared/sync-engine/src/jvmTest/kotlin/notes/core/sync/BodyMergeSyncTest.kt
+  s_8e1d37af026457::t_fb4def52c4c47f 30-35,59-64,79-85,87-90
+  s_8e1d37af026457::t_d035b01a04b4ad 1-29,36-58,65-78,86,91-163
+apps/web/src/notes/saver.ts
+  s_8e1d37af026457::t_ff8e621451eb17 4,49-52,130-131,173,424-425,444-445,704-708,723,733-736,741,745-759,764-780,823,831
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_8e1d37af026457::t_33dfd9ad3d1d80 104-108,327-336
+  s_8e1d37af026457::t_0edfbb4f843b4b 337-339
+apps/web/src/offline/protocol.ts
+  s_8e1d37af026457::t_198dcbb10630df 47-48,89-92
+apps/web/src/notes/note-pane.tsx
+  s_8e1d37af026457::t_20ab69b2e24dc4 385-398,566-575
+  s_8e1d37af026457::t_e9bb1a418f5b32 576-577
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_8e1d37af026457::t_cd109c34d587b9 375-381
+  s_8e1d37af026457::t_1a6c1ae23e09af 7,337-338,371-374,382-419,421-422,459,496
+  s_8e1d37af026457::t_c39f5a029f1ffb 250-253
+apps/web/src/offline/host.ts
+  s_8e1d37af026457::t_6abc68484866d8 153-158,274-275
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_8e1d37af026457::t_c705cfa2d65e98 99-101,209-214,376
+docs/faq.md
+  s_8e1d37af026457::t_8afa176cafccc4 164-171
+apps/ios/NotesCore/Sources/NotesCore/DB/Search.swift
+  s_8e1d37af026457::t_36fc80916c6ece 60-66
+apps/ios/Notes/App/AppGraph.swift
+  s_8e1d37af026457::t_e3c63b7981df45 253-254
+docs/contributing/architecture.md
+  s_8e1d37af026457::t_ce811d221f93c6 19,67,347,349-354,356-368,372,572,680-681
+apps/ios/NotesCore/Tests/NotesCoreTests/BodyMergeSyncTests.swift
+  s_8e1d37af026457::t_da1e0f208b6efc 72-73
+  s_8e1d37af026457::t_1211dd44763163 1-71,74-126
+apps/ios/Notes/Notes/EditorModel.swift
+  s_8e1d37af026457::t_e3c63b7981df45 45-48,134,145,229-241
+  s_8e1d37af026457::t_1714d6d7ff2860 242
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_8e1d37af026457::t_da1e0f208b6efc 415-417
+  s_8e1d37af026457::t_36fc80916c6ece 12-13,334,418-421,430-433,435-458,546-547,558
+apps/ios/NotesCore/Sources/NotesCore/DB/Migrations.swift
+  s_8e1d37af026457::t_36fc80916c6ece 11
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_8e1d37af026457::t_36fc80916c6ece 283-284,324-331,335-347,351-383,412,448
+  s_8e1d37af026457::t_da1e0f208b6efc 349-350
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_8e1d37af026457::t_e3c63b7981df45 61-92
+apps/ios/NotesCore/Sources/NotesCore/DB/MergeUndo.swift
+  s_8e1d37af026457::t_36fc80916c6ece 1-52
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0008_merge_undo.sql
+  s_8e1d37af026457::t_36fc80916c6ece 1-12
+docs/guides/using/offline-and-sync.md
+  s_8e1d37af026457::t_8afa176cafccc4 64-70,73-74
+docs/concepts/how-sync-works.md
+  s_8e1d37af026457::t_4b138b4b7dbf99 47-67
+apps/ios/NotesTests/EditorModelTests.swift
+  s_a0fc22670a88c5::t_83d66a5656d587 45-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "62ef217f4a6e646731283f05847c9ad328bb222a",
+  "prompts": {},
+  "sessions": {
+    "s_8e1d37af026457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ed58fb-dbc1-4c4d-a767-e89a079555f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
