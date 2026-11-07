@@ -1,0 +1,27 @@
+server/internal/agent/overlays.go
+  s_cc6cacc0a6fc01::t_3e5aec01da3eec 110,113
+server/internal/agent/overlays_test.go
+  s_cc6cacc0a6fc01::t_0af804271a6fa7 1-286
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_6949133f1e7982 81-82,87,98
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_056cb95c32fc9e 5,282-383
+server/migrations/0019_agent_overlays.sql
+  s_cc6cacc0a6fc01::t_6325da8be3ee9f 2,15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f65d2f78000280355f378b47db722d2b9ed73572",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
