@@ -1,0 +1,33 @@
+apps/web/src/notes/agent-examples.ts
+  s_cc6cacc0a6fc01::t_0d1435c162a79b 1-2,4-5,7-8,10-16,20-34,36-37,43-47,49-53,60-64,66-70,77-86,91-112
+  s_cc6cacc0a6fc01::t_912cc022acb2ce 113-149
+apps/web/src/notes/agent-page.tsx
+  s_cc6cacc0a6fc01::t_942fa139b73cca 1,13,16,26,32-35,47,54,136-144,150-152,160,163-181,185-195,197-201,203-210,214-230,235-256,258,271,284-295,300-306,308,311,313-318,325,327-367,382-383,415,417-418,421-422,425,427,430,432,434-439,441,443,446-464,478,501-518,523-524,527-534,547,552,563-572,575-580,588,595,599,604
+  s_cc6cacc0a6fc01::t_01511e5f7d7e63 600-603
+apps/web/src/notes/note-titles.ts
+  s_cc6cacc0a6fc01::t_ce753629f64dd5 1-38
+apps/web/src/notes/agent-page.module.css
+  s_cc6cacc0a6fc01::t_73fc63f93d1539 80,82-83,85-86,90-95,98-105,107-108,110-135,138-143,145-146,148,151-163,165-180,182,185-186,188,191-193,195,198-219,226-244,246-290,318-321,327-346,437-451
+apps/web/src/notes/agent-rules.ts
+  s_cc6cacc0a6fc01::t_77fb07fc7b5b9f 4,10-12,50-51,53,60,68,83,91,106
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_5a64fe46313e5c 5,46-47,49-54,63,73,75,78-81,86-89,91-93,116,122-194
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_8b517b0f735f63 24-28,37-39,53-55
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "05230adb9f9d3c49231d288cd6db31c59289cd7d",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "unknown"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
