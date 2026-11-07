@@ -1,0 +1,66 @@
+apps/android/app/src/main/kotlin/notes/app/settings/People.kt
+  s_72b1d72037b200::t_562ecfc0907cf0 31,102,190-195
+  s_72b1d72037b200::t_aabccda1b19469 209-211
+  s_72b1d72037b200::t_879c89df12a2d9 1-30,32-101,103-189,196-208,212-529
+docs/guides/self-hosting/users.md
+  s_72b1d72037b200::t_8ea256aeea843d 36,38,41-42,45,50
+apps/android/app/src/main/kotlin/notes/app/settings/PeopleLink.kt
+  s_72b1d72037b200::t_da69287855ef4e 1-25
+apps/android/app/src/main/kotlin/notes/app/account/AccountStore.kt
+  s_72b1d72037b200::t_33c3e1dea13124 20-21,43-44,53-59,108
+apps/android/app/src/test/kotlin/notes/app/account/AccountStoreTest.kt
+  s_72b1d72037b200::t_6af3b94f9d1c1d 38-40,45-50
+  s_72b1d72037b200::t_77d66b4c34f755 41-44
+  s_72b1d72037b200::t_c11cfd8623de33 37
+docs/reference/cli.md
+  s_72b1d72037b200::t_db0f1525233688 110
+  s_72b1d72037b200::t_5bd6deb931ed8e 138
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_72b1d72037b200::t_562ecfc0907cf0 195
+  s_72b1d72037b200::t_da69287855ef4e 392
+apps/android/app/src/test/kotlin/notes/app/settings/PeopleTest.kt
+  s_72b1d72037b200::t_e3c406f6d2eba5 108
+  s_72b1d72037b200::t_8446130455961e 1-107,109-159
+docs/contributing/settings-guidelines.md
+  s_72b1d72037b200::t_8ea256aeea843d 72
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_72b1d72037b200::t_adf26d8b840c5e 217-238,329
+  s_72b1d72037b200::t_b9b97ed9cfbdf2 330
+apps/android/app/src/main/kotlin/notes/app/ui/Icons.kt
+  s_72b1d72037b200::t_33c3e1dea13124 89
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_72b1d72037b200::t_77d66b4c34f755 160,162-163,178-180,194
+  s_72b1d72037b200::t_6af3b94f9d1c1d 159,161,164-177,181-193,195-200
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_72b1d72037b200::t_8d64bae068191d 314
+  s_72b1d72037b200::t_05dfed3ae3872d 4,17-20,315-349,353-355
+  s_72b1d72037b200::t_008b23b260ce11 350-352
+  s_72b1d72037b200::t_978f74354b5bab 356-357
+docs/faq.md
+  s_72b1d72037b200::t_d865325208f059 226
+  s_72b1d72037b200::t_5bd6deb931ed8e 213
+docs/contributing/architecture.md
+  s_72b1d72037b200::t_5bd6deb931ed8e 532
+apps/android/app/src/test/kotlin/notes/app/settings/PeopleLinkTest.kt
+  s_72b1d72037b200::t_6af3b94f9d1c1d 1-32,36-37
+  s_72b1d72037b200::t_77d66b4c34f755 33-35
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_72b1d72037b200::t_adf26d8b840c5e 82-84,89-109
+  s_72b1d72037b200::t_c8001d4560a968 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95f9d64d814b59c3868ed02deb99aba1cf7fd258",
+  "prompts": {},
+  "sessions": {
+    "s_72b1d72037b200": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d19a40f5-55e1-4a06-963d-87c03b88cc60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
