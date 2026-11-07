@@ -458,7 +458,6 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		if err := mirr.Check(ctx, o.dataDir); err != nil {
 			return err
 		}
-		// Before any database opens: their stores take the hook when they do.
 		users.OnChange(mirr.Notify)
 	}
 	if onContainerLayer(o.dataDir) {

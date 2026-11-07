@@ -66,6 +66,7 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	in.Origin = syncOrigin(r)
 	res, err := u.Notes.Create(r.Context(), in)
 	s.writeMutation(w, r, res, err)
 }
@@ -113,6 +114,7 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:    req.UpdatedAt,
 		SpaceID:      req.SpaceID,
 		ImageIDs:     req.ImageIDs,
+		Origin:       syncOrigin(r),
 	})
 	s.writeMutation(w, r, res, err)
 }
@@ -139,8 +141,24 @@ func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 		OperationID:  req.OperationID,
 		ID:           r.PathValue("id"),
 		BaseRevision: req.BaseRevision,
+		Origin:       syncOrigin(r),
 	})
 	s.writeMutation(w, r, res, err)
+}
+
+// syncOrigin is what X-Notesd-Sync says about a write: "initial" while a
+// device makes its first sync, "import" for an import, absent for an edit.
+// Any other value is kept as "other", so a later client's new reason still
+// means "not someone editing".
+func syncOrigin(r *http.Request) string {
+	switch v := r.Header.Get("X-Notesd-Sync"); v {
+	case "":
+		return ""
+	case "initial", "import":
+		return v
+	default:
+		return "other"
+	}
 }
 
 func (s *Server) writeMutation(w http.ResponseWriter, r *http.Request, res notes.Result, err error) {

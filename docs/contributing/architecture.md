@@ -143,6 +143,14 @@ CREATE TABLE lock_keys (id TEXT PRIMARY KEY, kind TEXT, credential_id TEXT, salt
                         kdf TEXT, wrapped TEXT, created_at INTEGER);  -- kdf: JSON, §10.1
 CREATE TABLE lock_state (id INTEGER PRIMARY KEY CHECK (id = 1), verifier_hash TEXT NOT NULL);
 
+-- Account-wide settings, such as the time zone agents use for "today".
+CREATE TABLE account_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+-- Each space's agent (kept when turned off) and its prompt per trigger; both go with the space.
+CREATE TABLE agent_spaces (space_id TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE, enabled INTEGER,
+                           prompt TEXT, menu_label TEXT, updated_at INTEGER);
+CREATE TABLE agent_triggers (space_id TEXT REFERENCES agent_spaces(space_id) ON DELETE CASCADE, trigger TEXT,
+                             prompt TEXT, PRIMARY KEY (space_id, trigger));
+
 CREATE TABLE applied_operations (
     operation_id  TEXT PRIMARY KEY,
     request_hash  TEXT    NOT NULL,
@@ -501,6 +509,9 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `DELETE` | `/api/v1/notes/:id` | Delete a note |
 | `POST` | `/api/v1/notes/:id/email` | Email the note as stored, through Resend |
 | `GET` `PUT` `DELETE` | `/api/v1/settings/email` | The Resend API key (write-only) and sender |
+| `GET` | `/api/v1/agent/spaces` | Every space's agent that has been set up |
+| `GET` `PUT` `DELETE` | `/api/v1/agent/spaces/:id` | A space's agent: on or off, its prompt, a prompt per trigger, the menu command's name |
+| `GET` `PUT` | `/api/v1/settings/account` | The account's time zone; devices send theirs as `X-Notesd-Time-Zone` |
 | `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per account |
 | `POST` | `/api/v1/settings/ai/test` | Check the provider answers and the model calls tools |
 | `GET` | `/api/v1/sync` | Download changes |

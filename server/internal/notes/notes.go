@@ -83,8 +83,10 @@ type queryer interface {
 	QueryContext(ctx context.Context, query string, args ...any) (*sql.Rows, error)
 }
 
-// FillImageIDs sets a locked note's ImageIDs from note_images.
+// FillImageIDs sets a locked note's ImageIDs from note_images, and clears a
+// plain note's: one copied from its locked self keeps them otherwise.
 func FillImageIDs(ctx context.Context, q queryer, n *Note) error {
+	n.ImageIDs = nil
 	if !locks.IsLocked(n.Content) {
 		return nil
 	}
@@ -94,7 +96,6 @@ func FillImageIDs(ctx context.Context, q queryer, n *Note) error {
 		return err
 	}
 	defer rows.Close()
-	n.ImageIDs = nil
 	for rows.Next() {
 		var id string
 		if err := rows.Scan(&id); err != nil {
@@ -183,11 +184,42 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string { return e.Field + ": " + e.Message }
 
+// Event kinds.
+const (
+	EventCreated = "created"
+	EventUpdated = "updated"
+	EventDeleted = "deleted"
+)
+
+// Event describes one applied write, for hooks. Replays of an operation
+// already applied emit none.
+type Event struct {
+	Kind   string // EventCreated, EventUpdated or EventDeleted
+	NoteID string
+	OpID   string
+	// Unchanged is an update that changed nothing (StatusUnchanged) or a
+	// delete of a tombstone (StatusAlreadyDeleted): no new revision.
+	Unchanged bool
+	// Before is the note as it was; nil for a create.
+	Before *Note
+	// After is the note as written: a tombstone for a delete.
+	After Note
+	// Origin is "" for a write made as someone edits, or what the client
+	// said otherwise (see CreateInput.Origin).
+	Origin string
+}
+
+// SpaceChanged reports whether the write moved the note between spaces.
+func (e Event) SpaceChanged() bool {
+	return e.Before != nil && e.Kind == EventUpdated && e.Before.SpaceID != e.After.SpaceID
+}
+
 // Store persists notes.
 type Store struct {
 	db       *database.DB
 	now      func() time.Time
-	onCommit func()
+	onWrite  []func(context.Context, *sql.Tx, Event) error
+	onCommit []func(Event)
 }
 
 // NewStore returns a Store using the system clock.
@@ -198,15 +230,16 @@ func NewStore(db *database.DB) *Store {
 // SetClock overrides the clock, for tests.
 func (s *Store) SetClock(now func() time.Time) { s.now = now }
 
-// OnCommit has fn called after each write commits. fn must not block: it
-// runs on the request's goroutine.
-func (s *Store) OnCommit(fn func()) { s.onCommit = fn }
-
-func (s *Store) committed() {
-	if s.onCommit != nil {
-		s.onCommit()
-	}
+// OnWrite adds fn, called inside each write's transaction once the note is
+// written, so what fn records commits or rolls back with it. An error from
+// fn fails the write. Add hooks before the store is used.
+func (s *Store) OnWrite(fn func(ctx context.Context, tx *sql.Tx, ev Event) error) {
+	s.onWrite = append(s.onWrite, fn)
 }
+
+// OnCommit adds fn, called after each write commits. fn must not block: it
+// runs on the request's goroutine. Add hooks before the store is used.
+func (s *Store) OnCommit(fn func(ev Event)) { s.onCommit = append(s.onCommit, fn) }
 
 // CreateInput describes a new note. Timestamps are optional and
 // informational; when absent or implausible the server clock is used.
@@ -227,6 +260,10 @@ type CreateInput struct {
 	// Fingerprint identifies the request as received (see Fingerprint);
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
+	// Origin says the write isn't someone editing: "initial" for a device's
+	// first sync, "import" for an import. Empty for an edit. Not part of the
+	// request hash: it describes the sending, not the change.
+	Origin string `json:"-"`
 }
 
 // UpdateInput replaces a note's title and content, provided BaseRevision is
@@ -245,6 +282,8 @@ type UpdateInput struct {
 	ImageIDs []string `json:"imageIds"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
+	// As CreateInput.Origin.
+	Origin string `json:"-"`
 }
 
 // DeleteInput turns a note into a tombstone, provided BaseRevision is still
@@ -255,6 +294,8 @@ type DeleteInput struct {
 	BaseRevision int64  `json:"baseRevision"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
+	// As CreateInput.Origin.
+	Origin string `json:"-"`
 }
 
 // Create inserts a new note at revision 1.
@@ -286,7 +327,8 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		updated = created
 	}
 
-	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "create", "", in), func(tx *sql.Tx) (Result, error) {
+	ev := Event{Kind: EventCreated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "create", "", in), &ev, func(tx *sql.Tx) (Result, error) {
 		if cur, err := loadForUpdate(ctx, tx, in.ID); err == nil {
 			return Result{}, &ConflictError{Code: CodeNoteExists, Current: cur.Note}
 		} else if !errors.Is(err, ErrNotFound) {
@@ -315,6 +357,11 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 			return Result{}, err
 		}
 		if err := images.SetRefs(ctx, tx, rowid, shownImages(in.Content, in.ImageIDs), now); err != nil {
+			return Result{}, err
+		}
+		ev.After = Note{ID: in.ID, Title: in.Title, Content: in.Content, Revision: 1, ChangeSeq: seq,
+			CreatedAt: created, UpdatedAt: updated, ConflictOf: in.ConflictOf, SpaceID: space}
+		if err := FillImageIDs(ctx, tx, &ev.After); err != nil {
 			return Result{}, err
 		}
 		return Result{ID: in.ID, Status: StatusCreated, Revision: 1, ChangeSeq: seq,
@@ -346,7 +393,8 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	updated := s.clientTime(in.UpdatedAt, now)
 
 	locking := false
-	res, err := s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "update", in.ID, in), func(tx *sql.Tx) (Result, error) {
+	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	res, err := s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "update", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return Result{}, err
@@ -361,10 +409,17 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
+		before := cur.Note
+		ev.Before = &before
+		ev.After = cur.Note
 		if cur.Title == in.Title && cur.Content == in.Content && cur.SpaceID == space {
+			ev.Unchanged = true
 			// The same body may come with its images listed (again): record them.
 			if locks.IsLocked(in.Content) && in.ImageIDs != nil {
 				if err := images.SetRefs(ctx, tx, cur.rowid, in.ImageIDs, now); err != nil {
+					return Result{}, err
+				}
+				if err := FillImageIDs(ctx, tx, &ev.After); err != nil {
 					return Result{}, err
 				}
 			}
@@ -394,6 +449,11 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 			}
 		}
 		locking = locks.IsLocked(in.Content) && !locks.IsLocked(cur.Content)
+		ev.After.Title, ev.After.Content, ev.After.Revision = in.Title, in.Content, rev
+		ev.After.ChangeSeq, ev.After.UpdatedAt, ev.After.SpaceID = seq, updated, space
+		if err := FillImageIDs(ctx, tx, &ev.After); err != nil {
+			return Result{}, err
+		}
 		return Result{ID: cur.ID, Status: StatusUpdated, Revision: rev, ChangeSeq: seq,
 			UpdatedAt: updated, SpaceID: space, HTTPStatus: 200}, nil
 	})
@@ -422,12 +482,17 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 	}
 	now := s.now().UnixMilli()
 
-	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "delete", in.ID, in), func(tx *sql.Tx) (Result, error) {
+	ev := Event{Kind: EventDeleted, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "delete", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return Result{}, err
 		}
+		before := cur.Note
+		ev.Before = &before
+		ev.After = cur.Note
 		if cur.DeletedAt != nil {
+			ev.Unchanged = true
 			// The outcome the client wants already holds, whatever its base.
 			return Result{ID: cur.ID, Status: StatusAlreadyDeleted, Revision: cur.Revision,
 				ChangeSeq: cur.ChangeSeq, UpdatedAt: cur.UpdatedAt, DeletedAt: cur.DeletedAt,
@@ -456,6 +521,8 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 		if err := images.SetRefs(ctx, tx, cur.rowid, nil, now); err != nil {
 			return Result{}, err
 		}
+		ev.After.Title, ev.After.Content, ev.After.ImageIDs = "", "", nil
+		ev.After.Revision, ev.After.ChangeSeq, ev.After.UpdatedAt, ev.After.DeletedAt = rev, seq, updated, &now
 		return Result{ID: cur.ID, Status: StatusDeleted, Revision: rev, ChangeSeq: seq,
 			UpdatedAt: updated, DeletedAt: &now, HTTPStatus: 200}, nil
 	})
@@ -592,7 +659,9 @@ type storedResponse struct {
 }
 
 // apply implements idempotent execution of one mutation (§4.2).
-func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx) (Result, error)) (Result, error) {
+// apply runs fn, which fills in ev, then the write hooks, in one transaction,
+// and the commit hooks after it commits.
+func (s *Store) apply(ctx context.Context, opID, reqHash string, ev *Event, fn func(*sql.Tx) (Result, error)) (Result, error) {
 	var out Result
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		var storedHash, storedJSON string
@@ -622,6 +691,11 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 		if err != nil {
 			return err
 		}
+		for _, hook := range s.onWrite {
+			if err := hook(ctx, tx, *ev); err != nil {
+				return err
+			}
+		}
 		body, err := json.Marshal(storedResponse{Status: res.HTTPStatus, Body: res})
 		if err != nil {
 			return err
@@ -636,7 +710,9 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 		return nil
 	})
 	if err == nil && !out.Replayed {
-		s.committed()
+		for _, hook := range s.onCommit {
+			hook(*ev)
+		}
 	}
 	return out, err
 }

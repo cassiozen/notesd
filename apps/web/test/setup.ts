@@ -1,6 +1,7 @@
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
 import { forgetFind } from '../src/editor/find-bar'
+import { forgetAgentConfigs } from '../src/notes/agent-config'
 import { forgetAiSettings } from '../src/notes/ai-settings'
 import { forgetEmailSettings } from '../src/notes/email-settings'
 import { forgetSpaces } from '../src/notes/spaces'
@@ -85,6 +86,7 @@ afterEach(() => {
   cleanup()
   forgetEmailSettings()
   forgetAiSettings()
+  forgetAgentConfigs()
   forgetSpaces()
   forgetFind()
   versionState.reset()

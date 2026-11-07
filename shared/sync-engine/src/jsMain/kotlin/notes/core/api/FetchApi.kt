@@ -69,6 +69,7 @@ class FetchApi(private val csrfToken: () -> String?, private val client: ClientI
         val headers = js("({})")
         headers["Accept"] = "application/json"
         if (client != null) headers["X-Notesd-Client"] = client.header
+        client?.timeZone?.let { headers["X-Notesd-Time-Zone"] = it }
         if (body != null) headers["Content-Type"] = contentType
         if (method != "GET") {
             // Opened offline, the page has no token until the server answers it: wait, as if offline.
