@@ -1,0 +1,25 @@
+apps/web/src/settings/resend.tsx
+  s_72b1d72037b200::t_5fd8471f6eb539 4
+apps/web/src/notes/share.tsx
+  s_72b1d72037b200::t_5fd8471f6eb539 5
+apps/web/src/auth/errors.test.ts
+  s_72b1d72037b200::t_82554e7a4407e1 1-22
+apps/web/src/auth/errors.ts
+  s_72b1d72037b200::t_5fd8471f6eb539 29-30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5f139a747f494f28d425684d2cec47861de406d3",
+  "prompts": {},
+  "sessions": {
+    "s_72b1d72037b200": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d19a40f5-55e1-4a06-963d-87c03b88cc60",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
