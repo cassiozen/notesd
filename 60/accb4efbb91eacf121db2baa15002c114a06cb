@@ -1,0 +1,26 @@
+apps/web/src/notes/space-theme.test.ts
+  s_30a2fddaf04cb6::t_d23d0adeaacdf5 4,63-67
+  s_30a2fddaf04cb6::t_200253ee7d63c9 68
+apps/web/src/auth/session-hint.ts
+  s_30a2fddaf04cb6::t_86e8d1ade75499 3-8,22-25
+apps/web/src/notes/space-theme.ts
+  s_30a2fddaf04cb6::t_86e8d1ade75499 3,22,30-32
+docs/contributing/architecture.md
+  s_30a2fddaf04cb6::t_d23d0adeaacdf5 440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "60accb4efbb91eacf121db2baa15002c114a06cb",
+  "prompts": {},
+  "sessions": {
+    "s_30a2fddaf04cb6": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9cc8ea43-9dde-413d-92a0-83ed85e07c4f",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
