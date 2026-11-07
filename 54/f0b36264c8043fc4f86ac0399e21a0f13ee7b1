@@ -1,0 +1,105 @@
+apps/web/src/notes/agent-config.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 11-15
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 129-149
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 8,40-43,54-57,114,131,142,144,149-151,174-188,190,192-193,246-262
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 21-22,26-27,110-112
+apps/web/src/editor/agent-edit.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 5,8-10,99-100
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 147-153,158-165,177-178,184,225-242
+  s_cc6cacc0a6fc01::t_dc4f067c7544ef 224
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 19-20,26,60,70-85,100-107
+server/internal/agent/request.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-89
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 59-61,63-65,67-70,75-76,78,90
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-2,21-23,42-43,45-50,83-85,87-92,94,106-125,128-135,158-160,164-170,178-180,187-202,254-265
+  s_cc6cacc0a6fc01::t_dc4f067c7544ef 86
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 80,96-100,802-853
+server/cmd/notesd/main.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 509,739-744
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 12-14,35-36,42-53,72-76
+server/internal/agent/context.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-66
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 46-47,90-96
+apps/web/src/notes/failed-run.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 2,12-13,22-47
+apps/web/src/editor/agent-presence.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-140
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 5,7,265-313
+server/migrations/0018_agent_reference_notes.sql
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-2
+apps/web/src/agent/triggers.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-31
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 230-262
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 209
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 33-50,107-111,136-139,178-185,188,211-221
+apps/web/src/notes/share.tsx
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 13-14,28,52-53,141-153
+server/internal/agent/runner.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 36-38,51,59,97-99,108,110-111,115,118-122,139,166-176,178,203-206,216-219,229,239,241-242
+apps/web/src/notes/note-pane.module.css
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 47
+server/internal/agent/config_test.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 7,104-105,152-175
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 126
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 131-138
+apps/web/test/agent-triggers.test.tsx
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-39,41-137
+  s_cc6cacc0a6fc01::t_16bc61969e2346 40
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 21-22,24,157-159,288-302,343,345,364-370,539-542
+apps/web/src/editor/agent-presence.test.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-68
+apps/web/src/editor/editor.tsx
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-2,20-21,53,102
+apps/web/test/setup.ts
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 3,91
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 150,485-489,497,500-504,507-509
+  s_cc6cacc0a6fc01::t_f42fe4e953527e 494-496
+apps/web/test/helpers.tsx
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1,42-43,61,143,147-151
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 1-98
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 73-79,116-132
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 10,16
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 388,396,399,404-406,441-447,458
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 44,49,54-60
+apps/web/src/editor/editor.module.css
+  s_cc6cacc0a6fc01::t_5a994ac3e4f768 562-648
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "54f0b36264c8043fc4f86ac0399e21a0f13ee7b1",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

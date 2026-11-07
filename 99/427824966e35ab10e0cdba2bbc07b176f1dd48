@@ -1,0 +1,26 @@
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_9dc0e468bed1cc 1-2,4-314
+  s_cc6cacc0a6fc01::t_f49fad39184150 3
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_9dc0e468bed1cc 474-475
+docs/README.md
+  s_cc6cacc0a6fc01::t_9dc0e468bed1cc 81
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_9dc0e468bed1cc 384-386
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "99427824966e35ab10e0cdba2bbc07b176f1dd48",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
