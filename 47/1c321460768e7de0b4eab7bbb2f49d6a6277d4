@@ -1,0 +1,34 @@
+docs/guides/using/offline-and-sync.md
+  s_8e1d37af026457::t_7158907b54684e 66-68
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_8e1d37af026457::t_a66f966699a708 80
+apps/ios/NotesCore/Tests/NotesCoreTests/BodyMergeSyncTests.swift
+  s_8e1d37af026457::t_88aa398db4553c 101-111
+apps/ios/Notes/Notes/EditorModel.swift
+  s_8e1d37af026457::t_a66f966699a708 234-242
+docs/concepts/how-sync-works.md
+  s_8e1d37af026457::t_7158907b54684e 66-67
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_8e1d37af026457::t_a66f966699a708 321
+docs/faq.md
+  s_8e1d37af026457::t_77d9a2584a285c 169-172
+  s_8e1d37af026457::t_7158907b54684e 167-168
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_8e1d37af026457::t_a66f966699a708 396-397
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "471c321460768e7de0b4eab7bbb2f49d6a6277d4",
+  "prompts": {},
+  "sessions": {
+    "s_8e1d37af026457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ed58fb-dbc1-4c4d-a767-e89a079555f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
