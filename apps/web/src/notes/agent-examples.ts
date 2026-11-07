@@ -17,9 +17,9 @@ export const EXAMPLES: AgentExample[] = [
       referenceNotes: ['Digest'],
       triggers: {
         noteCreated:
-          'Ask me one short, open question to get me writing, drawing on the Digest. Put it at the top as a heading. With no Digest yet, ask about my day.',
+          'Ask me one short, open question to get me writing, about something specific in the Digest: an open question, an intention, or a theme I keep coming back to. Put it at the top as a heading. Only if there’s no Digest, ask about my day.',
         newNoteDone:
-          'Update the Digest with what this entry adds, under Themes, Open questions and Intentions. Keep each to a few short lines, merging with what’s there rather than adding to the end. Create the Digest if there isn’t one.',
+          'Update the Digest with what I wrote in this entry: Themes, Open questions and Intentions, a few short lines each, merged with what’s there. Rewrite the whole Digest rather than adding to it. Leave out the question at the top; if I wrote nothing else, change nothing. Create the Digest if there isn’t one.',
         noteDeleted: DIGEST_TRIM,
         movedOut: DIGEST_TRIM,
       },

@@ -193,6 +193,7 @@ input.
 | `{kind: "insert", at: "start", text}` | `text` as a block of its own at the start: if the content is empty or only newlines, it becomes `text` + `\n`; otherwise `text` + `\n\n` + the content without its leading newlines |
 | `{kind: "insert", at: "end", text}` | Likewise at the end: the content without its trailing newlines + `\n\n` + `text` + `\n` (or `text` + `\n` for an empty one) |
 | `{kind: "insert", at: "cursor", text}` | `text` exactly at the editor's caret **now**, in code points, clamped to the content. No caret: it doesn't fit |
+| `{kind: "content", text}` | Never fits: replacing the whole content would wipe out what the user typed. (While the editor still shows `before`, `after` already is that content.) |
 
 The server has already trimmed newlines from both ends of a start or end insert's text.
 
