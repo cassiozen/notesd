@@ -191,6 +191,8 @@ class AppGraph(
         fingerprint.disable()
         accounts.clear()
         setOnboardingDismissed(false)
+        // The default space's colours belonged to the notes just wiped.
+        prefs.edit { remove(DEFAULT_SPACE_THEME) }
     }
 
     /** How this phone appears in the server's list of signed-in devices. */

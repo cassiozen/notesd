@@ -623,7 +623,7 @@ private object SecureWindows {
     }
 }
 
-/** The web's mobile back: a chevron and "Notes" in the tint colour. */
+/** The web's mobile back: a chevron and "Notes" in neutral ink. */
 @Composable
 private fun BackLink(onClick: () -> Unit) {
     val t = LocalTokens.current

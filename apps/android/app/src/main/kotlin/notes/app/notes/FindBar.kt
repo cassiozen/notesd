@@ -205,7 +205,7 @@ private fun Counter(query: String, state: FindState) {
     )
 }
 
-/** A single-line field in the list search's style, ringed in amber while it has focus. */
+/** A single-line field in the list search's style, with a neutral ring while it has focus. */
 @Composable
 private fun FindField(
     value: TextFieldValue,
