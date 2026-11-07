@@ -6,8 +6,11 @@ import { useAiSettings } from '../notes/ai-settings'
 
 export const SOCKET_PATH = '/api/v1/agent/socket'
 
-/** Reconnect backoff; tests shorten it. */
-export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000 }
+/**
+ * Reconnect backoff, and how long a socket no longer wanted waits for the notes open here to say they
+ * closed; tests shorten them.
+ */
+export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000, closeWaitMs: 5000 }
 
 /** Opens the socket; tests swap in one that carries their cookie jar. */
 export const socketFactory = {
@@ -24,13 +27,14 @@ export type EditorHandler = {
  * The tab's connection for agents: it tells the server which notes this
  * tab's editor has open, so closing one ends its writing session at once,
  * and runs read and change those notes in the editor. One per tab, kept
- * open while some space's agent is on.
+ * open while the space it shows has its agent on.
  */
 class AgentSocket {
   private ws: WebSocket | null = null
   private wanted = false
   private failures = 0
   private timer: ReturnType<typeof setTimeout> | undefined
+  private closing: ReturnType<typeof setTimeout> | undefined
   private readonly open = new Set<string>()
   private readonly editors = new Map<string, EditorHandler>()
   /** The server's id for this connection, once it said hello. */
@@ -40,13 +44,27 @@ class AgentSocket {
     if (this.wanted) return
     this.wanted = true
     window.addEventListener('online', this.online)
-    this.connect()
+    clearTimeout(this.closing)
+    // Still open, waiting to close: it carries on.
+    if (!this.ws) this.connect()
   }
 
+  /**
+   * Closes once the notes open here have said they closed, so their writing sessions end now rather than
+   * on the idle timer; or after closeWaitMs.
+   */
   stop() {
     this.wanted = false
     window.removeEventListener('online', this.online)
     clearTimeout(this.timer)
+    // Stopped again while waiting (a sign-out resets it): one wait, or it would close a later socket.
+    clearTimeout(this.closing)
+    if (this.open.size === 0 || !this.connectionId) this.close()
+    else this.closing = setTimeout(() => this.close(), socketTiming.closeWaitMs)
+  }
+
+  private close() {
+    clearTimeout(this.closing)
     const ws = this.ws
     this.ws = null
     this.connectionId = null
@@ -70,6 +88,7 @@ class AgentSocket {
   noteClosed(noteId: string, revision: number | null) {
     this.open.delete(noteId)
     this.send({ type: 'editor.closed', noteId, revision })
+    if (!this.wanted && this.open.size === 0 && this.ws) this.close()
   }
 
   private readonly online = () => {
@@ -159,10 +178,11 @@ function parse(data: string): Record<string, unknown> | null {
 export const agentSocket = new AgentSocket()
 
 /** Keeps the socket open while AI is set up and some space's agent is on. */
-export function useAgentSocket() {
+/** Keeps the tab's socket open while AI is set up and the space it shows (spaceId) has its agent on. */
+export function useAgentSocket(spaceId: string) {
   const ai = useAiSettings()
   const configs = useAgentConfigs()
-  const wanted = Boolean(ai?.configured) && [...(configs?.values() ?? [])].some((c) => c.enabled)
+  const wanted = Boolean(ai?.configured) && Boolean(configs?.get(spaceId)?.enabled)
   useEffect(() => {
     if (!wanted) return
     agentSocket.start()

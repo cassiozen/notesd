@@ -487,8 +487,9 @@ The user guide is [agents](../guides/using/agents.md).
   locked notes, and conflicted or recovered copies.
 - **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
   authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
-  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while some space's
-  agent is on, and says which notes its editor opens and closes. The server pings every 25 seconds,
+  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it shows has its
+  agent on, and says which notes its editor opens and closes; leaving for a space without one, it
+  closes once the open note has said it closed. The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
 - **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a

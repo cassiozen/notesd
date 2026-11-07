@@ -126,6 +126,7 @@ describe('the agent socket, connecting', () => {
     socketFactory.make = () => new FakeSocket() as unknown as WebSocket
     socketTiming.retryBaseMs = 1
     onTestFinished(() => {
+      agentSocket.noteClosed('n1', null)
       agentSocket.stop()
       socketFactory.make = make
       socketTiming.retryBaseMs = base
@@ -162,5 +163,58 @@ describe('the agent socket, connecting', () => {
     answer?.({})
     await new Promise((r) => setTimeout(r, 0))
     expect(second?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
+  })
+
+  it('closes once the notes open here have said they closed', async () => {
+    const make = socketFactory.make
+    const wait = socketTiming.closeWaitMs
+    socketFactory.make = () => new FakeSocket() as unknown as WebSocket
+    onTestFinished(() => {
+      agentSocket.stop()
+      socketFactory.make = make
+      socketTiming.closeWaitMs = wait
+      FakeSocket.all = []
+    })
+    agentSocket.start()
+    agentSocket.noteOpened('n1')
+    const [socket] = FakeSocket.all
+    if (!socket) throw new Error('no socket')
+    socket.hello()
+
+    // Left for a space without an agent: n1's close, sent after its last save, still gets there.
+    agentSocket.stop()
+    expect(socket.readyState).toBe(WebSocket.OPEN)
+    agentSocket.noteClosed('n1', 4)
+    expect(socket.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n1', revision: 4 })
+    expect(socket.readyState).toBe(WebSocket.CLOSED)
+
+    // Back before it closed: the same socket carries on.
+    agentSocket.start()
+    agentSocket.noteOpened('n2')
+    const [, again] = FakeSocket.all
+    again?.hello()
+    agentSocket.stop()
+    agentSocket.start()
+    expect(FakeSocket.all).toHaveLength(2)
+    expect(again?.readyState).toBe(WebSocket.OPEN)
+
+    // A close that never comes: it closes anyway.
+    socketTiming.closeWaitMs = 1
+    agentSocket.stop()
+    await waitFor(() => expect(again?.readyState).toBe(WebSocket.CLOSED))
+    agentSocket.noteClosed('n2', null)
+
+    // Stopped twice while waiting, then started again: the first wait doesn't close the next socket.
+    socketTiming.closeWaitMs = 20
+    agentSocket.start()
+    agentSocket.noteOpened('n3')
+    const third = FakeSocket.all.at(-1)
+    third?.hello()
+    agentSocket.stop()
+    agentSocket.stop()
+    agentSocket.start()
+    await new Promise((r) => setTimeout(r, 60))
+    expect(third?.readyState).toBe(WebSocket.OPEN)
+    agentSocket.noteClosed('n3', null)
   })
 })
