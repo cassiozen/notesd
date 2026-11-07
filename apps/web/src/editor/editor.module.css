@@ -611,11 +611,10 @@
 /* What a run shows beside the note: a card between its blocks, never part of its text. */
 .agentCard {
   margin: 10px 0 14px;
-  padding: 8px 10px 10px 14px;
+  padding: 8px 10px 10px 12px;
   border: 1px solid var(--hair-strong);
-  border-inline-start: 3px solid var(--accent);
   border-radius: 10px;
-  background: color-mix(in oklch, var(--accent) 7%, var(--paper));
+  background: var(--chip);
   color: var(--ink);
   font: 14px/1.5 var(--font-sans);
   white-space: normal;
