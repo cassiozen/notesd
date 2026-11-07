@@ -1,0 +1,22 @@
+apps/web/test/merge.test.ts
+  s_8e1d37af026457::t_3dfb69347a13cb 2,8,11
+  s_8e1d37af026457::t_d6ba82dcf20bbb 140
+shared/sync-engine/src/jvmTest/kotlin/notes/core/markdown/BlockMergeTest.kt
+  s_8e1d37af026457::t_d6ba82dcf20bbb 36-39
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88f7fd4e299673762d457ff94b34152859a7274b",
+  "prompts": {},
+  "sessions": {
+    "s_8e1d37af026457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ed58fb-dbc1-4c4d-a767-e89a079555f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
