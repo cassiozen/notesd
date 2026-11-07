@@ -10,7 +10,7 @@ import { useShake } from '../ui/shake'
 import { Steps } from '../ui/steps'
 import { useAuth } from './auth-context'
 import { AuthLayout } from './auth-layout'
-import { genericMessage } from './errors'
+import { genericMessage, newPasswordErrors, sentence } from './errors'
 import styles from './auth.module.css'
 
 type Step = 'welcome' | 'account'
@@ -45,10 +45,10 @@ export function Onboarding() {
 
   async function submitAccount(e: FormEvent) {
     e.preventDefault()
-    const next: FieldErrors = {}
-    if (!username.trim()) next.username = 'Choose a username.'
-    if (password.length < 8) next.password = 'Use at least 8 characters.'
-    else if (confirm !== password) next.confirm = "The passwords don't match."
+    const next: FieldErrors = {
+      ...(!username.trim() && { username: 'Choose a username.' }),
+      ...newPasswordErrors(password, confirm),
+    }
     setErrors(next)
     setFormError(undefined)
     if (Object.keys(next).length > 0) {
@@ -166,9 +166,4 @@ export function Onboarding() {
       )}
     </AuthLayout>
   )
-}
-
-function sentence(message: string): string {
-  const s = message.charAt(0).toUpperCase() + message.slice(1)
-  return s.endsWith('.') ? s : `${s}.`
 }

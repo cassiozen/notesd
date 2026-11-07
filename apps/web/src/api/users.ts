@@ -7,8 +7,8 @@ const path = (id: number) => `/users/${id}`
 export const users = {
   list: () => request<{ users: Person[] }>('GET', '/users'),
   invite: (username: string) => request<{ user: Person; link: SetupLink }>('POST', '/users', { username }),
-  /** Replaces the account's link; its password keeps working until the new one is used. */
-  newLink: (id: number) => request<SetupLink>('POST', `${path(id)}/link`),
+  /** Replaces the account's link; its password keeps working until the new one is used. With the account as it is now. */
+  newLink: (id: number) => request<{ user: Person; link: SetupLink }>('POST', `${path(id)}/link`),
   setAdmin: (id: number, isAdmin: boolean) => request<Person>('PATCH', path(id), { isAdmin }),
   remove: (id: number) => request<undefined>('DELETE', path(id)),
 }

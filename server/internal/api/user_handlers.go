@@ -40,19 +40,20 @@ func (s *Server) inviteUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, map[string]any{"user": u, "link": link})
 }
 
-// POST /api/v1/users/{id}/link — a new setup link, replacing the last.
+// POST /api/v1/users/{id}/link — a new setup link, replacing the last,
+// with the account as it is now.
 func (s *Server) newSetupLink(w http.ResponseWriter, r *http.Request) {
 	id, ok := s.userID(w, r)
 	if !ok {
 		return
 	}
-	link, err := s.auth.NewSetupLink(r.Context(), sessionFrom(r.Context()).UserID, id)
+	u, link, err := s.auth.NewSetupLink(r.Context(), sessionFrom(r.Context()).UserID, id)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	s.log.Info("setup link made", "user_id", id, "by", sessionFrom(r.Context()).Username)
-	writeJSON(w, http.StatusOK, link)
+	s.log.Info("setup link made", "username", u.Username, "by", sessionFrom(r.Context()).Username)
+	writeJSON(w, http.StatusOK, map[string]any{"user": u, "link": link})
 }
 
 // PATCH /api/v1/users/{id} {"isAdmin": bool}

@@ -17,13 +17,26 @@ func (e *env) invite(admin *client, name string) (int64, string) {
 	link, _ := r.body["link"].(map[string]any)
 	id, _ := user["id"].(float64)
 	token, _ := link["token"].(string)
-	if id == 0 || token == "" || user["pending"] != true || user["isAdmin"] != false || link["pending"] != true {
+	if id == 0 || token == "" || user["pending"] != true || user["isAdmin"] != false {
 		e.t.Fatalf("invite response: %s", r.raw)
 	}
 	return int64(id), token
 }
 
 func usersPath(id int64, rest string) string { return fmt.Sprintf("/api/v1/users/%d%s", id, rest) }
+
+// newLink makes a setup link for id, returning its token and the account as the server answered with it.
+func (e *env) newLink(admin *client, id int64) (string, map[string]any) {
+	e.t.Helper()
+	r := admin.do("POST", usersPath(id, "/link"), nil)
+	user, _ := r.body["user"].(map[string]any)
+	link, _ := r.body["link"].(map[string]any)
+	token, _ := link["token"].(string)
+	if r.status != 200 || token == "" || user["id"] != float64(id) {
+		e.t.Fatalf("new link: %d %s", r.status, r.raw)
+	}
+	return token, user
+}
 
 func TestInviteAndJoin(t *testing.T) {
 	e := newEnv(t)
@@ -79,10 +92,9 @@ func TestSetupLinkExpiresAndIsReplaced(t *testing.T) {
 	e.auth.SetClock(func() time.Time { return now })
 	id, first := e.invite(admin, "sam")
 
-	r := admin.do("POST", usersPath(id, "/link"), nil)
-	second, _ := r.body["token"].(string)
-	if r.status != 200 || second == "" || second == first || r.body["pending"] != true {
-		t.Fatalf("new link: %d %s", r.status, r.raw)
+	second, user := e.newLink(admin, id)
+	if second == first || user["pending"] != true {
+		t.Fatalf("new link for an invitation: %v", user)
 	}
 	if r := e.client().do("POST", "/api/v1/auth/setup-link", map[string]string{"token": first}); r.status != 410 {
 		t.Fatalf("replaced link: %d %s", r.status, r.raw)
@@ -102,18 +114,17 @@ func TestResetLinkSignsOutOnlyWhenUsed(t *testing.T) {
 	kidApp := e.loginAs(kid, kidPassword)
 	id := e.userID(admin, kid)
 
-	r := admin.do("POST", usersPath(id, "/link"), nil)
-	token, _ := r.body["token"].(string)
+	token, user := e.newLink(admin, id)
 	// An account with a password: a reset, whatever an app's list last said.
-	if r.status != 200 || r.body["pending"] != false {
-		t.Fatalf("reset link: %d %s", r.status, r.raw)
+	if user["pending"] != false {
+		t.Fatalf("reset link's account: %v", user)
 	}
 	if r := kidApp.do("GET", "/api/v1/auth/session", nil); r.status != 200 {
 		t.Fatalf("a link alone must not sign anyone out: %d", r.status)
 	}
 	e.loginAs(kid, kidPassword) // the old password still works too
 
-	r = e.client().do("POST", "/api/v1/auth/setup-link", map[string]string{"token": token})
+	r := e.client().do("POST", "/api/v1/auth/setup-link", map[string]string{"token": token})
 	if r.body["pending"] != false {
 		t.Fatalf("peek reset link: %s", r.raw)
 	}
@@ -135,8 +146,7 @@ func TestPasswordChangeEndsSetupLink(t *testing.T) {
 	r := kidWeb.do("POST", "/api/v1/auth/login", map[string]string{"username": kid, "password": kidPassword})
 	kidWeb.csrf, _ = r.body["csrfToken"].(string)
 
-	r = admin.do("POST", usersPath(e.userID(admin, kid), "/link"), nil)
-	token, _ := r.body["token"].(string)
+	token, _ := e.newLink(admin, e.userID(admin, kid))
 	if r := kidWeb.do("POST", "/api/v1/auth/password", map[string]string{"currentPassword": kidPassword, "newPassword": "remembered it after all"}); r.status != 204 {
 		t.Fatalf("change password: %d %s", r.status, r.raw)
 	}

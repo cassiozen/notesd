@@ -765,21 +765,3 @@
   flex: 1;
   min-width: 0;
 }
-
-.warn {
-  margin: 0;
-  padding: 10px 14px;
-  border-radius: 12px;
-  background: var(--warn-bg);
-  border: 1px solid var(--warn-edge);
-  color: var(--warn-ink);
-  font-size: 13.5px;
-  line-height: 1.45;
-}
-
-.retryNote {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}

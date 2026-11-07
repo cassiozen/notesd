@@ -15,9 +15,6 @@ const SetupLinkTTL = 7 * 24 * time.Hour
 type Link struct {
 	Token     string `json:"token"`
 	ExpiresAt int64  `json:"expiresAt"`
-	// Pending: for an invited account, to choose its first password; else a reset. As of the link's making,
-	// so the app that asked describes it right even if its list of accounts is stale.
-	Pending bool `json:"pending"`
 }
 
 // Invite adds a non-admin account with no password yet, and a link for
@@ -31,7 +28,6 @@ func (s *Service) Invite(ctx context.Context, username string) (User, Link, erro
 			return err
 		}
 		l, err = s.putLink(ctx, tx, u.ID)
-		l.Pending = true
 		u.LinkExpiresAt = l.ExpiresAt
 		return err
 	})
@@ -39,26 +35,24 @@ func (s *Service) Invite(ctx context.Context, username string) (User, Link, erro
 }
 
 // NewSetupLink replaces an account's link. The account's password keeps
-// working until the link is used.
-func (s *Service) NewSetupLink(ctx context.Context, actorID, userID int64) (Link, error) {
+// working until the link is used. The account comes back as it is now, so
+// an app with a stale list still tells an invitation from a reset.
+func (s *Service) NewSetupLink(ctx context.Context, actorID, userID int64) (User, Link, error) {
 	if actorID == userID {
-		return Link{}, ErrSelf
+		return User{}, Link{}, ErrSelf
 	}
+	var u User
 	var l Link
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		var hash string
-		err := tx.QueryRowContext(ctx, `SELECT password_hash FROM users WHERE id = ?`, userID).Scan(&hash)
-		if errors.Is(err, sql.ErrNoRows) {
-			return ErrNoUser
-		}
-		if err != nil {
+		var err error
+		if u, _, err = scanUser(ctx, tx, `id = ?`, userID); err != nil {
 			return err
 		}
 		l, err = s.putLink(ctx, tx, userID)
-		l.Pending = hash == ""
+		u.LinkExpiresAt = l.ExpiresAt
 		return err
 	})
-	return l, err
+	return u, l, err
 }
 
 func (s *Service) putLink(ctx context.Context, tx *sql.Tx, userID int64) (Link, error) {
@@ -93,15 +87,7 @@ func (s *Service) UseSetupLink(ctx context.Context, token, password string) (Use
 		if u, err = s.linkUser(ctx, tx, token); err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`,
-			hash, s.now().UnixMilli(), u.ID); err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, `DELETE FROM setup_links WHERE user_id = ?`, u.ID); err != nil {
-			return err
-		}
-		_, err := tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ?`, u.ID)
-		return err
+		return s.writePassword(ctx, tx, u.ID, hash, "")
 	})
 	u.Pending = false
 	return u, err
@@ -131,23 +117,23 @@ func (s *Service) SetAdmin(ctx context.Context, actorID, userID int64, admin boo
 	if actorID == userID {
 		return User{}, ErrSelf
 	}
+	var u User
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		if err := exists(ctx, tx, userID); err != nil {
-			return err
-		}
 		if !admin {
 			if err := keepAnAdmin(ctx, tx, userID); err != nil {
 				return err
 			}
 		}
-		_, err := tx.ExecContext(ctx, `UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?`,
-			admin, s.now().UnixMilli(), userID)
+		err := tx.QueryRowContext(ctx, `
+			UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?
+			RETURNING id, username, is_admin, created_at, password_hash = ''`,
+			admin, s.now().UnixMilli(), userID).Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &u.Pending)
+		if errors.Is(err, sql.ErrNoRows) {
+			return ErrNoUser
+		}
 		return err
 	})
-	if err != nil {
-		return User{}, err
-	}
-	return s.User(ctx, userID)
+	return u, err
 }
 
 // RemoveUserByID is RemoveUser for an admin acting in an app, who can't
@@ -157,13 +143,4 @@ func (s *Service) RemoveUserByID(ctx context.Context, actorID, userID int64) (Us
 		return User{}, ErrSelf
 	}
 	return s.remove(ctx, `id = ?`, userID)
-}
-
-func exists(ctx context.Context, tx *sql.Tx, userID int64) error {
-	var one int
-	err := tx.QueryRowContext(ctx, `SELECT 1 FROM users WHERE id = ?`, userID).Scan(&one)
-	if errors.Is(err, sql.ErrNoRows) {
-		return ErrNoUser
-	}
-	return err
 }

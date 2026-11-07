@@ -383,8 +383,8 @@ other accounts get `403 admin_only` when they change it.
 | Method | Path | Body → response |
 | --- | --- | --- |
 | `GET` | `/users` | → `{users: [{id, username, isAdmin, createdAt, pending, linkExpiresAt?}]}`, oldest first. Admins only |
-| `POST` | `/users` | `{username}` → `201 {user, link: {token, expiresAt, pending}}`. Invites someone. Admins only |
-| `POST` | `/users/{id}/link` | → `{token, expiresAt, pending}`, a new setup link replacing the account's last. Admins only |
+| `POST` | `/users` | `{username}` → `201 {user, link: {token, expiresAt}}`. Invites someone. Admins only |
+| `POST` | `/users/{id}/link` | → `{user, link: {token, expiresAt}}`, a new setup link replacing the account's last, and the account as it is now. Admins only |
 | `PATCH` | `/users/{id}` | `{isAdmin}` → the account. Admins only |
 | `DELETE` | `/users/{id}` | → `204`. Removes the account and signs it out. Admins only |
 | `POST` | `/auth/setup-link` | `{token}` → `{username, pending}`: whose the link is. No session needed |
@@ -393,8 +393,8 @@ other accounts get `403 admin_only` when they change it.
 **Invited** accounts (`pending`) have no password until their setup link is used, so they can't
 sign in. A **setup link** works once, for 7 days, and an account has at most one: a new one, or
 the account's password changing, ends the last. Making one for an account that has a password
-changes nothing until it's used, so it doubles as a password reset; `pending` says which it is,
-as of the link's making. Only a hash of the token is
+changes nothing until it's used, so it doubles as a password reset; the `user` that comes back
+with it says which (`pending`), even if the app's list is older. Only a hash of the token is
 stored, so it's returned once; the app builds the URL to send (the web app's is
 `<its address>/setup#<token>`). A used, replaced or expired link is `410 link_invalid`.
 

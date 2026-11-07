@@ -11,18 +11,20 @@ import type { Person, SetupLink } from '../api/types'
 import { users } from '../api/users'
 import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
+import { Banner } from '../ui/banner'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { MoreIcon } from '../ui/icons'
 import { Kicker } from '../ui/kicker'
-import { copyText } from '../ui/copy'
+import { useCopy } from '../ui/copy'
 import { Surface } from '../ui/surface'
 import { isLoopback, linkExpiry, setupLinkURL } from './people-link'
 import menu from '../notes/share.module.css'
 import styles from './settings.module.css'
 
-type Load = { status: 'loading' } | { status: 'error' } | { status: 'ready'; people: Person[] }
+/** hidden: not an admin, as the server says (another admin may have changed it since sign-in). */
+type Load = { status: 'loading' } | { status: 'error' } | { status: 'hidden' } | { status: 'ready'; people: Person[] }
 
 /** Who else uses this server: shown to admins only, everyone else never sees it. */
 export function PeopleCard({ username }: { username: string }) {
@@ -42,15 +44,11 @@ function People({ username }: { username: string }) {
   const [open, setOpen] = useState<Open | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
   const [error, setError] = useState<string>()
-  // Another admin took this one's away since sign-in: the server says so, and the card goes.
-  const [gone, setGone] = useState(false)
 
   useEffect(() => {
     let cancelled = false
     void fetchPeople().then((next) => {
-      if (cancelled) return
-      if (next) setLoad(next)
-      else setGone(true)
+      if (!cancelled) setLoad(next)
     })
     return () => {
       cancelled = true
@@ -59,17 +57,14 @@ function People({ username }: { username: string }) {
 
   function retry() {
     setLoad({ status: 'loading' })
-    void fetchPeople().then((next) => {
-      if (next) setLoad(next)
-      else setGone(true)
-    })
+    void fetchPeople().then(setLoad)
   }
 
-  const people = load.status === 'ready' ? sortPeople(load.people, username) : []
-  const replace = (p: Person) =>
-    setLoad((l) => (l.status === 'ready' ? { ...l, people: l.people.map((x) => (x.id === p.id ? p : x)) } : l))
-  const drop = (id: number) =>
-    setLoad((l) => (l.status === 'ready' ? { ...l, people: l.people.filter((x) => x.id !== id) } : l))
+  const updatePeople = (change: (people: Person[]) => Person[]) =>
+    setLoad((l) => (l.status === 'ready' ? { ...l, people: change(l.people) } : l))
+  const replace = (p: Person) => updatePeople((ps) => ps.map((x) => (x.id === p.id ? p : x)))
+  const drop = (id: number) => updatePeople((ps) => ps.filter((x) => x.id !== id))
+  const hide = () => setLoad({ status: 'hidden' })
 
   async function act(p: Person, run: () => Promise<void>) {
     setBusy(p.id)
@@ -77,7 +72,7 @@ function People({ username }: { username: string }) {
     try {
       await run()
     } catch (err) {
-      if (isAdminOnly(err)) setGone(true)
+      if (isAdminOnly(err)) hide()
       else if (err instanceof ApiError && err.status === 404) drop(p.id)
       else setError(actionMessage(err))
     } finally {
@@ -85,13 +80,12 @@ function People({ username }: { username: string }) {
     }
   }
 
+  // The account comes back as it is now: this list may be from before they chose a password.
   const newLink = (p: Person) =>
     act(p, async () => {
-      const link = await users.newLink(p.id)
-      // The server's word on pending: this list may be from before they chose a password.
-      const fresh = { ...p, pending: link.pending, linkExpiresAt: link.expiresAt }
-      replace(fresh)
-      setOpen({ kind: 'link', person: fresh, link })
+      const { user, link } = await users.newLink(p.id)
+      replace(user)
+      setOpen({ kind: 'link', person: user, link })
     })
 
   // Fresh first: a stale "invited" would describe removing someone who has since joined as cancelling an invitation.
@@ -103,9 +97,16 @@ function People({ username }: { username: string }) {
       if (fresh) setOpen({ kind: 'remove', person: fresh })
     })
 
+  const remove = (p: Person) =>
+    act(p, async () => {
+      await users.remove(p.id)
+      drop(p.id)
+    })
+
   const setAdmin = (p: Person, isAdmin: boolean) => act(p, async () => replace(await users.setAdmin(p.id, isAdmin)))
 
-  if (gone) return null
+  if (load.status === 'hidden') return null
+  const people = load.status === 'ready' ? sortPeople(load.people, username) : []
   const n = people.length
   return (
     <Surface as="section" className={styles.devices} aria-labelledby="people-kicker">
@@ -117,12 +118,16 @@ function People({ username }: { username: string }) {
       </div>
       {load.status === 'loading' && <p className={styles.deviceNote}>Loading…</p>}
       {load.status === 'error' && (
-        <div className={[styles.deviceNote, styles.retryNote].join(' ')}>
-          <span role="alert">Couldn’t load who uses this server.</span>
-          <Button size="sm" onClick={retry}>
-            Try again
-          </Button>
-        </div>
+        <Banner
+          tone="error"
+          actions={
+            <Button size="sm" onClick={retry}>
+              Try again
+            </Button>
+          }
+        >
+          Couldn’t load who uses this server.
+        </Banner>
       )}
       {load.status === 'ready' && n <= 1 && (
         <p className={styles.deviceNote}>
@@ -168,46 +173,57 @@ function People({ username }: { username: string }) {
         <InviteDialog
           onClose={() => setOpen(null)}
           onInvited={(person, link) => {
-            setLoad((l) => (l.status === 'ready' ? { ...l, people: [...l.people, person] } : l))
+            updatePeople((ps) => [...ps, person])
             setOpen({ kind: 'link', person, link })
           }}
-          onForbidden={() => setGone(true)}
+          onForbidden={hide}
         />
       )}
       {open?.kind === 'link' && <LinkDialog person={open.person} link={open.link} onClose={() => setOpen(null)} />}
       {open?.kind === 'reset' && (
-        <ResetDialog
-          person={open.person}
-          onClose={() => setOpen(null)}
+        <Confirm
+          title={`Reset ${open.person.username}’s password?`}
+          text="You’ll get a link to send them, where they choose a new one. Nothing changes until they use it."
+          action="Get link"
+          onCancel={() => setOpen(null)}
           onConfirm={() => {
-            const p = open.person
             setOpen(null)
-            void newLink(p)
+            void newLink(open.person)
           }}
         />
       )}
       {open?.kind === 'remove' && (
-        <RemoveDialog
-          person={open.person}
-          onClose={() => setOpen(null)}
-          onRemoved={() => {
-            drop(open.person.id)
+        <Confirm
+          {...(open.person.pending
+            ? {
+                title: `Cancel ${open.person.username}’s invitation?`,
+                text: 'Their link stops working, and the username is free again.',
+                action: 'Cancel invitation',
+                cancel: 'Keep',
+              }
+            : {
+                title: `Remove ${open.person.username}?`,
+                text: 'They’re signed out on every device and can’t sign in again. Their notes stay on the server’s disk, but no app can open them.',
+                action: 'Remove',
+              })}
+          danger
+          onCancel={() => setOpen(null)}
+          onConfirm={() => {
             setOpen(null)
+            void remove(open.person)
           }}
-          onForbidden={() => setGone(true)}
         />
       )}
     </Surface>
   )
 }
 
-/** null: not an admin, as the server says. */
-async function fetchPeople(): Promise<Load | null> {
+async function fetchPeople(): Promise<Load> {
   try {
     const { users: people } = await users.list()
     return { status: 'ready', people }
   } catch (err) {
-    return isAdminOnly(err) ? null : { status: 'error' }
+    return { status: isAdminOnly(err) ? 'hidden' : 'error' }
   }
 }
 
@@ -423,14 +439,8 @@ function InviteDialog({
 function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink; onClose: () => void }) {
   const titleId = useId()
   const url = setupLinkURL(link.token)
-  const [copied, setCopied] = useState(false)
+  const [copied, copy] = useCopy()
   const field = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    if (!copied) return
-    const t = setTimeout(() => setCopied(false), 1600)
-    return () => clearTimeout(t)
-  }, [copied])
 
   return (
     <Dialog labelledBy={titleId} onClose={onClose}>
@@ -439,7 +449,7 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
           Send {person.username} this link
         </h2>
         <p className={styles.dialogText}>
-          {link.pending
+          {person.pending
             ? 'They open it to choose a password, and they’re signed in.'
             : 'They open it to choose a new password, which signs them out everywhere. Until then, their current password still works.'}{' '}
           It works once, for 7 days. Send it privately: whoever has it can set the password.
@@ -458,8 +468,7 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
           <Button
             size="md"
             onClick={() => {
-              void copyText(url).then((ok) => {
-                setCopied(ok)
+              void copy(url).then((ok) => {
                 // Selected, for ⌘C, if the browser refused.
                 if (!ok) field.current?.select()
               })
@@ -469,10 +478,10 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
           </Button>
         </div>
         {isLoopback() && (
-          <p className={styles.warn}>
+          <Banner tone="warn">
             This link uses {window.location.host}, so it only works on this computer. Open notesd at the address others
             reach it by, then make a new link.
-          </p>
+          </Banner>
         )}
         <div className={styles.dialogActions}>
           <Button variant="solid" size="md" onClick={onClose}>
@@ -484,81 +493,37 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
   )
 }
 
-function ResetDialog({ person, onClose, onConfirm }: { person: Person; onClose: () => void; onConfirm: () => void }) {
-  const titleId = useId()
-  return (
-    <Dialog labelledBy={titleId} onClose={onClose}>
-      <div className={styles.dialog}>
-        <h2 id={titleId} className={styles.dialogTitle}>
-          Reset {person.username}’s password?
-        </h2>
-        <p className={styles.dialogText}>
-          You’ll get a link to send them, where they choose a new one. Nothing changes until they use it.
-        </p>
-        <div className={styles.dialogActions}>
-          <Button size="md" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button variant="solid" size="md" onClick={onConfirm} autoFocus>
-            Get link
-          </Button>
-        </div>
-      </div>
-    </Dialog>
-  )
-}
-
-function RemoveDialog({
-  person,
-  onClose,
-  onRemoved,
-  onForbidden,
+function Confirm({
+  title,
+  text,
+  action,
+  cancel = 'Cancel',
+  danger = false,
+  onCancel,
+  onConfirm,
 }: {
-  person: Person
-  onClose: () => void
-  onRemoved: () => void
-  onForbidden: () => void
+  title: string
+  text: string
+  action: string
+  cancel?: string
+  danger?: boolean
+  onCancel: () => void
+  onConfirm: () => void
 }) {
   const titleId = useId()
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string>()
-
-  async function remove() {
-    setBusy(true)
-    setError(undefined)
-    try {
-      await users.remove(person.id)
-      onRemoved()
-    } catch (err) {
-      setBusy(false)
-      if (isAdminOnly(err)) onForbidden()
-      else if (err instanceof ApiError && err.status === 404) onRemoved()
-      else setError(actionMessage(err))
-    }
-  }
-
   return (
-    <Dialog labelledBy={titleId} onClose={busy ? undefined : onClose}>
+    <Dialog labelledBy={titleId} onClose={onCancel}>
       <div className={styles.dialog}>
         <h2 id={titleId} className={styles.dialogTitle}>
-          {person.pending ? `Cancel ${person.username}’s invitation?` : `Remove ${person.username}?`}
+          {title}
         </h2>
-        <p className={styles.dialogText}>
-          {person.pending
-            ? 'Their link stops working, and the username is free again.'
-            : 'They’re signed out on every device and can’t sign in again. Their notes stay on the server’s disk, but no app can open them.'}
-        </p>
-        {error && (
-          <p role="alert" className={styles.error}>
-            {error}
-          </p>
-        )}
+        <p className={styles.dialogText}>{text}</p>
         <div className={styles.dialogActions}>
-          <Button size="md" onClick={onClose} disabled={busy}>
-            {person.pending ? 'Keep' : 'Cancel'}
+          <Button size="md" onClick={onCancel}>
+            {cancel}
           </Button>
-          <Button variant="danger" size="md" busy={busy} onClick={() => void remove()}>
-            {person.pending ? 'Cancel invitation' : 'Remove'}
+          <Button variant={danger ? 'danger' : 'solid'} size="md" onClick={onConfirm} autoFocus={!danger}>
+            {action}
           </Button>
         </div>
       </div>

@@ -1,3 +1,5 @@
+import { useCallback, useEffect, useState } from 'react'
+
 /**
  * Copies text, reporting whether it worked. Call it straight from a click: the fallback needs the
  * click's user activation.
@@ -38,4 +40,20 @@ function legacyCopy(text: string): boolean {
   field.remove()
   focused?.focus({ preventScroll: true })
   return copied
+}
+
+/** A Copy button's state: [copied, for a moment after it worked; copy, reporting whether it did]. */
+export function useCopy(): [boolean, (text: string) => Promise<boolean>] {
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1600)
+    return () => clearTimeout(t)
+  }, [copied])
+  const copy = useCallback(async (text: string) => {
+    const ok = await copyText(text)
+    setCopied(ok)
+    return ok
+  }, [])
+  return [copied, copy]
 }

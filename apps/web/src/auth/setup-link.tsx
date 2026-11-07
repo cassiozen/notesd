@@ -11,7 +11,7 @@ import { PasswordMeter } from '../ui/password-meter'
 import { useShake } from '../ui/shake'
 import { useAuth } from './auth-context'
 import { AuthLayout } from './auth-layout'
-import { genericMessage } from './errors'
+import { genericMessage, newPasswordErrors, sentence } from './errors'
 import styles from './auth.module.css'
 
 export const SETUP_PATH = '/setup'
@@ -165,9 +165,7 @@ function PasswordForm({
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const found: FieldErrors = {}
-    if (password.length < 8) found.password = 'Use at least 8 characters.'
-    else if (confirm !== password) found.confirm = "The passwords don't match."
+    const found: FieldErrors = newPasswordErrors(password, confirm)
     setErrors(found)
     setFormError(undefined)
     if (Object.keys(found).length > 0) {
@@ -182,7 +180,7 @@ function PasswordForm({
       setBusy(false)
       if (err instanceof ApiError && err.code === 'link_invalid') onInvalid()
       else if (err instanceof ApiError && err.field === 'password') {
-        setErrors({ password: 'Use at least 8 characters, and at most 1024 bytes.' })
+        setErrors({ password: sentence(err.message) })
         shake()
       } else {
         setFormError(genericMessage(err))

@@ -232,21 +232,27 @@ func (s *Service) setPassword(ctx context.Context, userID int64, password, keepS
 		return err
 	}
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		res, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`,
-			hash, s.now().UnixMilli(), userID)
-		if err != nil {
-			return err
-		}
-		if n, _ := res.RowsAffected(); n == 0 {
-			return ErrNoUser
-		}
-		// A link sent before would otherwise replace the password just chosen.
-		if _, err := tx.ExecContext(ctx, `DELETE FROM setup_links WHERE user_id = ?`, userID); err != nil {
-			return err
-		}
-		_, err = tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND id != ?`, userID, keepSessionID)
-		return err
+		return s.writePassword(ctx, tx, userID, hash, keepSessionID)
 	})
+}
+
+// writePassword is every password change: the new hash, the account's
+// setup link ended, and every session but keepSessionID signed out.
+func (s *Service) writePassword(ctx context.Context, tx *sql.Tx, userID int64, hash, keepSessionID string) error {
+	res, err := tx.ExecContext(ctx, `UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?`,
+		hash, s.now().UnixMilli(), userID)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return ErrNoUser
+	}
+	// A link sent before would otherwise replace the password just chosen.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM setup_links WHERE user_id = ?`, userID); err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `DELETE FROM sessions WHERE user_id = ? AND id != ?`, userID, keepSessionID)
+	return err
 }
 
 // User returns an account by id.
@@ -328,8 +334,12 @@ func (s *Service) userByName(ctx context.Context, username string) (User, string
 	return s.user(ctx, `username_key = ?`, usernameKey(username))
 }
 
-func (s *Service) user(ctx context.Context, where string, arg any) (u User, hash string, err error) {
-	err = s.db.R.QueryRowContext(ctx,
+func (s *Service) user(ctx context.Context, where string, arg any) (User, string, error) {
+	return scanUser(ctx, s.db.R, where, arg)
+}
+
+func scanUser(ctx context.Context, q querier, where string, arg any) (u User, hash string, err error) {
+	err = q.QueryRowContext(ctx,
 		`SELECT id, username, is_admin, created_at, password_hash FROM users WHERE `+where, arg).Scan(
 		&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &hash)
 	if errors.Is(err, sql.ErrNoRows) {

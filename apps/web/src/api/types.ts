@@ -104,12 +104,7 @@ export type Person = {
 }
 
 /** A one-time link's secret; the app builds the URL around it (people-link.ts). */
-export type SetupLink = {
-  token: string
-  expiresAt: number
-  /** For an invited account to choose its first password; else a reset. As the server had it when making the link. */
-  pending: boolean
-}
+export type SetupLink = { token: string; expiresAt: number }
 
 export type ErrorBody = {
   error: string

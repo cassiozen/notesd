@@ -4,7 +4,7 @@ import { settings } from '../api/settings'
 import { ApiError } from '../api/client'
 import type { Session, UpdateStatus } from '../api/types'
 import { platformBadge, sessionName } from '../api/user-agent'
-import { genericMessage } from '../auth/errors'
+import { genericMessage, newPasswordErrors, sentence } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
 import { relativeTime } from '../notes/relative-time'
@@ -534,10 +534,12 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
 
   async function submit(e: FormEvent) {
     e.preventDefault()
-    const found: PasswordErrors = {}
-    if (!current) found.current = 'Enter your current password.'
-    if (next.length < 8) found.next = 'Use at least 8 characters.'
-    else if (confirm !== next) found.confirm = "The passwords don't match."
+    const fresh = newPasswordErrors(next, confirm)
+    const found: PasswordErrors = {
+      ...(!current && { current: 'Enter your current password.' }),
+      ...(fresh.password && { next: fresh.password }),
+      ...(fresh.confirm && { confirm: fresh.confirm }),
+    }
     setErrors(found)
     setFormError(undefined)
     if (Object.keys(found).length > 0) return
@@ -550,7 +552,7 @@ function PasswordDialog({ onClose, onChanged }: { onClose: () => void; onChanged
       if (err instanceof ApiError && err.code === 'invalid_credentials') {
         setErrors({ current: 'That isn’t your current password.' })
       } else if (err instanceof ApiError && err.status === 400 && err.field === 'password') {
-        setErrors({ next: err.message.charAt(0).toUpperCase() + err.message.slice(1) + '.' })
+        setErrors({ next: sentence(err.message) })
       } else {
         setFormError(genericMessage(err))
       }
