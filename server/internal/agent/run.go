@@ -32,6 +32,8 @@ type Account struct {
 	Editors Editors
 	// OnRun hears of each run starting and ending, for the user's editors.
 	OnRun func(RunUpdate)
+	// OnOverlays hears a note's open overlays whenever a run shows more.
+	OnOverlays func(noteID string, list []Overlay)
 }
 
 // RunUpdate is a run starting or ending.
@@ -68,6 +70,8 @@ type runState struct {
 	// or less when that's all the day has left (dailyLimited).
 	budget       int64
 	dailyLimited bool
+	// What this run has shown, against its limits.
+	cards, suggestions int
 }
 
 // execute runs r to its end and records how it went.

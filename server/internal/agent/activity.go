@@ -49,7 +49,17 @@ type Run struct {
 	StartedAt        *int64    `json:"startedAt"`
 	FinishedAt       *int64    `json:"finishedAt"`
 	Edits            []RunEdit `json:"edits"`
-	rowid            int64
+	// Overlays is what the run showed on its note, when it did.
+	Overlays *RunOverlays `json:"overlays,omitempty"`
+	rowid    int64
+}
+
+// RunOverlays counts what a run showed: cards, and suggestions with how many
+// the user accepted.
+type RunOverlays struct {
+	Cards       int `json:"cards"`
+	Suggestions int `json:"suggestions"`
+	Accepted    int `json:"accepted"`
 }
 
 // RunEdit is a note a run changed or created.
@@ -133,7 +143,10 @@ func (s *Store) Runs(ctx context.Context, f RunFilter, limit int, cursor string)
 			last := runs[limit-1]
 			next = base64.RawURLEncoding.EncodeToString(fmt.Appendf(nil, "%d.%d", last.CreatedAt, last.rowid))
 		}
-		return s.fillEdits(ctx, tx, runs)
+		if err := s.fillEdits(ctx, tx, runs); err != nil {
+			return err
+		}
+		return fillOverlays(ctx, tx, runs)
 	})
 	if runs == nil {
 		runs = []Run{}
@@ -158,6 +171,9 @@ func (s *Store) Run(ctx context.Context, id string) (RunDetail, error) {
 			return ErrRunNotFound
 		}
 		if err := s.fillEdits(ctx, tx, runs); err != nil {
+			return err
+		}
+		if err := fillOverlays(ctx, tx, runs); err != nil {
 			return err
 		}
 		d.Run = runs[0]
@@ -281,4 +297,34 @@ func (s *Store) UsageToday(ctx context.Context) (Usage, error) {
 		err = nil
 	}
 	return u, err
+}
+
+// fillOverlays adds what each run showed.
+func fillOverlays(ctx context.Context, tx *sql.Tx, runs []Run) error {
+	if len(runs) == 0 {
+		return nil
+	}
+	byID := make(map[string]*Run, len(runs))
+	args := make([]any, 0, len(runs))
+	for i := range runs {
+		byID[runs[i].ID] = &runs[i]
+		args = append(args, runs[i].ID)
+	}
+	rows, err := tx.QueryContext(ctx, `
+		SELECT run_id, count(*) FILTER (WHERE kind = 'card'), count(*) FILTER (WHERE kind = 'suggestion'),
+		       count(*) FILTER (WHERE status = 'accepted')
+		FROM agent_overlays WHERE run_id IN (?`+strings.Repeat(", ?", len(runs)-1)+`) GROUP BY run_id`, args...)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id string
+		var o RunOverlays
+		if err := rows.Scan(&id, &o.Cards, &o.Suggestions, &o.Accepted); err != nil {
+			return err
+		}
+		byID[id].Overlays = &o
+	}
+	return rows.Err()
 }

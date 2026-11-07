@@ -18,9 +18,10 @@ import { UnlockForm } from '../locks/unlock'
 import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
-import { agentSocket, useAgentWriting } from '../agent/socket'
+import { agentSocket, useAgentOverlays, useAgentWriting } from '../agent/socket'
 import { requestRun, triggerTiming } from '../agent/triggers'
-import { applyForAgent, composed, madeTo, readForAgent } from '../editor/agent-edit'
+import { applyForAgent, composed, madeTo, opMadeTo, pointAt, readForAgent } from '../editor/agent-edit'
+import { setAgentOverlays } from '../editor/agent-overlays'
 import { setAgentWaiting } from '../editor/agent-presence'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
@@ -279,6 +280,8 @@ const APP_TITLE = 'notesd'
 
 /** How often the list row follows the typing. */
 const TOUCH_MS = 150
+/** How long after typing stops suggestions are checked against the note. */
+const STALE_CHECK_MS = 600
 
 function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete, onMove, onGone, onOpenDraft, onNotice }: EditorProps) {
   const snap = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
@@ -406,6 +409,46 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       }),
     [saver, editor],
   )
+
+  // What runs show beside the note: cards to read, and changes the user makes with ✓ as the run would have.
+  const overlays = useAgentOverlays(saver.id)
+  useEffect(() => {
+    setAgentOverlays(editor, overlays, agentLabel, (overlay, answer, at) => {
+      if (answer !== 'accept' || !overlay.change) return agentSocket.answerOverlay(overlay, answer)
+      if (saver.isLocked()) return
+      const op = overlay.change
+      const { fields: before } = readForAgent(editor.state)
+      // An insert at the cursor goes where the cursor was when it was suggested, carried along since.
+      const cursor = op.kind === 'insert' && op.at === 'cursor' ? pointAt(editor.state, at, before) : null
+      const after = opMadeTo(op, before, cursor)
+      if (!after) return agentSocket.answerOverlay(overlay, 'stale')
+      const revision = saver.knownRevision()
+      applyForAgent(editor, after)
+      agentSocket.answerOverlay(overlay, 'accept', { before, revision, shows: noteFields(editor.state.doc) })
+    })
+  }, [editor, overlays, agentLabel, saver])
+
+  // A suggested replacement whose text the user changed can't be made any more: it goes rather than
+  // waiting for a ✓ that would do nothing. Once typing pauses: it serializes the note.
+  useEffect(() => {
+    const replacing = overlays.filter((o) => o.change?.kind === 'replace')
+    if (!replacing.length) return
+    let timer: ReturnType<typeof setTimeout> | undefined
+    const check = ({ transaction }: { transaction: { docChanged: boolean } }) => {
+      if (!transaction.docChanged) return
+      clearTimeout(timer)
+      timer = setTimeout(() => {
+        if (editor.isDestroyed) return
+        const now = noteFields(editor.state.doc)
+        for (const o of replacing) if (o.change && !opMadeTo(o.change, now, null)) agentSocket.answerOverlay(o, 'stale')
+      }, STALE_CHECK_MS)
+    }
+    editor.on('transaction', check)
+    return () => {
+      editor.off('transaction', check)
+      clearTimeout(timer)
+    }
+  }, [editor, overlays])
 
   useEffect(() => () => clearTimeout(touchTimer.current), [])
 

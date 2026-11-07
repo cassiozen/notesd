@@ -53,6 +53,10 @@ An app can add support in steps; each works on its own.
 | 0 | Sends the headers above | Background triggers; the agent's changes arrive with sync |
 | 1 | Opens the socket, says which notes are open, answers `read` and `apply` | Runs read unsaved typing and write in the editor, as one undoable step; closing a note ends its writing session at once |
 | 2 | Asks for editor triggers; shows `run` updates | *Note created*, *started editing* and the menu command; the agent shown at work, and a failed run on the note |
+| 3 | Shows `overlays` and sends `overlay.answer` | Cards beside the note to read or dismiss, and suggested changes to accept or reject |
+
+An app below level 3 still gets `overlays` messages, and ignores them: the cards just don't show
+there, and close with the note.
 
 ## The socket
 
@@ -114,6 +118,7 @@ to 64 characters.
 | `{type: "editor.opened", noteId}` | An editor shows the note, a new one not yet saved included |
 | `{type: "editor.closed", noteId, revision}` | It no longer does, sent after its last save completes (see below) |
 | `{type: "run.request", trigger, noteId, spaceId, note}` | It asks for an editor trigger's run (see [Editor triggers](#editor-triggers)) |
+| `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered an overlay (see [Overlays](#overlays)) |
 | `{type: "result", id, …}` | It answers the server's request `id` |
 
 **Opened and closed** count per note: two editors on the same note in one app (React's strict mode
@@ -133,6 +138,7 @@ nothing, so a reconnect doesn't fire *done*.
 | `{type: "read", id, noteId}` | Answers with the note as its editor shows it (see [Reading](#reading)) |
 | `{type: "apply", id, noteId, runId, before, after, op}` | Makes the change in its editor (see [Applying a change](#applying-a-change)) |
 | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | Updates what it shows (see [What the user sees](#what-the-user-sees)) |
+| `{type: "overlays", noteId, overlays}` | Shows the note's overlays, replacing what it showed (see [Overlays](#overlays)) |
 
 Answer every request within 10 seconds, or the editor counts as gone: a read falls back to the
 server's copy (except for an editor trigger's own note, whose run is then skipped), and a write fails
@@ -210,6 +216,43 @@ save that holds exactly `shows`; that save completes the record, so Activity can
 
 So an app should save the change promptly, as its normal saving would.
 
+## Overlays
+
+A run's `show_card` and `suggest` put something beside the note, never in it: it isn't saved, synced
+or searched. They work only while an editor has the note open; otherwise the tool refuses and the
+model writes or does nothing. An overlay is:
+
+```
+{id, runId, noteId, kind, place, body, change?}
+```
+
+- `kind: "card"`: `body` is Markdown to read. One answer: `dismiss` (×).
+- `kind: "suggestion"`: `change` is an [`op`](#the-rules-for-op), `body` says why (maybe empty).
+  Answers: `accept` (✓), `reject` (✗), or `stale` when the app finds it can no longer be made.
+- `place` is `{at: "top" | "end" | "cursor"}` or `{after: quote}`, a quote from the note's Markdown.
+  Show it between blocks: at the top of the body, at the end, under the block the cursor is in, or
+  under the first block whose text has the quote. Search for the quote as written, then for its
+  longest line with the Markdown syntax taken out, since an editor shows text, not Markdown; not
+  found, show it at the top. Once shown, it moves with the text around it as the user types.
+
+**Messages.** `overlays` carries the note's whole open list, so each one replaces the last; an empty
+list means nothing shows. The server sends it on `editor.opened` when there's anything, and to every
+socket of the account whenever the list changes. Keep it only for notes open in the app, and forget
+it all when the connection drops: a reconnect's `editor.opened` brings it back.
+
+**Answering.** Send `overlay.answer` and take the overlay away at once; the server's next
+`overlays` confirms it, to other editors too. To accept a suggestion, make its `op` to what the editor
+shows, as for an `apply` whose `before` doesn't match (an insert at the cursor goes where the
+overlay is anchored now), as one undoable step marked as the agent's change, then send `accept` with
+`before`, `revision` and `shows` exactly as an `apply`'s result. The server records it as the run's
+edit, so Activity shows and undoes it. If the `op` doesn't fit, send `stale` instead. A suggested
+`replace` whose `find` the user typed over can't be made: the web app checks once typing pauses and
+answers `stale` without waiting for ✓.
+
+**Lifetime.** Open overlays close when the note's last editor closes it (`editor.closed`), when a
+later run of the same rule shows its own on the note, or when the note is locked or deleted. A run
+shows at most 3 cards and 20 suggestions.
+
 ## Editor triggers
 
 Three triggers start in an editor. The app decides when they happen; the server decides whether the
@@ -255,6 +298,11 @@ way, but should show the same things.
   is writing…".
 - **The change landing:** the changed text is highlighted, fading over 3 seconds, with an Undo
   button at the end of its last line until the user types or 6 seconds pass.
+- **Overlays:** a card between blocks, headed by the space's name and a dot, with × for a card or ✓
+  and ✗ for a suggestion; a suggestion shows its why, then the old text struck through and the new.
+  The buttons don't move the caret. Each card is a `note` landmark for screen readers, labelled
+  "{space} agent: a note" or "…: a suggested change", and its buttons "Dismiss", "Accept the
+  change" and "Reject the change".
 - **A failed run:** opening a note, the app asks for its latest run (`GET /agent/runs?note=…&limit=1`).
   If it failed, a notice on the note says why, with a way to open it in Activity and to dismiss it.
   `run` updates keep it current while the note is open.
@@ -304,6 +352,8 @@ way, but should show the same things.
 | *Started editing* again after | 3 minutes without a change |
 | A writing session ends | 2 minutes after the last change |
 | One run | 20 tool calls, 150,000 tokens, 5 minutes |
+| Overlays per run | 3 cards, 20 suggestions |
+| A card's body; a suggestion's why | 2,000; 300 characters |
 
 ## In the code
 
@@ -312,4 +362,7 @@ way, but should show the same things.
   `internal/api/agent_socket.go` (the socket).
 - Web: `src/agent/socket.ts` (the socket's life and messages), `src/agent/triggers.ts` (asking for
   editor triggers), `src/editor/agent-edit.ts` (reading, `madeTo`, applying), `src/notes/note-pane.tsx`
-  (when triggers fire, and the editor's answers), `src/editor/agent-presence.ts` (the agent at work).
+  (when triggers fire, and the editor's answers), `src/editor/agent-presence.ts` (the agent at work),
+  `src/editor/agent-overlays.ts` (cards beside the note).
+- Server overlays: `internal/agent/overlays.go` (storing and answering them),
+  `internal/agent/overlay_tools.go` (`show_card`, `suggest`).

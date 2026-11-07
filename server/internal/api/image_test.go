@@ -254,6 +254,9 @@ func TestLockedNoteImageIDs(t *testing.T) {
 			_ = rows.Scan(&id)
 			ids = append(ids, id)
 		}
+		if err := rows.Err(); err != nil {
+			t.Fatal(err)
+		}
 		return ids
 	}
 

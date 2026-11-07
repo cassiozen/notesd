@@ -160,6 +160,10 @@ CREATE TABLE agent_run_edits (run_id TEXT REFERENCES agent_runs(id) ON DELETE CA
                               before_revision INTEGER, before_title TEXT, before_content TEXT, after_revision INTEGER,
                               after_title TEXT, after_content TEXT, written_at INTEGER, undone_at INTEGER,
                               PRIMARY KEY (run_id, note_id));
+-- What runs show beside notes open in an editor: cards and suggested changes, never in the note (§7.8).
+CREATE TABLE agent_overlays (id TEXT PRIMARY KEY, run_id TEXT REFERENCES agent_runs(id) ON DELETE CASCADE, note_id TEXT,
+                             kind TEXT, place TEXT, body TEXT, change TEXT, status TEXT, created_at INTEGER,
+                             answered_at INTEGER);  -- place, change: JSON
 -- Tokens per day in the account's time zone, against the daily cap.
 CREATE TABLE agent_usage (day TEXT PRIMARY KEY, prompt_tokens INTEGER, completion_tokens INTEGER, runs INTEGER);
 -- Writing sessions in progress: a "done" trigger fires 2 minutes after the user's last change.
@@ -539,6 +543,18 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   typing; the edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
   seconds counts as gone: a read falls back to the store (not for an editor trigger's own note), a
   write fails the run (`editor_disconnected`).
+- **Overlays.** `show_card` and `suggest` show something on the run's note without changing it:
+  a card to read and dismiss, or changes (each a write's `op`, checked to fit when suggested) to
+  accept or reject. Only while an editor has the note open: otherwise the tool refuses, so the model
+  writes or does nothing, as its prompt says. Each is placed at the top, the end, the cursor or under
+  a quoted block, and kept in `agent_overlays`; the server tells the account's editors a note's whole
+  open list (`overlays`) when it changes, and an editor opening the note gets it. An editor draws
+  them as ProseMirror widget decorations between blocks, so they're never in the document or its
+  Markdown. Accepting makes the change in the editor as an `apply` would (one undoable step, saved as
+  any edit) and records it as the run's edit, so Activity diffs and undoes it; a suggestion whose
+  `find` the user typed over is answered `stale`. They close when the note's last editor closes it,
+  or a later run of the same rule shows its own; locking or deleting the note clears their text. At
+  most 3 cards and 20 suggestions per run.
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the

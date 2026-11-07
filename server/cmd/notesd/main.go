@@ -507,6 +507,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			a := agentAccount(d)
 			a.Editors = hub.For(userID)
 			a.OnRun = func(u agent.RunUpdate) { hub.Broadcast(userID, runMessage{Type: "run", RunUpdate: u}) }
+			a.OnOverlays = func(noteID string, list []agent.Overlay) { hub.Broadcast(userID, agent.OverlaysMessage(noteID, list)) }
 			return a, nil
 		},
 		Settings: func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) },

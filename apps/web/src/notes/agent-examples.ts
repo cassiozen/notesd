@@ -8,7 +8,7 @@ const DIGEST_TRIM = 'Take out of the Digest anything that came only from this en
 export const EXAMPLES: AgentExample[] = [
   {
     name: 'Journal',
-    blurb: 'Asks you a question to start each entry, and keeps a Digest of what’s on your mind.',
+    blurb: 'Shows you a few questions to start each entry, and keeps a Digest of what’s on your mind.',
     draft: {
       enabled: true,
       prompt:
@@ -17,9 +17,9 @@ export const EXAMPLES: AgentExample[] = [
       referenceNotes: ['Digest'],
       triggers: {
         noteCreated:
-          'Ask me one short, open question to get me writing, about something specific in the Digest: an open question, an intention, or a theme I keep coming back to. Put it at the top as a heading. Only if there’s no Digest, ask about my day.',
+          'Show me a card at the top with 2 to 4 short, open questions to get me writing, each about something specific in the Digest: an open question, an intention, or a theme I keep coming back to. Only if there’s no Digest, ask about my day. Don’t write in the entry.',
         newNoteDone:
-          'Update the Digest with what I wrote in this entry: Themes, Open questions and Intentions, a few short lines each, merged with what’s there. Rewrite the whole Digest rather than adding to it. Leave out the question at the top; if I wrote nothing else, change nothing. Create the Digest if there isn’t one.',
+          'Update the Digest with what I wrote in this entry: Themes, Open questions and Intentions, a few short lines each, merged with what’s there. Rewrite the whole Digest rather than adding to it. If I wrote nothing, change nothing. Create the Digest if there isn’t one.',
         noteDeleted: DIGEST_TRIM,
         movedOut: DIGEST_TRIM,
       },
@@ -57,7 +57,7 @@ export const EXAMPLES: AgentExample[] = [
   },
   {
     name: 'Tidy tags',
-    blurb: 'Tags each new note from a small, consistent set, and fixes typos when you ask.',
+    blurb: 'Tags each new note from a small, consistent set, and suggests typo fixes when you ask.',
     draft: {
       enabled: true,
       prompt: 'Everyday notes. Keep them findable with a small, consistent set of tags.',
@@ -66,7 +66,7 @@ export const EXAMPLES: AgentExample[] = [
       triggers: {
         newNoteDone:
           'Add 1 to 3 tags on a line at the end, reusing the space’s tags whenever one fits. Change nothing else.',
-        menu: 'Fix spelling mistakes and obvious typos only. Keep the wording, punctuation and formatting.',
+        menu: 'Suggest a fix for each spelling mistake and obvious typo, for me to accept or reject. Keep the wording, punctuation and formatting.',
       },
     },
   },

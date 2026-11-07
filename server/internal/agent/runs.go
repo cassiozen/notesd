@@ -243,19 +243,23 @@ func recordEdit(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 // then. beforeRev is nil when the editor had unsaved changes.
 func (s *Store) recordEditorEdit(ctx context.Context, runID, noteID string, beforeRev *int64, before, after Fields) error {
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `
-			INSERT INTO agent_run_edits (run_id, note_id, kind, before_revision, before_title, before_content,
-			                             after_revision, after_title, after_content, written_at, applied_from)
-			VALUES (?, ?, 'edit', ?, ?, ?, NULL, ?, ?, ?, ?)
-			ON CONFLICT(run_id, note_id) DO UPDATE SET after_revision = NULL, after_title = excluded.after_title,
-				after_content = excluded.after_content, written_at = excluded.written_at,
-				-- Changes the editor hasn't saved yet go out in one save: from the first of them.
-				applied_from = CASE WHEN agent_run_edits.after_revision IS NULL THEN agent_run_edits.applied_from
-					ELSE excluded.applied_from END`,
-			runID, noteID, beforeRev, before.Title, before.Content, after.Title, after.Content, s.now().UnixMilli(),
-			fieldsHash(before.Title, before.Content))
-		return err
+		return recordEditorEditTx(ctx, tx, runID, noteID, beforeRev, before, after, s.now().UnixMilli())
 	})
+}
+
+func recordEditorEditTx(ctx context.Context, tx *sql.Tx, runID, noteID string, beforeRev *int64, before, after Fields, now int64) error {
+	_, err := tx.ExecContext(ctx, `
+		INSERT INTO agent_run_edits (run_id, note_id, kind, before_revision, before_title, before_content,
+		                             after_revision, after_title, after_content, written_at, applied_from)
+		VALUES (?, ?, 'edit', ?, ?, ?, NULL, ?, ?, ?, ?)
+		ON CONFLICT(run_id, note_id) DO UPDATE SET after_revision = NULL, after_title = excluded.after_title,
+			after_content = excluded.after_content, written_at = excluded.written_at,
+			-- Changes the editor hasn't saved yet go out in one save: from the first of them.
+			applied_from = CASE WHEN agent_run_edits.after_revision IS NULL THEN agent_run_edits.applied_from
+				ELSE excluded.applied_from END`,
+		runID, noteID, beforeRev, before.Title, before.Content, after.Title, after.Content, now,
+		fieldsHash(before.Title, before.Content))
+	return err
 }
 
 // fieldsHash stands for a note's text where keeping the text itself would

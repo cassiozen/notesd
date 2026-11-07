@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
@@ -276,5 +277,107 @@ func TestRequestAgentRun(t *testing.T) {
 		"note": map[string]any{"spaceId": "default", "title": "", "content": "", "cursor": 0}})
 	if r := runs(); len(r) != 1 || r[0].(map[string]any)["trigger"] != "noteCreated" || woken.Load() != 1 {
 		t.Fatalf("draft: %v, woken %d", r, woken.Load())
+	}
+}
+
+func TestOverlaysThroughTheSocket(t *testing.T) {
+	e := newEnv(t)
+	ctx := e.ctx
+	e.setupOwner()
+	c := e.webClient()
+	if r := c.do("PUT", "/api/v1/agent/spaces/default", map[string]any{
+		"enabled": true, "prompt": "p", "triggers": map[string]any{"noteCreated": "Ask a question."},
+	}); r.status != 200 {
+		t.Fatalf("agent: %d %s", r.status, r.raw)
+	}
+	if r := c.do("POST", "/api/v1/notes", map[string]any{"operationId": "o1", "id": "n1", "title": "T", "content": "Mlik"}); r.status != 201 {
+		t.Fatalf("create: %d %s", r.status, r.raw)
+	}
+	d, err := e.users.Open(ctx, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	runID, err := d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.NoteCreated, NoteID: "n1", SpaceID: "default"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// As a run's show_card and suggest leave them.
+	if err := d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO agent_overlays (id, run_id, note_id, kind, place, body, change, created_at) VALUES
+			('ov_card', ?, 'n1', 'card', '{"at":"top"}', 'Hi', NULL, 1),
+			('ov_fix', ?, 'n1', 'suggestion', '{"after":"Mlik"}', 'Typo', '{"kind":"replace","find":"Mlik","replace":"Milk"}', 1)`, runID, runID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	type shown struct {
+		Type     string          `json:"type"`
+		NoteID   string          `json:"noteId"`
+		Overlays []agent.Overlay `json:"overlays"`
+	}
+	read := func(conn *websocket.Conn) shown {
+		t.Helper()
+		var m shown
+		if err := wsjson.Read(ctx, conn, &m); err != nil || m.Type != "overlays" || m.NoteID != "n1" {
+			t.Fatalf("read: %+v %v", m, err)
+		}
+		return m
+	}
+	send := func(conn *websocket.Conn, m map[string]any) {
+		t.Helper()
+		m["noteId"] = "n1"
+		if err := wsjson.Write(ctx, conn, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tab1, _ := e.editorSocket(c)
+	tab2, _ := e.editorSocket(c)
+
+	// Opening the note shows what's open on it.
+	send(tab1, map[string]any{"type": "editor.opened"})
+	if m := read(tab1); len(m.Overlays) != 2 || m.Overlays[1].Change == nil || m.Overlays[1].Change.Find != "Mlik" {
+		t.Fatalf("on open: %+v", m)
+	}
+	send(tab2, map[string]any{"type": "editor.opened"})
+	read(tab2)
+
+	// An answer from one tab reaches both. A wrong one changes nothing.
+	send(tab1, map[string]any{"type": "overlay.answer", "id": "ov_card", "answer": "accept"})
+	send(tab1, map[string]any{"type": "overlay.answer", "id": "ov_card", "answer": "dismiss"})
+	for _, tab := range []*websocket.Conn{tab1, tab2} {
+		if m := read(tab); len(m.Overlays) != 1 || m.Overlays[0].ID != "ov_fix" {
+			t.Fatalf("after dismiss: %+v", m)
+		}
+	}
+	send(tab2, map[string]any{"type": "overlay.answer", "id": "ov_fix", "answer": "accept", "revision": 1,
+		"before": map[string]any{"title": "T", "content": "Mlik"}, "shows": map[string]any{"title": "T", "content": "Milk"}})
+	for _, tab := range []*websocket.Conn{tab1, tab2} {
+		if m := read(tab); len(m.Overlays) != 0 {
+			t.Fatalf("after accept: %+v", m)
+		}
+	}
+	r, err := d.Agent.Run(ctx, runID)
+	if err != nil || len(r.Edits) != 1 || r.Overlays == nil || r.Overlays.Accepted != 1 {
+		t.Fatalf("run: %+v %v", r, err)
+	}
+
+	// Whatever's open closes with the note's last editor.
+	if err := d.DB.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `INSERT INTO agent_overlays (id, run_id, note_id, kind, place, body, created_at)
+			VALUES ('ov_2', ?, 'n1', 'card', '{"at":"top"}', 'Again', 2)`, runID)
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	send(tab1, map[string]any{"type": "editor.closed"})
+	send(tab2, map[string]any{"type": "editor.closed"})
+	for _, tab := range []*websocket.Conn{tab1, tab2} {
+		if m := read(tab); len(m.Overlays) != 0 {
+			t.Fatalf("after close: %+v", m)
+		}
+	}
+	if list, err := d.Agent.OpenOverlays(ctx, "n1"); err != nil || len(list) != 0 {
+		t.Fatalf("still open: %+v %v", list, err)
 	}
 }
