@@ -20,6 +20,7 @@ import notes.core.db.SpaceScope
 import notes.core.db.SyncEvent
 import notes.core.db.directDatabase
 import notes.core.markdown.webCanonical
+import notes.core.markdown.webMerge
 import notes.core.sync.SyncEngine
 import notes.core.sync.SyncStatus
 import org.khronos.webgl.Int8Array
@@ -298,7 +299,8 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
 }
 
 /**
- * On sqlite-wasm's oo1 [db] and its [capi]. [canonical]: the web editor's, which merges compare with (§6.1).
+ * On sqlite-wasm's oo1 [db] and its [capi]. [canonical]: the web editor's, which merges compare with (§6.1);
+ * [merge]: its block merge (§6.2), answering `{kind: "clean", content} | {kind: "partial", theirs, mine} | {kind: "conflict"}`.
  * [files]: where image bytes are kept. [version]: the web app's (no leading v), sent as `X-Notesd-Client:
  * web/<version>`; null sends none.
  */
@@ -307,10 +309,12 @@ fun openEngine(
     db: dynamic,
     capi: dynamic,
     canonical: (String) -> String,
+    merge: (String, String, String) -> dynamic,
     files: dynamic,
     version: String? = null
 ): NotesEngine {
     webCanonical = canonical
+    webMerge = merge
     // An external interface isn't exported to the .d.ts; the host types its side.
     return NotesEngine(
         directDatabase(db, capi),

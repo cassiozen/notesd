@@ -8,6 +8,7 @@ import {
 } from '@notes/sync-engine'
 import type { Kdf, LockKey, NoteFilter } from '../api/types'
 import { canonical } from '../editor/markdown'
+import { mergeBody } from '../editor/merge'
 import { deviceImages, type DeviceImages } from './images'
 import type { EngineApi, EngineEvent, LocalNote, SyncNotice, SyncOutcome, SyncStatus } from './protocol'
 import { Scheduler } from './scheduler'
@@ -41,7 +42,7 @@ export function engineHost(
   async function start(user: string, csrfToken: string): Promise<Open> {
     const { db, capi } = await openDatabase(user)
     const images = deviceImages(user)
-    const e = openEngine(db, capi, canonical, images, version ?? null)
+    const e = openEngine(db, capi, canonical, mergeBody, images, version ?? null)
     e.setCsrfToken(csrfToken)
     const scheduler = new Scheduler(async () => (await e.sync()) as SyncOutcome)
     const unsubscribe = [

@@ -41,6 +41,56 @@ enum Fixtures {
         }
     }()
 
+    struct MergeCase: Decodable {
+        enum Expect: Decodable {
+            case clean(String)
+            case partial(theirs: String, mine: String)
+            case conflict
+
+            private struct Sides: Decodable {
+                var theirs: String
+                var mine: String
+            }
+
+            private enum Keys: String, CodingKey { case clean, partial }
+
+            init(from decoder: Decoder) throws {
+                if (try? decoder.singleValueContainer().decode(String.self)) == "conflict" {
+                    self = .conflict
+                    return
+                }
+                let c = try decoder.container(keyedBy: Keys.self)
+                if let clean = try c.decodeIfPresent(String.self, forKey: .clean) {
+                    self = .clean(clean)
+                } else {
+                    let sides = try c.decode(Sides.self, forKey: .partial)
+                    self = .partial(theirs: sides.theirs, mine: sides.mine)
+                }
+            }
+        }
+        var name: String
+        var base: String
+        var mine: String
+        var theirs: String
+        var expect: Expect
+    }
+
+    private struct MergeSuite: Decodable {
+        var cases: [MergeCase]
+    }
+
+    static let merge = loadMerge("merge.json")
+    static let mergeGenerated = loadMerge("merge-generated.json")
+
+    private static func loadMerge(_ name: String) -> [MergeCase] {
+        let url = sharedDir.appending(path: "markdown-fixtures/\(name)")
+        do {
+            return try JSONDecoder().decode(MergeSuite.self, from: Data(contentsOf: url)).cases
+        } catch {
+            fatalError("can't read \(url.path): \(error)")
+        }
+    }
+
     /// The repository's shared/ directory, found from this file's path.
     static let sharedDir: URL = {
         var url = URL(fileURLWithPath: #filePath)
