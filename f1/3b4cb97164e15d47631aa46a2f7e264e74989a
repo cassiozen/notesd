@@ -1,0 +1,59 @@
+docs/faq.md
+  s_8e1d37af026457::t_8afa176cafccc4 164-171
+apps/ios/NotesCore/Sources/NotesCore/DB/Search.swift
+  s_8e1d37af026457::t_36fc80916c6ece 60-66
+apps/ios/Notes/App/AppGraph.swift
+  s_8e1d37af026457::t_e3c63b7981df45 253-254
+docs/contributing/architecture.md
+  s_8e1d37af026457::t_ce811d221f93c6 19,67,347,349-354,356-368,372,572,680-681
+apps/ios/NotesCore/Tests/NotesCoreTests/BodyMergeSyncTests.swift
+  s_8e1d37af026457::t_da1e0f208b6efc 72-73
+  s_8e1d37af026457::t_1211dd44763163 1-71,74-126
+apps/ios/Notes/Notes/EditorModel.swift
+  s_8e1d37af026457::t_e3c63b7981df45 45-48,134,145,229-241
+  s_8e1d37af026457::t_1714d6d7ff2860 242
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_8e1d37af026457::t_da1e0f208b6efc 415-417
+  s_8e1d37af026457::t_36fc80916c6ece 12-13,334,418-421,430-433,435-458,546-547,558
+apps/ios/NotesCore/Sources/NotesCore/DB/Migrations.swift
+  s_8e1d37af026457::t_36fc80916c6ece 11
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_8e1d37af026457::t_36fc80916c6ece 283-284,324-331,335-347,351-383,412,448
+  s_8e1d37af026457::t_da1e0f208b6efc 349-350
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_8e1d37af026457::t_e3c63b7981df45 61-92
+apps/ios/NotesCore/Sources/NotesCore/DB/MergeUndo.swift
+  s_8e1d37af026457::t_36fc80916c6ece 1-52
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0008_merge_undo.sql
+  s_8e1d37af026457::t_36fc80916c6ece 1-12
+docs/guides/using/offline-and-sync.md
+  s_8e1d37af026457::t_8afa176cafccc4 64-70,73-74
+docs/concepts/how-sync-works.md
+  s_8e1d37af026457::t_4b138b4b7dbf99 47-67
+apps/ios/NotesTests/EditorModelTests.swift
+  s_a0fc22670a88c5::t_83d66a5656d587 45-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f13b4cb97164e15d47631aa46a2f7e264e74989a",
+  "prompts": {},
+  "sessions": {
+    "s_8e1d37af026457": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "06ed58fb-dbc1-4c4d-a767-e89a079555f9",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
