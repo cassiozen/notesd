@@ -1,0 +1,276 @@
+docs/reference/api.md
+  s_a0fc22670a88c5::t_ca49df2b69f35e 288
+apps/ios/NotesTests/SpaceTraitsTests.swift
+  s_a0fc22670a88c5::t_824dfb1dd62323 1-62
+docs/contributing/architecture.md
+  s_a0fc22670a88c5::t_291b65c4aad933 455,462-468,479,481,486
+  s_a0fc22670a88c5::t_9dd1223a32d6ac 238,473-478,480,482-485,487,548
+apps/web/src/notes/share.module.css
+  s_a0fc22670a88c5::t_2402d530284421 144-169
+apps/web/src/notes/traits.test.tsx
+  s_a0fc22670a88c5::t_e53ef87e6c37f9 1-78
+apps/web/src/api/spaces.ts
+  s_a0fc22670a88c5::t_5d0fadd3d18784 2,6-12,14,17,22
+  s_a0fc22670a88c5::t_4cc0e24a9572ca 15-16
+apps/ios/NotesUITests/FlowTests.swift
+  s_a0fc22670a88c5::t_76ba27160a9460 178,197,224-225,228-243,254-255,259,262
+  s_a0fc22670a88c5::t_890862536d78ce 194-196,227
+  s_a0fc22670a88c5::t_8446abef365fd4 258,260-261,263-275
+  s_a0fc22670a88c5::t_d063f719fcdeb2 226
+shared/sync-engine/src/commonMain/migrations/0013_space_traits.sql
+  s_a0fc22670a88c5::t_12642d73da7b32 1-3
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_a0fc22670a88c5::t_12642d73da7b32 74-84,249-252
+  s_a0fc22670a88c5::t_f01f9dc9827c90 85-91
+apps/android/app/src/main/res/drawable/trait_agent.xml
+  s_a0fc22670a88c5::t_175097b239cba9 1-11
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_a0fc22670a88c5::t_12642d73da7b32 233-248
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_a0fc22670a88c5::t_12642d73da7b32 3-4,6,38,40-56,72-73,78,87,152,200-201
+  s_a0fc22670a88c5::t_f01f9dc9827c90 79-86
+apps/ios/Notes/App/Navigator.swift
+  s_a0fc22670a88c5::t_dba81ed1591e0a 9-10,49-51
+  s_a0fc22670a88c5::t_2b0334f4cc2db6 52-53
+apps/web/src/settings/spaces.tsx
+  s_a0fc22670a88c5::t_0e318d19cfe383 4,6,11,13,16,19-20,28,37-38,47-48,50-53,55-57,59,61,63,68
+  s_a0fc22670a88c5::t_4d43b5643614ed 7,39-44
+apps/ios/Notes/Notes/SpaceMenu.swift
+  s_a0fc22670a88c5::t_9b24ec49f334e1 27,31-37,39,42
+  s_a0fc22670a88c5::t_552577e32dfa41 43,45,56-60
+  s_a0fc22670a88c5::t_23ea54570f70a0 28
+  s_a0fc22670a88c5::t_f989080ca28833 4-5,10-14,17-18,21-24,29-30,41,46-54,63-65
+  s_a0fc22670a88c5::t_49dcefc126606c 61-62
+  s_a0fc22670a88c5::t_05c796b5ccdeb1 55
+apps/android/app/src/main/kotlin/notes/app/settings/SpaceInfo.kt
+  s_a0fc22670a88c5::t_62d531c5b02154 64-68
+  s_a0fc22670a88c5::t_bdd5fecefea2da 1-63,69-263
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SpaceStoreTest.kt
+  s_a0fc22670a88c5::t_f01f9dc9827c90 6-7
+  s_a0fc22670a88c5::t_1b3042b010b7bb 26-46
+apps/ios/Notes/Notes/SpaceTraits.swift
+  s_a0fc22670a88c5::t_29583d85811382 87,90,99-122
+  s_a0fc22670a88c5::t_5b57cbabff0dfe 136
+  s_a0fc22670a88c5::t_834341c5e5e3ef 154-155
+  s_a0fc22670a88c5::t_5005184da3f32b 1-86,88-89,91-98,123-135,137-151,158-159
+  s_a0fc22670a88c5::t_075ebd16c621c9 152-153
+  s_a0fc22670a88c5::t_4937e6d110575c 156-157
+apps/web/test/spaces.test.tsx
+  s_a0fc22670a88c5::t_4d43b5643614ed 68
+  s_a0fc22670a88c5::t_54a7d28983b7d2 53-55,59,61,79,82-84,98,208,214,250,253-269,317,345-352,354,357-358
+  s_a0fc22670a88c5::t_313a8f925ae434 240,242-245
+  s_a0fc22670a88c5::t_a04a9dbac2b220 3-4,57-58,62-67,69,144,146-147,158-159,169-171,176-178,181,185-201,207,209-213,215-239,241,246-249,251-252,270-316,318-325
+  s_a0fc22670a88c5::t_4cbeed4d9c7ece 326
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0009_space_traits.sql
+  s_a0fc22670a88c5::t_ce2222861317f9 1-3
+apps/android/app/src/main/kotlin/notes/app/notes/Spaces.kt
+  s_a0fc22670a88c5::t_071fc0ff2d8f7b 234,248,250,260
+  s_a0fc22670a88c5::t_62d531c5b02154 304
+  s_a0fc22670a88c5::t_a574000a2b795a 9,32,43-44,64,147-148,152-155,157-163,169-172,188,203,245-247,249,259,261-278,289,293,324-325
+  s_a0fc22670a88c5::t_f8262de4413b95 149,189-194,205-217,222-226
+  s_a0fc22670a88c5::t_4c9acc789f3efb 7-8,33,200,202,204,218-221,227-233,236-244
+  s_a0fc22670a88c5::t_733e038690915c 164-165,167-168,173-187
+  s_a0fc22670a88c5::t_61467e2c6e205c 56,59-60,298-303,305-323
+apps/android/app/src/main/res/drawable/trait_published.xml
+  s_a0fc22670a88c5::t_175097b239cba9 1-11
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_a0fc22670a88c5::t_861efaca5ed4fb 137,280-283,285,288,308-315
+  s_a0fc22670a88c5::t_1b21d1ac55da06 136,138,207
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceTraitsTest.kt
+  s_a0fc22670a88c5::t_57b01693d5afab 12-13
+  s_a0fc22670a88c5::t_53fe09c4a06426 1-11,14-88
+apps/web/test/engine/engine.test.ts
+  s_a0fc22670a88c5::t_2ee962553fcad7 149
+  s_a0fc22670a88c5::t_ca8bc3dc065e39 150
+apps/web/src/ui/icons.tsx
+  s_a0fc22670a88c5::t_37162c6d4b2e2d 201-210
+apps/ios/NotesTests/SpaceSwitcherTests.swift
+  s_a0fc22670a88c5::t_8374b3c5bf9e7b 8-9,48-49
+  s_a0fc22670a88c5::t_b1add9dbd5c511 1-3,5-7,10-37,40-47,50-57
+  s_a0fc22670a88c5::t_f43937916a341b 38-39
+  s_a0fc22670a88c5::t_1f77089b79b5ec 4
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceSwitcherTest.kt
+  s_a0fc22670a88c5::t_591ba91e0389ce 3,120
+  s_a0fc22670a88c5::t_ab018156d9df1c 1-2,4-119,121-166
+apps/ios/Notes/App/NotesApp.swift
+  s_a0fc22670a88c5::t_dba81ed1591e0a 190
+apps/web/src/notes/tags-panel.tsx
+  s_a0fc22670a88c5::t_a940a9de98b437 35,56,141
+  s_a0fc22670a88c5::t_0f57cdf5e36246 23
+  s_a0fc22670a88c5::t_d57da4ef41d622 24
+server/internal/spaces/traits_test.go
+  s_a0fc22670a88c5::t_c912859f603d03 54,57
+  s_a0fc22670a88c5::t_78ed4878842989 1-53,55-56,58-99
+apps/android/app/src/main/res/drawable/trait_shared.xml
+  s_a0fc22670a88c5::t_175097b239cba9 1-11
+server/internal/spaces/traits.go
+  s_a0fc22670a88c5::t_2dc0722b943e28 1-8,11-23,26-68
+  s_a0fc22670a88c5::t_7d1f2745ea55cb 9-10,24-25
+server/internal/spaces/spaces.go
+  s_a0fc22670a88c5::t_45d8ad699dc986 104
+  s_a0fc22670a88c5::t_7d1f2745ea55cb 33-35,67,101-103,105-106,149-155,157
+  s_a0fc22670a88c5::t_9b0dd65d8be171 30-32
+apps/ios/Notes/Notes/SpaceSwitcher.swift
+  s_a0fc22670a88c5::t_e6f4ea2217b2b0 83-85,129,135-136
+  s_a0fc22670a88c5::t_ee179d1a84db89 123-127,130-134
+  s_a0fc22670a88c5::t_2f5590f1ab6397 1-47,51-54,57-82,86-117,119-121,128,137-205,209-225,227-241,244-293,296-312
+  s_a0fc22670a88c5::t_8720ad78a03610 122
+  s_a0fc22670a88c5::t_c5d9da94dcc888 48-50,55-56,118,242-243,294-295
+apps/web/src/notes/note-list.tsx
+  s_a0fc22670a88c5::t_2ebbde2ca651d2 14-18,57,212,292,328
+  s_a0fc22670a88c5::t_ba524cd79d69a5 120-131
+  s_a0fc22670a88c5::t_bd0949dcd9b6c4 9,36-37,40,94
+  s_a0fc22670a88c5::t_adc1e3fef493c4 2
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_a0fc22670a88c5::t_ac7cd4dce1c135 18-19,172-181,357-365,386-392
+  s_a0fc22670a88c5::t_de053cf34ca931 288-290,293
+  s_a0fc22670a88c5::t_4937e6d110575c 291-292
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceSwitcher.kt
+  s_a0fc22670a88c5::t_6b8be402428315 218,237,243-246,253-254,256-257,259-271,274,279,282-283
+  s_a0fc22670a88c5::t_5742b5a183d12d 361-366
+  s_a0fc22670a88c5::t_0c78f4d6a357f5 1-140,148-217,219-236,238-242,247-252,255,258,272-273,275-278,280-281,284-310,314-360,367-384,386-419
+  s_a0fc22670a88c5::t_7a5fce61336e19 141-147
+apps/android/app/src/main/kotlin/notes/app/notes/TagTree.kt
+  s_a0fc22670a88c5::t_4190359b2c849f 152-153,208
+  s_a0fc22670a88c5::t_5742b5a183d12d 154-159,209-215
+apps/ios/NotesCore/Sources/NotesCore/DB/SpaceStore.swift
+  s_a0fc22670a88c5::t_6666d8857ef4e9 36-48,77,82-86,147,202-203
+apps/android/app/src/main/kotlin/notes/app/settings/SpacesSettings.kt
+  s_a0fc22670a88c5::t_77f4d725b12343 3,11,13,24,33,35,47-48,50-53,55,64-69,72-79,81-82
+  s_a0fc22670a88c5::t_861efaca5ed4fb 141
+apps/ios/Notes/Notes/NotesListView.swift
+  s_a0fc22670a88c5::t_29583d85811382 211-212,217
+  s_a0fc22670a88c5::t_7717e327bd08f0 93,95-101,187-189,191,214-216
+apps/ios/Notes/Settings/SettingsView.swift
+  s_a0fc22670a88c5::t_dba81ed1591e0a 274
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_a0fc22670a88c5::t_071fc0ff2d8f7b 122-127
+  s_a0fc22670a88c5::t_7a5fce61336e19 33
+  s_a0fc22670a88c5::t_cd03d65ed0eef7 128
+apps/web/src/notes/space-identity.module.css
+  s_a0fc22670a88c5::t_bd0949dcd9b6c4 17-37
+  s_a0fc22670a88c5::t_dde94a482ad587 1-16
+apps/android/app/src/test/kotlin/notes/app/notes/SpacesFlowTest.kt
+  s_a0fc22670a88c5::t_5fc00d1a3acedd 5,10,16,26,28,71-72,84-85,130,158-200,202,205-207,211-224,226-238,240-254,256-257,259,261-266,271-272,274
+  s_a0fc22670a88c5::t_4d43b5643614ed 150-157,203-204,239,255
+  s_a0fc22670a88c5::t_e148c871f85716 208-210
+  s_a0fc22670a88c5::t_6d691d33177e06 201,225,258,260,267-270,273
+apps/web/src/settings/space-info.module.css
+  s_a0fc22670a88c5::t_c019da555b3446 1-151
+  s_a0fc22670a88c5::t_f74382a11c1dcc 152-157
+apps/web/src/notes/space-menu.module.css
+  s_a0fc22670a88c5::t_50cc1bd6059110 71-72,125,152
+  s_a0fc22670a88c5::t_0778509d7627da 51-55,66-67,73-124,126-133,136-151,153-164,168-207,211-212,217-222,226-245,247-250,252-256,259-269,271-293,295-301,307-327
+  s_a0fc22670a88c5::t_b8917612d1d749 345-351
+  s_a0fc22670a88c5::t_40284b7e2f3412 294
+apps/web/src/settings/space-info.tsx
+  s_a0fc22670a88c5::t_bf98beb60e253e 87-102
+  s_a0fc22670a88c5::t_33cf418c80c9bb 1-5,7-63,65-86,103-182,185-210
+apps/web/src/notes/space-menu.tsx
+  s_a0fc22670a88c5::t_9401dc724524b6 87-89,106-107,121,128
+  s_a0fc22670a88c5::t_3e95cf816a6042 5,26,33,59
+  s_a0fc22670a88c5::t_dd090c8721e762 93-94
+  s_a0fc22670a88c5::t_50cc1bd6059110 269
+  s_a0fc22670a88c5::t_1838fe7d143d15 14-16,34,37
+  s_a0fc22670a88c5::t_466185159c69e7 1-4,7-8,11-13,17-22,24-25,35-36,43-49,52-53,56,60-75,80-81,90,95,97,103-105,116-120,122-123,126-127,129-138,140,151,153,168-236,238,240-242,246-268,270-283,285
+  s_a0fc22670a88c5::t_2a565cc9070bf8 139,284
+apps/web/src/notes/share.tsx
+  s_a0fc22670a88c5::t_2402d530284421 4,16,18,33-34,56,254,257-270,278,288-289,303-344
+  s_a0fc22670a88c5::t_f204ff3cf666e3 256
+  s_a0fc22670a88c5::t_ee5b956c659267 345-350
+apps/ios/Notes/App/AppGraph.swift
+  s_a0fc22670a88c5::t_834341c5e5e3ef 184-189
+  s_a0fc22670a88c5::t_e42774b1b598a5 190-191
+apps/web/src/api/types.ts
+  s_a0fc22670a88c5::t_5d0fadd3d18784 63-75
+apps/web/src/notes/space-identity.test.tsx
+  s_a0fc22670a88c5::t_e53ef87e6c37f9 1-57
+apps/web/src/notes/space-identity.tsx
+  s_a0fc22670a88c5::t_bd0949dcd9b6c4 56-69
+  s_a0fc22670a88c5::t_4d43b5643614ed 50-51
+  s_a0fc22670a88c5::t_dde94a482ad587 1-49,52-55
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceTraits.kt
+  s_a0fc22670a88c5::t_921591f14dd454 1-36,38-41,43-57,59
+  s_a0fc22670a88c5::t_3af84789f10cca 60-87
+  s_a0fc22670a88c5::t_a76f31a2a93251 37,42,58
+apps/web/src/notes/tags-panel.module.css
+  s_a0fc22670a88c5::t_5512ecc4732cb4 95-119
+apps/web/src/notes/note-list.module.css
+  s_a0fc22670a88c5::t_ba524cd79d69a5 196-201
+apps/ios/Notes/Notes/TagsView.swift
+  s_a0fc22670a88c5::t_de053cf34ca931 31-32
+  s_a0fc22670a88c5::t_dba81ed1591e0a 26,28,30
+  s_a0fc22670a88c5::t_834341c5e5e3ef 22,25,27,29,101-115
+  s_a0fc22670a88c5::t_2805393d1f6fb5 116
+docs/contributing/settings-guidelines.md
+  s_a0fc22670a88c5::t_3dfd1785980a71 77-78
+apps/ios/Notes/Settings/SpacesSection.swift
+  s_a0fc22670a88c5::t_075ebd16c621c9 4-5,15-16
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_a0fc22670a88c5::t_62d531c5b02154 431,434
+  s_a0fc22670a88c5::t_5742b5a183d12d 126-127,275-277,323-325
+  s_a0fc22670a88c5::t_38d810c59195f6 55,87-90,181-186,274,322,357-358,420-430,432-433,435-437
+apps/ios/Notes/Settings/SpaceInfoView.swift
+  s_a0fc22670a88c5::t_075ebd16c621c9 33,45
+  s_a0fc22670a88c5::t_de053cf34ca931 68-72
+  s_a0fc22670a88c5::t_44a5630edb6c53 1-32,34-44,46-67,73-131
+apps/web/src/notes/space-menu.test.tsx
+  s_a0fc22670a88c5::t_052fcdcb85c998 1-61,63-85
+  s_a0fc22670a88c5::t_6b976b8933c53b 62
+apps/web/src/offline/host.ts
+  s_a0fc22670a88c5::t_2c7f235935744f 178-185
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceIdentityTest.kt
+  s_a0fc22670a88c5::t_8eb6d7769e2796 1-4,6-39,49-52,55-66
+  s_a0fc22670a88c5::t_e148c871f85716 5,40-48,53-54
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_a0fc22670a88c5::t_7dcb1cbafa8d30 195-196,573-592
+apps/web/src/notes/traits.tsx
+  s_a0fc22670a88c5::t_cc9d7505a4510f 93-111
+  s_a0fc22670a88c5::t_6fa81ca6effbf2 1-92
+apps/web/src/settings/settings.module.css
+  s_a0fc22670a88c5::t_e51af7586e0d09 773
+  s_a0fc22670a88c5::t_eacecf43a12510 750,769-772,774-799
+apps/android/app/src/main/res/drawable/trait_unknown.xml
+  s_a0fc22670a88c5::t_175097b239cba9 1-11
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_a0fc22670a88c5::t_ce2222861317f9 214-215,217-219,225,235-263
+apps/web/src/notes/shell.tsx
+  s_a0fc22670a88c5::t_62db0b5c642954 7,66-67,337-338
+  s_a0fc22670a88c5::t_d57da4ef41d622 253
+  s_a0fc22670a88c5::t_bd0949dcd9b6c4 283
+apps/ios/NotesCore/Tests/NotesCoreTests/SpaceStoreTests.swift
+  s_a0fc22670a88c5::t_de053cf34ca931 9,11-14,25-27
+  s_a0fc22670a88c5::t_ad255686ab804d 1-8,10,15-24,28-65
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_a0fc22670a88c5::t_69ffce21985600 269,878-879
+  s_a0fc22670a88c5::t_cb121a8d47714d 598-606
+  s_a0fc22670a88c5::t_502ef3ead58b60 157-159,271-272,528-536
+  s_a0fc22670a88c5::t_d50a740e2d29d7 126,369-380,578-597
+  s_a0fc22670a88c5::t_b3ecf043d29fb7 523,544-548
+  s_a0fc22670a88c5::t_6e611af976eba4 268,524
+  s_a0fc22670a88c5::t_7b5f3c82744a1d 607-609
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_a0fc22670a88c5::t_38131155970e84 403-405,407-409,418-419,421,428,435,439-456,461-462,468,470,472,476,480,491,497,500,505
+  s_a0fc22670a88c5::t_e148c871f85716 422-424
+  s_a0fc22670a88c5::t_f46b9ca8bcfc0a 23,27,29,400-402,406,410-417,420,425-427,429-434,436-438,457-460,463-467,469,471,473-475,477-479,481-490,492-496,498-499,501-504
+apps/web/src/api/spaces.test.ts
+  s_a0fc22670a88c5::t_e53ef87e6c37f9 1-25
+apps/android/app/src/test/kotlin/notes/app/SetTraits.kt
+  s_a0fc22670a88c5::t_2c0e767174272b 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "560c5fd2b787081c931c79a20879bc5ab1fad286",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
