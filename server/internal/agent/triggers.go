@@ -43,6 +43,8 @@ type Event struct {
 	// read: deleted, or moved to another space.
 	Title   *string `json:"title,omitempty"`
 	Content *string `json:"content,omitempty"`
+	// ConnectionID is the editor that asked for the run, for an editor trigger.
+	ConnectionID string `json:"connectionId,omitempty"`
 }
 
 // OnScheduled has fn called when a run is queued or a writing session
@@ -84,6 +86,14 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 		agentOnly, err := linkEditorEdit(ctx, tx, ev)
 		if err != nil {
 			return err
+		}
+		if agentOnly && ev.Kind == notes.EventCreated {
+			// A new note the agent wrote in before the user did: its session
+			// starts at the agent's revision, so only the user's writing ends it with a trigger.
+			if on, err := anyAgent(ctx, tx); err != nil || !on {
+				return err
+			}
+			return s.extendSession(ctx, tx, ev, "new", ev.After.Revision, s.now().UnixMilli())
 		}
 		if agentOnly && !ev.SpaceChanged() {
 			return nil // an editor saving just a run's change: not the user writing

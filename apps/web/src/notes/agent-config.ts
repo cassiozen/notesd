@@ -8,6 +8,11 @@ const store = accountStore(async () => {
   return new Map(spaces.map((c) => [c.spaceId, c])) as ReadonlyMap<string, AgentConfig>
 })
 
+/** A space's agent, as last loaded; outside React. */
+export function agentConfigFor(spaceId: string): AgentConfig | undefined {
+  return store.get()?.get(spaceId)
+}
+
 /** Every space's agent, or null until they've loaded (or while offline). */
 export function useAgentConfigs(): ReadonlyMap<string, AgentConfig> | null {
   const value = store.use()

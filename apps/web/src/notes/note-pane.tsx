@@ -18,8 +18,10 @@ import { UnlockForm } from '../locks/unlock'
 import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
-import { agentSocket } from '../agent/socket'
+import { agentSocket, useAgentWriting } from '../agent/socket'
+import { requestRun, triggerTiming } from '../agent/triggers'
 import { applyForAgent, composed, madeTo, readForAgent } from '../editor/agent-edit'
+import { setAgentWaiting } from '../editor/agent-presence'
 import { useFailedRun } from './failed-run'
 import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
@@ -152,8 +154,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   }, [id, load.kind, saverFor, removed, space, setSpace])
 
   const saver = load.kind === 'ready' ? load.saver : null
-  // Leaving the note: save what's left, then let the store forget it. Agents
-  // hear of both, so closing a note ends its writing session at once.
+  // Leaving: save what's left, then the store forgets it; agents hear of both.
   useEffect(() => {
     if (!saver) return
     agentSocket.noteOpened(saver.id)
@@ -283,6 +284,21 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const snap = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
   const { touch, tags, setFilter, space } = useNotes()
   const failed = useFailedRun(isDraft ? null : saver.id)
+  const agentWriting = useAgentWriting(saver.id)
+  // Opened new: note created, not started editing, fires for it.
+  const [openedNew] = useState(isDraft)
+  const lastEdit = useRef<number | null>(null)
+  const startedEditing = () => {
+    const now = Date.now()
+    if (!openedNew && (lastEdit.current === null || now - lastEdit.current > triggerTiming.idleMs)) {
+      requestRun('editStarted', saver.id, saver.spaceId())
+    }
+    lastEdit.current = now
+  }
+
+  useEffect(() => {
+    if (openedNew) requestRun('noteCreated', saver.id, saver.spaceId())
+  }, [openedNew, saver])
   const [initial] = useState(() => saver.fields())
   const [linkOpen, setLinkOpen] = useState(false)
   const [stylesOpen, setStylesOpen] = useState(false)
@@ -323,8 +339,9 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
   const editor = useNoteEditor({
     initial,
     onImages: (files, at) => addImages(files, at),
-    onChange: (ed) => {
+    onChange: (ed, byAgent) => {
       saver.edit()
+      if (!byAgent) startedEditing()
       touchTimer.current ??= setTimeout(() => {
         touchTimer.current = undefined
         if (!ed.isDestroyed) touch(saver.id, summary(saver, ed.state.doc))
@@ -342,6 +359,13 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       if (mobile) onBack()
     },
   })
+
+  // In the note, where the user is looking: who's writing and where.
+  const spaces = useSpaces()
+  const agentLabel = `${spaceName(spaces, saver.spaceId())} agent`
+  useEffect(() => {
+    setAgentWaiting(editor, agentWriting ? agentLabel : null)
+  }, [editor, agentWriting, agentLabel])
 
   // Layout effect: its cleanup runs before useEditor destroys the editor,
   // so detaching can still read the final text.
@@ -511,6 +535,10 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       <div className={styles.bar} {...dragRegion('deep')}>
         {mobile && <BackButton onClick={onBack} />}
         <span className={styles.spacer} />
+        {/* The note shows it; this tells screen readers. */}
+        <span className="visually-hidden" role="status">
+          {agentWriting ? 'Agent is writing…' : ''}
+        </span>
         <StatusPill state={snap.imagesBusy ? 'saving' : snap.state} shown={statusShown || snap.imagesBusy} detail={statusDetail} />
         {snap.locked && (
           <button

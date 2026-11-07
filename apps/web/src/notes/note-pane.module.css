@@ -44,6 +44,7 @@
   flex: 1;
 }
 
+/* Beside the save status, in its type. */
 .deleteMobile {
   flex: none;
   width: 44px;

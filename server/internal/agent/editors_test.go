@@ -2,9 +2,13 @@ package agent_test
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"slices"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"notes/server/internal/agent"
 	"notes/server/internal/llm"
@@ -13,8 +17,12 @@ import (
 
 // fakeEditor is an editor with notes open, as the socket's would answer.
 type fakeEditor struct {
+	// Runs on different notes go at once.
+	mu      sync.Mutex
 	notes   map[string]*agent.EditorNote
 	gone    bool
+	locked  bool
+	reads   int
 	changes []agent.EditorChange
 	// rewrite is the editor's Markdown writing some text its own way.
 	rewrite func(string) string
@@ -30,8 +38,14 @@ func (h *harness) openInEditor(id, content string, cursor *int) *agent.EditorNot
 }
 
 func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	e.reads++
 	if e.gone {
 		return agent.EditorNote{}, agent.ErrEditorGone
+	}
+	if e.locked {
+		return agent.EditorNote{}, agent.ErrEditorLocked
 	}
 	n, ok := e.notes[id]
 	if !ok {
@@ -41,6 +55,8 @@ func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, er
 }
 
 func (e *fakeEditor) Apply(_ context.Context, id, _ string, ch agent.EditorChange) (agent.EditorApplied, error) {
+	e.mu.Lock()
+	defer e.mu.Unlock()
 	if e.gone {
 		return agent.EditorApplied{}, agent.ErrEditorGone
 	}
@@ -271,5 +287,59 @@ func TestADeletedNoteIsntReadFromAStaleEditor(t *testing.T) {
 	h.next()
 	if got := lastToolResult(h.model.requests[1]); strings.Contains(got, "tab left open") || !strings.Contains(got, "no note") {
 		t.Fatalf("told: %s", got)
+	}
+}
+
+func TestFirstMessageHasWhatTheAgentNeeds(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NoteCreated)
+	c, _ := h.d.Agent.Config(ctx, "work")
+	c.ReferenceNotes = []string{"Digest", "Secret", "Nowhere"}
+	if _, err := h.d.Agent.Put(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	space := "work"
+	for _, n := range []notes.CreateInput{
+		{ID: "digest", Title: "Digest", Content: "## Themes\n- rest\n"},
+		{ID: "secret", Title: "Secret", Content: "notesd:locked:v1:" + strings.Repeat("A", 60)},
+		{ID: "tagged", Title: "Old", Content: "#mood/calm"},
+		// Newer, but locked: the older one goes instead.
+		{ID: "sealed-digest", Title: "Digest", Content: "notesd:locked:v1:" + strings.Repeat("B", 60)},
+	} {
+		h.advance(time.Second)
+		n.OperationID, n.SpaceID = h.op(), &space
+		if _, err := h.d.Notes.Create(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h.openInEditor("draft", "Hello", ip(2))
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.NoteCreated, NoteID: "draft", SpaceID: "work"}); err != nil {
+		t.Fatal(err)
+	}
+	// Straight to the change: no reading first.
+	h.model.steps = append(h.model.steps,
+		call("edit_note", `{"id": "digest", "find": "- rest", "replace": "- rest\n- walks"}`), final("Done."))
+	h.next()
+
+	var first struct {
+		Note struct {
+			Cursor map[string]string `json:"cursor"`
+		} `json:"note"`
+		SpaceTags      []map[string]any `json:"spaceTags"`
+		ReferenceNotes []map[string]any `json:"referenceNotes"`
+		Missing        []string         `json:"referenceNotesMissing"`
+	}
+	if err := json.Unmarshal([]byte(h.model.requests[0].Messages[1].Content), &first); err != nil {
+		t.Fatal(err)
+	}
+	if first.Note.Cursor["before"] != "He" || first.Note.Cursor["after"] != "llo" || len(first.SpaceTags) != 2 || first.SpaceTags[1]["tag"] != "#mood/calm" {
+		t.Fatalf("cursor and tags: %+v", first)
+	}
+	if len(first.ReferenceNotes) != 1 || first.ReferenceNotes[0]["id"] != "digest" || first.ReferenceNotes[0]["title"] != "Digest" ||
+		first.ReferenceNotes[0]["content"] != "## Themes\n- rest\n" || !slices.Equal(first.Missing, []string{"Nowhere"}) {
+		t.Fatalf("reference notes (the locked one never sent): %+v", first)
+	}
+	if got := h.content("digest"); got != "## Themes\n- rest\n- walks\n" {
+		t.Fatalf("digest: %q (%s)", got, lastToolResult(h.model.requests[1]))
 	}
 }

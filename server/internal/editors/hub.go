@@ -39,9 +39,15 @@ type Conn struct {
 	ID     string
 	UserID int64
 	send   func(ctx context.Context, msg any) error
+	// outbox is Broadcast's messages, sent one at a time so a run's end
+	// never overtakes its start.
+	outbox chan any
 	gone   chan struct{}
 	// Under Hub.mu.
-	open    map[string]time.Time // note id → when the editor opened it
+	open map[string]time.Time // note id → when the editor opened it
+	// claimed is the notes it asked a run for and hasn't said it opened yet:
+	// the request and the socket's "opened" can arrive in either order.
+	claimed map[string]struct{}
 	pending map[string]chan json.RawMessage
 	next    int
 }
@@ -56,8 +62,8 @@ func (h *Hub) Add(userID int64, send func(ctx context.Context, msg any) error) (
 	var b [12]byte
 	_, _ = rand.Read(b[:])
 	c := &Conn{
-		ID: "c_" + hex.EncodeToString(b[:]), UserID: userID, send: send, gone: make(chan struct{}),
-		open: map[string]time.Time{}, pending: map[string]chan json.RawMessage{},
+		ID: "c_" + hex.EncodeToString(b[:]), UserID: userID, send: send, outbox: make(chan any, 16), gone: make(chan struct{}),
+		open: map[string]time.Time{}, claimed: map[string]struct{}{}, pending: map[string]chan json.RawMessage{},
 	}
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -70,7 +76,28 @@ func (h *Hub) Add(userID int64, send func(ctx context.Context, msg any) error) (
 		h.users[userID] = conns
 	}
 	conns[c] = struct{}{}
+	go c.deliver()
 	return c, nil
+}
+
+func (c *Conn) deliver() {
+	for {
+		select {
+		case msg := <-c.outbox:
+			ctx, cancel := context.WithTimeout(context.Background(), CallTimeout)
+			_ = c.send(ctx, msg)
+			cancel()
+		case <-c.gone:
+			return
+		}
+	}
+}
+
+// Full reports whether the user has MaxConns connections already.
+func (h *Hub) Full(userID int64) bool {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return len(h.users[userID]) >= MaxConns
 }
 
 // Remove forgets a connection that ended, with the notes it had open; calls
@@ -93,6 +120,26 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 		return // an editor shows a few notes, not this many
 	}
 	c.open[noteID] = time.Now()
+	delete(c.claimed, noteID)
+}
+
+// Claim records that c asked for a run on the note, so the run talks to it
+// even before its "opened" arrives: an editor's effects may send them in
+// either order. Not an open: it never keeps a writing session from ending.
+func (h *Hub) Claim(c *Conn, noteID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	if _, ok := c.claimed[noteID]; !ok && len(c.claimed) >= MaxOpen {
+		return
+	}
+	c.claimed[noteID] = struct{}{}
+}
+
+// Unclaim forgets c's claim on the note: the run it asked for wasn't queued.
+func (h *Hub) Unclaim(c *Conn, noteID string) {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	delete(c.claimed, noteID)
 }
 
 // Closed records that c's editor closed the note, and reports whether it
@@ -100,6 +147,7 @@ func (h *Hub) Opened(c *Conn, noteID string) {
 func (h *Hub) Closed(c *Conn, noteID string) (last bool) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
+	delete(c.claimed, noteID)
 	if _, ok := c.open[noteID]; !ok {
 		return false
 	}
@@ -110,6 +158,23 @@ func (h *Hub) Closed(c *Conn, noteID string) (last bool) {
 		}
 	}
 	return true
+}
+
+// Broadcast sends msg to each of the user's editors, without waiting:
+// one that's slow or gone misses it.
+func (h *Hub) Broadcast(userID int64, msg any) {
+	h.mu.Lock()
+	conns := make([]*Conn, 0, len(h.users[userID]))
+	for c := range h.users[userID] {
+		conns = append(conns, c)
+	}
+	h.mu.Unlock()
+	for _, c := range conns {
+		select {
+		case c.outbox <- msg:
+		default:
+		}
+	}
 }
 
 // Answer hands an editor's reply to the call waiting for it.
@@ -124,7 +189,7 @@ func (h *Hub) Answer(c *Conn, id string, reply json.RawMessage) {
 }
 
 // owner is the editor a run talks to about a note: the connection prefer
-// names if it has the note open, else the one that opened it last.
+// names if it has the note open or claimed, else the one that opened it last.
 func (h *Hub) owner(userID int64, noteID, prefer string) *Conn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -132,10 +197,11 @@ func (h *Hub) owner(userID int64, noteID, prefer string) *Conn {
 	var at time.Time
 	for c := range h.users[userID] {
 		opened, ok := c.open[noteID]
+		_, claimed := c.claimed[noteID]
 		switch {
-		case !ok:
-		case c.ID == prefer:
+		case c.ID == prefer && (ok || claimed):
 			return c
+		case !ok:
 		case best == nil || opened.After(at):
 			best, at = c, opened
 		}
@@ -241,8 +307,10 @@ func (a account) do(ctx context.Context, c *Conn, msg map[string]any) (reply, er
 		return r, nil
 	case "changed":
 		return r, agent.ErrEditorChanged
+	case "locked":
+		return r, agent.ErrEditorLocked
 	default:
-		// not_open, locked, or one this server doesn't know: read it from the store instead.
+		// not_open, or one this server doesn't know: read it from the store instead.
 		return r, agent.ErrNotOpen
 	}
 }
