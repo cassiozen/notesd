@@ -1,0 +1,87 @@
+server/cmd/notesd/main.go
+  s_cc6cacc0a6fc01::t_7c45ea24c8a657 510
+server/internal/agent/overlays_test.go
+  s_cc6cacc0a6fc01::t_0af804271a6fa7 1-286
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_82a9ed68135c93 42-47,107-112,114-123,129-147
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_c31cc3cf476a0a 23
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_d32e5ad08cb153 35-36,73-74
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_d82500f7f8d1e7 156-158,169-171,187-194
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_6949133f1e7982 81-82,87,98
+server/internal/agent/overlays.go
+  s_cc6cacc0a6fc01::t_3e5aec01da3eec 110,113
+  s_cc6cacc0a6fc01::t_045c9f9a5837b0 1-109,111-112,114-195
+server/internal/agent/overlay_tools.go
+  s_cc6cacc0a6fc01::t_d36b5dff6cde78 1-191
+server/internal/agent/activity.go
+  s_cc6cacc0a6fc01::t_5cb5608a43a0b8 52-62,146-149,176-178,301-330
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_056cb95c32fc9e 5,282-383
+server/migrations/0019_agent_overlays.sql
+  s_cc6cacc0a6fc01::t_6325da8be3ee9f 2,15
+  s_cc6cacc0a6fc01::t_967d29854e871c 1,3-14,16-17
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_010bfe7bf4cc1e 163-171
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_56e84bbb3dc3f6 47-55,61-62,144-149
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_56bf9ec1a7bfa8 246,250-264
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_8ad6b87a38cb1b 4,57-59,95,166,194-201,221,224,261-291,318-333,358-370
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_bc392759ac57e6 66-67
+apps/web/src/editor/agent-edit.ts
+  s_cc6cacc0a6fc01::t_84a96170ae54b4 23-33,35,39,41,62-66
+apps/web/src/editor/agent-overlays.test.ts
+  s_cc6cacc0a6fc01::t_a419239cba9b46 1-84
+apps/web/src/editor/agent-overlays.ts
+  s_cc6cacc0a6fc01::t_162ea43fa170c6 1-235
+apps/web/src/editor/editor.module.css
+  s_cc6cacc0a6fc01::t_ac990614724300 611-700,726-727
+apps/web/src/editor/editor.tsx
+  s_cc6cacc0a6fc01::t_224f6727f0de95 2,54
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_4e8caa5971f20a 61-68,76-83
+apps/web/src/notes/agent-examples.ts
+  s_cc6cacc0a6fc01::t_913684e56e1f38 11,20,22,60,69
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_e0419d475a793e 21,23-24,283-284,413-452
+apps/web/test/agent-overlays.test.tsx
+  s_cc6cacc0a6fc01::t_763a59068b7099 1-109
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_1798bf80441087 280-316
+apps/web/test/helpers.tsx
+  s_cc6cacc0a6fc01::t_5fef572f38750c 147
+apps/web/tsconfig.tsbuildinfo
+  s_cc6cacc0a6fc01::t_7c1b01346222aa 1
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_d984219474a673 56-59,121,141,219-255,301-305,355-356,365-368
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_cc8412835a5f09 163-166,546-557
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_178664a2fa9959 67-82
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_1db2126c34b00d 419,421-423,465-466,478-486
+server/internal/api/image_test.go
+  s_cc6cacc0a6fc01::t_8bea1242a3136a 257-259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b57e18a2311df1e4d6aca25f5391bfbbb7f59a70",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
