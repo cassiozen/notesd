@@ -21,20 +21,33 @@ import org.w3c.fetch.SAME_ORIGIN
  * [client] (`web/<version>`) goes with every request. Redirects aren't followed:
  * notesd sends none, so one is [ApiResult.Unexpected].
  */
-class FetchApi(private val csrfToken: () -> String?, private val client: ClientInfo? = null) : SyncApi {
+class FetchApi(
+    private val csrfToken: () -> String?,
+    private val client: ClientInfo? = null,
+    /** '' for the account's file, else `/spaces/<id>`: a shared space's (§7.9). */
+    private val file: String = ""
+) : SyncApi {
+    override fun inSpace(spaceId: String): SyncApi = FetchApi(csrfToken, client, "/spaces/${enc(spaceId)}")
+
     override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
-        send("POST", "/notes", body.toString()) { json.decodeFromString(it) }
+        send("POST", "$file/notes", body.toString()) { json.decodeFromString(it) }
 
     override suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("PUT", "/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
+        send("PUT", "$file/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
 
     override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("DELETE", "/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
+        send("DELETE", "$file/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
+
+    override suspend fun moveNote(id: String, body: JsonObject): ApiResult<MutationResult> =
+        send("POST", "$file/notes/${enc(id)}/move", body.toString()) { json.decodeFromString(it) }
 
     override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> {
         val gen = generation?.let { "&generation=${enc(it)}" }.orEmpty()
-        return send("GET", "/sync?since=$since&limit=$limit$gen", null) { json.decodeFromString(it) }
+        return send("GET", "$file/sync?since=$since&limit=$limit$gen", null) { json.decodeFromString(it) }
     }
+
+    override suspend fun invites(): ApiResult<List<RemoteInvite>> =
+        send("GET", "/invites", null) { json.decodeFromString<RemoteInvites>(it).invites }
 
     override suspend fun lockKeys(): ApiResult<List<LockKey>> =
         send("GET", "/locks", null) { json.decodeFromString<LockKeys>(it).keys }
@@ -55,7 +68,7 @@ class FetchApi(private val csrfToken: () -> String?, private val client: ClientI
         send("DELETE", "/spaces/${enc(id)}", null, ok = 204) { }
 
     override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> =
-        send("PUT", "/images/${enc(id)}", bytes.unsafeCast<Int8Array>(), type) { checkStoredImage(id, it) }
+        send("PUT", "$file/images/${enc(id)}", bytes.unsafeCast<Int8Array>(), type) { checkStoredImage(id, it) }
 
     /** [ok]: the one success status the endpoint answers with, when it matters. */
     private suspend fun <T> send(

@@ -2,7 +2,9 @@ package notes.core.db
 
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import notes.core.api.RemoteInvite
 import notes.core.api.RemoteSpace
+import notes.core.api.SharedSpace
 import notes.core.api.SpaceTrait
 import notes.core.text.Uuid7
 import notes.core.text.codePointLength
@@ -43,8 +45,16 @@ data class Space(
     val noteCount: Int,
     val icon: String = "",
     val createdAt: Long = 0,
-    val traits: List<SpaceTrait> = emptyList()
+    val traits: List<SpaceTrait> = emptyList(),
+    /** Who's in it, when it's shared (§7.9); null for the account's own. */
+    val shared: SharedSpace? = null
 )
+
+/**
+ * What other members changed in a shared space since this device last showed it (§7.9): [count] notes,
+ * [usernames] of who changed them (latest first), the latest at [latestAt].
+ */
+data class SpaceNews(val count: Int, val usernames: List<String>, val latestAt: Long)
 
 private val traitsJson = Json { ignoreUnknownKeys = true }
 private val traitsSerializer = ListSerializer(SpaceTrait.serializer())
@@ -54,6 +64,9 @@ private fun decodeTraits(text: String): List<SpaceTrait> =
     runCatching { traitsJson.decodeFromString(traitsSerializer, text) }.getOrDefault(emptyList())
 
 private fun encodeTraits(traits: List<SpaceTrait>): String = traitsJson.encodeToString(traitsSerializer, traits)
+
+private fun decodeShared(text: String?): SharedSpace? =
+    text?.let { runCatching { traitsJson.decodeFromString(SharedSpace.serializer(), it) }.getOrNull() }
 
 /** A space change waiting to go to the server. */
 class SpaceChange internal constructor(val id: String, val name: String, val icon: String, val delete: Boolean)
@@ -70,7 +83,7 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
             """
             SELECT s.id, s.name,
                 (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.created_at,
-                s.traits
+                s.traits, s.shared
             FROM spaces s WHERE s.pending_delete = 0
             ORDER BY s.id != ?, lower(s.name), s.id
             """,
@@ -82,8 +95,58 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                 it.getLong(2).toInt(),
                 it.getText(3),
                 it.getLong(4),
-                decodeTraits(it.getText(5))
+                decodeTraits(it.getText(5)),
+                decodeShared(it.textOrNull(6))
             )
+        }
+    }
+
+    /** The invitations waiting for this account, as last synced (§7.9). */
+    suspend fun invites(): List<RemoteInvite> = db.read { sql ->
+        sql.query(
+            "SELECT id, space_id, space_name, space_icon, from_id, from_username, created_at FROM invites ORDER BY created_at, id"
+        ) {
+            RemoteInvite(
+                it.getText(0),
+                it.getText(1),
+                it.getText(2),
+                it.getText(3),
+                notes.core.api.Member(it.getLong(4), it.getText(5)),
+                it.getLong(6)
+            )
+        }
+    }
+
+    /** The space is being shown: what's in it now is no longer news. */
+    suspend fun visit(id: String) {
+        db.write { sql ->
+            sql.exec("UPDATE spaces SET visited_at = ? WHERE id = ? AND shared IS NOT NULL", clock(), id)
+        }
+    }
+
+    /** By shared space, what other members changed since this device last showed it; spaces with none left out. */
+    suspend fun news(): Map<String, SpaceNews> = db.read { sql ->
+        val me = sql.one("SELECT user_id FROM sync_state WHERE id = 1") { it.longOrNull(0) } ?: return@read emptyMap()
+        val spaces = sql.query("SELECT id, coalesce(visited_at, 0), shared FROM spaces WHERE shared IS NOT NULL") {
+            Triple(it.getText(0), it.getLong(1), decodeShared(it.textOrNull(2)))
+        }
+        buildMap {
+            for ((id, since, shared) in spaces) {
+                val changed = sql.query(
+                    """
+                    SELECT updated_by, updated_at FROM notes
+                    WHERE space_id = ? AND deleted_at IS NULL AND updated_by IS NOT NULL AND updated_by != ? AND updated_at > ?
+                    ORDER BY updated_at DESC
+                    """,
+                    id,
+                    me,
+                    since
+                ) { it.getLong(0) to it.getLong(1) }
+                if (changed.isEmpty()) continue
+                val names = shared?.members.orEmpty().associate { it.id to it.username }
+                val who = changed.map { it.first }.distinct().mapNotNull { names[it] }
+                put(id, SpaceNews(changed.size, who, changed.first().second))
+            }
         }
     }
 
@@ -149,7 +212,12 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                 change.name,
                 change.icon
             )
-            sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", encodeTraits(stored.traits), change.id)
+            sql.exec(
+                "UPDATE spaces SET traits = ?, shared = ? WHERE id = ?",
+                encodeTraits(stored.traits),
+                stored.shared?.let { traitsJson.encodeToString(SharedSpace.serializer(), it) },
+                change.id
+            )
         }
     }
 
@@ -180,10 +248,15 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
     /** The server's list replaces every row with nothing waiting to go. */
     internal suspend fun replace(remote: List<RemoteSpace>) {
         db.write { sql ->
-            sql.exec(
-                "DELETE FROM spaces WHERE dirty = 0 AND pending_delete = 0 AND id != ?",
+            // Rows the list still has are updated in place: what this device keeps on them (visited_at) stays.
+            val listed = remote.map { it.id }.toSet()
+            val gone = sql.query(
+                "SELECT id FROM spaces WHERE dirty = 0 AND pending_delete = 0 AND id != ?",
                 Spaces.DEFAULT
-            )
+            ) {
+                it.getText(0)
+            }.filter { it !in listed }
+            for (id in gone) sql.exec("DELETE FROM spaces WHERE id = ?", id)
             for (s in remote) {
                 sql.exec(
                     """
@@ -197,8 +270,35 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                     s.icon,
                     s.createdAt
                 )
-                // Even on a row with a change waiting: traits are the server's, not this device's.
-                sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", encodeTraits(s.traits), s.id)
+                // Even on a row with a change waiting: traits and members are the server's, not this device's.
+                sql.exec(
+                    "UPDATE spaces SET traits = ?, shared = ? WHERE id = ?",
+                    encodeTraits(s.traits),
+                    s.shared?.let { traitsJson.encodeToString(SharedSpace.serializer(), it) },
+                    s.id
+                )
+            }
+        }
+    }
+
+    /** The server's invitations replace this device's copy. */
+    internal suspend fun replaceInvites(remote: List<RemoteInvite>) {
+        db.write { sql ->
+            sql.exec("DELETE FROM invites")
+            for (i in remote) {
+                sql.exec(
+                    """
+                    INSERT INTO invites (id, space_id, space_name, space_icon, from_id, from_username, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    i.id,
+                    i.spaceId,
+                    i.spaceName,
+                    i.spaceIcon,
+                    i.from.id,
+                    i.from.username,
+                    i.createdAt
+                )
             }
         }
     }

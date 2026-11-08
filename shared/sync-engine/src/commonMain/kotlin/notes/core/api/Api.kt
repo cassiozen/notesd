@@ -8,8 +8,12 @@ import kotlinx.serialization.json.JsonObject
 sealed interface ApiResult<out T> {
     data class Ok<T>(val value: T) : ApiResult<T>
 
-    /** 409: the server's current state is in [current] (a note, for note conflicts). */
-    data class Conflict(val code: String, val message: String, val current: JsonObject?) : ApiResult<Nothing>
+    /**
+     * 409: the server's current state is in [current] (a note, for note conflicts); [spaceId] names the space
+     * whose notes are in another file, on `space_elsewhere` (§7.9).
+     */
+    data class Conflict(val code: String, val message: String, val current: JsonObject?, val spaceId: String? = null) :
+        ApiResult<Nothing>
 
     /** No usable session: never signed in, or the session was revoked. */
     data object Unauthenticated : ApiResult<Nothing>
@@ -81,7 +85,9 @@ data class SignIn(
     val refreshToken: String = "",
     val refreshExpiresAt: Long = 0,
     /** May change server-wide settings and manage accounts. */
-    val isAdmin: Boolean = false
+    val isAdmin: Boolean = false,
+    /** The account's id, as notes' updatedBy and shared spaces' members name it (§7.9). 0 from older servers. */
+    val userId: Long = 0
 ) {
     val tokens: Tokens get() = Tokens(accessToken, accessExpiresAt, refreshToken)
 }
@@ -115,7 +121,8 @@ internal data class ErrorBody(
     val message: String = "",
     val field: String? = null,
     val current: JsonObject? = null,
-    val minVersion: String? = null
+    val minVersion: String? = null,
+    val spaceId: String? = null
 )
 
 private const val DEFAULT_RETRY_AFTER_S = 60L
@@ -149,15 +156,23 @@ internal fun <T> apiResult(code: Int, retryAfter: String?, errorText: () -> Stri
 
         code == 426 && error.error == "upgrade_required" -> ApiResult.UpgradeRequired(error.minVersion)
 
-        code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
+        code == 409 -> ApiResult.Conflict(error.error, error.message, error.current, error.spaceId)
 
         else -> ApiResult.Rejected(code, error.error, error.message, error.field)
     }
 }
 
 /** Refusals of a queued change that a retry can't change: the change is dropped, and the user told why. */
-val PERMANENT_ERRORS =
-    setOf("invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default")
+val PERMANENT_ERRORS = setOf(
+    "invalid_request",
+    "hash_mismatch",
+    "image_too_large",
+    "unsupported_image",
+    "space_default",
+    "not_space_owner",
+    "space_exists",
+    "locked_in_shared_space"
+)
 
 /**
  * The server's Resend settings for emailing notes. The key never comes back; [keyHint] is its last 4 characters.
@@ -207,7 +222,11 @@ data class RemoteNote(
     /** A locked note's images as the server records them (§7.6); absent for a plain note. */
     val imageIds: List<String>? = null,
     /** The space the note is in (§7.7). */
-    val spaceId: String = "default"
+    val spaceId: String = "default",
+    /** The account that last changed it (§7.9); null for changes from before that was recorded. */
+    val updatedBy: Long? = null,
+    /** On a tombstone a move to another file left: the space the note went to (§7.9). */
+    val movedTo: String? = null
 )
 
 /** The answer to a create, update or delete. */
@@ -232,8 +251,46 @@ data class RemoteSpace(
     val createdAt: Long = 0,
     val noteCount: Int = 0,
     /** Absent from servers older than traits: none. */
-    val traits: List<SpaceTrait> = emptyList()
+    val traits: List<SpaceTrait> = emptyList(),
+    /** Who's in a shared space (§7.9); null for the account's own. */
+    val shared: SharedSpace? = null
 )
+
+/** A shared space's people, as this account sees them (§7.9). [role] is `owner` or `member`. */
+@Serializable
+data class SharedSpace(
+    val role: String,
+    val members: List<Member> = emptyList(),
+    /** Pending invitations; only the owner gets them. */
+    val invites: List<Invitee> = emptyList()
+) {
+    val isOwner: Boolean get() = role == "owner"
+}
+
+/** An account as other accounts see it. */
+@Serializable
+data class Member(val id: Long, val username: String)
+
+/** A pending invitation into a shared space, as its owner sees it. */
+@Serializable
+data class Invitee(val id: String, val userId: Long, val username: String)
+
+/** An invitation waiting for this account (§7.9). */
+@Serializable
+data class RemoteInvite(
+    val id: String,
+    val spaceId: String,
+    val spaceName: String,
+    val spaceIcon: String = "",
+    val from: Member,
+    val createdAt: Long = 0
+)
+
+@Serializable
+internal data class RemoteInvites(val invites: List<RemoteInvite> = emptyList())
+
+@Serializable
+internal data class RemotePeople(val people: List<Member> = emptyList())
 
 /**
  * A feature on for a whole space (§7.8), worked out by the server. [exposure] is the sentence a move
@@ -275,8 +332,20 @@ const val LOCKED_IMAGE = "application/vnd.notesd.locked"
 /** A locked image of any version; only [LOCKED_IMAGE] itself opens here. */
 fun isLockedImageType(type: String) = type == LOCKED_IMAGE || type.startsWith("$LOCKED_IMAGE.")
 
-/** The calls a sync cycle makes: the JVM's [ApiClient] with device tokens, the browser's with its session cookie. */
+/**
+ * The calls a sync cycle makes: the JVM's [ApiClient] with device tokens, the browser's with its session cookie.
+ * Note, sync and image calls go to the account's file; [inSpace]'s to a shared space's (§7.9).
+ */
 interface SyncApi {
+    /** The same calls for a shared space's file. */
+    fun inSpace(spaceId: String): SyncApi
+
+    /** Moves a note to a space in another file (§7.9): `{operationId, baseRevision, spaceId}`. */
+    suspend fun moveNote(id: String, body: JsonObject): ApiResult<MutationResult>
+
+    /** The invitations waiting for this account. */
+    suspend fun invites(): ApiResult<List<RemoteInvite>>
+
     suspend fun createNote(body: JsonObject): ApiResult<MutationResult>
 
     suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult>

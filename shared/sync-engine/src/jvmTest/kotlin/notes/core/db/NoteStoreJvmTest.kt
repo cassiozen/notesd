@@ -72,12 +72,17 @@ class NoteStoreJvmTest {
         conn.prepare("ALTER TABLE notes DROP COLUMN base_space_id").use { it.step() }
         conn.prepare("DROP TABLE spaces").use { it.step() }
         conn.prepare("DROP TABLE merge_undo").use { it.step() }
+        conn.prepare("DROP TABLE feeds").use { it.step() }
+        conn.prepare("DROP TABLE invites").use { it.step() }
         for ((table, column) in listOf(
             "sync_outbox" to "attempts",
             "sync_outbox" to "parked",
             "pending_images" to "attempts",
             "pending_images" to "parked",
-            "lock_keys" to "kdf"
+            "lock_keys" to "kdf",
+            "notes" to "updated_by",
+            "sync_outbox" to "feed",
+            "sync_state" to "user_id"
         )) {
             conn.prepare("ALTER TABLE $table DROP COLUMN $column").use { it.step() }
         }

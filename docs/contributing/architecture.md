@@ -250,10 +250,23 @@ CREATE TABLE spaces (                  -- §7.7; seeded with the default space
     icon           TEXT NOT NULL DEFAULT '',
     created_at     INTEGER NOT NULL,
     traits         TEXT NOT NULL DEFAULT '[]',  -- §7.8, the server's JSON as last downloaded
+    shared         TEXT,                        -- §7.9, the server's `shared` JSON; NULL for the account's own
+    visited_at     INTEGER,                     -- when this device last showed it (§7.9, what changed)
     dirty          INTEGER NOT NULL DEFAULT 0,  -- created or changed here, not yet sent
     pending_delete INTEGER NOT NULL DEFAULT 0   -- deleted here, not yet sent
 );
+
+CREATE TABLE feeds (                   -- §7.9: one per shared space; the account's own is sync_state
+    space_id   TEXT PRIMARY KEY,
+    cursor     INTEGER NOT NULL DEFAULT 0,
+    generation TEXT,
+    full_sync  INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE invites (...);            -- §7.9, the server's GET /invites as last downloaded
 ```
+
+`notes.updated_by`, `sync_outbox.feed` (`''` for the account's file, else the shared space's id) and `sync_state.user_id` (the account's, from the session) complete it.
 
 Outbox rules:
 
@@ -510,10 +523,12 @@ A space's owner shares it, with every note in it, with other accounts on the sam
 - **Moves between files.** An update whose `spaceId` is a space in another file moves the note there, with the update's text, as one write: the base revision is checked where the note is, and the answer is the revision in the destination. That keeps the note's revision for a move alone and takes the next for changed text, or one past the destination's tombstone of the note if that is higher. The images it shows are copied there; so is any image an update shows that only another file the account reaches has, since pictures are uploaded to the account's own address. The source row becomes a moved tombstone. A retry is answered by the file that recorded its operation id, wherever the note is now. A note filed offline into a space shared since simply lands in that space's file.
 - **Crash safety.** A move, a space's or one note's, is logged in `system.db` (`space_moves`) before the destination is written. The source's write transaction is held from reading the notes until their tombstones commit, so nothing changes in between, and one move runs at a time, so two in opposite directions can't deadlock. At startup, before any request, a logged move is finished if its destination stored the notes (the source's become moved tombstones) and dropped if it didn't (a space's half-made file is deleted); a space counts as stored once `shared_spaces` has it, which is written in the same step.
 - **Moved tombstones.** A tombstone left by a move has `deletedAt` and `movedTo` (the destination space). A device that syncs the destination's feed keeps the note, and that feed brings its revision there; one that doesn't (a member, after a note was moved into someone's own space) removes it like a deletion. A move into a file where the id is a moved tombstone revives that row. A write that meets a share or move that ran after it chose its file starts over, up to three times, then answers `503 busy`, which clients retry like any server error.
-- **Feeds.** A device syncs one feed per file it can reach: the account's (`/sync`) and one per shared space it's in (`/spaces/<id>/sync`), each with its own cursor, generation and full reconciliation (§5.2, §11.4). A note's feed follows its space. Each cycle downloads the space list and invitations, uploads, then downloads every feed. Uploads go to the account's own address; `GET /images/<id>` there finds an image in any file the account reaches, so pictures load from one address.
+- **Feeds.** A device syncs one feed per file it can reach: the account's (`/sync`) and one per shared space it's in (`/spaces/<id>/sync`), each with its own cursor, generation and full reconciliation (§5.2, §11.4). A note's feed follows its space: a space the list marks `shared` is its own feed, the rest are the account's. Each cycle downloads the space list and invitations, adds a feed for each shared space new to the list and drops the feed of one no longer in it (its notes, queued changes and merge records leave the device), uploads, then downloads the account's feed and each shared one. Uploads go to the account's own address; `GET /images/<id>` there finds an image in any file the account reaches, so pictures load from one address.
+- **Uploads.** One queue for every change, sent to the account's address whatever space the note is in (the server finds the file). Moving a note into or out of a shared space is an ordinary update; a device only re-files the note's row under the destination's feed.
+- **Moved tombstones on a device.** One from a feed the note no longer belongs to here (the destination's feed came first, or the move was this device's) is ignored. Otherwise, if the device syncs `movedTo`'s feed, the note takes that space and keeps its text until that feed brings it; if not, it's a deletion (§6.4), a recovered copy keeping any unsynced edit. A move into one of the account's own spaces is followed only when the account made it (the tombstone's `updatedBy`): another member's move to their own space can name an id every account has, such as `default`.
 - **Invitations.** The owner picks people from the accounts on the server (`GET /people`: ids and usernames, readable by any account). An invitation waits in the invitee's switcher (§7.7, from `GET /invites`, read every cycle) until they join or decline; joining switches to the space and starts its feed from cursor 0. There are no notifications or emails.
 - **Leaving.** A member leaves, or the owner removes them: the space leaves their list, and their devices drop its feed and its notes. Changes not yet synced there are lost, which leaving warns about first. The owner can't leave: they hand ownership to a member (`PUT /spaces/<id>/owner`) or stop sharing by removing every member. Removing an account hands each space it owned to the member who joined first; a space left with no member keeps its file on disk for the host, as a removed account's does.
-- **Last editor.** Every note records the account that last changed it (`updatedBy`, set by the server from the session, in every file). Note rows show "Ana · 2h" and the editor "Edited by Ana" only when it wasn't you, by username from the space's member list; an account no longer in it shows nothing.
+- **Last editor.** Every note records the account that last changed it (`updatedBy`, set by the server from the session, in every file; a device sets it to its account, `userId` from the session, on its own edits). Note rows show "Ana · 2h" and the editor "Edited by Ana" only when it wasn't you, by username from the space's member list; an account no longer in it shows nothing.
 - **What changed.** Each device keeps when the account last opened each space. The switcher (§7.7) marks a shared space with a dot and a line such as "Ben edited 3 notes · 2h", counting notes others changed since. It's device-local and never synced.
 - **Trait.** `shared` (§7.8) is on while the space has another member or a pending invitation. Its summary is from the viewer's side: "With Ana and Ben", "Invited Ana", "With Ana · invited Ben"; its exposure names everyone else, members and invited: "Visible to Ana and Ben".
 - **Space list.** `GET /spaces` lists the account's own spaces and the shared ones it's in, the default first, then by name. A shared one adds `shared`: `{role, members: [{id, username}]}`, plus `invites: [{id, userId, username}]` for its owner. Names are unique among an account's own spaces only: a shared space may have the same name as one of a member's own.

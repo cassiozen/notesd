@@ -15,9 +15,12 @@ internal const val CREATE = "create"
 internal const val UPDATE = "update"
 internal const val DELETE = "delete"
 
+/** Moves a note to a space in another file (§7.9); its payload's spaceId is the destination. */
+internal const val MOVE = "move"
+
 internal const val NOTE_COLUMNS =
     "id, title, content, created_at, updated_at, deleted_at, conflict_of, server_revision, dirty, " +
-        "base_title, base_content, space_id, base_space_id"
+        "base_title, base_content, space_id, base_space_id, updated_by"
 
 internal fun noteRow(st: SQLiteStatement) = Note(
     id = st.getText(0),
@@ -32,7 +35,8 @@ internal fun noteRow(st: SQLiteStatement) = Note(
     baseTitle = st.textOrNull(9),
     baseContent = st.textOrNull(10),
     spaceId = st.getText(11),
-    baseSpaceId = st.textOrNull(12)
+    baseSpaceId = st.textOrNull(12),
+    updatedBy = st.longOrNull(13)
 )
 
 internal suspend fun Sql.note(id: String): Note? =
@@ -94,54 +98,129 @@ internal val outboxJson = Json {
     explicitNulls = false
 }
 
-internal suspend fun Sql.enqueue(noteId: String, type: String, payload: Payload?, now: Long) {
+/**
+ * Queues [type] for [noteId], to [feed]: by default the feed of the space the payload names, or of the
+ * note's (§7.9).
+ */
+internal suspend fun Sql.enqueue(noteId: String, type: String, payload: Payload?, now: Long, feed: String? = null) {
     val sent = payload?.copy(imageIds = lockedImageIds(payload.content))
+    val to = feed ?: feedOf(payload?.spaceId ?: note(noteId)?.spaceId)
     exec(
         """
-        INSERT INTO sync_outbox (operation_id, note_id, operation_type, base_revision, payload_json, created_at)
-        VALUES (?, ?, ?, NULL, ?, ?)
+        INSERT INTO sync_outbox (operation_id, note_id, operation_type, base_revision, payload_json, created_at, feed)
+        VALUES (?, ?, ?, NULL, ?, ?, ?)
         """,
         Uuid7.generate(),
         noteId,
         type,
         sent?.let { outboxJson.encodeToString(it) } ?: "{}",
-        now
+        now,
+        to
     )
 }
 
-internal class PendingOp(val operationId: String, val type: String, val payload: Payload)
+internal class PendingOp(val operationId: String, val type: String, val payload: Payload, val feed: String)
 
 /** The newest operation for [noteId] that hasn't been sent: the one later edits coalesce into. */
 internal suspend fun Sql.unsentOp(noteId: String): PendingOp? = one(
     """
-    SELECT operation_id, operation_type, payload_json FROM sync_outbox
+    SELECT operation_id, operation_type, payload_json, feed FROM sync_outbox
     WHERE note_id = ? AND sent = 0 ORDER BY created_at DESC, rowid DESC LIMIT 1
     """,
     noteId
-) { PendingOp(it.getText(0), it.getText(1), outboxJson.decodeFromString(it.getText(2))) }
+) { PendingOp(it.getText(0), it.getText(1), outboxJson.decodeFromString(it.getText(2)), it.getText(3)) }
+
+/** The feed a space's notes sync in (§7.9): a shared space's own, else the account's (''). */
+internal suspend fun Sql.feedOf(spaceId: String?): String {
+    if (spaceId == null) return ""
+    val shared = one("SELECT shared IS NOT NULL FROM spaces WHERE id = ?", spaceId) { it.getLong(0) == 1L }
+    return if (shared == true) spaceId else ""
+}
+
+/** Whether this device has the space, so its notes can follow a note moved there. */
+internal suspend fun Sql.reaches(spaceId: String): Boolean =
+    long("SELECT count(*) FROM spaces WHERE id = ? AND pending_delete = 0", spaceId) > 0
 
 /**
- * Makes sure the server will receive [title]/[content] in [spaceId] for [noteId]: rewrites the
- * unsent create or update, or queues a new update (a sent payload is never changed).
+ * The space the server holds [note] in once its queued changes have gone: its last queued move's destination,
+ * else the space it last synced in, else what a create that went out named. Null if the server never had it.
+ */
+internal suspend fun Sql.serverSpace(note: Note): String? {
+    val moved = one(
+        """
+        SELECT payload_json FROM sync_outbox WHERE note_id = ? AND operation_type = ?
+        ORDER BY created_at DESC, rowid DESC LIMIT 1
+        """,
+        note.id,
+        MOVE
+    ) { outboxJson.decodeFromString<Payload>(it.getText(0)).spaceId }
+    if (moved != null) return moved
+    if (note.serverRevision != null) return note.baseSpaceId ?: note.spaceId
+    return one(
+        "SELECT payload_json FROM sync_outbox WHERE note_id = ? AND sent = 1 AND operation_type = ? LIMIT 1",
+        note.id,
+        CREATE
+    ) { outboxJson.decodeFromString<Payload>(it.getText(0)).spaceId ?: Spaces.DEFAULT }
+}
+
+/**
+ * Makes sure the server will receive [title]/[content] in [spaceId] for [noteId]: rewrites the unsent create
+ * or update, or queues a new update (a sent payload is never changed). A space in another feed than the
+ * server's copy (§7.9) queues the text where the server has it, then a move.
  */
 internal suspend fun Sql.queueText(noteId: String, title: String, content: String, spaceId: String, now: Long) {
-    val pending = unsentOp(noteId)
-    if (pending != null && pending.type != DELETE) {
-        val payload = pending.payload.copy(
-            title = title,
-            content = content,
-            updatedAt = now,
-            imageIds = lockedImageIds(content),
-            spaceId = spaceId
-        )
-        exec(
-            "UPDATE sync_outbox SET payload_json = ? WHERE operation_id = ?",
-            outboxJson.encodeToString(payload),
-            pending.operationId
-        )
-    } else {
-        enqueue(noteId, UPDATE, Payload(title, content, updatedAt = now, spaceId = spaceId), now)
+    val target = feedOf(spaceId)
+    var pending = unsentOp(noteId)
+    // Moved back before the move went: no move at all.
+    if (pending != null && pending.type == MOVE && pending.feed == target) {
+        exec("DELETE FROM sync_outbox WHERE operation_id = ?", pending.operationId)
+        pending = unsentOp(noteId)
     }
+    val server = note(noteId)?.let { serverSpace(it) }
+    val open = pending?.takeIf { it.type != DELETE && it.type != MOVE }
+    when {
+        // The server never had it: its unsent create goes wherever it's filed now.
+        server == null && open != null && open.type == CREATE -> rewrite(open, title, content, spaceId, now, target)
+
+        open != null && open.feed == target && (server == null || feedOf(server) == target) ->
+            rewrite(open, title, content, spaceId, now, target)
+
+        server == null || feedOf(server) == target ->
+            enqueue(noteId, UPDATE, Payload(title, content, updatedAt = now, spaceId = spaceId), now, target)
+
+        else -> {
+            val from = feedOf(server)
+            if (open != null && open.type == UPDATE && open.feed == from) {
+                rewrite(open, title, content, server, now, from)
+            } else {
+                enqueue(noteId, UPDATE, Payload(title, content, updatedAt = now, spaceId = server), now, from)
+            }
+            enqueue(noteId, MOVE, Payload(spaceId = spaceId), now, from)
+        }
+    }
+}
+
+private suspend fun Sql.rewrite(
+    pending: PendingOp,
+    title: String,
+    content: String,
+    spaceId: String,
+    now: Long,
+    feed: String
+) {
+    val payload = pending.payload.copy(
+        title = title,
+        content = content,
+        updatedAt = now,
+        imageIds = lockedImageIds(content),
+        spaceId = spaceId
+    )
+    exec(
+        "UPDATE sync_outbox SET payload_json = ?, feed = ? WHERE operation_id = ?",
+        outboxJson.encodeToString(payload),
+        feed,
+        pending.operationId
+    )
 }
 
 /**
@@ -160,8 +239,8 @@ internal suspend fun Sql.insertCopy(
     rememberImages(id, content, imageIds ?: lockedImageIds(content))
     exec(
         """
-        INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, (SELECT user_id FROM sync_state WHERE id = 1))
         """,
         id,
         title,

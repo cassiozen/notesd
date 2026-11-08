@@ -14,6 +14,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import notes.core.api.ApiResult
 import notes.core.api.LockKey
 import notes.core.api.MutationResult
+import notes.core.api.RemoteInvite
 import notes.core.api.RemoteSpace
 import notes.core.api.SyncApi
 import notes.core.api.SyncPage
@@ -63,6 +64,12 @@ class SyncClassificationTest {
         override suspend fun deleteSpace(id: String): ApiResult<Unit> = ApiResult.Ok(Unit)
 
         override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> = ApiResult.Ok(Unit)
+
+        override fun inSpace(spaceId: String): SyncApi = this
+
+        override suspend fun moveNote(id: String, body: JsonObject) = note(id, body)
+
+        override suspend fun invites(): ApiResult<List<RemoteInvite>> = ApiResult.Ok(emptyList())
     }
 
     private class Env(val test: TestScope, val db: Database, val api: Stub) {

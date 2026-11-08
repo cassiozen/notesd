@@ -23,6 +23,7 @@ import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.api.unexpectedMessage
 import notes.core.db.Database
 import notes.core.db.LockKeyStore
+import notes.core.db.MOVE
 import notes.core.db.Operation
 import notes.core.db.SpaceStore
 import notes.core.db.SyncEvent
@@ -185,6 +186,10 @@ class SyncEngine(
         // Deletes first too, so a name deleted and reused here is free; one refused waits for the notes.
         pushSpaces(api, deletes = true, final = false)?.let { return it }
         pushSpaces(api, deletes = false)?.let { return it }
+        // Before the notes: which spaces are shared, so each change goes to its space's file (§7.9). An odd answer
+        // (a portal's page) doesn't stop the cycle here: the changes get their attempts, and parking, as before.
+        fetchSpaces(api)?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
+        invites(api)?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
         push(api)?.let { return it }
         pushSpaces(api, deletes = true)?.let { return it }
         // The names those deletes freed, for the spaces made here meanwhile.
@@ -248,12 +253,28 @@ class SyncEngine(
         return null
     }
 
-    /** The list is small and has no change feed: fetched whole every cycle, like the keyring. */
+    /**
+     * The list is small and has no change feed: fetched whole every cycle, like the keyring. A shared space new to
+     * it gets a feed; one gone from it takes its notes off the device (§7.9).
+     */
     private suspend fun fetchSpaces(api: SyncApi): Stop? = when (val r = api.spaces()) {
         is ApiResult.Ok -> {
             spaces.replace(r.value)
+            store.syncFeeds()
             null
         }
+
+        else -> stop(r)
+    }
+
+    private suspend fun invites(api: SyncApi): Stop? = when (val r = api.invites()) {
+        is ApiResult.Ok -> {
+            spaces.replaceInvites(r.value)
+            null
+        }
+
+        // A server from before shared spaces: none.
+        is ApiResult.Rejected if r.error == "no_such_endpoint" -> null
 
         else -> stop(r)
     }
@@ -316,6 +337,12 @@ class SyncEngine(
                     pushed = true
                 }
 
+                // Its space's notes are in another file now (shared since it was queued): sent there instead.
+                is ApiResult.Conflict if result.code == SPACE_ELSEWHERE && result.spaceId != null &&
+                    store.refile(op, result.spaceId) -> Unit
+
+                is ApiResult.Conflict if result.code == NOTE_MOVED && moved(op, result) -> Unit
+
                 is ApiResult.Conflict -> {
                     // Without the server's version there's nothing to reconcile with: kept, and tried again.
                     val current = result.current?.let { decodeNote(it.toString()) }
@@ -343,6 +370,21 @@ class SyncEngine(
     }
 
     /**
+     * The note went to another file (§7.9). A move there is done; other changes follow it, if this device has
+     * the space. False leaves the conflict to reconcile, which takes a move out of reach for a deletion.
+     */
+    private suspend fun moved(op: Operation, result: ApiResult.Conflict): Boolean {
+        val current = result.current?.let { decodeNote(it.toString()) } ?: return false
+        val to = current.movedTo ?: return false
+        if (op.type == MOVE && to == op.spaceId) {
+            store.moveDone(op)
+            pushed = true
+            return true
+        }
+        return store.follows(current) && store.refile(op, to)
+    }
+
+    /**
      * A Stop, after [count]ing an attempt against the change, when [r] isn't an answer notesd gives
      * to it: an [ApiResult.Unexpected], or an error code it doesn't send there. Null otherwise.
      */
@@ -356,7 +398,22 @@ class SyncEngine(
         return Stop(SyncOutcome.Failed, unexpectedMessage(status))
     }
 
-    private suspend fun send(api: SyncApi, op: Operation): ApiResult<MutationResult> = when (op.type) {
+    private suspend fun send(root: SyncApi, op: Operation): ApiResult<MutationResult> {
+        // The file the change goes to: the account's, or its space's (§7.9).
+        val api = if (op.feed.isEmpty()) root else root.inSpace(op.feed)
+        return sendTo(api, op)
+    }
+
+    private suspend fun sendTo(api: SyncApi, op: Operation): ApiResult<MutationResult> = when (op.type) {
+        MOVE -> api.moveNote(
+            op.noteId,
+            buildJsonObject {
+                put("operationId", op.operationId)
+                put("baseRevision", op.baseRevision)
+                put("spaceId", op.spaceId)
+            }
+        )
+
         "create" -> api.createNote(
             buildJsonObject {
                 put("operationId", op.operationId)
@@ -393,13 +450,20 @@ class SyncEngine(
         )
     }
 
+    /** The account's feed, then each shared space's (§7.9). */
     private suspend fun pull(api: SyncApi): Stop? {
+        pullFeed(api, "")?.let { return it }
+        for (feed in store.feeds()) pullFeed(api.inSpace(feed), feed)?.let { return it }
+        return null
+    }
+
+    private suspend fun pullFeed(api: SyncApi, feed: String): Stop? {
         var restarted = false
         while (true) {
-            val state = store.state()
+            val state = store.state(feed)
             when (val result = api.sync(state.cursor, pageSize, state.generation)) {
                 is ApiResult.Ok -> {
-                    emit(store.applyPage(result.value))
+                    emit(store.applyPage(result.value, feed))
                     if (!result.value.hasMore) return null
                 }
 
@@ -407,8 +471,11 @@ class SyncEngine(
                     // Restored from a backup. Once per cycle: a second time means something else is wrong.
                     if (restarted) return Stop(SyncOutcome.Failed, result.message)
                     restarted = true
-                    store.startFullSync()
+                    store.startFullSync(feed)
                 }
+
+                // Left or removed since the list came: the next list drops the feed.
+                is ApiResult.Rejected if feed.isNotEmpty() && result.error == "not_found" -> return null
 
                 is ApiResult.Rejected if result.status < 500 -> return Stop(
                     SyncOutcome.Failed,
@@ -449,6 +516,8 @@ class SyncEngine(
 
     private companion object {
         const val OPERATION_ID_REUSED = "operation_id_reused"
+        const val SPACE_ELSEWHERE = "space_elsewhere"
+        const val NOTE_MOVED = "note_moved"
         val json = Json { ignoreUnknownKeys = true }
 
         fun decodeNote(s: String): RemoteNote? = try {
