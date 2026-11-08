@@ -2,6 +2,7 @@ docs/guides/using/settings.md
   s_82799bf566b6e4::t_822d9e0e89fd9a 17
 docs/reference/api.md
   s_82799bf566b6e4::t_822d9e0e89fd9a 182,185-186,197,430-446,451-452,456-457
+  s_82799bf566b6e4::t_c3a06812d64131 196
 apps/web/src/api/users.ts
   s_82799bf566b6e4::t_eb80a8121bd2b2 9-11,20-25
 server/internal/api/respond.go
@@ -16,6 +17,8 @@ apps/web/src/settings/photo.ts
 apps/web/src/auth/auth-context.tsx
   s_82799bf566b6e4::t_1c7560564e0e73 4,12-14,26,41-42,103-110,140-143,186-188,209-214
   s_82799bf566b6e4::t_c2caf3bc636285 215-216
+  s_82799bf566b6e4::t_4cce44b164eb68 111-112
+  s_82799bf566b6e4::t_4fa00e17115858 28-36,180-185,189
 apps/web/src/api/types.ts
   s_82799bf566b6e4::t_eb80a8121bd2b2 144-147,159-161
 apps/web/src/settings/profile.tsx
@@ -49,6 +52,7 @@ apps/web/src/settings/settings.module.css
 server/internal/api/auth_handlers.go
   s_82799bf566b6e4::t_32b340cac6c2d0 29-30,33-34,104-105,132,139-141,161-163
   s_82799bf566b6e4::t_58d33c62bedd78 31-32
+  s_82799bf566b6e4::t_c3a06812d64131 19-20
 docs/guides/self-hosting/users.md
   s_82799bf566b6e4::t_822d9e0e89fd9a 40-41,44-45,67-71
   s_82799bf566b6e4::t_211474073f832f 72
