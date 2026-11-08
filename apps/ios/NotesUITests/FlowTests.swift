@@ -375,16 +375,19 @@ final class FlowTests: XCTestCase {
         let invites = try await call("GET", "api/v1/invites", token: ana)["invites"] as? [[String: Any]] ?? []
         let invite = try XCTUnwrap(invites.first { $0["spaceId"] as? String == family }?["id"] as? String)
         _ = try await call("POST", "api/v1/invites/\(invite)/accept", token: ana, [:])
-        let note = try await call("GET", "api/v1/spaces/\(family)/notes/\(groceries)", token: ana)
+        let note = try await call("GET", "api/v1/notes/\(groceries)", token: ana)
         _ = try await call(
-            "PUT", "api/v1/spaces/\(family)/notes/\(groceries)", token: ana,
+            "PUT", "api/v1/notes/\(groceries)", token: ana,
             [
                 "operationId": newId(), "baseRevision": note["revision"] ?? 0, "title": "Groceries",
                 "content": "Milk, eggs, bread\n",
             ])
         _ = try await call(
-            "POST", "api/v1/spaces/\(family)/notes", token: ana,
-            ["operationId": newId(), "id": newId(), "title": "Birthday ideas", "content": "A kite\n"])
+            "POST", "api/v1/notes", token: ana,
+            [
+                "operationId": newId(), "id": newId(), "title": "Birthday ideas", "content": "A kite\n",
+                "spaceId": family,
+            ])
 
         // Back on Book club's list: a sync brings what Ana did; the switcher says so.
         app.navigationBars.buttons.element(boundBy: 0).tap()
