@@ -72,6 +72,7 @@ apps/ios/NotesCore/Tests/NotesCoreTests/ProfileTests.swift
 apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
   s_82799bf566b6e4::t_8c7553ee64e416 94-95,108,110-111,116,120-145
   s_82799bf566b6e4::t_2757587880cd7f 146-147
+  s_82799bf566b6e4::t_825d2c7210a994 109,115
 apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
   s_82799bf566b6e4::t_8c7553ee64e416 368-408
 apps/ios/NotesCore/Sources/NotesCore/Images/PrepareImage.swift
