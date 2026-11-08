@@ -29,6 +29,25 @@ struct PrepareImageTests {
         return CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as! [CFString: Any]
     }
 
+    @Test func aProfilePhotoIsTheMiddleSquareAtMost512AndStripped() throws {
+        let photo = encode(
+            image(1200, 800, alpha: false), .jpeg,
+            [kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 52.5, kCGImagePropertyGPSLatitudeRef: "N"]])
+        let square = try PrepareImage.photo(photo)
+        let props = properties(square)
+        #expect(props[kCGImagePropertyPixelWidth] as? Int == 512)
+        #expect(props[kCGImagePropertyPixelHeight] as? Int == 512)
+        #expect(props[kCGImagePropertyGPSDictionary] == nil)
+        let source = CGImageSourceCreateWithData(square as CFData, nil)!
+        #expect(CGImageSourceGetType(source).flatMap { UTType($0 as String) } == .jpeg)
+
+        // A small one stays its size: only cropped.
+        let small = properties(try PrepareImage.photo(encode(image(100, 60, alpha: true), .png)))
+        #expect(small[kCGImagePropertyPixelWidth] as? Int == 60)
+        #expect(small[kCGImagePropertyPixelHeight] as? Int == 60)
+        #expect(throws: ImageError.self) { try PrepareImage.photo(Data("not a picture".utf8)) }
+    }
+
     @Test func aLargePhotoIsCappedTurnedUprightAndStripped() throws {
         let photo = encode(
             image(4000, 3000, alpha: false), .jpeg,

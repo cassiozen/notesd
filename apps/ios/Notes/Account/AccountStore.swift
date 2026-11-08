@@ -33,6 +33,20 @@ nonisolated final class AccountStore: Credentials, Sendable {
         var access: String?
         var accessExpiresAt: Int64 = 0
         var refresh: String?
+        // Optional: absent from items saved before the app kept a profile.
+        var userId: Int64?
+        var displayName: String?
+        var avatar: String?
+
+        var profile: Profile {
+            Profile(userId: userId ?? 0, displayName: displayName ?? "", avatar: avatar ?? "")
+        }
+
+        /// The same account with no session: server, username and profile kept.
+        var signedOut: Saved {
+            Saved(
+                server: server, username: username, userId: userId, displayName: displayName, avatar: avatar)
+        }
     }
 
     private struct State {
@@ -43,12 +57,15 @@ nonisolated final class AccountStore: Credentials, Sendable {
     private let keychain: Keychain
     private let state: Mutex<State>
     let account: StateCell<Account>
+    /// The account's name and photo, as the server last said.
+    let profile: StateCell<Profile>
 
     init(keychain: Keychain = Keychain(service: "notesd.account")) {
         self.keychain = keychain
         let saved = keychain.read().flatMap { try? JSONDecoder().decode(Saved.self, from: $0) }
         state = Mutex(State(saved: saved))
         account = StateCell(Self.accountOf(saved))
+        profile = StateCell(saved?.profile ?? Profile())
     }
 
     /// The client for the connected server, shared so its token refreshes are single-flight. Nil if never connected.
@@ -66,15 +83,26 @@ nonisolated final class AccountStore: Credentials, Sendable {
         write { _ in
             Saved(
                 server: server, username: signIn.username, access: signIn.accessToken,
-                accessExpiresAt: signIn.accessExpiresAt, refresh: signIn.refreshToken)
+                accessExpiresAt: signIn.accessExpiresAt, refresh: signIn.refreshToken,
+                userId: signIn.profile.userId, displayName: signIn.profile.displayName,
+                avatar: signIn.profile.avatar)
         }
     }
 
-    /// Forgets the tokens, keeps the server and username.
-    func signOut() {
+    /// The name or photo changed, here or on another device.
+    func profileChanged(_ profile: Profile) {
         write { saved in
-            saved.map { Saved(server: $0.server, username: $0.username) }
+            guard var saved, saved.profile != profile else { return saved }
+            saved.userId = profile.userId
+            saved.displayName = profile.displayName
+            saved.avatar = profile.avatar
+            return saved
         }
+    }
+
+    /// Forgets the tokens, keeps the server, username and profile.
+    func signOut() {
+        write { saved in saved?.signedOut }
     }
 
     func clear() { write { _ in nil } }
@@ -99,7 +127,7 @@ nonisolated final class AccountStore: Credentials, Sendable {
     func revoked(_ old: Tokens) async {
         write { saved in
             guard let saved, saved.refresh == old.refresh else { return saved }
-            return Saved(server: saved.server, username: saved.username)
+            return saved.signedOut
         }
     }
 
@@ -115,6 +143,7 @@ nonisolated final class AccountStore: Credentials, Sendable {
             return next
         }
         account.set(Self.accountOf(next))
+        profile.set(next?.profile ?? Profile())
     }
 
     private static func accountOf(_ s: Saved?) -> Account {

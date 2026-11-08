@@ -64,6 +64,52 @@ public enum PrepareImage {
             bytes: out as Data, type: png ? "image/png" : "image/jpeg", width: image.width, height: image.height)
     }
 
+    /// The server's largest profile photo side (auth.AvatarSize).
+    public static let photoSide = 512
+
+    /// A profile photo as the server takes it: the middle square of the picture, upright, at most `photoSide` a
+    /// side, as a JPEG. Only the pixels are kept, so no EXIF such as location; see-through parts show white.
+    public static func photo(_ data: Data) throws(ImageError) -> Data {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil), CGImageSourceGetCount(source) > 0,
+            let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+            let w = props[kCGImagePropertyPixelWidth] as? Int, let h = props[kCGImagePropertyPixelHeight] as? Int,
+            w > 0, h > 0
+        else {
+            throw ImageError("That picture couldn’t be read.")
+        }
+        // Scaled so the short side, which becomes the square's, is at most photoSide.
+        let scale = min(1, Double(photoSide) / Double(min(w, h)))
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceCreateThumbnailWithTransform: true,
+            kCGImageSourceThumbnailMaxPixelSize: Int((Double(max(w, h)) * scale).rounded(.up)),
+            kCGImageSourceShouldCacheImmediately: true,
+        ]
+        guard let image = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
+            throw ImageError("That picture couldn’t be read.")
+        }
+        let side = min(image.width, image.height, photoSide)
+        guard
+            let ctx = CGContext(
+                data: nil, width: side, height: side, bitsPerComponent: 8, bytesPerRow: 0,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.noneSkipLast.rawValue)
+        else { throw ImageError("That picture couldn’t be read.") }
+        ctx.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 1))
+        ctx.fill(CGRect(x: 0, y: 0, width: side, height: side))
+        ctx.draw(
+            image,
+            in: CGRect(
+                x: -(image.width - side) / 2, y: -(image.height - side) / 2, width: image.width,
+                height: image.height))
+        let out = NSMutableData()
+        guard let square = ctx.makeImage(),
+            let dest = CGImageDestinationCreateWithData(out, UTType.jpeg.identifier as CFString, 1, nil)
+        else { throw ImageError("That picture couldn’t be read.") }
+        CGImageDestinationAddImage(dest, square, [kCGImageDestinationLossyCompressionQuality: 0.88] as CFDictionary)
+        guard CGImageDestinationFinalize(dest) else { throw ImageError("That picture couldn’t be read.") }
+        return out as Data
+    }
+
     /// Whether any pixel is less than opaque: an alpha channel alone (common in screenshots) isn't enough.
     private static func hasAlpha(_ image: CGImage) -> Bool {
         switch image.alphaInfo {

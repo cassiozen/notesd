@@ -18,10 +18,14 @@ final class AppGraph {
     let biometry: BiometryKind
     let mailer: NoteMailer
     let email: EmailSetup
+    /// Profile photos, the account's own.
+    @ObservationIgnored let avatars: Avatars
     @ObservationIgnored private(set) lazy var scheduler = SyncScheduler(graph: self)
 
     /// The account as the screens show it, kept in step with the store.
     private(set) var account: Account
+    /// Its name and photo, as the server last said.
+    private(set) var profile: Profile
     private(set) var syncStatus: SyncStatus = .notConnected
     /// Notes sync gave up on for now (the server kept answering unexpectedly): offered for a retry.
     private(set) var parkedNotes = 0
@@ -160,6 +164,8 @@ final class AppGraph {
         mailer = NoteMailer(store: store, engine: engine, api: { [accounts] in accounts.client() })
         email = EmailSetup(api: { [accounts] in accounts.client() })
         account = accounts.account.value
+        profile = accounts.profile.value
+        avatars = Avatars(dir: Self.avatarDirectory()) { [accounts] in accounts.client() }
         appearance = Appearance(rawValue: Self.defaults.string(forKey: "appearance") ?? "") ?? .system
         let savedIn = Self.defaults.string(forKey: "listFilterSpace") ?? Spaces.defaultId
         listFilter =
@@ -178,6 +184,9 @@ final class AppGraph {
                 self?.account = account
                 if account.isSignedIn { await self?.loadUserId() }
             }
+        }
+        Task { [weak self, accounts] in
+            for await profile in accounts.profile.stream() { self?.profile = profile }
         }
         Task { [weak self, engine, locks] in
             for await status in engine.status.stream() {
@@ -271,6 +280,21 @@ final class AppGraph {
         return (support.appending(path: "images"), caches.appending(path: "images"))
     }
 
+    /// With the database, never purged, so photos show offline.
+    nonisolated static func avatarDirectory() -> URL {
+        let fm = FileManager.default
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            return fm.temporaryDirectory.appending(path: "uitest-avatars-\(UUID().uuidString)")
+        }
+        return fm.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appending(path: "avatars")
+    }
+
+    /// Whose account this is as of now: the name or photo may have changed elsewhere. Quiet when offline.
+    func refreshAccount() async {
+        guard case .signedIn = account, let now = await accounts.client()?.session().value else { return }
+        accounts.profileChanged(now.profile)
+    }
+
     /// How this phone appears in the server's list of signed-in devices.
     var deviceName: String { UIDevice.current.name }
 
@@ -294,6 +318,7 @@ final class AppGraph {
         // Signed out first, so a cycle that starts after the wipe finds no session; the wipe itself waits
         // for any running cycle, which would otherwise write pulled notes back into the emptied database.
         accounts.clear()
+        avatars.wipe()
         try? await engine.exclusive { [store, images, engine] in
             try await store.wipe()
             try await images.wipe()

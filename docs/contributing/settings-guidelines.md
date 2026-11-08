@@ -65,7 +65,7 @@ the list is its own screen and a category opens on top of it with a back button.
 |---------|----------|---------|-----|-----|---------|
 | Server address (the web uses the address it's served from) | Server | device | ✓ | ✓ | ✓ |
 | Signed-in username | Server | account | ✓ | ✓ | ✓ |
-| Name and photo: a line saying how you're shown, Edit… opening a dialog (photo: choose, change, remove; name). Both optional, never asked for elsewhere once signed in. Android: tap the line; the photo comes from the system's photo picker | Server | account | ✓ | – | ✓ |
+| Name and photo: a line saying how you're shown, Edit… opening a dialog (photo: choose, change, remove; name). Both optional, never asked for elsewhere once signed in. Android: tap the line; iOS: the "Name and Photo" row opens a sheet. The phones pick the photo with the system's picker | Server | account | ✓ | ✓ | ✓ |
 | Server version, with a link to releases | Server | – | ✓ | – | – |
 | Update to the newest release (admins; needs `NOTESD_SELF_UPDATE`) | Server | – | ✓ | – | – |
 | Connect to a server / Sign in again | Server | – | – | ✓ | ✓ |
