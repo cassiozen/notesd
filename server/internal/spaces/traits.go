@@ -41,8 +41,9 @@ func (s *Store) AddTrait(key string, src TraitSource) {
 	s.traits[key] = src
 }
 
-// withTraits sets each space's traits, in TraitOrder.
-func (s *Store) withTraits(ctx context.Context, list []Space) error {
+// WithTraits sets each space's traits, in TraitOrder: also shared spaces,
+// which another file holds, listed with this account's.
+func (s *Store) WithTraits(ctx context.Context, list []Space) error {
 	ids := make([]string, len(list))
 	for i := range list {
 		list[i].Traits = []Trait{}

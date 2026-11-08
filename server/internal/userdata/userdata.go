@@ -2,12 +2,15 @@
 // users/<id>.db in the data directory, beside system.db. A user's notes,
 // search index, sync state, spaces, locked-notes keyring and images are all
 // in their file, so one user's requests can never reach another's data.
+// A shared space's notes are in a file of their own, spaces/<id>.db (§7.9).
 package userdata
 
 import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
+	"os"
 	"path/filepath"
 	"sync"
 
@@ -38,18 +41,48 @@ func Path(dataDir string, userID int64) string {
 	return filepath.Join(dataDir, "users", fmt.Sprintf("%d.db", userID))
 }
 
-// Registry opens users' databases on first use and keeps them open. There
-// are only ever a few users, so nothing is closed until Close.
-type Registry struct {
-	dir      string
-	mu       sync.Mutex
-	open     map[int64]*Data
-	onChange func(userID int64)
+// SpacePath is where a shared space's notes database lives.
+func SpacePath(dataDir, spaceID string) string {
+	return filepath.Join(dataDir, "spaces", spaceID+".db")
 }
 
-// NewRegistry returns a registry for the users in dataDir.
+// Registry opens users' and shared spaces' databases on first use and keeps
+// them open. There are only ever a few, so nothing is closed until Close.
+type Registry struct {
+	dir           string
+	mu            sync.Mutex
+	open          map[int64]*Data
+	spaces        map[string]*Data
+	onChange      func(userID int64)
+	onSpaceChange func(spaceID string)
+	onOpenUser    func(userID int64, d *Data)
+	onOpenSpace   func(spaceID string, d *Data)
+}
+
+// NewRegistry returns a registry for the users and shared spaces in dataDir.
 func NewRegistry(dataDir string) *Registry {
-	return &Registry{dir: dataDir, open: map[int64]*Data{}}
+	return &Registry{dir: dataDir, open: map[int64]*Data{}, spaces: map[string]*Data{}}
+}
+
+// OnOpen has users' and spaces' stores set up by fn, those open already and
+// those that open later: what depends on more than one file.
+func (r *Registry) OnOpen(user func(userID int64, d *Data), space func(spaceID string, d *Data)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.onOpenUser, r.onOpenSpace = user, space
+	for id, d := range r.open {
+		user(id, d)
+	}
+	for id, d := range r.spaces {
+		space(id, d)
+	}
+}
+
+// OnSpaceChange is OnChange for shared spaces' files.
+func (r *Registry) OnSpaceChange(fn func(spaceID string)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.onSpaceChange = fn
 }
 
 // OnChange has fn called after a write to a user's notes, spaces or images
@@ -81,13 +114,85 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 	}
 	d := New(db)
 	if fn := r.onChange; fn != nil {
-		changed := func() { fn(userID) }
-		d.Notes.OnCommit(changed)
-		d.Spaces.OnCommit(changed)
-		d.Images.OnCommit(changed)
+		d.onCommit(func() { fn(userID) })
+	}
+	if fn := r.onOpenUser; fn != nil {
+		fn(userID, d)
 	}
 	r.open[userID] = d
 	return d, nil
+}
+
+// OpenSpace returns a shared space's data, opening its database the first
+// time, and creating it if it doesn't exist: callers check the space is
+// shared first.
+func (r *Registry) OpenSpace(ctx context.Context, spaceID string) (*Data, error) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if d, ok := r.spaces[spaceID]; ok {
+		return d, nil
+	}
+	path := SpacePath(r.dir, spaceID)
+	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+		return nil, err
+	}
+	db, err := database.Open(ctx, path)
+	if err != nil {
+		return nil, fmt.Errorf("open database %s: %w", path, err)
+	}
+	if _, err := search.RebuildIfNeeded(ctx, db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("rebuild search index of %s: %w", path, err)
+	}
+	d := New(db)
+	d.Notes.ServeShared(spaceID)
+	if fn := r.onSpaceChange; fn != nil {
+		d.onCommit(func() { fn(spaceID) })
+	}
+	if fn := r.onOpenSpace; fn != nil {
+		fn(spaceID, d)
+	}
+	r.spaces[spaceID] = d
+	return d, nil
+}
+
+// RemoveSpace closes a shared space's database, if open, and deletes its
+// files: one that was never finished, or a deleted space.
+func (r *Registry) RemoveSpace(spaceID string) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if d, ok := r.spaces[spaceID]; ok {
+		delete(r.spaces, spaceID)
+		if err := d.DB.Close(); err != nil {
+			return err
+		}
+	}
+	path := SpacePath(r.dir, spaceID)
+	for _, suffix := range []string{"-wal", "-shm", ""} {
+		if err := os.Remove(path + suffix); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+	}
+	return nil
+}
+
+// EachSpace calls fn with every shared space's database open so far.
+func (r *Registry) EachSpace(fn func(spaceID string, d *Data)) {
+	r.mu.Lock()
+	open := make(map[string]*Data, len(r.spaces))
+	for id, d := range r.spaces {
+		open[id] = d
+	}
+	r.mu.Unlock()
+	for id, d := range open {
+		fn(id, d)
+	}
+}
+
+func (d *Data) onCommit(fn func()) {
+	d.Notes.OnCommit(fn)
+	d.Spaces.OnCommit(fn)
+	d.Images.OnCommit(fn)
 }
 
 // Each calls fn with every database open so far.
@@ -111,6 +216,10 @@ func (r *Registry) Close() error {
 	for id, d := range r.open {
 		errs = append(errs, d.DB.Close())
 		delete(r.open, id)
+	}
+	for id, d := range r.spaces {
+		errs = append(errs, d.DB.Close())
+		delete(r.spaces, id)
 	}
 	return errors.Join(errs...)
 }

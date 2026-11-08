@@ -3,10 +3,12 @@ package api
 import (
 	"errors"
 	"net/http"
+	"sort"
 
 	"notes/server/internal/notes"
 	"notes/server/internal/search"
 	notesync "notes/server/internal/sync"
+	"notes/server/internal/userdata"
 )
 
 // GET /api/v1/notes?limit=50&cursor=...&tag=...|untagged=true|locked=true&space=...
@@ -66,6 +68,7 @@ func (s *Server) createNote(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	in.UpdatedBy = sessionFrom(r.Context()).UserID
 	res, err := u.Notes.Create(r.Context(), in)
 	s.writeMutation(w, r, res, err)
 }
@@ -113,6 +116,7 @@ func (s *Server) updateNote(w http.ResponseWriter, r *http.Request) {
 		UpdatedAt:    req.UpdatedAt,
 		SpaceID:      req.SpaceID,
 		ImageIDs:     req.ImageIDs,
+		UpdatedBy:    sessionFrom(r.Context()).UserID,
 	})
 	s.writeMutation(w, r, res, err)
 }
@@ -139,6 +143,7 @@ func (s *Server) deleteNote(w http.ResponseWriter, r *http.Request) {
 		OperationID:  req.OperationID,
 		ID:           r.PathValue("id"),
 		BaseRevision: req.BaseRevision,
+		UpdatedBy:    sessionFrom(r.Context()).UserID,
 	})
 	s.writeMutation(w, r, res, err)
 }
@@ -217,14 +222,25 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	results, err := search.Search(r.Context(), u.DB, q, filter, int(min(limit, search.MaxLimit)), int(offset))
+	var results []search.Result
+	if filter.ExceptSpace != "" {
+		// The other spaces' notes are in the account's file and every shared space's.
+		results, err = s.searchFiles(r, q, filter, int(min(limit, search.MaxLimit)), int(offset))
+	} else {
+		results, err = search.Search(r.Context(), u.DB, q, filter, int(min(limit, search.MaxLimit)), int(offset))
+	}
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
 	body := map[string]any{"results": results}
 	if filter.Space != "" && offset == 0 {
-		other, err := search.Count(r.Context(), u.DB, q, search.Filter{ExceptSpace: filter.Space})
+		other := 0
+		err := s.eachFile(r, func(d *userdata.Data) error {
+			n, err := search.Count(r.Context(), d.DB, q, search.Filter{ExceptSpace: filter.Space})
+			other += n
+			return err
+		})
 		if err != nil {
 			s.writeErr(w, r, err)
 			return
@@ -232,6 +248,57 @@ func (s *Server) search(w http.ResponseWriter, r *http.Request) {
 		body["otherSpaces"] = other
 	}
 	writeJSON(w, http.StatusOK, body)
+}
+
+// eachFile calls fn with every notes file the caller reaches: their own and
+// each shared space's they're in (§7.9).
+func (s *Server) eachFile(r *http.Request, fn func(*userdata.Data) error) error {
+	userID := sessionFrom(r.Context()).UserID
+	own, err := s.users.Open(r.Context(), userID)
+	if err != nil {
+		return err
+	}
+	if err := fn(own); err != nil {
+		return err
+	}
+	ids, err := s.sharing.SpaceIDs(r.Context(), userID)
+	if err != nil {
+		return err
+	}
+	for _, id := range ids {
+		d, err := s.sharing.Open(r.Context(), userID, id)
+		if err != nil {
+			return err
+		}
+		if err := fn(d); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// searchFiles searches every file the caller reaches, merging the results by
+// rank before taking the page.
+func (s *Server) searchFiles(r *http.Request, q string, filter search.Filter, limit, offset int) ([]search.Result, error) {
+	all := []search.Result{}
+	err := s.eachFile(r, func(d *userdata.Data) error {
+		got, err := search.Search(r.Context(), d.DB, q, filter, offset+limit, 0)
+		all = append(all, got...)
+		return err
+	})
+	if err != nil {
+		return nil, err
+	}
+	sort.SliceStable(all, func(i, j int) bool {
+		if all[i].Rank != all[j].Rank {
+			return all[i].Rank < all[j].Rank
+		}
+		return all[i].UpdatedAt > all[j].UpdatedAt
+	})
+	if offset >= len(all) {
+		return []search.Result{}, nil
+	}
+	return all[offset:min(len(all), offset+limit)], nil
 }
 
 // GET /api/v1/filters?space=... — what the list can be narrowed to: every

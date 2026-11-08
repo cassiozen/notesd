@@ -39,6 +39,9 @@ type Result struct {
 	// Locked notes match on their title only (§10.1).
 	Locked  bool   `json:"locked"`
 	SpaceID string `json:"spaceId"`
+	// Rank is its BM25 score, lower first, so results from several files
+	// (shared spaces', §7.9) can be merged in one order.
+	Rank float64 `json:"-"`
 }
 
 // BuildQuery turns free-form user input into an FTS5 MATCH expression. Each
@@ -78,15 +81,16 @@ func Search(ctx context.Context, db *database.DB, input string, filter Filter, l
 	cond, args := filter.SQL()
 	rows, err := db.R.QueryContext(ctx, `
 		SELECT n.id, n.title, n.updated_at,
-		       snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?, n.space_id
+		       snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?, n.space_id,
+		       bm25(notes_fts, ?, ?) AS rank
 		FROM notes_fts
 		JOIN notes n ON n.seq = notes_fts.rowid
 		WHERE notes_fts MATCH ?
 		  AND n.deleted_at IS NULL
 		  AND `+cond+`
-		ORDER BY bm25(notes_fts, ?, ?), n.updated_at DESC
+		ORDER BY rank, n.updated_at DESC
 		LIMIT ? OFFSET ?`,
-		append(append([]any{markOpen, markClose, len(locks.Family), locks.Family, match}, args...), titleWeight, contentWeight, limit, offset)...)
+		append(append([]any{markOpen, markClose, len(locks.Family), locks.Family, titleWeight, contentWeight, match}, args...), limit, offset)...)
 	if err != nil {
 		return nil, err
 	}
@@ -96,7 +100,7 @@ func Search(ctx context.Context, db *database.DB, input string, filter Filter, l
 	for rows.Next() {
 		var r Result
 		var excerpt sql.NullString
-		if err := rows.Scan(&r.ID, &r.Title, &r.UpdatedAt, &excerpt, &r.Locked, &r.SpaceID); err != nil {
+		if err := rows.Scan(&r.ID, &r.Title, &r.UpdatedAt, &excerpt, &r.Locked, &r.SpaceID, &r.Rank); err != nil {
 			return nil, err
 		}
 		r.Excerpt = renderExcerpt(excerpt.String)

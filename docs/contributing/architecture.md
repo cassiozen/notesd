@@ -66,7 +66,7 @@ The web app offers full note management, editing and search. By default it works
 | Real-time collaboration, CRDTs, WebSockets | One active editor per note; HTTP sync is sufficient |
 | Full version history, merging within a paragraph | Not needed to preserve conflicts; text merges inside a block duplicate and garble prose (§6.2) |
 | File attachments | Need their own storage and sync design; images are the exception (§7.6) |
-| Sharing or collaborating on notes between accounts, end-to-end encryption of every note | Add authorization complexity; E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
+| Sharing single notes between accounts, end-to-end encryption of every note | A space is what's shared (§7.9); per-note sharing would make every note its own boundary. E2EE breaks server-side search. Notes the user locks are the exception (§10.1) |
 | PostgreSQL, Redis, external search, job workers, Kubernetes | Unnecessary at this scale |
 
 ## 3. Architecture
@@ -115,7 +115,9 @@ CREATE TABLE notes (
     updated_at  INTEGER NOT NULL,
     deleted_at  INTEGER,                     -- tombstone marker
     conflict_of TEXT,                        -- original note, for conflict copies
-    space_id    TEXT    NOT NULL DEFAULT 'default' -- §7.7; tombstones keep theirs
+    space_id    TEXT    NOT NULL DEFAULT 'default', -- §7.7; tombstones keep theirs
+    updated_by  INTEGER,                     -- account that last changed it (§7.9); NULL before it was recorded
+    moved_to    TEXT                         -- set on a tombstone left by a move to another file (§7.9)
 );
 CREATE UNIQUE INDEX idx_notes_change_seq ON notes(change_seq);
 CREATE INDEX idx_notes_updated_at ON notes(updated_at DESC, id DESC) WHERE deleted_at IS NULL;
@@ -164,6 +166,18 @@ CREATE TABLE sessions (id TEXT PRIMARY KEY, user_id INTEGER REFERENCES users(id)
                        access_hash TEXT UNIQUE, access_expires_at INTEGER, refresh_hash TEXT UNIQUE, refresh_expires_at INTEGER,
                        csrf_token TEXT, created_at INTEGER, last_used_at INTEGER);
 CREATE TABLE settings (key TEXT PRIMARY KEY, value TEXT);  -- email (Resend) key and sender
+-- Shared spaces (§7.9): their notes are in spaces/<id>.db; who's in them is here.
+CREATE TABLE shared_spaces (id TEXT PRIMARY KEY, name TEXT, icon TEXT, owner_id INTEGER REFERENCES users(id),
+                            created_at INTEGER);
+CREATE TABLE space_members (space_id TEXT REFERENCES shared_spaces(id) ON DELETE CASCADE,
+                            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, joined_at INTEGER,
+                            PRIMARY KEY (space_id, user_id));
+CREATE TABLE space_invites (id TEXT PRIMARY KEY, space_id TEXT REFERENCES shared_spaces(id) ON DELETE CASCADE,
+                            user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, invited_by INTEGER, created_at INTEGER,
+                            UNIQUE (space_id, user_id));
+-- Moves of notes between files, logged until both files are written (§7.9).
+CREATE TABLE space_moves (id TEXT PRIMARY KEY, kind TEXT, space_id TEXT, note_id TEXT, source TEXT, dest TEXT,
+                          created_at INTEGER);
 ```
 
 `notes` has an explicit `INTEGER PRIMARY KEY` rather than relying on the implicit rowid, because `VACUUM` can renumber implicit rowids and silently desynchronize the search index. Migrations are numbered SQL files applied at startup and tracked in `PRAGMA user_version`. The full schema is `server/migrations/` (system.db's in `server/migrations/system/`).
@@ -458,14 +472,14 @@ Spaces keep separate contexts, such as Work and Personal, apart: each note is in
 - **Themes.** An icon comes with a theme, never chosen apart from it, so where you are shows at a glance. Its tinted neutrals (background, paper, ink) carry the mood; its accent shows in few places: the caret, checked tasks, the main button, and links. Each theme is a seed in `scripts/space_icons.py`, which derives every token from it once, moving any that falls short of WCAG contrast (4.5:1 for text; 3:1 for the caret, a control's edge and the focus ring) until it passes. Button labels are checked against their fills but never moved: one that can't pass means changing the seed. If any colour can't pass, generation stops without writing anything; otherwise it writes them for each app: on the web, `styles/space-themes.css`, applied with `data-space` on `<html>`; on Android, `ui/SpaceThemes.kt`, which `NotesTheme` turns into the `Tokens` of the space shown (the editor's View-drawn spans read them as they draw); on iOS, `UI/SpaceThemes.swift`, whose values `Palette` (`UI/Theme.swift`) resolves through a `SpaceThemeTrait` set on the window and bridged to SwiftUI's environment, so a sheet can preview another theme. The app icon's theme is the app's colours from before themes, and an icon an app doesn't have gets it too. Themes are display only: nothing is stored beyond the icon.
 - **The list syncs whole.** Like the keyring, clients download `GET /spaces` on every sync cycle. The native apps keep a local copy: a create or rename marks its row dirty and a delete marks it pending; each cycle sends those (`PUT`/`DELETE /spaces/:id`, both idempotent, so no operation ids) before downloading the list, takes the name the server stored, and replaces every row that isn't waiting to be sent.
 - **Deleting.** Only an empty space can be deleted, never the default (`409 space_not_empty` with its `count`, `409 space_default`). A device whose delete is refused because notes arrived from elsewhere drops the pending delete, and the space comes back with the next list.
-- **Notes.** A note's space is a field like its title (§2.1), plaintext even when the note is locked. A note that names a space that no longer exists (filed offline into a space deleted elsewhere) is stored in the default, and the write's answer says so. Moving a note is an ordinary update. Conflicted and recovered copies keep the local version's space.
+- **Notes.** A note's space is a field like its title (§2.1), plaintext even when the note is locked. A note that names a space that no longer exists (filed offline into a space deleted elsewhere) is stored in the default, and the write's answer says so. Moving a note between spaces in the same file is an ordinary update; into or out of a shared space it's a move between files (§7.9). Conflicted and recovered copies keep the local version's space.
 - **Switcher.** Where you are, then where you can go. Anchored under the name on the web and on Android's wide layout; a bottom sheet on Android phones and iOS. Top to bottom:
   - a card for the current space: its icon and name, a line per trait (§7.8) worded by its label and summary, or by its problem in the danger colour ("Only you" without traits), and Info, to its Space info;
   - invitations into other people's spaces, each with Join and Decline in place, only when there are any;
   - "Switch to": the other spaces in list order, the current one left out (it's the card). Each row's second line is its traits, glyph and label, a problem in the label's place; or, with a dot after the name, what others changed there while this account was away; or "Only you". Each row also opens that space's Space info without switching: an ⓘ on hover or keyboard focus on the web (always shown on touch), a long-press on phones. Left out with one space;
   - New space.
 
-  Invitations and changes come from sharing; until it ships the apps take them as inputs and nothing provides them.
+  Invitations and changes come from sharing (§7.9).
 - **Current space.** Each device has its own, never synced. It is the default at a cold start (a page load on the web), and again on returning after more than 30 minutes in the background, unless a note is open in the editor. Switching clears the list's tag, Untagged or Locked filter. New notes, including from launcher shortcuts, go to the current space.
 - **Search.** Searching covers the current space; the first page also counts the matches in all the others (`otherSpaces`), shown as a last row that lists them (`?exceptSpace=`). Opening one switches to its space.
 - **Export.** With more than one space, `notesd export` writes each note into a folder named after its space, with `images/` shared beside them; with one it stays flat.
@@ -484,6 +498,26 @@ Features that act on a whole space (sharing, publishing, agents) are its *traits
 - **Unknown keys.** An app shows a trait it doesn't know with a generic glyph and the server's label and summary, and asks before a move by its exposure, so an older app never hides that a newer server shares or publishes a space. Its Space info row has no settings and says to update the app.
 - **Sync.** The native apps keep each space's traits on its row. Every list download replaces them, even on a row whose rename is still waiting: traits are the server's, not the device's.
 - **Adding a trait.** Reserve the key in `spaces.TraitOrder` and every app's registry; register its `TraitSource` where the account's stores are built (`userdata`); give each app's registry entry its glyph, its label (Space info names a trait that's off, which the server doesn't send), its settings, and whether it can be turned on. The switcher, Space info and the move check come from the shared pieces and need no change.
+
+### 7.9 Shared spaces
+
+A space's owner shares it, with every note in it, with other accounts on the same server. Sharing is per space, never per note: what you share is a boundary, and everything filed there is shared with it.
+
+- **Roles.** The account that shares a space is its *owner*; everyone who joins is a *member*. The owner invites and removes members, cancels invitations, renames the space, changes its icon, deletes it and hands ownership on; members read and edit every note and can leave. Only the owner can do the first group (`403 not_space_owner`). The default space is never shared, so everyone always has a private one.
+- **Storage.** A shared space is its own database file, `spaces/<id>.db`, with the same tables as an account's (§4.1); its name, icon, owner, members and invitations are in `system.db`. The space keeps the id it had, so its notes keep their `space_id`. Requests for it go under `/api/v1/spaces/<id>/` (notes, sync, search, filters, images, email), which checks membership (`404 not_found` otherwise) and then hands the same handlers as an account's that file. Revisions, change sequences, the sync generation and images are per file, as for accounts.
+- **Sharing.** The first invitation makes a space shared: the server moves its live notes and the images they show into the new file, with the same ids and revisions, leaves a moved tombstone of each in the owner's file, and deletes the space's row there. It refuses the default space (`409 space_default`) and a space holding locked notes (`409 space_has_locked`, with their `count`). The space stays its own file for good: once every member is gone and no invitation is pending it is private again (no trait), without moving back.
+- **Moves between files.** `POST /notes/<id>/move` (under the shared space's prefix for a note in one) moves a note to a space in another file: `{operationId, baseRevision, spaceId}`, answering like an update, with the revision in the destination. The destination keeps the note's revision, or one past the destination's tombstone of it if that is higher; its images are copied there. The source row becomes a moved tombstone. Moving between spaces of one file stays an ordinary update; an update or create naming a space in another file is refused with `409 space_elsewhere` and that `spaceId`, which also covers a note filed offline into a space shared since: the client sends it to that space's feed.
+- **Crash safety.** A move, a space's or one note's, is logged in `system.db` (`space_moves`) before the destination is written. The source's write transaction is held from reading the notes until their tombstones commit, so nothing changes in between, and one move runs at a time, so two in opposite directions can't deadlock. At startup, before any request, a logged move is finished if its destination stored the notes (the source's become moved tombstones) and dropped if it didn't (a space's half-made file is deleted); a space counts as stored once `shared_spaces` has it, which is written in the same step.
+- **Moved tombstones.** A tombstone left by a move has `deletedAt` and `movedTo` (the destination space). A device that syncs the destination's feed keeps the note, and that feed brings its revision there; one that doesn't (a member, after a note was moved into someone's own space) removes it like a deletion. An update, delete or move of a note that has moved is refused with `409 note_moved` and the tombstone in `current`; the client sends the change to the destination's feed instead, and a move answered so to the destination it asked for is done. A move into a file where the id is a moved tombstone revives that row.
+- **Feeds.** A device syncs one feed per file it can reach: the account's (`/sync`) and one per shared space it's in (`/spaces/<id>/sync`), each with its own cursor, generation and full reconciliation (§5.2, §11.4). A note's feed follows its space. Each cycle downloads the space list and invitations, uploads, then downloads every feed. Images go to and come from the feed of the note that shows them.
+- **Invitations.** The owner picks people from the accounts on the server (`GET /people`: ids and usernames, readable by any account). An invitation waits in the invitee's switcher (§7.7, from `GET /invites`, read every cycle) until they join or decline; joining switches to the space and starts its feed from cursor 0. There are no notifications or emails.
+- **Leaving.** A member leaves, or the owner removes them: the space leaves their list, and their devices drop its feed and its notes. Changes not yet synced there are lost, which leaving warns about first. The owner can't leave: they hand ownership to a member (`PUT /spaces/<id>/owner`) or stop sharing by removing every member. Removing an account hands each space it owned to the member who joined first; a space left with no member keeps its file on disk for the host, as a removed account's does.
+- **Last editor.** Every note records the account that last changed it (`updatedBy`, set by the server from the session, in every file). Note rows show "Ana · 2h" and the editor "Edited by Ana" only when it wasn't you, by username from the space's member list; an account no longer in it shows nothing.
+- **What changed.** Each device keeps when the account last opened each space. The switcher (§7.7) marks a shared space with a dot and a line such as "Ben edited 3 notes · 2h", counting notes others changed since. It's device-local and never synced.
+- **Trait.** `shared` (§7.8) is on while the space has another member or a pending invitation. Its summary is from the viewer's side: "With Ana and Ben", "Invited Ana", "With Ana · invited Ben"; its exposure names everyone else, members and invited: "Visible to Ana and Ben".
+- **Space list.** `GET /spaces` lists the account's own spaces and the shared ones it's in, the default first, then by name. A shared one adds `shared`: `{role, members: [{id, username}]}`, plus `invites: [{id, userId, username}]` for its owner. Names are unique among an account's own spaces only: a shared space may have the same name as one of a member's own.
+- **Locked notes.** None in a shared space: locking means only you can read it. The server refuses a locked body in a shared space's file (`422 locked_in_shared_space`). The apps keep Lock where it always is and, chosen in a shared space, explain instead: "Locked notes can't be in a shared space."
+- **Export and mirror.** Each member's `notesd export` and Markdown mirror (§11.1) include the shared spaces they're in, as folders like their own.
 
 ## 8. Search
 
@@ -547,6 +581,14 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `GET` | `/api/v1/filters` | What the list can filter by: tags in live notes with counts, and the locked notes' count; `?space=` for one space |
 | `GET` | `/api/v1/spaces` | Every space with its note count and traits, the default first (§7.7, §7.8) |
 | `PUT` `DELETE` | `/api/v1/spaces/:id` | Create, rename or change the icon of a space (answers with the stored name), or delete an empty one |
+| `POST` `DELETE` | `/api/v1/spaces/:id/invites[/:inviteId]` | Invite an account into a space, sharing it the first time, or cancel an invitation (§7.9) |
+| `DELETE` | `/api/v1/spaces/:id/members/:userId` | Remove a member from a shared space, or leave it |
+| `PUT` | `/api/v1/spaces/:id/owner` | Hand a shared space to another member |
+| any | `/api/v1/spaces/:id/{notes,sync,search,filters,images}…` | A shared space's file, through the same endpoints as the account's |
+| `POST` | `/api/v1/notes/:id/move` | Move a note to a space in another file (§7.9) |
+| `GET` | `/api/v1/invites` | Invitations waiting for this account |
+| `POST` | `/api/v1/invites/:id/accept`, `/decline` | Join a shared space, or decline |
+| `GET` | `/api/v1/people` | Every account's id and username, to invite |
 | `PUT` | `/api/v1/images/:sha256` | Upload an image (raw body); idempotent, the hash must match (§7.6) |
 | `GET` | `/api/v1/images/:sha256` | Download an image, cached as immutable |
 | `GET` | `/api/v1/locks` | The locked-notes keyring (§10.1) |
@@ -567,9 +609,9 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 
 ## 10. Security
 
-An installation holds a few accounts, such as a family's, each signed in from multiple devices. There is no sharing between them and no roles beyond admin.
+An installation holds a few accounts, such as a family's, each signed in from multiple devices. Accounts share whole spaces with each other (§7.9); there are no roles beyond admin, and a shared space's owner.
 
-- **Isolation:** each account's notes, search index, sync state, spaces, locked-notes keyring and images are in its own SQLite file, `users/<id>.db`. A request's session picks the file, and handlers only ever see that one, so a missing check can't expose another account's data. Ids, image hashes and sync generations are per file. Backup, export and removal are per file too.
+- **Isolation:** each account's notes, search index, sync state, spaces, locked-notes keyring and images are in its own SQLite file, `users/<id>.db`; a shared space's are in its own, `spaces/<id>.db` (§7.9). A request's session and path pick one file, the account's or a shared space it's a member of, and handlers only ever see that one, so a missing check can't expose another account's data. Ids, image hashes and sync generations are per file. Backup, export and removal are per file too.
 - **Accounts:** the first is created at first run (below). Admins add the rest from People in the web and Android apps (`POST /users`), or the host with `notesd add-user`; there is no sign-up and no email. An invited account has an empty `password_hash` and can't sign in until its one-time setup link (`setup_links`, SHA-256 of the token, 7 days, one per account) is used to choose a password. The same link, made for an account that has a password, is the apps' password reset; the host's is `notesd reset-password --username`. The server never learns its public address: the app that asked builds the link from its own (the web app's origin, Android's server address: `<address>/setup#<token>`, the token after `#` so it stays out of logs). Removing an account (People, or `remove-user`) deletes it and its sessions and leaves its notes file for the host to export or delete.
 - **Admins:** the first account is an admin; People or `add-user --admin` makes others. Only admins change server-wide settings (the email integration), which every account uses, and manage accounts. The server enforces it (403 `admin_only`), keeps one admin who can sign in, and doesn't let an admin change their own account from People.
 - **Devices:** a signed-out device keeps its notes, and its first sync under another account would upload them there (a different sync generation means full reconciliation, §11.4). So the apps let only the same account sign in again; switching accounts means removing all data first. The web app removes its copy on sign-out and keeps a database per account, so neither applies there.
@@ -632,8 +674,9 @@ Production needs one executable, a writable data directory and an open HTTP port
 ```text
 notesd
 data/
-    system.db    # accounts, sessions, server-wide settings
+    system.db    # accounts, sessions, server-wide settings, shared spaces' members
     users/1.db     # one notes database per account
+    spaces/<id>.db # one per shared space (§7.9)
     *.db-wal       # runtime files, may not exist
     *.db-shm
 ```
@@ -712,6 +755,10 @@ Testing emphasizes failure scenarios over happy paths, with multiple simulated c
 | Device offline for months | Successful sync |
 | Server restored from backup | Safe reconciliation |
 | Same note edited during upload | Later edits stay pending |
+| Two accounts edit a shared note's different blocks | Merged for both |
+| A note moved into or out of a shared space while another device is offline | The offline device's edits follow the note, or become a recovered copy if it left their reach |
+| Server stops in the middle of sharing a space or moving a note | Startup finishes or undoes the move; no note in two files, none lost |
+| A member is removed while offline | Their devices drop the space on the next sync |
 
 Property-based, randomized tests should generate arbitrary sequences of edits, deletions, disconnects, retries and reconnects, then assert that no unsynced user content disappears silently.
 

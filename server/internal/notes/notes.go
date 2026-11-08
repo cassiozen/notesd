@@ -76,6 +76,14 @@ type Note struct {
 	// device that can't read the body still knows them, for a copy it
 	// makes of it. Absent for a plain note, whose content shows them.
 	ImageIDs []string `json:"imageIds,omitempty"`
+	// The account that last changed it (§7.9); absent for changes from
+	// before that was recorded.
+	UpdatedBy *int64 `json:"updatedBy,omitempty"`
+	// On a tombstone a move to another file left: the space the note went
+	// to (§7.9), so a device that follows it there keeps it.
+	MovedTo *string `json:"movedTo,omitempty"`
+
+	nulls *scanned
 }
 
 // queryer is a transaction or a pool.
@@ -106,22 +114,46 @@ func FillImageIDs(ctx context.Context, q queryer, n *Note) error {
 }
 
 // Columns is the SELECT list matching ScanNote.
-const Columns = `id, title, content, revision, change_seq, created_at, updated_at, deleted_at, conflict_of, space_id`
+const Columns = `id, title, content, revision, change_seq, created_at, updated_at, deleted_at, conflict_of, space_id,
+	updated_by, moved_to`
 
 // ScanNote reads a row selected with Columns.
 func ScanNote(row interface{ Scan(...any) error }) (Note, error) {
 	var n Note
-	var deleted sql.NullInt64
-	var conflictOf sql.NullString
-	err := row.Scan(&n.ID, &n.Title, &n.Content, &n.Revision, &n.ChangeSeq,
-		&n.CreatedAt, &n.UpdatedAt, &deleted, &conflictOf, &n.SpaceID)
-	if deleted.Valid {
-		n.DeletedAt = &deleted.Int64
-	}
-	if conflictOf.Valid {
-		n.ConflictOf = &conflictOf.String
-	}
+	err := row.Scan(n.dest()...)
+	n.fill()
 	return n, err
+}
+
+// scanned holds a row's nullable columns until fill moves them to the Note.
+type scanned struct {
+	deleted, updatedBy  sql.NullInt64
+	conflictOf, movedTo sql.NullString
+}
+
+// dest is where Scan puts a row selected with Columns.
+func (n *Note) dest() []any {
+	n.nulls = &scanned{}
+	return []any{&n.ID, &n.Title, &n.Content, &n.Revision, &n.ChangeSeq, &n.CreatedAt, &n.UpdatedAt,
+		&n.nulls.deleted, &n.nulls.conflictOf, &n.SpaceID, &n.nulls.updatedBy, &n.nulls.movedTo}
+}
+
+func (n *Note) fill() {
+	if v := n.nulls; v != nil {
+		if v.deleted.Valid {
+			n.DeletedAt = &v.deleted.Int64
+		}
+		if v.conflictOf.Valid {
+			n.ConflictOf = &v.conflictOf.String
+		}
+		if v.updatedBy.Valid {
+			n.UpdatedBy = &v.updatedBy.Int64
+		}
+		if v.movedTo.Valid {
+			n.MovedTo = &v.movedTo.String
+		}
+		n.nulls = nil
+	}
 }
 
 // Mutation statuses.
@@ -164,6 +196,7 @@ const (
 	CodeRevisionConflict = "revision_conflict" // base revision is stale
 	CodeNoteDeleted      = "note_deleted"      // note is a tombstone
 	CodeNoteExists       = "note_exists"       // create with an ID already in use
+	CodeNoteMoved        = "note_moved"        // note moved to another file (§7.9); current is its tombstone
 )
 
 // ConflictError rejects a mutation that does not apply to the current state.
@@ -183,17 +216,52 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string { return e.Field + ": " + e.Message }
 
+// ElsewhereError refuses a write naming a space whose notes are in another
+// file the account reaches (§7.9): the client sends the note there instead.
+type ElsewhereError struct{ SpaceID string }
+
+func (e *ElsewhereError) Error() string { return "space " + e.SpaceID + " is in another file" }
+
+// ErrLockedInShared refuses a locked body in a shared space's file (§7.9).
+var ErrLockedInShared = errors.New("locked notes can't be in a shared space")
+
 // Store persists notes.
 type Store struct {
 	db       *database.DB
 	now      func() time.Time
 	onCommit func()
+	// home is where a note goes that names no space, or one this file doesn't
+	// have: the default space in an account's file, the space itself in a
+	// shared space's (§7.9).
+	home string
+	// shared refuses locked bodies (§7.9).
+	shared bool
+	// elsewhere reports whether a space this file doesn't have is in another
+	// file userID reaches.
+	elsewhere func(ctx context.Context, userID int64, spaceID string) (bool, error)
 }
 
-// NewStore returns a Store using the system clock.
+// NewStore returns a Store over an account's file, using the system clock.
 func NewStore(db *database.DB) *Store {
-	return &Store{db: db, now: time.Now}
+	return &Store{db: db, now: time.Now, home: spaces.Default}
 }
+
+// ServeShared makes the store a shared space's (§7.9): notes without a space
+// go to spaceID, and locked bodies are refused.
+func (s *Store) ServeShared(spaceID string) {
+	s.home = spaceID
+	s.shared = true
+}
+
+// SetElsewhere has fn tell which spaces this file doesn't have are in
+// another file an account reaches, so a write naming one is refused with
+// ElsewhereError rather than filed in the home space.
+func (s *Store) SetElsewhere(fn func(ctx context.Context, userID int64, spaceID string) (bool, error)) {
+	s.elsewhere = fn
+}
+
+// Home is the space notes without one go to.
+func (s *Store) Home() string { return s.home }
 
 // SetClock overrides the clock, for tests.
 func (s *Store) SetClock(now func() time.Time) { s.now = now }
@@ -224,6 +292,8 @@ type CreateInput struct {
 	// ciphertext (§7.6). Ignored for a plain note. Not omitempty: the
 	// request hash must tell absent (nil) from none ([]).
 	ImageIDs []string `json:"imageIds"`
+	// UpdatedBy is the account writing (§7.9), from its session.
+	UpdatedBy int64 `json:"-"`
 	// Fingerprint identifies the request as received (see Fingerprint);
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
@@ -243,6 +313,8 @@ type UpdateInput struct {
 	// As CreateInput.ImageIDs; nil (absent) keeps the images recorded, for
 	// a client that sends a locked body it can't read, such as a merge's.
 	ImageIDs []string `json:"imageIds"`
+	// As CreateInput.UpdatedBy.
+	UpdatedBy int64 `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 }
@@ -253,6 +325,8 @@ type DeleteInput struct {
 	OperationID  string `json:"operationId"`
 	ID           string `json:"id"`
 	BaseRevision int64  `json:"baseRevision"`
+	// As CreateInput.UpdatedBy.
+	UpdatedBy int64 `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 }
@@ -265,7 +339,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 	if err := validateID("id", in.ID); err != nil {
 		return Result{}, err
 	}
-	if err := validateText(in.Title, in.Content); err != nil {
+	if err := s.validateText(in.Title, in.Content); err != nil {
 		return Result{}, err
 	}
 	if in.ConflictOf != nil {
@@ -292,7 +366,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		} else if !errors.Is(err, ErrNotFound) {
 			return Result{}, err
 		}
-		space, err := resolveSpace(ctx, tx, in.SpaceID, spaces.Default)
+		space, err := s.resolveSpace(ctx, tx, in.SpaceID, s.home, in.UpdatedBy)
 		if err != nil {
 			return Result{}, err
 		}
@@ -301,9 +375,9 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 			return Result{}, err
 		}
 		res, err := tx.ExecContext(ctx, `
-			INSERT INTO notes (id, title, content, revision, change_seq, created_at, updated_at, conflict_of, space_id)
-			VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)`,
-			in.ID, in.Title, in.Content, seq, created, updated, in.ConflictOf, space)
+			INSERT INTO notes (id, title, content, revision, change_seq, created_at, updated_at, conflict_of, space_id, updated_by)
+			VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?, ?)`,
+			in.ID, in.Title, in.Content, seq, created, updated, in.ConflictOf, space, actor(in.UpdatedBy))
 		if err != nil {
 			return Result{}, err
 		}
@@ -333,7 +407,7 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	if in.BaseRevision < 1 {
 		return Result{}, &ValidationError{"baseRevision", "must be a positive revision"}
 	}
-	if err := validateText(in.Title, in.Content); err != nil {
+	if err := s.validateText(in.Title, in.Content); err != nil {
 		return Result{}, err
 	}
 	if err := validateImageIDs(in.ImageIDs); err != nil {
@@ -351,13 +425,13 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
-		if cur.DeletedAt != nil {
-			return Result{}, &ConflictError{Code: CodeNoteDeleted, Current: cur.Note}
+		if err := gone(cur); err != nil {
+			return Result{}, err
 		}
 		if cur.Revision != in.BaseRevision {
 			return Result{}, &ConflictError{Code: CodeRevisionConflict, Current: cur.Note}
 		}
-		space, err := resolveSpace(ctx, tx, in.SpaceID, cur.SpaceID)
+		space, err := s.resolveSpace(ctx, tx, in.SpaceID, cur.SpaceID, in.UpdatedBy)
 		if err != nil {
 			return Result{}, err
 		}
@@ -380,9 +454,10 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		}
 		rev := cur.Revision + 1
 		if _, err := tx.ExecContext(ctx, `
-			UPDATE notes SET title = ?, content = ?, revision = ?, change_seq = ?, updated_at = ?, space_id = ?
+			UPDATE notes SET title = ?, content = ?, revision = ?, change_seq = ?, updated_at = ?, space_id = ?,
+			                 updated_by = ?
 			WHERE seq = ?`,
-			in.Title, in.Content, rev, seq, updated, space, cur.rowid); err != nil {
+			in.Title, in.Content, rev, seq, updated, space, actor(in.UpdatedBy), cur.rowid); err != nil {
 			return Result{}, err
 		}
 		if err := search.IndexNote(ctx, tx, cur.rowid, in.Title, in.Content); err != nil {
@@ -427,6 +502,10 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 		if err != nil {
 			return Result{}, err
 		}
+		if cur.MovedTo != nil {
+			// Not deleted: the deletion is for the note where it went.
+			return Result{}, &ConflictError{Code: CodeNoteMoved, Current: cur.Note}
+		}
 		if cur.DeletedAt != nil {
 			// The outcome the client wants already holds, whatever its base.
 			return Result{ID: cur.ID, Status: StatusAlreadyDeleted, Revision: cur.Revision,
@@ -445,9 +524,9 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 		updated := max(now, cur.CreatedAt)
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE notes SET title = '', content = '', revision = ?, change_seq = ?,
-			                 updated_at = ?, deleted_at = ?
+			                 updated_at = ?, deleted_at = ?, updated_by = ?
 			WHERE seq = ?`,
-			rev, seq, updated, now, cur.rowid); err != nil {
+			rev, seq, updated, now, actor(in.UpdatedBy), cur.rowid); err != nil {
 			return Result{}, err
 		}
 		if err := search.UnindexNote(ctx, tx, cur.rowid); err != nil {
@@ -555,19 +634,11 @@ type storedNote struct {
 
 func loadForUpdate(ctx context.Context, tx *sql.Tx, id string) (storedNote, error) {
 	var sn storedNote
-	var deleted sql.NullInt64
-	var conflictOf sql.NullString
 	err := tx.QueryRowContext(ctx, `SELECT seq, `+Columns+` FROM notes WHERE id = ?`, id).Scan(
-		&sn.rowid, &sn.ID, &sn.Title, &sn.Content, &sn.Revision, &sn.ChangeSeq,
-		&sn.CreatedAt, &sn.UpdatedAt, &deleted, &conflictOf, &sn.SpaceID)
+		append([]any{&sn.rowid}, sn.dest()...)...)
+	sn.fill()
 	if errors.Is(err, sql.ErrNoRows) {
 		return sn, ErrNotFound
-	}
-	if deleted.Valid {
-		sn.DeletedAt = &deleted.Int64
-	}
-	if conflictOf.Valid {
-		sn.ConflictOf = &conflictOf.String
 	}
 	if err != nil {
 		return sn, err
@@ -713,13 +784,51 @@ func validateSpace(id *string) error {
 	return validateID("spaceId", *id)
 }
 
-// resolveSpace is the space a note goes to: the one the client named if it
-// still exists (a deleted one means the default), or else def.
-func resolveSpace(ctx context.Context, tx *sql.Tx, id *string, def string) (string, error) {
+// resolveSpace is the space a note goes to: def if the client named none;
+// the one it named if this file has it; refused with ElsewhereError if
+// another file the writer reaches does; else the home space (a note filed
+// offline into a space deleted elsewhere).
+func (s *Store) resolveSpace(ctx context.Context, tx *sql.Tx, id *string, def string, userID int64) (string, error) {
 	if id == nil {
 		return def, nil
 	}
-	return spaces.Resolve(ctx, tx, *id)
+	// A shared space's file has only its own space; its 'default' row isn't one.
+	if !s.shared || *id == s.home {
+		if got, err := spaces.Resolve(ctx, tx, *id); err != nil || got == *id {
+			return got, err
+		}
+	}
+	if s.elsewhere != nil {
+		ok, err := s.elsewhere(ctx, userID, *id)
+		if err != nil {
+			return "", err
+		}
+		if ok {
+			return "", &ElsewhereError{SpaceID: *id}
+		}
+	}
+	return s.home, nil
+}
+
+// gone refuses a change to a tombstone: note_moved for one a move left,
+// whose change belongs where the note went, else note_deleted.
+func gone(cur storedNote) error {
+	switch {
+	case cur.MovedTo != nil:
+		return &ConflictError{Code: CodeNoteMoved, Current: cur.Note}
+	case cur.DeletedAt != nil:
+		return &ConflictError{Code: CodeNoteDeleted, Current: cur.Note}
+	}
+	return nil
+}
+
+// actor is the updated_by value for a write by userID: NULL when unknown (a
+// tool rather than a session).
+func actor(userID int64) any {
+	if userID <= 0 {
+		return nil
+	}
+	return userID
 }
 
 func validateOp(op string) error {
@@ -734,6 +843,15 @@ func validateID(field, id string) error {
 		return &ValidationError{field, "must be 1-64 characters of [A-Za-z0-9_-]"}
 	}
 	return nil
+}
+
+// validateText checks a note's text, refusing a locked body in a shared
+// space's file.
+func (s *Store) validateText(title, content string) error {
+	if s.shared && locks.IsLocked(content) {
+		return ErrLockedInShared
+	}
+	return validateText(title, content)
 }
 
 func validateText(title, content string) error {
