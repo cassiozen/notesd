@@ -250,24 +250,35 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		shared, err := memberSpaces(ctx, system, u.ID)
+		shared, err := memberSpaces(ctx, system, u.ID, true)
 		if err != nil {
 			return err
 		}
-		var dbs []*database.DB
-		defer func() {
-			for _, db := range dbs {
-				db.Close()
+		return withUserDB(ctx, o.dataDir, u, func(db *database.DB) error {
+			var done []sharedSpace
+			var dbs []*database.DB
+			defer func() {
+				for _, sdb := range dbs {
+					sdb.Close()
+				}
+			}()
+			for _, sp := range shared {
+				// A share cut short by a stop: its notes are the space's once the account's file let go of it.
+				var held bool
+				if err := db.R.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM spaces WHERE id = ?)`, sp.id).Scan(&held); err != nil {
+					return err
+				}
+				if held {
+					continue
+				}
+				sdb, err := database.Open(ctx, userdata.SpacePath(o.dataDir, sp.id))
+				if err != nil {
+					return fmt.Errorf("open shared space %s: %w", sp.name, err)
+				}
+				done, dbs = append(done, sp), append(dbs, sdb)
 			}
-		}()
-		for _, sp := range shared {
-			db, err := database.Open(ctx, userdata.SpacePath(o.dataDir, sp.id))
-			if err != nil {
-				return fmt.Errorf("open shared space %s: %w", sp.name, err)
-			}
-			dbs = append(dbs, db)
-		}
-		return withUserDB(ctx, o.dataDir, u, func(db *database.DB) error { return export(ctx, db, shared, dbs, o) })
+			return export(ctx, db, done, dbs, o)
+		})
 	case "import":
 		u, err := oneUser(ctx, authSvc, o.username)
 		if err != nil {
@@ -535,14 +546,17 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 					return nil, err
 				}
 				out := []mirror.Source{{DB: d.DB}}
-				shared, err := memberSpaces(ctx, system, userID)
+				shared, err := memberSpaces(ctx, system, userID, false)
 				if err != nil {
 					return nil, err
 				}
 				for _, sp := range shared {
-					sd, err := users.OpenSpace(ctx, sp.id)
+					sd, err := users.OpenSpaceIfExists(ctx, sp.id)
 					if err != nil {
 						return nil, err
+					}
+					if sd == nil {
+						continue // deleted since the list
 					}
 					out = append(out, mirror.Source{Feed: sp.id, Name: sp.name, DB: sd.DB})
 				}
@@ -815,13 +829,13 @@ func collectImages(ctx context.Context, system *database.DB, a *auth.Service, us
 // sharedSpace is a shared space as a command or the mirror lists it.
 type sharedSpace struct{ id, name string }
 
-// memberSpaces lists the shared spaces userID is in (§7.9), leaving out one
-// still being shared, whose notes are in the owner's file.
-func memberSpaces(ctx context.Context, system *database.DB, userID int64) ([]sharedSpace, error) {
+// memberSpaces lists the shared spaces userID is in (§7.9). Without pending, one still being shared, whose
+// notes are in the owner's file, is left out.
+func memberSpaces(ctx context.Context, system *database.DB, userID int64, pending bool) ([]sharedSpace, error) {
 	rows, err := system.R.QueryContext(ctx, `SELECT ss.id, ss.name FROM shared_spaces ss
 		JOIN space_members m ON m.space_id = ss.id AND m.user_id = ?
-		WHERE NOT EXISTS (SELECT 1 FROM space_moves mv WHERE mv.kind = 'space' AND mv.space_id = ss.id)
-		ORDER BY ss.name, ss.id`, userID)
+		WHERE ? OR NOT EXISTS (SELECT 1 FROM space_moves mv WHERE mv.kind = 'space' AND mv.space_id = ss.id)
+		ORDER BY ss.name, ss.id`, userID, pending)
 	if err != nil {
 		return nil, err
 	}

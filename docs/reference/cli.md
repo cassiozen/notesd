@@ -192,7 +192,7 @@ what it reads and how.
 notesd check [--username NAME]
 ```
 
-Runs SQLite's integrity check on the system database and each account's database, re-hashes every
+Runs SQLite's integrity check on the system database, each account's database and each shared space's, re-hashes every
 image, and prints `ok`, with a warning for each image a note shows that isn't stored. The checks
 never change anything. Like every command, though, it first applies any upgrade a newer notesd
 needs to the data directory, as `serve` would. notesd never deletes or replaces a damaged database by itself: if `check`

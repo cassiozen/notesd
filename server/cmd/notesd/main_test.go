@@ -275,8 +275,29 @@ func TestSharedSpacesInCommands(t *testing.T) {
 		t.Fatalf("a member's export has the shared space: %q %v", got, err)
 	}
 	for _, c := range [][]string{{"reindex"}, {"check"}, {"gc-images", "--dry-run"}} {
-		if err := cmd(c...); err != nil {
-			t.Fatalf("%v over the shared space's file too: %v", c, err)
+		out, err := stdout(t, func() error { return cmd(c...) })
+		if err != nil || !strings.Contains(out, "shared space Family (fam): ") {
+			t.Fatalf("%v over the shared space's file too: %v\n%s", c, err, out)
 		}
 	}
+}
+
+// stdout is what fn prints.
+func stdout(t *testing.T, fn func() error) (string, error) {
+	t.Helper()
+	r, w, err := os.Pipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	saved := os.Stdout
+	os.Stdout = w
+	done := make(chan string)
+	go func() {
+		b, _ := io.ReadAll(r)
+		done <- string(b)
+	}()
+	ferr := fn()
+	os.Stdout = saved
+	w.Close()
+	return <-done, ferr
 }
