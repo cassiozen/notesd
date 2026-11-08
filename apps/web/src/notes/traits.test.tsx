@@ -8,6 +8,7 @@ const agent: SpaceTrait = { key: 'agent', label: 'Agent', summary: 'A local mode
 const calendar: SpaceTrait = { key: 'calendar', label: 'Calendar', summary: 'Synced', exposure: 'Sent to Apple' }
 
 const space = (...traits: SpaceTrait[]): Space => ({ id: 's', name: 'S', icon: '', createdAt: 0, noteCount: 0, traits })
+const canTurnOn = (s: Space) => TRAITS.filter((t) => t.canTurnOn(s)).map((t) => t.key)
 
 describe('the registry', () => {
   it('keeps the server’s order', () => {
@@ -20,8 +21,12 @@ describe('the registry', () => {
     expect(traitGlyph('shared')).not.toBe(UnknownGlyph)
   })
 
-  it('offers nothing to turn on yet', () => {
-    expect(TRAITS.filter((t) => t.canTurnOn(space()))).toEqual([])
+  it('offers sharing for a space of the account’s own, never the default, nor to a member', () => {
+    expect(canTurnOn(space())).toEqual(['shared'])
+    expect(canTurnOn({ ...space(), id: 'default' })).toEqual([])
+    // Shared once, no one left in it: its owner can share it again.
+    expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [{ id: 1, username: 'me' }] } })).toEqual(['shared'])
+    expect(canTurnOn({ ...space(), shared: { role: 'member', members: [] } })).toEqual([])
   })
 })
 
@@ -42,8 +47,9 @@ describe('traitRows', () => {
     ])
   })
 
-  it('is empty for a space with none', () => {
-    expect(traitRows(space())).toEqual([])
+  it('lists only what can be turned on for a space with none', () => {
+    expect(traitRows(space()).map((r) => [r.kind, r.kind === 'off' ? r.entry.key : r.trait.key])).toEqual([['off', 'shared']])
+    expect(traitRows({ ...space(), id: 'default' })).toEqual([])
   })
 })
 

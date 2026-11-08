@@ -2,7 +2,7 @@ import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent, type 
 import type { Space, TagCount } from '../api/types'
 import { dragRegion } from '../desktop'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
-import { SpaceMenu } from './space-menu'
+import { SpaceMenu, type SpaceInvite } from './space-menu'
 import { DEFAULT_SPACE } from './spaces'
 import type { ListFilter } from './store'
 import { buildTree, type TagNode } from './tag-tree'
@@ -22,6 +22,13 @@ type Props = {
   onNewSpace: () => void
   /** A space's Space info. */
   onSpaceInfo: (id: string) => void
+  /** Invitations, and what others changed in each space (§7.9), for the switcher. */
+  sharing?: {
+    invites: readonly SpaceInvite[]
+    changes: Readonly<Record<string, string>>
+    onJoin: (id: string) => void
+    onDecline: (id: string) => void
+  }
   /** Docked beside the list (wide screens), it can be hidden; otherwise it's a screen of its own. */
   onHide?: () => void
   /** Docked and hidden: kept in place, out of reach, so hiding and showing can animate. */
@@ -53,7 +60,22 @@ function save(key: string, value: unknown) {
 }
 
 /** Where the list can point: All notes, Untagged, Locked and the tag tree. Settings live here too. */
-export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spaces, space, onSpace, onNewSpace, onSpaceInfo, onHide, hidden = false, hideRef }: Props) {
+export function TagsPanel({
+  tags,
+  lockedCount,
+  filter,
+  onFilter,
+  onSettings,
+  spaces,
+  space,
+  onSpace,
+  onNewSpace,
+  onSpaceInfo,
+  sharing,
+  onHide,
+  hidden = false,
+  hideRef,
+}: Props) {
   const tagsId = useId()
   const tree = useMemo(() => buildTree(tags), [tags])
   const [expanded, setExpanded] = useState(() => new Set(load<string[]>(EXPANDED_KEY, [])))
@@ -138,7 +160,7 @@ export function TagsPanel({ tags, lockedCount, filter, onFilter, onSettings, spa
         <div className={styles.header} {...dragRegion('deep')}>
           {/* Before the list loads, the default space: the switcher keeps its place. */}
           <h1 className={styles.title}>
-            <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} onInfo={onSpaceInfo} />
+            <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} onInfo={onSpaceInfo} {...sharing} />
           </h1>
           {onHide && (
             <button

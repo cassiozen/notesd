@@ -59,6 +59,7 @@ export function localSource(engine: Engine): NotesSource {
         if (!blob) throw new ApiError(404, { error: 'not_found', message: 'No such image' })
         return blob
       },
+      // Sync uploads it to the file of each note here that shows it (§7.9).
       async put(id, bytes, type) {
         await engine.call('addImage', id, bytes, type)
       },
@@ -95,6 +96,16 @@ export function localSource(engine: Engine): NotesSource {
           throw new ApiError(409, { error: 'space_not_empty', message: 'The space still has notes' })
         }
         requestSync()
+      },
+    },
+    sharing: {
+      invites: () => engine.call('invites'),
+      // The engine knows the account from setUserId.
+      news: () => engine.call('news'),
+      visit: (space) => engine.call('visit', space),
+      unsynced: (space) => engine.call('unsynced', space),
+      async settle() {
+        await engine.call('sync')
       },
     },
     onStale(listener) {
@@ -194,7 +205,11 @@ function watchSync(engine: Engine, listener: (state: SyncState) => void): () => 
 }
 
 // Revision 0 is how the screens tell a note the server doesn't have yet.
-const listItem = ({ revision, ...item }: LocalListItem): ListItem => ({ ...item, revision: revision ?? 0 })
+const listItem = ({ revision, updatedBy, ...item }: LocalListItem): ListItem => ({
+  ...item,
+  revision: revision ?? 0,
+  ...(updatedBy !== null && { updatedBy }),
+})
 
 function note(n: LocalNote): Note {
   return {
@@ -208,5 +223,6 @@ function note(n: LocalNote): Note {
     deletedAt: null,
     ...(n.conflictOf !== null && { conflictOf: n.conflictOf }),
     spaceId: n.spaceId,
+    ...(n.updatedBy !== null && { updatedBy: n.updatedBy }),
   }
 }

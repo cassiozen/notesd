@@ -1,5 +1,7 @@
 import { ApiError, NetworkError, UNEXPECTED, unexpectedMessage } from '../api/client'
+import { filePath, knowSpaces, sameFile } from '../api/files'
 import { notes } from '../api/notes'
+import { spaces } from '../api/spaces'
 import { canonical, parse } from '../editor/markdown'
 import { mergeBody } from '../editor/merge'
 import type { MutationResult, Note } from '../api/types'
@@ -44,6 +46,8 @@ export type Snapshot = {
   imagesBusy: boolean
   /** The space the note is (to be) in. */
   spaceId: string
+  /** The account that last changed it, when that wasn't this one here (§7.9). */
+  updatedBy: number | null
   /** Gone from the store underneath the editor; [copy] holds edits that were still unsaved. */
   gone: { copy: Saver | null } | null
   /** Edits from another device were merged in (§6.2) and undoMerge() can still split them apart. */
@@ -64,7 +68,11 @@ export type Save = {
   spaceId: string
 }
 
-type Pending = Save & { operationId: string; create: boolean; baseRevision: number }
+/**
+ * [at]: the space whose file has the note (§7.9), where an update or move goes. A move is one
+ * between files, sent before any text change, which then goes to the new file.
+ */
+type Pending = Save & { operationId: string; kind: 'create' | 'update' | 'move'; baseRevision: number; at: string }
 
 /** A note from the server with a locked body opened (§10.1). */
 export type Opened<N = Note> = { note: N; locked: boolean; envelope: string | null }
@@ -94,7 +102,14 @@ export function canonicalFields(f: Fields): Fields {
 export const timing = { debounceMs: 1500, retryBaseMs: 2000, retryMaxMs: 30_000, undoDeleteMs: 5000, quietMs: 2000 }
 
 /** Codes for a save the server will never take as it is: retrying the same thing can't help. */
-const PERMANENT = new Set(['invalid_request', 'hash_mismatch', 'image_too_large', 'unsupported_image', 'space_default'])
+const PERMANENT = new Set([
+  'invalid_request',
+  'hash_mismatch',
+  'image_too_large',
+  'unsupported_image',
+  'space_default',
+  'locked_in_shared_space',
+])
 
 /** How many bytes a keepalive request may carry (browsers cap the total at 64 KB). */
 const KEEPALIVE_LIMIT = 60_000
@@ -113,6 +128,8 @@ export abstract class SaverCore implements Saver {
   /** The note's space, here and as last stored (§7.7). */
   protected space: string
   protected baseSpace: string
+  /** Who last changed it, when it wasn't this account here; null once this side saves. */
+  protected updatedBy: number | null
   /** The stored envelope and the text it holds: unchanged text is sent as the same envelope, never re-encrypted. */
   protected sealed: { plain: string; envelope: string } | null
   /** The editor's current values; read lazily so serialization happens per save, not per keystroke. */
@@ -150,6 +167,7 @@ export abstract class SaverCore implements Saver {
     this.baseLocked = this.created && this.locked
     this.space = init.spaceId ?? DEFAULT_SPACE
     this.baseSpace = this.space
+    this.updatedBy = init.updatedBy ?? null
     this.sealed = init.envelope ? { plain: this.base.content, envelope: init.envelope } : null
     const fields = { ...init.fields }
     this.blank = init.blank ?? { title: '', content: '' }
@@ -420,6 +438,7 @@ export abstract class SaverCore implements Saver {
       imageError: this.imageError,
       imagesBusy: this.imagesBusy > 0,
       spaceId: this.space,
+      updatedBy: this.updatedBy,
       gone: this.gone,
       merged: this.merged,
       split: this.split,
@@ -498,7 +517,8 @@ export class NoteSaver extends SaverCore {
   /** Last-chance save while the page unloads. Fire and forget. */
   flushOnUnload() {
     clearTimeout(this.debounce)
-    if (this.blocked() || this.inflight) return
+    // A move between files goes before the text, and isn't worth a keepalive of its own.
+    if (this.blocked() || this.inflight || this.movingFiles()) return
     // A new locked save can't be encrypted synchronously; beforeunload asks the user to stay instead.
     const p = this.pending ?? (this.locked ? null : this.toPending(this.plainSave()))
     if (!p) return
@@ -522,7 +542,28 @@ export class NoteSaver extends SaverCore {
   }
 
   private toPending(s: Save | null): Pending | null {
-    return s && { ...s, operationId: crypto.randomUUID(), create: !this.created, baseRevision: this.revision }
+    if (!s) return null
+    const kind = this.created ? 'update' : 'create'
+    return { ...s, operationId: crypto.randomUUID(), kind, baseRevision: this.revision, at: this.created ? this.baseSpace : s.spaceId }
+  }
+
+  /** Moved to a space in another file than the server has it in (§7.9). */
+  private movingFiles(): boolean {
+    return this.created && !sameFile(this.space, this.baseSpace)
+  }
+
+  private movePending(): Pending {
+    const fields = this.base
+    return {
+      fields,
+      wire: fields,
+      locked: this.baseLocked,
+      spaceId: this.space,
+      operationId: crypto.randomUUID(),
+      kind: 'move',
+      baseRevision: this.revision,
+      at: this.baseSpace,
+    }
   }
 
   private async send(p: Pending, keepalive = false): Promise<MutationResult> {
@@ -554,8 +595,9 @@ export class NoteSaver extends SaverCore {
   }
 
   private request(p: Pending, keepalive: boolean): Promise<MutationResult> {
-    return p.create
-      ? notes.create(
+    switch (p.kind) {
+      case 'create':
+        return notes.create(
           {
             operationId: p.operationId,
             id: this.id,
@@ -566,8 +608,10 @@ export class NoteSaver extends SaverCore {
           },
           keepalive,
         )
-      : notes.update(
+      case 'update':
+        return notes.update(
           this.id,
+          p.at,
           {
             operationId: p.operationId,
             baseRevision: p.baseRevision,
@@ -577,13 +621,16 @@ export class NoteSaver extends SaverCore {
           },
           keepalive,
         )
+      case 'move':
+        return notes.move(this.id, p.at, { operationId: p.operationId, baseRevision: p.baseRevision, spaceId: p.spaceId })
+    }
   }
 
   protected async run(): Promise<void> {
     for (;;) {
       // Sequential on purpose, like the request below.
       // oxlint-disable-next-line no-await-in-loop
-      const p = this.pending ?? this.toPending(await this.nextSave())
+      const p = this.pending ?? (this.movingFiles() ? this.movePending() : this.toPending(await this.nextSave()))
       if (!p) {
         if (this.waitingForUnlock) this.set('failed')
         else if (!this.dirty) this.set('saved')
@@ -605,9 +652,11 @@ export class NoteSaver extends SaverCore {
       this.failures = 0
       this.created = true
       this.revision = result.revision
+      this.updatedBy = null
       this.base = p.fields
       this.baseLocked = p.locked
-      this.sealed = p.locked ? { plain: p.fields.content, envelope: p.wire.content } : null
+      // A move sends no text: the stored envelope is still the one.
+      if (p.kind !== 'move') this.sealed = p.locked ? { plain: p.fields.content, envelope: p.wire.content } : null
       // A space deleted elsewhere: the server filed the note in the default instead.
       const space = result.spaceId ?? p.spaceId
       if (this.space === p.spaceId) this.space = space
@@ -624,6 +673,10 @@ export class NoteSaver extends SaverCore {
   }
 
   private fail(err: unknown) {
+    if (err instanceof ApiError && err.status === 409 && (err.code === 'space_elsewhere' || err.code === 'note_moved')) {
+      void this.refile(err)
+      return
+    }
     if (err instanceof ApiError && err.status === 409 && err.code === 'revision_conflict' && err.current) {
       this.pending = null
       // The unsent snapshot is the local side of the merge; edits since then are still in read().
@@ -678,6 +731,51 @@ export class NoteSaver extends SaverCore {
       message: err instanceof ApiError ? unexpectedMessage(err.status) : 'The save didn’t go through. Try again.',
     }
     this.set('failed')
+  }
+
+  /**
+   * The note, or the space it names, is in another file than this tab knew
+   * (§7.9): a space shared since, or a move made elsewhere. With the space
+   * list read again, the change goes there; once only, should the server and
+   * the list disagree.
+   */
+  private async refile(err: ApiError) {
+    const p = this.pending
+    const movedTo = err.code === 'note_moved' ? err.current?.movedTo : undefined
+    const before = this.route()
+    // Refused, so nothing was stored: built again, the request follows the list. A move carries no text.
+    this.pending = null
+    if (p?.kind !== 'move') this.dirty = true
+    this.set('saving')
+    try {
+      await knowSpaces(async () => (await spaces.list()).spaces)
+    } catch (e) {
+      this.fail(e)
+      return
+    }
+    if (movedTo) {
+      // Where the server has it now; it stays there unless this side moved it too.
+      if (this.space === this.baseSpace) this.space = movedTo
+      this.baseSpace = movedTo
+    }
+    if (p?.kind === 'move' && movedTo === p.spaceId) {
+      // Moved where this side asked, by an earlier try whose answer was lost: done.
+      const result = { id: this.id, status: 'updated', revision: this.revision, changeSeq: 0, updatedAt: Date.now() } as const
+      this.hooks.saved?.(this.id, this.base, result, this.baseLocked, movedTo)
+    } else if (this.route() === before) {
+      this.dirty = true
+      this.problem = { kind: 'unexpected', message: 'The server and this page disagree about where this note belongs. Reload the page.' }
+      this.set('failed')
+      return
+    }
+    this.set(this.dirty ? 'unsaved' : 'saved')
+    void Promise.resolve().then(() => this.flush())
+  }
+
+  /** Where the next request goes, to tell whether a refusal can be retried elsewhere. */
+  private route(): string {
+    if (this.movingFiles()) return `move:${filePath(this.baseSpace)}:${filePath(this.space)}`
+    return this.created ? `update:${filePath(this.baseSpace)}` : `create:${filePath(this.space)}`
   }
 
   /** Opens the server's version (decrypting a locked body), then merges with it. */
@@ -792,6 +890,7 @@ export class NoteSaver extends SaverCore {
     this.space = current.spaceId
     this.sealed = remote.envelope ? { plain: this.base.content, envelope: remote.envelope } : null
     this.updatedAt = current.updatedAt
+    this.updatedBy = current.updatedBy ?? null
     this.created = true
     this.problem = null
   }
@@ -855,8 +954,18 @@ export class NoteSaver extends SaverCore {
     this.dirty = false
     this.pending = null
     if (!this.created) return 'deleted'
+    const body = { operationId: crypto.randomUUID(), baseRevision: this.revision }
     try {
-      await notes.remove(this.id, { operationId: crypto.randomUUID(), baseRevision: this.revision }, keepalive)
+      try {
+        await notes.remove(this.id, this.baseSpace, body, keepalive)
+      } catch (err) {
+        const movedTo = err instanceof ApiError && err.code === 'note_moved' ? err.current?.movedTo : undefined
+        if (!movedTo) throw err
+        // Moved to another file meanwhile (§7.9): deleted there, which may be a shared space new to this tab.
+        await knowSpaces(async () => (await spaces.list()).spaces)
+        this.space = this.baseSpace = movedTo
+        await notes.remove(this.id, movedTo, body, keepalive)
+      }
       return 'deleted'
     } catch (err) {
       if (err instanceof ApiError && err.code === 'note_deleted') return 'deleted'

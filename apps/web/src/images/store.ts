@@ -2,6 +2,7 @@ import type { Editor } from '@tiptap/core'
 import { LOCKED_IMAGE, isLockedImageType } from '../api/images'
 import { LockedError, openImage, sealImage } from '../locks/crypto'
 import { lockSession } from '../locks/session'
+import { DEFAULT_SPACE } from '../notes/default-space'
 import { notesSource } from '../notes/source'
 import { ImageError, prepareImage, sniffType, type Prepared } from './prepare'
 import { imageMarkdown, sha256Hex, type ImageRef } from './ref'
@@ -9,8 +10,8 @@ import { imageMarkdown, sha256Hex, type ImageRef } from './ref'
 // Storing and showing note images (architecture §7.6). An image is stored
 // (uploaded, or kept on this device for sync) before its reference goes in the note.
 
-/** Stores bytes as an image, encrypted with the session key when locked; returns its reference. */
-async function upload(file: Prepared, locked: boolean): Promise<ImageRef> {
+/** Stores bytes as an image, encrypted with the session key when locked; returns its reference. [space]: the note's. */
+async function upload(file: Prepared, locked: boolean, space: string): Promise<ImageRef> {
   let bytes = file.bytes
   let type = file.type
   if (locked) {
@@ -20,18 +21,21 @@ async function upload(file: Prepared, locked: boolean): Promise<ImageRef> {
     type = LOCKED_IMAGE
   }
   const id = await sha256Hex(bytes)
-  await notesSource().images.put(id, bytes, type)
+  await notesSource().images.put(id, bytes, type, space)
   remember(id, file.bytes, file.type, locked)
   return { id, w: file.w, h: file.h }
 }
 
-/** Prepares and uploads a picture the user picked for a note; locked() is asked again after preparing. */
-export async function storeImage(file: Blob, locked: () => boolean): Promise<ImageRef> {
+/**
+ * Prepares and uploads a picture the user picked for a note; locked() is asked again after preparing. [space]: the
+ * note's, whose file keeps the picture (§7.9).
+ */
+export async function storeImage(file: Blob, locked: () => boolean, space: () => string): Promise<ImageRef> {
   const prepared = await prepareImage(file)
   const wasLocked = locked()
-  const ref = await upload(prepared, wasLocked)
+  const ref = await upload(prepared, wasLocked, space())
   // Locked or unlocked while uploading: store it the way the note is now.
-  return locked() === wasLocked ? ref : await upload(prepared, locked())
+  return locked() === wasLocked ? ref : await upload(prepared, locked(), space())
 }
 
 // --- showing locked images ---------------------------------------------------
@@ -145,7 +149,8 @@ async function moveImage(id: string, locked: boolean, key: CryptoKey): Promise<s
     if (!type) throw new ImageError('A picture in this note isn’t an image the server accepts.')
   }
   const next = await sha256Hex(file)
-  await notesSource().images.put(next, file, type).catch(() => {
+  // Locked notes are never in a shared space (§7.9): only the account's file has them.
+  await notesSource().images.put(next, file, type, DEFAULT_SPACE).catch(() => {
     throw new ImageError('A picture in this note couldn’t be uploaded. Try again when the connection is back.')
   })
   remember(next, bytes, blob.type, locked)

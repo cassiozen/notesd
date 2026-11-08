@@ -1,4 +1,5 @@
 import { download, upload } from './client'
+import { filePath } from './files'
 
 /** The type a locked note's images are stored as: ciphertext (architecture §7.6). The one version this release opens. */
 export const LOCKED_IMAGE = 'application/vnd.notesd.locked'
@@ -13,8 +14,12 @@ export type StoredImage = { id: string; contentType: string; size: number; creat
 export const imagePath = (id: string) => `/images/${id}`
 
 export const images = {
-  /** Idempotent: the id is the bytes' SHA-256, so a retry stores nothing new. */
-  put: (id: string, body: Uint8Array<ArrayBuffer>, contentType: string) => upload<StoredImage>(imagePath(id), body, contentType),
+  /**
+   * Idempotent: the id is the bytes' SHA-256, so a retry stores nothing new. Into the file of [space], the note's:
+   * the account's address finds it there to show (§7.9).
+   */
+  put: (id: string, body: Uint8Array<ArrayBuffer>, contentType: string, space: string) =>
+    upload<StoredImage>(`${filePath(space)}${imagePath(id)}`, body, contentType),
   get: (id: string, signal?: AbortSignal) => download(imagePath(id), { ...(signal && { signal }) }),
 }
 

@@ -48,6 +48,12 @@ export function useSpaces(): Space[] | null {
   return value
 }
 
+/** The spaces, fetched first if they haven't loaded; null if that fails. */
+export async function loadedSpaces(): Promise<Space[] | null> {
+  if (!current) await (loading ?? reloadSpaces())
+  return current
+}
+
 /** Calls listener with each new list. Returns the unsubscribe function. */
 export function onSpacesChange(listener: (list: Space[]) => void): () => void {
   const l = () => {

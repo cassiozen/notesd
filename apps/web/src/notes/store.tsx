@@ -98,6 +98,8 @@ type NotesContextValue = Omit<ListState, 'hidden'> & {
   undoRemove: (id: string) => void
   /** Every open note's edits into the notes source: before leaving it (opting out, signing out). */
   flushAll: () => Promise<void>
+  /** Notes in [space] with edits still on their way, here in this tab. */
+  unsavedIn: (space: string) => string[]
 }
 
 const NotesContext = createContext<NotesContextValue | null>(null)
@@ -458,6 +460,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       // An open search reruns too, and the filters refetch.
       setList((prev) => ({ ...prev, version: prev.version + 1 }))
       void fetchPage(true)
+      // Sharing reloads with the new list (onSpacesChange): what changed online is worked out from it.
       void reloadSpaces()
     })
     window.addEventListener('focus', reloadKeyring)
@@ -525,6 +528,7 @@ export function NotesProvider({ children }: { children: ReactNode }) {
       flushAll: async () => {
         await Promise.all([...savers.current.values()].map((s) => s.flush()))
       },
+      unsavedIn: (inSpace) => [...savers.current.values()].filter((s) => s.spaceId() === inSpace && s.hasUnsavedWork()).map((s) => s.id),
     }),
     [visible, space, setSpace, tagList, lockedCount, filter, setFilter, status, hasMore, total, version, fetchPage, fetchFilters, saverFor, existingSaver, newDraft, release, removed, touch, move, remove, undoRemove],
   )

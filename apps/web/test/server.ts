@@ -6,6 +6,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { inject, onTestFinished } from 'vitest'
 
+/** Every test account's password unless one is given. */
+export const PASSWORD = 'correct horse'
+
 export type TestServer = {
   url: string
   /** Browser requests fail as if the network were down. */
@@ -17,14 +20,50 @@ export type TestServer = {
   /** The JSON bodies the browser sent, oldest first. */
   sent: (method: string, path: string) => unknown[]
   /** Calls the API as a separate client (its own cookie jar). */
-  api: <T = unknown>(method: string, path: string, body?: unknown) => Promise<{ status: number; body: T }>
+  api: Api
   /** Like api, for endpoints that take or return bytes (images). */
-  bytes: (
-    method: string,
-    path: string,
-    upload?: { type: string; data: Uint8Array<ArrayBuffer> },
-  ) => Promise<{ status: number; type: string; data: Uint8Array }>
+  bytes: Bytes
+  /**
+   * Another account, made by the owner (an admin; signed in on api first), signed in on a client of its own. For
+   * shared spaces.
+   */
+  addAccount: (username: string, password?: string) => Promise<Client & { id: number; username: string; password: string }>
   stop: () => Promise<void>
+}
+
+type Api = <T = unknown>(method: string, path: string, body?: unknown) => Promise<{ status: number; body: T }>
+type Bytes = (
+  method: string,
+  path: string,
+  upload?: { type: string; data: Uint8Array<ArrayBuffer> },
+) => Promise<{ status: number; type: string; data: Uint8Array }>
+export type Client = { api: Api; bytes: Bytes }
+
+/** api and bytes on a cookie jar of their own. */
+function client(fetcher: CookieFetch): Client {
+  const api: Api = async (method, path, body) => {
+    const res = await fetcher(`/api/v1${path}`, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': fetcher.csrf ?? '' },
+      ...(body !== undefined && { body: JSON.stringify(body) }),
+    })
+    const text = await res.text()
+    const parsed: unknown = text ? JSON.parse(text) : undefined
+    if (parsed && typeof parsed === 'object' && 'csrfToken' in parsed) {
+      fetcher.csrf = String(parsed.csrfToken)
+    }
+    return { status: res.status, body: parsed as never }
+  }
+  const bytes: Bytes = async (method, path, upload) => {
+    if (!fetcher.csrf) await api('GET', '/auth/session')
+    const res = await fetcher(`/api/v1${path}`, {
+      method,
+      headers: { 'X-CSRF-Token': fetcher.csrf ?? '', ...(upload && { 'Content-Type': upload.type }) },
+      ...(upload && { body: upload.data }),
+    })
+    return { status: res.status, type: res.headers.get('Content-Type') ?? '', data: new Uint8Array(await res.arrayBuffer()) }
+  }
+  return { api, bytes }
 }
 
 const nodeFetch = globalThis.fetch
@@ -44,7 +83,7 @@ export async function startServer({ resendUrl }: { resendUrl?: string } = {}): P
   const browser = cookieFetch(url)
   globalThis.fetch = browser
 
-  const other = cookieFetch(url)
+  const other = client(cookieFetch(url))
   const server: TestServer = {
     url,
     setOffline: (offline) => {
@@ -58,27 +97,17 @@ export async function startServer({ resendUrl }: { resendUrl?: string } = {}): P
     },
     sent: (method, path) =>
       browser.log.filter((r) => r.method === method && r.path === `/api/v1${path}`).map((r) => r.body),
-    async api(method, path, body) {
-      const res = await other(`/api/v1${path}`, {
-        method,
-        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': other.csrf ?? '' },
-        ...(body !== undefined && { body: JSON.stringify(body) }),
-      })
-      const text = await res.text()
-      const parsed: unknown = text ? JSON.parse(text) : undefined
-      if (parsed && typeof parsed === 'object' && 'csrfToken' in parsed) {
-        other.csrf = String(parsed.csrfToken)
-      }
-      return { status: res.status, body: parsed as never }
-    },
-    async bytes(method, path, upload) {
-      if (!other.csrf) await server.api('GET', '/auth/session')
-      const res = await other(`/api/v1${path}`, {
-        method,
-        headers: { 'X-CSRF-Token': other.csrf ?? '', ...(upload && { 'Content-Type': upload.type }) },
-        ...(upload && { body: upload.data }),
-      })
-      return { status: res.status, type: res.headers.get('Content-Type') ?? '', data: new Uint8Array(await res.arrayBuffer()) }
+    api: other.api,
+    bytes: other.bytes,
+    async addAccount(username, password = PASSWORD) {
+      const made = await other.api<{ user: { id: number }; link: { token: string } }>('POST', '/users', { username })
+      if (made.status !== 201) throw new Error(`adding ${username} failed: ${made.status}`)
+      const theirs = client(cookieFetch(url))
+      const used = await theirs.api('POST', '/auth/setup-link/use', { token: made.body.link.token, password })
+      if (used.status !== 204) throw new Error(`setting ${username}'s password failed: ${used.status}`)
+      const login = await theirs.api('POST', '/auth/login', { username, password, client: 'web' })
+      if (login.status !== 200) throw new Error(`${username} couldn't sign in: ${login.status}`)
+      return { ...theirs, id: made.body.user.id, username, password }
     },
     async stop() {
       if (proc.exitCode === null) {
@@ -128,7 +157,7 @@ export async function startFakeResend(): Promise<FakeResend> {
 }
 
 /** Creates the owner account through the API, as another device would. */
-export async function createOwner(server: TestServer, username = 'me', password = 'correct horse') {
+export async function createOwner(server: TestServer, username = 'me', password = PASSWORD) {
   const res = await server.api('POST', '/auth/setup', { username, password })
   if (res.status !== 201) throw new Error(`setup failed: ${res.status}`)
   return { username, password }

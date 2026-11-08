@@ -6,7 +6,7 @@ import {
   type LocalNote as EngineNote,
   type NotesEngine,
 } from '@notes/sync-engine'
-import type { Kdf, LockKey, NoteFilter } from '../api/types'
+import type { Kdf, LockKey, NoteFilter, Space } from '../api/types'
 import { canonical } from '../editor/markdown'
 import { mergeBody } from '../editor/merge'
 import { deviceImages, type DeviceImages } from './images'
@@ -115,6 +115,7 @@ export function engineHost(
         locked: r.locked,
         revision: r.revision ?? null,
         spaceId: r.spaceId,
+        updatedBy: r.updatedBy ?? null,
       }))
     },
     async lockedCount(space) {
@@ -169,22 +170,65 @@ export function engineHost(
       return (await engine()).pendingNotes()
     },
     async spaces() {
-      return (await (await engine()).spaces()).map((s) => ({
-        id: s.id,
-        name: s.name,
-        icon: s.icon,
-        createdAt: s.createdAt,
-        noteCount: s.noteCount,
-        // The engine's objects keep their fields behind getters, which postMessage drops: copied out.
-        traits: s.traits.map((t) => ({
-          key: t.key,
-          label: t.label,
-          summary: t.summary,
-          ...(t.exposure != null && { exposure: t.exposure }),
-          ...(t.audience != null && { audience: [...t.audience] }),
-          ...(t.problem != null && { problem: t.problem }),
-        })),
+      return (await (await engine()).spaces()).map((s) => {
+        const space: Space = {
+          id: s.id,
+          name: s.name,
+          icon: s.icon,
+          createdAt: s.createdAt,
+          noteCount: s.noteCount,
+          // The engine's objects keep their fields behind getters, which postMessage drops: copied out.
+          traits: s.traits.map((t) => ({
+            key: t.key,
+            label: t.label,
+            summary: t.summary,
+            ...(t.exposure != null && { exposure: t.exposure }),
+            ...(t.audience != null && { audience: [...t.audience] }),
+            ...(t.problem != null && { problem: t.problem }),
+          })),
+        }
+        if (s.shared) {
+          space.shared = {
+            role: s.shared.role as 'owner' | 'member',
+            members: s.shared.members.map((m) => ({ id: m.id, username: m.username })),
+          }
+          // The server sends invitations to the owner only.
+          if (s.shared.role === 'owner') {
+            space.shared.invites = s.shared.invites.map((i) => ({ id: i.id, userId: i.userId, username: i.username }))
+          }
+        }
+        return space
+      })
+    },
+    async invites() {
+      return (await (await engine()).invites()).map((i) => ({
+        id: i.id,
+        spaceId: i.spaceId,
+        spaceName: i.spaceName,
+        spaceIcon: i.spaceIcon,
+        from: { id: i.from.id, username: i.from.username },
+        createdAt: i.createdAt,
       }))
+    },
+    async news() {
+      return (await (await engine()).news()).map((n) => ({
+        spaceId: n.spaceId,
+        count: n.count,
+        usernames: [...n.usernames],
+        latestAt: n.latestAt,
+      }))
+    },
+    async visit(space) {
+      await (await engine()).visit(space)
+    },
+    async setUserId(id) {
+      await (await engine()).setUserId(id)
+    },
+    async unsynced(space) {
+      const e = await engine()
+      const rows = await e.list(null, null, space)
+      const notes = await Promise.all(rows.map((r) => e.get(r.id)))
+      return notes.filter((n) => n?.dirty).map((n) => n?.id ?? '')
     },
     async createSpace(id, name, icon) {
       await (await engine()).createSpace(id, name, icon)
@@ -250,6 +294,7 @@ function localNote(n: EngineNote): LocalNote {
     revision: n.revision ?? null,
     dirty: n.dirty,
     spaceId: n.spaceId,
+    updatedBy: n.updatedBy ?? null,
   }
 }
 

@@ -10,6 +10,10 @@ export class ApiError extends Error {
   readonly retryAfter: number | undefined
   /** upgrade_required: the oldest app version the server takes. */
   readonly minVersion: string | undefined
+  /** space_not_empty, space_has_locked: how many notes. */
+  readonly count: number | undefined
+  /** space_elsewhere: the space whose file the note belongs in. */
+  readonly spaceId: string | undefined
 
   constructor(status: number, body: ErrorBody, retryAfter?: number) {
     super(body.message ?? body.error)
@@ -20,6 +24,8 @@ export class ApiError extends Error {
     this.current = body.current
     this.retryAfter = retryAfter
     this.minVersion = body.minVersion
+    this.count = body.count
+    this.spaceId = body.spaceId
   }
 }
 

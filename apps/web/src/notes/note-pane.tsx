@@ -1,6 +1,7 @@
 import type { Editor } from '@tiptap/core'
 import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react'
 import { ApiError } from '../api/client'
+import { useAuth } from '../auth/auth-context'
 import { ChecklistTool, ImageTool, IndentTools, LinkForm, LinkTool, MarkTools, NoteContent, TextStyles, Tool, replaceNote, useNoteEditor } from '../editor/editor'
 import { FindBar, findShortcut, seedFrom, type FindRequest } from '../editor/find-bar'
 import { step } from '../editor/find'
@@ -20,6 +21,7 @@ import { offlineNotice, useStatusShown } from './save-status'
 import { openNote, type Snapshot } from './saver'
 import { notesSource, type Saver } from './source'
 import { NoteMenu } from './share'
+import { ago, editorName, useMinutes } from './sharing'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import { tagKey } from './tags'
@@ -101,7 +103,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   useEffect(() => {
     if (load.kind !== 'loading' || !id) return
     let cancelled = false
-    notesSource().get(id).then(
+    notesSource().get(id, space).then(
       async (stored) => {
         let opened
         try {
@@ -127,6 +129,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
           locked,
           envelope,
           spaceId: note.spaceId,
+          ...(note.updatedBy !== undefined && { updatedBy: note.updatedBy }),
         })
         // Opened from a link into another space: the list follows it there.
         if (note.spaceId !== space) setSpace(note.spaceId)
@@ -295,7 +298,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
         for (const file of files) {
           // In order, each under the one before.
           // oxlint-disable-next-line no-await-in-loop
-          const ref = await storeImage(file, () => saver.isLocked())
+          const ref = await storeImage(file, () => saver.isLocked(), () => saver.spaceId())
           if (editor.isDestroyed) {
             // Closed while uploading: the picture goes at the end of the note.
             if (!saver.appendClosed(imageMarkdown(ref))) {
@@ -492,6 +495,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
     <>
       <div className={styles.bar} {...dragRegion('deep')}>
         {mobile && <BackButton onClick={onBack} />}
+        <EditedBy snap={snap} />
         <span className={styles.spacer} />
         <StatusPill state={snap.imagesBusy ? 'saving' : snap.state} shown={statusShown || snap.imagesBusy} detail={statusDetail} />
         {snap.locked && (
@@ -702,6 +706,16 @@ function StylesButton({ editor, id, open, onToggle, mobile = false }: { editor: 
       <span className={styles.aaBig}>A</span>a
     </Tool>
   )
+}
+
+/** "Edited by Ana · 2h": the last change was another member's (§7.9). */
+function EditedBy({ snap }: { snap: Snapshot }) {
+  const spaces = useSpaces()
+  const { state } = useAuth()
+  const who = editorName(spaces?.find((s) => s.id === snap.spaceId), snap.updatedBy, 'userId' in state ? state.userId : undefined)
+  useMinutes(who !== null)
+  if (!who || snap.updatedAt === null) return null
+  return <span className={styles.editedBy}>{`Edited by ${who} · ${ago(snap.updatedAt)}`}</span>
 }
 
 function DeleteButton({ onClick }: { onClick: () => void }) {

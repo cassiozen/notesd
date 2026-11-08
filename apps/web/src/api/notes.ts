@@ -1,9 +1,11 @@
 import { request } from './client'
+import { filePath } from './files'
 import type { MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, TagCount } from './types'
 
 export const SEARCH_PAGE = 30
 
-const path = (id: string) => `/notes/${encodeURIComponent(id)}`
+/** Under [file], a filePath: the account's ('') or a shared space's. */
+const path = (id: string, file = '') => `${file}/notes/${encodeURIComponent(id)}`
 
 const filterParams = (filter: NoteFilter) =>
   !filter ? '' : 'tag' in filter ? `&tag=${encodeURIComponent(filter.tag)}` : 'locked' in filter ? '&locked=true' : '&untagged=true'
@@ -30,33 +32,45 @@ export type UpdateNote = {
   imageIds?: string[]
 }
 
+/** A change of space between files (§7.9): the note keeps its revision. */
+export type MoveNote = { operationId: string; baseRevision: number; spaceId: string }
+
+/** A shared space's notes are in its own file: each call goes to the file of the space it names. */
 export const notes = {
   list: (filter: NoteFilter, space: string, cursor?: string, signal?: AbortSignal) =>
     request<NoteList>(
       'GET',
-      `/notes?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}${filterParams(filter)}${scopeParams({ space })}`,
+      `${filePath(space)}/notes?limit=50${cursor ? `&cursor=${encodeURIComponent(cursor)}` : ''}${filterParams(filter)}${scopeParams({ space })}`,
       undefined,
       { ...(signal && { signal }) },
     ),
-  get: (id: string) => request<Note>('GET', path(id)),
-  create: (body: CreateNote, keepalive = false) => request<MutationResult>('POST', '/notes', body, { keepalive }),
-  update: (id: string, body: UpdateNote, keepalive = false) =>
-    request<MutationResult>('PUT', path(id), body, { keepalive }),
-  remove: (id: string, body: { operationId: string; baseRevision: number }, keepalive = false) =>
-    request<MutationResult>('DELETE', path(id), body, { keepalive }),
-  /** In one space, the first page also counts the matches in every other space. */
-  search: (q: string, filter: NoteFilter, scope: SearchScope, offset: number, signal: AbortSignal) =>
+  /** [file]: a filePath; the account's by default. */
+  get: (id: string, file = '') => request<Note>('GET', path(id, file)),
+  /** In the file of the space it goes in. */
+  create: (body: CreateNote, keepalive = false) =>
+    request<MutationResult>('POST', `${filePath(body.spaceId ?? 'default')}/notes`, body, { keepalive }),
+  /** [at]: the space whose file has the note now. */
+  update: (id: string, at: string, body: UpdateNote, keepalive = false) =>
+    request<MutationResult>('PUT', path(id, filePath(at)), body, { keepalive }),
+  move: (id: string, at: string, body: MoveNote) => request<MutationResult>('POST', `${path(id, filePath(at))}/move`, body),
+  remove: (id: string, at: string, body: { operationId: string; baseRevision: number }, keepalive = false) =>
+    request<MutationResult>('DELETE', path(id, filePath(at)), body, { keepalive }),
+  /**
+   * In [file] (a filePath, the account's by default). In one space, the first
+   * page also counts the matches in every other space, in any file.
+   */
+  search: (q: string, filter: NoteFilter, scope: SearchScope, offset: number, signal: AbortSignal, file = '') =>
     request<{ results: SearchResult[]; otherSpaces?: number }>(
       'GET',
-      `/search?q=${encodeURIComponent(q)}&limit=${SEARCH_PAGE}&offset=${offset}${filterParams(filter)}${scopeParams(scope)}`,
+      `${file}/search?q=${encodeURIComponent(q)}&limit=${SEARCH_PAGE}&offset=${offset}${filterParams(filter)}${scopeParams(scope)}`,
       undefined,
       { signal },
     ),
   /** Emails the server's copy, which must be at revision (409 stale_revision otherwise). */
-  email: (id: string, to: string[], revision: number) =>
-    request<{ id: string }>('POST', `${path(id)}/email`, { to, revision }),
+  email: (id: string, at: string, to: string[], revision: number) =>
+    request<{ id: string }>('POST', `${path(id, filePath(at))}/email`, { to, revision }),
   filters: (space: string, signal?: AbortSignal) =>
-    request<{ tags: TagCount[]; locked: number }>('GET', `/filters?space=${encodeURIComponent(space)}`, undefined, {
+    request<{ tags: TagCount[]; locked: number }>('GET', `${filePath(space)}/filters?space=${encodeURIComponent(space)}`, undefined, {
       ...(signal && { signal }),
     }),
 }

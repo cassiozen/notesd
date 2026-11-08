@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Space, SpaceTrait } from '../api/types'
+import { InvitePicker, SharedSettings } from '../settings/shared-space'
+import { DEFAULT_SPACE } from './default-space'
 
 // Space traits (architecture §7.8): this app's registry, the glyphs it draws and the move check.
 
@@ -62,9 +64,12 @@ export function UnknownGlyph({ size = 14 }: GlyphProps) {
 
 const off = () => false
 
+/** Never the default space (everyone keeps a private one), and only by its owner once it's shared (§7.9). */
+const canShare = (space: Space) => space.id !== DEFAULT_SPACE && (!space.shared || space.shared.role === 'owner')
+
 /** In the server's order (spaces.TraitOrder); a key keeps its place before its feature ships. */
 export const TRAITS: readonly TraitEntry[] = [
-  { key: 'shared', label: 'Shared', Glyph: SharedGlyph, canTurnOn: off },
+  { key: 'shared', label: 'Shared', Glyph: SharedGlyph, Settings: SharedSettings, canTurnOn: canShare, turnOn: InvitePicker },
   { key: 'published', label: 'Published', Glyph: PublishedGlyph, canTurnOn: off },
   { key: 'agent', label: 'Agent', Glyph: AgentGlyph, canTurnOn: off },
 ]
