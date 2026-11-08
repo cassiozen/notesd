@@ -6,6 +6,8 @@ apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
   s_82799bf566b6e4::t_46d052cfc18099 60,92-98,105,183-184,332,336-337,339,349-351,354-355
 apps/android/app/src/main/kotlin/notes/app/account/AccountStore.kt
   s_82799bf566b6e4::t_1b4b1febd3fac3 16-21,30-33,35-36,42,60,62-64,66,74-80,83-87,97-99,165
+  s_82799bf566b6e4::t_7806c8a7462fec 100-101,107,162
+  s_82799bf566b6e4::t_1bdfecb12aca8f 34,61,65,82
 docs/contributing/settings-guidelines.md
   s_82799bf566b6e4::t_0ae93d5ab29705 68
 apps/android/app/src/main/kotlin/notes/app/account/Avatars.kt
