@@ -352,6 +352,9 @@ the bytes is `400 hash_mismatch`. `Content-Type` must be `image/jpeg`, `image/pn
 `image/webp` or `image/gif`, matching the bytes (`415 unsupported_image` otherwise), or
 `application/vnd.notesd.locked` for an encrypted image. A later version of the encryption uses a
 subtype, such as `application/vnd.notesd.locked.v2`, which the server stores without reading it.
+`GET` at the account's address also finds an image in the [shared spaces](#shared-spaces) you're
+in, so a note's pictures load from one address whichever file the note is in; upload a shared
+space's pictures to its own address, `/spaces/{id}/images/{sha256}`.
 Parameters on a locked type (`; v=2`) are refused with `415 unsupported_image`. Images can be up to 10 MiB
 (`413 image_too_large`). `GET` answers with `ETag`,
 `Cache-Control: private, max-age=31536000, immutable` and a restrictive
