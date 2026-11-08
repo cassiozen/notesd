@@ -54,7 +54,8 @@ For someone who has set their password, the **…** menu (on Android, tap their 
 - **Make admin** / **Remove admin**: admins change server-wide settings such as email, and manage
   people. The server always keeps one admin who can sign in.
 - **Remove from server…** signs them out everywhere and deletes the account. Their notes stay in
-  `users/<id>.db` on the server, as with `remove-user` below.
+  `users/<id>.db` on the server, as with `remove-user` below. A shared space they owned goes to
+  the member who joined it first.
 
 For an invitation still waiting, it has **New invite link** and **Cancel invitation…**, which
 ends the link and frees the username.

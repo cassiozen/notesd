@@ -50,7 +50,7 @@ Without the variable, a command uses `./data` in the current folder: an empty se
 
 | Flag | Environment variable | Default | Description |
 | --- | --- | --- | --- |
-| `--data-dir` | `NOTESD_DATA_DIR` | `./data` (Docker: `/data`) | The data directory: `system.db` and one database per account in `users/` |
+| `--data-dir` | `NOTESD_DATA_DIR` | `./data` (Docker: `/data`) | The data directory: `system.db`, one database per account in `users/` and one per shared space in `spaces/` |
 
 ## serve
 
@@ -126,7 +126,8 @@ notesd remove-user --username NAME
 
 Deletes an account and signs it out everywhere. Its notes stay in `users/<id>.db`, whose path it
 prints, until you delete the file. `export` finds accounts by name, so run it before `remove-user`
-to keep a copy. The last admin can't be removed.
+to keep a copy. The last admin can't be removed. Each shared space the account owned goes to the
+member who joined it first; one no one else is in keeps its file in `spaces/`.
 
 ### reset-password
 
@@ -141,7 +142,7 @@ one account. Locked notes use their own password, which this doesn't change.
 
 ## Data commands
 
-`check`, `reindex` and `gc-images` act on every account unless you pass `--username`. `export`
+`check`, `reindex` and `gc-images` act on every account and shared space unless you pass `--username`. `export`
 and `import` need `--username` once there's more than one account. Only `gc-images` deletes
 anything.
 
@@ -152,7 +153,8 @@ notesd export [--username NAME] --out DIR [--include-locked]
 ```
 
 Writes every note to `DIR`, which must be new or empty, as a Markdown file named after its title.
-With two or more spaces, each space gets a folder. The images notes show go in `DIR/images`, with
+With two or more spaces, each space gets a folder. The shared spaces the account is in are
+written too, each in its own folder. The images notes show go in `DIR/images`, with
 the notes' references pointed there; an image that isn't stored or can't be opened keeps its
 `notesd:image/` reference.
 

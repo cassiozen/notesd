@@ -37,6 +37,8 @@ type fixture struct {
 	m      *Mirror
 	rev    map[string]int64
 	op     int
+	// Shared spaces the user is in (§7.9).
+	shared []Source
 }
 
 func newFixture(t *testing.T) *fixture {
@@ -57,8 +59,10 @@ func (f *fixture) mirror() *Mirror {
 	return New(Config{
 		Dir:      f.dir,
 		Accounts: func(context.Context) ([]Account, error) { return []Account{{ID: 1, Username: "sam"}}, nil },
-		Open:     func(context.Context, int64) (*database.DB, error) { return f.db, nil },
-		Log:      quietLog,
+		Open: func(context.Context, int64) ([]Source, error) {
+			return append([]Source{{DB: f.db}}, f.shared...), nil
+		},
+		Log: quietLog,
 	})
 }
 
@@ -524,12 +528,12 @@ func TestRunWritesChanges(t *testing.T) {
 	m := New(Config{
 		Dir:      dir,
 		Accounts: func(context.Context) ([]Account, error) { return []Account{{ID: 1, Username: "sam"}}, nil },
-		Open: func(ctx context.Context, id int64) (*database.DB, error) {
+		Open: func(ctx context.Context, id int64) ([]Source, error) {
 			d, err := users.Open(ctx, id)
 			if err != nil {
 				return nil, err
 			}
-			return d.DB, nil
+			return []Source{{DB: d.DB}}, nil
 		},
 		Log: quietLog,
 	})
@@ -558,5 +562,56 @@ func TestRunWritesChanges(t *testing.T) {
 			t.Fatal("Hello.md was never written")
 		}
 		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+// share moves space id's notes into a file of their own, as sharing it does.
+func (f *fixture) share(id, name string) *notes.Store {
+	f.t.Helper()
+	db, err := database.Open(ctx, filepath.Join(f.t.TempDir(), id+".db"))
+	if err != nil {
+		f.t.Fatal(err)
+	}
+	f.t.Cleanup(func() { db.Close() })
+	shared := notes.NewStore(db)
+	shared.ServeShared(id)
+	if err := f.notes.ShareOut(ctx, id, 0, func(row notes.SpaceRow, carried []notes.Carried) error {
+		return shared.ShareIn(ctx, row, carried)
+	}); err != nil {
+		f.t.Fatal(err)
+	}
+	f.shared = append(f.shared, Source{Feed: id, Name: name, DB: db})
+	return shared
+}
+
+func TestSharedSpaces(t *testing.T) {
+	f := newFixture(t)
+	if _, err := f.spaces.Put(ctx, "fam", "Family", nil); err != nil {
+		t.Fatal(err)
+	}
+	f.create("a", "Groceries", "Milk", "fam")
+	f.create("b", "Mine", "")
+	f.flush()
+
+	// Shared: the note's file stays where it is, though its own file's feed
+	// says it left, whichever feed is read first.
+	shared := f.share("fam", "Family")
+	f.flush()
+	if got := strings.Join(f.files(), ","); got != "Family/,Family/Groceries.md,Notes/,Notes/Mine.md" {
+		t.Fatalf("after sharing: %s", got)
+	}
+	// Edited in the shared space.
+	if _, err := shared.Update(ctx, notes.UpdateInput{OperationID: f.opID(), ID: "a", BaseRevision: 1, Title: "Groceries", Content: "Milk, eggs"}); err != nil {
+		t.Fatal(err)
+	}
+	f.flush()
+	if body := f.read("Family/Groceries.md"); !strings.Contains(body, "eggs") {
+		t.Fatalf("the shared space's edit: %q", body)
+	}
+	// Left: its notes leave the folder.
+	f.shared = nil
+	f.flush()
+	if got := strings.Join(f.files(), ","); got != "Notes/,Notes/Mine.md" {
+		t.Fatalf("after leaving: %s", got)
 	}
 }
