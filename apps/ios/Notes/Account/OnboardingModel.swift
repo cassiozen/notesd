@@ -168,7 +168,7 @@ final class OnboardingModel {
         case .upgradeRequired: SyncMessages.upgradeRequired
         case .rejected(let status, _, let message, _):
             message.isEmpty ? "The server refused that (error \(status))." : message
-        case .conflict(_, let message, _, _): message
+        case .conflict(_, let message, _): message
         default: "Something went wrong. Try again."
         }
     }

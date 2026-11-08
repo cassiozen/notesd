@@ -93,8 +93,6 @@ public struct OutboxEntry: Hashable, Sendable {
     public var baseRevision: Int64?
     public var payloadJson: String
     public var sent: Bool
-    /// "" for the account's file, else the shared space's (§7.9).
-    public var feed: String = ""
 }
 
 /// Unix milliseconds, the time unit the server and the schema use.
@@ -427,8 +425,6 @@ public final class NoteStore: Sendable {
                 return
             }
             try sql.exec("DELETE FROM sync_outbox WHERE note_id = ? AND sent = 0", id)
-            // Where the server has it (§7.9): an unsent move just dropped never got there.
-            let feed = try sql.feedOf(try sql.serverSpace(current) ?? current.spaceId)
             try sql.exec(
                 """
                 UPDATE notes SET deleted_at = ?, dirty = 1,
@@ -440,7 +436,7 @@ public final class NoteStore: Sendable {
                 """,
                 clock(), id
             )
-            try sql.enqueue(id, type: deleteOp, payload: nil, now: clock(), feed: feed)
+            try sql.enqueue(id, type: deleteOp, payload: nil, now: clock())
         }
         localEditFeed.send(())
     }
@@ -496,13 +492,13 @@ public final class NoteStore: Sendable {
         try await db.read { sql in
             try sql.query(
                 """
-                SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent, feed
+                SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent
                 FROM sync_outbox ORDER BY created_at, rowid
                 """
             ) {
                 OutboxEntry(
                     operationId: $0.text(0), noteId: $0.text(1), type: $0.text(2), baseRevision: $0.int64OrNil(3),
-                    payloadJson: $0.text(4), sent: $0.int64(5) == 1, feed: $0.text(6))
+                    payloadJson: $0.text(4), sent: $0.int64(5) == 1)
             }
         }
     }

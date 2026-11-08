@@ -6,7 +6,8 @@ import Testing
 
 /// Shared spaces' words (§7.9): who edited, what changed, moving out, and errors.
 struct SharingTests {
-    let now: Int64 = 1_767_225_600_000
+    // Midday UTC, so "a minute ago" is still today in the simulator's zone (CI runs in UTC).
+    let now: Int64 = 1_767_268_800_000
     let family = Space(
         id: "fam", name: "Family", noteCount: 2,
         shared: SharedSpace(
@@ -71,7 +72,7 @@ struct SharingTests {
         #expect(Sharing.leaveWarning("Family", unsynced: 0) == "Its notes will be removed from this iPhone.")
         #expect(
             Sharing.leaveWarning("Family", unsynced: 1).hasSuffix(
-                "1 note here has changes not yet synced, which will be lost."))
+                "1 note here has changes not yet synced: they’ll be kept as a copy in your own notes."))
         #expect(Sharing.leaveWarning("Family", unsynced: 3).contains("3 notes here have changes"))
     }
 

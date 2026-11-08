@@ -29,8 +29,6 @@ public struct Operation: Hashable, Sendable {
     public var baseRevision: Int64?
     var payload: Payload
     public var sent: Bool
-    /// "" for the account's file, else the shared space whose file it goes to (§7.9).
-    public var feed: String = ""
 
     public var title: String { payload.title }
     public var content: String { payload.content }
@@ -60,12 +58,12 @@ extension Sql {
     }
 }
 
-private let operationColumns = "operation_id, note_id, operation_type, base_revision, payload_json, sent, feed"
+private let operationColumns = "operation_id, note_id, operation_type, base_revision, payload_json, sent"
 
 private func operationRow(_ r: Row) throws -> Operation {
     Operation(
         operationId: r.text(0), noteId: r.text(1), type: r.text(2), baseRevision: r.int64OrNil(3),
-        payload: try Payload.decode(r.text(4)), sent: r.int64(5) == 1, feed: r.text(6))
+        payload: try Payload.decode(r.text(4)), sent: r.int64(5) == 1)
 }
 
 /// The sync engine's side of the database. Every method is one transaction,
@@ -124,57 +122,57 @@ public final class SyncStore: Sendable {
         try await db.read { sql in try sql.query("SELECT space_id FROM feeds ORDER BY space_id") { $0.text(0) } }
     }
 
-    /// A feed for each shared space in the list, and none for one no longer in it (left, removed, deleted):
-    /// its notes, queued changes and merge records leave the device (§7.9). A new one counts as seen now, so
-    /// what was there before this device joined isn't news.
-    public func syncFeeds() async throws {
+    /// A feed for each shared space in the list, and none for one no longer in it (left, removed, deleted): its
+    /// notes and merge records leave the device (§7.9), but an edit not yet synced becomes a recovered copy in the
+    /// default space first, since the space may be gone for reasons this device never warned about. A new feed
+    /// counts as seen now, so what was there before this device joined isn't news.
+    @discardableResult
+    public func syncFeeds() async throws -> [SyncEvent] {
         let now = clock()
-        try await db.write { sql in
+        return try await db.write { sql in
+            var events: [SyncEvent] = []
             try sql.exec("INSERT OR IGNORE INTO feeds (space_id) SELECT id FROM spaces WHERE shared IS NOT NULL")
             try sql.exec("UPDATE spaces SET visited_at = ? WHERE shared IS NOT NULL AND visited_at IS NULL", now)
             let gone = try sql.query(
                 "SELECT space_id FROM feeds WHERE space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)"
             ) { $0.text(0) }
             for feed in gone {
-                let ids = try sql.query("SELECT id FROM notes WHERE space_id = ?", feed) { $0.text(0) }
-                for id in ids {
-                    // Moved into it here, the move (or a delete since) not yet sent: the server still has it where
-                    // it was, so it goes back.
-                    let back =
-                        try sql.one(
-                            """
-                            SELECT base_space_id FROM notes n WHERE id = ? AND server_revision IS NOT NULL
-                                AND EXISTS (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.feed != ?)
-                            """,
-                            id, feed
-                        ) { $0.textOrNil(0) } ?? nil
-                    if let back, !gone.contains(back) {
-                        try sql.exec("DELETE FROM sync_outbox WHERE note_id = ? AND feed = ?", id, feed)
-                        try sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, id)
-                        if let note = try sql.note(id), note.deletedAt == nil {
-                            try sql.queueText(id, title: note.title, content: note.content, spaceId: back, now: now)
+                for note in try sql.query("SELECT \(noteColumns) FROM notes WHERE space_id = ?", feed, row: noteRow) {
+                    // Moved into it here, the move not yet sent: the server still has it where it was, so it goes
+                    // back.
+                    if let back = note.baseSpaceId, note.serverRevision != nil, back != feed, !gone.contains(back),
+                        try sql.reaches(back)
+                    {
+                        try sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, note.id)
+                        if note.deletedAt == nil {
+                            try sql.queueText(
+                                note.id, title: note.title, content: note.content, spaceId: back, now: now)
                         }
                         continue
                     }
-                    try sql.unindex(id)
-                    try sql.forgetMerge(id)
-                    try sql.forgetImages(id)
-                    try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
-                    try sql.exec("DELETE FROM notes WHERE id = ?", id)
+                    if note.dirty && note.deletedAt == nil {
+                        let title = copyTitle(note.title, recoveredSuffix)
+                        let copy = try sql.insertCopy(
+                            title: title, content: note.content, conflictOf: nil, spaceId: Spaces.defaultId, now: now)
+                        events.append(.recoveredCopy(copyId: copy, title: title))
+                    }
+                    try sql.unindex(note.id)
+                    try sql.forgetMerge(note.id)
+                    try sql.forgetImages(note.id)
+                    try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                    try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
                 }
                 // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note
                 // goes to the server again, as new, where it is.
                 let strays = try sql.query(
                     """
-                    SELECT DISTINCT note_id FROM sync_outbox
-                    WHERE feed = ? AND note_id NOT IN (SELECT id FROM notes WHERE space_id = ?)
-                    """, feed, feed, row: { $0.text(0) })
-                try sql.exec("DELETE FROM sync_outbox WHERE feed = ?", feed)
-                for id in strays {
-                    guard let note = try sql.note(id) else { continue }
-                    try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
+                    SELECT \(noteColumns) FROM notes
+                    WHERE base_space_id = ? AND space_id != ? AND server_revision IS NOT NULL
+                    """, feed, feed, row: noteRow)
+                for note in strays {
+                    try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
                     if note.deletedAt != nil {
-                        try sql.exec("DELETE FROM notes WHERE id = ?", id)
+                        try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
                         continue
                     }
                     try sql.exec(
@@ -183,14 +181,15 @@ public final class SyncStore: Sendable {
                             base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
                         WHERE id = ?
                         """,
-                        id)
+                        note.id)
                     let payload = Payload(
                         title: note.title, content: note.content, createdAt: note.createdAt,
                         updatedAt: note.updatedAt, conflictOf: note.conflictOf, spaceId: note.spaceId)
-                    try sql.enqueue(id, type: createOp, payload: payload, now: now)
+                    try sql.enqueue(note.id, type: createOp, payload: payload, now: now)
                 }
                 try sql.exec("DELETE FROM feeds WHERE space_id = ?", feed)
             }
+            return events
         }
     }
 
@@ -255,8 +254,7 @@ public final class SyncStore: Sendable {
                 """, row: noteRow)
             for note in orphans {
                 if note.deletedAt != nil {
-                    let feed = try sql.feedOf(try sql.serverSpace(note) ?? note.spaceId)
-                    try sql.enqueue(note.id, type: deleteOp, payload: nil, now: clock(), feed: feed)
+                    try sql.enqueue(note.id, type: deleteOp, payload: nil, now: clock())
                 } else {
                     try sql.queueText(
                         note.id, title: note.title, content: note.content, spaceId: note.spaceId, now: clock())
@@ -278,16 +276,8 @@ public final class SyncStore: Sendable {
                 try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", current.operationId)
                 return nil
             }
-            let createSent =
-                try sql.int64(
-                    "SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1 AND operation_type = ?", note.id,
-                    createOp) > 0
             if current.type == createOp {
                 try sql.exec("UPDATE sync_outbox SET sent = 1 WHERE operation_id = ?", current.operationId)
-            } else if current.type == moveOp && note.serverRevision == nil && !createSent {
-                // Nothing on the server to move: queueText re-files a create instead, so this is a leftover.
-                try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", current.operationId)
-                return nil
             } else if note.serverRevision == nil && current.type == deleteOp {
                 try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
                 try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
@@ -323,10 +313,6 @@ public final class SyncStore: Sendable {
                     try markTombstone(
                         sql, note.id, deletedAt: note.deletedAt ?? result.updatedAt, updatedAt: result.updatedAt)
                 }
-                return
-            }
-            if op.type == moveOp {
-                try self.moved(sql, note, op.spaceId ?? note.spaceId, more: more)
                 return
             }
             // The space the server filed it in: the default instead, if the one sent was deleted elsewhere (§7.7).
@@ -371,64 +357,35 @@ public final class SyncStore: Sendable {
         }
     }
 
-    /// The server's copy of `op`'s note is in `spaceId`'s file now (§7.9: `note_moved`, `space_elsewhere`): its
-    /// queued changes there go to that feed instead, as they were. One naming a space of the file it left drops
-    /// the space (kept where it is); a move now within one file becomes an update. False if this device doesn't
-    /// have that space, or the changes are already going there.
-    public func refile(_ op: Operation, to spaceId: String) async throws -> Bool {
-        let clock = clock
+    /// The server refused `op` because it would put a locked body in a shared space (§7.9): locked offline, then
+    /// shared from another device. The locked version becomes a recovered copy in the default space, where it can
+    /// be locked, and the note goes back to the server's version, as the space's members have it.
+    public func lockedOut(_ op: Operation) async throws -> SyncEvent? {
+        let now = clock()
         return try await db.write { sql in
-            if !(try sql.reaches(spaceId)) { return false }
-            let feed = try sql.feedOf(spaceId)
-            if feed == op.feed { return false }
-            if let note = try sql.note(op.noteId) { try self.follow(sql, note, spaceId) }
-            let queued = try sql.query(
-                "SELECT \(operationColumns) FROM sync_outbox WHERE note_id = ? AND feed = ?", op.noteId, op.feed,
-                row: operationRow)
-            var requeue = false
-            for q in queued {
-                let named = q.payload.spaceId
-                if q.type == moveOp, let named, try sql.feedOf(named) == feed {
-                    try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", q.operationId)
-                    requeue = true
-                    continue
-                }
-                var payload = q.payload
-                if let named, q.type != moveOp, try sql.feedOf(named) != feed { payload.spaceId = nil }
+            guard let note = try sql.note(op.noteId) else { return nil }
+            let title = copyTitle(note.title, recoveredSuffix)
+            let copy = try sql.insertCopy(
+                title: title, content: note.content, conflictOf: nil, spaceId: Spaces.defaultId, now: now)
+            try self.dropOps(sql, note.id)
+            if note.serverRevision == nil {
+                // The server never had it: the copy is all of it.
+                try sql.unindex(note.id)
+                try sql.forgetImages(note.id)
+                try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+            } else {
+                let title0 = note.baseTitle ?? note.title
+                let content0 = note.baseContent ?? note.content
                 try sql.exec(
-                    "UPDATE sync_outbox SET feed = ?, payload_json = ? WHERE operation_id = ?", feed, payload.json,
-                    q.operationId)
+                    """
+                    UPDATE notes SET title = ?, content = ?, space_id = COALESCE(base_space_id, space_id), dirty = 0,
+                        base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                    WHERE id = ?
+                    """,
+                    title0, content0, note.id)
+                try sql.index(note.id, title: title0, content: content0)
             }
-            if requeue, let current = try sql.note(op.noteId), current.deletedAt == nil {
-                try sql.queueText(
-                    current.id, title: current.title, content: current.content, spaceId: current.spaceId, now: clock())
-            }
-            return true
-        }
-    }
-
-    /// A move the server answered `note_moved` to the very space it asked for: done (§7.9).
-    public func moveDone(_ op: Operation) async throws {
-        try await db.write { sql in
-            try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
-            guard let note = try sql.note(op.noteId) else { return }
-            let more = try sql.int64("SELECT count(*) FROM sync_outbox WHERE note_id = ?", note.id) > 0
-            try self.moved(sql, note, op.spaceId ?? note.spaceId, more: more)
-        }
-    }
-
-    /// The server holds `note` in `spaceId` now; with nothing `more` queued, it's clean there.
-    private func moved(_ sql: Sql, _ note: Note, _ spaceId: String, more: Bool) throws {
-        if !more && note.spaceId == spaceId {
-            try sql.exec(
-                """
-                UPDATE notes SET dirty = 0, base_title = NULL, base_content = NULL, base_deleted_at = NULL,
-                    base_space_id = NULL
-                WHERE id = ?
-                """,
-                note.id)
-        } else {
-            try sql.exec("UPDATE notes SET base_space_id = ? WHERE id = ?", spaceId, note.id)
+            return .recoveredCopy(copyId: copy, title: title)
         }
     }
 
@@ -438,7 +395,8 @@ public final class SyncStore: Sendable {
             try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
             try sql.rememberRemoteImages(current)
             var events: [SyncEvent] = []
-            try self.reconcile(sql, current, &events, fullSync: false, feed: op.feed)
+            // The feed the server's version came from: wherever the note is now, which the server found.
+            try self.reconcile(sql, current, &events, fullSync: false, feed: try sql.feedOf(current.spaceId))
             return events
         }
     }
@@ -519,7 +477,7 @@ public final class SyncStore: Sendable {
             let payload = Payload(
                 title: note.title, content: note.content, createdAt: note.createdAt, updatedAt: note.updatedAt,
                 conflictOf: note.conflictOf, spaceId: note.spaceId)
-            try sql.enqueue(note.id, type: createOp, payload: payload, now: now, feed: feed)
+            try sql.enqueue(note.id, type: createOp, payload: payload, now: now)
         }
         if feed.isEmpty {
             try sql.exec("UPDATE sync_state SET full_sync = 0 WHERE id = 1")

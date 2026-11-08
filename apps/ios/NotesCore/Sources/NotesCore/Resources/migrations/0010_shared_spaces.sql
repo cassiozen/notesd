@@ -29,9 +29,6 @@ ALTER TABLE spaces ADD COLUMN visited_at INTEGER;
 -- account for an edit made here.
 ALTER TABLE notes ADD COLUMN updated_by INTEGER;
 
--- The feed a queued change goes to: '' for the account's file, else the
--- shared space's id.
-ALTER TABLE sync_outbox ADD COLUMN feed TEXT NOT NULL DEFAULT '';
 
 -- The signed-in account's id, to tell its edits from other members'.
 ALTER TABLE sync_state ADD COLUMN user_id INTEGER;

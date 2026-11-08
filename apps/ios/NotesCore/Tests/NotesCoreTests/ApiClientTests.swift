@@ -77,27 +77,17 @@ struct ApiClientTests {
         #expect(body(sent) == ["username": "me", "password": "secret", "client": "device", "deviceName": "Pixel"])
     }
 
-    @Test func aSharedSpacesFileIsReachedUnderItsPrefixAndTheRestStayTheAccounts() async throws {
+    @Test func onlyASharedSpacesFeedHasItsOwnAddressEverythingElseIsTheAccounts() async throws {
         let result = #"{"id":"n","status":"updated","revision":2,"changeSeq":3,"updatedAt":4}"#
         let stub = StubTransport { _ in (200, result, jsonHeaders) }
         let fam = api(stub).inSpace("fam")
-        _ = await fam.createNote(NoteRequest(operationId: "o", id: "n"))
-        _ = await fam.updateNote("n", NoteRequest(operationId: "o"))
-        _ = await fam.deleteNote("n", NoteRequest(operationId: "o"))
-        _ = await fam.moveNote("n", NoteRequest(operationId: "o", baseRevision: 1, spaceId: "default"))
         _ = await fam.sync(since: 0, limit: 1, generation: nil)
-        _ = await fam.spaces()
-        _ = await api(stub).moveNote("n", NoteRequest(operationId: "o", spaceId: "fam"))
-        _ = await api(stub).emailNote("n", to: ["a@b.c"], revision: 1, spaceId: "fam")
+        _ = await api(stub).updateNote("n", NoteRequest(operationId: "o", spaceId: "fam"))
+        _ = await api(stub).emailNote("n", to: ["a@b.c"], revision: 1)
         #expect(
             stub.requests.map { "\($0.method) \($0.path)" } == [
-                "POST /api/v1/spaces/fam/notes", "PUT /api/v1/spaces/fam/notes/n",
-                "DELETE /api/v1/spaces/fam/notes/n", "POST /api/v1/spaces/fam/notes/n/move",
-                "GET /api/v1/spaces/fam/sync", "GET /api/v1/spaces", "POST /api/v1/notes/n/move",
-                "POST /api/v1/spaces/fam/notes/n/email",
+                "GET /api/v1/spaces/fam/sync", "PUT /api/v1/notes/n", "POST /api/v1/notes/n/email",
             ])
-        let move = try #require(stub.requests[3].httpBody)
-        #expect(String(decoding: move, as: UTF8.self) == #"{"baseRevision":1,"operationId":"o","spaceId":"default"}"#)
     }
 
     @Test func membershipCalls() async throws {
@@ -142,22 +132,15 @@ struct ApiClientTests {
         #expect(String(decoding: owner, as: UTF8.self) == #"{"userId":2}"#)
     }
 
-    @Test func aConflictNamesTheSpaceElsewhereAndASignInItsAccount() async throws {
+    @Test func aSignInNamesItsAccount() async throws {
         let stub = StubTransport(queue: [
-            (409, #"{"error":"space_elsewhere","message":"m","spaceId":"fam"}"#, jsonHeaders),
             (
                 200,
                 #"{"userId":7,"username":"me","accessToken":"a","accessExpiresAt":5,"refreshToken":"r","refreshExpiresAt":6}"#,
                 jsonHeaders
-            ),
+            )
         ])
-        let api = api(stub)
-        guard case .conflict("space_elsewhere", _, _, "fam") = await api.updateNote("n", NoteRequest(operationId: "o"))
-        else {
-            Issue.record(Comment(rawValue: "expected space_elsewhere"))
-            return
-        }
-        #expect(await api.login(username: "me", password: "p", deviceName: "d").value?.userId == 7)
+        #expect(await api(stub).login(username: "me", password: "p", deviceName: "d").value?.userId == 7)
     }
 
     @Test func aWrongPasswordIsARejectionNotALostSession() async throws {

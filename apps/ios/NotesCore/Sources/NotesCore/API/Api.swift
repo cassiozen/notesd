@@ -3,9 +3,8 @@ import Foundation
 /// The outcome of one request. Transport failures are values too: callers decide what offline means.
 public enum ApiResult<T: Sendable>: Sendable {
     case ok(T)
-    /// 409: the server's current state is in `current` (a note, for note conflicts), as JSON; `spaceId` names
-    /// the space whose notes are in another file, on `space_elsewhere` (§7.9).
-    case conflict(code: String, message: String, current: Data?, spaceId: String? = nil)
+    /// 409: the server's current state is in `current` (a note, for note conflicts), as JSON.
+    case conflict(code: String, message: String, current: Data?)
     /// No usable session: never signed in, or the session was revoked.
     case unauthenticated
     case rateLimited(retryAfterSeconds: Int64)
@@ -22,8 +21,7 @@ public enum ApiResult<T: Sendable>: Sendable {
     func failure<U>() -> ApiResult<U> {
         switch self {
         case .ok: preconditionFailure("not a failure")
-        case .conflict(let code, let message, let current, let spaceId):
-            .conflict(code: code, message: message, current: current, spaceId: spaceId)
+        case .conflict(let code, let message, let current): .conflict(code: code, message: message, current: current)
         case .unauthenticated: .unauthenticated
         case .rateLimited(let seconds): .rateLimited(retryAfterSeconds: seconds)
         case .rejected(let status, let error, let message, let field):

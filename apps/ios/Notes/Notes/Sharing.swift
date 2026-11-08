@@ -55,13 +55,15 @@ enum Sharing {
         "Edited by \(editor) · \(ago(at, now: now))"
     }
 
-    /// What leaving warns: the notes go, and unsynced changes with them.
+    /// What leaving warns: the notes go; unsynced changes stay, as copies in the account's own notes.
     static func leaveWarning(_ space: String, unsynced: Int) -> String {
         let gone = "Its notes will be removed from this iPhone."
         switch unsynced {
         case 0: return gone
-        case 1: return gone + " 1 note here has changes not yet synced, which will be lost."
-        default: return gone + " \(unsynced) notes here have changes not yet synced, which will be lost."
+        case 1: return gone + " 1 note here has changes not yet synced: they’ll be kept as a copy in your own notes."
+        default:
+            return gone + " \(unsynced) notes here have changes not yet synced: they’ll be kept as copies in your own "
+                + "notes."
         }
     }
 
@@ -72,16 +74,16 @@ enum Sharing {
     static func message<T>(_ result: ApiResult<T>, locked: Int = 0) -> String? {
         switch result {
         case .ok: return nil
-        case .conflict("space_has_locked", _, _, _):
+        case .conflict("space_has_locked", _, _):
             switch locked {
             case 0: return "Unlock its locked notes to share it."
             case 1: return "Unlock its locked note to share it."
             default: return "Unlock its \(locked) locked notes to share it."
             }
-        case .conflict("space_default", _, _, _): return "The default space can’t be shared."
-        case .conflict("owner_cannot_leave", _, _, _):
+        case .conflict("space_default", _, _): return "The default space can’t be shared."
+        case .conflict("owner_cannot_leave", _, _):
             return "Make someone else the owner first, or stop sharing."
-        case .conflict("already_member", _, _, _): return "They’re already in this space."
+        case .conflict("already_member", _, _): return "They’re already in this space."
         case .rejected(_, "not_space_owner", _, _): return "Only the space’s owner can do that."
         // The space, the invitation or the person invited: the answer doesn't say which.
         case .rejected(_, "not_found", _, _): return "That’s no longer there. It may have changed on another device."
@@ -89,7 +91,7 @@ enum Sharing {
         case .unauthenticated: return "You’re signed out. Sign in again to share."
         case .upgradeRequired: return SyncMessages.upgradeRequired
         case .unexpected(let status): return SyncMessages.unexpected(status)
-        case .conflict(_, let message, _, _), .rejected(_, _, let message, _):
+        case .conflict(_, let message, _), .rejected(_, _, let message, _):
             return message.isEmpty ? "Something went wrong. Try again." : sentence(message)
         }
     }
@@ -130,7 +132,7 @@ extension AppGraph {
     func invite(_ userId: Int64, to space: Space) async -> String? {
         guard let client = accounts.client() else { return Self.signInToShare }
         let result = await client.inviteToSpace(space.id, userId: userId)
-        if case .conflict("space_has_locked", _, _, _) = result {
+        if case .conflict("space_has_locked", _, _) = result {
             return Sharing.message(result, locked: (try? await store.lockedCount(space: space.id)) ?? 0)
         }
         if let problem = Sharing.message(result) { return problem }
