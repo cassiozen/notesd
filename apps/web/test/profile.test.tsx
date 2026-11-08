@@ -13,7 +13,8 @@ const JPEG = Uint8Array.from(
 
 // jsdom can't decode or draw pictures: any picked file becomes the JPEG above, once `prepared` lets it.
 let prepared: Promise<void> = Promise.resolve()
-vi.mock('../src/settings/photo', () => ({ preparePhoto: async () => (await prepared, JPEG.slice()) }))
+let picked = JPEG
+vi.mock('../src/settings/photo', () => ({ preparePhoto: async () => (await prepared, picked.slice()) }))
 
 const nav = () => screen.getByRole('navigation', { name: 'Settings categories' })
 const accountRow = () => within(nav()).getByRole('link', { name: /^Server:/ })
@@ -60,6 +61,29 @@ describe('name and photo', () => {
     fireEvent.change(within(dialog()).getByLabelText('Name'), { target: { value: 'Maria\u0007' } })
     await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
     expect(await within(dialog()).findByText('Use at most 64 characters, on one line.')).toBeTruthy()
+  })
+
+  it('after a name is saved but the photo isn’t, putting the name back is a change', async () => {
+    const { server, user } = await signedIn()
+    await openSettings(user)
+    await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
+    await user.type(within(dialog()).getByLabelText('Name'), 'Maria')
+    picked = new TextEncoder().encode('not a jpeg') as Uint8Array<ArrayBuffer>
+    try {
+      fireEvent.change(screen.getByTestId('photo-input'), { target: { files: [new File(['x'], 'me.png', { type: 'image/png' })] } })
+      await within(dialog()).findByRole('button', { name: 'Change photo…' })
+      await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
+      expect(await within(dialog()).findByText('The server didn’t take that photo. Try another.')).toBeTruthy()
+    } finally {
+      picked = JPEG
+    }
+    expect((await session(server)).displayName).toBe('Maria')
+
+    await user.clear(within(dialog()).getByLabelText('Name'))
+    await user.click(within(dialog()).getByRole('button', { name: 'Remove photo' }))
+    await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Name and photo' })).toBeNull())
+    expect((await session(server)).displayName).toBe('')
   })
 
   it('Save waits for a chosen photo to be ready', async () => {

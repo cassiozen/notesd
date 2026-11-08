@@ -41,9 +41,9 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
   const { profileChanged } = useAuth()
   const titleId = useId()
   const input = useRef<HTMLInputElement>(null)
-  // What the draft started from: a refresh while open mustn't turn an untouched name into a change.
-  const [startName] = useState(profile.displayName)
-  const [name, setName] = useState(startName)
+  // The name as this dialog last saw it saved: a refresh while open mustn't turn an untouched name into a change.
+  const [savedName, setSavedName] = useState(profile.displayName)
+  const [name, setName] = useState(savedName)
   const [photo, setPhoto] = useState<Photo>(null)
   const [nameError, setNameError] = useState<string>()
   const [photoError, setPhotoError] = useState<string>()
@@ -77,13 +77,16 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
     // What was saved before a later step failed still shows, everywhere.
     let saved: Person | undefined
     try {
-      if (name.trim() !== startName) saved = await api.setName(name.trim())
+      if (name.trim() !== savedName) saved = await api.setName(name.trim())
       if (photo === 'remove') saved = await api.removePhoto()
       else if (photo) saved = await api.setPhoto(photo.bytes)
       if (saved) profileChanged(saved)
       onClose()
     } catch (err) {
-      if (saved) profileChanged(saved)
+      if (saved) {
+        profileChanged(saved)
+        setSavedName(saved.displayName)
+      }
       setBusy(false)
       if (err instanceof ApiError && err.field === 'displayName') setNameError('Use at most 64 characters, on one line.')
       else if (err instanceof ApiError && (err.field === 'avatar' || err.status === 413 || err.status === 415)) {
