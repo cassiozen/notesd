@@ -62,10 +62,108 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     /** Tests only: runs inside reconcile after a copy is built, before commit, to simulate a crash there. */
     internal var faultAfterCopy: (() -> Unit)? = null
 
-    suspend fun state(): SyncState = db.read { sql ->
-        sql.one("SELECT cursor, generation, full_sync, last_sync_at, last_error FROM sync_state WHERE id = 1") {
+    /** The account's feed's state, or ([feed]) a shared space's, with the account's last sync and error. */
+    suspend fun state(feed: String = ""): SyncState = db.read { sql ->
+        val own = sql.one(
+            "SELECT cursor, generation, full_sync, last_sync_at, last_error FROM sync_state WHERE id = 1"
+        ) {
             SyncState(it.getLong(0), it.textOrNull(1), it.getLong(2) == 1L, it.longOrNull(3), it.textOrNull(4))
         }!!
+        if (feed.isEmpty()) return@read own
+        sql.one("SELECT cursor, generation, full_sync FROM feeds WHERE space_id = ?", feed) {
+            own.copy(cursor = it.getLong(0), generation = it.textOrNull(1), fullSync = it.getLong(2) == 1L)
+        } ?: own.copy(cursor = 0, generation = null, fullSync = false)
+    }
+
+    /** The signed-in account's id, so its own edits are told from other members' (§7.9). */
+    suspend fun setUserId(id: Long) {
+        db.write { sql -> sql.exec("UPDATE sync_state SET user_id = ? WHERE id = 1", id.takeIf { it > 0 }) }
+    }
+
+    suspend fun userId(): Long? = db.read { sql ->
+        sql.one("SELECT user_id FROM sync_state WHERE id = 1") { it.longOrNull(0) }
+    }
+
+    /** The shared spaces' feeds, as the space list last made them. */
+    suspend fun feeds(): List<String> = db.read { sql ->
+        sql.query("SELECT space_id FROM feeds ORDER BY space_id") { it.getText(0) }
+    }
+
+    /**
+     * A feed for each shared space in the list, and none for one no longer in it (left, removed, deleted): its
+     * notes and merge records leave the device (§7.9), but an edit not yet synced becomes a recovered copy in
+     * the default space first, since the space may be gone for reasons this device never warned about. A new
+     * feed counts as seen now, so what was there before this device joined isn't news.
+     */
+    suspend fun syncFeeds(): List<SyncEvent> = db.write { sql ->
+        val events = ArrayList<SyncEvent>()
+        sql.exec("INSERT OR IGNORE INTO feeds (space_id) SELECT id FROM spaces WHERE shared IS NOT NULL")
+        sql.exec("UPDATE spaces SET visited_at = ? WHERE shared IS NOT NULL AND visited_at IS NULL", clock())
+        val gone = sql.query(
+            "SELECT space_id FROM feeds WHERE space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)"
+        ) { it.getText(0) }
+        for (feed in gone) {
+            val notes = sql.query("SELECT $NOTE_COLUMNS FROM notes WHERE space_id = ?", feed, row = ::noteRow)
+            for (note in notes) {
+                // Moved into it here, the move not yet sent: the server still has it where it was, so it goes back.
+                // Sent but not answered, the server may have it here: kept only as a copy, below.
+                val back = note.baseSpaceId?.takeIf { note.serverRevision != null && it != feed && it !in gone }
+                if (back != null && sql.reaches(back) && !sql.sentAny(note.id)) {
+                    sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, note.id)
+                    if (note.deletedAt == null) sql.queueText(note.id, note.title, note.content, back, clock())
+                    continue
+                }
+                if (note.dirty && note.deletedAt == null) {
+                    val title = copyTitle(note.title, RECOVERED)
+                    val copy = sql.insertCopy(title, note.content, null, Spaces.DEFAULT, clock())
+                    events += SyncEvent.RecoveredCopy(copy, title)
+                }
+                sql.unindex(note.id)
+                sql.forgetMerge(note.id)
+                sql.forgetImages(note.id)
+                sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+            }
+            // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note goes
+            // to the server again, as new, where it is. Sent but not answered, the move may have landed: sent again,
+            // its answer is found where the note went.
+            val strays = sql.query(
+                """
+                SELECT $NOTE_COLUMNS FROM notes n
+                WHERE base_space_id = ? AND space_id <> ? AND server_revision IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.sent = 1)
+                """,
+                feed,
+                feed,
+                row = ::noteRow
+            )
+            for (note in strays) {
+                sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                if (note.deletedAt != null) {
+                    sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+                    continue
+                }
+                sql.exec(
+                    """
+                    UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1, base_title = NULL,
+                        base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                    WHERE id = ?
+                    """,
+                    note.id
+                )
+                val payload = Payload(
+                    note.title,
+                    note.content,
+                    note.createdAt,
+                    note.updatedAt,
+                    note.conflictOf,
+                    spaceId = note.spaceId
+                )
+                sql.enqueue(note.id, CREATE, payload, clock())
+            }
+            sql.exec("DELETE FROM feeds WHERE space_id = ?", feed)
+        }
+        events
     }
 
     // --- push ----------------------------------------------------------------
@@ -154,7 +252,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
      */
     suspend fun prepare(op: Operation): Operation? = db.write { sql ->
         val current = sql.one(
-            "SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent FROM sync_outbox WHERE operation_id = ?",
+            "SELECT $OPERATION_COLUMNS FROM sync_outbox WHERE operation_id = ?",
             op.operationId,
             row = ::operationRow
         ) ?: return@write null
@@ -194,7 +292,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             )
         }
         sql.one(
-            "SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent FROM sync_outbox WHERE operation_id = ?",
+            "SELECT $OPERATION_COLUMNS FROM sync_outbox WHERE operation_id = ?",
             op.operationId,
             row = ::operationRow
         )
@@ -262,45 +360,107 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         }
     }
 
+    /**
+     * The server refused [op] because it would put a locked body in a shared space (§7.9): locked offline, then
+     * shared from another device. The locked version becomes a recovered copy in the default space, where it
+     * can be locked, and the note goes back to the server's version, as the space's members have it.
+     */
+    suspend fun lockedOut(op: Operation): SyncEvent? = db.write { sql ->
+        val note = sql.note(op.noteId) ?: return@write null
+        val title = copyTitle(note.title, RECOVERED)
+        val copy = sql.insertCopy(title, note.content, null, Spaces.DEFAULT, clock())
+        dropOps(sql, note.id)
+        if (note.serverRevision == null) {
+            // The server never had it: the copy is all of it.
+            sql.unindex(note.id)
+            sql.forgetImages(note.id)
+            sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+        } else {
+            val title0 = note.baseTitle ?: note.title
+            val content0 = note.baseContent ?: note.content
+            sql.exec(
+                """
+                UPDATE notes SET title = ?, content = ?, space_id = COALESCE(base_space_id, space_id), dirty = 0,
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                WHERE id = ?
+                """,
+                title0,
+                content0,
+                note.id
+            )
+            sql.index(note.id, title0, content0)
+        }
+        SyncEvent.RecoveredCopy(copy, title)
+    }
+
     /** [op] lost to a newer server version: the request recorded nothing, so drop it and reconcile with [current]. */
     suspend fun conflict(op: Operation, current: RemoteNote): List<SyncEvent> = db.write { sql ->
         sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
         sql.rememberRemoteImages(current)
-        buildList { reconcile(sql, current, this, fullSync = false) }
+        // The feed the server's version came from: wherever the note is now, which the server found.
+        buildList { reconcile(sql, current, this, fullSync = false, feed = sql.feedOf(current.spaceId)) }
     }
 
     // --- pull ----------------------------------------------------------------
 
-    /** Applies one page of the feed and stores the cursor it leads to, together. */
-    suspend fun applyPage(page: SyncPage): List<SyncEvent> = db.write { sql ->
+    /** Applies one page of [feed] (the account's, or a shared space's) and stores the cursor it leads to, together. */
+    suspend fun applyPage(page: SyncPage, feed: String = ""): List<SyncEvent> = db.write { sql ->
         val events = ArrayList<SyncEvent>()
-        val fullSync = sql.long("SELECT full_sync FROM sync_state WHERE id = 1") == 1L
+        val fullSync = if (feed.isEmpty()) {
+            sql.long("SELECT full_sync FROM sync_state WHERE id = 1") == 1L
+        } else {
+            sql.long("SELECT count(*) FROM feeds WHERE space_id = ? AND full_sync = 1", feed) > 0
+        }
         for (remote in page.changes) {
             sql.rememberRemoteImages(remote)
-            reconcile(sql, remote, events, fullSync)
+            reconcile(sql, remote, events, fullSync, feed)
             if (fullSync) sql.exec("UPDATE notes SET full_sync_seen = 1 WHERE id = ?", remote.id)
         }
-        sql.exec("UPDATE sync_state SET cursor = ?, generation = ? WHERE id = 1", page.nextCursor, page.generation)
-        if (fullSync && !page.hasMore) finishFullSync(sql)
+        if (feed.isEmpty()) {
+            sql.exec("UPDATE sync_state SET cursor = ?, generation = ? WHERE id = 1", page.nextCursor, page.generation)
+        } else {
+            sql.exec(
+                "UPDATE feeds SET cursor = ?, generation = ? WHERE space_id = ?",
+                page.nextCursor,
+                page.generation,
+                feed
+            )
+        }
+        if (fullSync && !page.hasMore) finishFullSync(sql, feed)
         events
     }
 
     /**
      * The server was restored from a backup: pull everything again from the
      * start. What the full pull doesn't see is re-created on the server when
-     * it ends; missing after a restore never means deleted.
+     * it ends; missing after a restore never means deleted. Per feed: a shared
+     * space's file is restored on its own.
      */
-    suspend fun startFullSync() {
+    suspend fun startFullSync(feed: String = "") {
         db.write { sql ->
-            sql.exec("UPDATE sync_state SET cursor = 0, generation = NULL, full_sync = 1 WHERE id = 1")
-            sql.exec("UPDATE notes SET full_sync_seen = 0")
+            if (feed.isEmpty()) {
+                sql.exec("UPDATE sync_state SET cursor = 0, generation = NULL, full_sync = 1 WHERE id = 1")
+            } else {
+                sql.exec("UPDATE feeds SET cursor = 0, generation = NULL, full_sync = 1 WHERE space_id = ?", feed)
+            }
+            val (inFeed, args) = notesIn(feed)
+            sql.exec("UPDATE notes SET full_sync_seen = 0 WHERE $inFeed", *args)
         }
     }
 
-    private suspend fun finishFullSync(sql: Sql) {
+    /** The notes of [feed]: a shared space's, or the account's (every space that isn't shared). */
+    private fun notesIn(feed: String): Pair<String, Array<Any>> = if (feed.isEmpty()) {
+        "space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)" to emptyArray()
+    } else {
+        "space_id = ?" to arrayOf(feed)
+    }
+
+    private suspend fun finishFullSync(sql: Sql, feed: String) {
         val now = clock()
+        val (inFeed, args) = notesIn(feed)
         val missing = sql.query(
-            "SELECT $NOTE_COLUMNS FROM notes WHERE full_sync_seen = 0 AND server_revision IS NOT NULL",
+            "SELECT $NOTE_COLUMNS FROM notes WHERE full_sync_seen = 0 AND server_revision IS NOT NULL AND $inFeed",
+            *args,
             row = ::noteRow
         )
         for (note in missing) {
@@ -334,7 +494,11 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                 now
             )
         }
-        sql.exec("UPDATE sync_state SET full_sync = 0 WHERE id = 1")
+        if (feed.isEmpty()) {
+            sql.exec("UPDATE sync_state SET full_sync = 0 WHERE id = 1")
+        } else {
+            sql.exec("UPDATE feeds SET full_sync = 0 WHERE space_id = ?", feed)
+        }
     }
 
     suspend fun finished(error: String?) {
@@ -346,10 +510,32 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
 
     // --- reconcile (§4.6): the one routine for pushes that lost and pulled changes ---
 
-    private suspend fun reconcile(sql: Sql, remote: RemoteNote, events: MutableList<SyncEvent>, fullSync: Boolean) {
+    private suspend fun reconcile(
+        sql: Sql,
+        remote: RemoteNote,
+        events: MutableList<SyncEvent>,
+        fullSync: Boolean,
+        feed: String = ""
+    ) {
         val local = sql.note(remote.id)
         if (local == null) {
             if (remote.deletedAt == null) overwrite(sql, null, remote)
+            return
+        }
+        // A note in another file than this feed's, as far as this device knows (§7.9).
+        val elsewhere = sql.serverSpace(local)?.let { sql.feedOf(it) != feed } ?: false
+        val movedTo = remote.movedTo
+        if (remote.deletedAt != null && movedTo != null) {
+            // Left this feed: already followed (the move was ours, or the destination's feed came first), or follow it.
+            if (elsewhere) return
+            if (sql.follows(remote)) return follow(sql, local, movedTo)
+            // Moved where this device can't follow: for it, a deletion.
+            return reconcile(sql, remote.copy(movedTo = null), events, fullSync, feed)
+        }
+        if (elsewhere && remote.deletedAt == null && !fullSync) {
+            // Arrived from another file: its revisions there aren't comparable with the ones this device has.
+            val ops = sql.long("SELECT count(*) FROM sync_outbox WHERE note_id = ?", local.id)
+            if (!local.dirty && ops == 0L) overwrite(sql, local, remote) else merge(sql, local, remote, events)
             return
         }
         val known = local.serverRevision
@@ -411,6 +597,35 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
 
             else -> merge(sql, local, remote, events)
         }
+    }
+
+    /**
+     * Whether this device follows a moved note: to a shared space it's in, or to one of the account's own when the
+     * account moved it. Another member's move to *their* own space can name an id this account has too (`default`).
+     */
+    private suspend fun Sql.follows(remote: RemoteNote): Boolean {
+        val to = remote.movedTo ?: return false
+        if (!reaches(to)) return false
+        if (feedOf(to).isNotEmpty()) return true
+        val me = one("SELECT user_id FROM sync_state WHERE id = 1") { it.longOrNull(0) }
+        // Unknown either way, it's a deletion here: if the move was this account's, its own feed brings the note back.
+        return me != null && remote.updatedBy == me
+    }
+
+    /** A note moved to [spaceId] elsewhere: it's there now, text unchanged, until that space's feed brings it. */
+    private suspend fun follow(sql: Sql, local: Note, spaceId: String) {
+        val server = local.baseSpaceId ?: local.spaceId
+        sql.exec(
+            """
+            UPDATE notes SET space_id = CASE WHEN dirty = 0 OR space_id = ? THEN ? ELSE space_id END,
+                base_space_id = CASE WHEN dirty = 1 THEN ? ELSE base_space_id END
+            WHERE id = ?
+            """,
+            server,
+            spaceId,
+            spaceId,
+            local.id
+        )
     }
 
     private suspend fun merge(sql: Sql, local: Note, remote: RemoteNote, events: MutableList<SyncEvent>) {
@@ -570,8 +785,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             sql.exec(
                 """
                 INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, server_revision,
-                    server_change_seq, space_id, dirty)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    server_change_seq, space_id, dirty, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 """,
                 remote.id,
                 remote.title,
@@ -581,14 +796,16 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                 remote.conflictOf,
                 remote.revision,
                 remote.changeSeq,
-                remote.spaceId
+                remote.spaceId,
+                remote.updatedBy
             )
         } else {
             sql.exec(
                 """
                 UPDATE notes SET title = ?, content = ?, created_at = ?, updated_at = ?, deleted_at = NULL,
                     conflict_of = ?, server_revision = ?, server_change_seq = ?, space_id = ?, dirty = 0,
-                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL,
+                    updated_by = ?
                 WHERE id = ?
                 """,
                 remote.title,
@@ -599,6 +816,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                 remote.revision,
                 remote.changeSeq,
                 remote.spaceId,
+                remote.updatedBy,
                 remote.id
             )
         }
@@ -644,6 +862,10 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         outboxJson.decodeFromString(st.getText(4)),
         st.getLong(5) == 1L
     )
+
+    private companion object {
+        const val OPERATION_COLUMNS = "operation_id, note_id, operation_type, base_revision, payload_json, sent"
+    }
 }
 
 /** A locked body from the server comes with its images: kept, so a copy this device makes of it lists them. */

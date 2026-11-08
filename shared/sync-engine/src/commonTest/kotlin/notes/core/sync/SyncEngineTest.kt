@@ -7,6 +7,7 @@ import kotlinx.serialization.json.JsonObject
 import notes.core.api.ApiResult
 import notes.core.api.LockKey
 import notes.core.api.MutationResult
+import notes.core.api.RemoteInvite
 import notes.core.api.RemoteSpace
 import notes.core.api.SyncApi
 import notes.core.api.SyncPage
@@ -43,6 +44,10 @@ class SyncEngineTest {
         override suspend fun deleteSpace(id: String): ApiResult<Unit> = fail()
 
         override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> = fail()
+
+        override fun inSpace(spaceId: String): SyncApi = this
+
+        override suspend fun invites(): ApiResult<List<RemoteInvite>> = fail()
 
         private fun fail(): Nothing = throw IllegalStateException("disk I/O error")
     }

@@ -110,15 +110,68 @@ class ApiClient(
     override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> =
         authed({ request("DELETE", noteUrl(id), body, it) }) { json.decodeFromString(it) }
 
-    /** Changes after [since]. [generation] is the one stored from the last page, null before the first sync. */
-    override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> = authed({ access ->
-        val url = url("api/v1/sync").newBuilder()
-            .addQueryParameter("since", since.toString())
-            .addQueryParameter("limit", limit.toString())
-            .apply { if (generation != null) addQueryParameter("generation", generation) }
-            .build()
-        Request.Builder().url(url).header("Authorization", "Bearer $access").build()
+    override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> =
+        sync(FILE, since, limit, generation)
+
+    override fun inSpace(spaceId: String): SyncApi = SpaceApi(spaceId)
+
+    override suspend fun invites(): ApiResult<List<RemoteInvite>> =
+        authed({ request("GET", url("api/v1/invites"), null, it) }) { json.decodeFromString<RemoteInvites>(it).invites }
+
+    /** Every account's id and username, to invite into a space (§7.9). */
+    suspend fun accounts(): ApiResult<List<Member>> =
+        authed({ request("GET", url("api/v1/people"), null, it) }) { json.decodeFromString<RemotePeople>(it).people }
+
+    /** Invites an account into a space this account owns, sharing it the first time (§7.9). */
+    suspend fun inviteToSpace(spaceId: String, userId: Long): ApiResult<Invitee> = authed({
+        post("api/v1/spaces/${seg(spaceId)}/invites", buildJsonObject { put("userId", userId) }, it)
     }) { json.decodeFromString(it) }
+
+    suspend fun cancelInvite(spaceId: String, inviteId: String): ApiResult<Unit> = authedReply({
+        request("DELETE", url("api/v1/spaces/${seg(spaceId)}/invites/${seg(inviteId)}"), null, it)
+    }) { require(it.code == 204) { "Not a delete" } }
+
+    /** Joins the space; the answer is the space as this account now sees it. */
+    suspend fun acceptInvite(inviteId: String): ApiResult<RemoteSpace> = authed({
+        post("api/v1/invites/${seg(inviteId)}/accept", JsonObject(emptyMap()), it)
+    }) { json.decodeFromString(it) }
+
+    suspend fun declineInvite(inviteId: String): ApiResult<Unit> = authedReply({
+        request("POST", url("api/v1/invites/${seg(inviteId)}/decline"), JsonObject(emptyMap()), it)
+    }) { require(it.code == 204) { "Not a decline" } }
+
+    /** The owner removes a member, or ([userId] this account's) a member leaves. */
+    suspend fun removeMember(spaceId: String, userId: Long): ApiResult<Unit> = authedReply({
+        request("DELETE", url("api/v1/spaces/${seg(spaceId)}/members/$userId"), null, it)
+    }) { require(it.code == 204) { "Not a delete" } }
+
+    /** The owner hands the space to another member. */
+    suspend fun transferSpace(spaceId: String, userId: Long): ApiResult<Unit> = authedReply({
+        request("PUT", url("api/v1/spaces/${seg(spaceId)}/owner"), buildJsonObject { put("userId", userId) }, it)
+    }) { require(it.code == 204) { "Not a handover" } }
+
+    private fun seg(s: String) =
+        HttpUrl.Builder().scheme("http").host("x").addPathSegment(s).build().encodedPath.drop(1)
+
+    /** A shared space's change feed: the one call that's per file (§7.9). */
+    private inner class SpaceApi(private val spaceId: String) : SyncApi by this@ApiClient {
+        private val file = "api/v1/spaces/${seg(spaceId)}"
+
+        override fun inSpace(spaceId: String): SyncApi = this@ApiClient.inSpace(spaceId)
+
+        override suspend fun sync(since: Long, limit: Int, generation: String?) = sync(file, since, limit, generation)
+    }
+
+    /** Changes after [since]. [generation] is the one stored from the last page, null before the first sync. */
+    private suspend fun sync(file: String, since: Long, limit: Int, generation: String?): ApiResult<SyncPage> =
+        authed({ access ->
+            val url = url("$file/sync").newBuilder()
+                .addQueryParameter("since", since.toString())
+                .addQueryParameter("limit", limit.toString())
+                .apply { if (generation != null) addQueryParameter("generation", generation) }
+                .build()
+            Request.Builder().url(url).header("Authorization", "Bearer $access").build()
+        }) { json.decodeFromString(it) }
 
     suspend fun emailSettings(): ApiResult<EmailSettings> =
         authed({ request("GET", url("api/v1/settings/email"), null, it) }) { json.decodeFromString(it) }
@@ -329,6 +382,8 @@ class ApiClient(
     private fun userUrl(id: Long) = url("api/v1/users").newBuilder().addPathSegment(id.toString()).build()
 
     companion object {
+        /** The account's own feed's prefix; a shared space's is `api/v1/spaces/<id>` (§7.9). */
+        private const val FILE = "api/v1"
         private const val REFRESH_EARLY_MS = 60_000L
         private val JSON = "application/json".toMediaType()
         private val json = Json { ignoreUnknownKeys = true }

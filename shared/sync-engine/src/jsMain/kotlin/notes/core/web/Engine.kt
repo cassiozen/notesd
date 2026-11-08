@@ -40,7 +40,9 @@ class LocalNote(
     val revision: Double?,
     /** Changed here since the last sync. */
     val dirty: Boolean,
-    val spaceId: String
+    val spaceId: String,
+    /** The account that last changed it (§7.9). */
+    val updatedBy: Double?
 )
 
 @JsExport
@@ -53,7 +55,9 @@ class LocalListItem(
     val locked: Boolean,
     /** Null until the server has the note. */
     val revision: Double?,
-    val spaceId: String
+    val spaceId: String,
+    /** The account that last changed it (§7.9). */
+    val updatedBy: Double?
 )
 
 /** [excerpt]: HTML-escaped, matches in `<mark>`, as the server's search returns it. */
@@ -77,8 +81,35 @@ class LocalSpace(
     val icon: String,
     val noteCount: Int,
     val createdAt: Double,
-    val traits: Array<LocalSpaceTrait>
+    val traits: Array<LocalSpaceTrait>,
+    /** Who's in it, when it's shared (§7.9). */
+    val shared: LocalShared?
 )
+
+/** A shared space's people as this account sees them (§7.9); [invites] for its owner only. */
+@JsExport
+class LocalShared(val role: String, val members: Array<LocalMember>, val invites: Array<LocalInvitee>)
+
+@JsExport
+class LocalMember(val id: Double, val username: String)
+
+@JsExport
+class LocalInvitee(val id: String, val userId: Double, val username: String)
+
+/** An invitation waiting for this account (§7.9). */
+@JsExport
+class LocalInvite(
+    val id: String,
+    val spaceId: String,
+    val spaceName: String,
+    val spaceIcon: String,
+    val from: LocalMember,
+    val createdAt: Double
+)
+
+/** What other members changed in a shared space since this device last showed it (§7.9). */
+@JsExport
+class LocalSpaceNews(val spaceId: String, val count: Int, val usernames: Array<String>, val latestAt: Double)
 
 /** §7.8; [exposure], [problem] and [audience] null when absent (the server omits them; the web's host drops nulls). */
 @JsExport
@@ -173,7 +204,8 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
                     it.updatedAt.toDouble(),
                     it.locked,
                     it.revision?.toDouble(),
-                    it.spaceId
+                    it.spaceId,
+                    it.updatedBy?.toDouble()
                 )
             }
             .toTypedArray()
@@ -251,10 +283,52 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
                 val traits = sp.traits.map {
                     LocalSpaceTrait(it.key, it.label, it.summary, it.exposure, it.problem, it.audience?.toTypedArray())
                 }
-                LocalSpace(sp.id, sp.name, sp.icon, sp.noteCount, sp.createdAt.toDouble(), traits.toTypedArray())
+                val shared = sp.shared?.let { s ->
+                    LocalShared(
+                        s.role,
+                        s.members.map { LocalMember(it.id.toDouble(), it.username) }.toTypedArray(),
+                        s.invites.map { LocalInvitee(it.id, it.userId.toDouble(), it.username) }.toTypedArray()
+                    )
+                }
+                LocalSpace(
+                    sp.id,
+                    sp.name,
+                    sp.icon,
+                    sp.noteCount,
+                    sp.createdAt.toDouble(),
+                    traits.toTypedArray(),
+                    shared
+                )
             }
             .toTypedArray()
     }
+
+    /** The invitations waiting for this account, as last synced (§7.9). */
+    fun invites(): Promise<Array<LocalInvite>> = scope.promise {
+        engine.spaces.invites().map {
+            LocalInvite(
+                it.id,
+                it.spaceId,
+                it.spaceName,
+                it.spaceIcon,
+                LocalMember(it.from.id.toDouble(), it.from.username),
+                it.createdAt.toDouble()
+            )
+        }.toTypedArray()
+    }
+
+    /** By shared space, what other members changed since this device last showed it. */
+    fun news(): Promise<Array<LocalSpaceNews>> = scope.promise {
+        engine.spaces.news().map { (id, n) ->
+            LocalSpaceNews(id, n.count, n.usernames.toTypedArray(), n.latestAt.toDouble())
+        }.toTypedArray()
+    }
+
+    /** The space is being shown: what's in it is no longer news. */
+    fun visit(spaceId: String): Promise<Unit> = scope.promise { engine.spaces.visit(spaceId) }
+
+    /** The signed-in account's id, from the session, to tell its edits from other members'. */
+    fun setUserId(id: Double): Promise<Unit> = scope.promise { engine.store.setUserId(id.toLong()) }
 
     fun createSpace(id: String, name: String, icon: String): Promise<String> =
         scope.promise { engine.spaces.create(name, icon, id) }
@@ -379,7 +453,8 @@ private fun Note.export() = LocalNote(
     conflictOf,
     serverRevision?.toDouble(),
     dirty,
-    spaceId
+    spaceId,
+    updatedBy?.toDouble()
 )
 
 private fun SyncStatus.export(): EngineStatus = when (this) {

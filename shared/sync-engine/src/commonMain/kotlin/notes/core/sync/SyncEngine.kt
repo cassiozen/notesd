@@ -185,6 +185,11 @@ class SyncEngine(
         // Deletes first too, so a name deleted and reused here is free; one refused waits for the notes.
         pushSpaces(api, deletes = true, final = false)?.let { return it }
         pushSpaces(api, deletes = false)?.let { return it }
+        // Before the notes: which spaces are shared, so each change goes to its space's file (§7.9). An odd answer
+        // (a portal's page) doesn't stop the cycle here: the changes get their attempts, and parking, as before.
+        fetchSpaces(api)?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
+        val invited = invites(api)
+        invited?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
         push(api)?.let { return it }
         pushSpaces(api, deletes = true)?.let { return it }
         // The names those deletes freed, for the spaces made here meanwhile.
@@ -194,6 +199,8 @@ class SyncEngine(
         }
         pull(api)?.let { return it }
         fetchSpaces(api)?.let { return it }
+        // Odd before the changes went: asked again, an odd answer now fails the cycle.
+        if (invited != null) invites(api)?.let { return it }
         keyring(api)?.let { return it }
         return if (store.nextOperation() != null) push(api) else null
     }
@@ -241,6 +248,12 @@ class SyncEngine(
                         reject("The space “${change.name}” wasn’t saved: ${r.message.ifEmpty { r.error }}")
                     }
 
+                    // A shared space has this id (§7.9): a 409, so a Conflict, but no retry changes it.
+                    is ApiResult.Conflict if r.code in PERMANENT_ERRORS -> {
+                        spaces.dropped(change)
+                        reject("The space “${change.name}” wasn’t saved: ${r.message.ifEmpty { r.code }}")
+                    }
+
                     else -> return unexpected(r) { spaces.attempted(change) } ?: stop(r)
                 }
             }
@@ -248,12 +261,28 @@ class SyncEngine(
         return null
     }
 
-    /** The list is small and has no change feed: fetched whole every cycle, like the keyring. */
+    /**
+     * The list is small and has no change feed: fetched whole every cycle, like the keyring. A shared space new to
+     * it gets a feed; one gone from it takes its notes off the device, an unsynced edit kept as a copy (§7.9).
+     */
     private suspend fun fetchSpaces(api: SyncApi): Stop? = when (val r = api.spaces()) {
         is ApiResult.Ok -> {
             spaces.replace(r.value)
+            emit(store.syncFeeds())
             null
         }
+
+        else -> stop(r)
+    }
+
+    private suspend fun invites(api: SyncApi): Stop? = when (val r = api.invites()) {
+        is ApiResult.Ok -> {
+            spaces.replaceInvites(r.value)
+            null
+        }
+
+        // A server from before shared spaces: none.
+        is ApiResult.Rejected if r.error == "no_such_endpoint" -> null
 
         else -> stop(r)
     }
@@ -331,6 +360,12 @@ class SyncEngine(
                     pushed = true
                 }
 
+                // Locked offline, then the space was shared from another device (§7.9): kept as a copy.
+                is ApiResult.Rejected if result.error == LOCKED_IN_SHARED_SPACE -> {
+                    store.lockedOut(op)?.let { emit(listOf(it)) }
+                    pushed = true
+                }
+
                 is ApiResult.Rejected if result.error in PERMANENT_ERRORS -> {
                     store.rejected(op)
                     val what = op.title.trim().ifEmpty { "A note" }
@@ -356,6 +391,7 @@ class SyncEngine(
         return Stop(SyncOutcome.Failed, unexpectedMessage(status))
     }
 
+    // Every change goes to the account's address, whatever space the note is in: the server finds the file (§7.9).
     private suspend fun send(api: SyncApi, op: Operation): ApiResult<MutationResult> = when (op.type) {
         "create" -> api.createNote(
             buildJsonObject {
@@ -393,13 +429,20 @@ class SyncEngine(
         )
     }
 
+    /** The account's feed, then each shared space's (§7.9). */
     private suspend fun pull(api: SyncApi): Stop? {
+        pullFeed(api, "")?.let { return it }
+        for (feed in store.feeds()) pullFeed(api.inSpace(feed), feed)?.let { return it }
+        return null
+    }
+
+    private suspend fun pullFeed(api: SyncApi, feed: String): Stop? {
         var restarted = false
         while (true) {
-            val state = store.state()
+            val state = store.state(feed)
             when (val result = api.sync(state.cursor, pageSize, state.generation)) {
                 is ApiResult.Ok -> {
-                    emit(store.applyPage(result.value))
+                    emit(store.applyPage(result.value, feed))
                     if (!result.value.hasMore) return null
                 }
 
@@ -407,8 +450,11 @@ class SyncEngine(
                     // Restored from a backup. Once per cycle: a second time means something else is wrong.
                     if (restarted) return Stop(SyncOutcome.Failed, result.message)
                     restarted = true
-                    store.startFullSync()
+                    store.startFullSync(feed)
                 }
+
+                // Left or removed since the list came: the next list drops the feed.
+                is ApiResult.Rejected if feed.isNotEmpty() && result.error == "not_found" -> return null
 
                 is ApiResult.Rejected if result.status < 500 -> return Stop(
                     SyncOutcome.Failed,
@@ -449,6 +495,7 @@ class SyncEngine(
 
     private companion object {
         const val OPERATION_ID_REUSED = "operation_id_reused"
+        const val LOCKED_IN_SHARED_SPACE = "locked_in_shared_space"
         val json = Json { ignoreUnknownKeys = true }
 
         fun decodeNote(s: String): RemoteNote? = try {

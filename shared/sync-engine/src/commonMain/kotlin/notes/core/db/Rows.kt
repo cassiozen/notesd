@@ -17,7 +17,7 @@ internal const val DELETE = "delete"
 
 internal const val NOTE_COLUMNS =
     "id, title, content, created_at, updated_at, deleted_at, conflict_of, server_revision, dirty, " +
-        "base_title, base_content, space_id, base_space_id"
+        "base_title, base_content, space_id, base_space_id, updated_by"
 
 internal fun noteRow(st: SQLiteStatement) = Note(
     id = st.getText(0),
@@ -32,7 +32,8 @@ internal fun noteRow(st: SQLiteStatement) = Note(
     baseTitle = st.textOrNull(9),
     baseContent = st.textOrNull(10),
     spaceId = st.getText(11),
-    baseSpaceId = st.textOrNull(12)
+    baseSpaceId = st.textOrNull(12),
+    updatedBy = st.longOrNull(13)
 )
 
 internal suspend fun Sql.note(id: String): Note? =
@@ -120,9 +121,38 @@ internal suspend fun Sql.unsentOp(noteId: String): PendingOp? = one(
     noteId
 ) { PendingOp(it.getText(0), it.getText(1), outboxJson.decodeFromString(it.getText(2))) }
 
+/** Whether any of [noteId]'s queued changes has gone out unanswered. */
+internal suspend fun Sql.sentAny(noteId: String): Boolean =
+    long("SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1", noteId) > 0
+
+/** The feed a space's notes download in (§7.9): a shared space's own, else the account's (''). */
+internal suspend fun Sql.feedOf(spaceId: String?): String {
+    if (spaceId == null) return ""
+    val shared = one("SELECT shared IS NOT NULL FROM spaces WHERE id = ?", spaceId) { it.getLong(0) == 1L }
+    return if (shared == true) spaceId else ""
+}
+
+/** Whether this device has the space, so its notes can follow a note moved there. */
+internal suspend fun Sql.reaches(spaceId: String): Boolean =
+    long("SELECT count(*) FROM spaces WHERE id = ? AND pending_delete = 0", spaceId) > 0
+
+/**
+ * The space the server holds [note] in: the one it last synced in, else what a create that went out named.
+ * Null if the server never had it.
+ */
+internal suspend fun Sql.serverSpace(note: Note): String? {
+    if (note.serverRevision != null) return note.baseSpaceId ?: note.spaceId
+    return one(
+        "SELECT payload_json FROM sync_outbox WHERE note_id = ? AND sent = 1 AND operation_type = ? LIMIT 1",
+        note.id,
+        CREATE
+    ) { outboxJson.decodeFromString<Payload>(it.getText(0)).spaceId ?: Spaces.DEFAULT }
+}
+
 /**
  * Makes sure the server will receive [title]/[content] in [spaceId] for [noteId]: rewrites the
- * unsent create or update, or queues a new update (a sent payload is never changed).
+ * unsent create or update, or queues a new update (a sent payload is never changed). Moving into or out of a
+ * shared space is the same update: the server moves the note between files (§7.9).
  */
 internal suspend fun Sql.queueText(noteId: String, title: String, content: String, spaceId: String, now: Long) {
     val pending = unsentOp(noteId)
@@ -160,8 +190,8 @@ internal suspend fun Sql.insertCopy(
     rememberImages(id, content, imageIds ?: lockedImageIds(content))
     exec(
         """
-        INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty)
-        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+        INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty, updated_by)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1, (SELECT user_id FROM sync_state WHERE id = 1))
         """,
         id,
         title,

@@ -21,7 +21,14 @@ import org.w3c.fetch.SAME_ORIGIN
  * [client] (`web/<version>`) goes with every request. Redirects aren't followed:
  * notesd sends none, so one is [ApiResult.Unexpected].
  */
-class FetchApi(private val csrfToken: () -> String?, private val client: ClientInfo? = null) : SyncApi {
+class FetchApi(
+    private val csrfToken: () -> String?,
+    private val client: ClientInfo? = null,
+    /** '' for the account's feed, else `/spaces/<id>`: a shared space's, the one call that's per file (§7.9). */
+    private val file: String = ""
+) : SyncApi {
+    override fun inSpace(spaceId: String): SyncApi = FetchApi(csrfToken, client, "/spaces/${enc(spaceId)}")
+
     override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
         send("POST", "/notes", body.toString()) { json.decodeFromString(it) }
 
@@ -33,8 +40,11 @@ class FetchApi(private val csrfToken: () -> String?, private val client: ClientI
 
     override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> {
         val gen = generation?.let { "&generation=${enc(it)}" }.orEmpty()
-        return send("GET", "/sync?since=$since&limit=$limit$gen", null) { json.decodeFromString(it) }
+        return send("GET", "$file/sync?since=$since&limit=$limit$gen", null) { json.decodeFromString(it) }
     }
+
+    override suspend fun invites(): ApiResult<List<RemoteInvite>> =
+        send("GET", "/invites", null) { json.decodeFromString<RemoteInvites>(it).invites }
 
     override suspend fun lockKeys(): ApiResult<List<LockKey>> =
         send("GET", "/locks", null) { json.decodeFromString<LockKeys>(it).keys }

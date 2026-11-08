@@ -25,7 +25,9 @@ data class Note(
     val baseContent: String? = null,
     /** The space the note is in (§7.7), and the synced one while [dirty]. */
     val spaceId: String = Spaces.DEFAULT,
-    val baseSpaceId: String? = null
+    val baseSpaceId: String? = null,
+    /** The account that last changed it (§7.9): another member's, or this account's own. */
+    val updatedBy: Long? = null
 )
 
 /** [locked]: the body is encrypted (§10.1), so there's no preview. */
@@ -38,7 +40,9 @@ data class NoteSummary(
     val createdAt: Long = 0,
     /** Null until the server has the note. */
     val revision: Long? = null,
-    val spaceId: String = Spaces.DEFAULT
+    val spaceId: String = Spaces.DEFAULT,
+    /** The account that last changed it (§7.9). */
+    val updatedBy: Long? = null
 )
 
 /** Narrows the list and search; null shows every note. */
@@ -121,7 +125,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         sql.query(
             """
             SELECT n.id, n.title, n.updated_at, f.body_text, substr(n.content, 1, ?) = ?,
-                n.created_at, n.server_revision, n.space_id
+                n.created_at, n.server_revision, n.space_id, n.updated_by
             FROM notes n LEFT JOIN notes_fts f ON f.rowid = n.seq
             WHERE n.deleted_at IS NULL AND $cond
             ORDER BY n.updated_at DESC, n.id DESC
@@ -138,7 +142,8 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 it.getLong(4) == 1L,
                 it.getLong(5),
                 it.longOrNull(6),
-                it.getText(7)
+                it.getText(7),
+                it.longOrNull(8)
             )
         }
     }
@@ -295,7 +300,10 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
     private suspend fun create(sql: Sql, id: String, title: String, content: String, spaceId: String): Note {
         val now = clock()
         sql.exec(
-            "INSERT INTO notes (id, title, content, created_at, updated_at, space_id, dirty) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            """
+            INSERT INTO notes (id, title, content, created_at, updated_at, space_id, dirty, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?, 1, (SELECT user_id FROM sync_state WHERE id = 1))
+            """,
             id,
             title,
             content,
@@ -320,6 +328,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
         sql.exec(
             """
             UPDATE notes SET title = ?, content = ?, space_id = ?, updated_at = ?, dirty = 1,
+                updated_by = (SELECT user_id FROM sync_state WHERE id = 1),
                 base_title = CASE WHEN dirty = 0 THEN title ELSE base_title END,
                 base_content = CASE WHEN dirty = 0 THEN content ELSE base_content END,
                 base_deleted_at = CASE WHEN dirty = 0 THEN deleted_at ELSE base_deleted_at END,
@@ -495,12 +504,14 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
             sql.exec("DELETE FROM pending_images")
             sql.exec("DELETE FROM locked_images")
             sql.exec("DELETE FROM merge_undo")
+            sql.exec("DELETE FROM feeds")
+            sql.exec("DELETE FROM invites")
             sql.exec("DELETE FROM spaces")
             sql.exec("INSERT INTO spaces (id, name, created_at) VALUES (?, ?, 0)", Spaces.DEFAULT, Spaces.DEFAULT_NAME)
             sql.exec(
                 """
                 UPDATE sync_state SET cursor = 0, generation = NULL, last_sync_at = NULL, last_error = NULL,
-                    full_sync = 0
+                    full_sync = 0, user_id = NULL
                 """
             )
         }
