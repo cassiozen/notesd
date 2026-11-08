@@ -31,6 +31,8 @@ var (
 	ErrSelf          = errors.New("you're already in this space")
 	ErrIDTaken       = errors.New("a shared space has this id")
 	ErrBusy          = errors.New("the space is in use; try again")
+	// Agents run in an account's own spaces only (§7.11).
+	ErrHasAgent = errors.New("turn off the space's agent before sharing it")
 )
 
 // Service shares spaces.
@@ -357,6 +359,11 @@ func (s *Service) share(ctx context.Context, ownerID int64, spaceID string) erro
 		return err
 	} else if !ok {
 		return ErrNotFound
+	}
+	if c, err := own.Agent.Config(ctx, spaceID); err != nil {
+		return err
+	} else if c.Enabled {
+		return ErrHasAgent
 	}
 	s.moving.Lock()
 	defer s.moving.Unlock()

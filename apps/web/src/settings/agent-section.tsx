@@ -1,12 +1,20 @@
-import { useId } from 'react'
+import { useId, useState, type FormEvent } from 'react'
 import type { AgentConfig, AgentConfigInput, AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
+import type { Space } from '../api/types'
 import auth from '../auth/auth.module.css'
+import { genericMessage } from '../auth/errors'
+import { saveAgentConfig, useAgentConfigs } from '../notes/agent-config'
+import { providerHost, useAiSettings } from '../notes/ai-settings'
+import { notesSource } from '../notes/source'
+import { reloadSpaces } from '../notes/spaces'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { ChevronIcon } from '../ui/icons'
 import { TextArea } from '../ui/text-area'
 import styles from './settings.module.css'
+import info from './space-info.module.css'
+import { useUnsaved } from './unsaved'
 
 export type AgentDraft = AgentConfigInput
 export type AgentErrors = Partial<Record<string, string>>
@@ -128,7 +136,7 @@ type Props = {
 }
 
 /** A space's agent: on or off, what the space is for, and a prompt per trigger. */
-export function AgentSection({ draft, onChange, errors, provider, isNew }: Props) {
+function AgentFields({ draft, onChange, errors, provider, isNew }: Props) {
   const set = (patch: Partial<AgentDraft>) => onChange({ ...draft, ...patch })
   const setTrigger = (key: AgentTrigger, prompt: string) => set({ triggers: { ...draft.triggers, [key]: prompt } })
   const blank = !hasAgent({ ...draft, enabled: false })
@@ -221,5 +229,98 @@ export function AgentSection({ draft, onChange, errors, provider, isNew }: Props
         </>
       )}
     </fieldset>
+  )
+}
+
+/** Whether Space info offers to turn the space's agent on: once AI is set up, or to resume one paused. */
+export function useAgentOffered(): (space: Space) => boolean {
+  const configs = useAgentConfigs()
+  const ai = useAiSettings()
+  return (space) => !space.shared && configs !== null && ai !== null && (ai.configured || configs.has(space.id))
+}
+
+/**
+ * The agent trait's part of Space info (§7.8, §7.11), on or off: turned on, changed and turned off in place,
+ * saved with its own Save.
+ */
+export function AgentSection({ space }: { space: Space }) {
+  const headingId = useId()
+  const configs = useAgentConfigs()
+  const ai = useAiSettings()
+  const saved = configs?.get(space.id)
+  const initial = draftOf(saved)
+  const [draft, setDraft] = useState<AgentDraft | null>(null)
+  const [errors, setErrors] = useState<AgentErrors>({})
+  const [formError, setFormError] = useState<string>()
+  const [busy, setBusy] = useState(false)
+  const current = draft ?? initial
+  const dirty = draft !== null && !sameAgent(draft, initial)
+  useUnsaved('the agent', dirty)
+
+  function cancel() {
+    setDraft(null)
+    setErrors({})
+    setFormError(undefined)
+  }
+
+  async function submit(e: FormEvent) {
+    e.preventDefault()
+    setErrors({})
+    setFormError(undefined)
+    setBusy(true)
+    try {
+      await saveAgentConfig(space.id, current)
+      // Its trait is the server's: the list brings it.
+      notesSource().sync?.now()
+      void reloadSpaces()
+      // Edits made while it saved stay, still to be saved.
+      setDraft((cur) => (cur === current ? null : cur))
+    } catch (err) {
+      const fields = agentFieldError(err)
+      if (fields) setErrors(fields)
+      else if (err instanceof ApiError && err.code === 'not_found')
+        setFormError('This space hasn’t reached the server yet. Try again once it has synced.')
+      else setFormError(genericMessage(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className={info.section} aria-labelledby={headingId}>
+      <h3 id={headingId} className={info.caption}>
+        Agent
+      </h3>
+      <form className={info.section} onSubmit={(e) => void submit(e)} noValidate>
+        <div className={`${info.group} ${styles.agentGroup}`}>
+          {configs === null || ai === null ? (
+            <p className={styles.muted}>Loading…</p>
+          ) : (
+            <AgentFields
+              draft={current}
+              onChange={setDraft}
+              errors={errors}
+              provider={ai.configured ? providerHost(ai.baseUrl) : null}
+              isNew={!saved}
+            />
+          )}
+        </div>
+        {formError && (
+          <p role="alert" className={info.error}>
+            {formError}
+          </p>
+        )}
+        {dirty && (
+          <div className={styles.dialogActions}>
+            <Button size="md" onClick={cancel} disabled={busy}>
+              Cancel
+            </Button>
+            <Button variant="solid" size="md" type="submit" busy={busy}>
+              Save
+            </Button>
+          </div>
+        )}
+      </form>
+    </section>
   )
 }

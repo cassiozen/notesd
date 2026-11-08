@@ -338,9 +338,10 @@ anyone else).
 - Renaming, changing the icon and deleting a shared space (`PUT`/`DELETE /spaces/{id}`) are for
   its owner (`403 not_space_owner`). Names may match one of a member's own spaces; ids may not:
   a space of your own with a shared space's id is refused (`409 space_exists`).
-- Sharing refuses `default` (`409 space_default`). Any invitation, the first one too, refuses a
-  space holding locked notes (`409 space_has_locked`, with `count`). While anyone else is in it or
-  invited, a shared space refuses locked notes (`422 locked_in_exposed_space`).
+- Sharing refuses `default` (`409 space_default`) and a space whose agent is on
+  (`409 space_has_agent`). Any invitation, the first one too, refuses a space holding locked notes
+  (`409 space_has_locked`, with `count`). While anyone else is in it or invited, a shared space
+  refuses locked notes (`422 locked_in_exposed_space`).
 - The owner can't leave (`409 owner_cannot_leave`): hand the space on, or remove every member.
 - A note another member moved into a space of their own is deleted as far as you can tell: `GET`
   answers `410`, an update `409 note_deleted` (its tombstone without `movedTo`), a delete
@@ -515,7 +516,13 @@ space and how its agent behaves. `triggers` maps each trigger the agent acts on 
 `menu`. A trigger with an empty prompt is dropped, and so is one the server doesn't know.
 `menuLabel` names the `menu` command in a note's menu, up to 40 characters, and is required with a
 `menu` prompt. Prompts can be up to 16 KiB. `PUT` replaces the whole config. A space that doesn't
-exist is `404 not_found`. Deleting a space deletes its agent.
+exist is `404 not_found`, and so is a shared space: agents run in the account's own spaces.
+Deleting or sharing a space deletes its agent.
+
+A space whose agent is on with at least one prompt has the `agent` trait. Its `summary` names
+when the agent acts ("While you write · when you’re done"); its `exposure` is the AI provider
+("Sent to the AI at api.example.com", `audience` `ai:<host>`), or, with no AI set up, its
+`problem` is "AI isn’t set up".
 
 The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)
 until a device says otherwise: any signed-in request may carry `X-Notesd-Time-Zone` with an IANA
@@ -589,6 +596,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
 | `space_has_locked` | 409 | A space holding locked notes can't be shared or published; see `count` |
+| `space_has_agent` | 409 | A space whose agent is on can't be shared |
 | `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
 | `already_member` | 409 | That account is already in the space |
 | `space_exists` | 409 | A shared space has this id |

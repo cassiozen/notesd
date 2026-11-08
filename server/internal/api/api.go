@@ -70,6 +70,9 @@ type Server struct {
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
 	share := sharing.New(system, users)
 	share.Install()
+	users.OnOpen(func(_ int64, d *userdata.Data) {
+		d.Spaces.AddTrait("agent", d.Agent.Trait(func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) }))
+	}, nil)
 	pcfg := cfg.Publish
 	pcfg.DataDir, pcfg.Log = cfg.DataDir, log
 	pub := publish.New(system, users, share, pcfg)

@@ -899,3 +899,13 @@
 .agentTrigger[open] > :not(summary) {
   margin: 0 14px;
 }
+
+/* Space info's agent section: its fields inside the section's group. */
+.agentGroup {
+  padding: 12px 14px;
+}
+
+.agentGroup .agent {
+  padding: 0;
+  border-top: 0;
+}
