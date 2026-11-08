@@ -1,11 +1,17 @@
 apps/android/app/src/main/kotlin/notes/app/sharing/SharingScreen.kt
   s_bfcd6b4ecf53cb::t_7b24339943f4ae 78,185-187,192-193
+  s_bfcd6b4ecf53cb::t_80862f552eb7d7 185-186,193
+  s_bfcd6b4ecf53cb::t_0560d213017a25 78,187,192
 shared/sync-engine/src/jvmMain/kotlin/notes/core/sync/NoteMailer.kt
   s_bfcd6b4ecf53cb::t_7b24339943f4ae 41
+  s_bfcd6b4ecf53cb::t_df3aed1d8ed688 41
 apps/android/app/src/main/kotlin/notes/app/sharing/Sharing.kt
   s_bfcd6b4ecf53cb::t_7b24339943f4ae 97-98
+  s_bfcd6b4ecf53cb::t_cc184d90889c9c 98
+  s_bfcd6b4ecf53cb::t_0560d213017a25 97
 apps/android/app/src/test/kotlin/notes/app/notes/SharedSpacesFlowTest.kt
   s_bfcd6b4ecf53cb::t_7b24339943f4ae 372,378-379
+  s_bfcd6b4ecf53cb::t_cca424e1384721 372,378-379
 ---
 {
   "schema_version": "authorship/3.0.0",
