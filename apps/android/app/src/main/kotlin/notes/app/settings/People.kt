@@ -10,7 +10,6 @@ import android.os.PersistableBundle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +19,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.Icon
@@ -165,9 +163,15 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
                     compareBy<Person> { it.username != account.username }.thenBy { it.id }
                 )
                 if (sorted.size > 1) {
-                    for (p in sorted) {
-                        val you = p.username == account.username
-                        PersonRow(p, you, enabled = !busy) { open = Open.Actions(p) }
+                    for (listed in sorted) {
+                        val you = listed.username == account.username
+                        // Yours as just edited above, not as the list was loaded.
+                        val p = if (you) {
+                            listed.copy(displayName = account.profile.displayName, avatar = account.profile.avatar)
+                        } else {
+                            listed
+                        }
+                        PersonRow(graph, p, you, enabled = !busy) { open = Open.Actions(p) }
                         Divider()
                     }
                 }
@@ -237,7 +241,7 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
                 val p = o.person
                 act(p, { setAdmin(p.id, !p.isAdmin) }) { changed ->
                     replace(changed)
-                    if (changed.isAdmin) "${p.username} is now an admin." else "${p.username} is no longer an admin."
+                    if (changed.isAdmin) "${who(p)} is now an admin." else "${who(p)} is no longer an admin."
                 }
             },
             onRemove = {
@@ -249,7 +253,7 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
         is Open.Link -> LinkDialog(account.server, o.person, o.link) { open = null }
 
         is Open.Reset -> ConfirmDialog(
-            title = "Reset ${o.person.username}'s password?",
+            title = "Reset ${who(o.person)}'s password?",
             text = "You'll get a link to send them, where they choose a new one. Nothing changes until they use it.",
             action = "Get link",
             onDismiss = { open = null }
@@ -258,7 +262,7 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
         is Open.Remove -> {
             val p = o.person
             ConfirmDialog(
-                title = if (p.pending) "Cancel ${p.username}'s invitation?" else "Remove ${p.username}?",
+                title = if (p.pending) "Cancel ${who(p)}'s invitation?" else "Remove ${who(p)}?",
                 text = if (p.pending) {
                     "Their link stops working, and the username is free again."
                 } else {
@@ -271,7 +275,7 @@ internal fun PeopleSection(graph: AppGraph, account: Account.SignedIn) {
             ) {
                 act(p, { removePerson(p.id) }) {
                     drop(p.id)
-                    if (p.pending) "${p.username}'s invitation was cancelled." else "${p.username} was removed."
+                    if (p.pending) "${who(p)}'s invitation was cancelled." else "${who(p)} was removed."
                 }
             }
         }
@@ -306,6 +310,9 @@ private fun failureMessage(r: ApiResult<*>): String = when {
     else -> "Something went wrong. Try again."
 }
 
+/** How a person is named here: their chosen name, or else their username. */
+internal fun who(p: Person): String = p.displayName.ifEmpty { p.username }
+
 private fun describe(p: Person): String {
     if (p.pending) return "Invited · ${linkExpiry(p.linkExpiresAt)}"
     val joined = "Joined ${DateFormat.getDateInstance(DateFormat.MEDIUM).format(Date(p.createdAt))}"
@@ -313,7 +320,7 @@ private fun describe(p: Person): String {
 }
 
 @Composable
-private fun PersonRow(person: Person, you: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun PersonRow(graph: AppGraph, person: Person, you: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val t = LocalTokens.current
     Row(
         Modifier
@@ -326,7 +333,7 @@ private fun PersonRow(person: Person, you: Boolean, enabled: Boolean, onClick: (
                     Modifier.clickable(
                         enabled = enabled,
                         role = Role.Button,
-                        onClickLabel = "Actions for ${person.username}",
+                        onClickLabel = "Actions for ${who(person)}",
                         onClick = onClick
                     )
                 }
@@ -335,16 +342,24 @@ private fun PersonRow(person: Person, you: Boolean, enabled: Boolean, onClick: (
             .semantics(mergeDescendants = true) {},
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(40.dp).clip(CircleShape).background(t.bg),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(initial(person.username), style = Type.rowTitle.copy(fontSize = 16.sp), color = t.ink2)
-        }
+        Avatar(
+            graph.avatars,
+            person.id,
+            person.avatar,
+            who(person),
+            Modifier.size(40.dp).clipCircle(t.bg),
+            Type.rowTitle.copy(fontSize = 16.sp),
+            t.ink2
+        )
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(person.username, style = Type.rowTitle, color = t.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(describe(person), style = Type.rowMeta, color = t.ink2, maxLines = 2)
+            Text(who(person), style = Type.rowTitle, color = t.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(
+                if (person.displayName.isEmpty()) describe(person) else "${person.username} · ${describe(person)}",
+                style = Type.rowMeta,
+                color = t.ink2,
+                maxLines = 2
+            )
         }
         if (you) {
             Pill("You")
@@ -353,9 +368,6 @@ private fun PersonRow(person: Person, you: Boolean, enabled: Boolean, onClick: (
         }
     }
 }
-
-internal fun initial(name: String): String =
-    name.trim().let { if (it.isEmpty()) "?" else it.substring(0, it.offsetByCodePoints(0, 1)).uppercase() }
 
 /** A person's actions, from tapping their row: a sheet, as a note's are. */
 @Composable
@@ -367,7 +379,7 @@ private fun PersonActions(
     onAdmin: () -> Unit,
     onRemove: () -> Unit
 ) {
-    Sheet(onDismiss, title = person.username) {
+    Sheet(onDismiss, title = who(person)) {
         if (person.pending) {
             SheetItem(Icons.Share, "Share new link", onNewLink)
             SheetItem(Icons.Close, "Cancel invitation…", onRemove, danger = true)
@@ -389,7 +401,9 @@ private fun InviteDialog(
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
     var name by remember { mutableStateOf("") }
+    var displayName by remember { mutableStateOf("") }
     var error by remember { mutableStateOf<String?>(null) }
+    var nameError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
 
@@ -402,13 +416,20 @@ private fun InviteDialog(
         }
         busy = true
         scope.launch {
-            val r = graph.api()?.invite(name.trim()) ?: ApiResult.Unauthenticated
+            val r = graph.api()?.invite(name.trim(), displayName.trim()) ?: ApiResult.Unauthenticated
             busy = false
             when {
                 r is ApiResult.Ok -> onInvited(r.value)
+
                 r.isAdminOnly() -> onForbidden()
+
                 r is ApiResult.Conflict && r.code == "username_taken" -> error = "Someone already has that username."
+
                 r is ApiResult.Rejected && r.field == "username" -> error = "Use 1 to 64 characters, on one line."
+
+                r is ApiResult.Rejected && r.field == "displayName" ->
+                    nameError = "Use at most 64 characters, on one line."
+
                 else -> formError = failureMessage(r)
             }
         }
@@ -434,6 +455,18 @@ private fun InviteDialog(
                 hint = "What they'll sign in with.",
                 enabled = !busy
             )
+            Spacer(Modifier.height(12.dp))
+            NotesField(
+                value = displayName,
+                onValueChange = {
+                    displayName = it.take(64)
+                    nameError = null
+                },
+                label = "Name (optional)",
+                error = nameError,
+                hint = "Shown instead of their username. They can change it when they open the link.",
+                enabled = !busy
+            )
             formError?.let { FormError(it) }
             DialogActions(onDismiss, "Invite", ::invite, busy)
         }
@@ -448,7 +481,7 @@ private fun LinkDialog(server: String, person: Person, link: SetupLink, onDismis
     val url = setupLinkUrl(server, link.token)
     var copied by remember { mutableStateOf(false) }
 
-    NotesDialog(onDismiss, "Send ${person.username} this link") {
+    NotesDialog(onDismiss, "Send ${who(person)} this link") {
         ScrollingBody {
             Text(
                 (

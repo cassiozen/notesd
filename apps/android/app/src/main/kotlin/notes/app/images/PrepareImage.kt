@@ -2,8 +2,12 @@ package notes.app.images
 
 import android.content.ContentResolver
 import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.ImageDecoder
+import android.graphics.Rect
 import android.net.Uri
+import androidx.core.graphics.createBitmap
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import java.io.InputStream
@@ -76,4 +80,40 @@ private fun InputStream.readAtMost(limit: Int): ByteArray {
         out.write(buf, 0, n)
     }
     return out.toByteArray()
+}
+
+/** The server's largest profile photo side (auth.AvatarSize). */
+const val PHOTO_SIDE = 512
+private const val PHOTO_QUALITY = 88
+
+/**
+ * A profile photo as the server takes it: the middle square of the picture, at most [PHOTO_SIDE] a side, as a
+ * JPEG. Drawing it again drops EXIF, such as where it was taken; see-through parts show white.
+ */
+suspend fun preparePhoto(resolver: ContentResolver, uri: Uri): ByteArray = withContext(Dispatchers.IO) {
+    val bitmap = try {
+        ImageDecoder.decodeBitmap(ImageDecoder.createSource(resolver, uri)) { decoder, info, _ ->
+            decoder.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
+            val (w, h) = info.size.width to info.size.height
+            val scale = minOf(1f, PHOTO_SIDE.toFloat() / minOf(w, h))
+            if (scale < 1f) {
+                decoder.setTargetSize((w * scale).toInt().coerceAtLeast(1), (h * scale).toInt().coerceAtLeast(1))
+            }
+        }
+    } catch (_: IOException) {
+        throw ImageException("That picture couldn’t be read.")
+    }
+    val side = minOf(bitmap.width, bitmap.height, PHOTO_SIDE)
+    val square = createBitmap(side, side)
+    Canvas(square).apply {
+        drawColor(Color.WHITE)
+        val x = (bitmap.width - side) / 2
+        val y = (bitmap.height - side) / 2
+        drawBitmap(bitmap, Rect(x, y, x + side, y + side), Rect(0, 0, side, side), null)
+    }
+    bitmap.recycle()
+    val out = ByteArrayOutputStream()
+    square.compress(Bitmap.CompressFormat.JPEG, PHOTO_QUALITY, out)
+    square.recycle()
+    out.toByteArray()
 }

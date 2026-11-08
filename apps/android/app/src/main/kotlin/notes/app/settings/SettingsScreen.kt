@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -58,6 +57,7 @@ import kotlinx.coroutines.launch
 import notes.app.AppGraph
 import notes.app.BuildConfig
 import notes.app.account.Account
+import notes.app.account.Avatars
 import notes.app.ui.BackLink
 import notes.app.ui.BrandMark
 import notes.app.ui.ConfirmDialog
@@ -89,14 +89,20 @@ fun SettingsScreen(graph: AppGraph, backLabel: String?, onBack: () -> Unit, onOp
     val email by graph.email.settings.collectAsStateWithLifecycle()
     var pending by remember { mutableIntStateOf(0) }
     val syncStatus by graph.sync.status.collectAsStateWithLifecycle()
-    LaunchedEffect(account) { if (account is Account.SignedIn) graph.email.refresh() }
+    val signedIn = account is Account.SignedIn
+    LaunchedEffect(signedIn) {
+        if (signedIn) {
+            graph.email.refresh()
+            graph.refreshAccount()
+        }
+    }
     LaunchedEffect(Unit) {
         graph.store.changes.onSubscription { emit(Unit) }.collect { pending = graph.store.pendingNotes() }
     }
 
     SettingsFrame(backLabel, onBack, "Settings") {
         Card {
-            AccountRow(account) { onOpen(SettingsSection.Server) }
+            AccountRow(account, graph.avatars) { onOpen(SettingsSection.Server) }
             GroupHeader(if (account == Account.None) "Synced once you connect" else "Synced to your account")
             // With no lock password, creating one needs the server: signed out, there's nothing to offer.
             if (account is Account.SignedIn || lockState != LockSession.State.None) {
@@ -173,6 +179,8 @@ fun SettingsSectionScreen(
 
                         is Account.SignedIn -> {
                             Who(a.username, a.server, null)
+                            Divider()
+                            ProfileLine(graph, a)
                             Divider()
                             Action("Change password", t.link, enabled = !busy) {
                                 passwordChanged = false
@@ -321,13 +329,14 @@ internal fun SettingsFrame(
 
 /** Who's signed in, and where: opens Server. */
 @Composable
-private fun AccountRow(account: Account, onClick: () -> Unit) {
+private fun AccountRow(account: Account, avatars: Avatars, onClick: () -> Unit) {
     val t = LocalTokens.current
     val (name, detail) = when (account) {
         Account.None -> "Not connected" to "Notes are on this phone only"
-        is Account.SignedIn -> account.username to hostOf(account.server)
-        is Account.SignedOut -> account.username to "Signed out · ${hostOf(account.server)}"
+        is Account.SignedIn -> account.profile.name(account.username) to hostOf(account.server)
+        is Account.SignedOut -> account.profile.name(account.username) to "Signed out · ${hostOf(account.server)}"
     }
+    val profile = (account as? Account.SignedIn)?.profile ?: (account as? Account.SignedOut)?.profile
     Row(
         Modifier
             .fillMaxWidth()
@@ -337,15 +346,13 @@ private fun AccountRow(account: Account, onClick: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            Modifier.size(42.dp).clip(CircleShape).background(t.hover).border(1.dp, t.edge, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            if (account == Account.None) {
+        val circle = Modifier.size(42.dp).clipCircle(t.hover, t.edge)
+        if (profile == null) {
+            Box(circle, contentAlignment = Alignment.Center) {
                 Icon(Icons.CloudOff, null, Modifier.size(20.dp), tint = t.ink2)
-            } else {
-                Text(name.take(1).uppercase(), style = Type.title, color = t.ink)
             }
+        } else {
+            Avatar(avatars, profile.userId, profile.avatar, name, circle, Type.title, t.ink)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {

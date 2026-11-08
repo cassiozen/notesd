@@ -375,7 +375,7 @@ class ScreenshotTest {
         val now = System.currentTimeMillis()
         val people = """{"users":[
             {"id":1,"username":"cassio","isAdmin":true,"createdAt":${now - 90 * day}},
-            {"id":2,"username":"sam","createdAt":${now - 30 * day}},
+            {"id":2,"username":"sam","displayName":"Sam Rivera","createdAt":${now - 30 * day}},
             {"id":3,"username":"alex","pending":true,"createdAt":$now,"linkExpiresAt":${now + 6 * day}}]}"""
         val server = MockWebServer()
         server.dispatcher = object : Dispatcher() {
@@ -402,9 +402,9 @@ class ScreenshotTest {
             compose.onNode(hasContentDescription("Settings")).performClick()
             compose.waitUntilAtLeastOneExists(hasText("cassio"))
             compose.onNode(hasText("cassio")).performClick()
-            compose.waitUntilExactlyOneExists(hasText("sam"))
+            compose.waitUntilExactlyOneExists(hasText("Sam Rivera"))
             shoot("settings-people")
-            compose.onNode(hasText("sam") and hasClickAction()).performClick()
+            compose.onNode(hasText("Sam Rivera") and hasClickAction()).performClick()
             compose.waitUntilExactlyOneExists(hasText("Make admin"))
             shoot("settings-people-actions")
         } finally {

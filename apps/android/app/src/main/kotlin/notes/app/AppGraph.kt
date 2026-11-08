@@ -28,7 +28,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import notes.app.account.Account
 import notes.app.account.AccountStore
+import notes.app.account.Avatars
 import notes.app.account.KeystoreSealer
+import notes.app.account.Profile
 import notes.app.account.Sealer
 import notes.app.images.ImageLoader
 import notes.app.locks.Biometrics
@@ -44,6 +46,7 @@ import notes.app.sharing.Sharing
 import notes.app.sync.SyncScheduler
 import notes.app.ui.SpaceThemes
 import notes.core.api.ApiClient
+import notes.core.api.ApiResult
 import notes.core.api.ClientInfo
 import notes.core.api.Credentials
 import notes.core.crypto.LockSession
@@ -80,6 +83,9 @@ class AppGraph(
         File(context.cacheDir, "images"),
         { api() }
     )
+
+    /** Profile photos, the account's and those People lists. */
+    val avatars = Avatars(File(context.filesDir, "avatars")) { api() }
 
     /** Null server while never connected; signed out, its requests come back Unauthenticated. */
     val sync = SyncEngine(database, { api() }, images = images)
@@ -234,12 +240,20 @@ class AppGraph(
         if (accounts.account.value is Account.SignedIn) withTimeoutOrNull(LOGOUT_WAIT_MS) { api()?.logout() }
         store.wipe()
         images.wipe()
+        avatars.wipe()
         locks.forget()
         fingerprint.disable()
         accounts.clear()
         setOnboardingDismissed(false)
         // The default space's colours belonged to the notes just wiped.
         prefs.edit { remove(DEFAULT_SPACE_THEME) }
+    }
+
+    /** Whose account this is as of now: name, photo or admin may have changed elsewhere. Quiet when offline. */
+    suspend fun refreshAccount() {
+        val now = (api()?.session() as? ApiResult.Ok)?.value ?: return
+        accounts.profileChanged(Profile(now.userId, now.displayName, now.avatar))
+        accounts.adminChanged(now.isAdmin)
     }
 
     /** How this phone appears in the server's list of signed-in devices. */

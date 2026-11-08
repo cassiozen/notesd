@@ -52,6 +52,22 @@ class AccountStoreTest {
     }
 
     @Test
+    fun `the name and photo are kept from sign-in, follow the server, and outlive signing out`() = runBlocking {
+        val store = AccountStore(file, sealer)
+        store.signedIn("https://n.example/", signIn.copy(userId = 2, displayName = "Maria", avatar = "v1"))
+        assertEquals(Profile(2, "Maria", "v1"), (AccountStore(file, sealer).account.value as Account.SignedIn).profile)
+        store.profileChanged(Profile(2, "Ana", ""))
+        assertEquals(Profile(2, "Ana", ""), (AccountStore(file, sealer).account.value as Account.SignedIn).profile)
+        store.signOut()
+        assertEquals(
+            Account.SignedOut("https://n.example/", "me", Profile(2, "Ana", "")),
+            AccountStore(file, sealer).account.value
+        )
+        assertEquals("Ana", Profile(2, "Ana").name("me"))
+        assertEquals("me", Profile().name("me"))
+    }
+
+    @Test
     fun `an account saved before the app kept whether it's an admin doesn't know`() = runBlocking {
         val old = """{"server":"https://n.example/","username":"me","access":"a","accessExpiresAt":1,"refresh":"r"}"""
         file.writeBytes(sealer.seal(old.encodeToByteArray()))
@@ -74,7 +90,10 @@ class AccountStoreTest {
         assertEquals(Account.SignedIn("https://n.example/", "ana"), AccountStore(file, sealer).account.value)
         store.signedIn("https://n.example/", signIn)
         store.userIdFound(looked, 7)
-        assertEquals(Account.SignedIn("https://n.example/", "me", userId = 7), AccountStore(file, sealer).account.value)
+        assertEquals(
+            Account.SignedIn("https://n.example/", "me", userId = 7, profile = Profile(7)),
+            AccountStore(file, sealer).account.value
+        )
     }
 
     @Test
