@@ -17,8 +17,8 @@ description: What the server can read, how accounts and sessions are protected, 
 ## Accounts
 
 - Each account's notes, search index, spaces, locked-notes keyring and pictures are in their own
-  database file. A request only ever opens one file: the account's own, or a
-  [shared space](#shared-spaces) it's a member of. So one account can't reach another's notes,
+  database file. Requests can access the account's own file and each
+  [shared space](#shared-spaces) it's a member of, so one account can't reach another's notes,
   even through a bug in a single check.
 - Accounts are added by an admin, in the web, Mac or Android app, or with `notesd add-user`. There's no public
   sign-up and no email. An admin invites someone with a **setup link** they send themselves: it
