@@ -38,9 +38,7 @@ class NoteMailer(private val store: NoteStore, private val engine: SyncEngine, p
             if (note.deletedAt != null) return EmailOutcome.Failed("This note was deleted.")
             val revision = note.serverRevision?.takeIf { !note.dirty } ?: return EmailOutcome.NotSynced
             val client = api() ?: return EmailOutcome.NotSynced
-            // A shared space's note is in that space's file, reached under its address (§7.9).
-            val shared = note.spaceId.takeIf { it in engine.store.feeds() }
-            when (val r = client.emailNote(id, to, revision, shared)) {
+            when (val r = client.emailNote(id, to, revision)) {
                 is ApiResult.Ok -> return EmailOutcome.Sent
 
                 is ApiResult.Conflict -> if (r.code != STALE) return EmailOutcome.Failed(sentence(r.message))

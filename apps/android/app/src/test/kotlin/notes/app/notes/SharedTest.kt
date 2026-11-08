@@ -111,7 +111,7 @@ class SharedTest {
         )
         assertEquals(
             "Its notes leave this phone; to see them again, you'd need a new invitation. 2 notes in Family have " +
-                "changes that haven't synced. They'll be lost.",
+                "changes that haven't synced. They'll be kept as copies in your own notes.",
             leaveText("Family", 2)
         )
     }

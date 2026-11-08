@@ -369,12 +369,13 @@ class SharedSpacesFlowTest {
     }
 
     @Test
-    fun `a shared space's note is emailed at its space's address`() {
+    fun `a shared space's note is emailed at the account's address`() {
         notesd.memberOf("fam", "Family", ana)
         notesd.feeds["fam"] = listOf(note("f1", "Picnic", "fam", by = 2, ago = hour))
         notesd.start()
         notesd.signIn(graph)
         assertEquals(EmailOutcome.Sent, runBlocking { graph.mailer.send("f1", listOf("sam@example.org")) })
-        assertTrue("POST /api/v1/spaces/fam/notes/f1/email" in notesd.requests)
+        // The server finds the note in the space's file.
+        assertTrue("POST /api/v1/notes/f1/email" in notesd.requests)
     }
 }

@@ -94,12 +94,8 @@ class Sharing(
 
     suspend fun decline(inviteId: String): Shared<Unit> = change { declineInvite(inviteId) }
 
-    /** How many notes in [spaceId] have changes the server hasn't confirmed: lost if this account leaves. */
-    suspend fun unsynced(spaceId: String): Int {
-        val queued = store.outbox().filter { it.feed == spaceId }.mapTo(HashSet()) { it.noteId }
-        val dirty = store.list(space = spaceId).filter { it.id !in queued && store.get(it.id)?.dirty == true }
-        return queued.size + dirty.size
-    }
+    /** How many notes in [spaceId] have changes the server hasn't confirmed: kept as copies if this account leaves. */
+    suspend fun unsynced(spaceId: String): Int = store.list(space = spaceId).count { store.get(it.id)?.dirty == true }
 
     private suspend fun locked(spaceId: String): String? =
         store.lockedCount(spaceId).takeIf { it > 0 }?.let(::lockedMessage)

@@ -75,7 +75,7 @@ private sealed interface Ask {
 
     data object StopSharing : Ask
 
-    /** [unsynced]: notes there whose changes would be lost. */
+    /** [unsynced]: notes there whose changes haven't synced, kept as copies if this account leaves. */
     data class Leave(val unsynced: Int) : Ask
 }
 
@@ -182,13 +182,15 @@ fun SharingScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () ->
     }
 }
 
-/** What leaving takes away (§7.9): the notes, and with them any change not yet synced. */
+private const val KEPT_AS_COPIES = "They'll be kept as copies in your own notes."
+
+/** What leaving takes away (§7.9): the notes; a change not yet synced stays, as a copy in the account's own notes. */
 internal fun leaveText(name: String, unsynced: Int): String {
     val gone = "Its notes leave this phone; to see them again, you'd need a new invitation."
     return when (unsynced) {
         0 -> gone
-        1 -> "$gone 1 note in $name has changes that haven't synced. They'll be lost."
-        else -> "$gone $unsynced notes in $name have changes that haven't synced. They'll be lost."
+        1 -> "$gone 1 note in $name has changes that haven't synced. They'll be kept as a copy in your own notes."
+        else -> "$gone $unsynced notes in $name have changes that haven't synced. $KEPT_AS_COPIES"
     }
 }
 
