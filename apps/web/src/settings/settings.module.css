@@ -816,3 +816,86 @@
   display: grid;
   color: var(--ink-3);
 }
+
+.agent {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+  padding: 16px 0 0;
+  border: 0;
+  border-top: 1px solid var(--hair);
+  min-width: 0;
+}
+
+.agentNotice {
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: var(--field);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+.agentExamples {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.agentTriggers {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--hair);
+  border-radius: 14px;
+}
+
+.agentTrigger + .agentTrigger {
+  border-top: 1px solid var(--hair);
+}
+
+.agentTrigger summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* display: flex drops the native disclosure marker; this one stands in for it. */
+.agentTriggerName {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.agentTriggerChevron {
+  display: flex;
+  color: var(--ink-3);
+  transition: transform 120ms ease;
+}
+
+.agentTrigger[open] .agentTriggerChevron {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agentTriggerChevron {
+    transition: none;
+  }
+}
+
+.agentTrigger[open] {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+}
+
+.agentTrigger[open] > :not(summary) {
+  margin: 0 14px;
+}

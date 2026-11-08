@@ -261,6 +261,7 @@ struct ApiClientTests {
         #expect(stub.requests.count == 2)
         for request in stub.requests {
             #expect(request.value(forHTTPHeaderField: "X-Notesd-Client") == "ios/1.2.3")
+            #expect(request.value(forHTTPHeaderField: "X-Notesd-Time-Zone") == TimeZone.current.identifier)
             #expect(request.value(forHTTPHeaderField: "User-Agent") == "notesd-ios/1.2.3")
         }
     }

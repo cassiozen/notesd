@@ -12,3 +12,12 @@ export const useAiSettingsFailed = store.useFailed
 export const setAiSettings = store.set
 export const retryAiSettings = store.retry
 export const forgetAiSettings = store.forget
+
+/** Where an agent's notes go, as people know it: the API address's host. */
+export function providerHost(baseUrl: string): string {
+  try {
+    return new URL(baseUrl).host
+  } catch {
+    return baseUrl
+  }
+}

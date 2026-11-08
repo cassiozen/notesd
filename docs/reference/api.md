@@ -13,7 +13,7 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 - [Basics](#basics): requests, compatibility, authentication, writing notes, errors
 - [Endpoints](#endpoints): [auth](#auth), [notes](#notes), [sync](#sync),
   [search and filters](#search-and-filters), [spaces](#spaces), [shared spaces](#shared-spaces), [images](#images),
-  [locked notes](#locked-notes), [email](#email), [AI](#ai), [updates](#updates), [health](#health)
+  [locked notes](#locked-notes), [email](#email), [agents](#agents), [AI](#ai), [updates](#updates), [health](#health)
 - [Error codes](#error-codes)
 
 ## Basics
@@ -100,6 +100,9 @@ Creating, updating and deleting a note are idempotent and checked against the no
   encrypted `content` can be somewhat longer.
 - **`createdAt` and `updatedAt`** may be sent, so edits made offline show when they happened. They
   are informational only, and a time more than a day in the future is replaced with the server's.
+- **`X-Notesd-Sync`**, an optional header, says a write isn't someone editing: `initial` while a
+  device makes its first sync, `import` for an import. Any other value also means that, so a later
+  client can send a new reason. Agents don't react to these. It isn't part of the request hash.
 
 Every write answers with the result:
 
@@ -495,6 +498,30 @@ An admin can't change, remove or make a link for their own account here (`409
 cannot_change_self`), and the server always keeps an admin who can sign in (`409 last_admin`).
 Removing an account leaves its notes database on disk, as
 [`remove-user`](cli.md#remove-user) does.
+### Agents
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `GET` | `/agent/spaces` | → `{spaces: [config, …]}`, every space whose agent has been set up |
+| `GET` | `/agent/spaces/{id}` | → the space's config; off and empty if none was set up |
+| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers}` → the config as stored |
+| `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
+| `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
+| `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
+
+A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
+space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
+`noteCreated`, `editStarted`, `newNoteDone`, `editDone`, `noteDeleted`, `movedIn`, `movedOut` and
+`menu`. A trigger with an empty prompt is dropped, and so is one the server doesn't know.
+`menuLabel` names the `menu` command in a note's menu, up to 40 characters, and is required with a
+`menu` prompt. Prompts can be up to 16 KiB. `PUT` replaces the whole config. A space that doesn't
+exist is `404 not_found`. Deleting a space deletes its agent.
+
+The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSource: "default"`)
+until a device says otherwise: any signed-in request may carry `X-Notesd-Time-Zone` with an IANA
+name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
+a name that isn't a time zone is `400 invalid_request` on `timeZone`.
+
 ### AI
 
 | Method | Path | Body → response |

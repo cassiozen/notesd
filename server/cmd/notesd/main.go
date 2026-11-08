@@ -601,7 +601,6 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		if err := mirr.Check(ctx, o.dataDir); err != nil {
 			return err
 		}
-		// Before any database opens: their stores take the hook when they do.
 		users.OnChange(mirr.Notify)
 		users.OnSpaceChange(func(spaceID string) {
 			ids, err := spaceMembers(context.Background(), system, spaceID)
