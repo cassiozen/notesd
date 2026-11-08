@@ -42,7 +42,7 @@ description: What the server can read, how accounts and sessions are protected, 
   delete it. Each note shows who last changed it.
 - **Moving a note into a shared space shares it.** The apps ask first, naming who will see it.
 - **Each shared space is its own database file.** The server opens it only for its members.
-  Anyone else gets "not found", so they can't even tell the space exists.
+  Accounts without an invitation or membership get "not found" for space data; invitees can see the invitation, not the notes.
 - **Every account can see the usernames on the server,** so an owner can pick who to invite.
   They can't see anyone's spaces or notes.
 - **No locked notes.** Locked notes are encrypted with a key only one account has, so a shared
