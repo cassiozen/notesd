@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Space } from '../api/types'
 import { onlineSource } from './online-source'
 import { setNotesSource, type NotesSource } from './source'
-import { forgetSpaces, onSpacesChange, reloadSpaces, useSpaces } from './spaces'
+import { forgetSpaces, loadedSpaces, onSpacesChange, reloadSpaces, useSpaces } from './spaces'
 
 /** A source whose space lists answer when the test says. */
 function fakeSource() {
@@ -67,5 +67,19 @@ describe('loading', () => {
     // back to spaces.ts would run that before source.ts is ready.
     vi.resetModules()
     await expect(import('./source')).resolves.toBeDefined()
+  })
+})
+
+describe('loadedSpaces', () => {
+  it('waits for a newer fetch that overtook the one it was waiting for', async () => {
+    const a = fakeSource()
+    setNotesSource(a.source)
+    forgetSpaces()
+    void reloadSpaces()
+    const got = loadedSpaces()
+    void reloadSpaces()
+    a.answer([space('stale')])
+    a.answer([space('fresh')])
+    expect(await got).toEqual([space('fresh')])
   })
 })

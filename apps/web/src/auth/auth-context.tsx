@@ -4,6 +4,7 @@ import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
 import { forgetTouchId } from '../locks/touch-id'
 import { forgetEmailSettings } from '../notes/email-settings'
+import { forgetSharing } from '../notes/sharing'
 import { forgetSpaces } from '../notes/spaces'
 import { closeNotes, forgetNotesHere, keepIfInstalledApp, openNotes } from '../offline/device'
 import { deviceUser, forgetUserId, rememberSession, rememberUserId, userIdOf } from './session-hint'
@@ -104,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       forgetUserId()
       // Already on the server's notes, the source doesn't change: the next account would get these.
       forgetSpaces()
+      forgetSharing()
       forgetEmailSettings()
       setState({ status: 'signed-out' })
     }
