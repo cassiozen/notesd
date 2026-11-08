@@ -13,6 +13,9 @@ import (
 
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
+	"notes/server/internal/notes"
+	"notes/server/internal/sharing"
+	"notes/server/internal/userdata"
 )
 
 func TestAppURL(t *testing.T) {
@@ -219,5 +222,61 @@ func TestReadNewPasswordFromPipe(t *testing.T) {
 	}
 	if prompts.Len() != 0 {
 		t.Errorf("prompted a pipe: %q", prompts.String())
+	}
+}
+
+func TestSharedSpacesInCommands(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	cmd := func(args ...string) error { return run(append(args, "--data-dir", dir)) }
+	t.Setenv("NOTESD_PASSWORD", "correct horse battery")
+	if err := cmd("create-owner", "--username", "owner"); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd("add-user", "--username", "kid"); err != nil {
+		t.Fatal(err)
+	}
+	// The owner shares "Family", holding one note, with Kid, who joins.
+	func() {
+		system, err := database.OpenSystem(ctx, filepath.Join(dir, "system.db"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer system.Close()
+		files := userdata.NewRegistry(dir)
+		defer files.Close()
+		share := sharing.New(system, files)
+		share.Install()
+		own, err := files.Open(ctx, 1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := own.Spaces.Put(ctx, "fam", "Family", nil); err != nil {
+			t.Fatal(err)
+		}
+		fam := "fam"
+		if _, err := own.Notes.Create(ctx, notes.CreateInput{OperationID: "op", ID: "n", Title: "Groceries", Content: "Milk", SpaceID: &fam}); err != nil {
+			t.Fatal(err)
+		}
+		in, err := share.Invite(ctx, 1, "fam", 2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := share.Accept(ctx, 2, in.ID); err != nil {
+			t.Fatal(err)
+		}
+	}()
+
+	out := filepath.Join(dir, "out")
+	if err := cmd("export", "--username", "kid", "--out", out); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(filepath.Join(out, "Family", "Groceries.md")); err != nil || !strings.Contains(string(got), "Milk") {
+		t.Fatalf("a member's export has the shared space: %q %v", got, err)
+	}
+	for _, c := range [][]string{{"reindex"}, {"check"}, {"gc-images", "--dry-run"}} {
+		if err := cmd(c...); err != nil {
+			t.Fatalf("%v over the shared space's file too: %v", c, err)
+		}
 	}
 }

@@ -58,10 +58,11 @@ func liveNotes(ctx context.Context, db *database.DB) ([]notes.Note, error) {
 	return all, nil
 }
 
-// spaceFolders names a folder for each space (§7.7), or is nil when there is
-// only one space and the export stays flat.
-func spaceFolders(ctx context.Context, db *database.DB) (map[string]string, error) {
+// spaceFolders names a folder for each space (§7.7), the account's and the
+// shared ones in extra, or is nil when there is only one and the export stays flat.
+func spaceFolders(ctx context.Context, db *database.DB, extra []spaces.Space) (map[string]string, error) {
 	list, err := spaces.NewStore(db).List(ctx)
+	list = append(list, extra...)
 	if err != nil || len(list) < 2 {
 		return nil, err
 	}

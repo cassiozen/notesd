@@ -30,6 +30,9 @@ The mirror then follows the notes:
   seconds, and at least every 2 minutes while someone keeps typing.
 - It only goes one way. Edits made to the files are overwritten the next
   time the note changes, and new files are never imported.
+- Shared spaces an account is in get a folder in its folder too, so a shared
+  space's notes are in every member's. Leaving a shared space deletes its
+  notes' files there.
 - Locked notes aren't written. Locking a note deletes its file from the
   mirror folder, so its plain text doesn't stay there; copies that backups
   or sync tools made are up to them.
