@@ -58,6 +58,14 @@ export function failureText(r: AgentRun): string {
   return FAILURES[r.failure] ?? r.failure
 }
 
+function overlaysText({ cards, suggestions, accepted }: NonNullable<AgentRun['overlays']>): string {
+  const parts: string[] = []
+  if (cards) parts.push(cards === 1 ? 'Showed a card' : `Showed ${cards} cards`)
+  if (suggestions) parts.push(suggestions === 1 ? 'Suggested a change' : `Suggested ${suggestions} changes`)
+  if (suggestions && accepted) parts.push(`${accepted} accepted`)
+  return parts.join(' · ')
+}
+
 /** What became of a run, in a few words. */
 export function runStatus(r: AgentRun): string {
   switch (r.status) {
@@ -65,8 +73,14 @@ export function runStatus(r: AgentRun): string {
       return 'Waiting'
     case 'running':
       return 'Running'
-    case 'done':
-      return OUTCOMES[r.outcome] ?? 'Done'
+    case 'done': {
+      const outcome = OUTCOMES[r.outcome] ?? 'Done'
+      const shown = r.overlays ? overlaysText(r.overlays) : ''
+      if (!shown) return outcome
+      // Showing isn't changing; an accepted suggestion is the change.
+      if (r.outcome === 'no_change' || (r.outcome === 'edited' && r.overlays?.accepted)) return shown
+      return `${outcome} · ${shown}`
+    }
     case 'failed':
       return `Failed: ${failureText(r)}`
     case 'skipped':

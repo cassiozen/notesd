@@ -26,6 +26,8 @@ type fakeEditor struct {
 	changes []agent.EditorChange
 	// rewrite is the editor's Markdown writing some text its own way.
 	rewrite func(string) string
+	// afterRead runs once a read has answered, outside the lock.
+	afterRead func()
 }
 
 func (h *harness) openInEditor(id, content string, cursor *int) *agent.EditorNote {
@@ -37,7 +39,15 @@ func (h *harness) openInEditor(id, content string, cursor *int) *agent.EditorNot
 	return n
 }
 
-func (e *fakeEditor) Read(_ context.Context, id, _ string) (agent.EditorNote, error) {
+func (e *fakeEditor) Read(ctx context.Context, id, rev string) (agent.EditorNote, error) {
+	n, err := e.read(id)
+	if e.afterRead != nil {
+		e.afterRead()
+	}
+	return n, err
+}
+
+func (e *fakeEditor) read(id string) (agent.EditorNote, error) {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	e.reads++

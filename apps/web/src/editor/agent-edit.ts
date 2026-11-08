@@ -20,17 +20,25 @@ const MARK = ''
 export function readForAgent(state: EditorState): { fields: Fields; cursor: number | null } {
   const fields = noteFields(state.doc)
   const { selection } = state
-  if (!selection.empty || !selection.$head.parent.isTextblock || selection.$head.parent.type.name === 'title') {
-    return { fields, cursor: null }
-  }
+  if (!selection.empty) return { fields, cursor: null }
+  return { fields, cursor: pointAt(state, selection.head, fields) }
+}
+
+/**
+ * pos as Unicode code points into the note's saved content (fields, from noteFields), as the
+ * server counts a cursor; null in the title or outside text.
+ */
+export function pointAt(state: EditorState, pos: number, fields = noteFields(state.doc)): number | null {
+  const $pos = state.doc.resolve(pos)
+  if (!$pos.parent.isTextblock || $pos.parent.type.name === 'title') return null
   // Not a pending bold or italic toggle's marks: those aren't in the saved text.
-  const marked = noteFields(state.tr.setStoredMarks(null).insertText(MARK, selection.head).doc).content
+  const marked = noteFields(state.tr.setStoredMarks(null).insertText(MARK, pos).doc).content
   // Where the two first differ, not where MARK first is: the note may hold MARK itself.
   let at = 0
   while (at < fields.content.length && fields.content[at] === marked[at]) at++
-  if (marked[at] !== MARK) return { fields, cursor: null }
+  if (marked[at] !== MARK) return null
   // Code points, not UTF-16 units: the server counts runes.
-  return { fields, cursor: Array.from(marked.slice(0, at)).length }
+  return Array.from(marked.slice(0, at)).length
 }
 
 /** A run's change as the agent asked for it (the server's agent.edit). */
@@ -51,7 +59,11 @@ export type AgentChange = { before: Fields; after: Fields; op?: AgentOp }
 export function madeTo(change: AgentChange, now: Fields, cursor: number | null): Fields | null {
   const { before, after, op } = change
   if (now.title === before.title && now.content === before.content) return after
-  if (!op) return null
+  return op ? opMadeTo(op, now, cursor) : null
+}
+
+/** op made to now, as the server's edit.apply makes it; null when it doesn't fit, as for madeTo. */
+export function opMadeTo(op: AgentOp, now: Fields, cursor: number | null): Fields | null {
   const { title, content } = now
   switch (op.kind) {
     case 'title':
