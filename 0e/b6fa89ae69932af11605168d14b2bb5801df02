@@ -1,0 +1,19 @@
+apps/android/app/src/test/kotlin/notes/app/account/AccountStoreTest.kt
+  s_82799bf566b6e4::t_954df50f43e75f 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0eb6fa89ae69932af11605168d14b2bb5801df02",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
