@@ -11,8 +11,9 @@ const JPEG = Uint8Array.from(
   (c) => c.charCodeAt(0),
 )
 
-// jsdom can't decode or draw pictures: any picked file becomes the JPEG above.
-vi.mock('../src/settings/photo', () => ({ preparePhoto: async () => JPEG.slice() }))
+// jsdom can't decode or draw pictures: any picked file becomes the JPEG above, once `prepared` lets it.
+let prepared: Promise<void> = Promise.resolve()
+vi.mock('../src/settings/photo', () => ({ preparePhoto: async () => (await prepared, JPEG.slice()) }))
 
 const nav = () => screen.getByRole('navigation', { name: 'Settings categories' })
 const accountRow = () => within(nav()).getByRole('link', { name: /^Server:/ })
@@ -56,10 +57,40 @@ describe('name and photo', () => {
     const { user } = await signedIn()
     await openSettings(user)
     await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
-    // maxLength stops typing; a paste of control characters doesn't.
     fireEvent.change(within(dialog()).getByLabelText('Name'), { target: { value: 'Maria\u0007' } })
     await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
     expect(await within(dialog()).findByText('Use at most 64 characters, on one line.')).toBeTruthy()
+  })
+
+  it('Save waits for a chosen photo to be ready', async () => {
+    const { server, user } = await signedIn()
+    await openSettings(user)
+    let ready: (() => void) | undefined
+    prepared = new Promise((resolve) => {
+      ready = resolve
+    })
+    await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
+    fireEvent.change(screen.getByTestId('photo-input'), { target: { files: [new File(['x'], 'me.png', { type: 'image/png' })] } })
+    await waitFor(() => expect(within(dialog()).getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(true))
+    ready?.()
+    await waitFor(() => expect(within(dialog()).getByRole('button', { name: 'Save' }).hasAttribute('disabled')).toBe(false))
+    await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Name and photo' })).toBeNull())
+    expect((await session(server)).avatar).not.toBe('')
+  })
+
+  it('a name changed on another device shows once People loads', async () => {
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await s.api('POST', '/users', { username: 'sam' })
+      },
+    })
+    await server.api('PATCH', '/profile', { displayName: 'From the phone' })
+    await openSettings(user)
+    expect(await screen.findByText('Shown as From the phone')).toBeTruthy()
+    // Opened as loaded, not as the session had it: Save leaves an untouched name alone.
+    await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
+    expect((within(dialog()).getByLabelText('Name') as HTMLInputElement).value).toBe('From the phone')
   })
 
   it('People shows names and photos, and an invitation can suggest one', async () => {

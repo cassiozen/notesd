@@ -443,6 +443,8 @@ A name is at most 64 characters, trimmed, without control characters, and needn'
 never replaces the username for signing in. `avatar` on an account is the photo's version, `""`
 without one. The server encodes the photo again, so nothing but its pixels is kept (no EXIF).
 With `v` the current version, the photo is cached for good; a new photo has a new version.
+A photo that isn't `image/jpeg` is `415 unsupported_image`; over 1 MiB, `413 image_too_large`;
+not square, over 512 px or not a readable JPEG, `400 invalid_request` with `field: avatar`.
 
 ### People
 
@@ -505,7 +507,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `admin_only` | 403 | Only an admin can do this |
 | `not_space_owner` | 403 | Only the shared space's owner can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
-| `not_found` | 404 | No such note, session, lock key, image or account |
+| `not_found` | 404 | No such note, session, lock key, image, account or profile photo |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
@@ -530,7 +532,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |
 | `link_invalid` | 410 | The setup link was used, replaced or has expired |
-| `image_too_large` | 413 | Images can be up to 10 MiB |
+| `image_too_large` | 413 | Images can be up to 10 MiB; a profile photo up to 1 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
 | `locked_in_shared_space` | 422 | Locked notes can't be in a shared space |

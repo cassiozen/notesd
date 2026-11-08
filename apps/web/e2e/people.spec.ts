@@ -69,7 +69,7 @@ test('an admin invites someone, who joins from the link, and is removed later', 
   await theirs.close()
 })
 
-test('an invitation suggests a name, which the invitee may change as they join', async ({ page, browser }) => {
+test('an invitation suggests a name, which the invitee may change as they join, then they add a photo', async ({ page, browser }) => {
   const username = `mum-${crypto.randomUUID().slice(0, 6)}`
   await signIn(page, owner.username, owner.password)
   await page.goto('/settings/server')
@@ -94,6 +94,39 @@ test('an invitation suggests a name, which the invitee may change as they join',
   await them.getByLabel('Confirm password').fill('her own password')
   await them.getByRole('button', { name: 'Get started' }).click()
   await expect(them.getByText('You’re all set, Maria')).toBeVisible({ timeout: 30_000 })
+
+  // A wide picture, too big, in three bands: the photo is its middle, green, square and 512 px.
+  const wide = await them.evaluate(() => {
+    const c = document.createElement('canvas')
+    c.width = 900
+    c.height = 600
+    const ctx = c.getContext('2d')
+    const bands: [number, number, string][] = [[0, 150, '#f00'], [150, 600, '#0f0'], [750, 150, '#00f']]
+    for (const [x, w, color] of bands) {
+      if (!ctx) break
+      ctx.fillStyle = color
+      ctx.fillRect(x, 0, w, 600)
+    }
+    return c.toDataURL('image/png').split(',')[1] ?? ''
+  })
+  await them.goto('/settings/server')
+  await them.getByRole('button', { name: 'Edit name and photo' }).click()
+  const edit = them.getByRole('dialog', { name: 'Name and photo' })
+  await them.getByTestId('photo-input').setInputFiles({ name: 'wide.png', mimeType: 'image/png', buffer: Buffer.from(wide, 'base64') })
+  await expect(edit.getByRole('button', { name: 'Remove photo' })).toBeVisible()
+  await edit.getByRole('button', { name: 'Save' }).click()
+  await expect(edit).toBeHidden()
+  const saved = await them.evaluate(async () => {
+    const { userId, avatar } = await (await fetch('/api/v1/auth/session')).json()
+    const bitmap = await createImageBitmap(await (await fetch(`/api/v1/users/${userId}/avatar?v=${avatar}`)).blob())
+    const c = new OffscreenCanvas(bitmap.width, bitmap.height)
+    const ctx = c.getContext('2d')
+    ctx?.drawImage(bitmap, 0, 0)
+    const at = (x: number) => [...(ctx?.getImageData(x, 256, 1, 1).data.slice(0, 3) ?? [])]
+    return { width: bitmap.width, height: bitmap.height, left: at(2), right: at(509) }
+  })
+  expect(saved).toMatchObject({ width: 512, height: 512 })
+  for (const [r = 0, g = 0, b = 0] of [saved.left, saved.right]) expect(r < 40 && g > 200 && b < 40).toBe(true)
   await theirs.close()
 
   await page.reload()

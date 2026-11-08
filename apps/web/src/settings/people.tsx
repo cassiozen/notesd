@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -42,24 +43,35 @@ type Open =
 
 function People({ username }: { username: string }) {
   const me = useAccount().profile
+  const { profileChanged } = useAuth()
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [open, setOpen] = useState<Open | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
   const [error, setError] = useState<string>()
 
+  // The list is fresher than the session: your name or photo may have changed on another device since.
+  const loaded = useCallback(
+    (next: Load) => {
+      const self = next.status === 'ready' ? next.people.find((p) => p.username === username) : undefined
+      if (self) profileChanged(self)
+      setLoad(next)
+    },
+    [profileChanged, username],
+  )
+
   useEffect(() => {
     let cancelled = false
     void fetchPeople().then((next) => {
-      if (!cancelled) setLoad(next)
+      if (!cancelled) loaded(next)
     })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [loaded])
 
   function retry() {
     setLoad({ status: 'loading' })
-    void fetchPeople().then(setLoad)
+    void fetchPeople().then(loaded)
   }
 
   const updatePeople = (change: (people: Person[]) => Person[]) =>
@@ -94,7 +106,7 @@ function People({ username }: { username: string }) {
   const confirmRemove = (p: Person) =>
     act(p, async () => {
       const { users: latest } = await users.list()
-      setLoad({ status: 'ready', people: latest })
+      loaded({ status: 'ready', people: latest })
       const fresh = latest.find((x) => x.id === p.id)
       if (fresh) setOpen({ kind: 'remove', person: fresh })
     })
@@ -427,7 +439,6 @@ function InviteDialog({
         <Field
           label="Name (optional)"
           autoComplete="off"
-          maxLength={64}
           value={name}
           onChange={(e) => setName(e.target.value)}
           error={nameError}

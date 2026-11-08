@@ -20,7 +20,7 @@ export type AuthState =
   | { status: 'signed-out' }
   // The session ended while the app was in use. The shell stays mounted
   // under a sign-in dialog so unsaved edits survive and retry afterwards.
-  | { status: 'expired'; username: string }
+  | { status: 'expired'; username: string; profile?: Profile }
   // firstRun: just finished onboarding, for the welcome empty state.
   // offline: opened from this device's copy, the server not yet reached.
   // isAdmin, profile: unknown (undefined) until the server answers.
@@ -65,7 +65,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     () =>
       onUnauthenticated(() => {
         setCsrfToken(null)
-        setState((s) => (s.status === 'signed-in' ? { status: 'expired', username: s.username } : s))
+        setState((s) => (s.status === 'signed-in' ? { status: 'expired', username: s.username, profile: s.profile } : s))
       }),
     [],
   )
@@ -210,7 +210,7 @@ async function offlineBoot(): Promise<AuthState> {
 export function useAccount(): { username: string; name: string; profile?: Profile } {
   const { state } = useAuth()
   const username = 'username' in state ? state.username : ''
-  const profile = state.status === 'signed-in' ? state.profile : undefined
+  const profile = 'profile' in state ? state.profile : undefined
   return { username, name: profile?.displayName || username, profile }
 }
 

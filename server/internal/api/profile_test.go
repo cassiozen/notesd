@@ -8,6 +8,8 @@ import (
 	"image/jpeg"
 	"strings"
 	"testing"
+
+	"notes/server/internal/auth"
 )
 
 // photo is a w×h JPEG with an EXIF segment saying where it was taken, and bytes after its end.
@@ -60,7 +62,10 @@ func TestProfileNameAndPhoto(t *testing.T) {
 	}
 
 	if r := sam.raw("PUT", "/api/v1/profile/avatar", "image/jpeg", photo(t, 600, 600)); r.status != 400 || r.body["field"] != "avatar" {
-		t.Fatalf("too big: %d %s", r.status, r.raw)
+		t.Fatalf("too wide: %d %s", r.status, r.raw)
+	}
+	if r := sam.raw("PUT", "/api/v1/profile/avatar", "image/jpeg", append(photo(t, 64, 64), make([]byte, auth.AvatarMaxBytes)...)); r.status != 413 || r.body["error"] != "image_too_large" {
+		t.Fatalf("too heavy: %d %s", r.status, r.raw)
 	}
 	if r := sam.raw("PUT", "/api/v1/profile/avatar", "image/jpeg", photo(t, 300, 200)); r.status != 400 {
 		t.Fatalf("not square: %d %s", r.status, r.raw)
@@ -163,7 +168,7 @@ func TestInvitationSuggestsAName(t *testing.T) {
 	if r := anon.do("POST", "/api/v1/auth/setup-link", map[string]string{"token": reset}); r.status != 200 || r.body["displayName"] != nil {
 		t.Fatalf("peek reset: %s", r.raw)
 	}
-	if r := anon.do("POST", "/api/v1/auth/setup-link/use", map[string]string{"token": reset, "password": "a newer password", "displayName": "Someone else"}); r.status != 204 {
+	if r := anon.do("POST", "/api/v1/auth/setup-link/use", map[string]string{"token": reset, "password": "a newer password", "displayName": "Someone\nelse"}); r.status != 204 {
 		t.Fatalf("use reset: %d %s", r.status, r.raw)
 	}
 	mum = e.loginAs("mum", "a newer password")

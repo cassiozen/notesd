@@ -224,7 +224,6 @@ function PasswordForm({
               label="Your name (optional)"
               name="name"
               autoComplete="name"
-              maxLength={64}
               value={name}
               onChange={(e) => setName(e.target.value)}
               error={errors.displayName}

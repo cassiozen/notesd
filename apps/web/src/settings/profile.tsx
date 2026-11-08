@@ -41,28 +41,35 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
   const { profileChanged } = useAuth()
   const titleId = useId()
   const input = useRef<HTMLInputElement>(null)
-  const [name, setName] = useState(profile.displayName)
+  // What the draft started from: a refresh while open mustn't turn an untouched name into a change.
+  const [startName] = useState(profile.displayName)
+  const [name, setName] = useState(startName)
   const [photo, setPhoto] = useState<Photo>(null)
   const [nameError, setNameError] = useState<string>()
   const [photoError, setPhotoError] = useState<string>()
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
+  const [preparing, setPreparing] = useState(false)
 
   const previewURL = photo && photo !== 'remove' ? photo.url : undefined
   useEffect(() => (previewURL ? () => URL.revokeObjectURL(previewURL) : undefined), [previewURL])
 
   async function choose(file: File) {
     setPhotoError(undefined)
+    setPreparing(true)
     try {
       const bytes = await preparePhoto(file)
       setPhoto({ bytes, url: URL.createObjectURL(new Blob([bytes], { type: 'image/jpeg' })) })
     } catch (err) {
       setPhotoError(err instanceof ImageError ? err.message : 'This browser can’t read that picture.')
+    } finally {
+      setPreparing(false)
     }
   }
 
   async function submit(e: FormEvent) {
     e.preventDefault()
+    if (preparing) return
     setNameError(undefined)
     setPhotoError(undefined)
     setFormError(undefined)
@@ -70,7 +77,7 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
     // What was saved before a later step failed still shows, everywhere.
     let saved: Person | undefined
     try {
-      if (name.trim() !== profile.displayName) saved = await api.setName(name.trim())
+      if (name.trim() !== startName) saved = await api.setName(name.trim())
       if (photo === 'remove') saved = await api.removePhoto()
       else if (photo) saved = await api.setPhoto(photo.bytes)
       if (saved) profileChanged(saved)
@@ -102,7 +109,7 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
             className={[styles.avatar, styles.photoPreview].join(' ')}
           />
           <div className={styles.photoActions}>
-            <Button size="sm" onClick={() => input.current?.click()} disabled={busy}>
+            <Button size="sm" onClick={() => input.current?.click()} disabled={busy || preparing}>
               {hasPhoto ? 'Change photo…' : 'Choose photo…'}
             </Button>
             {hasPhoto && (
@@ -132,7 +139,6 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
         <Field
           label="Name"
           autoComplete="name"
-          maxLength={64}
           value={name}
           onChange={(e) => setName(e.target.value)}
           error={nameError}
@@ -148,7 +154,7 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
           <Button size="md" onClick={onClose} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="solid" size="md" type="submit" busy={busy}>
+          <Button variant="solid" size="md" type="submit" busy={busy} disabled={preparing}>
             {busy ? 'Saving…' : 'Save'}
           </Button>
         </div>

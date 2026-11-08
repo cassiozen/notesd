@@ -81,13 +81,6 @@ func (s *Service) UseSetupLink(ctx context.Context, token, password string, disp
 	if err := validatePassword(password); err != nil {
 		return User{}, err
 	}
-	var name string
-	if displayName != nil {
-		var err error
-		if name, err = cleanDisplayName(*displayName); err != nil {
-			return User{}, err
-		}
-	}
 	hash, err := HashPassword(password)
 	if err != nil {
 		return User{}, err
@@ -98,6 +91,10 @@ func (s *Service) UseSetupLink(ctx context.Context, token, password string, disp
 			return err
 		}
 		if u.Pending && displayName != nil {
+			name, err := cleanDisplayName(*displayName)
+			if err != nil {
+				return err
+			}
 			if err = s.writeDisplayName(ctx, tx, u.ID, name); err != nil {
 				return err
 			}
