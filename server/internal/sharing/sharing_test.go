@@ -251,3 +251,24 @@ func TestOpeningASpaceFileIfItExistsDoesntMakeOne(t *testing.T) {
 		t.Fatalf("file made: %v", err)
 	}
 }
+
+func TestSharingASpaceNamedLikeTheDefault(t *testing.T) {
+	e := newEnv(t)
+	// Every notes file starts with the default space as "Notes"; this account renamed theirs.
+	if _, err := e.owner.Spaces.Put(e.ctx, "default", "Inbox", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.owner.Spaces.Put(e.ctx, "fam", "Notes", nil); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := auth.NewService(e.system).AddUser(e.ctx, "kid", "another horse battery", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.Invite(e.ctx, 1, "fam", 2); err != nil {
+		t.Fatalf("share: %v", err)
+	}
+	sp, err := e.s.Space(e.ctx, 1, "fam")
+	if err != nil || sp.Name != "Notes" || sp.NoteCount != 2 {
+		t.Fatalf("shared: %+v %v", sp, err)
+	}
+}

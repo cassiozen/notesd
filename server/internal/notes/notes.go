@@ -833,7 +833,7 @@ func (s *Store) resolveSpace(ctx context.Context, tx *sql.Tx, id *string, def st
 	if id == nil {
 		return def, nil
 	}
-	// A shared space's file has only its own space; its 'default' row isn't one.
+	// A shared space's file has only its own space; Resolve's fallback, the default, isn't one there.
 	if !s.shared || *id == s.home {
 		if got, err := spaces.Resolve(ctx, tx, *id); err != nil || got == *id {
 			return got, err
