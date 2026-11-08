@@ -124,11 +124,9 @@ func TestSharingASpace(t *testing.T) {
 		if len(got) != 1 || got[0]["title"] != "Groceries" || got[0]["spaceId"] != "fam" || got[0]["revision"] != 1.0 {
 			t.Fatalf("the space's feed has the note, as it was: %v", got)
 		}
-		// Its image came along, and loads at the account's address too.
-		for _, path := range []string{"/api/v1/spaces/fam/images/", "/api/v1/images/"} {
-			if r := c.do("GET", path+s.image, nil); r.status != 200 {
-				t.Fatalf("image at %s: %d", path, r.status)
-			}
+		// Its image came along, and loads at the account's address.
+		if r := c.do("GET", "/api/v1/images/"+s.image, nil); r.status != 200 {
+			t.Fatalf("image: %d", r.status)
 		}
 	}
 
@@ -140,42 +138,47 @@ func TestSharingASpace(t *testing.T) {
 	}
 	traits := sp["traits"].([]any)
 	if len(traits) != 1 || traits[0].(map[string]any)["summary"] != "With owner" ||
-		traits[0].(map[string]any)["exposure"] != "Visible to owner" {
+		traits[0].(map[string]any)["exposure"] != "Visible to owner" ||
+		fmt.Sprint(traits[0].(map[string]any)["audience"]) != fmt.Sprintf("[user:%d]", s.ownerID) {
 		t.Fatalf("Kid's trait: %v", traits)
 	}
 	if got := spaceByID(t, s.owner, "fam")["traits"].([]any)[0].(map[string]any)["summary"]; got != "With Kid" {
 		t.Fatalf("owner's trait: %v", got)
 	}
 
-	// Kid edits; the owner sees who did.
-	r := s.kid.do("PUT", "/api/v1/spaces/fam/notes/groceries", map[string]any{
+	// Kid edits at their own address; the server finds the file. The owner sees who did.
+	r := s.kid.do("PUT", "/api/v1/notes/groceries", map[string]any{
 		"operationId": "kid-1", "baseRevision": 1, "title": "Groceries", "content": "- Milk\n- Eggs",
 	})
-	if r.status != 200 {
+	if r.status != 200 || r.body["revision"] != 2.0 {
 		t.Fatalf("Kid's edit: %d %s", r.status, r.raw)
 	}
-	n := s.owner.do("GET", "/api/v1/spaces/fam/notes/groceries", nil)
-	if n.body["updatedBy"] != float64(s.kidID) {
-		t.Fatalf("updatedBy: %s", n.raw)
+	n := s.owner.do("GET", "/api/v1/notes/groceries", nil)
+	if n.status != 200 || n.body["updatedBy"] != float64(s.kidID) || n.body["content"] != "- Milk\n- Eggs" {
+		t.Fatalf("the owner reads it at their address: %d %s", n.status, n.raw)
 	}
-	if l := s.owner.do("GET", "/api/v1/spaces/fam/notes", nil); l.body["notes"].([]any)[0].(map[string]any)["updatedBy"] != float64(s.kidID) {
+	if l := s.owner.do("GET", "/api/v1/notes?space=fam", nil); l.body["notes"].([]any)[0].(map[string]any)["updatedBy"] != float64(s.kidID) {
 		t.Fatalf("the list says who: %s", l.raw)
 	}
 
-	// The owner's old address for it answers that it moved.
+	// An edit the owner queued before the share lands in the space's file, and conflicts as it would have.
 	r = s.owner.do("PUT", "/api/v1/notes/groceries", map[string]any{
 		"operationId": "own-1", "baseRevision": 1, "title": "Groceries", "content": "stale",
 	})
-	if r.status != 409 || r.body["error"] != "note_moved" {
-		t.Fatalf("edit at the old address: %d %s", r.status, r.raw)
+	if r.status != 409 || r.body["error"] != "revision_conflict" || r.body["current"].(map[string]any)["revision"] != 2.0 {
+		t.Fatalf("a stale edit: %d %s", r.status, r.raw)
 	}
-	if r := s.owner.do("DELETE", "/api/v1/notes/groceries", map[string]any{"operationId": "own-d", "baseRevision": 2}); r.status != 409 || r.body["error"] != "note_moved" {
-		t.Fatalf("delete at the old address: %d %s", r.status, r.raw)
-	}
-	// A note filed into the space at the account's address is sent where it belongs.
+	// A note filed into the space offline is created in its file.
 	r = s.owner.do("POST", "/api/v1/notes", map[string]any{"operationId": "own-2", "id": "late", "title": "Late", "content": "", "spaceId": "fam"})
-	if r.status != 409 || r.body["error"] != "space_elsewhere" || r.body["spaceId"] != "fam" {
-		t.Fatalf("create at the account's address: %d %s", r.status, r.raw)
+	if r.status != 201 || r.body["spaceId"] != "fam" {
+		t.Fatalf("create into the space: %d %s", r.status, r.raw)
+	}
+	if got := changes(t, s.kid, "/api/v1/spaces/fam/sync"); got[len(got)-1]["id"] != "late" {
+		t.Fatalf("the space's feed has it: %v", got)
+	}
+	// Deleting works at the same address.
+	if r := s.kid.do("DELETE", "/api/v1/notes/late", map[string]any{"operationId": "kid-d", "baseRevision": 1}); r.status != 200 || r.body["status"] != "deleted" {
+		t.Fatalf("delete: %d %s", r.status, r.raw)
 	}
 }
 
@@ -185,10 +188,19 @@ func TestSharedSpaceIsMembersOnly(t *testing.T) {
 		t.Fatalf("invite: %d %s", r.status, r.raw)
 	}
 	// Invited isn't joined.
-	for _, path := range []string{"/api/v1/spaces/fam/sync", "/api/v1/spaces/fam/notes", "/api/v1/spaces/fam/notes/groceries"} {
-		if r := s.kid.do("GET", path, nil); r.status != 404 {
-			t.Fatalf("%s before joining: %d %s", path, r.status, r.raw)
-		}
+	if r := s.kid.do("GET", "/api/v1/spaces/fam/sync", nil); r.status != 404 {
+		t.Fatalf("feed before joining: %d %s", r.status, r.raw)
+	}
+	if r := s.kid.do("GET", "/api/v1/notes/groceries", nil); r.status != 404 {
+		t.Fatalf("note before joining: %d %s", r.status, r.raw)
+	}
+	if r := s.kid.do("PUT", "/api/v1/notes/groceries", map[string]any{
+		"operationId": "k-1", "baseRevision": 1, "title": "Mine", "content": "",
+	}); r.status != 404 {
+		t.Fatalf("edit before joining: %d %s", r.status, r.raw)
+	}
+	if r := s.kid.do("GET", "/api/v1/notes?space=fam", nil); r.status != 200 || len(r.body["notes"].([]any)) != 0 {
+		t.Fatalf("list before joining: %d %s", r.status, r.raw)
 	}
 	// A space of their own with its id is refused, so sharing that can never touch this one.
 	if r := s.kid.do("PUT", "/api/v1/spaces/fam", map[string]any{"name": "Mine"}); r.status != 409 || r.body["error"] != "space_exists" {
@@ -238,41 +250,67 @@ func TestOnlyTheOwnerManages(t *testing.T) {
 func TestMovingNotesBetweenFiles(t *testing.T) {
 	s := newSharedEnv(t)
 	s.share()
-	// Kid moves the note into their own space.
-	r := s.kid.do("POST", "/api/v1/spaces/fam/notes/groceries/move", map[string]any{
-		"operationId": "mv-1", "baseRevision": 1, "spaceId": "default",
-	})
-	if r.status != 200 || r.body["spaceId"] != "default" {
+	// Kid moves the note into their own space, editing it in the same update.
+	move := map[string]any{"operationId": "mv-1", "baseRevision": 1, "title": "Groceries", "content": "- Milk\n- Bread", "spaceId": "default"}
+	r := s.kid.do("PUT", "/api/v1/notes/groceries", move)
+	if r.status != 200 || r.body["spaceId"] != "default" || r.body["revision"] != 2.0 {
 		t.Fatalf("move out: %d %s", r.status, r.raw)
 	}
-	// A retry answers the same.
-	if again := s.kid.do("POST", "/api/v1/spaces/fam/notes/groceries/move", map[string]any{
-		"operationId": "mv-1", "baseRevision": 1, "spaceId": "default",
-	}); again.status != 200 || again.header.Get("Idempotent-Replayed") != "true" {
+	// A retry answers the same, though the note is in another file now.
+	if again := s.kid.do("PUT", "/api/v1/notes/groceries", move); again.status != 200 || again.header.Get("Idempotent-Replayed") != "true" {
 		t.Fatalf("retry: %d %s", again.status, again.raw)
 	}
 	mine := changes(t, s.kid, "/api/v1/sync")
-	if len(mine) != 1 || mine[0]["title"] != "Groceries" || mine[0]["spaceId"] != "default" {
+	if len(mine) != 1 || mine[0]["content"] != "- Milk\n- Bread" || mine[0]["spaceId"] != "default" {
 		t.Fatalf("Kid's own feed: %v", mine)
 	}
-	if r := s.kid.do("GET", "/api/v1/images/"+s.image, nil); r.status != 200 {
-		t.Fatalf("its image came along: %d", r.status)
-	}
 	space := changes(t, s.owner, "/api/v1/spaces/fam/sync")
-	if last := space[len(space)-1]; last["movedTo"] != "default" {
+	if last := space[len(space)-1]; last["movedTo"] != "default" || last["deletedAt"] == nil {
 		t.Fatalf("the space's feed: %v", last)
 	}
+	// Out of the owner's reach: deleted as far as they can tell, and never filed into their own default.
+	if r := s.owner.do("GET", "/api/v1/notes/groceries", nil); r.status != 410 || r.body["current"].(map[string]any)["movedTo"] != nil {
+		t.Fatalf("the owner reads it: %d %s", r.status, r.raw)
+	}
+	r = s.owner.do("PUT", "/api/v1/notes/groceries", map[string]any{"operationId": "own-1", "baseRevision": 1, "title": "G", "content": ""})
+	if r.status != 409 || r.body["error"] != "note_deleted" {
+		t.Fatalf("the owner edits it: %d %s", r.status, r.raw)
+	}
+	if r := s.owner.do("DELETE", "/api/v1/notes/groceries", map[string]any{"operationId": "own-d", "baseRevision": 1}); r.status != 200 || r.body["status"] != "already_deleted" {
+		t.Fatalf("the owner deletes it: %d %s", r.status, r.raw)
+	}
 	// And back: the space's tombstone of it comes alive at a higher revision.
-	r = s.kid.do("POST", "/api/v1/notes/groceries/move", map[string]any{
-		"operationId": "mv-2", "baseRevision": 1, "spaceId": "fam",
+	r = s.kid.do("PUT", "/api/v1/notes/groceries", map[string]any{
+		"operationId": "mv-2", "baseRevision": 2, "title": "Groceries", "content": "- Milk\n- Bread", "spaceId": "fam",
 	})
-	if r.status != 200 || r.body["revision"] != 3.0 {
+	if r.status != 200 || r.body["spaceId"] != "fam" || r.body["revision"] != 3.0 {
 		t.Fatalf("move back: %d %s", r.status, r.raw)
 	}
-	// Moving within a file is an update, not a move.
-	s.owner.do("PUT", "/api/v1/spaces/work", map[string]any{"name": "Work"})
-	if r := s.owner.do("POST", "/api/v1/notes/x/move", map[string]any{"operationId": "mv-3", "baseRevision": 1, "spaceId": "work"}); r.status != 400 {
-		t.Fatalf("move in one file: %d %s", r.status, r.raw)
+	if r := s.owner.do("GET", "/api/v1/notes/groceries", nil); r.status != 200 || r.body["spaceId"] != "fam" {
+		t.Fatalf("the owner has it again: %d %s", r.status, r.raw)
+	}
+	// A stale base is a conflict, and nothing moves.
+	r = s.kid.do("PUT", "/api/v1/notes/groceries", map[string]any{
+		"operationId": "mv-3", "baseRevision": 2, "title": "Groceries", "content": "", "spaceId": "default",
+	})
+	if r.status != 409 || r.body["error"] != "revision_conflict" {
+		t.Fatalf("stale move: %d %s", r.status, r.raw)
+	}
+}
+
+func TestPicturesGoWhereTheNoteIs(t *testing.T) {
+	s := newSharedEnv(t)
+	s.share()
+	// Kid uploads to their own address and files the note into the space: the owner can load it.
+	pic := s.putImage(s.kid, "/api/v1/images/")
+	r := s.kid.do("POST", "/api/v1/notes", map[string]any{
+		"operationId": "k-1", "id": "trip", "title": "Trip", "spaceId": "fam", "content": "![](notesd:image/" + pic + "?w=1&h=1)",
+	})
+	if r.status != 201 {
+		t.Fatalf("create: %d %s", r.status, r.raw)
+	}
+	if r := s.owner.do("GET", "/api/v1/images/"+pic, nil); r.status != 200 {
+		t.Fatalf("the owner loads Kid's picture: %d", r.status)
 	}
 }
 
@@ -297,7 +335,7 @@ func TestSharingRefusals(t *testing.T) {
 	s.owner.do("DELETE", "/api/v1/notes/secret", map[string]any{"operationId": "op-d", "baseRevision": 1})
 	s.share()
 	// No locked notes in it afterwards either.
-	r = s.kid.do("POST", "/api/v1/spaces/fam/notes", map[string]any{"operationId": "k-l", "id": "k", "title": "K", "content": locked})
+	r = s.kid.do("POST", "/api/v1/notes", map[string]any{"operationId": "k-l", "id": "k", "title": "K", "content": locked, "spaceId": "fam"})
 	if r.status != 422 || r.body["error"] != "locked_in_shared_space" {
 		t.Fatalf("locked note in a shared space: %d %s", r.status, r.raw)
 	}
@@ -314,7 +352,7 @@ func TestSearchCountsSharedSpaces(t *testing.T) {
 	if r.body["otherSpaces"] != 1.0 {
 		t.Fatalf("other spaces from the account's file: %s", r.raw)
 	}
-	r = s.kid.do("GET", "/api/v1/spaces/fam/search?q=milk&space=fam", nil)
+	r = s.kid.do("GET", "/api/v1/search?q=milk&space=fam", nil)
 	if len(r.body["results"].([]any)) != 1 || r.body["otherSpaces"] != 1.0 {
 		t.Fatalf("from the space's file: %s", r.raw)
 	}
@@ -353,7 +391,7 @@ func TestDeletingASharedSpace(t *testing.T) {
 	if r := s.owner.do("DELETE", "/api/v1/spaces/fam", nil); r.status != 409 || r.body["error"] != "space_not_empty" {
 		t.Fatalf("delete with a note in it: %d %s", r.status, r.raw)
 	}
-	s.owner.do("DELETE", "/api/v1/spaces/fam/notes/groceries", map[string]any{"operationId": "d-1", "baseRevision": 1})
+	s.owner.do("DELETE", "/api/v1/notes/groceries", map[string]any{"operationId": "d-1", "baseRevision": 1})
 	if r := s.owner.do("DELETE", "/api/v1/spaces/fam", nil); r.status != 204 {
 		t.Fatalf("delete: %d %s", r.status, r.raw)
 	}

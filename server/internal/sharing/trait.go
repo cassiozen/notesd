@@ -26,15 +26,17 @@ func (s *Service) Trait(viewerID int64) spaces.TraitSource {
 			if err != nil {
 				return nil, err
 			}
-			var with, pending []string
+			var with, pending, audience []string
 			for _, p := range members {
 				if p.ID != viewerID {
 					with = append(with, p.Username)
+					audience = append(audience, userRef(p.ID))
 				}
 			}
 			for _, in := range invited {
 				if in.UserID != viewerID {
 					pending = append(pending, in.Username)
+					audience = append(audience, userRef(in.UserID))
 				}
 			}
 			if len(with) == 0 && len(pending) == 0 {
@@ -55,6 +57,7 @@ func (s *Service) Trait(viewerID int64) spaces.TraitSource {
 				Label:    "Shared",
 				Summary:  strings.Join(summary, " · "),
 				Exposure: "Visible to " + names(append(with, pending...)),
+				Audience: audience,
 			}
 		}
 		return out, nil

@@ -6,6 +6,7 @@ package api
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -19,6 +20,7 @@ import (
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
 	"notes/server/internal/mail"
+	"notes/server/internal/notes"
 	"notes/server/internal/sharing"
 	"notes/server/internal/userdata"
 	"notes/server/internal/web"
@@ -98,12 +100,12 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/auth/sessions", s.authed(s.listSessions))
 	mux.Handle("DELETE /api/v1/auth/sessions/{id}", s.authed(s.revokeSession))
 
-	mux.Handle("GET /api/v1/notes", gzipped(s.authed(s.listNotes)))
+	mux.Handle("GET /api/v1/notes", gzipped(s.authed(s.bySpace(s.listNotes))))
 	mux.Handle("POST /api/v1/notes", s.authed(s.createNote))
 	mux.Handle("GET /api/v1/notes/{id}", s.authed(s.getNote))
 	mux.Handle("PUT /api/v1/notes/{id}", s.authed(s.updateNote))
 	mux.Handle("DELETE /api/v1/notes/{id}", s.authed(s.deleteNote))
-	mux.Handle("POST /api/v1/notes/{id}/email", s.authed(s.emailNote))
+	mux.Handle("POST /api/v1/notes/{id}/email", s.authed(s.atNote(s.emailNote)))
 
 	mux.Handle("GET /api/v1/update", s.authed(s.updateStatus))
 	mux.Handle("POST /api/v1/update", s.authed(adminOnly(s.requestUpdate)))
@@ -134,28 +136,17 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/invites/{invite}/accept", s.authed(s.acceptInvite))
 	mux.Handle("POST /api/v1/invites/{invite}/decline", s.authed(s.declineInvite))
 	mux.Handle("GET /api/v1/people", s.authed(s.listPeople))
-	mux.Handle("POST /api/v1/notes/{id}/move", s.authed(s.moveNote))
 
-	// A shared space's file (§7.9): the same handlers, over that file.
-	mux.Handle("GET /api/v1/spaces/{space}/notes", gzipped(s.authed(s.inSpace(s.listNotes))))
-	mux.Handle("POST /api/v1/spaces/{space}/notes", s.authed(s.inSpace(s.createNote)))
-	mux.Handle("GET /api/v1/spaces/{space}/notes/{id}", s.authed(s.inSpace(s.getNote)))
-	mux.Handle("PUT /api/v1/spaces/{space}/notes/{id}", s.authed(s.inSpace(s.updateNote)))
-	mux.Handle("DELETE /api/v1/spaces/{space}/notes/{id}", s.authed(s.inSpace(s.deleteNote)))
-	mux.Handle("POST /api/v1/spaces/{space}/notes/{id}/email", s.authed(s.inSpace(s.emailNote)))
-	mux.Handle("POST /api/v1/spaces/{space}/notes/{id}/move", s.authed(s.inSpace(s.moveNote)))
-	mux.Handle("PUT /api/v1/spaces/{space}/images/{id}", s.authed(s.inSpace(s.putImage)))
-	mux.Handle("GET /api/v1/spaces/{space}/images/{id}", s.authed(s.inSpace(s.getImage)))
+	// A shared space's change feed (§7.9): each file has its own sequence, so its own cursor. Every
+	// other request is at the account's address, and the server finds the file.
 	mux.Handle("GET /api/v1/spaces/{space}/sync", gzipped(s.authed(s.inSpace(s.sync))))
-	mux.Handle("GET /api/v1/spaces/{space}/search", gzipped(s.authed(s.inSpace(s.search))))
-	mux.Handle("GET /api/v1/spaces/{space}/filters", gzipped(s.authed(s.inSpace(s.listFilters))))
 
 	mux.Handle("PUT /api/v1/images/{id}", s.authed(s.putImage))
 	mux.Handle("GET /api/v1/images/{id}", s.authed(s.getImage))
 
 	mux.Handle("GET /api/v1/sync", gzipped(s.authed(s.sync)))
-	mux.Handle("GET /api/v1/search", gzipped(s.authed(s.search)))
-	mux.Handle("GET /api/v1/filters", gzipped(s.authed(s.listFilters)))
+	mux.Handle("GET /api/v1/search", gzipped(s.authed(s.bySpace(s.search))))
+	mux.Handle("GET /api/v1/filters", gzipped(s.authed(s.bySpace(s.listFilters))))
 
 	// Not not_found: a client treats that as a missing note or image, which
 	// an older server lacking the endpoint isn't.
@@ -217,6 +208,44 @@ func (s *Server) inSpace(h http.HandlerFunc) http.HandlerFunc {
 		ctx := context.WithValue(context.WithValue(r.Context(), userKey, d), spaceKey, space)
 		h(w, r.WithContext(ctx))
 	}
+}
+
+// bySpace serves a request naming a shared space the account is in (?space=) from that space's file.
+func (s *Server) bySpace(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		space := r.URL.Query().Get("space")
+		if space == "" {
+			h(w, r)
+			return
+		}
+		f, release, err := s.sharing.ForSpace(r.Context(), sessionFrom(r.Context()).UserID, space)
+		if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		defer release()
+		h(w, r.WithContext(inFile(r.Context(), f)))
+	}
+}
+
+// atNote serves a request for a note from the file it's in.
+func (s *Server) atNote(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f, _, release, err := s.sharing.Locate(r.Context(), sessionFrom(r.Context()).UserID, r.PathValue("id"))
+		if errors.Is(err, notes.ErrNotFound) {
+			h(w, r)
+			return
+		} else if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		defer release()
+		h(w, r.WithContext(inFile(r.Context(), f)))
+	}
+}
+
+func inFile(ctx context.Context, f sharing.File) context.Context {
+	return context.WithValue(context.WithValue(ctx, userKey, f.Data), spaceKey, f.SpaceID)
 }
 
 // spaceFrom is the shared space whose file a request is served from; "" for

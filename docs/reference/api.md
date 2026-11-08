@@ -202,7 +202,6 @@ account's id, as notes' `updatedBy` and shared spaces' members name it.
 | `GET` | `/notes/{id}` | → the note. A deleted note is `410 note_deleted`, with the tombstone in `current` |
 | `PUT` | `/notes/{id}` | `{operationId, baseRevision, title, content, spaceId?, imageIds?, updatedAt?}` → [result](#writing-notes) |
 | `DELETE` | `/notes/{id}` | `{operationId, baseRevision}` → [result](#writing-notes) |
-| `POST` | `/notes/{id}/move` | `{operationId, baseRevision, spaceId}` → [result](#writing-notes), with the note's revision where it went. Moves it to a space in another file: into or out of a [shared space](#shared-spaces) |
 
 A note:
 
@@ -244,10 +243,9 @@ locked notes.
 
 **Spaces.** `spaceId` on create puts the note in that space; left out, it goes in `default`. On
 update, `spaceId` moves the note, and leaving it out keeps it where it is. If the space doesn't
-exist, the note goes in `default`. The result's `spaceId` says where it ended up. A space whose
-notes are in another file (a [shared space](#shared-spaces), or your own space when writing in a
-shared one) is refused with `409 space_elsewhere` and its `spaceId`: send the note there, or move
-it with `/notes/{id}/move`.
+exist, the note goes in `default`. The result's `spaceId` says where it ended up. Moving into or
+out of a [shared space](#shared-spaces) is the same update: the server moves the note between
+files, with the update's text, and answers with its revision there.
 
 ### Sync
 
@@ -309,10 +307,11 @@ parents of nested tags. `count` is the number of notes with the tag or one neste
 
 A space's owner shares it, with every note in it, with other accounts on the server
 ([architecture §7.9](../contributing/architecture.md#79-shared-spaces)). Its notes are in a file of
-their own, reached under `/spaces/{id}/`: `notes`, `notes/{note}`, `notes/{note}/move`,
-`notes/{note}/email`, `images/{image}`, `sync`, `search` and `filters` work exactly as the
-account's endpoints, for members only (`404 not_found` for anyone else). Sync each shared space's
-feed with its own cursor and generation.
+their own, but you reach them at your own address: writes, `GET /notes/{id}` and email find the
+note wherever it is, a create goes to its space, and `?space=` on the list, filters and search
+reads that space. The one exception is the change feed: each shared space has its own,
+`/spaces/{id}/sync`, with its own cursor and generation, for members only (`404 not_found` for
+anyone else).
 
 | Method | Path | Body → response |
 | --- | --- | --- |
@@ -336,8 +335,10 @@ feed with its own cursor and generation.
   (`409 space_has_locked`, with `count`). A shared space refuses locked notes
   (`422 locked_in_shared_space`).
 - The owner can't leave (`409 owner_cannot_leave`): hand the space on, or remove every member.
-- A note that moved answers `409 note_moved`, with its tombstone (and `movedTo`) in `current`:
-  send the change to where it went.
+- A note another member moved into a space of their own is deleted as far as you can tell: `GET`
+  answers `410`, an update `409 note_deleted` (its tombstone without `movedTo`), a delete
+  `already_deleted`.
+- A write that keeps meeting a share or move running under it answers `503 busy`: retry.
 
 ### Images
 
@@ -353,8 +354,8 @@ the bytes is `400 hash_mismatch`. `Content-Type` must be `image/jpeg`, `image/pn
 `application/vnd.notesd.locked` for an encrypted image. A later version of the encryption uses a
 subtype, such as `application/vnd.notesd.locked.v2`, which the server stores without reading it.
 `GET` at the account's address also finds an image in the [shared spaces](#shared-spaces) you're
-in, so a note's pictures load from one address whichever file the note is in; upload a shared
-space's pictures to its own address, `/spaces/{id}/images/{sha256}`.
+in, so a note's pictures load from one address whichever file the note is in. Upload to your own
+address too: a note written into a shared space takes the pictures it shows there with it.
 Parameters on a locked type (`; v=2`) are refused with `415 unsupported_image`. Images can be up to 10 MiB
 (`413 image_too_large`). `GET` answers with `ETag`,
 `Cache-Control: private, max-age=31536000, immutable` and a restrictive
@@ -489,8 +490,6 @@ Outside `/api/v1`, need no session, and expose no data:
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
-| `note_moved` | 409 | The note moved to another file; `current` has its tombstone, with `movedTo` |
-| `space_elsewhere` | 409 | That space's notes are in another file; see `spaceId` |
 | `space_has_locked` | 409 | A space holding locked notes can't be shared; see `count` |
 | `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
 | `already_member` | 409 | That account is already in the space |
@@ -519,3 +518,4 @@ Outside `/api/v1`, need no session, and expose no data:
 | `rate_limited` | 429 | Too many failed attempts; see `Retry-After` |
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |
 | `email_failed` | 502 | Resend refused the email; see `message` |
+| `busy` | 503 | A note kept moving between files during the write; retry |

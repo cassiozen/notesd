@@ -29,7 +29,6 @@ var (
 	ErrOwnerLeaving  = errors.New("the owner can't leave: hand the space to a member, or remove every member")
 	ErrAlreadyMember = errors.New("already a member of this space")
 	ErrSelf          = errors.New("you're already in this space")
-	ErrSameFile      = errors.New("that space is in the same file: move the note with an update")
 	ErrIDTaken       = errors.New("a shared space has this id")
 	ErrBusy          = errors.New("the space is in use; try again")
 )
@@ -406,80 +405,13 @@ func (s *Service) clearMove(ctx context.Context, moveID string) error {
 	})
 }
 
-// Source is the file a note is moved out of, as a request reached it.
-type Source struct {
-	Data *userdata.Data
-	// SpaceID is the shared space whose file it is; "" for the account's own.
-	SpaceID string
-}
-
-// Move moves a note from src to a space in another file userID reaches
-// (§7.9): one of their own, or a shared space they're in.
-func (s *Service) Move(ctx context.Context, userID int64, src Source, in notes.MoveInput) (notes.Result, error) {
-	in.UpdatedBy = userID
-	// Held before the move lock: a request in the destination may be waiting for it.
-	dest, destRef, release, err := s.destination(ctx, userID, in.SpaceID)
-	if err != nil {
-		return notes.Result{}, err
-	}
-	defer release()
-	srcRef := userRef(userID)
-	if src.SpaceID != "" {
-		srcRef = spaceRef(src.SpaceID)
-	}
-	if destRef == srcRef {
-		return notes.Result{}, ErrSameFile
-	}
-	s.moving.Lock()
-	defer s.moving.Unlock()
-	moveID := newID()
-	err = s.system.WriteTx(ctx, func(tx *sql.Tx) error {
+// logMove records a note's move before its destination is written.
+func (s *Service) logMove(ctx context.Context, moveID, spaceID, noteID, source, dest string) error {
+	return s.system.WriteTx(ctx, func(tx *sql.Tx) error {
 		_, err := tx.ExecContext(ctx, `INSERT INTO space_moves (id, kind, space_id, note_id, source, dest, created_at)
-			VALUES (?, 'note', ?, ?, ?, ?, ?)`, moveID, in.SpaceID, in.ID, srcRef, destRef, s.now().UnixMilli())
+			VALUES (?, 'note', ?, ?, ?, ?, ?)`, moveID, spaceID, noteID, source, dest, s.now().UnixMilli())
 		return err
 	})
-	if err != nil {
-		return notes.Result{}, err
-	}
-	res, err := src.Data.Notes.MoveOut(ctx, in, func(c notes.Carried) (notes.Result, error) {
-		return dest.Notes.MoveIn(ctx, c, in.SpaceID)
-	})
-	if err != nil {
-		live, lerr := dest.Notes.Live(ctx, in.ID)
-		if lerr != nil {
-			return res, errors.Join(err, lerr)
-		}
-		// The destination kept it: finished now, so the note isn't live in both files. A retry of the move
-		// then hears note_moved to where it asked. Left logged for startup only if that fails too.
-		if live {
-			if ferr := src.Data.Notes.FinishMoveOut(ctx, in.ID, in.SpaceID); ferr != nil {
-				return res, errors.Join(err, ferr)
-			}
-		}
-	}
-	return res, errors.Join(err, s.clearMove(ctx, moveID))
-}
-
-// destination is the file spaceID's notes are in, for userID; a shared space's held until release.
-func (s *Service) destination(ctx context.Context, userID int64, spaceID string) (*userdata.Data, string, func(), error) {
-	role, err := s.Role(ctx, userID, spaceID)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	if role != "" {
-		d, release, err := s.Open(ctx, userID, spaceID)
-		return d, spaceRef(spaceID), release, err
-	}
-	own, err := s.files.Open(ctx, userID)
-	if err != nil {
-		return nil, "", nil, err
-	}
-	if ok, err := own.Notes.HasSpace(ctx, spaceID); err != nil {
-		return nil, "", nil, err
-	} else if !ok {
-		return nil, "", nil, &notes.ValidationError{Field: "spaceId", Message: "no such space"}
-	}
-	return own, userRef(userID), func() {}, nil
 }
 
 // Recover finishes or undoes the moves a stop cut short (§7.9). It runs at

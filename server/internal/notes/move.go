@@ -91,6 +91,43 @@ func (s *Store) MoveOut(ctx context.Context, in MoveInput, write func(Carried) (
 	})
 }
 
+// Edited is c with an update applied, for a move that carries one (§7.9):
+// the move and the edit land in the destination as one write. Changed text
+// takes a new revision; a move alone keeps the note's.
+func (s *Store) Edited(c Carried, in UpdateInput) (Carried, error) {
+	if err := validateText(in.Title, in.Content); err != nil {
+		return c, err
+	}
+	if err := validateImageIDs(in.ImageIDs); err != nil {
+		return c, err
+	}
+	n := c.Note
+	if n.Title != in.Title || n.Content != in.Content {
+		n.Revision++
+	}
+	n.Title, n.Content = in.Title, in.Content
+	n.UpdatedAt = max(s.clientTime(in.UpdatedAt, s.now().UnixMilli()), n.CreatedAt)
+	if in.UpdatedBy > 0 {
+		n.UpdatedBy = &in.UpdatedBy
+	}
+	if in.ImageIDs != nil {
+		n.ImageIDs = in.ImageIDs
+	}
+	// Only what the edited note shows: an image carried but no longer shown would be stored unreferenced.
+	shown := map[string]bool{}
+	for _, id := range shownImages(n.Content, n.ImageIDs) {
+		shown[id] = true
+	}
+	var blobs []images.Blob
+	for _, b := range append(c.Images, in.Carry...) {
+		if shown[b.ID] {
+			blobs = append(blobs, b)
+			delete(shown, b.ID)
+		}
+	}
+	return Carried{Note: n, Images: blobs}, nil
+}
+
 // MoveIn stores a note moved here into space. Revisions only grow: past a tombstone an earlier move left.
 // A note already live here (a move finished after a crash) is answered as it is.
 func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, error) {

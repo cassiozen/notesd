@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"notes/server/internal/notes"
 	"notes/server/internal/sharing"
 	"notes/server/internal/spaces"
 )
@@ -181,36 +180,6 @@ func (s *Server) listPeople(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"people": list})
-}
-
-// POST /api/v1/notes/{id}/move  {"operationId": "...", "baseRevision": 5, "spaceId": "..."}
-//
-// Moves a note to a space in another file (§7.9), answering like an update.
-func (s *Server) moveNote(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		OperationID  string `json:"operationId"`
-		BaseRevision int64  `json:"baseRevision"`
-		SpaceID      string `json:"spaceId"`
-	}
-	body, err := decodeBody(w, r, &req)
-	if err != nil {
-		s.writeErr(w, r, err)
-		return
-	}
-	fp, err := notes.Fingerprint("move", r.PathValue("id"), body)
-	if err != nil {
-		s.writeErr(w, r, err)
-		return
-	}
-	src := sharing.Source{Data: userFrom(r.Context()), SpaceID: spaceFrom(r.Context())}
-	res, err := s.sharing.Move(r.Context(), sessionFrom(r.Context()).UserID, src, notes.MoveInput{
-		Fingerprint:  fp,
-		OperationID:  req.OperationID,
-		ID:           r.PathValue("id"),
-		BaseRevision: req.BaseRevision,
-		SpaceID:      req.SpaceID,
-	})
-	s.writeMutation(w, r, res, err)
 }
 
 func sharingTaken(taken bool) error {

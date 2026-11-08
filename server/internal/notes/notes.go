@@ -294,6 +294,9 @@ type CreateInput struct {
 	ImageIDs []string `json:"imageIds"`
 	// UpdatedBy is the account writing (§7.9), from its session.
 	UpdatedBy int64 `json:"-"`
+	// Carry is images the note shows that are stored in another file the
+	// writer reaches, stored here with it so every member can load them.
+	Carry []images.Blob `json:"-"`
 	// Fingerprint identifies the request as received (see Fingerprint);
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
@@ -315,6 +318,8 @@ type UpdateInput struct {
 	ImageIDs []string `json:"imageIds"`
 	// As CreateInput.UpdatedBy.
 	UpdatedBy int64 `json:"-"`
+	// As CreateInput.Carry.
+	Carry []images.Blob `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 }
@@ -386,6 +391,9 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 			return Result{}, err
 		}
 		if err := search.IndexNote(ctx, tx, rowid, in.Title, in.Content); err != nil {
+			return Result{}, err
+		}
+		if err := putCarried(ctx, tx, in.Carry); err != nil {
 			return Result{}, err
 		}
 		if err := images.SetRefs(ctx, tx, rowid, shownImages(in.Content, in.ImageIDs), now); err != nil {
@@ -464,6 +472,9 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 			return Result{}, err
 		}
 		if !locks.IsLocked(in.Content) || in.ImageIDs != nil {
+			if err := putCarried(ctx, tx, in.Carry); err != nil {
+				return Result{}, err
+			}
 			if err := images.SetRefs(ctx, tx, cur.rowid, shownImages(in.Content, in.ImageIDs), now); err != nil {
 				return Result{}, err
 			}
@@ -717,6 +728,30 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, fn func(*sql.Tx
 	}
 	return out, err
 }
+
+// putCarried stores images a write brought from another file, just before
+// the note's references to them: stored with none, one would never be freed.
+func putCarried(ctx context.Context, tx *sql.Tx, blobs []images.Blob) error {
+	for _, b := range blobs {
+		if err := images.PutTx(ctx, tx, b); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Applied reports whether this file recorded an operation, so a retry is
+// answered by the file its first try wrote (§7.9).
+func (s *Store) Applied(ctx context.Context, opID string) (bool, error) {
+	var ok bool
+	err := s.db.R.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM applied_operations WHERE operation_id = ?)`,
+		opID).Scan(&ok)
+	return ok, err
+}
+
+// ShownImages is the images a note with this content shows: read from a
+// plain note's content, as its client listed them for a locked one.
+func ShownImages(content string, listed []string) []string { return shownImages(content, listed) }
 
 // shownImages is the images a note shows: read from a plain note's
 // content, as its client listed them for a locked one.
