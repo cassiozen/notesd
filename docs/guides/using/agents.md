@@ -60,7 +60,8 @@ space's note titles; a title with no note yet is marked *not here yet*, and is r
 one, such as a note a rule has the agent make.
 
 A new note opened, editing started and the menu command happen in the editor, and need a connection to
-the server: offline, they're skipped, unless the connection comes back within about 10 seconds. The agent works on the note as you see it there, unsaved
+the server: offline, they're skipped, unless the connection comes back within about 10 seconds. The menu
+command then says it didn't run, and why. The agent works on the note as you see it there, unsaved
 typing included; close the note before it's done and it stops.
 
 ## While you write
@@ -102,7 +103,8 @@ the web for now.
 Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
 changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it
 used, its last words, and each note it changed, line by line. Today's token use is at the top,
-against the daily limit.
+against the daily limit. A run that's waiting or going updates as it goes, and a new one shows as it
+starts.
 
 **Undo** puts each note the run changed back as it was, and deletes a note it made. A note you've
 changed since is left alone, so undo never loses your writing; Activity says which and why. Undo

@@ -1,4 +1,3 @@
-import { useEffect } from 'react'
 import { agent, type AgentConfig, type AgentConfigInput } from '../api/agent'
 import { accountStore } from './account-store'
 
@@ -14,16 +13,7 @@ export function agentConfigFor(spaceId: string): AgentConfig | undefined {
 }
 
 /** Every space's agent, or null until they've loaded (or while offline). */
-export function useAgentConfigs(): ReadonlyMap<string, AgentConfig> | null {
-  const value = store.use()
-  // Once back online after a failed fetch.
-  useEffect(() => {
-    if (value !== null) return
-    window.addEventListener('online', store.retry)
-    return () => window.removeEventListener('online', store.retry)
-  }, [value])
-  return value
-}
+export const useAgentConfigs: () => ReadonlyMap<string, AgentConfig> | null = store.use
 
 /** Saves a space's agent and keeps the list in step. */
 export async function saveAgentConfig(spaceId: string, input: AgentConfigInput): Promise<AgentConfig> {

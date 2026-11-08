@@ -155,7 +155,7 @@ func syncOrigin(r *http.Request) string {
 	switch v := r.Header.Get("X-Notesd-Sync"); v {
 	case "":
 		return ""
-	case "initial", "import":
+	case notes.OriginInitial, notes.OriginImport:
 		return v
 	default:
 		return "other"

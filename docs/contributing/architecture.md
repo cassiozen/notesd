@@ -376,7 +376,7 @@ An editor open on a note while sync changes it shows the change at once if nothi
 
 ### 5.4 Initial sync
 
-A new device authenticates, initializes its database, syncs from cursor 0 in pages, builds its search index and persists the cursor. Notes appear as they arrive, and the process resumes if interrupted.
+A new device authenticates, initializes its database, syncs from cursor 0 in pages, builds its search index and persists the cursor. Notes appear as they arrive, and the process resumes if interrupted. What it wrote before then goes up marked `initial`, so agents don't take it for someone writing (§7.12).
 
 ### 5.5 Scheduling
 
@@ -621,8 +621,8 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   (`note_closed`). A new note
   whose first save holds only an agent's change starts its session at that revision, so only the
   user's writing ends it with a trigger. Never a trigger: the agent's own writes and saves holding
-  only its change, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
-  locked notes, and conflicted or recovered copies.
+  only its change, unchanged saves, writes marked as nobody typing them (§7.12: a device's first
+  sync, notes put back after a restore, an import), locked notes, and conflicted or recovered copies.
 - **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
   authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
   open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it
@@ -718,6 +718,60 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   space whose agent is on can't be shared (`409 space_has_agent`); a paused agent goes with the
   space's row when it's shared. Shared spaces would need their own answers first: whose AI settings
   and token cap a run uses, who sees its Activity and can undo it, and where its setup is kept.
+
+### 7.12 Writes nobody typed
+
+An agent's rules fire on note writes (§7.11, Triggers), and the server sees writes, not people: a
+note someone just finished and a note an app uploads in bulk arrive the same way. Unmarked, every
+note in a bulk write looks like someone finishing it, and each starts a writing session that ends
+in a run 2 minutes later. That means tokens spent up to the daily cap, and an agent changing many
+old notes nobody touched. So a write that isn't a person editing that note now must say so.
+
+**How it's said.** On note create, update and delete:
+
+- **From an app**, as the `X-Notesd-Sync` header: `initial` or `import`. Any other value counts
+  too, so a later client can add a reason without a server change. It isn't part of the request
+  hash, so a retry may differ.
+- **Inside the server**, as `Origin` on `notes.CreateInput`, `UpdateInput` or `DeleteInput`
+  (`notes.OriginInitial`, `notes.OriginImport`; `api.syncOrigin` maps the header onto it). An
+  update that moves a note to another file (§7.9) passes it on in `notes.MoveInput` and
+  `notes.Carried`, so both files' events carry it.
+
+The store carries it into the write's event (`notes.Event.Origin`), and the agents' write hook
+(`agent.Store.OnWrite`) starts no session and fires nothing for it. Otherwise the write is ordinary:
+it syncs, shows and is searched like any other.
+
+**When it's needed.** Mark any note write that doesn't come from a person editing that note right
+now. Where that happens today:
+
+| Where | Writes | Origin | Status |
+| --- | --- | --- | --- |
+| Sync engines | What a device queued before it ever synced, pushed until its first pull completes (the account's feed's `generation` still empty, and not a restore's pull) | `initial` | Kotlin engine (web, Android): done. iOS engine: to do |
+| Sync engines | Notes a device puts back on a server restored from a backup (`finishFullSync`, for the account's feed and each shared space's). Remembered per queued write (`Payload.origin`), and dropped once someone's typing joins that write | `initial` | Kotlin engine: done. iOS engine: to do |
+| `notesd import` | Each imported note | `import` | Done. Its store has no agents' hook today, so the mark is for when an import goes through the API or a user's stores |
+
+The server already tells apart, with no marking: an agent's own writes and saves holding only its
+change (`Agent`), unchanged saves, locked notes, and conflicted or recovered copies.
+
+**Adding a feature that writes notes?** Ask whether a person is typing this note right now. If not,
+mark it, and test that the mark goes out:
+
+- an import or migration in an app;
+- restoring from a trash or an export;
+- re-sending notes after a sign-in, a reinstall or a repair;
+- seeding notes from a template, copying a space;
+- anything that rewrites many notes at once.
+
+When unsure, ask: would the user expect each of these notes to count as "a note I just finished"?
+If not, mark it.
+
+**In the code.**
+
+- Go: `api.syncOrigin`, `notes.CreateInput.Origin` and the `notes.Origin*` constants,
+  `agent.Store.OnWrite`. Test: `TestImportedNotesAreMarkedAsNobodyTyping`.
+- Kotlin: `WriteOrigin` and the `origin` parameter of every `SyncApi` write, which every
+  implementation must send; `Payload.origin`; `SyncEngine.push`. Tests: `SyncClassificationTest`
+  (first sync, restore, typing that joins a put-back note) and `ApiClientTest` (the header).
 
 ## 8. Search
 
@@ -928,7 +982,7 @@ Client replicas are not a backup. `notesd backup /path/to/backup.db` uses SQLite
 
 Restoring an older backup leaves clients with newer revisions and cursors than the server. The server therefore keeps a persistent **sync generation ID**, which clients store with their cursor. When it changes, clients run a full reconciliation instead of incremental sync, preserving unsynced edits and never treating missing notes as deleted. Status: the generation exists in `sync_state`, is returned on every sync page and is checked when sent back; changing it on restore (and the `backup` command itself) is still to be built and tested before backup restoration is called reliable.
 
-On Android, full reconciliation re-downloads every note and compares text rather than revisions: a note whose text matches is adopted at the server's revision; one the server lost or holds an older text of is re-sent; one the server no longer has is re-created. Progress is stored (`full_sync`, `full_sync_seen`), so it survives the app being killed halfway. One gap remains until the server marks restores: a note edited on the restored server whose revision is still below the device's is overwritten by the device's re-upload.
+On Android, full reconciliation re-downloads every note and compares text rather than revisions: a note whose text matches is adopted at the server's revision; one the server lost or holds an older text of is re-sent; one the server no longer has is re-created, marked `initial` so agents don't act on it (§7.12). Progress is stored (`full_sync`, `full_sync_seen`), so it survives the app being killed halfway. One gap remains until the server marks restores: a note edited on the restored server whose revision is still below the device's is overwritten by the device's re-upload.
 
 ### 11.5 Health monitoring
 

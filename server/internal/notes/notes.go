@@ -257,6 +257,12 @@ type Event struct {
 	Left bool
 }
 
+// Origins of a write nobody is typing (CreateInput.Origin).
+const (
+	OriginInitial = "initial" // a device's first sync, or notes it puts back after a restore
+	OriginImport  = "import"  // notes brought in from elsewhere
+)
+
 // SpaceChanged reports whether the write moved the note between spaces.
 func (e Event) SpaceChanged() bool {
 	return e.Before != nil && e.Kind == EventUpdated && e.Before.SpaceID != e.After.SpaceID
@@ -412,8 +418,10 @@ type CreateInput struct {
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
 	// Origin says the write isn't someone editing: "initial" for a device's
-	// first sync, "import" for an import. Empty for an edit. Not part of the
-	// request hash: it describes the sending, not the change.
+	// first sync or notes put back after a restore, "import" for an import.
+	// Empty for an edit. Agents act on none of these. Any code writing notes
+	// nobody is typing must set it: docs/contributing/architecture.md §7.12.
+	// Not part of the request hash: it describes the sending, not the change.
 	Origin string `json:"-"`
 }
 

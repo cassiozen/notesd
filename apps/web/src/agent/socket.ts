@@ -23,6 +23,11 @@ export const socketFactory = {
 }
 
 /** A run starting or ending, as the server tells the editors. */
+/** A run asked for here. */
+export type RunRequest = { trigger: Trigger; noteId: string; spaceId: string }
+/** Why one didn't reach the server: no connection in time, or the agent isn't on where it was asked. */
+export type DropReason = 'unreachable' | 'off'
+
 export type RunUpdate = { runId: string; noteId: string; trigger: AgentTrigger; status: RunStatus; failure?: string; outcome?: string }
 
 /** What an open note's editor does for a run; each answer goes back as is, or { error }. */
@@ -52,8 +57,9 @@ class AgentSocket {
   private running = new Map<string, string>()
   /** Runs whose change already shows in this tab's editor. */
   private readonly landed = new Set<string>()
-  /** Runs asked for before hello, by trigger and note: sent once it comes. */
-  private readonly held = new Map<string, { trigger: Trigger; noteId: string; spaceId: string; at: number }>()
+  /** Runs asked for before hello, by trigger and note: sent once it comes, or dropped after heldMs. */
+  private readonly held = new Map<string, RunRequest & { at: number; expires: ReturnType<typeof setTimeout> }>()
+  private readonly dropListeners = new Set<(r: RunRequest, why: DropReason) => void>()
   /** What runs show on the notes open here, as the server last said. */
   private overlays = new Map<string, Overlay[]>()
   /**
@@ -82,7 +88,7 @@ class AgentSocket {
     this.wanted = false
     window.removeEventListener('online', this.online)
     clearTimeout(this.timer)
-    this.held.clear()
+    this.dropHeld(true)
     // Stopped again while waiting (a sign-out resets it): one wait, or it would close a later socket.
     clearTimeout(this.closing)
     if (this.open.size === 0 || !this.connectionId) this.close()
@@ -103,6 +109,8 @@ class AgentSocket {
 
   /** Disconnects and forgets every note and run: another account may sign in next. */
   reset() {
+    // Another account's: nothing to tell.
+    this.dropHeld(false)
     this.stop()
     this.close()
     this.open.clear()
@@ -121,6 +129,27 @@ class AgentSocket {
     return () => {
       if (this.editors.get(noteId) === handler) this.editors.delete(noteId)
     }
+  }
+
+  /** Hears of runs asked for here that never reached the server: offline too long, or the agent went off. */
+  onDropped(listener: (r: RunRequest, why: DropReason) => void): () => void {
+    this.dropListeners.add(listener)
+    return () => {
+      this.dropListeners.delete(listener)
+    }
+  }
+
+  private dropped(r: RunRequest, why: DropReason) {
+    const { trigger, noteId, spaceId } = r
+    for (const l of this.dropListeners) l({ trigger, noteId, spaceId }, why)
+  }
+
+  private dropHeld(tell: boolean) {
+    for (const h of this.held.values()) {
+      clearTimeout(h.expires)
+      if (tell) this.dropped(h, 'off')
+    }
+    this.held.clear()
   }
 
   /** Hears of runs starting and ending while connected. */
@@ -142,9 +171,20 @@ class AgentSocket {
    * first. Still connecting, it's sent once the server says hello. False with no socket wanted.
    */
   requestRun(trigger: Trigger, noteId: string, spaceId: string): boolean {
-    if (!this.wanted) return false
+    if (!this.wanted) {
+      this.dropped({ trigger, noteId, spaceId }, 'off')
+      return false
+    }
     if (!this.connectionId) {
-      this.held.set(`${trigger}:${noteId}`, { trigger, noteId, spaceId, at: Date.now() })
+      const key = `${trigger}:${noteId}`
+      clearTimeout(this.held.get(key)?.expires)
+      const expires = setTimeout(() => {
+        const h = this.held.get(key)
+        if (h?.expires !== expires) return
+        this.held.delete(key)
+        this.dropped(h, 'unreachable')
+      }, socketTiming.heldMs)
+      this.held.set(key, { trigger, noteId, spaceId, at: Date.now(), expires })
       return true
     }
     // After the effects that asked: one of them may be what serves the note.
@@ -196,7 +236,9 @@ class AgentSocket {
         for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId })
         // Only for a note still open here, asked for recently enough.
         for (const h of this.held.values()) {
+          clearTimeout(h.expires)
           if (this.open.has(h.noteId) && Date.now() - h.at <= socketTiming.heldMs) this.sendRequest(h.trigger, h.noteId, h.spaceId)
+          else this.dropped(h, 'unreachable')
         }
         this.held.clear()
       } else if (m?.type === 'overlays' && typeof m.noteId === 'string' && Array.isArray(m.overlays)) {

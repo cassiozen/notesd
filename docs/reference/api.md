@@ -100,8 +100,9 @@ Creating, updating and deleting a note are idempotent and checked against the no
   encrypted `content` can be somewhat longer.
 - **`createdAt` and `updatedAt`** may be sent, so edits made offline show when they happened. They
   are informational only, and a time more than a day in the future is replaced with the server's.
-- **`X-Notesd-Sync`**, an optional header, says a write isn't someone editing: `initial` while a
-  device makes its first sync, `import` for an import. Any other value also means that, so a later
+- **`X-Notesd-Sync`**, an optional header, says a write isn't someone editing: `initial` for what a
+  device wrote before its first sync and for notes it puts back on a server restored from a backup,
+  `import` for an import. Any other value also means that, so a later
   client can send a new reason. Agents don't react to these. It isn't part of the request hash.
 
 Every write answers with the result:

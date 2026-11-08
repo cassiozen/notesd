@@ -27,11 +27,13 @@ class SyncEngineTest {
     }
 
     private object Throwing : SyncApi {
-        override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> = fail()
+        override suspend fun createNote(body: JsonObject, origin: String?): ApiResult<MutationResult> = fail()
 
-        override suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult> = fail()
+        override suspend fun updateNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> =
+            fail()
 
-        override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> = fail()
+        override suspend fun deleteNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> =
+            fail()
 
         override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> = fail()
 

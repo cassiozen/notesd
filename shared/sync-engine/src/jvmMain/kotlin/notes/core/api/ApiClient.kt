@@ -130,14 +130,14 @@ class ApiClient(
     suspend fun logout(): ApiResult<Unit> = authed({ post("api/v1/auth/logout", JsonObject(emptyMap()), it) }) { }
 
     /** The body is sent as given: the sync engine builds it once and resends it unchanged on retries. */
-    override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("POST", url("api/v1/notes"), body, it) }) { json.decodeFromString(it) }
+    override suspend fun createNote(body: JsonObject, origin: String?): ApiResult<MutationResult> =
+        authed({ request("POST", url("api/v1/notes"), body, it, origin) }) { json.decodeFromString(it) }
 
-    override suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("PUT", noteUrl(id), body, it) }) { json.decodeFromString(it) }
+    override suspend fun updateNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> =
+        authed({ request("PUT", noteUrl(id), body, it, origin) }) { json.decodeFromString(it) }
 
-    override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("DELETE", noteUrl(id), body, it) }) { json.decodeFromString(it) }
+    override suspend fun deleteNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> =
+        authed({ request("DELETE", noteUrl(id), body, it, origin) }) { json.decodeFromString(it) }
 
     override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> =
         sync(FILE, since, limit, generation)
@@ -433,11 +433,13 @@ class ApiClient(
 
     private fun post(path: String, body: JsonObject, access: String? = null) = request("POST", url(path), body, access)
 
-    private fun request(method: String, url: HttpUrl, body: JsonObject?, access: String?) = Request.Builder()
-        .url(url)
-        .method(method, body?.toString()?.toRequestBody(JSON))
-        .apply { if (access != null) header("Authorization", "Bearer $access") }
-        .build()
+    private fun request(method: String, url: HttpUrl, body: JsonObject?, access: String?, origin: String? = null) =
+        Request.Builder()
+            .url(url)
+            .method(method, body?.toString()?.toRequestBody(JSON))
+            .apply { if (access != null) header("Authorization", "Bearer $access") }
+            .apply { if (origin != null) header(WriteOrigin.HEADER, origin) }
+            .build()
 
     private fun noteUrl(id: String) = url("api/v1/notes").newBuilder().addPathSegment(id).build()
 

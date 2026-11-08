@@ -87,7 +87,9 @@ internal data class Payload(
     /** A locked body's images (§7.6), when this device knows them; null leaves the server's record as it is. */
     val imageIds: List<String>? = null,
     /** The note's space (§7.7); null (operations queued before spaces) keeps the server's. */
-    val spaceId: String? = null
+    val spaceId: String? = null,
+    /** A [notes.core.api.WriteOrigin] when nobody typed this; sent as a header, not in the body. */
+    val origin: String? = null
 )
 
 internal val outboxJson = Json {
@@ -162,7 +164,9 @@ internal suspend fun Sql.queueText(noteId: String, title: String, content: Strin
             content = content,
             updatedAt = now,
             imageIds = lockedImageIds(content),
-            spaceId = spaceId
+            spaceId = spaceId,
+            // Someone's typing goes out with it now.
+            origin = null
         )
         exec(
             "UPDATE sync_outbox SET payload_json = ? WHERE operation_id = ?",

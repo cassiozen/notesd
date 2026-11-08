@@ -31,8 +31,11 @@ What an app must still do, even with no agent support:
 - Send **`X-Notesd-Time-Zone`** (the device's IANA zone) on every request. The account takes the
   first one it hears as the "today" its agents go by. The Kotlin engine (`ClientInfo.timeZone`) and
   the iOS `ApiClient` already do.
-- Send **`X-Notesd-Sync: initial`** on a device's first sync, and `import` for an import, so those
-  writes start no session and fire no trigger.
+- Send **`X-Notesd-Sync`** on every note write nobody is typing: `initial` for what a device wrote
+  before its first sync and for notes it puts back on a restored server, `import` for an import.
+  Those writes then start no session and fire no trigger. Why, and the full list of cases, is in
+  the [architecture](architecture.md#712-writes-nobody-typed), §7.12. The Kotlin engine does it; the
+  iOS engine doesn't yet.
 
 What it doesn't get:
 

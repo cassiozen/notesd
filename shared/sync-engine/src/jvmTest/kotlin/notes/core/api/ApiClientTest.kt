@@ -109,19 +109,19 @@ class ApiClientTest {
         val body = buildJsonObject { put("operationId", "op") }
         for (code in listOf(400, 401, 403, 404, 409, 413, 415, 426)) {
             server.enqueue(html(code))
-            assertEquals(ApiResult.Unexpected(code), api.updateNote("n", body), "HTTP $code")
+            assertEquals(ApiResult.Unexpected(code), api.updateNote("n", body, null), "HTTP $code")
         }
         // A proxy's 5xx or 429 page means what notesd's would.
         server.enqueue(html(502))
-        assertEquals("http_502", assertIs<ApiResult.Rejected>(api.updateNote("n", body)).error)
+        assertEquals("http_502", assertIs<ApiResult.Rejected>(api.updateNote("n", body, null)).error)
         server.enqueue(MockResponse.Builder().code(429).addHeader("Retry-After", "7").body("<html/>").build())
-        assertEquals(ApiResult.RateLimited(7), api.updateNote("n", body))
+        assertEquals(ApiResult.RateLimited(7), api.updateNote("n", body, null))
         // An unknown code is notesd's: the caller decides what it means for its request.
         server.enqueue(json(422, """{"error":"something_new","message":"m"}"""))
-        assertEquals(ApiResult.Rejected(422, "something_new", "m", null), api.updateNote("n", body))
+        assertEquals(ApiResult.Rejected(422, "something_new", "m", null), api.updateNote("n", body, null))
         // A success that isn't what the endpoint returns.
         server.enqueue(json(200, """{"hello":"world"}"""))
-        assertEquals(ApiResult.Unexpected(200), api.updateNote("n", body))
+        assertEquals(ApiResult.Unexpected(200), api.updateNote("n", body, null))
     }
 
     @Test
@@ -259,6 +259,17 @@ class ApiClientTest {
             assertEquals("notesd-android/1.0.0", sent.headers["User-Agent"])
             assertEquals("Europe/Lisbon", sent.headers["X-Notesd-Time-Zone"])
         }
+    }
+
+    @Test
+    fun `a write nobody typed says why, and an edit says nothing`() = runBlocking<Unit> {
+        val body = buildJsonObject { put("operationId", "op") }
+        val ok = """{"id":"n","status":"ok","revision":1,"changeSeq":1,"updatedAt":1}"""
+        repeat(2) { server.enqueue(json(200, ok)) }
+        api.createNote(body, WriteOrigin.INITIAL)
+        api.updateNote("n", body, null)
+        assertEquals("initial", server.takeRequest().headers[WriteOrigin.HEADER])
+        assertNull(server.takeRequest().headers[WriteOrigin.HEADER])
     }
 
     @Test

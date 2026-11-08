@@ -26,6 +26,23 @@ describe('account settings stores', () => {
     await waitFor(() => expect(email.result.current?.from).toBe('f2'))
   })
 
+  it('fetch again once back online after failing, so what hangs on AI comes on', async () => {
+    let up = false
+    vi.spyOn(settings, 'ai').mockImplementation(async () => {
+      if (!up) throw new Error('offline')
+      return { configured: true } as AiSettings
+    })
+    const ai = renderHook(() => useAiSettings())
+    await waitFor(() => expect(settings.ai).toHaveBeenCalledTimes(1))
+    expect(ai.result.current).toBeNull()
+    up = true
+    act(() => {
+      window.dispatchEvent(new Event('online'))
+    })
+    await waitFor(() => expect(ai.result.current?.configured).toBe(true))
+    act(() => forgetAiSettings())
+  })
+
   it('fetch again when a new session forgets them mid-fetch, ignoring the old answer', async () => {
     const answers: ((s: AiSettings) => void)[] = []
     vi.spyOn(settings, 'ai').mockImplementation(() => new Promise((r) => answers.push(r)))
