@@ -220,7 +220,7 @@ export function PeopleSection({ space }: { space: Space }) {
                 ))}
               </ul>
             ) : (
-              !error && <p className={styles.none}>There’s no one else on this server yet. An admin adds people in Settings › People.</p>
+              !error && <p className={styles.none}>There’s no one else on this server yet. An admin adds people in Settings › Server › People.</p>
             )}
           </div>
         )}

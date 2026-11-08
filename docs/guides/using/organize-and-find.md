@@ -46,6 +46,9 @@ never have to file a note. Use tags to organize within a space.
 - **Delete a space** in **Settings → Spaces**, once it's empty. The first space, "Notes", can be
   renamed but not deleted.
 
+To write notes with other people on your server, share a space with them: see
+[Sharing with others](sharing.md).
+
 New notes go into the current space. Each device remembers its own current space, and goes back to
 the first one when you open the app fresh, or come back to it after more than 30 minutes away.
 
