@@ -42,9 +42,7 @@ class Operation internal constructor(
     val type: String,
     val baseRevision: Long?,
     internal val payload: Payload,
-    val sent: Boolean,
-    /** '' for the account's file, else the shared space whose file it goes to (§7.9). */
-    val feed: String = ""
+    val sent: Boolean
 ) {
     val title get() = payload.title
     val content get() = payload.content
@@ -92,85 +90,74 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     }
 
     /**
-     * A feed for each shared space in the list, and none for one no longer in it (left, removed, deleted):
-     * its notes, queued changes and merge records leave the device (§7.9). A new one counts as seen now, so
-     * what was there before this device joined isn't news.
+     * A feed for each shared space in the list, and none for one no longer in it (left, removed, deleted): its
+     * notes and merge records leave the device (§7.9), but an edit not yet synced becomes a recovered copy in
+     * the default space first, since the space may be gone for reasons this device never warned about. A new
+     * feed counts as seen now, so what was there before this device joined isn't news.
      */
-    suspend fun syncFeeds() {
-        db.write { sql ->
-            sql.exec("INSERT OR IGNORE INTO feeds (space_id) SELECT id FROM spaces WHERE shared IS NOT NULL")
-            sql.exec("UPDATE spaces SET visited_at = ? WHERE shared IS NOT NULL AND visited_at IS NULL", clock())
-            val gone = sql.query(
-                "SELECT space_id FROM feeds WHERE space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)"
-            ) { it.getText(0) }
-            for (feed in gone) {
-                val ids = sql.query("SELECT id FROM notes WHERE space_id = ?", feed) { it.getText(0) }
-                for (id in ids) {
-                    // Moved into it here, the move (or a delete since) not yet sent: the server still has it where it
-                    // was, so it goes back.
-                    val back = sql.one(
-                        """
-                        SELECT base_space_id FROM notes n WHERE id = ? AND server_revision IS NOT NULL AND EXISTS
-                            (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.feed <> ?)
-                        """,
-                        id,
-                        feed
-                    ) { it.textOrNull(0) }
-                    if (back != null && back !in gone) {
-                        sql.exec("DELETE FROM sync_outbox WHERE note_id = ? AND feed = ?", id, feed)
-                        sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, id)
-                        val note = sql.note(id)
-                        if (note != null && note.deletedAt == null) {
-                            sql.queueText(id, note.title, note.content, back, clock())
-                        }
-                        continue
-                    }
-                    sql.unindex(id)
-                    sql.forgetMerge(id)
-                    sql.forgetImages(id)
-                    sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
-                    sql.exec("DELETE FROM notes WHERE id = ?", id)
+    suspend fun syncFeeds(): List<SyncEvent> = db.write { sql ->
+        val events = ArrayList<SyncEvent>()
+        sql.exec("INSERT OR IGNORE INTO feeds (space_id) SELECT id FROM spaces WHERE shared IS NOT NULL")
+        sql.exec("UPDATE spaces SET visited_at = ? WHERE shared IS NOT NULL AND visited_at IS NULL", clock())
+        val gone = sql.query(
+            "SELECT space_id FROM feeds WHERE space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)"
+        ) { it.getText(0) }
+        for (feed in gone) {
+            val notes = sql.query("SELECT $NOTE_COLUMNS FROM notes WHERE space_id = ?", feed, row = ::noteRow)
+            for (note in notes) {
+                // Moved into it here, the move not yet sent: the server still has it where it was, so it goes back.
+                val back = note.baseSpaceId?.takeIf { note.serverRevision != null && it != feed && it !in gone }
+                if (back != null && sql.reaches(back)) {
+                    sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, note.id)
+                    if (note.deletedAt == null) sql.queueText(note.id, note.title, note.content, back, clock())
+                    continue
                 }
-                // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note
-                // goes to the server again, as new, where it is.
-                val strays = sql.query(
-                    "SELECT DISTINCT note_id FROM sync_outbox WHERE feed = ? AND note_id NOT IN (SELECT id FROM notes WHERE space_id = ?)",
-                    feed,
-                    feed
-                ) { it.getText(0) }
-                sql.exec("DELETE FROM sync_outbox WHERE feed = ?", feed)
-                for (id in strays) {
-                    val note = sql.note(id) ?: continue
-                    sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
-                    if (note.deletedAt != null) {
-                        sql.exec("DELETE FROM notes WHERE id = ?", id)
-                        continue
-                    }
-                    sql.exec(
-                        """
-                        UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1, base_title = NULL,
-                            base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
-                        WHERE id = ?
-                        """,
-                        id
-                    )
-                    sql.enqueue(
-                        id,
-                        CREATE,
-                        Payload(
-                            note.title,
-                            note.content,
-                            note.createdAt,
-                            note.updatedAt,
-                            note.conflictOf,
-                            spaceId = note.spaceId
-                        ),
-                        clock()
-                    )
+                if (note.dirty && note.deletedAt == null) {
+                    val title = copyTitle(note.title, RECOVERED)
+                    val copy = sql.insertCopy(title, note.content, null, Spaces.DEFAULT, clock())
+                    events += SyncEvent.RecoveredCopy(copy, title)
                 }
-                sql.exec("DELETE FROM feeds WHERE space_id = ?", feed)
+                sql.unindex(note.id)
+                sql.forgetMerge(note.id)
+                sql.forgetImages(note.id)
+                sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                sql.exec("DELETE FROM notes WHERE id = ?", note.id)
             }
+            // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note goes
+            // to the server again, as new, where it is.
+            val strays = sql.query(
+                "SELECT $NOTE_COLUMNS FROM notes WHERE base_space_id = ? AND space_id <> ? AND server_revision IS NOT NULL",
+                feed,
+                feed,
+                row = ::noteRow
+            )
+            for (note in strays) {
+                sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                if (note.deletedAt != null) {
+                    sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+                    continue
+                }
+                sql.exec(
+                    """
+                    UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1, base_title = NULL,
+                        base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                    WHERE id = ?
+                    """,
+                    note.id
+                )
+                val payload = Payload(
+                    note.title,
+                    note.content,
+                    note.createdAt,
+                    note.updatedAt,
+                    note.conflictOf,
+                    spaceId = note.spaceId
+                )
+                sql.enqueue(note.id, CREATE, payload, clock())
+            }
+            sql.exec("DELETE FROM feeds WHERE space_id = ?", feed)
         }
+        events
     }
 
     // --- push ----------------------------------------------------------------
@@ -185,10 +172,10 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         val spaces = sql.query("SELECT id FROM spaces WHERE parked = 1 AND dirty = 1") { it.getText(0) }.toSet()
         val queued = sql.query(
             """
-            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent, feed, parked
+            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent, parked
             FROM sync_outbox ORDER BY created_at, rowid
             """
-        ) { operationRow(it) to (it.getLong(7) == 1L) }
+        ) { operationRow(it) to (it.getLong(6) == 1L) }
         val held = HashSet<String>()
         for ((op, parked) in queued) {
             if (op.noteId in held) continue
@@ -207,7 +194,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     suspend fun remint(op: Operation): Operation = db.write { sql ->
         val id = Uuid7.generate()
         sql.exec("UPDATE sync_outbox SET operation_id = ? WHERE operation_id = ?", id, op.operationId)
-        Operation(id, op.noteId, op.type, op.baseRevision, op.payload, op.sent, op.feed)
+        Operation(id, op.noteId, op.type, op.baseRevision, op.payload, op.sent)
     }
 
     /** [op] got an answer that wasn't notesd's: one more attempt, parked at the limit. */
@@ -243,7 +230,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         val now = clock()
         for (note in stranded) {
             if (note.deletedAt != null) {
-                sql.enqueue(note.id, DELETE, null, now, sql.feedOf(sql.serverSpace(note) ?: note.spaceId))
+                sql.enqueue(note.id, DELETE, null, now)
             } else {
                 sql.queueText(note.id, note.title, note.content, note.spaceId, now)
             }
@@ -274,18 +261,6 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                 "UPDATE sync_outbox SET sent = 1 WHERE operation_id = ?",
                 current.operationId
             )
-
-            // Nothing on the server to move: queueText re-files a create instead, so this is a leftover.
-            current.type == MOVE && note.serverRevision == null &&
-                sql.long(
-                    "SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1 AND operation_type = ?",
-                    note.id,
-                    CREATE
-                ) ==
-                0L -> {
-                sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", current.operationId)
-                return@write null
-            }
 
             note.serverRevision == null && current.type == DELETE -> {
                 sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
@@ -331,10 +306,6 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             val more = sql.long("SELECT count(*) FROM sync_outbox WHERE note_id = ?", note.id) > 0
             if (op.type == DELETE) {
                 if (!more) markTombstone(sql, note.id, note.deletedAt ?: result.updatedAt, result.updatedAt)
-                return@write
-            }
-            if (op.type == MOVE) {
-                moved(sql, note, op.spaceId ?: note.spaceId, more)
                 return@write
             }
             // The space the server filed it in: the default instead, if the one sent was deleted elsewhere (§7.7).
@@ -384,82 +355,44 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     }
 
     /**
-     * The server's copy of [op]'s note is in [spaceId]'s file now (§7.9: `note_moved`, `space_elsewhere`): its
-     * queued changes there go to that feed instead, as they were. One naming a space of the file it left drops
-     * the space (kept where it is); a move now within one file becomes an update. False if this device doesn't
-     * have that space, or the changes are already going there.
+     * The server refused [op] because it would put a locked body in a shared space (§7.9): locked offline, then
+     * shared from another device. The locked version becomes a recovered copy in the default space, where it
+     * can be locked, and the note goes back to the server's version, as the space's members have it.
      */
-    suspend fun refile(op: Operation, spaceId: String): Boolean = db.write { sql ->
-        if (!sql.reaches(spaceId)) return@write false
-        val feed = sql.feedOf(spaceId)
-        if (feed == op.feed) return@write false
-        sql.note(op.noteId)?.let { follow(sql, it, spaceId) }
-        val queued = sql.query(
-            "SELECT $OPERATION_COLUMNS FROM sync_outbox WHERE note_id = ? AND feed = ?",
-            op.noteId,
-            op.feed,
-            row = ::operationRow
-        )
-        var requeue = false
-        for (q in queued) {
-            val named = q.payload.spaceId
-            if (q.type == MOVE && named != null && sql.feedOf(named) == feed) {
-                sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", q.operationId)
-                requeue = true
-                continue
-            }
-            val payload = if (named != null && q.type != MOVE &&
-                sql.feedOf(named) != feed
-            ) {
-                q.payload.copy(spaceId = null)
-            } else {
-                q.payload
-            }
-            sql.exec(
-                "UPDATE sync_outbox SET feed = ?, payload_json = ? WHERE operation_id = ?",
-                feed,
-                outboxJson.encodeToString(payload),
-                q.operationId
-            )
-        }
-        val current = sql.note(op.noteId)
-        if (requeue && current != null && current.deletedAt == null) {
-            sql.queueText(current.id, current.title, current.content, current.spaceId, clock())
-        }
-        true
-    }
-
-    /** A move the server answered `note_moved` to the very space it asked for: done (§7.9). */
-    suspend fun moveDone(op: Operation) {
-        db.write { sql ->
-            sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
-            val note = sql.note(op.noteId) ?: return@write
-            val more = sql.long("SELECT count(*) FROM sync_outbox WHERE note_id = ?", note.id) > 0
-            moved(sql, note, op.spaceId ?: note.spaceId, more)
-        }
-    }
-
-    /** The server holds [note] in [spaceId] now; with nothing [more] queued, it's clean there. */
-    private suspend fun moved(sql: Sql, note: Note, spaceId: String, more: Boolean) {
-        if (!more && note.spaceId == spaceId) {
+    suspend fun lockedOut(op: Operation): SyncEvent? = db.write { sql ->
+        val note = sql.note(op.noteId) ?: return@write null
+        val title = copyTitle(note.title, RECOVERED)
+        val copy = sql.insertCopy(title, note.content, null, Spaces.DEFAULT, clock())
+        dropOps(sql, note.id)
+        if (note.serverRevision == null) {
+            // The server never had it: the copy is all of it.
+            sql.unindex(note.id)
+            sql.forgetImages(note.id)
+            sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+        } else {
+            val title0 = note.baseTitle ?: note.title
+            val content0 = note.baseContent ?: note.content
             sql.exec(
                 """
-                UPDATE notes SET dirty = 0, base_title = NULL, base_content = NULL, base_deleted_at = NULL,
-                    base_space_id = NULL
+                UPDATE notes SET title = ?, content = ?, space_id = COALESCE(base_space_id, space_id), dirty = 0,
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
                 WHERE id = ?
                 """,
+                title0,
+                content0,
                 note.id
             )
-        } else {
-            sql.exec("UPDATE notes SET base_space_id = ? WHERE id = ?", spaceId, note.id)
+            sql.index(note.id, title0, content0)
         }
+        SyncEvent.RecoveredCopy(copy, title)
     }
 
     /** [op] lost to a newer server version: the request recorded nothing, so drop it and reconcile with [current]. */
     suspend fun conflict(op: Operation, current: RemoteNote): List<SyncEvent> = db.write { sql ->
         sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
         sql.rememberRemoteImages(current)
-        buildList { reconcile(sql, current, this, fullSync = false, feed = op.feed) }
+        // The feed the server's version came from: wherever the note is now, which the server found.
+        buildList { reconcile(sql, current, this, fullSync = false, feed = sql.feedOf(current.spaceId)) }
     }
 
     // --- pull ----------------------------------------------------------------
@@ -552,8 +485,7 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                     note.conflictOf,
                     spaceId = note.spaceId
                 ),
-                now,
-                feed
+                now
             )
         }
         if (feed.isEmpty()) {
@@ -673,9 +605,6 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         // Unknown either way, it's a deletion here: if the move was this account's, its own feed brings the note back.
         return me != null && remote.updatedBy == me
     }
-
-    /** Whether this device follows the note [current], a moved tombstone, to where it went. */
-    suspend fun follows(current: RemoteNote): Boolean = db.read { sql -> sql.follows(current) }
 
     /** A note moved to [spaceId] elsewhere: it's there now, text unchanged, until that space's feed brings it. */
     private suspend fun follow(sql: Sql, local: Note, spaceId: String) {
@@ -925,12 +854,11 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         st.getText(2),
         st.longOrNull(3),
         outboxJson.decodeFromString(st.getText(4)),
-        st.getLong(5) == 1L,
-        st.getText(6)
+        st.getLong(5) == 1L
     )
 
     private companion object {
-        const val OPERATION_COLUMNS = "operation_id, note_id, operation_type, base_revision, payload_json, sent, feed"
+        const val OPERATION_COLUMNS = "operation_id, note_id, operation_type, base_revision, payload_json, sent"
     }
 }
 

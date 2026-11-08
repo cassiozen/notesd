@@ -43,7 +43,7 @@ internal suspend fun uploadPendingImages(
             db.write { sql -> sql.exec("DELETE FROM pending_images WHERE id = ?", id) }
             continue
         }
-        when (val r = putToEachFile(db, client, id, bytes, type)) {
+        when (val r = client.putImage(id, bytes, type)) {
             is ApiResult.Ok -> uploaded(id, type)
 
             // Holding it back would stop every note from syncing; its notes show it as missing.
@@ -67,47 +67,6 @@ internal suspend fun uploadPendingImages(
         }
     }
     return ApiResult.Ok(refused)
-}
-
-/**
- * Uploads an image to the file of each note here that shows it (§7.9): the account's, and each shared space's.
- * One no note shows yet goes to the account's file.
- */
-private suspend fun putToEachFile(
-    db: Database,
-    client: SyncApi,
-    id: String,
-    bytes: ByteArray,
-    type: String
-): ApiResult<Unit> {
-    val feeds = db.read { sql ->
-        val ref = "notesd:image/$id"
-        // Notes here that show it, plain (their image references, not any mention) or locked (as recorded).
-        val spaces = sql.query(
-            "SELECT space_id, content FROM notes WHERE deleted_at IS NULL AND instr(content, ?) > 0",
-            ref
-        ) { it.getText(0) to it.getText(1) }
-            .filter { (_, content) -> id in imageIdsIn(content) }
-            .map { it.first } +
-            sql.query(
-                """
-                SELECT DISTINCT n.space_id FROM locked_images l JOIN notes n ON n.id = l.note_id
-                WHERE n.deleted_at IS NULL AND instr(l.image_ids, ?) > 0
-                """,
-                id
-            ) { it.getText(0) }
-        // And each feed a queued change showing it goes to: an edit before a move goes where the note was.
-        val queued = sql.query("SELECT feed, payload_json FROM sync_outbox WHERE instr(payload_json, ?) > 0", ref) {
-            it.getText(0) to it.getText(1)
-        }.filter { (_, payload) -> id in imageIdsIn(outboxJson.decodeFromString<Payload>(payload).content) }
-            .map { it.first }
-        (spaces.map { sql.feedOf(it) } + queued).toSet().ifEmpty { setOf("") }
-    }
-    for (feed in feeds.sorted()) {
-        val r = (if (feed.isEmpty()) client else client.inSpace(feed)).putImage(id, bytes, type)
-        if (r !is ApiResult.Ok) return r
-    }
-    return ApiResult.Ok(Unit)
 }
 
 /** A failure retyped: none carry a value. */

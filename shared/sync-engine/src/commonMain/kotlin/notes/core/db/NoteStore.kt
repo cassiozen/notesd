@@ -473,8 +473,6 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 return@write
             }
             sql.exec("DELETE FROM sync_outbox WHERE note_id = ? AND sent = 0", id)
-            // Where the server has it (§7.9): an unsent move just dropped never got there.
-            val feed = sql.feedOf(sql.serverSpace(current) ?: current.spaceId)
             sql.exec(
                 """
                 UPDATE notes SET deleted_at = ?, dirty = 1,
@@ -487,7 +485,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 clock(),
                 id
             )
-            sql.enqueue(id, DELETE, null, clock(), feed)
+            sql.enqueue(id, DELETE, null, clock())
         }
         _localEdits.tryEmit(Unit)
     }
@@ -536,7 +534,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
     suspend fun outbox(): List<OutboxEntry> = db.read { sql ->
         sql.query(
             """
-            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent, feed
+            SELECT operation_id, note_id, operation_type, base_revision, payload_json, sent
             FROM sync_outbox ORDER BY created_at, rowid
             """
         ) {
@@ -546,8 +544,7 @@ class NoteStore(private val db: Database, private val clock: () -> Long = ::nowM
                 it.getText(2),
                 it.longOrNull(3),
                 it.getText(4),
-                it.getLong(5) == 1L,
-                it.getText(6)
+                it.getLong(5) == 1L
             )
         }
     }
@@ -559,7 +556,5 @@ data class OutboxEntry(
     val type: String,
     val baseRevision: Long?,
     val payloadJson: String,
-    val sent: Boolean,
-    /** '' for the account's file, else the shared space's (§7.9). */
-    val feed: String = ""
+    val sent: Boolean
 )

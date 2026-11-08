@@ -47,8 +47,6 @@ class SyncEngineTest {
 
         override fun inSpace(spaceId: String): SyncApi = this
 
-        override suspend fun moveNote(id: String, body: JsonObject): ApiResult<MutationResult> = fail()
-
         override suspend fun invites(): ApiResult<List<RemoteInvite>> = fail()
 
         private fun fail(): Nothing = throw IllegalStateException("disk I/O error")

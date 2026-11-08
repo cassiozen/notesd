@@ -101,15 +101,14 @@ class ApiClient(
     suspend fun logout(): ApiResult<Unit> = authed({ post("api/v1/auth/logout", JsonObject(emptyMap()), it) }) { }
 
     /** The body is sent as given: the sync engine builds it once and resends it unchanged on retries. */
-    override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> = createNote(FILE, body)
+    override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
+        authed({ request("POST", url("api/v1/notes"), body, it) }) { json.decodeFromString(it) }
 
     override suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        updateNote(FILE, id, body)
+        authed({ request("PUT", noteUrl(id), body, it) }) { json.decodeFromString(it) }
 
     override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        deleteNote(FILE, id, body)
-
-    override suspend fun moveNote(id: String, body: JsonObject): ApiResult<MutationResult> = moveNote(FILE, id, body)
+        authed({ request("DELETE", noteUrl(id), body, it) }) { json.decodeFromString(it) }
 
     override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> =
         sync(FILE, since, limit, generation)
@@ -154,38 +153,14 @@ class ApiClient(
     private fun seg(s: String) =
         HttpUrl.Builder().scheme("http").host("x").addPathSegment(s).build().encodedPath.drop(1)
 
-    /** The note and sync calls for a shared space's file. */
+    /** A shared space's change feed: the one call that's per file (§7.9). */
     private inner class SpaceApi(private val spaceId: String) : SyncApi by this@ApiClient {
         private val file = "api/v1/spaces/${seg(spaceId)}"
 
         override fun inSpace(spaceId: String): SyncApi = this@ApiClient.inSpace(spaceId)
 
-        override suspend fun createNote(body: JsonObject) = createNote(file, body)
-
-        override suspend fun updateNote(id: String, body: JsonObject) = updateNote(file, id, body)
-
-        override suspend fun deleteNote(id: String, body: JsonObject) = deleteNote(file, id, body)
-
-        override suspend fun moveNote(id: String, body: JsonObject) = moveNote(file, id, body)
-
         override suspend fun sync(since: Long, limit: Int, generation: String?) = sync(file, since, limit, generation)
-
-        override suspend fun putImage(id: String, bytes: ByteArray, type: String) = putImage(file, id, bytes, type)
     }
-
-    private suspend fun createNote(file: String, body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("POST", url("$file/notes"), body, it) }) { json.decodeFromString(it) }
-
-    private suspend fun updateNote(file: String, id: String, body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("PUT", noteUrl(file, id), body, it) }) { json.decodeFromString(it) }
-
-    private suspend fun deleteNote(file: String, id: String, body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("DELETE", noteUrl(file, id), body, it) }) { json.decodeFromString(it) }
-
-    private suspend fun moveNote(file: String, id: String, body: JsonObject): ApiResult<MutationResult> =
-        authed({ request("POST", noteUrl(file, id).newBuilder().addPathSegment("move").build(), body, it) }) {
-            json.decodeFromString(it)
-        }
 
     /** Changes after [since]. [generation] is the one stored from the last page, null before the first sync. */
     private suspend fun sync(file: String, since: Long, limit: Int, generation: String?): ApiResult<SyncPage> =
@@ -217,24 +192,18 @@ class ApiClient(
     suspend fun deleteEmailSettings(): ApiResult<Unit> =
         authed({ request("DELETE", url("api/v1/settings/email"), null, it) }) { }
 
-    /** Emails the server's copy, which must be at [revision] (409 stale_revision otherwise); [spaceId] if it's shared. */
-    suspend fun emailNote(id: String, to: List<String>, revision: Long, spaceId: String? = null): ApiResult<Unit> =
-        authed({
-            request(
-                "POST",
-                noteUrl(
-                    spaceId?.let {
-                        "api/v1/spaces/${seg(it)}"
-                    } ?: FILE,
-                    id
-                ).newBuilder().addPathSegment("email").build(),
-                buildJsonObject {
-                    put("to", JsonArray(to.map(::JsonPrimitive)))
-                    put("revision", revision)
-                },
-                it
-            )
-        }) { }
+    /** Emails the server's copy, which must be at [revision] (409 stale_revision otherwise). */
+    suspend fun emailNote(id: String, to: List<String>, revision: Long): ApiResult<Unit> = authed({
+        request(
+            "POST",
+            noteUrl(id).newBuilder().addPathSegment("email").build(),
+            buildJsonObject {
+                put("to", JsonArray(to.map(::JsonPrimitive)))
+                put("revision", revision)
+            },
+            it
+        )
+    }) { }
 
     /** The locked-notes keyring. */
     override suspend fun lockKeys(): ApiResult<List<LockKey>> =
@@ -285,17 +254,13 @@ class ApiClient(
         authedReply({ request("DELETE", spaceUrl(id), null, it) }) { require(it.code == 204) { "Not a delete" } }
 
     /** Uploads an image (§7.6); [id] is the SHA-256 of [bytes], so a retry stores nothing new. */
-    override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> =
-        putImage(FILE, id, bytes, type)
-
-    private suspend fun putImage(file: String, id: String, bytes: ByteArray, type: String): ApiResult<Unit> =
-        authed({ access ->
-            Request.Builder()
-                .url(url("$file/images").newBuilder().addPathSegment(id).build())
-                .put(bytes.toRequestBody(type.toMediaType()))
-                .header("Authorization", "Bearer $access")
-                .build()
-        }) { checkStoredImage(id, it) }
+    override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> = authed({ access ->
+        Request.Builder()
+            .url(imageUrl(id))
+            .put(bytes.toRequestBody(type.toMediaType()))
+            .header("Authorization", "Bearer $access")
+            .build()
+    }) { checkStoredImage(id, it) }
 
     /** Downloads an image with the type it is stored as. */
     suspend fun getImage(id: String): ApiResult<ImageFile> = authedReply({ access ->
@@ -408,7 +373,7 @@ class ApiClient(
         .apply { if (access != null) header("Authorization", "Bearer $access") }
         .build()
 
-    private fun noteUrl(file: String, id: String) = url("$file/notes").newBuilder().addPathSegment(id).build()
+    private fun noteUrl(id: String) = url("api/v1/notes").newBuilder().addPathSegment(id).build()
 
     private fun imageUrl(id: String) = url("api/v1/images").newBuilder().addPathSegment(id).build()
 
@@ -417,7 +382,7 @@ class ApiClient(
     private fun userUrl(id: Long) = url("api/v1/users").newBuilder().addPathSegment(id.toString()).build()
 
     companion object {
-        /** The account's own file's prefix; a shared space's is `api/v1/spaces/<id>` (§7.9). */
+        /** The account's own feed's prefix; a shared space's is `api/v1/spaces/<id>` (§7.9). */
         private const val FILE = "api/v1"
         private const val REFRESH_EARLY_MS = 60_000L
         private val JSON = "application/json".toMediaType()

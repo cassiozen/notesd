@@ -24,22 +24,19 @@ import org.w3c.fetch.SAME_ORIGIN
 class FetchApi(
     private val csrfToken: () -> String?,
     private val client: ClientInfo? = null,
-    /** '' for the account's file, else `/spaces/<id>`: a shared space's (§7.9). */
+    /** '' for the account's feed, else `/spaces/<id>`: a shared space's, the one call that's per file (§7.9). */
     private val file: String = ""
 ) : SyncApi {
     override fun inSpace(spaceId: String): SyncApi = FetchApi(csrfToken, client, "/spaces/${enc(spaceId)}")
 
     override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
-        send("POST", "$file/notes", body.toString()) { json.decodeFromString(it) }
+        send("POST", "/notes", body.toString()) { json.decodeFromString(it) }
 
     override suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("PUT", "$file/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
+        send("PUT", "/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
 
     override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("DELETE", "$file/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
-
-    override suspend fun moveNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("POST", "$file/notes/${enc(id)}/move", body.toString()) { json.decodeFromString(it) }
+        send("DELETE", "/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
 
     override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> {
         val gen = generation?.let { "&generation=${enc(it)}" }.orEmpty()
@@ -68,7 +65,7 @@ class FetchApi(
         send("DELETE", "/spaces/${enc(id)}", null, ok = 204) { }
 
     override suspend fun putImage(id: String, bytes: ByteArray, type: String): ApiResult<Unit> =
-        send("PUT", "$file/images/${enc(id)}", bytes.unsafeCast<Int8Array>(), type) { checkStoredImage(id, it) }
+        send("PUT", "/images/${enc(id)}", bytes.unsafeCast<Int8Array>(), type) { checkStoredImage(id, it) }
 
     /** [ok]: the one success status the endpoint answers with, when it matters. */
     private suspend fun <T> send(

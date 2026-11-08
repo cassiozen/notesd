@@ -29,41 +29,23 @@ class SharedSpacesTest {
         return sync
     }
 
-    private suspend fun StoreTest.queued() = store.outbox().map { Triple(it.type, it.feed, it.payloadJson) }
-
     @Test
-    fun `moving into a shared space queues a move where the server has it, edits after it in the space`() = storeTest {
+    fun `moving into a shared space is one update naming it, edits coalescing into it`() = storeTest {
         setUp()
         store.move("a", "fam")
         store.save("a", "Groceries", "Milk, eggs\n")
         val ops = store.outbox()
-        assertEquals(listOf("update" to "", "move" to "", "update" to "fam"), ops.map { it.type to it.feed })
-        assertEquals(true, ops[1].payloadJson.contains("\"spaceId\":\"fam\""))
-        assertEquals(true, ops[2].payloadJson.contains("eggs"))
+        assertEquals(listOf("update"), ops.map { it.type })
+        assertEquals(true, ops[0].payloadJson.contains("\"spaceId\":\"fam\""))
+        assertEquals(true, ops[0].payloadJson.contains("eggs"))
     }
 
     @Test
-    fun `moved back before the move went, no move`() = storeTest {
-        setUp()
-        store.move("a", "fam")
-        store.move("a", Spaces.DEFAULT)
-        assertEquals(listOf("update" to ""), store.outbox().map { it.type to it.feed })
-    }
-
-    @Test
-    fun `a note the server never had is just created in the shared space`() = storeTest {
-        setUp()
-        store.save("b", "New", "")
-        store.move("b", "fam")
-        assertEquals(listOf("create" to "fam"), store.outbox().filter { it.noteId == "b" }.map { it.type to it.feed })
-    }
-
-    @Test
-    fun `a delete goes where the server has the note`() = storeTest {
+    fun `a delete after a move is queued like any other`() = storeTest {
         setUp()
         store.move("a", "fam")
         store.delete("a")
-        assertEquals(listOf("delete" to ""), queued().map { it.first to it.second })
+        assertEquals(listOf("delete"), store.outbox().map { it.type })
     }
 
     @Test
@@ -164,7 +146,7 @@ class SharedSpacesTest {
         )
         assertEquals(listOf("fam"), sync.feeds())
         SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
-        sync.syncFeeds()
+        assertEquals(emptyList(), sync.syncFeeds())
         assertEquals(emptyList(), sync.feeds())
         assertNull(store.get("s"))
     }
@@ -177,18 +159,12 @@ class SharedSpacesTest {
             "fam"
         )
         store.move("s", Spaces.DEFAULT)
-        assertEquals(
-            listOf("update" to "fam", "move" to "fam"),
-            store.outbox().filter { it.noteId == "s" }.map {
-                it.type to
-                    it.feed
-            }
-        )
+        assertEquals(listOf("update"), store.outbox().filter { it.noteId == "s" }.map { it.type })
         SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
         sync.syncFeeds()
         val s = store.get("s")!!
         assertEquals(Triple(Spaces.DEFAULT, null, "Text\n"), Triple(s.spaceId, s.serverRevision, s.content))
-        assertEquals(listOf("create" to ""), store.outbox().filter { it.noteId == "s" }.map { it.type to it.feed })
+        assertEquals(listOf("create"), store.outbox().filter { it.noteId == "s" }.map { it.type })
     }
 
     @Test
@@ -201,7 +177,7 @@ class SharedSpacesTest {
         val a = store.get("a")!!
         assertEquals(Spaces.DEFAULT to "Milk, eggs\n", a.spaceId to a.content)
         val ops = store.outbox().filter { it.noteId == "a" }
-        assertEquals(listOf("update" to ""), ops.map { it.type to it.feed })
+        assertEquals(listOf("update"), ops.map { it.type })
         assertEquals(true, ops[0].payloadJson.contains("eggs"))
         assertEquals(true, ops[0].payloadJson.contains("\"spaceId\":\"default\""))
     }
@@ -214,7 +190,7 @@ class SharedSpacesTest {
         SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
         sync.syncFeeds()
         assertEquals(Spaces.DEFAULT, store.get("a")!!.spaceId)
-        assertEquals(listOf("delete" to ""), queued().map { it.first to it.second })
+        assertEquals("delete", store.outbox().last { it.noteId == "a" }.type)
     }
 
     @Test
@@ -247,6 +223,44 @@ class SharedSpacesTest {
         sync.syncFeeds()
         assertEquals(9_000L, db.read { it.long("SELECT visited_at FROM spaces WHERE id = 'fam'") })
     }
+
+    @Test
+    fun `a space gone with an edit not yet synced keeps the edit as a copy in the default space`() = storeTest {
+        val sync = setUp()
+        sync.applyPage(
+            SyncPage(listOf(RemoteNote("s", "Plans", "Beach\n", revision = 1, spaceId = "fam")), 1, false, "h"),
+            "fam"
+        )
+        store.save("s", "Plans", "Beach, then hike\n")
+        // Removed by the owner, or the space deleted: nothing warned this device.
+        SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
+        val events = sync.syncFeeds()
+        assertNull(store.get("s"))
+        val copy = events.single() as SyncEvent.RecoveredCopy
+        val kept = store.get(copy.copyId)!!
+        assertEquals("Plans (Recovered copy)", kept.title)
+        assertEquals("Beach, then hike\n" to Spaces.DEFAULT, kept.content to kept.spaceId)
+        assertEquals(listOf("create"), store.outbox().map { it.type })
+    }
+
+    @Test
+    fun `a locked edit refused by a space shared since becomes a locked copy, the note back as the server has it`() =
+        storeTest {
+            val sync = setUp()
+            sync.applyPage(
+                SyncPage(listOf(RemoteNote("s", "Diary", "Plain\n", revision = 1, spaceId = "fam")), 1, false, "h"),
+                "fam"
+            )
+            val locked = "notesd:locked:v1:" + "A".repeat(40)
+            store.save("s", "Diary", locked)
+            val op = sync.nextOperation()!!
+            val event = sync.lockedOut(op) as SyncEvent.RecoveredCopy
+            val note = store.get("s")!!
+            assertEquals(Triple("Plain\n", false, "fam"), Triple(note.content, note.dirty, note.spaceId))
+            val copy = store.get(event.copyId)!!
+            assertEquals(locked to Spaces.DEFAULT, copy.content to copy.spaceId)
+            assertEquals(listOf("create" to event.copyId), store.outbox().map { it.type to it.noteId })
+        }
 
     @Test
     fun `what others changed since the space was last shown`() = storeTest {

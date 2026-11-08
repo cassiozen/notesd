@@ -23,7 +23,6 @@ import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.api.unexpectedMessage
 import notes.core.db.Database
 import notes.core.db.LockKeyStore
-import notes.core.db.MOVE
 import notes.core.db.Operation
 import notes.core.db.SpaceStore
 import notes.core.db.SyncEvent
@@ -264,12 +263,12 @@ class SyncEngine(
 
     /**
      * The list is small and has no change feed: fetched whole every cycle, like the keyring. A shared space new to
-     * it gets a feed; one gone from it takes its notes off the device (§7.9).
+     * it gets a feed; one gone from it takes its notes off the device, an unsynced edit kept as a copy (§7.9).
      */
     private suspend fun fetchSpaces(api: SyncApi): Stop? = when (val r = api.spaces()) {
         is ApiResult.Ok -> {
             spaces.replace(r.value)
-            store.syncFeeds()
+            emit(store.syncFeeds())
             null
         }
 
@@ -346,12 +345,6 @@ class SyncEngine(
                     pushed = true
                 }
 
-                // Its space's notes are in another file now (shared since it was queued): sent there instead.
-                is ApiResult.Conflict if result.code == SPACE_ELSEWHERE && result.spaceId != null &&
-                    store.refile(op, result.spaceId) -> Unit
-
-                is ApiResult.Conflict if result.code == NOTE_MOVED && moved(op, result) -> Unit
-
                 is ApiResult.Conflict -> {
                     // Without the server's version there's nothing to reconcile with: kept, and tried again.
                     val current = result.current?.let { decodeNote(it.toString()) }
@@ -367,6 +360,12 @@ class SyncEngine(
                     pushed = true
                 }
 
+                // Locked offline, then the space was shared from another device (§7.9): kept as a copy.
+                is ApiResult.Rejected if result.error == LOCKED_IN_SHARED_SPACE -> {
+                    store.lockedOut(op)?.let { emit(listOf(it)) }
+                    pushed = true
+                }
+
                 is ApiResult.Rejected if result.error in PERMANENT_ERRORS -> {
                     store.rejected(op)
                     val what = op.title.trim().ifEmpty { "A note" }
@@ -376,21 +375,6 @@ class SyncEngine(
                 else -> return unexpected(result) { store.attempted(op) } ?: stop(result)
             }
         }
-    }
-
-    /**
-     * The note went to another file (§7.9). A move there is done; other changes follow it, if this device has
-     * the space. False leaves the conflict to reconcile, which takes a move out of reach for a deletion.
-     */
-    private suspend fun moved(op: Operation, result: ApiResult.Conflict): Boolean {
-        val current = result.current?.let { decodeNote(it.toString()) } ?: return false
-        val to = current.movedTo ?: return false
-        if (op.type == MOVE && to == op.spaceId) {
-            store.moveDone(op)
-            pushed = true
-            return true
-        }
-        return store.follows(current) && store.refile(op, to)
     }
 
     /**
@@ -407,22 +391,8 @@ class SyncEngine(
         return Stop(SyncOutcome.Failed, unexpectedMessage(status))
     }
 
-    private suspend fun send(root: SyncApi, op: Operation): ApiResult<MutationResult> {
-        // The file the change goes to: the account's, or its space's (§7.9).
-        val api = if (op.feed.isEmpty()) root else root.inSpace(op.feed)
-        return sendTo(api, op)
-    }
-
-    private suspend fun sendTo(api: SyncApi, op: Operation): ApiResult<MutationResult> = when (op.type) {
-        MOVE -> api.moveNote(
-            op.noteId,
-            buildJsonObject {
-                put("operationId", op.operationId)
-                put("baseRevision", op.baseRevision)
-                put("spaceId", op.spaceId)
-            }
-        )
-
+    // Every change goes to the account's address, whatever space the note is in: the server finds the file (§7.9).
+    private suspend fun send(api: SyncApi, op: Operation): ApiResult<MutationResult> = when (op.type) {
         "create" -> api.createNote(
             buildJsonObject {
                 put("operationId", op.operationId)
@@ -525,8 +495,7 @@ class SyncEngine(
 
     private companion object {
         const val OPERATION_ID_REUSED = "operation_id_reused"
-        const val SPACE_ELSEWHERE = "space_elsewhere"
-        const val NOTE_MOVED = "note_moved"
+        const val LOCKED_IN_SHARED_SPACE = "locked_in_shared_space"
         val json = Json { ignoreUnknownKeys = true }
 
         fun decodeNote(s: String): RemoteNote? = try {

@@ -8,12 +8,8 @@ import kotlinx.serialization.json.JsonObject
 sealed interface ApiResult<out T> {
     data class Ok<T>(val value: T) : ApiResult<T>
 
-    /**
-     * 409: the server's current state is in [current] (a note, for note conflicts); [spaceId] names the space
-     * whose notes are in another file, on `space_elsewhere` (§7.9).
-     */
-    data class Conflict(val code: String, val message: String, val current: JsonObject?, val spaceId: String? = null) :
-        ApiResult<Nothing>
+    /** 409: the server's current state is in [current] (a note, for note conflicts). */
+    data class Conflict(val code: String, val message: String, val current: JsonObject?) : ApiResult<Nothing>
 
     /** No usable session: never signed in, or the session was revoked. */
     data object Unauthenticated : ApiResult<Nothing>
@@ -121,8 +117,7 @@ internal data class ErrorBody(
     val message: String = "",
     val field: String? = null,
     val current: JsonObject? = null,
-    val minVersion: String? = null,
-    val spaceId: String? = null
+    val minVersion: String? = null
 )
 
 private const val DEFAULT_RETRY_AFTER_S = 60L
@@ -156,7 +151,7 @@ internal fun <T> apiResult(code: Int, retryAfter: String?, errorText: () -> Stri
 
         code == 426 && error.error == "upgrade_required" -> ApiResult.UpgradeRequired(error.minVersion)
 
-        code == 409 -> ApiResult.Conflict(error.error, error.message, error.current, error.spaceId)
+        code == 409 -> ApiResult.Conflict(error.error, error.message, error.current)
 
         else -> ApiResult.Rejected(code, error.error, error.message, error.field)
     }
@@ -334,14 +329,12 @@ fun isLockedImageType(type: String) = type == LOCKED_IMAGE || type.startsWith("$
 
 /**
  * The calls a sync cycle makes: the JVM's [ApiClient] with device tokens, the browser's with its session cookie.
- * Note, sync and image calls go to the account's file; [inSpace]'s to a shared space's (§7.9).
+ * Every call is at the account's address, which finds a note in whichever file it is (§7.9), except a shared
+ * space's change feed: [inSpace]'s [sync].
  */
 interface SyncApi {
-    /** The same calls for a shared space's file. */
+    /** A shared space's feed: only [sync] is per file. */
     fun inSpace(spaceId: String): SyncApi
-
-    /** Moves a note to a space in another file (§7.9): `{operationId, baseRevision, spaceId}`. */
-    suspend fun moveNote(id: String, body: JsonObject): ApiResult<MutationResult>
 
     /** The invitations waiting for this account. */
     suspend fun invites(): ApiResult<List<RemoteInvite>>

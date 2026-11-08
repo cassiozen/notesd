@@ -67,8 +67,6 @@ class SyncClassificationTest {
 
         override fun inSpace(spaceId: String): SyncApi = this
 
-        override suspend fun moveNote(id: String, body: JsonObject) = note(id, body)
-
         var invitesAnswers = mutableListOf<ApiResult<List<RemoteInvite>>>()
 
         override suspend fun invites(): ApiResult<List<RemoteInvite>> =

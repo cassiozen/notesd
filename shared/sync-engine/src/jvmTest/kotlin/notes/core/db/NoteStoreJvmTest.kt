@@ -81,7 +81,6 @@ class NoteStoreJvmTest {
             "pending_images" to "parked",
             "lock_keys" to "kdf",
             "notes" to "updated_by",
-            "sync_outbox" to "feed",
             "sync_state" to "user_id"
         )) {
             conn.prepare("ALTER TABLE $table DROP COLUMN $column").use { it.step() }
