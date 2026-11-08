@@ -2,6 +2,7 @@ shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
   s_bfcd6b4ecf53cb::t_0093dc1c567cbf 33,38-40,44,48,149,227-237,239-240,243,245-263
   s_bfcd6b4ecf53cb::t_2dc2b99fd54879 238,244,264
   s_bfcd6b4ecf53cb::t_ab579851799d0a 241-242
+  s_bfcd6b4ecf53cb::t_0fb14ca895fc1d 162,167,180,193
 docs/contributing/architecture.md
   s_bfcd6b4ecf53cb::t_2747b73ef00645 530
   s_bfcd6b4ecf53cb::t_ffc3100adc0ce4 535
@@ -10,6 +11,7 @@ shared/sync-engine/src/commonMain/kotlin/notes/core/db/Rows.kt
 shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
   s_bfcd6b4ecf53cb::t_4d85efd56919da 100-105,378
   s_bfcd6b4ecf53cb::t_7315132109a219 45,93-96,98-99,106-107,115-118,120-124,158,160,175,178,197,233,358-360,362-374,377,381-382,385,387,394-395,488,857,861
+  s_bfcd6b4ecf53cb::t_8183f19fc46bac 108-113,126-156
 shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
   s_bfcd6b4ecf53cb::t_2adda2f52a9322 104-105,108,111,156,195-206,257-263,376,385
 shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
