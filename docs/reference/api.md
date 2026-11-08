@@ -495,6 +495,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
 | `already_member` | 409 | That account is already in the space |
 | `space_exists` | 409 | A shared space has this id |
+| `space_busy` | 409 | The shared space is in use; try deleting it again |
 | `already_set_up` | 409 | The server already has an account |
 | `username_taken` | 409 | Another account has this username |
 | `cannot_change_self` | 409 | An admin can't change, remove or make a setup link for their own account from People |

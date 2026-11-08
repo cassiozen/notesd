@@ -356,7 +356,8 @@ func notesFiles(ctx context.Context, system *database.DB, a *auth.Service, o opt
 		if err := rows.Scan(&id, &name); err != nil {
 			return nil, err
 		}
-		out = append(out, notesFile{"shared space " + name, userdata.SpacePath(o.dataDir, id)})
+		// Names aren't unique; the id is the file's name in spaces/.
+		out = append(out, notesFile{"shared space " + name + " (" + id + ")", userdata.SpacePath(o.dataDir, id)})
 	}
 	return out, rows.Err()
 }
@@ -726,9 +727,12 @@ func collectImages(ctx context.Context, system *database.DB, a *auth.Service, us
 			}
 		}
 		for _, id := range sharedSpaceIDs(ctx, system, log) {
-			d, err := users.OpenSpace(ctx, id)
+			d, err := users.OpenSpaceIfExists(ctx, id)
 			if err != nil {
 				log.Error("delete unused images", "space", id, "err", err)
+				continue
+			}
+			if d == nil {
 				continue
 			}
 			n, size, err := d.Images.Collect(ctx, time.Now().Add(-images.Grace), false)

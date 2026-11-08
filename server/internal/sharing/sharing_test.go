@@ -3,6 +3,7 @@ package sharing_test
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -108,7 +109,7 @@ func TestRecoverFinishesAShareWhoseSpaceIsWritten(t *testing.T) {
 	if e.live(e.owner, "a") || e.live(e.owner, "b") || !e.live(dest, "a") || !e.live(dest, "b") {
 		t.Fatal("each note in exactly one file: the space's")
 	}
-	if ok, _ := e.owner.Notes.HasSpace(e.ctx, "fam"); ok {
+	if ok, err := e.owner.Notes.HasSpace(e.ctx, "fam"); err != nil || ok {
 		t.Fatal("the owner's file let go of the space")
 	}
 	n, _ := e.owner.Notes.Get(e.ctx, "a")
@@ -183,5 +184,47 @@ func (e *env) noMoves() {
 	var n int
 	if err := e.system.R.QueryRowContext(e.ctx, `SELECT count(*) FROM space_moves`).Scan(&n); err != nil || n != 0 {
 		e.t.Fatalf("moves left: %d %v", n, err)
+	}
+}
+
+func TestMovingOntoAnotherNoteWithItsIdIsRefused(t *testing.T) {
+	e := newEnv(t)
+	dest, err := e.files.OpenSpace(e.ctx, "sh")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := dest.Notes.ShareIn(e.ctx, notes.SpaceRow{ID: "sh", Name: "Shared"}, []notes.Carried{{Note: notes.Note{ID: "a", Title: "Other", Revision: 1}}}); err != nil {
+		t.Fatal(err)
+	}
+	a, _ := e.owner.Notes.Get(e.ctx, "a")
+	var conflict *notes.ConflictError
+	if _, err := dest.Notes.MoveIn(e.ctx, notes.Carried{Note: a}, "sh"); !errors.As(err, &conflict) || conflict.Code != notes.CodeNoteExists {
+		t.Fatalf("a different note with the id: %v", err)
+	}
+	// The same note, moved before a crash, is taken as done.
+	if _, err := dest.Notes.MoveIn(e.ctx, notes.Carried{Note: notes.Note{ID: "a", Title: "Other", Revision: 1}}, "sh"); err != nil {
+		t.Fatalf("this move, again: %v", err)
+	}
+}
+
+func TestRemovingAMemberTellsThemToo(t *testing.T) {
+	e := newEnv(t)
+	if _, err := auth.NewService(e.system).AddUser(e.ctx, "kid", "another horse battery", false); err != nil {
+		t.Fatal(err)
+	}
+	in, err := e.s.Invite(e.ctx, 1, "fam", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.Accept(e.ctx, 2, in.ID); err != nil {
+		t.Fatal(err)
+	}
+	told := map[int64]bool{}
+	e.s.OnChange(func(id int64) { told[id] = true })
+	if err := e.s.RemoveMember(e.ctx, 1, "fam", 2); err != nil {
+		t.Fatal(err)
+	}
+	if !told[2] || !told[1] {
+		t.Fatalf("told: %v", told)
 	}
 }

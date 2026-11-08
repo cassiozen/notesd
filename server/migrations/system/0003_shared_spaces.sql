@@ -25,6 +25,8 @@ CREATE TABLE space_invites (
     created_at INTEGER NOT NULL,
     UNIQUE (space_id, user_id)
 );
+-- Read for each account every sync cycle.
+CREATE INDEX idx_space_invites_user ON space_invites(user_id);
 
 -- A move of notes between files, from before the destination is written
 -- until the source's tombstones commit; startup finishes or undoes any left.
@@ -36,5 +38,7 @@ CREATE TABLE space_moves (
     note_id    TEXT,                          -- a note move's note
     source     TEXT    NOT NULL,
     dest       TEXT    NOT NULL,
-    created_at INTEGER NOT NULL
+    created_at INTEGER NOT NULL,
+    -- Recover tells the two apart by it.
+    CHECK ((kind = 'note') = (note_id IS NOT NULL))
 );

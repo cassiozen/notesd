@@ -156,6 +156,23 @@ func (r *Registry) OpenSpace(ctx context.Context, spaceID string) (*Data, error)
 	return d, nil
 }
 
+// OpenSpaceIfExists is OpenSpace for a background job: nil, without creating one, when the file is gone
+// (the space was deleted since it was listed).
+func (r *Registry) OpenSpaceIfExists(ctx context.Context, spaceID string) (*Data, error) {
+	r.mu.Lock()
+	d, open := r.spaces[spaceID]
+	r.mu.Unlock()
+	if open {
+		return d, nil
+	}
+	if _, err := os.Stat(SpacePath(r.dir, spaceID)); errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
+	}
+	return r.OpenSpace(ctx, spaceID)
+}
+
 // RemoveSpace closes a shared space's database, if open, and deletes its
 // files: one that was never finished, or a deleted space.
 func (r *Registry) RemoveSpace(spaceID string) error {

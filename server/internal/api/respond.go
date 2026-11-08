@@ -185,6 +185,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusConflict, "already_member", err.Error())
 	case errors.Is(err, sharing.ErrSelf):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: err.Error(), Field: "userId"})
+	case errors.Is(err, sharing.ErrBusy):
+		writeError(w, http.StatusConflict, "space_busy", err.Error())
 	case errors.Is(err, sharing.ErrIDTaken):
 		writeJSON(w, http.StatusConflict, errorBody{Error: "space_exists", Message: err.Error(), Field: "id"})
 	case errors.Is(err, sharing.ErrSameFile):

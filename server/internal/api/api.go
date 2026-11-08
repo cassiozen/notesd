@@ -208,11 +208,12 @@ const (
 func (s *Server) inSpace(h http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		space := r.PathValue("space")
-		d, err := s.sharing.Open(r.Context(), sessionFrom(r.Context()).UserID, space)
+		d, release, err := s.sharing.Open(r.Context(), sessionFrom(r.Context()).UserID, space)
 		if err != nil {
 			s.writeErr(w, r, err)
 			return
 		}
+		defer release()
 		ctx := context.WithValue(context.WithValue(r.Context(), userKey, d), spaceKey, space)
 		h(w, r.WithContext(ctx))
 	}

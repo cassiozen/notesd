@@ -2,6 +2,7 @@ package api_test
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
@@ -180,7 +181,9 @@ func TestSharingASpace(t *testing.T) {
 
 func TestSharedSpaceIsMembersOnly(t *testing.T) {
 	s := newSharedEnv(t)
-	s.owner.do("POST", "/api/v1/spaces/fam/invites", map[string]any{"userId": s.kidID})
+	if r := s.owner.do("POST", "/api/v1/spaces/fam/invites", map[string]any{"userId": s.kidID}); r.status != 201 {
+		t.Fatalf("invite: %d %s", r.status, r.raw)
+	}
 	// Invited isn't joined.
 	for _, path := range []string{"/api/v1/spaces/fam/sync", "/api/v1/spaces/fam/notes", "/api/v1/spaces/fam/notes/groceries"} {
 		if r := s.kid.do("GET", path, nil); r.status != 404 {
@@ -284,9 +287,12 @@ func TestSharingRefusals(t *testing.T) {
 	if r.status != 409 || r.body["error"] != "space_has_locked" || r.body["count"] != 1.0 {
 		t.Fatalf("share with a locked note: %d %s", r.status, r.raw)
 	}
-	// Nothing moved.
-	if spaceByID(t, s.owner, "fam")["shared"] != nil || len(changes(t, s.owner, "/api/v1/sync")) != 2 {
-		t.Fatal("a refused share leaves the space as it was")
+	// Nothing moved: the note is still live in the owner's file.
+	if spaceByID(t, s.owner, "fam")["shared"] != nil {
+		t.Fatal("a refused share leaves the space unshared")
+	}
+	if r := s.owner.do("GET", "/api/v1/notes/groceries", nil); r.status != 200 || r.body["spaceId"] != "fam" {
+		t.Fatalf("a refused share leaves the notes where they were: %d %s", r.status, r.raw)
 	}
 	s.owner.do("DELETE", "/api/v1/notes/secret", map[string]any{"operationId": "op-d", "baseRevision": 1})
 	s.share()
@@ -321,14 +327,41 @@ func TestSearchCountsSharedSpaces(t *testing.T) {
 func TestRemovingAnOwnerHandsTheSpaceOn(t *testing.T) {
 	s := newSharedEnv(t)
 	s.share()
-	// Kid is the admin's to remove; make Kid the owner, then remove Kid.
+	// A third member, who joined after the owner: the earliest-joined rule must pass them over.
+	if _, err := s.auth.AddUser(context.Background(), "Cy", kidPassword, false); err != nil {
+		t.Fatal(err)
+	}
+	cy := s.loginAs("Cy", kidPassword)
+	r := s.owner.do("POST", "/api/v1/spaces/fam/invites", map[string]any{"userId": s.userID(s.owner, "Cy")})
+	if j := cy.do("POST", "/api/v1/invites/"+r.body["id"].(string)+"/accept", nil); j.status != 200 {
+		t.Fatalf("Cy joins: %d %s", j.status, j.raw)
+	}
+	// Only an admin removes accounts, and not their own: so Kid is made the owner, and the admin removes Kid.
 	s.owner.do("PUT", "/api/v1/spaces/fam/owner", map[string]any{"userId": s.kidID})
 	if r := s.owner.do("DELETE", fmt.Sprintf("/api/v1/users/%d", s.kidID), nil); r.status != 204 {
 		t.Fatalf("remove Kid: %d %s", r.status, r.raw)
 	}
 	sp := spaceByID(t, s.owner, "fam")
 	if sp == nil || sp["shared"].(map[string]any)["role"] != "owner" {
-		t.Fatalf("the space went to the member who joined first: %v", sp)
+		t.Fatalf("the space went to the member who joined first, the admin, not Cy: %v", sp)
+	}
+}
+
+func TestDeletingASharedSpace(t *testing.T) {
+	s := newSharedEnv(t)
+	s.share()
+	if r := s.owner.do("DELETE", "/api/v1/spaces/fam", nil); r.status != 409 || r.body["error"] != "space_not_empty" {
+		t.Fatalf("delete with a note in it: %d %s", r.status, r.raw)
+	}
+	s.owner.do("DELETE", "/api/v1/spaces/fam/notes/groceries", map[string]any{"operationId": "d-1", "baseRevision": 1})
+	if r := s.owner.do("DELETE", "/api/v1/spaces/fam", nil); r.status != 204 {
+		t.Fatalf("delete: %d %s", r.status, r.raw)
+	}
+	if r := s.kid.do("GET", "/api/v1/spaces/fam/sync", nil); r.status != 404 {
+		t.Fatalf("the member's access: %d", r.status)
+	}
+	if spaceByID(t, s.kid, "fam") != nil {
+		t.Fatal("gone from the member's list")
 	}
 }
 

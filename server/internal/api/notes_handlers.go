@@ -7,6 +7,7 @@ import (
 
 	"notes/server/internal/notes"
 	"notes/server/internal/search"
+	"notes/server/internal/sharing"
 	notesync "notes/server/internal/sync"
 	"notes/server/internal/userdata"
 )
@@ -266,11 +267,15 @@ func (s *Server) eachFile(r *http.Request, fn func(*userdata.Data) error) error 
 		return err
 	}
 	for _, id := range ids {
-		d, err := s.sharing.Open(r.Context(), userID, id)
-		if err != nil {
+		d, release, err := s.sharing.Open(r.Context(), userID, id)
+		if errors.Is(err, sharing.ErrNotFound) {
+			continue // left or deleted since the list
+		} else if err != nil {
 			return err
 		}
-		if err := fn(d); err != nil {
+		err = fn(d)
+		release()
+		if err != nil {
 			return err
 		}
 	}
@@ -282,9 +287,18 @@ func (s *Server) eachFile(r *http.Request, fn func(*userdata.Data) error) error 
 func (s *Server) searchFiles(r *http.Request, q string, filter search.Filter, limit, offset int) ([]search.Result, error) {
 	all := []search.Result{}
 	err := s.eachFile(r, func(d *userdata.Data) error {
-		got, err := search.Search(r.Context(), d.DB, q, filter, offset+limit, 0)
-		all = append(all, got...)
-		return err
+		// Each file's best offset+limit, a page at a time: a search answers at most MaxLimit.
+		for from := 0; from < offset+limit; from += search.MaxLimit {
+			got, err := search.Search(r.Context(), d.DB, q, filter, search.MaxLimit, from)
+			if err != nil {
+				return err
+			}
+			all = append(all, got...)
+			if len(got) < search.MaxLimit {
+				break
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return nil, err

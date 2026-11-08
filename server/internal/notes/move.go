@@ -110,10 +110,13 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 		case errors.Is(err, ErrNotFound):
 		case err != nil:
 			return err
-		case cur.DeletedAt == nil:
+		case cur.DeletedAt == nil && cur.Title == c.Note.Title && cur.Content == c.Note.Content && cur.SpaceID == space:
 			out = Result{ID: cur.ID, Status: StatusUnchanged, Revision: cur.Revision, ChangeSeq: cur.ChangeSeq,
 				UpdatedAt: cur.UpdatedAt, SpaceID: cur.SpaceID, HTTPStatus: 200}
 			return nil
+		case cur.DeletedAt == nil:
+			// Another note with this id, not this one moved before: moving would lose one of them.
+			return &ConflictError{Code: CodeNoteExists, Current: cur.Note}
 		case cur.MovedTo == nil:
 			// Deleted here for good: a stale device must never see it come back (§6.4).
 			return &ConflictError{Code: CodeNoteExists, Current: cur.Note}

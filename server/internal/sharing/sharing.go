@@ -31,6 +31,7 @@ var (
 	ErrSelf          = errors.New("you're already in this space")
 	ErrSameFile      = errors.New("that space is in the same file: move the note with an update")
 	ErrIDTaken       = errors.New("a shared space has this id")
+	ErrBusy          = errors.New("the space is in use; try again")
 )
 
 // Service shares spaces.
@@ -42,11 +43,16 @@ type Service struct {
 	// file's writer while waiting for the other's.
 	moving   sync.Mutex
 	onChange func(userID int64)
+
+	// A space's file is held for reading by each request using it, and for writing by Delete, so a note
+	// can't land in a file that's being removed.
+	holdsMu sync.Mutex
+	holds   map[string]*sync.RWMutex
 }
 
 // New returns a Service over the system database and every notes file.
 func New(system *database.DB, files *userdata.Registry) *Service {
-	return &Service{system: system, files: files, now: time.Now}
+	return &Service{system: system, files: files, now: time.Now, holds: map[string]*sync.RWMutex{}}
 }
 
 // SetClock overrides the clock, for tests.
@@ -83,16 +89,39 @@ func (s *Service) Role(ctx context.Context, userID int64, spaceID string) (strin
 	return spaces.RoleMember, nil
 }
 
-// Open returns the file of a shared space userID is in, or ErrNotFound.
-func (s *Service) Open(ctx context.Context, userID int64, spaceID string) (*userdata.Data, error) {
+// Open returns the file of a shared space userID is in, or ErrNotFound, held until release is called.
+func (s *Service) Open(ctx context.Context, userID int64, spaceID string) (d *userdata.Data, release func(), err error) {
+	release = s.read(spaceID)
+	// Checked once held: a space deleted while waiting is gone.
 	role, err := s.Role(ctx, userID, spaceID)
+	if err == nil && role == "" {
+		err = ErrNotFound
+	}
+	if err == nil {
+		d, err = s.files.OpenSpace(ctx, spaceID)
+	}
 	if err != nil {
-		return nil, err
+		release()
+		return nil, func() {}, err
 	}
-	if role == "" {
-		return nil, ErrNotFound
+	return d, release, nil
+}
+
+func (s *Service) hold(spaceID string) *sync.RWMutex {
+	s.holdsMu.Lock()
+	defer s.holdsMu.Unlock()
+	h := s.holds[spaceID]
+	if h == nil {
+		h = &sync.RWMutex{}
+		s.holds[spaceID] = h
 	}
-	return s.files.OpenSpace(ctx, spaceID)
+	return h
+}
+
+func (s *Service) read(spaceID string) func() {
+	h := s.hold(spaceID)
+	h.RLock()
+	return h.RUnlock
 }
 
 // SpaceIDs lists the shared spaces userID is in.
@@ -157,10 +186,11 @@ func (s *Service) Space(ctx context.Context, userID int64, spaceID string) (spac
 		}
 	}
 	sp.Shared = shared
-	d, err := s.files.OpenSpace(ctx, spaceID)
+	d, release, err := s.Open(ctx, userID, spaceID)
 	if err != nil {
 		return sp, err
 	}
+	defer release()
 	err = d.DB.R.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE deleted_at IS NULL`).Scan(&sp.NoteCount)
 	return sp, err
 }
@@ -387,10 +417,12 @@ type Source struct {
 // (§7.9): one of their own, or a shared space they're in.
 func (s *Service) Move(ctx context.Context, userID int64, src Source, in notes.MoveInput) (notes.Result, error) {
 	in.UpdatedBy = userID
-	dest, destRef, err := s.destination(ctx, userID, in.SpaceID)
+	// Held before the move lock: a request in the destination may be waiting for it.
+	dest, destRef, release, err := s.destination(ctx, userID, in.SpaceID)
 	if err != nil {
 		return notes.Result{}, err
 	}
+	defer release()
 	srcRef := userRef(userID)
 	if src.SpaceID != "" {
 		srcRef = spaceRef(src.SpaceID)
@@ -413,34 +445,41 @@ func (s *Service) Move(ctx context.Context, userID int64, src Source, in notes.M
 		return dest.Notes.MoveIn(ctx, c, in.SpaceID)
 	})
 	if err != nil {
-		// Logged until startup only if the destination kept a copy.
-		if live, lerr := dest.Notes.Live(ctx, in.ID); lerr != nil || live {
+		live, lerr := dest.Notes.Live(ctx, in.ID)
+		if lerr != nil {
 			return res, errors.Join(err, lerr)
+		}
+		// The destination kept it: finished now, so the note isn't live in both files. A retry of the move
+		// then hears note_moved to where it asked. Left logged for startup only if that fails too.
+		if live {
+			if ferr := src.Data.Notes.FinishMoveOut(ctx, in.ID, in.SpaceID); ferr != nil {
+				return res, errors.Join(err, ferr)
+			}
 		}
 	}
 	return res, errors.Join(err, s.clearMove(ctx, moveID))
 }
 
-// destination is the file spaceID's notes are in, for userID.
-func (s *Service) destination(ctx context.Context, userID int64, spaceID string) (*userdata.Data, string, error) {
+// destination is the file spaceID's notes are in, for userID; a shared space's held until release.
+func (s *Service) destination(ctx context.Context, userID int64, spaceID string) (*userdata.Data, string, func(), error) {
 	role, err := s.Role(ctx, userID, spaceID)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	if role != "" {
-		d, err := s.files.OpenSpace(ctx, spaceID)
-		return d, spaceRef(spaceID), err
+		d, release, err := s.Open(ctx, userID, spaceID)
+		return d, spaceRef(spaceID), release, err
 	}
 	own, err := s.files.Open(ctx, userID)
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	if ok, err := own.Notes.HasSpace(ctx, spaceID); err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	} else if !ok {
-		return nil, "", &notes.ValidationError{Field: "spaceId", Message: "no such space"}
+		return nil, "", nil, &notes.ValidationError{Field: "spaceId", Message: "no such space"}
 	}
-	return own, userRef(userID), nil
+	return own, userRef(userID), func() {}, nil
 }
 
 // Recover finishes or undoes the moves a stop cut short (§7.9). It runs at
@@ -613,6 +652,11 @@ func (s *Service) RemoveMember(ctx context.Context, actorID int64, spaceID strin
 	case actorID != userID && role != spaces.RoleOwner:
 		return ErrNotOwner
 	}
+	// Before the delete: the account removed is one whose spaces change.
+	members, err := s.memberIDs(ctx, spaceID)
+	if err != nil {
+		return err
+	}
 	err = s.system.WriteTx(ctx, func(tx *sql.Tx) error {
 		res, err := tx.ExecContext(ctx, `DELETE FROM space_members WHERE space_id = ? AND user_id = ?`, spaceID, userID)
 		if err != nil {
@@ -626,7 +670,7 @@ func (s *Service) RemoveMember(ctx context.Context, actorID int64, spaceID strin
 		return nil
 	})
 	if err == nil {
-		s.changed(ctx, spaceID)
+		s.notify(members)
 	}
 	return err
 }
@@ -675,8 +719,20 @@ func (s *Service) Rename(ctx context.Context, ownerID int64, spaceID, name strin
 	return s.Space(ctx, ownerID, spaceID)
 }
 
-// Delete deletes an empty shared space ownerID owns, file and all.
+// Delete deletes an empty shared space ownerID owns, file and all, with no request using it: one saving a
+// note there could otherwise land after the count. It doesn't wait in line (that could deadlock with a move
+// between two files): ErrBusy if the space stays in use.
 func (s *Service) Delete(ctx context.Context, ownerID int64, spaceID string) error {
+	if err := s.mustOwn(ctx, ownerID, spaceID); err != nil {
+		return err
+	}
+	h := s.hold(spaceID)
+	for deadline := s.now().Add(deleteWait); !h.TryLock(); time.Sleep(20 * time.Millisecond) {
+		if s.now().After(deadline) {
+			return ErrBusy
+		}
+	}
+	defer h.Unlock()
 	if err := s.mustOwn(ctx, ownerID, spaceID); err != nil {
 		return err
 	}
@@ -790,6 +846,9 @@ func (s *Service) notify(ids []int64) {
 func (s *Service) Members(ctx context.Context, spaceID string) ([]int64, error) {
 	return s.memberIDs(ctx, spaceID)
 }
+
+// deleteWait is how long Delete tries for a space no request is using.
+const deleteWait = 5 * time.Second
 
 func userRef(id int64) string   { return fmt.Sprintf("user:%d", id) }
 func spaceRef(id string) string { return "space:" + id }

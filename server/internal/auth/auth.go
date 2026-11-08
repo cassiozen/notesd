@@ -282,8 +282,8 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	return out, rows.Err()
 }
 
-// RemoveUser deletes an account and signs out its sessions. Their notes
-// database is left for the caller to deal with.
+// RemoveUser deletes an account and signs out its sessions, after BeforeRemove's hook (which hands on its
+// shared spaces). Their notes database is left for the caller to deal with.
 func (s *Service) RemoveUser(ctx context.Context, username string) (User, error) {
 	return s.remove(ctx, `username_key = ?`, usernameKey(username))
 }
