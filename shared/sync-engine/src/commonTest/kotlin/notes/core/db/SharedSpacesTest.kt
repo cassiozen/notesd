@@ -170,6 +170,85 @@ class SharedSpacesTest {
     }
 
     @Test
+    fun `leaving with a move out not yet sent keeps the note, sent again as new where it is`() = storeTest {
+        val sync = setUp()
+        sync.applyPage(
+            SyncPage(listOf(RemoteNote("s", "Shared", "Text\n", revision = 3, spaceId = "fam")), 1, false, "h"),
+            "fam"
+        )
+        store.move("s", Spaces.DEFAULT)
+        assertEquals(
+            listOf("update" to "fam", "move" to "fam"),
+            store.outbox().filter { it.noteId == "s" }.map {
+                it.type to
+                    it.feed
+            }
+        )
+        SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
+        sync.syncFeeds()
+        val s = store.get("s")!!
+        assertEquals(Triple(Spaces.DEFAULT, null, "Text\n"), Triple(s.spaceId, s.serverRevision, s.content))
+        assertEquals(listOf("create" to ""), store.outbox().filter { it.noteId == "s" }.map { it.type to it.feed })
+    }
+
+    @Test
+    fun `leaving with a move in not yet sent puts the note back where the server has it`() = storeTest {
+        val sync = setUp()
+        store.move("a", "fam")
+        store.save("a", "Groceries", "Milk, eggs\n")
+        SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
+        sync.syncFeeds()
+        val a = store.get("a")!!
+        assertEquals(Spaces.DEFAULT to "Milk, eggs\n", a.spaceId to a.content)
+        val ops = store.outbox().filter { it.noteId == "a" }
+        assertEquals(listOf("update" to ""), ops.map { it.type to it.feed })
+        assertEquals(true, ops[0].payloadJson.contains("eggs"))
+        assertEquals(true, ops[0].payloadJson.contains("\"spaceId\":\"default\""))
+    }
+
+    @Test
+    fun `leaving with a delete not yet sent, of a note moved in here, keeps the delete`() = storeTest {
+        val sync = setUp()
+        store.move("a", "fam")
+        store.delete("a")
+        SpaceStore(db) { now }.replace(listOf(RemoteSpace("default", "Notes")))
+        sync.syncFeeds()
+        assertEquals(Spaces.DEFAULT, store.get("a")!!.spaceId)
+        assertEquals(listOf("delete" to ""), queued().map { it.first to it.second })
+    }
+
+    @Test
+    fun `a move to a space of this account's, by an unknown member, is a deletion here`() = storeTest {
+        val sync = setUp()
+        sync.applyPage(
+            SyncPage(listOf(RemoteNote("s", "Shared", "", revision = 1, spaceId = "fam")), 1, false, "h"),
+            "fam"
+        )
+        sync.applyPage(
+            SyncPage(
+                listOf(RemoteNote("s", revision = 2, deletedAt = 5, spaceId = "fam", movedTo = "default")),
+                2,
+                false,
+                "h"
+            ),
+            "fam"
+        )
+        assertEquals(5L, store.get("s")!!.deletedAt)
+    }
+
+    @Test
+    fun `a space shared again counts only what's new since`() = storeTest {
+        val sync = setUp()
+        val spaces = SpaceStore(db) { now }
+        db.write { it.exec("UPDATE spaces SET visited_at = 1 WHERE id = 'fam'") }
+        spaces.replace(listOf(RemoteSpace("default", "Notes"), family.copy(shared = null)))
+        now = 9_000
+        spaces.replace(listOf(RemoteSpace("default", "Notes"), family))
+        sync.syncFeeds()
+        assertEquals(9_000L, db.read { it.long("SELECT visited_at FROM spaces WHERE id = 'fam'") })
+    }
+
+    @Test
     fun `what others changed since the space was last shown`() = storeTest {
         val sync = setUp()
         sync.setUserId(1)

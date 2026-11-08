@@ -69,7 +69,10 @@ class SyncClassificationTest {
 
         override suspend fun moveNote(id: String, body: JsonObject) = note(id, body)
 
-        override suspend fun invites(): ApiResult<List<RemoteInvite>> = ApiResult.Ok(emptyList())
+        var invitesAnswers = mutableListOf<ApiResult<List<RemoteInvite>>>()
+
+        override suspend fun invites(): ApiResult<List<RemoteInvite>> =
+            invitesAnswers.removeFirstOrNull() ?: ApiResult.Ok(emptyList())
     }
 
     private class Env(val test: TestScope, val db: Database, val api: Stub) {
@@ -98,6 +101,19 @@ class SyncClassificationTest {
     }
 
     private val portal = ApiResult.Unexpected(200)
+
+    @Test
+    fun invitationsAnsweredOddlyAreAskedAgainOnceTheChangesWent() = env {
+        notes.save("a", "A", "text")
+        api.invitesAnswers = mutableListOf(portal)
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(0, notes.pendingNotes())
+
+        notes.save("b", "B", "text")
+        api.invitesAnswers = mutableListOf(portal, portal)
+        assertEquals(SyncOutcome.Failed, engine.sync())
+        assertEquals(0, notes.pendingNotes())
+    }
 
     @Test
     fun anUnexpectedAnswerKeepsTheChangeAndParksItAfterThreeCycles() = env {
@@ -249,6 +265,17 @@ class SyncClassificationTest {
         assertEquals(SyncOutcome.Done, engine.sync())
         assertEquals(0, engine.parked())
         assertEquals("The space “Work” wasn’t saved: name taken", engine.store.state().lastError)
+    }
+
+    @Test
+    fun aSpaceWhoseIdASharedSpaceHasIsDroppedNotRetried() = env {
+        engine.spaces.create("Work", id = "w")
+        api.spaceAnswer = { ApiResult.Conflict("space_exists", "a shared space has this id", null) }
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals("The space “Work” wasn’t saved: a shared space has this id", engine.store.state().lastError)
+        // Gone from the queue: the next cycle doesn't stop on it.
+        api.spaceAnswer = { error("not sent again") }
+        assertEquals(SyncOutcome.Done, engine.sync())
     }
 
     @Test

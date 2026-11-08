@@ -189,7 +189,8 @@ class SyncEngine(
         // Before the notes: which spaces are shared, so each change goes to its space's file (§7.9). An odd answer
         // (a portal's page) doesn't stop the cycle here: the changes get their attempts, and parking, as before.
         fetchSpaces(api)?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
-        invites(api)?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
+        val invited = invites(api)
+        invited?.takeIf { it.outcome != SyncOutcome.Failed }?.let { return it }
         push(api)?.let { return it }
         pushSpaces(api, deletes = true)?.let { return it }
         // The names those deletes freed, for the spaces made here meanwhile.
@@ -199,6 +200,8 @@ class SyncEngine(
         }
         pull(api)?.let { return it }
         fetchSpaces(api)?.let { return it }
+        // Odd before the changes went: asked again, an odd answer now fails the cycle.
+        if (invited != null) invites(api)?.let { return it }
         keyring(api)?.let { return it }
         return if (store.nextOperation() != null) push(api) else null
     }
@@ -244,6 +247,12 @@ class SyncEngine(
                     is ApiResult.Rejected if r.error in PERMANENT_ERRORS -> {
                         spaces.dropped(change)
                         reject("The space “${change.name}” wasn’t saved: ${r.message.ifEmpty { r.error }}")
+                    }
+
+                    // A shared space has this id (§7.9): a 409, so a Conflict, but no retry changes it.
+                    is ApiResult.Conflict if r.code in PERMANENT_ERRORS -> {
+                        spaces.dropped(change)
+                        reject("The space “${change.name}” wasn’t saved: ${r.message.ifEmpty { r.code }}")
                     }
 
                     else -> return unexpected(r) { spaces.attempted(change) } ?: stop(r)

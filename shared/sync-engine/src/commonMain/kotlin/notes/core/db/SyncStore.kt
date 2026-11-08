@@ -106,13 +106,68 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             for (feed in gone) {
                 val ids = sql.query("SELECT id FROM notes WHERE space_id = ?", feed) { it.getText(0) }
                 for (id in ids) {
+                    // Moved into it here, the move (or a delete since) not yet sent: the server still has it where it
+                    // was, so it goes back.
+                    val back = sql.one(
+                        """
+                        SELECT base_space_id FROM notes n WHERE id = ? AND server_revision IS NOT NULL AND EXISTS
+                            (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.feed <> ?)
+                        """,
+                        id,
+                        feed
+                    ) { it.textOrNull(0) }
+                    if (back != null && back !in gone) {
+                        sql.exec("DELETE FROM sync_outbox WHERE note_id = ? AND feed = ?", id, feed)
+                        sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, id)
+                        val note = sql.note(id)
+                        if (note != null && note.deletedAt == null) {
+                            sql.queueText(id, note.title, note.content, back, clock())
+                        }
+                        continue
+                    }
                     sql.unindex(id)
                     sql.forgetMerge(id)
                     sql.forgetImages(id)
                     sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
                     sql.exec("DELETE FROM notes WHERE id = ?", id)
                 }
+                // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note
+                // goes to the server again, as new, where it is.
+                val strays = sql.query(
+                    "SELECT DISTINCT note_id FROM sync_outbox WHERE feed = ? AND note_id NOT IN (SELECT id FROM notes WHERE space_id = ?)",
+                    feed,
+                    feed
+                ) { it.getText(0) }
                 sql.exec("DELETE FROM sync_outbox WHERE feed = ?", feed)
+                for (id in strays) {
+                    val note = sql.note(id) ?: continue
+                    sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", id)
+                    if (note.deletedAt != null) {
+                        sql.exec("DELETE FROM notes WHERE id = ?", id)
+                        continue
+                    }
+                    sql.exec(
+                        """
+                        UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1, base_title = NULL,
+                            base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                        WHERE id = ?
+                        """,
+                        id
+                    )
+                    sql.enqueue(
+                        id,
+                        CREATE,
+                        Payload(
+                            note.title,
+                            note.content,
+                            note.createdAt,
+                            note.updatedAt,
+                            note.conflictOf,
+                            spaceId = note.spaceId
+                        ),
+                        clock()
+                    )
+                }
                 sql.exec("DELETE FROM feeds WHERE space_id = ?", feed)
             }
         }
@@ -615,7 +670,8 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
         if (!reaches(to)) return false
         if (feedOf(to).isNotEmpty()) return true
         val me = one("SELECT user_id FROM sync_state WHERE id = 1") { it.longOrNull(0) }
-        return remote.updatedBy == null || remote.updatedBy == me
+        // Unknown either way, it's a deletion here: if the move was this account's, its own feed brings the note back.
+        return me != null && remote.updatedBy == me
     }
 
     /** Whether this device follows the note [current], a moved tombstone, to where it went. */

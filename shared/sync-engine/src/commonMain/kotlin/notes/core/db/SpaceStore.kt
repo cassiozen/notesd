@@ -117,10 +117,13 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
         }
     }
 
-    /** The space is being shown: what's in it now is no longer news. */
-    suspend fun visit(id: String) {
+    /**
+     * The space was shown until [at]: what changed by then is no longer news. Pass the moment it was left when
+     * the write may land later, or a change made in between would never count.
+     */
+    suspend fun visit(id: String, at: Long = clock()) {
         db.write { sql ->
-            sql.exec("UPDATE spaces SET visited_at = ? WHERE id = ? AND shared IS NOT NULL", clock(), id)
+            sql.exec("UPDATE spaces SET visited_at = ? WHERE id = ? AND shared IS NOT NULL", at, id)
         }
     }
 
@@ -271,10 +274,15 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                     s.createdAt
                 )
                 // Even on a row with a change waiting: traits and members are the server's, not this device's.
+                // A space no longer shared forgets when it was shown: shared again, only what's new from then is news.
                 sql.exec(
-                    "UPDATE spaces SET traits = ?, shared = ? WHERE id = ?",
+                    """
+                    UPDATE spaces SET traits = ?, shared = ?, visited_at = CASE WHEN ? IS NULL THEN NULL ELSE visited_at END
+                    WHERE id = ?
+                    """,
                     encodeTraits(s.traits),
                     s.shared?.let { traitsJson.encodeToString(SharedSpace.serializer(), it) },
+                    s.shared?.role,
                     s.id
                 )
             }
