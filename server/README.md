@@ -3,8 +3,8 @@
 The backend from [docs/contributing/architecture.md](../docs/contributing/architecture.md): one Go binary
 serving the JSON API, the sync feed, full-text search and the embedded web
 app ([apps/web](../apps/web/README.md)), backed by SQLite: a system database
-for accounts, sessions and server-wide settings, and one database per account
-for its notes.
+for accounts, sessions, server-wide settings and who's in each shared space, one
+database per account for its notes, and one per shared space for its notes.
 
 This README is for working on the server. To install and run notesd,
 see the [documentation](../docs/README.md).
@@ -40,8 +40,8 @@ in the [command line reference](../docs/reference/cli.md). Notes for
 working on them:
 
 - The data directory holds `system.db` (accounts, sessions, server-wide
-  settings) and one notes database per account, `users/<id>.db`
-  (`internal/userdata`). Every command first moves a single-user `notes.db`
+  settings, shared spaces' members) and one notes database per account,
+  `users/<id>.db`, and per shared space, `spaces/<id>.db` (`internal/userdata`). Every command first moves a single-user `notes.db`
   into that layout (`userdata.Upgrade`).
 - `reindex` also runs automatically when a user's database is first opened,
   if a migration asks for it.
@@ -81,11 +81,12 @@ internal/notes     create/update/delete, revisions, tombstones, idempotency, lis
 internal/sync      change feed
 internal/search    Markdown → plain text and tags, FTS5 query building, search, tag listing, reindex
 internal/locks     locked-note envelopes, keyring
-internal/spaces    the list of spaces
+internal/spaces    the list of spaces, traits
+internal/sharing   shared spaces: members, invitations, moving notes between files, crash recovery
 internal/images    image blobs: validation, storage, references, collection, integrity check
 internal/mail      email settings, note Markdown → HTML email, Resend client
 internal/auth      Argon2id, accounts, sessions, login rate limiting
-internal/userdata  each account's notes database and stores; the upgrade from one notes.db
+internal/userdata  each account's and shared space's notes database and stores; the upgrade from one notes.db
 internal/api       routing, auth/CSRF middleware, handlers, gzip, logging
 internal/web       embedded web app (apps/web builds into internal/web/dist)
 migrations         numbered SQL files, tracked with PRAGMA user_version (system/ for system.db)

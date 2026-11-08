@@ -33,6 +33,35 @@ type Space struct {
 	CreatedAt int64   `json:"createdAt"`
 	NoteCount int     `json:"noteCount"`
 	Traits    []Trait `json:"traits"`
+	// Set on a shared space (§7.9).
+	Shared *Shared `json:"shared,omitempty"`
+}
+
+// Shared is who's in a shared space, as one of them sees it.
+type Shared struct {
+	Role    string   `json:"role"` // RoleOwner or RoleMember
+	Members []Person `json:"members"`
+	// Pending invitations; only the owner sees them.
+	Invites []Invitee `json:"invites,omitempty"`
+}
+
+// Roles in a shared space.
+const (
+	RoleOwner  = "owner"
+	RoleMember = "member"
+)
+
+// Person is an account as other accounts see it.
+type Person struct {
+	ID       int64  `json:"id"`
+	Username string `json:"username"`
+}
+
+// Invitee is a pending invitation into a shared space.
+type Invitee struct {
+	ID       string `json:"id"`
+	UserID   int64  `json:"userId"`
+	Username string `json:"username"`
 }
 
 // Errors.
@@ -103,7 +132,7 @@ func (s *Store) List(ctx context.Context) ([]Space, error) {
 	}
 	// Trait sources may need a connection of their own from the read pool.
 	rows.Close()
-	return out, s.withTraits(ctx, out)
+	return out, s.WithTraits(ctx, out)
 }
 
 // Put creates the space id or renames it, and sets its icon unless icon is
@@ -114,7 +143,7 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 	if !idPattern.MatchString(id) {
 		return Space{}, &InputError{"id", "must be 1-64 characters of [A-Za-z0-9_-]"}
 	}
-	if icon != nil && !iconPattern.MatchString(*icon) {
+	if icon != nil && !ValidIcon(*icon) {
 		return Space{}, &InputError{"icon", "must be at most 64 characters of [a-z0-9-]"}
 	}
 	name, err := NormalizeName(name)
@@ -125,7 +154,7 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 	// Before the write: a trait source failing after it would report a failed PUT that was stored.
 	// Traits depend on the space's id, not its name or icon.
 	pre := []Space{{ID: id}}
-	if err := s.withTraits(ctx, pre); err != nil {
+	if err := s.WithTraits(ctx, pre); err != nil {
 		return Space{}, err
 	}
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
@@ -203,6 +232,9 @@ func withNumber(name string, n int) string {
 	}
 	return name + suffix
 }
+
+// ValidIcon reports whether icon is a key the server may store.
+func ValidIcon(icon string) bool { return iconPattern.MatchString(icon) }
 
 // Key identifies a name ignoring case.
 func Key(name string) string { return strings.ToLower(name) }

@@ -93,8 +93,9 @@ type Credentials struct {
 
 // Service manages accounts and sessions in the system database.
 type Service struct {
-	db  *database.DB
-	now func() time.Time
+	db           *database.DB
+	now          func() time.Time
+	beforeRemove func(ctx context.Context, tx *sql.Tx, userID int64) error
 }
 
 // NewService returns an auth service using the system clock.
@@ -281,10 +282,16 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	return out, rows.Err()
 }
 
-// RemoveUser deletes an account and signs out its sessions. Their notes
-// database is left for the caller to deal with.
+// RemoveUser deletes an account and signs out its sessions, after BeforeRemove's hook (which hands on its
+// shared spaces). Their notes database is left for the caller to deal with.
 func (s *Service) RemoveUser(ctx context.Context, username string) (User, error) {
 	return s.remove(ctx, `username_key = ?`, usernameKey(username))
+}
+
+// BeforeRemove has fn run in the transaction that removes an account, just
+// before it goes, for what refers to it from elsewhere (shared spaces).
+func (s *Service) BeforeRemove(fn func(ctx context.Context, tx *sql.Tx, userID int64) error) {
+	s.beforeRemove = fn
 }
 
 func (s *Service) remove(ctx context.Context, where string, arg any) (User, error) {
@@ -300,6 +307,11 @@ func (s *Service) remove(ctx context.Context, where string, arg any) (User, erro
 		}
 		if u.IsAdmin {
 			if err := keepAnAdmin(ctx, tx, u.ID); err != nil {
+				return err
+			}
+		}
+		if s.beforeRemove != nil {
+			if err := s.beforeRemove(ctx, tx, u.ID); err != nil {
 				return err
 			}
 		}

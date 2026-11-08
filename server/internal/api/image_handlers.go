@@ -8,6 +8,8 @@ import (
 	"strconv"
 
 	"notes/server/internal/images"
+	"notes/server/internal/sharing"
+	"notes/server/internal/userdata"
 )
 
 // PUT /api/v1/images/{id} — the raw image as the body, id its SHA-256.
@@ -55,7 +57,12 @@ func (s *Server) putImage(w http.ResponseWriter, r *http.Request) {
 // downloads would be, inert: no sniffing, and a sandbox in case one is ever
 // opened as a page.
 func (s *Server) getImage(w http.ResponseWriter, r *http.Request) {
-	u := userFrom(r.Context())
+	u, release, err := s.imageFile(r)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	defer release()
 	id := r.PathValue("id")
 	etag := `"` + id + `"`
 	if r.Header.Get("If-None-Match") == etag {
@@ -85,4 +92,38 @@ func (s *Server) getImage(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodHead {
 		_, _ = w.Write(data)
 	}
+}
+
+// imageFile is the file to serve an image from: the request's, or at the
+// account's address, the first file the account reaches that has it (§7.9).
+// Images are their bytes' hash, so any copy is the same image, and a note's
+// pictures load at one address whichever file the note is in.
+func (s *Server) imageFile(r *http.Request) (*userdata.Data, func(), error) {
+	u := userFrom(r.Context())
+	id := r.PathValue("id")
+	none := func() {}
+	if spaceFrom(r.Context()) != "" || !images.ValidID(id) {
+		return u, none, nil
+	}
+	if _, err := u.Images.Info(r.Context(), id); !errors.Is(err, images.ErrNotFound) {
+		return u, none, nil
+	}
+	userID := sessionFrom(r.Context()).UserID
+	ids, err := s.sharing.SpaceIDs(r.Context(), userID)
+	if err != nil {
+		return nil, none, err
+	}
+	for _, space := range ids {
+		d, release, err := s.sharing.Open(r.Context(), userID, space)
+		if errors.Is(err, sharing.ErrNotFound) {
+			continue // left or deleted since the list
+		} else if err != nil {
+			return nil, none, err
+		}
+		if _, err := d.Images.Info(r.Context(), id); err == nil {
+			return d, release, nil
+		}
+		release()
+	}
+	return u, none, nil
 }

@@ -6,6 +6,7 @@ package api
 import (
 	"compress/gzip"
 	"context"
+	"errors"
 	"log/slog"
 	"net"
 	"net/http"
@@ -19,6 +20,8 @@ import (
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
 	"notes/server/internal/mail"
+	"notes/server/internal/notes"
+	"notes/server/internal/sharing"
 	"notes/server/internal/userdata"
 	"notes/server/internal/web"
 )
@@ -51,17 +54,29 @@ type Server struct {
 	log      *slog.Logger
 	cfg      Config
 	releases *releases
+	sharing  *sharing.Service
 }
 
 // New returns a server over the system database and users' notes databases.
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
+	share := sharing.New(system, users)
+	share.Install()
+	authSvc.BeforeRemove(sharing.HandOff)
 	return &Server{
 		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
 		limiter:  auth.NewLimiter(10, 15*time.Minute),
 		mailer:   mail.NewClient(cfg.ResendURL),
 		releases: newReleases(cfg.ReleasesURL),
+		sharing:  share,
 	}
 }
+
+// Recover finishes or undoes moves of notes between files that a stop cut
+// short (§7.9). Run it before serving.
+func (s *Server) Recover(ctx context.Context) error { return s.sharing.Recover(ctx) }
+
+// Sharing is the server's shared spaces, for hooks that follow them.
+func (s *Server) Sharing() *sharing.Service { return s.sharing }
 
 // Handler returns the root HTTP handler.
 func (s *Server) Handler() http.Handler {
@@ -85,12 +100,12 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/auth/sessions", s.authed(s.listSessions))
 	mux.Handle("DELETE /api/v1/auth/sessions/{id}", s.authed(s.revokeSession))
 
-	mux.Handle("GET /api/v1/notes", gzipped(s.authed(s.listNotes)))
+	mux.Handle("GET /api/v1/notes", gzipped(s.authed(s.bySpace(s.listNotes))))
 	mux.Handle("POST /api/v1/notes", s.authed(s.createNote))
 	mux.Handle("GET /api/v1/notes/{id}", s.authed(s.getNote))
 	mux.Handle("PUT /api/v1/notes/{id}", s.authed(s.updateNote))
 	mux.Handle("DELETE /api/v1/notes/{id}", s.authed(s.deleteNote))
-	mux.Handle("POST /api/v1/notes/{id}/email", s.authed(s.emailNote))
+	mux.Handle("POST /api/v1/notes/{id}/email", s.authed(s.atNote(s.emailNote)))
 
 	mux.Handle("GET /api/v1/update", s.authed(s.updateStatus))
 	mux.Handle("POST /api/v1/update", s.authed(adminOnly(s.requestUpdate)))
@@ -113,13 +128,25 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/spaces", s.authed(s.listSpaces))
 	mux.Handle("PUT /api/v1/spaces/{id}", s.authed(s.putSpace))
 	mux.Handle("DELETE /api/v1/spaces/{id}", s.authed(s.deleteSpace))
+	mux.Handle("POST /api/v1/spaces/{id}/invites", s.authed(s.invite))
+	mux.Handle("DELETE /api/v1/spaces/{id}/invites/{invite}", s.authed(s.cancelInvite))
+	mux.Handle("DELETE /api/v1/spaces/{id}/members/{user}", s.authed(s.removeMember))
+	mux.Handle("PUT /api/v1/spaces/{id}/owner", s.authed(s.transferSpace))
+	mux.Handle("GET /api/v1/invites", s.authed(s.listInvites))
+	mux.Handle("POST /api/v1/invites/{invite}/accept", s.authed(s.acceptInvite))
+	mux.Handle("POST /api/v1/invites/{invite}/decline", s.authed(s.declineInvite))
+	mux.Handle("GET /api/v1/people", s.authed(s.listPeople))
+
+	// A shared space's change feed (§7.9): each file has its own sequence, so its own cursor. Every
+	// other request is at the account's address, and the server finds the file.
+	mux.Handle("GET /api/v1/spaces/{space}/sync", gzipped(s.authed(s.inSpace(s.sync))))
 
 	mux.Handle("PUT /api/v1/images/{id}", s.authed(s.putImage))
 	mux.Handle("GET /api/v1/images/{id}", s.authed(s.getImage))
 
 	mux.Handle("GET /api/v1/sync", gzipped(s.authed(s.sync)))
-	mux.Handle("GET /api/v1/search", gzipped(s.authed(s.search)))
-	mux.Handle("GET /api/v1/filters", gzipped(s.authed(s.listFilters)))
+	mux.Handle("GET /api/v1/search", gzipped(s.authed(s.bySpace(s.search))))
+	mux.Handle("GET /api/v1/filters", gzipped(s.authed(s.bySpace(s.listFilters))))
 
 	// Not not_found: a client treats that as a missing note or image, which
 	// an older server lacking the endpoint isn't.
@@ -164,7 +191,69 @@ type ctxKey int
 const (
 	sessionKey ctxKey = iota
 	userKey
+	spaceKey
 )
+
+// inSpace has a handler behind authed serve a shared space's file instead of
+// the account's, once the account is found to be a member.
+func (s *Server) inSpace(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		space := r.PathValue("space")
+		d, release, err := s.sharing.Open(r.Context(), sessionFrom(r.Context()).UserID, space)
+		if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		defer release()
+		ctx := context.WithValue(context.WithValue(r.Context(), userKey, d), spaceKey, space)
+		h(w, r.WithContext(ctx))
+	}
+}
+
+// bySpace serves a request naming a shared space the account is in (?space=) from that space's file.
+func (s *Server) bySpace(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		space := r.URL.Query().Get("space")
+		if space == "" {
+			h(w, r)
+			return
+		}
+		f, release, err := s.sharing.ForSpace(r.Context(), sessionFrom(r.Context()).UserID, space)
+		if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		defer release()
+		h(w, r.WithContext(inFile(r.Context(), f)))
+	}
+}
+
+// atNote serves a request for a note from the file it's in.
+func (s *Server) atNote(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		f, _, release, err := s.sharing.Locate(r.Context(), sessionFrom(r.Context()).UserID, r.PathValue("id"))
+		if errors.Is(err, notes.ErrNotFound) {
+			h(w, r)
+			return
+		} else if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		defer release()
+		h(w, r.WithContext(inFile(r.Context(), f)))
+	}
+}
+
+func inFile(ctx context.Context, f sharing.File) context.Context {
+	return context.WithValue(context.WithValue(ctx, userKey, f.Data), spaceKey, f.SpaceID)
+}
+
+// spaceFrom is the shared space whose file a request is served from; "" for
+// the account's own.
+func spaceFrom(ctx context.Context) string {
+	id, _ := ctx.Value(spaceKey).(string)
+	return id
+}
 
 func sessionFrom(ctx context.Context) auth.Session {
 	sess, _ := ctx.Value(sessionKey).(auth.Session)
