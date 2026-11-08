@@ -183,6 +183,9 @@ extension Font {
     static let notesLabel = Font.custom("InstrumentSans-Regular", size: 13, relativeTo: .footnote).weight(.medium)
     static let notesSmall = Font.custom("InstrumentSans-Regular", size: 13, relativeTo: .footnote)
     static let notesButton = Font.custom("InstrumentSans-Regular", size: 15, relativeTo: .body).weight(.semibold)
+    /// The space's name atop the sidebar: sans, as the switcher names spaces. A thin serif looked lighter than the
+    /// traits' pill beside it.
+    static let notesSpaceName = Font.custom("InstrumentSans-Regular", size: 26, relativeTo: .title).weight(.semibold)
     static let notesMono = Font.custom("JetBrainsMono-Regular", size: 14, relativeTo: .body)
     /// The wordmark: lowercase and monospaced, like the daemon it's named after.
     static let notesBrand = Font.custom("JetBrainsMono-Regular", size: 20, relativeTo: .title3).weight(.medium)

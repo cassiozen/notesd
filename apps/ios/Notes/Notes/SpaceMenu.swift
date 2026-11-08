@@ -5,8 +5,7 @@ import SwiftUI
 /// traits, grouped in their own button to Space info (§7.8).
 struct SpaceMenu: View {
     @Environment(AppGraph.self) private var graph
-    var font: Font = .notesHeading
-    var iconSize: CGFloat = 26
+    var iconSize: CGFloat = 31
     var invites: [SpaceInvite] = []
     /// What changed lately, by space id.
     var changes: [String: String] = [:]
@@ -19,6 +18,8 @@ struct SpaceMenu: View {
     let onInfo: (String) -> Void
     let onCreate: () -> Void
 
+    /// -0.015em of the name.
+    @ScaledMetric(relativeTo: .title) private var tracking: CGFloat = -0.39
     @State private var open = false
     /// Run once the sheet has gone: another sheet can't open while this one is still on screen.
     @State private var afterClose: (() -> Void)?
@@ -26,20 +27,23 @@ struct SpaceMenu: View {
     var body: some View {
         let name = graph.spaceName(graph.space)
         let space = graph.spaces.first { $0.id == graph.space }
-        HStack(spacing: 10) {
+        HStack(spacing: 6) {
             Button {
                 open = true
             } label: {
-                HStack(spacing: 6) {
-                    SpaceIconImage(icon: space?.icon ?? "", size: iconSize).padding(.trailing, 2)
-                    Text(name).font(font).foregroundStyle(Color.ink).lineLimit(1)
+                HStack(spacing: 8) {
+                    SpaceIconImage(icon: space?.icon ?? "", size: iconSize)
+                    Text(name).font(.notesSpaceName).tracking(tracking).foregroundStyle(Color.ink).lineLimit(1)
                     Image(systemName: "chevron.down")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(Color.ink3)
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(Color.ink2)
                 }
+                .padding(.vertical, 4)
+                .padding(.leading, 6)
+                .padding(.trailing, 8)
                 .contentShape(.rect)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(HighlightStyle())
             .accessibilityLabel("Space: \(name)")
             TraitGroup(traits: space?.traits ?? [], onOpen: { onInfo(graph.space) })
         }
@@ -65,5 +69,14 @@ struct SpaceMenu: View {
     private func close(then action: @escaping () -> Void) {
         afterClose = action
         open = false
+    }
+}
+
+/// Pressed, a highlight behind the trigger: the traits' pill beside it is drawn to the same height and radius.
+private struct HighlightStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(
+                configuration.isPressed ? Color.hover : .clear, in: .rect(cornerRadius: 10, style: .continuous))
     }
 }

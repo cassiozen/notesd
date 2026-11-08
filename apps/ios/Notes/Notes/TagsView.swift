@@ -21,7 +21,6 @@ struct TagsView: View {
                 HStack {
                     // The space, always: its switcher makes new ones too.
                     SpaceMenu(
-                        font: .custom("InstrumentSerif-Regular", size: 27, relativeTo: .title), iconSize: 31,
                         invites: invites, changes: changes,
                         onJoin: { invite in
                             Task {
@@ -55,7 +54,8 @@ struct TagsView: View {
                     .buttonStyle(PressScaleStyle())
                     .accessibilityLabel("Settings")
                 }
-                .padding(.leading, 20)
+                // The switcher's highlight reaches 6 past its icon, which stays in line at 20.
+                .padding(.leading, 14)
                 .padding(.trailing, 8)
                 .padding(.bottom, 10)
 
