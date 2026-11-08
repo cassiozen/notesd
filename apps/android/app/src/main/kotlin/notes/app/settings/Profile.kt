@@ -141,8 +141,11 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val profile = account.profile
-    var name by remember { mutableStateOf(profile.displayName) }
+    // What the draft started from: a refresh while open mustn't turn an untouched name into a change.
+    val startName = remember { profile.displayName }
+    var name by remember { mutableStateOf(startName) }
     var photo by remember { mutableStateOf<Photo?>(null) }
+    var preparing by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf<String?>(null) }
     var photoError by remember { mutableStateOf<String?>(null) }
     var formError by remember { mutableStateOf<String?>(null) }
@@ -151,19 +154,21 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
     val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         photoError = null
+        preparing = true
         scope.launch {
-            photo = try {
+            try {
                 val bytes = preparePhoto(context.contentResolver, uri)
-                Photo.Chosen(bytes, BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap())
+                photo = Photo.Chosen(bytes, BitmapFactory.decodeByteArray(bytes, 0, bytes.size).asImageBitmap())
             } catch (e: ImageException) {
                 photoError = e.message
-                return@launch
+            } finally {
+                preparing = false
             }
         }
     }
 
     fun save() {
-        if (busy) return
+        if (busy || preparing) return
         busy = true
         nameError = null
         photoError = null
@@ -180,17 +185,20 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
                 }
                 return failed == null
             }
-            if (name.trim() != profile.displayName) step { api?.setDisplayName(name.trim()) }
+            if (name.trim() != startName) step { api?.setDisplayName(name.trim()) }
             when (val p = photo) {
                 is Photo.Chosen -> if (failed == null && step { api?.setAvatar(p.bytes) }) {
                     saved?.let { graph.avatars.put(it.id, it.avatar, p.bytes) }
                 }
 
-                Photo.Remove -> if (failed == null) step { api?.removeAvatar() }
+                Photo.Remove -> if (failed == null && step { api?.removeAvatar() }) graph.avatars.forget(profile.userId)
 
                 null -> Unit
             }
-            saved?.let { graph.accounts.profileChanged(Profile(it.id, it.displayName, it.avatar)) }
+            saved?.let {
+                val now = Profile(it.id, it.displayName, it.avatar)
+                graph.accounts.profileChanged(account.server, account.username, now)
+            }
             busy = false
             val r = failed ?: return@launch onDismiss()
             when {
@@ -233,7 +241,7 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
                         if (hasPhoto) "Change photo…" else "Choose photo…",
                         { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
                         kind = ButtonKind.Chip,
-                        enabled = !busy,
+                        enabled = !busy && !preparing,
                         small = true
                     )
                     if (hasPhoto) {
@@ -252,7 +260,7 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
             NotesField(
                 value = name,
                 onValueChange = {
-                    name = it.take(64)
+                    name = it
                     nameError = null
                 },
                 label = "Name",
@@ -261,7 +269,7 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
                 enabled = !busy
             )
             formError?.let { FormError(it) }
-            DialogActions(onDismiss, if (busy) "Saving…" else "Save", ::save, busy)
+            DialogActions(onDismiss, if (busy) "Saving…" else "Save", ::save, busy, enabled = !preparing)
         }
     }
 }

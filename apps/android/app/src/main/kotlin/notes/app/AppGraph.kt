@@ -251,9 +251,10 @@ class AppGraph(
 
     /** Whose account this is as of now: name, photo or admin may have changed elsewhere. Quiet when offline. */
     suspend fun refreshAccount() {
+        val asked = accounts.account.value as? Account.SignedIn ?: return
         val now = (api()?.session() as? ApiResult.Ok)?.value ?: return
-        accounts.profileChanged(Profile(now.userId, now.displayName, now.avatar))
-        accounts.adminChanged(now.isAdmin)
+        val profile = Profile(now.userId, now.displayName, now.avatar)
+        accounts.sessionRead(asked.server, asked.username, profile, now.isAdmin)
     }
 
     /** How this phone appears in the server's list of signed-in devices. */

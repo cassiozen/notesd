@@ -56,8 +56,15 @@ class AccountStoreTest {
         val store = AccountStore(file, sealer)
         store.signedIn("https://n.example/", signIn.copy(userId = 2, displayName = "Maria", avatar = "v1"))
         assertEquals(Profile(2, "Maria", "v1"), (AccountStore(file, sealer).account.value as Account.SignedIn).profile)
-        store.profileChanged(Profile(2, "Ana", ""))
+        store.profileChanged("https://n.example/", "me", Profile(2, "Ana", ""))
         assertEquals(Profile(2, "Ana", ""), (AccountStore(file, sealer).account.value as Account.SignedIn).profile)
+        // Asked for as someone else, who has since signed out: not this account's.
+        store.sessionRead("https://n.example/", "sam", Profile(3, "Sam", ""), isAdmin = true)
+        store.profileChanged("https://other.example/", "me", Profile(9, "Other", ""))
+        assertEquals(
+            Account.SignedIn("https://n.example/", "me", userId = 2, profile = Profile(2, "Ana", "")),
+            AccountStore(file, sealer).account.value
+        )
         store.signOut()
         assertEquals(
             Account.SignedOut("https://n.example/", "me", Profile(2, "Ana", "")),

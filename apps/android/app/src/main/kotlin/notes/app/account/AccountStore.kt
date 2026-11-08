@@ -94,16 +94,24 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         it.copy(userId = id)
     }
 
-    /** The name or photo changed, here or on another device. */
-    suspend fun profileChanged(profile: Profile) {
-        if (lock.withLock { saved?.profile } == profile) return
-        write {
-            it?.copy(
-                userId = profile.userId.takeIf { id -> id > 0 } ?: it.userId,
-                displayName = profile.displayName,
-                avatar = profile.avatar
-            )
-        }
+    /** [username] at [server]'s name or photo changed, here or on another device. */
+    suspend fun profileChanged(server: String, username: String, profile: Profile) =
+        sessionRead(server, username, profile, isAdmin = null)
+
+    /**
+     * What the server says of [username] at [server] now. Asked before an await: dropped if someone else has
+     * signed in by the time it arrives.
+     */
+    suspend fun sessionRead(server: String, username: String, profile: Profile, isAdmin: Boolean?) {
+        fun Saved.next() = copy(
+            userId = profile.userId.takeIf { it > 0 } ?: userId,
+            displayName = profile.displayName,
+            avatar = profile.avatar,
+            isAdmin = isAdmin ?: this.isAdmin
+        )
+        val current = lock.withLock { saved }
+        if (current == null || !current.isOf(server, username) || current.next() == current) return
+        write { if (it?.isOf(server, username) == true) it.next() else it }
     }
 
     /** What the server last said: another admin can change it at any time. */
@@ -111,6 +119,8 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         if ((account.value as? Account.SignedIn)?.isAdmin == isAdmin) return
         write { it?.copy(isAdmin = isAdmin) }
     }
+
+    private fun Saved.isOf(server: String, username: String) = this.server == server && this.username == username
 
     /** Forgets the tokens, keeps the server and username. */
     suspend fun signOut() = write { it?.copy(access = null, accessExpiresAt = 0, refresh = null) }

@@ -103,7 +103,8 @@ internal fun DialogActions(
     action: String,
     onAction: () -> Unit,
     busy: Boolean,
-    danger: Boolean = false
+    danger: Boolean = false,
+    enabled: Boolean = true
 ) {
     Spacer(Modifier.height(20.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -113,6 +114,7 @@ internal fun DialogActions(
             onAction,
             Modifier.weight(1f),
             kind = if (danger) ButtonKind.Danger else ButtonKind.Solid,
+            enabled = enabled,
             busy = busy
         )
     }

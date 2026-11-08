@@ -459,7 +459,7 @@ private fun InviteDialog(
             NotesField(
                 value = displayName,
                 onValueChange = {
-                    displayName = it.take(64)
+                    displayName = it
                     nameError = null
                 },
                 label = "Name (optional)",
