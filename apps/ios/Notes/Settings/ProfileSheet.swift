@@ -39,8 +39,8 @@ struct ProfileSheet: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
-    /// What the draft started from: a refresh while open mustn't turn an untouched name into a change.
-    @State private var startName = ""
+    /// The name as this sheet last saw it saved: a refresh while open mustn’t turn an untouched name into a change.
+    @State private var savedName = ""
     @State private var preparing = false
     @State private var picked: PhotosPickerItem?
     @State private var photo: Photo?
@@ -90,8 +90,8 @@ struct ProfileSheet: View {
             if let nameError { Text(nameError).font(.notesSmall).foregroundStyle(Color.errInk) }
         }
         .onAppear {
-            startName = graph.profile.displayName
-            name = startName
+            savedName = graph.profile.displayName
+            name = savedName
         }
         .onChange(of: picked) { _, item in
             guard let item else { return }
@@ -145,7 +145,10 @@ struct ProfileSheet: View {
             func step(_ result: ApiResult<Profile>) {
                 if case .ok(let profile) = result { saved = profile } else { failed = result }
             }
-            if trimmed != startName { step(await client.setDisplayName(trimmed)) }
+            if trimmed != savedName {
+                step(await client.setDisplayName(trimmed))
+                if failed == nil, let saved { savedName = saved.displayName }
+            }
             if failed == nil {
                 switch photo {
                 case .chosen(let jpeg, _):
