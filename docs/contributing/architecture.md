@@ -594,7 +594,8 @@ A space's owner can publish it as a small website, by analogy with HEY World: ev
 
 A space can have an agent: prompts the user writes, run by a model on the server when something
 happens to a note. It acts through tools on the notes in its own space and never sees a locked one.
-The user guide is [agents](../guides/using/agents.md).
+The user guide is [agents](../guides/using/agents.md); what an app does to take part is in
+[agent clients](agent-clients.md).
 
 - **Provider.** One OpenAI-compatible chat completions API per server, set up by an admin
   (`internal/llm`). The key stays in system.db. Test asks the model to call a tool; agents need
@@ -687,8 +688,10 @@ The user guide is [agents](../guides/using/agents.md).
   the moments it has prompts for ("While you write · when you’re done"). Its exposure is the AI
   provider ("Sent to the AI at api.example.com", audience `ai:<host>`): moving a note into the space
   asks first, since its notes go there. With no AI set up it has no exposure and its problem is
-  "AI isn’t set up". The agent is set up from its row in Space info, the trait's settings; Turn on is
-  offered once AI is set up, or to resume a paused agent.
+  "AI isn’t set up". The agent is set up in its section of Space info, in place: off, it's one line
+  with its switch; on, its purpose, rules and reference notes, saved together with the section's Save
+  (unsaved, Space info asks before it closes). The section shows once AI is set up, or to resume a
+  paused agent.
 - **Own spaces only.** Agents run in an account's own spaces, never a shared one (§7.9): a shared
   space's file has no agent store and its writes reach no hook, its setup is `404 not_found`, and a
   space whose agent is on can't be shared (`409 space_has_agent`); a paused agent goes with the
