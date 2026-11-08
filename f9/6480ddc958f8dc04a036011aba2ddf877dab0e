@@ -1,0 +1,29 @@
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_a0fc22670a88c5::t_58acafe69a3eed 274,276-279,282
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_a0fc22670a88c5::t_58acafe69a3eed 115-121,123-151
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Parking.kt
+  s_a0fc22670a88c5::t_58acafe69a3eed 84-85,87-104
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_a0fc22670a88c5::t_58acafe69a3eed 249-254
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_a0fc22670a88c5::t_83837967db4dff 172-205
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_a0fc22670a88c5::t_053724b847c1c8 254-264
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f96480ddc958f8dc04a036011aba2ddf877dab0e",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
