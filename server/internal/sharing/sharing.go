@@ -180,34 +180,37 @@ func (s *Service) List(ctx context.Context, userID int64) ([]spaces.Space, error
 
 // Space returns a shared space userID is in, as they see it, without traits.
 func (s *Service) Space(ctx context.Context, userID int64, spaceID string) (spaces.Space, error) {
-	sp := spaces.Space{ID: spaceID, Traits: []spaces.Trait{}}
 	var owner int64
-	err := s.system.R.QueryRowContext(ctx, `SELECT ss.name, ss.icon, ss.created_at, ss.owner_id FROM shared_spaces ss
+	err := s.system.R.QueryRowContext(ctx, `SELECT ss.owner_id FROM shared_spaces ss
 		JOIN space_members m ON m.space_id = ss.id AND m.user_id = ? WHERE ss.id = ? AND `+ready,
-		userID, spaceID).Scan(&sp.Name, &sp.Icon, &sp.CreatedAt, &owner)
+		userID, spaceID).Scan(&owner)
 	if errors.Is(err, sql.ErrNoRows) {
-		return sp, ErrNotFound
+		return spaces.Space{}, ErrNotFound
 	} else if err != nil {
-		return sp, err
+		return spaces.Space{}, err
 	}
 	shared := &spaces.Shared{Role: spaces.RoleMember}
 	if owner == userID {
 		shared.Role = spaces.RoleOwner
 	}
 	if shared.Members, err = s.members(ctx, spaceID); err != nil {
-		return sp, err
+		return spaces.Space{}, err
 	}
 	if shared.Role == spaces.RoleOwner {
 		if shared.Invites, err = s.invitees(ctx, spaceID); err != nil {
-			return sp, err
+			return spaces.Space{}, err
 		}
 	}
-	sp.Shared = shared
 	d, release, err := s.Open(ctx, userID, spaceID)
 	if err != nil {
-		return sp, err
+		return spaces.Space{}, err
 	}
 	defer release()
+	sp, err := d.Spaces.Get(ctx, spaceID)
+	if err != nil {
+		return spaces.Space{}, err
+	}
+	sp.Shared = shared
 	err = d.DB.R.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE deleted_at IS NULL`).Scan(&sp.NoteCount)
 	return sp, err
 }
@@ -373,8 +376,8 @@ func (s *Service) share(ctx context.Context, ownerID int64, spaceID string) erro
 		}
 		return s.system.WriteTx(ctx, func(tx *sql.Tx) error {
 			now := s.now().UnixMilli()
-			if _, err := tx.ExecContext(ctx, `INSERT INTO shared_spaces (id, name, icon, owner_id, created_at)
-				VALUES (?, ?, ?, ?, ?)`, spaceID, row.Name, row.Icon, ownerID, row.CreatedAt); err != nil {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO shared_spaces (id, owner_id, created_at)
+				VALUES (?, ?, ?)`, spaceID, ownerID, row.CreatedAt); err != nil {
 				return err
 			}
 			_, err := tx.ExecContext(ctx, `INSERT INTO space_members (space_id, user_id, joined_at) VALUES (?, ?, ?)`,
@@ -518,23 +521,51 @@ func (s *Service) openRef(ctx context.Context, ref string) (*userdata.Data, erro
 
 // Invitations lists the invitations waiting for userID.
 func (s *Service) Invitations(ctx context.Context, userID int64) ([]Invitation, error) {
-	rows, err := s.system.R.QueryContext(ctx, `SELECT i.id, ss.id, ss.name, ss.icon, u.id, u.username, i.created_at
-		FROM space_invites i JOIN shared_spaces ss ON ss.id = i.space_id JOIN users u ON u.id = i.invited_by
+	rows, err := s.system.R.QueryContext(ctx, `SELECT i.id, i.space_id, u.id, u.username, i.created_at
+		FROM space_invites i JOIN users u ON u.id = i.invited_by
 		WHERE i.user_id = ? ORDER BY i.created_at, i.id`, userID)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	out := []Invitation{}
+	var all []Invitation
 	for rows.Next() {
 		var in Invitation
-		if err := rows.Scan(&in.ID, &in.SpaceID, &in.SpaceName, &in.SpaceIcon, &in.From.ID, &in.From.Username,
-			&in.CreatedAt); err != nil {
+		if err := rows.Scan(&in.ID, &in.SpaceID, &in.From.ID, &in.From.Username, &in.CreatedAt); err != nil {
+			rows.Close()
 			return nil, err
 		}
+		all = append(all, in)
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	out := []Invitation{}
+	for _, in := range all {
+		sp, err := s.identity(ctx, in.SpaceID)
+		if errors.Is(err, ErrNotFound) {
+			continue // deleted since the list
+		} else if err != nil {
+			return nil, err
+		}
+		in.SpaceName, in.SpaceIcon = sp.Name, sp.Icon
 		out = append(out, in)
 	}
-	return out, rows.Err()
+	return out, nil
+}
+
+// identity is a shared space's name and icon, from its file, for an account that may not be in it yet.
+func (s *Service) identity(ctx context.Context, spaceID string) (spaces.Space, error) {
+	release := s.read(spaceID)
+	defer release()
+	d, err := s.files.OpenSpaceIfExists(ctx, spaceID)
+	if err != nil {
+		return spaces.Space{}, err
+	}
+	if d == nil {
+		return spaces.Space{}, ErrNotFound
+	}
+	return d.Spaces.Get(ctx, spaceID)
 }
 
 // Accept has userID join the space an invitation of theirs is for.
@@ -650,18 +681,12 @@ func (s *Service) Rename(ctx context.Context, ownerID int64, spaceID, name strin
 	if err := s.mustOwn(ctx, ownerID, spaceID); err != nil {
 		return spaces.Space{}, err
 	}
-	name, err := spaces.NormalizeName(name)
+	d, release, err := s.Open(ctx, ownerID, spaceID)
 	if err != nil {
 		return spaces.Space{}, err
 	}
-	if icon != nil && !spaces.ValidIcon(*icon) {
-		return spaces.Space{}, &spaces.InputError{Field: "icon", Message: "must be at most 64 characters of [a-z0-9-]"}
-	}
-	err = s.system.WriteTx(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `UPDATE shared_spaces SET name = ?, icon = coalesce(?, icon) WHERE id = ?`,
-			name, icon, spaceID)
-		return err
-	})
+	_, err = d.Spaces.Put(ctx, spaceID, name, icon)
+	release()
 	if err != nil {
 		return spaces.Space{}, err
 	}

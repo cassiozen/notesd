@@ -53,6 +53,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
@@ -169,7 +170,7 @@ func run(args []string) error {
 	defer stop()
 
 	systemPath := filepath.Join(o.dataDir, "system.db")
-	system, err := database.OpenSystem(ctx, systemPath)
+	system, err := database.OpenSystem(ctx, systemPath, userdata.SpaceNames(o.dataDir))
 	if err != nil {
 		return fmt.Errorf("open database %s: %w", systemPath, err)
 	}
@@ -256,28 +257,40 @@ func run(args []string) error {
 		}
 		return withUserDB(ctx, o.dataDir, u, func(db *database.DB) error {
 			var done []sharedSpace
-			var dbs []*database.DB
+			var dbs []*database.DB // every one opened, to close
 			defer func() {
 				for _, sdb := range dbs {
 					sdb.Close()
 				}
 			}()
-			for _, sp := range shared {
+			for _, id := range shared {
 				// A share cut short by a stop: its notes are the space's once the account's file let go of it.
 				var held bool
-				if err := db.R.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM spaces WHERE id = ?)`, sp.id).Scan(&held); err != nil {
+				if err := db.R.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM spaces WHERE id = ?)`, id).Scan(&held); err != nil {
 					return err
 				}
 				if held {
 					continue
 				}
-				sdb, err := database.Open(ctx, userdata.SpacePath(o.dataDir, sp.id))
+				sdb, err := database.Open(ctx, userdata.SpacePath(o.dataDir, id))
 				if err != nil {
-					return fmt.Errorf("open shared space %s: %w", sp.name, err)
+					return fmt.Errorf("open shared space %s: %w", id, err)
 				}
-				done, dbs = append(done, sp), append(dbs, sdb)
+				dbs = append(dbs, sdb)
+				sp, err := spaces.NewStore(sdb).Get(ctx, id)
+				if err != nil {
+					return fmt.Errorf("shared space %s: %w", id, err)
+				}
+				done = append(done, sharedSpace{id: id, name: sp.Name, db: sdb})
 			}
-			return export(ctx, db, done, dbs, o)
+			// By name: the order folders whose names clash are numbered in.
+			sort.Slice(done, func(i, j int) bool {
+				if done[i].name != done[j].name {
+					return done[i].name < done[j].name
+				}
+				return done[i].id < done[j].id
+			})
+			return export(ctx, db, done, o)
 		})
 	case "import":
 		u, err := oneUser(ctx, authSvc, o.username)
@@ -375,20 +388,38 @@ func notesFiles(ctx context.Context, system *database.DB, a *auth.Service, o opt
 	if o.username != "" {
 		return out, nil
 	}
-	rows, err := system.R.QueryContext(ctx, `SELECT id, name FROM shared_spaces ORDER BY name, id`)
+	rows, err := system.R.QueryContext(ctx, `SELECT id FROM shared_spaces ORDER BY id`)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	var ids []string
 	for rows.Next() {
-		var id, name string
-		if err := rows.Scan(&id, &name); err != nil {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			rows.Close()
 			return nil, err
 		}
-		// Names aren't unique; the id is the file's name in spaces/.
-		out = append(out, notesFile{"shared space " + name + " (" + id + ")", userdata.SpacePath(o.dataDir, id)})
+		ids = append(ids, id)
 	}
-	return out, rows.Err()
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	for _, id := range ids {
+		path := userdata.SpacePath(o.dataDir, id)
+		// Names aren't unique; the id is the file's name in spaces/. Without a name (a file check is
+		// about to find broken), the id alone.
+		label := "shared space " + id
+		_ = withDB(ctx, path, func(db *database.DB) error {
+			sp, err := spaces.NewStore(db).Get(ctx, id)
+			if err == nil {
+				label = "shared space " + sp.Name + " (" + id + ")"
+			}
+			return err
+		})
+		out = append(out, notesFile{label, path})
+	}
+	return out, nil
 }
 
 // withUserDB opens a user's notes database for a command.
@@ -446,9 +477,9 @@ func checkDB(ctx context.Context, db *database.DB, store *images.Store) error {
 	return nil
 }
 
-// export writes an account's notes, and those of the shared spaces it's in
-// (shared, opened as dbs), to o.out.
-func export(ctx context.Context, db *database.DB, shared []sharedSpace, dbs []*database.DB, o options) error {
+// export writes an account's notes, and those of the shared spaces it's in,
+// to o.out.
+func export(ctx context.Context, db *database.DB, shared []sharedSpace, o options) error {
 	// Before any prompt: a refused folder shouldn't cost the password.
 	if err := checkExportDir(o.out); err != nil {
 		return err
@@ -457,8 +488,8 @@ func export(ctx context.Context, db *database.DB, shared []sharedSpace, dbs []*d
 	if err != nil {
 		return err
 	}
-	for _, sdb := range dbs {
-		more, err := liveNotes(ctx, sdb)
+	for _, sp := range shared {
+		more, err := liveNotes(ctx, sp.db)
 		if err != nil {
 			return err
 		}
@@ -491,8 +522,8 @@ func export(ctx context.Context, db *database.DB, shared []sharedSpace, dbs []*d
 		return err
 	}
 	stores := []*images.Store{images.NewStore(db)}
-	for _, sdb := range dbs {
-		stores = append(stores, images.NewStore(sdb))
+	for _, sp := range shared {
+		stores = append(stores, images.NewStore(sp.db))
 	}
 	res, err := writeExport(o.out, all, folders, key, func(id string) (string, []byte, error) {
 		// An image is the same bytes in every file that has it.
@@ -550,15 +581,19 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 				if err != nil {
 					return nil, err
 				}
-				for _, sp := range shared {
-					sd, err := users.OpenSpaceIfExists(ctx, sp.id)
+				for _, id := range shared {
+					sd, err := users.OpenSpaceIfExists(ctx, id)
 					if err != nil {
 						return nil, err
 					}
 					if sd == nil {
 						continue // deleted since the list
 					}
-					out = append(out, mirror.Source{Feed: sp.id, Name: sp.name, DB: sd.DB})
+					sp, err := sd.Spaces.Get(ctx, id)
+					if err != nil {
+						return nil, err
+					}
+					out = append(out, mirror.Source{Feed: id, Name: sp.Name, DB: sd.DB})
 				}
 				return out, nil
 			},
@@ -826,27 +861,30 @@ func collectImages(ctx context.Context, system *database.DB, a *auth.Service, us
 	}
 }
 
-// sharedSpace is a shared space as a command or the mirror lists it.
-type sharedSpace struct{ id, name string }
+// sharedSpace is a shared space export writes, with its file open.
+type sharedSpace struct {
+	id, name string
+	db       *database.DB
+}
 
-// memberSpaces lists the shared spaces userID is in (§7.9). Without pending, one still being shared, whose
-// notes are in the owner's file, is left out.
-func memberSpaces(ctx context.Context, system *database.DB, userID int64, pending bool) ([]sharedSpace, error) {
-	rows, err := system.R.QueryContext(ctx, `SELECT ss.id, ss.name FROM shared_spaces ss
+// memberSpaces lists the ids of the shared spaces userID is in (§7.9). Without pending, one still being
+// shared, whose notes are in the owner's file, is left out.
+func memberSpaces(ctx context.Context, system *database.DB, userID int64, pending bool) ([]string, error) {
+	rows, err := system.R.QueryContext(ctx, `SELECT ss.id FROM shared_spaces ss
 		JOIN space_members m ON m.space_id = ss.id AND m.user_id = ?
 		WHERE ? OR NOT EXISTS (SELECT 1 FROM space_moves mv WHERE mv.kind = 'space' AND mv.space_id = ss.id)
-		ORDER BY ss.name, ss.id`, userID, pending)
+		ORDER BY ss.id`, userID, pending)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var out []sharedSpace
+	var out []string
 	for rows.Next() {
-		var sp sharedSpace
-		if err := rows.Scan(&sp.id, &sp.name); err != nil {
+		var id string
+		if err := rows.Scan(&id); err != nil {
 			return nil, err
 		}
-		out = append(out, sp)
+		out = append(out, id)
 	}
 	return out, rows.Err()
 }

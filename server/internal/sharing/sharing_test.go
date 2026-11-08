@@ -101,7 +101,7 @@ func TestRecoverFinishesAShareWhoseSpaceIsWritten(t *testing.T) {
 	e := newEnv(t)
 	e.exec(`INSERT INTO space_moves (id, kind, space_id, source, dest, created_at) VALUES ('m', 'space', 'fam', 'user:1', 'space:fam', 0)`)
 	dest := e.copyToSpace()
-	e.exec(`INSERT INTO shared_spaces (id, name, icon, owner_id, created_at) VALUES ('fam', 'Family', '', 1, 0)`)
+	e.exec(`INSERT INTO shared_spaces (id, owner_id, created_at) VALUES ('fam', 1, 0)`)
 	e.exec(`INSERT INTO space_members (space_id, user_id, joined_at) VALUES ('fam', 1, 0)`)
 
 	if err := e.s.Recover(e.ctx); err != nil {
@@ -152,7 +152,7 @@ func TestRecoverFinishesANoteMoveWhoseDestinationHasIt(t *testing.T) {
 	if _, err := e.owner.Spaces.Put(e.ctx, "other", "Other", nil); err != nil {
 		t.Fatal(err)
 	}
-	e.exec(`INSERT INTO shared_spaces (id, name, icon, owner_id, created_at) VALUES ('sh', 'Shared', '', 1, 0)`)
+	e.exec(`INSERT INTO shared_spaces (id, owner_id, created_at) VALUES ('sh', 1, 0)`)
 	e.exec(`INSERT INTO space_members (space_id, user_id, joined_at) VALUES ('sh', 1, 0)`)
 	dest, err := e.files.OpenSpace(e.ctx, "sh")
 	if err != nil {
@@ -270,5 +270,51 @@ func TestSharingASpaceNamedLikeTheDefault(t *testing.T) {
 	sp, err := e.s.Space(e.ctx, 1, "fam")
 	if err != nil || sp.Name != "Notes" || sp.NoteCount != 2 {
 		t.Fatalf("shared: %+v %v", sp, err)
+	}
+}
+
+func TestRenamingASharedSpaceRenamesItInItsFile(t *testing.T) {
+	e := newEnv(t)
+	accounts := auth.NewService(e.system)
+	for _, u := range []string{"kid", "gran"} {
+		if _, err := accounts.AddUser(e.ctx, u, "another horse battery", false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	in, err := e.s.Invite(e.ctx, 1, "fam", 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.Accept(e.ctx, 2, in.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.Invite(e.ctx, 1, "fam", 3); err != nil {
+		t.Fatal(err)
+	}
+	icon := "garden"
+	if _, err := e.s.Rename(e.ctx, 1, "fam", "  Household ", &icon); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.Rename(e.ctx, 2, "fam", "Mine", nil); !errors.Is(err, sharing.ErrNotOwner) {
+		t.Fatalf("a member renames: %v", err)
+	}
+
+	d, err := e.files.OpenSpace(e.ctx, "fam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sp, err := d.Spaces.Get(e.ctx, "fam"); err != nil || sp.Name != "Household" || sp.Icon != "garden" {
+		t.Fatalf("in its file: %+v %v", sp, err)
+	}
+	if sp, err := e.s.Space(e.ctx, 2, "fam"); err != nil || sp.Name != "Household" || sp.Icon != "garden" {
+		t.Fatalf("as a member sees it: %+v %v", sp, err)
+	}
+	invites, err := e.s.Invitations(e.ctx, 3)
+	if err != nil || len(invites) != 1 || invites[0].SpaceName != "Household" || invites[0].SpaceIcon != "garden" {
+		t.Fatalf("as an invitee sees it: %+v %v", invites, err)
+	}
+	// Keeping the icon.
+	if sp, err := e.s.Rename(e.ctx, 1, "fam", "Home", nil); err != nil || sp.Name != "Home" || sp.Icon != "garden" {
+		t.Fatalf("renamed again: %+v %v", sp, err)
 	}
 }

@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"notes/server/internal/database"
+	"notes/server/internal/spaces"
 )
 
 // legacyName is the single database of a data directory from before there
@@ -197,4 +198,62 @@ func importAccounts(ctx context.Context, legacy string, system *database.DB) err
 		}
 		return nil
 	})
+}
+
+// SpaceNames copies each shared space's name and icon from system.db into its file's spaces row, before
+// system migration 4 drops them from system.db: a space's own settings live with its notes (§7.8). Its
+// file, made when the space was shared, has the row already, out of date after any rename. The default
+// space the notes migrations gave that file goes first, as it does whenever the server opens it, so a space
+// named "Notes" doesn't clash with it.
+func SpaceNames(dataDir string) database.Step {
+	return database.Step{Before: 4, Run: func(ctx context.Context, w *sql.DB) error {
+		type named struct {
+			id, name, icon string
+			created        int64
+		}
+		var list []named
+		rows, err := w.QueryContext(ctx, `SELECT id, name, icon, created_at FROM shared_spaces`)
+		if err != nil {
+			return err
+		}
+		for rows.Next() {
+			var n named
+			if err := rows.Scan(&n.id, &n.name, &n.icon, &n.created); err != nil {
+				rows.Close()
+				return err
+			}
+			list = append(list, n)
+		}
+		rows.Close()
+		if err := rows.Err(); err != nil {
+			return err
+		}
+		for _, n := range list {
+			err := withSpaceFile(ctx, SpacePath(dataDir, n.id), func(db *database.DB) error {
+				if err := dropDefaultSpace(ctx, db); err != nil {
+					return err
+				}
+				return db.WriteTx(ctx, func(tx *sql.Tx) error {
+					_, err := tx.ExecContext(ctx, `INSERT INTO spaces (id, name, name_key, icon, created_at)
+						VALUES (?, ?, ?, ?, ?)
+						ON CONFLICT (id) DO UPDATE SET name = excluded.name, name_key = excluded.name_key, icon = excluded.icon`,
+						n.id, n.name, spaces.Key(n.name), n.icon, n.created)
+					return err
+				})
+			})
+			if err != nil {
+				return fmt.Errorf("shared space %s: %w", n.id, err)
+			}
+		}
+		return nil
+	}}
+}
+
+func withSpaceFile(ctx context.Context, path string, fn func(*database.DB) error) error {
+	db, err := database.Open(ctx, path)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
+	return fn(db)
 }
