@@ -42,11 +42,20 @@ func Open(ctx context.Context, path string) (*DB, error) {
 
 // OpenSystem opens (creating if needed) the system database at path:
 // users, sessions and server-wide settings.
-func OpenSystem(ctx context.Context, path string) (*DB, error) {
-	return open(ctx, path, migrations.System)
+func OpenSystem(ctx context.Context, path string, steps ...Step) (*DB, error) {
+	return open(ctx, path, migrations.System, steps...)
 }
 
-func open(ctx context.Context, path string, schema fs.FS) (*DB, error) {
+// Step runs Go code before migration Before applies: for data that leaves
+// this database for another file, which SQL can't reach. It must be safe to
+// run again, since a stop between it and the migration runs it on the next
+// open.
+type Step struct {
+	Before int
+	Run    func(ctx context.Context, w *sql.DB) error
+}
+
+func open(ctx context.Context, path string, schema fs.FS, steps ...Step) (*DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return nil, fmt.Errorf("create data directory: %w", err)
 	}
@@ -60,7 +69,7 @@ func open(ctx context.Context, path string, schema fs.FS) (*DB, error) {
 	w.SetConnMaxLifetime(0)
 	w.SetConnMaxIdleTime(0)
 
-	if err := migrate(ctx, w, schema); err != nil {
+	if err := migrate(ctx, w, schema, steps); err != nil {
 		w.Close()
 		return nil, err
 	}
@@ -240,7 +249,7 @@ func LatestVersion() int {
 	return ms[len(ms)-1].version
 }
 
-func migrate(ctx context.Context, w *sql.DB, schema fs.FS) error {
+func migrate(ctx context.Context, w *sql.DB, schema fs.FS, steps []Step) error {
 	ms, err := loadMigrations(schema)
 	if err != nil {
 		return err
@@ -253,6 +262,13 @@ func migrate(ctx context.Context, w *sql.DB, schema fs.FS) error {
 		return fmt.Errorf("database schema version %d is newer than this binary supports (%d); upgrade notesd", current, latest)
 	}
 	for _, m := range ms[current:] {
+		for _, st := range steps {
+			if st.Before == m.version {
+				if err := st.Run(ctx, w); err != nil {
+					return fmt.Errorf("before migration %s: %w", m.name, err)
+				}
+			}
+		}
 		err := runTx(ctx, w, nil, func(tx *sql.Tx) error {
 			if _, err := tx.ExecContext(ctx, m.sql); err != nil {
 				return err

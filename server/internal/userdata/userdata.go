@@ -7,6 +7,7 @@ package userdata
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -149,6 +150,10 @@ func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error)
 		db.Close()
 		return nil, fmt.Errorf("rebuild search index of %s: %w", path, err)
 	}
+	if err := dropDefaultSpace(ctx, db); err != nil {
+		db.Close()
+		return nil, fmt.Errorf("%s: %w", path, err)
+	}
 	d := New(db)
 	d.Notes.ServeShared(spaceID)
 	if fn := r.onSpaceChange; fn != nil {
@@ -159,6 +164,15 @@ func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error)
 	}
 	r.spaces[spaceID] = d
 	return d, nil
+}
+
+// dropDefaultSpace removes the default space the notes migrations give every file from a shared space's,
+// which holds only its own (§7.9): its "Notes" would otherwise take that name from the shared space.
+func dropDefaultSpace(ctx context.Context, db *database.DB) error {
+	return db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `DELETE FROM spaces WHERE id = ?`, spaces.Default)
+		return err
+	})
 }
 
 // OpenSpaceIfExists is OpenSpace for a background job: nil, without creating one, when the file is gone

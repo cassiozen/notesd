@@ -66,7 +66,8 @@ type Invitee struct {
 
 // Errors.
 var (
-	ErrDefault = errors.New("the default space can't be deleted")
+	ErrDefault  = errors.New("the default space can't be deleted")
+	ErrNotFound = errors.New("no such space")
 )
 
 // NotEmptyError refuses deleting a space that still holds notes.
@@ -133,6 +134,17 @@ func (s *Store) List(ctx context.Context) ([]Space, error) {
 	// Trait sources may need a connection of their own from the read pool.
 	rows.Close()
 	return out, s.WithTraits(ctx, out)
+}
+
+// Get returns one space as stored, without its note count or traits.
+func (s *Store) Get(ctx context.Context, id string) (Space, error) {
+	sp := Space{ID: id, Traits: []Trait{}}
+	err := s.db.R.QueryRowContext(ctx, `SELECT name, icon, created_at FROM spaces WHERE id = ?`, id).
+		Scan(&sp.Name, &sp.Icon, &sp.CreatedAt)
+	if errors.Is(err, sql.ErrNoRows) {
+		return sp, ErrNotFound
+	}
+	return sp, err
 }
 
 // Put creates the space id or renames it, and sets its icon unless icon is

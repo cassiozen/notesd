@@ -236,7 +236,7 @@ func TestSharedSpacesInCommands(t *testing.T) {
 	if err := cmd("add-user", "--username", "kid"); err != nil {
 		t.Fatal(err)
 	}
-	// The owner shares "Family", holding one note, with Kid, who joins.
+	// The owner shares "Family", holding one note, with Kid, who joins; then renames it.
 	func() {
 		system, err := database.OpenSystem(ctx, filepath.Join(dir, "system.db"))
 		if err != nil {
@@ -265,18 +265,22 @@ func TestSharedSpacesInCommands(t *testing.T) {
 		if _, err := share.Accept(ctx, 2, in.ID); err != nil {
 			t.Fatal(err)
 		}
+		// Shared, it's renamed in its own file.
+		if _, err := share.Rename(ctx, 1, "fam", "Household", nil); err != nil {
+			t.Fatal(err)
+		}
 	}()
 
 	out := filepath.Join(dir, "out")
 	if err := cmd("export", "--username", "kid", "--out", out); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := os.ReadFile(filepath.Join(out, "Family", "Groceries.md")); err != nil || !strings.Contains(string(got), "Milk") {
+	if got, err := os.ReadFile(filepath.Join(out, "Household", "Groceries.md")); err != nil || !strings.Contains(string(got), "Milk") {
 		t.Fatalf("a member's export has the shared space: %q %v", got, err)
 	}
 	for _, c := range [][]string{{"reindex"}, {"check"}, {"gc-images", "--dry-run"}} {
 		out, err := stdout(t, func() error { return cmd(c...) })
-		if err != nil || !strings.Contains(out, "shared space Family (fam): ") {
+		if err != nil || !strings.Contains(out, "shared space Household (fam): ") {
 			t.Fatalf("%v over the shared space's file too: %v\n%s", c, err, out)
 		}
 	}
