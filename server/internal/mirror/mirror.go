@@ -37,12 +37,23 @@ type Account struct {
 	Username string
 }
 
+// Source is a notes file a user reaches: their own, or a shared space's
+// they're in (§7.9).
+type Source struct {
+	// Feed is the shared space's id; "" for the user's own file.
+	Feed string
+	// Name is the shared space's name.
+	Name string
+	DB   *database.DB
+}
+
 // Config is what a Mirror needs from the server.
 type Config struct {
 	Dir      string
 	Accounts func(context.Context) ([]Account, error)
-	Open     func(ctx context.Context, userID int64) (*database.DB, error)
-	Log      *slog.Logger
+	// Open returns the files a user reaches, their own first.
+	Open func(ctx context.Context, userID int64) ([]Source, error)
+	Log  *slog.Logger
 }
 
 // Mirror writes users' notes under Dir/<username>.
@@ -197,11 +208,11 @@ func (m *Mirror) flush(ctx context.Context, userID int64) error {
 	if err != nil {
 		return err
 	}
-	db, err := m.cfg.Open(ctx, userID)
+	sources, err := m.cfg.Open(ctx, userID)
 	if err != nil {
 		return err
 	}
-	return u.flush(ctx, db, m.cfg.Log)
+	return u.flush(ctx, sources, m.cfg.Log)
 }
 
 // user returns a user's mirror state, loading its manifest the first time.

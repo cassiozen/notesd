@@ -33,14 +33,25 @@ const (
 // manifest is what a user's folder holds, as the mirror wrote it. Paths are
 // slash-separated, from the user's folder.
 type manifest struct {
+	// The user's own file's feed.
 	Generation string            `json:"generation"`
 	Cursor     int64             `json:"cursor"`
 	Spaces     map[string]string `json:"spaces"` // space id → folder
 	Notes      map[string]*entry `json:"notes"`
 	Images     map[string]string `json:"images"` // image id → path
+	// Each shared space's feed (§7.9), by its id.
+	Feeds map[string]*feed `json:"feeds,omitempty"`
+}
+
+type feed struct {
+	Generation string `json:"generation"`
+	Cursor     int64  `json:"cursor"`
 }
 
 type entry struct {
+	// The shared space whose feed wrote it; "" for the user's own file. Only
+	// that feed removes it: a note that moved files is live in the other.
+	Feed   string   `json:"feed,omitempty"`
 	Path   string   `json:"path"`
 	Hash   string   `json:"hash"` // of the file as written
 	Images []string `json:"images,omitempty"`
@@ -56,6 +67,8 @@ type user struct {
 	files, folders map[string]string
 	// Folders of deleted spaces, removed once the notes have left them.
 	orphans []string
+	// The files this flush reads, the user's own first.
+	sources []Source
 }
 
 // loadUser reads a user's manifest, or starts one in a missing or empty
@@ -103,6 +116,9 @@ func loadUser(dir string) (*user, error) {
 	}
 	if u.man.Images == nil {
 		u.man.Images = map[string]string{}
+	}
+	if u.man.Feeds == nil {
+		u.man.Feeds = map[string]*feed{}
 	}
 	u.index()
 	return u, nil
@@ -168,9 +184,9 @@ func (u *user) save() error {
 
 func (u *user) abs(p string) string { return filepath.Join(u.dir, filepath.FromSlash(p)) }
 
-// flush brings the folder up to date with db. Stopped by ctx, it keeps what
-// it wrote, and the next flush goes on from there.
-func (u *user) flush(ctx context.Context, db *database.DB, log *slog.Logger) (err error) {
+// flush brings the folder up to date with the files the user reaches.
+// Stopped by ctx, it keeps what it wrote, and the next flush goes on from there.
+func (u *user) flush(ctx context.Context, sources []Source, log *slog.Logger) (err error) {
 	if err := noLink(u.dir); err != nil {
 		return err
 	}
@@ -182,22 +198,89 @@ func (u *user) flush(ctx context.Context, db *database.DB, log *slog.Logger) (er
 			err = serr
 		}
 	}()
-	if err := u.syncSpaces(ctx, db); err != nil {
+	u.sources = sources
+	if err := u.syncSpaces(ctx); err != nil {
 		return err
 	}
+	reached := map[string]Source{}
+	for _, src := range sources {
+		reached[src.Feed] = src
+		if err := u.flushFeed(ctx, src, log); err != nil {
+			return err
+		}
+	}
+	// A shared space the user left: its notes leave the folder too.
+	for id, e := range u.man.Notes {
+		if _, ok := reached[e.Feed]; !ok {
+			if err := u.remove(id); err != nil {
+				return err
+			}
+		}
+	}
+	for f := range u.man.Feeds {
+		if _, ok := reached[f]; !ok {
+			delete(u.man.Feeds, f)
+		}
+	}
+
+	for id, e := range u.man.Notes {
+		if !e.Missing {
+			continue
+		}
+		src := reached[e.Feed]
+		n, err := notes.NewStore(src.DB).Get(ctx, id)
+		if errors.Is(err, notes.ErrNotFound) {
+			if err := u.remove(id); err != nil {
+				return err
+			}
+			continue
+		}
+		if err != nil {
+			return err
+		}
+		if err := u.apply(ctx, src, n, imagesOf(ctx, src.DB)); err != nil {
+			return fmt.Errorf("note %s: %w", n.ID, err)
+		}
+	}
+	for _, f := range u.orphans {
+		// Fails, and stays, while it holds files the mirror didn't write.
+		_ = os.Remove(u.abs(f))
+	}
+	u.orphans = nil
+	return u.collectImages()
+}
+
+func imagesOf(ctx context.Context, db *database.DB) mdexport.GetImage {
 	store := images.NewStore(db)
-	get := func(id string) (string, []byte, error) {
+	return func(id string) (string, []byte, error) {
 		img, data, err := store.Get(ctx, id)
 		return img.ContentType, data, err
 	}
+}
+
+// flushFeed writes what changed in one file since its cursor.
+func (u *user) flushFeed(ctx context.Context, src Source, log *slog.Logger) error {
+	state := &feed{Generation: u.man.Generation, Cursor: u.man.Cursor}
+	if src.Feed != "" {
+		if u.man.Feeds[src.Feed] == nil {
+			u.man.Feeds[src.Feed] = &feed{}
+		}
+		state = u.man.Feeds[src.Feed]
+	}
+	defer func() {
+		if src.Feed == "" {
+			u.man.Generation, u.man.Cursor = state.Generation, state.Cursor
+		}
+	}()
+	get := imagesOf(ctx, src.DB)
 
 	// A restored backup is another lineage (§11.4): its notes are written
 	// from scratch, and files of notes it doesn't have are removed.
 	var seen map[string]bool
-	cursor := u.man.Cursor
+	cursor := state.Cursor
 	for {
-		page, err := sync.Changes(ctx, db, cursor, pageSize, "")
-		if seen == nil && (errors.Is(err, sync.ErrCursorAhead) || (err == nil && page.Generation != u.man.Generation)) {
+		page, err := sync.Changes(ctx, src.DB, cursor, pageSize, "")
+		if seen == nil && (errors.Is(err, sync.ErrCursorAhead) || (err == nil && page.Generation != state.Generation)) {
 			seen, cursor = map[string]bool{}, 0
 			continue
 		}
@@ -211,64 +294,42 @@ func (u *user) flush(ctx context.Context, db *database.DB, log *slog.Logger) (er
 			if seen != nil {
 				seen[n.ID] = true
 			}
-			if err := u.apply(ctx, db, n, get); err != nil {
+			if err := u.apply(ctx, src, n, get); err != nil {
 				return fmt.Errorf("note %s: %w", n.ID, err)
 			}
 			if seen == nil {
-				u.man.Cursor = n.ChangeSeq
+				state.Cursor = n.ChangeSeq
 			}
 		}
 		cursor = page.NextCursor
 		if seen == nil {
-			u.man.Cursor = cursor
+			state.Cursor = cursor
 		}
 		if !page.HasMore {
 			if seen != nil {
-				for id := range u.man.Notes {
-					if !seen[id] {
+				for id, e := range u.man.Notes {
+					if !seen[id] && e.Feed == src.Feed {
 						if err := u.remove(id); err != nil {
 							return err
 						}
 					}
 				}
-				u.man.Generation, u.man.Cursor = page.Generation, cursor
-				log.Info("markdown mirror written in full", "dir", u.dir, "notes", len(u.man.Notes))
+				state.Generation, state.Cursor = page.Generation, cursor
+				log.Info("markdown mirror written in full", "dir", u.dir, "feed", src.Feed, "notes", len(u.man.Notes))
 			}
-			break
+			return nil
 		}
 	}
-
-	for id, e := range u.man.Notes {
-		if !e.Missing {
-			continue
-		}
-		n, err := notes.NewStore(db).Get(ctx, id)
-		if errors.Is(err, notes.ErrNotFound) {
-			if err := u.remove(id); err != nil {
-				return err
-			}
-			continue
-		}
-		if err != nil {
-			return err
-		}
-		if err := u.apply(ctx, db, n, get); err != nil {
-			return fmt.Errorf("note %s: %w", n.ID, err)
-		}
-	}
-	for _, f := range u.orphans {
-		// Fails, and stays, while it holds files the mirror didn't write.
-		_ = os.Remove(u.abs(f))
-	}
-	u.orphans = nil
-	return u.collectImages()
 }
 
 // syncSpaces gives each space a folder, renaming those whose space was.
-func (u *user) syncSpaces(ctx context.Context, db *database.DB) error {
-	list, err := spaces.NewStore(db).List(ctx)
+func (u *user) syncSpaces(ctx context.Context) error {
+	list, err := spaces.NewStore(u.sources[0].DB).List(ctx)
 	if err != nil {
 		return err
+	}
+	for _, src := range u.sources[1:] {
+		list = append(list, spaces.Space{ID: src.Feed, Name: src.Name})
 	}
 	live := map[string]bool{}
 	for _, sp := range list {
@@ -342,12 +403,12 @@ func (u *user) moveFolder(old, name string) error {
 }
 
 // folder is the folder of a note's space.
-func (u *user) folder(ctx context.Context, db *database.DB, spaceID string) (string, error) {
+func (u *user) folder(ctx context.Context, spaceID string) (string, error) {
 	if f, ok := u.man.Spaces[spaceID]; ok {
 		return f, nil
 	}
 	// Created after this flush listed them.
-	if err := u.syncSpaces(ctx, db); err != nil {
+	if err := u.syncSpaces(ctx); err != nil {
 		return "", err
 	}
 	if f, ok := u.man.Spaces[spaceID]; ok {
@@ -359,14 +420,17 @@ func (u *user) folder(ctx context.Context, db *database.DB, spaceID string) (str
 	return "", fmt.Errorf("no folder for space %s", spaceID)
 }
 
-// apply writes, moves or removes one note's file.
-func (u *user) apply(ctx context.Context, db *database.DB, n notes.Note, get mdexport.GetImage) error {
+// apply writes, moves or removes one note's file, as src's feed has it.
+func (u *user) apply(ctx context.Context, src Source, n notes.Note, get mdexport.GetImage) error {
 	// The server can't read a locked note, and its plain text, from before
 	// it was locked, mustn't stay on disk.
 	if n.DeletedAt != nil || locks.IsLocked(n.Content) {
+		if e := u.man.Notes[n.ID]; e != nil && e.Feed != src.Feed {
+			return nil // moved to the file that wrote it
+		}
 		return u.remove(n.ID)
 	}
-	folder, err := u.folder(ctx, db, n.SpaceID)
+	folder, err := u.folder(ctx, n.SpaceID)
 	if err != nil {
 		return err
 	}
@@ -376,7 +440,7 @@ func (u *user) apply(ctx context.Context, db *database.DB, n notes.Note, get mde
 	if err := noLink(u.abs(mdexport.ImagesDir)); err != nil {
 		return err
 	}
-	next := &entry{}
+	next := &entry{Feed: src.Feed}
 	paths := map[string]string{}
 	for _, id := range images.Refs(n.Content) {
 		p, ok := u.man.Images[id]

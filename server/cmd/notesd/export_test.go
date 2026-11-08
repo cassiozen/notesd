@@ -355,7 +355,7 @@ func TestExportLockedNotes(t *testing.T) {
 
 func TestExportBySpace(t *testing.T) {
 	db, create := newDB(t)
-	if folders, err := spaceFolders(ctx, db); err != nil || folders != nil {
+	if folders, err := spaceFolders(ctx, db, nil); err != nil || folders != nil {
 		t.Fatalf("one space stays flat: %v %v", folders, err)
 	}
 	sp := spaces.NewStore(db)
@@ -374,7 +374,7 @@ func TestExportBySpace(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	folders, err := spaceFolders(ctx, db)
+	folders, err := spaceFolders(ctx, db, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
