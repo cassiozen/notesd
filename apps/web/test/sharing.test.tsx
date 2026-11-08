@@ -5,7 +5,7 @@ import { sha256Hex } from '../src/images/ref'
 import { encryptBody } from '../src/locks/crypto'
 import { reloadSharing } from '../src/notes/sharing'
 import { reloadSpaces } from '../src/notes/spaces'
-import { pick, PNG, pngFile, shown } from './image-helpers'
+import { JPEG, pick, PNG, pngFile, shown } from './image-helpers'
 import { list, noteTitle, op, openNote, saved, signedIn, typeAtEnd } from './helpers'
 import type { Client, TestServer } from './server'
 
@@ -250,6 +250,35 @@ describe('as a member', () => {
 })
 
 describe('who changed what', () => {
+  it('names someone by the name they chose, with their photo: in the space, in what changed and on the note', async () => {
+    let ana: Ana | undefined
+    let id = ''
+    const { user } = await signedIn({
+      seed: async (s) => {
+        const seeded = await seedWork(s, { share: true })
+        ;({ ana, noteId: id } = seeded)
+        expect((await seeded.ana.api('PATCH', '/profile', { displayName: 'Ana Lima' })).status).toBe(200)
+        expect((await seeded.ana.bytes('PUT', '/profile/avatar', { type: 'image/jpeg', data: JPEG.slice() })).status).toBe(200)
+      },
+    })
+    await act(() => reloadSpaces())
+    await anaEdits(ana as Ana, id, 'Ana was here\n')
+    await act(() => reloadSharing())
+
+    await user.click(switcher())
+    expect(spaceRow('Work').getAttribute('aria-label')).toMatch(/^Work, Ana Lima edited a note · /)
+    await user.click(spaceRow('Work'))
+    await openNote(user, 'Standup')
+    expect(await screen.findByText(/^Edited by Ana Lima · (now|\d+m)$/)).toBeTruthy()
+
+    const info = await spaceInfo(user, 'Work')
+    const [, row] = within(within(info).getByRole('list', { name: 'People in this space' })).getAllByRole('listitem')
+    // The username beside the role, since the name may not be unique.
+    expect(row?.textContent).toBe('Ana LimaanaMake ownerRemove')
+    expect(row?.querySelector('img')?.getAttribute('src')).toBe(`/api/v1/users/${ana?.id}/avatar?v=${(await (ana as Ana).api<{ avatar: string }>('GET', '/auth/session')).body.avatar}`)
+    expect(within(info).getByRole('button', { name: 'Remove Ana Lima' })).toBeTruthy()
+  })
+
   it('rows and the editor name another member’s edit; the switcher says what changed while away', async () => {
     let ana: Ana | undefined
     let id = ''

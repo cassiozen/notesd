@@ -8,6 +8,7 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { ApiError } from '../api/client'
+import { nameOf } from '../api/profile'
 import type { Person, SetupLink } from '../api/types'
 import { users } from '../api/users'
 import { useAccount, useAuth } from '../auth/auth-context'
@@ -161,9 +162,9 @@ function People({ username }: { username: string }) {
             const p = you && me ? { ...listed, displayName: me.displayName, avatar: me.avatar } : listed
             return (
               <li key={p.id} className={styles.device} aria-busy={busy === p.id || undefined}>
-                <Avatar userId={p.id} version={p.avatar} name={who(p)} className={[styles.badge, styles.initial].join(' ')} />
+                <Avatar userId={p.id} version={p.avatar} name={nameOf(p)} className={[styles.badge, styles.initial].join(' ')} />
                 <span className={styles.deviceText}>
-                  <span className={styles.deviceName}>{who(p)}</span>
+                  <span className={styles.deviceName}>{nameOf(p)}</span>
                   <span className={styles.muted}>{p.displayName ? `${p.username} · ${describe(p)}` : describe(p)}</span>
                 </span>
                 {you ? (
@@ -196,7 +197,7 @@ function People({ username }: { username: string }) {
       {open?.kind === 'link' && <LinkDialog person={open.person} link={open.link} onClose={() => setOpen(null)} />}
       {open?.kind === 'reset' && (
         <Confirm
-          title={`Reset ${who(open.person)}’s password?`}
+          title={`Reset ${nameOf(open.person)}’s password?`}
           text="You’ll get a link to send them, where they choose a new one. Nothing changes until they use it."
           action="Get link"
           onCancel={() => setOpen(null)}
@@ -210,13 +211,13 @@ function People({ username }: { username: string }) {
         <Confirm
           {...(open.person.pending
             ? {
-                title: `Cancel ${who(open.person)}’s invitation?`,
+                title: `Cancel ${nameOf(open.person)}’s invitation?`,
                 text: 'Their link stops working, and the username is free again.',
                 action: 'Cancel invitation',
                 cancel: 'Keep',
               }
             : {
-                title: `Remove ${who(open.person)}?`,
+                title: `Remove ${nameOf(open.person)}?`,
                 text: 'They’re signed out on every device and can’t sign in again. Their notes stay on the server’s disk, but no app can open them.',
                 action: 'Remove',
               })}
@@ -244,11 +245,6 @@ async function fetchPeople(): Promise<Load> {
 /** You first, then everyone in the order they were added. */
 function sortPeople(people: Person[], you: string): Person[] {
   return people.toSorted((a, b) => (a.username === you ? -1 : b.username === you ? 1 : a.id - b.id))
-}
-
-/** How a person is named here: their chosen name, or else their username. */
-function who(p: Person): string {
-  return p.displayName || p.username
 }
 
 function describe(p: Person): string {
@@ -325,7 +321,7 @@ function PersonMenu({
     }
   }
 
-  const label = `Actions for ${who(person)}`
+  const label = `Actions for ${nameOf(person)}`
   return (
     <span ref={anchor} className={menu.anchor}>
       <button
@@ -474,7 +470,7 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
     <Dialog labelledBy={titleId} onClose={onClose}>
       <div className={styles.dialog}>
         <h2 id={titleId} className={styles.dialogTitle}>
-          Send {who(person)} this link
+          Send {nameOf(person)} this link
         </h2>
         <p className={styles.dialogText}>
           {person.pending

@@ -25,7 +25,7 @@ describe('the registry', () => {
     expect(canTurnOn(space())).toEqual(['shared'])
     expect(canTurnOn({ ...space(), id: 'default' })).toEqual([])
     // Shared once, no one left in it: its owner can share it again.
-    expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [{ id: 1, username: 'me' }] } })).toEqual(['shared'])
+    expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [{ id: 1, username: 'me', displayName: '', avatar: '' }] } })).toEqual(['shared'])
     expect(canTurnOn({ ...space(), shared: { role: 'member', members: [] } })).toEqual([])
   })
 })

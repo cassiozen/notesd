@@ -91,10 +91,16 @@ class LocalSpace(
 class LocalShared(val role: String, val members: Array<LocalMember>, val invites: Array<LocalInvitee>)
 
 @JsExport
-class LocalMember(val id: Double, val username: String)
+class LocalMember(val id: Double, val username: String, val displayName: String, val avatar: String)
 
 @JsExport
-class LocalInvitee(val id: String, val userId: Double, val username: String)
+class LocalInvitee(
+    val id: String,
+    val userId: Double,
+    val username: String,
+    val displayName: String,
+    val avatar: String
+)
 
 /** An invitation waiting for this account (§7.9). */
 @JsExport
@@ -109,7 +115,7 @@ class LocalInvite(
 
 /** What other members changed in a shared space since this device last showed it (§7.9). */
 @JsExport
-class LocalSpaceNews(val spaceId: String, val count: Int, val usernames: Array<String>, val latestAt: Double)
+class LocalSpaceNews(val spaceId: String, val count: Int, val names: Array<String>, val latestAt: Double)
 
 /** §7.8; [exposure], [problem] and [audience] null when absent (the server omits them; the web's host drops nulls). */
 @JsExport
@@ -286,8 +292,12 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
                 val shared = sp.shared?.let { s ->
                     LocalShared(
                         s.role,
-                        s.members.map { LocalMember(it.id.toDouble(), it.username) }.toTypedArray(),
-                        s.invites.map { LocalInvitee(it.id, it.userId.toDouble(), it.username) }.toTypedArray()
+                        s.members.map {
+                            LocalMember(it.id.toDouble(), it.username, it.displayName, it.avatar)
+                        }.toTypedArray(),
+                        s.invites.map {
+                            LocalInvitee(it.id, it.userId.toDouble(), it.username, it.displayName, it.avatar)
+                        }.toTypedArray()
                     )
                 }
                 LocalSpace(
@@ -311,7 +321,7 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
                 it.spaceId,
                 it.spaceName,
                 it.spaceIcon,
-                LocalMember(it.from.id.toDouble(), it.from.username),
+                LocalMember(it.from.id.toDouble(), it.from.username, it.from.displayName, it.from.avatar),
                 it.createdAt.toDouble()
             )
         }.toTypedArray()
@@ -320,7 +330,7 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
     /** By shared space, what other members changed since this device last showed it. */
     fun news(): Promise<Array<LocalSpaceNews>> = scope.promise {
         engine.spaces.news().map { (id, n) ->
-            LocalSpaceNews(id, n.count, n.usernames.toTypedArray(), n.latestAt.toDouble())
+            LocalSpaceNews(id, n.count, n.names.toTypedArray(), n.latestAt.toDouble())
         }.toTypedArray()
     }
 

@@ -68,7 +68,8 @@ You can't change or remove your own account there; another admin can, or the com
 
 Everyone can choose a name and a photo in **Settings → Server → Name and photo**. Both are
 optional: without them, notesd shows the username and its first letter. The name never replaces
-the username for signing in. Only you and the server's admins, in People, see them.
+the username for signing in. Everyone with an account on the server sees them, in People and in
+shared spaces.
 
 ### From the command line
 

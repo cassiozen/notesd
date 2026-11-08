@@ -318,19 +318,20 @@ anyone else).
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `POST` | `/spaces/{id}/invites` | `{userId}` → `201 {id, userId, username}`. Owner only. The first invitation shares the space, moving its notes to its own file |
+| `POST` | `/spaces/{id}/invites` | `{userId}` → `201 {id, userId, username, displayName, avatar}`. Owner only. The first invitation shares the space, moving its notes to its own file |
 | `DELETE` | `/spaces/{id}/invites/{invite}` | → `204`. Owner only |
 | `DELETE` | `/spaces/{id}/members/{userId}` | → `204`. The owner removes a member, or a member leaves |
 | `PUT` | `/spaces/{id}/owner` | `{userId}` → `204`. The owner hands the space to another member |
-| `GET` | `/invites` | → `{invites: [{id, spaceId, spaceName, spaceIcon, from: {id, username}, createdAt}]}`: waiting for you |
+| `GET` | `/invites` | → `{invites: [{id, spaceId, spaceName, spaceIcon, from: {id, username, displayName, avatar}, createdAt}]}`: waiting for you |
 | `POST` | `/invites/{invite}/accept` | → the space. Joins it |
 | `POST` | `/invites/{invite}/decline` | → `204` |
-| `GET` | `/people` | → `{people: [{id, username}]}`: every account, to invite |
+| `GET` | `/people` | → `{people: [{id, username, displayName, avatar}]}`: every account, to invite |
 
 - `GET /spaces` lists shared spaces you're in with your own. A shared one adds
-  `shared: {role, members: [{id, username}], invites?}`: `role` is `owner` or `member`, members
-  start with the owner, and `invites` (`[{id, userId, username}]`) is there for the owner only.
-  Its `shared` trait names everyone else from your side.
+  `shared: {role, members: [{id, username, displayName, avatar}], invites?}`: `role` is `owner` or
+  `member`, members start with the owner, and `invites` (`[{id, userId, username, displayName,
+  avatar}]`) is there for the owner only. `displayName` and `avatar` are each account's
+  [profile](#profile). Its `shared` trait names everyone else from your side, by their chosen name.
 - Renaming, changing the icon and deleting a shared space (`PUT`/`DELETE /spaces/{id}`) are for
   its owner (`403 not_space_owner`). Names may match one of a member's own spaces; ids may not:
   a space of your own with a shared space's id is refused (`409 space_exists`).
@@ -437,7 +438,7 @@ initial.
 | `PATCH` | `/profile` | `{displayName}` → the account. `""` goes back to the username |
 | `PUT` | `/profile/avatar` | A square JPEG of at most 512 px a side, at most 1 MiB, as the body (`Content-Type: image/jpeg`) → the account |
 | `DELETE` | `/profile/avatar` | → the account, without a photo |
-| `GET` | `/users/{id}/avatar?v={avatar}` | → the JPEG. Your own, or anyone's for an admin; `404 not_found` otherwise, as for an account without one |
+| `GET` | `/users/{id}/avatar?v={avatar}` | → the JPEG, to anyone signed in, as accounts see each other's usernames to share spaces; `404 not_found` for an account without one |
 
 A name is at most 64 characters, trimmed, without control characters, and needn't be unique; it
 never replaces the username for signing in. `avatar` on an account is the photo's version, `""`

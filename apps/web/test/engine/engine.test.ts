@@ -310,8 +310,8 @@ describe('shared spaces', () => {
     expect(work?.shared).toEqual({
       role: 'owner',
       members: [
-        { id: s.me, username: 'me' },
-        { id: s.ana.id, username: 'ana' },
+        { id: s.me, username: 'me', displayName: '', avatar: '' },
+        { id: s.ana.id, username: 'ana', displayName: '', avatar: '' },
       ],
       invites: [],
     })
@@ -326,6 +326,7 @@ describe('shared spaces', () => {
   test('another member’s edit says who made it, and is news until the space is shown', async () => {
     const s = await twoAccounts()
     const [id = ''] = await workWithNotes(s, 'Plan')
+    expect((await s.ana.api('PATCH', '/profile', { displayName: 'Ana Lima' })).status).toBe(200)
     await shareWork(s)
     await s.engine.call('sync')
     expect(await s.engine.call('news')).toEqual([])
@@ -337,7 +338,7 @@ describe('shared spaces', () => {
 
     expect(await s.engine.call('get', id)).toMatchObject({ content: 'Ana was here\n', updatedBy: s.ana.id })
     expect(await s.engine.call('list', null, 'work')).toMatchObject([{ id, updatedBy: s.ana.id }])
-    expect(await s.engine.call('news')).toEqual([{ spaceId: 'work', count: 1, usernames: ['ana'], latestAt: expect.any(Number) }])
+    expect(await s.engine.call('news')).toEqual([{ spaceId: 'work', count: 1, names: ['Ana Lima'], latestAt: expect.any(Number) }])
 
     await s.engine.call('visit', 'work')
     expect(await s.engine.call('news')).toEqual([])
@@ -406,7 +407,7 @@ describe('shared spaces', () => {
     const [id = ''] = await workWithNotes(s, 'Plan')
     await shareWork(s, { join: false })
     await s.engine.call('sync')
-    const invite = { spaceId: 'work', spaceName: 'Work', spaceIcon: '', from: { id: s.me, username: 'me' } }
+    const invite = { spaceId: 'work', spaceName: 'Work', spaceIcon: '', from: { id: s.me, username: 'me', displayName: '', avatar: '' } }
     expect(await s.engine.call('invites')).toEqual([{ ...invite, id: expect.any(String), createdAt: expect.any(Number) }])
 
     const [waiting] = await s.engine.call('invites')

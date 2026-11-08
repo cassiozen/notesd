@@ -190,11 +190,17 @@ export function engineHost(
         if (s.shared) {
           space.shared = {
             role: s.shared.role as 'owner' | 'member',
-            members: s.shared.members.map((m) => ({ id: m.id, username: m.username })),
+            members: s.shared.members.map((m) => ({ id: m.id, username: m.username, displayName: m.displayName, avatar: m.avatar })),
           }
           // The server sends invitations to the owner only.
           if (s.shared.role === 'owner') {
-            space.shared.invites = s.shared.invites.map((i) => ({ id: i.id, userId: i.userId, username: i.username }))
+            space.shared.invites = s.shared.invites.map((i) => ({
+              id: i.id,
+              userId: i.userId,
+              username: i.username,
+              displayName: i.displayName,
+              avatar: i.avatar,
+            }))
           }
         }
         return space
@@ -206,7 +212,7 @@ export function engineHost(
         spaceId: i.spaceId,
         spaceName: i.spaceName,
         spaceIcon: i.spaceIcon,
-        from: { id: i.from.id, username: i.from.username },
+        from: { id: i.from.id, username: i.from.username, displayName: i.from.displayName, avatar: i.from.avatar },
         createdAt: i.createdAt,
       }))
     },
@@ -214,7 +220,7 @@ export function engineHost(
       return (await (await engine()).news()).map((n) => ({
         spaceId: n.spaceId,
         count: n.count,
-        usernames: [...n.usernames],
+        names: [...n.names],
         latestAt: n.latestAt,
       }))
     },

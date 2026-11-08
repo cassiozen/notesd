@@ -1,10 +1,12 @@
 import { useEffect, useId, useState } from 'react'
+import { nameOf } from '../api/profile'
 import { sharing } from '../api/spaces'
 import type { Account, Space } from '../api/types'
 import { useAuth } from '../auth/auth-context'
 import { notesSource } from '../notes/source'
 import { cancelInvite, invite, makeOwner, names, removeMember, sharingError, stopSharing } from '../notes/sharing'
 import { useNotes } from '../notes/store'
+import { Avatar } from '../ui/avatar'
 import { Button } from '../ui/button'
 import { InlineConfirm } from '../ui/inline-confirm'
 import info from './space-info.module.css'
@@ -115,7 +117,7 @@ export function PeopleSection({ space }: { space: Space }) {
   }
 
   const strip = (c: Confirm) => {
-    const words = confirmText(c, space, others.map((m) => m.username))
+    const words = confirmText(c, space, others.map(nameOf))
     return (
       <InlineConfirm title={words.title} action={words.action} busy={busy === 'confirm'} onConfirm={() => confirmed(c)} onCancel={() => setConfirm(null)}>
         {words.text}
@@ -136,7 +138,7 @@ export function PeopleSection({ space }: { space: Space }) {
             {members.map((m, i) => (
               <li key={m.id} className={styles.person}>
                 <div className={styles.line}>
-                  <Who name={m.username} role={[i === 0 && 'Owner', m.id === self && 'You'].filter(Boolean).join(' · ')} />
+                  <Who person={m} role={[i === 0 && 'Owner', m.id === self && 'You'].filter(Boolean).join(' · ')} />
                   {owner && m.id !== self && (
                     <span className={styles.actions}>
                       <Button
@@ -144,7 +146,7 @@ export function PeopleSection({ space }: { space: Space }) {
                         variant="ghost"
                         disabled={busy !== null}
                         aria-expanded={asking('owner', m)}
-                        aria-label={`Make owner: ${m.username}`}
+                        aria-label={`Make owner: ${nameOf(m)}`}
                         onClick={() => setConfirm({ kind: 'owner', who: m })}
                       >
                         Make owner
@@ -154,7 +156,7 @@ export function PeopleSection({ space }: { space: Space }) {
                         variant="danger-text"
                         disabled={busy !== null}
                         aria-expanded={asking('remove', m)}
-                        aria-label={`Remove ${m.username}`}
+                        aria-label={`Remove ${nameOf(m)}`}
                         onClick={() => setConfirm({ kind: 'remove', who: m })}
                       >
                         Remove
@@ -168,7 +170,7 @@ export function PeopleSection({ space }: { space: Space }) {
             {invites.map((inv) => (
               <li key={inv.id} className={styles.person} data-fresh={inv.userId === fresh ? '' : undefined}>
                 <div className={styles.line}>
-                  <Who name={inv.username} role="Invited" pending />
+                  <Who person={{ ...inv, id: inv.userId }} role="Invited" pending />
                   {owner && (
                     <span className={styles.actions}>
                       <Button
@@ -176,7 +178,7 @@ export function PeopleSection({ space }: { space: Space }) {
                         variant="ghost"
                         busy={busy === `cancel:${inv.id}`}
                         disabled={busy !== null}
-                        aria-label={`Cancel ${inv.username}’s invitation`}
+                        aria-label={`Cancel ${nameOf(inv)}’s invitation`}
                         onClick={() => void run(`cancel:${inv.id}`, () => cancelInvite(space.id, inv.id))}
                       >
                         Cancel
@@ -207,11 +209,12 @@ export function PeopleSection({ space }: { space: Space }) {
                       className={styles.chip}
                       disabled={busy !== null}
                       aria-busy={busy === `invite:${p.id}` || undefined}
-                      aria-label={`Invite ${p.username}`}
+                      aria-label={`Invite ${nameOf(p)}`}
+                      title={p.displayName ? p.username : undefined}
                       onClick={() => void pick(p)}
                     >
-                      <Avatar name={p.username} small />
-                      {p.username}
+                      <Avatar userId={p.id} version={p.avatar} name={nameOf(p)} className={[styles.avatar, styles.small].join(' ')} />
+                      {nameOf(p)}
                       <span className={styles.plus} aria-hidden="true">
                         +
                       </span>
@@ -259,13 +262,13 @@ function confirmText(c: Confirm, space: Space, others: string[]): { title: strin
   switch (c.kind) {
     case 'remove':
       return {
-        title: `Remove ${c.who.username}?`,
-        text: `${c.who.username} will no longer see the notes in ${space.name}. What they changed stays as it is.`,
+        title: `Remove ${nameOf(c.who)}?`,
+        text: `${nameOf(c.who)} will no longer see the notes in ${space.name}. What they changed stays as it is.`,
         action: 'Remove',
       }
     case 'owner':
       return {
-        title: `Make ${c.who.username} the owner?`,
+        title: `Make ${nameOf(c.who)} the owner?`,
         text: `Only the owner can invite and remove people, rename ${space.name} or delete it. You’ll stay in it, to read and edit its notes.`,
         action: 'Make owner',
       }
@@ -291,22 +294,21 @@ function confirmText(c: Confirm, space: Space, others: string[]): { title: strin
   }
 }
 
-function Who({ name, role, pending = false }: { name: string; role: string; pending?: boolean }) {
+/** Their chosen name, with the username beside the role when it differs. */
+function Who({ person, role, pending = false }: { person: Account; role: string; pending?: boolean }) {
+  const name = nameOf(person)
   return (
     <span className={styles.who}>
-      <Avatar name={name} pending={pending} />
+      <Avatar
+        userId={person.id}
+        version={person.avatar}
+        name={name}
+        className={[styles.avatar, pending && styles.pending].filter(Boolean).join(' ')}
+      />
       <span className={styles.name}>
         {name}
-        <span className={styles.role}>{role}</span>
+        <span className={styles.role}>{[person.displayName && person.username, role].filter(Boolean).join(' · ')}</span>
       </span>
-    </span>
-  )
-}
-
-function Avatar({ name, pending = false, small = false }: { name: string; pending?: boolean; small?: boolean }) {
-  return (
-    <span className={styles.avatar} data-pending={pending ? '' : undefined} data-small={small ? '' : undefined} aria-hidden="true">
-      {[...name][0]?.toUpperCase()}
     </span>
   )
 }

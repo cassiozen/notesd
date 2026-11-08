@@ -102,7 +102,7 @@ function ProfileDialog({ profile, username, onClose }: { profile: Profile; usern
         <h2 id={titleId} className={styles.dialogTitle}>
           Name and photo
         </h2>
-        <p className={styles.dialogText}>Both are optional. Admins on this server see them when they manage people.</p>
+        <p className={styles.dialogText}>Both are optional. Everyone on this server sees them.</p>
         <div className={styles.photoRow}>
           <Avatar
             userId={profile.userId}

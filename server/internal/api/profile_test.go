@@ -102,18 +102,27 @@ func TestProfileNameAndPhoto(t *testing.T) {
 		t.Fatalf("stale version: %d %v", r.status, r.header)
 	}
 
-	// An admin sees everyone's, as People lists them; anyone else sees only their own.
+	// Everyone on the server sees everyone's, as they see usernames to share spaces; no one else does.
 	if r := admin.raw("GET", avatarPath(samID, version), "", nil); r.status != 200 {
-		t.Fatalf("admin sees sam's: %d", r.status)
+		t.Fatalf("the owner sees sam's: %d", r.status)
 	}
-	if r := admin.raw("PUT", "/api/v1/profile/avatar", "image/jpeg", photo(t, 32, 32)); r.status != 200 {
+	r = admin.raw("PUT", "/api/v1/profile/avatar", "image/jpeg", photo(t, 32, 32))
+	ownerVersion, _ := r.body["avatar"].(string)
+	if r.status != 200 {
 		t.Fatalf("owner's photo: %d %s", r.status, r.raw)
 	}
-	if r := sam.raw("GET", avatarPath(ownerID, ""), "", nil); r.status != 404 {
+	if r := sam.raw("GET", avatarPath(ownerID, ownerVersion), "", nil); r.status != 200 {
 		t.Fatalf("sam sees the owner's: %d", r.status)
+	}
+	if r := e.client().raw("GET", avatarPath(ownerID, ownerVersion), "", nil); r.status != 401 {
+		t.Fatalf("signed out: %d", r.status)
 	}
 	if r := sam.raw("GET", avatarPath(999, ""), "", nil); r.status != 404 {
 		t.Fatalf("no such account: %d", r.status)
+	}
+	r = sam.do("GET", "/api/v1/people", nil)
+	if !strings.Contains(string(r.raw), `"displayName":"Sam Smith"`) || !strings.Contains(string(r.raw), `"avatar":"`+ownerVersion+`"`) {
+		t.Fatalf("people to share with: %s", r.raw)
 	}
 
 	r = admin.do("GET", "/api/v1/users", nil)

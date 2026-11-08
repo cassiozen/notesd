@@ -73,7 +73,7 @@ func (s *Server) getAvatar(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, auth.ErrNoAvatar)
 		return
 	}
-	data, version, err := s.auth.Avatar(r.Context(), sessionFrom(r.Context()), id)
+	data, version, err := s.auth.Avatar(r.Context(), id)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return

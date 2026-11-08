@@ -12,3 +12,6 @@ export const profile = {
 
 /** Versioned, so the browser keeps it for good and a new photo is a new URL. */
 export const avatarURL = (userId: number, version: string) => `/api/v1/users/${userId}/avatar?v=${encodeURIComponent(version)}`
+
+/** How the apps name someone: their chosen name, or else their username. */
+export const nameOf = (p: { username: string; displayName?: string }) => p.displayName || p.username

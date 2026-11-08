@@ -22,14 +22,8 @@ const (
 	AvatarMaxBytes = 1 << 20
 )
 
-// ErrNoAvatar is a photo that doesn't exist, or that the viewer may not see.
+// ErrNoAvatar is a photo that doesn't exist.
 var ErrNoAvatar = errors.New("no such photo")
-
-// CanSeeProfile is who sees whose name and photo: your own, and an admin
-// everyone's, as People lists them. Everyone else sees no one else.
-func CanSeeProfile(viewer Session, userID int64) bool {
-	return viewer.UserID == userID || viewer.IsAdmin
-}
 
 // SetDisplayName changes the name an account shows instead of its username;
 // ” goes back to the username.
@@ -76,12 +70,9 @@ func (s *Service) RemoveAvatar(ctx context.Context, userID int64) (User, error) 
 	})
 }
 
-// Avatar returns an account's photo and its version, if viewer may see it.
-// Not allowed is ErrNoAvatar too, so asking can't tell whether an account exists.
-func (s *Service) Avatar(ctx context.Context, viewer Session, userID int64) (data []byte, version string, err error) {
-	if !CanSeeProfile(viewer, userID) {
-		return nil, "", ErrNoAvatar
-	}
+// Avatar returns an account's photo and its version. Every account on the
+// server may see every other's, as it sees their usernames to share spaces.
+func (s *Service) Avatar(ctx context.Context, userID int64) (data []byte, version string, err error) {
 	err = s.db.R.QueryRowContext(ctx, `
 		SELECT a.data, u.avatar FROM avatars a JOIN users u ON u.id = a.user_id WHERE a.user_id = ?`,
 		userID).Scan(&data, &version)

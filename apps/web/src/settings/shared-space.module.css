@@ -84,14 +84,14 @@
   font: 600 13px/1 var(--font-sans);
 }
 
-.avatar[data-small] {
+.small {
   width: 22px;
   height: 22px;
   font-size: 11px;
 }
 
 /* Not in yet: an outline, not a fill. */
-.avatar[data-pending] {
+.pending {
   background: transparent;
   border: 1px dashed var(--ink-3);
 }

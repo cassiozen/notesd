@@ -23,7 +23,7 @@ afterEach(() => {
 describe('feedNews', () => {
   it('counts every change in a few pages', async () => {
     pages(2)
-    expect(await feedNews([work], ME)).toEqual([{ spaceId: 'work', count: 100, usernames: ['ana'], latestAt: expect.any(Number) }])
+    expect(await feedNews([work], ME)).toEqual([{ spaceId: 'work', count: 100, names: ['ana'], latestAt: expect.any(Number) }])
   })
 
   it('stops after a few pages, and says the count is a floor', async () => {

@@ -1,5 +1,6 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import { ApiError } from '../api/client'
+import { nameOf } from '../api/profile'
 import { sharing } from '../api/spaces'
 import type { Invite, Space, SpaceNews } from '../api/types'
 import { genericMessage } from '../auth/errors'
@@ -162,13 +163,14 @@ export function useMinutes(active = true): number {
 export function newsLine(n: SpaceNews, now = Date.now()): string {
   const what = n.count === 1 && !n.atLeast ? 'a note' : `${n.count}${n.atLeast ? '+' : ''} notes`
   // Everyone who made them has left since: still worth the line.
-  return `${names(n.usernames) || 'Someone'} edited ${what} · ${ago(n.latestAt, now)}`
+  return `${names(n.names) || 'Someone'} edited ${what} · ${ago(n.latestAt, now)}`
 }
 
 /** Who last changed a note, when it's another member of [space] (§7.9); else nothing. */
 export function editorName(space: Pick<Space, 'shared'> | undefined, updatedBy: number | null | undefined, self: number | undefined): string | null {
   if (updatedBy == null || updatedBy === self || !space?.shared) return null
-  return space.shared.members.find((m) => m.id === updatedBy)?.username ?? null
+  const editor = space.shared.members.find((m) => m.id === updatedBy)
+  return editor ? nameOf(editor) : null
 }
 
 /** After a change on the server: this device catches up, then the lists are read again. */

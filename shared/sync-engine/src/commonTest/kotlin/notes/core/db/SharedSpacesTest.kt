@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 import notes.core.api.Member
+import notes.core.api.RemoteInvite
 import notes.core.api.RemoteNote
 import notes.core.api.RemoteSpace
 import notes.core.api.SharedSpace
@@ -14,7 +15,10 @@ class SharedSpacesTest {
     private val family = RemoteSpace(
         "fam",
         "Family",
-        shared = SharedSpace("owner", listOf(Member(1, "owner"), Member(2, "kid")))
+        shared = SharedSpace(
+            "owner",
+            listOf(Member(1, "owner"), Member(2, "kid", displayName = "Kiddo", avatar = "v1"))
+        )
     )
 
     /** The list with "fam" shared, and "a" synced, clean, in the default space. */
@@ -263,6 +267,14 @@ class SharedSpacesTest {
         }
 
     @Test
+    fun `an invitation keeps who sent it, by the name and photo they chose`() = storeTest {
+        val spaces = SpaceStore(db) { now }
+        val invite = RemoteInvite("i1", "club", "Book club", "open-book", Member(3, "ben", "Ben B", "v9"), 5)
+        spaces.replaceInvites(listOf(invite))
+        assertEquals(listOf(invite), spaces.invites())
+    }
+
+    @Test
     fun `what others changed since the space was last shown`() = storeTest {
         val sync = setUp()
         sync.setUserId(1)
@@ -277,7 +289,9 @@ class SharedSpacesTest {
             ),
             "fam"
         )
-        assertEquals(SpaceNews(1, listOf("kid"), 3_000), spaces.news()["fam"])
+        // By the name they chose, kept with the space's members.
+        assertEquals(SpaceNews(1, listOf("Kiddo"), 3_000), spaces.news()["fam"])
+        assertEquals(family.shared, spaces.list().single { it.id == "fam" }.shared)
         now = 4_000
         spaces.visit("fam")
         assertEquals(emptyMap(), spaces.news())

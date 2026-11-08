@@ -27,10 +27,10 @@ describe('names and the switcher line', () => {
   })
 
   it('says who edited how many notes, how long ago', () => {
-    expect(newsLine({ spaceId: 'w', count: 3, usernames: ['ben'], latestAt: now - 2 * 60 * MIN }, now)).toBe('ben edited 3 notes · 2h')
-    expect(newsLine({ spaceId: 'w', count: 1, usernames: [], latestAt: now - 5 * MIN }, now)).toBe('Someone edited a note · 5m')
+    expect(newsLine({ spaceId: 'w', count: 3, names: ['ben'], latestAt: now - 2 * 60 * MIN }, now)).toBe('ben edited 3 notes · 2h')
+    expect(newsLine({ spaceId: 'w', count: 1, names: [], latestAt: now - 5 * MIN }, now)).toBe('Someone edited a note · 5m')
     // Only the first pages read: there were more.
-    expect(newsLine({ spaceId: 'w', count: 200, atLeast: true, usernames: ['ben'], latestAt: now - 5 * MIN }, now)).toBe('ben edited 200+ notes · 5m')
+    expect(newsLine({ spaceId: 'w', count: 200, atLeast: true, names: ['ben'], latestAt: now - 5 * MIN }, now)).toBe('ben edited 200+ notes · 5m')
   })
 })
 

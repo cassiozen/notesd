@@ -51,17 +51,35 @@ const (
 	RoleMember = "member"
 )
 
-// Person is an account as other accounts see it.
+// Person is an account as other accounts see it: with the name and photo it
+// chose, if any (avatar is the photo's version).
 type Person struct {
-	ID       int64  `json:"id"`
-	Username string `json:"username"`
+	ID          int64  `json:"id"`
+	Username    string `json:"username"`
+	DisplayName string `json:"displayName"`
+	Avatar      string `json:"avatar"`
+}
+
+// Name is how the apps name someone: their chosen name, or else their username.
+func (p Person) Name() string {
+	if p.DisplayName != "" {
+		return p.DisplayName
+	}
+	return p.Username
 }
 
 // Invitee is a pending invitation into a shared space.
 type Invitee struct {
-	ID       string `json:"id"`
-	UserID   int64  `json:"userId"`
-	Username string `json:"username"`
+	ID          string `json:"id"`
+	UserID      int64  `json:"userId"`
+	Username    string `json:"username"`
+	DisplayName string `json:"displayName"`
+	Avatar      string `json:"avatar"`
+}
+
+// Person is whom the invitation is for.
+func (in Invitee) Person() Person {
+	return Person{ID: in.UserID, Username: in.Username, DisplayName: in.DisplayName, Avatar: in.Avatar}
 }
 
 // Errors.

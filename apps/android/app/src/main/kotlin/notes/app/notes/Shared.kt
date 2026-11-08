@@ -54,7 +54,7 @@ fun ago(
 /** The switcher's line for what others changed in a shared space (§7.9): "Ben edited 3 notes · 2h". */
 fun changeLine(news: SpaceNews, now: Long = System.currentTimeMillis()): String {
     // Everyone who made them has left since: still worth the dot.
-    val who = names(news.usernames).ifEmpty { "Someone" }
+    val who = names(news.names).ifEmpty { "Someone" }
     val what = if (news.count == 1) "a note" else "${news.count} notes"
     return "$who edited $what · ${ago(news.latestAt, now)}"
 }
