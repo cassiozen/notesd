@@ -41,7 +41,7 @@ working on them:
 
 - The data directory holds `system.db` (accounts, sessions, server-wide
   settings, shared spaces' members) and one notes database per account,
-  `users/<id>.db`, and per shared space, `spaces/<id>.db` (`internal/userdata`). Every command first moves a single-user `notes.db`
+  `users/<id>.db`, and per shared space, `spaces/<id>.db` (`internal/userdata`). Every command that opens the data directory (all but `version` and `help`) first moves a single-user `notes.db`
   into that layout (`userdata.Upgrade`), and copies shared spaces' names and icons from `system.db` into their
   files (`userdata.SpaceNames`, before system migration 4).
 - `reindex` also runs automatically when a user's database is first opened,

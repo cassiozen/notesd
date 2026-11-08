@@ -229,7 +229,14 @@ func SpaceNames(dataDir string) database.Step {
 			return err
 		}
 		for _, n := range list {
-			err := withSpaceFile(ctx, SpacePath(dataDir, n.id), func(db *database.DB) error {
+			path := SpacePath(dataDir, n.id)
+			// Opening would make an empty one, and the migration would then drop the name too.
+			if _, err := os.Stat(path); errors.Is(err, fs.ErrNotExist) {
+				return fmt.Errorf("shared space %s has no file %s: restore it from a backup before upgrading", n.id, path)
+			} else if err != nil {
+				return err
+			}
+			err := withSpaceFile(ctx, path, func(db *database.DB) error {
 				if err := dropDefaultSpace(ctx, db); err != nil {
 					return err
 				}

@@ -9,6 +9,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"notes/server/internal/auth"
@@ -285,5 +286,34 @@ func TestSharedSpaceNamesMoveIntoTheirFiles(t *testing.T) {
 	list, err := d.Spaces.List(ctx)
 	if err != nil || len(list) != 1 || list[0].ID != "fam" || list[0].Name != "Notes" || list[0].Icon != "garden" || list[0].CreatedAt != 5 {
 		t.Fatalf("its file has only the space, as named: %+v %v", list, err)
+	}
+}
+
+func TestSharedSpaceNamesStopWithoutTheSpacesFile(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	path := filepath.Join(dir, "system.db")
+	stop := errors.New("stop")
+	if _, err := database.OpenSystem(ctx, path, database.Step{Before: 4, Run: func(context.Context, *sql.DB) error { return stop }}); !errors.Is(err, stop) {
+		t.Fatalf("stopped before 4: %v", err)
+	}
+	raw, err := sql.Open("sqlite", "file:"+filepath.ToSlash(path))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer raw.Close()
+	if _, err := raw.ExecContext(ctx, `INSERT INTO shared_spaces (id, name, icon, owner_id, created_at) VALUES ('fam', 'Family', '', 1, 5)`); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := database.OpenSystem(ctx, path, SpaceNames(dir)); err == nil || !strings.Contains(err.Error(), "restore it from a backup") {
+		t.Fatalf("refused: %v", err)
+	}
+	if _, err := os.Stat(SpacePath(dir, "fam")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("no empty file made in its place: %v", err)
+	}
+	var name string
+	if err := raw.QueryRowContext(ctx, `SELECT name FROM shared_spaces WHERE id = 'fam'`).Scan(&name); err != nil || name != "Family" {
+		t.Fatalf("system.db keeps the name: %q %v", name, err)
 	}
 }
