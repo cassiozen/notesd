@@ -24,6 +24,12 @@ import notes.core.markdown.Fence
 /** Spans the editor owns. The codec reads only these; anything else in the text is ignored. */
 interface EditorSpan
 
+/**
+ * How far a block is from the next, as the web spaces its blocks: items of one
+ * list sit closest, so the list reads as one; quotes and raw blocks stand furthest apart.
+ */
+enum class Gap { Item, Paragraph, Block }
+
 /** What the margin of an item's first line shows. */
 sealed interface Marker {
     data class Bullet(val level: Int) : Marker
@@ -37,15 +43,29 @@ sealed interface Marker {
  * The one span every block (paragraph, heading, title, raw block) carries,
  * covering its text and the "\n" that ends it. Holds the block's container path
  * and type, and draws list markers and quote bars in its leading margin.
- * [marker] is derived by the normaliser (numbers are assigned there, not at
- * draw time).
+ * [marker], [gap] (the space after the block, which [LeafStyleSpan] makes) and
+ * [quoteEnds] (how many of its innermost quotes end on it) are derived by the
+ * normaliser, not at draw time.
  */
-class BlockSpan(val path: List<Container>, val leaf: Leaf, val marker: Marker?, private val style: EditorStyle) :
-    LeadingMarginSpan,
+class BlockSpan(
+    val path: List<Container>,
+    val leaf: Leaf,
+    val marker: Marker?,
+    private val style: EditorStyle,
+    val gap: Gap = Gap.Paragraph,
+    val quoteEnds: Int = 0
+) : LeadingMarginSpan,
     LineBackgroundSpan,
     EditorSpan {
-    fun sameAs(path: List<Container>, leaf: Leaf, marker: Marker?) =
-        this.path == path && this.leaf == leaf && this.marker == marker
+    fun sameAs(path: List<Container>, leaf: Leaf, marker: Marker?, gap: Gap, quoteEnds: Int) =
+        this.path == path && this.leaf == leaf && this.marker == marker && this.gap == gap &&
+            this.quoteEnds == quoteEnds
+
+    /** The space under [end]'s line that belongs to the gap after the block, not to the block. */
+    private fun gapUnder(text: CharSequence, end: Int): Float {
+        val spanned = text as? Spanned ?: return 0f
+        return if (end >= spanned.getSpanEnd(this) && end < text.length) style.gapHeight(gap) else 0f
+    }
 
     private val fence by lazy { (leaf as? Leaf.Raw)?.let { Fence.parse(it.source) } }
 
@@ -75,13 +95,21 @@ class BlockSpan(val path: List<Container>, val leaf: Leaf, val marker: Marker?, 
         val savedColor = p.color
         val savedStyle = p.style
         var offset = 0f
+        // A quote that ends here stops its bar with its text, not across the gap to the next block.
+        val levels = path.count { it is Container.Quote }
+        // Layout passes the line's visible end here, short of its "\n"; the gap needs the real one.
+        val lineEnd = layout?.let { it.getLineEnd(it.getLineForOffset(start)) } ?: end
+        val under = gapUnder(text, lineEnd)
+        var level = 0
         for (container in path) {
             if (container is Container.Quote) {
                 p.color = style.ink3
                 p.style = Paint.Style.FILL
                 val left = if (dir > 0) x + offset else x - offset - style.quoteBar
-                c.drawRect(left, top.toFloat(), left + style.quoteBar, bottom.toFloat(), p)
+                val barBottom = bottom - if (level >= levels - quoteEnds) under else 0f
+                c.drawRect(left, top.toFloat(), left + style.quoteBar, barBottom, p)
                 offset += style.quoteIndent
+                level++
             } else {
                 offset += style.itemIndent
             }
@@ -178,8 +206,8 @@ class BlockSpan(val path: List<Container>, val leaf: Leaf, val marker: Marker?, 
         paint.color = if (fence != null) style.code else style.hover
         val margin = margin()
         val first = (text as? Spanned)?.getSpanStart(this) == start
-        val boxTop = top + if (first) style.rawGap else 0f
-        canvas.drawRect(left + margin, boxTop, right.toFloat(), bottom.toFloat(), paint)
+        val boxTop = top.toFloat()
+        canvas.drawRect(left + margin, boxTop, right.toFloat(), bottom - gapUnder(text, end), paint)
         paint.color = saved
         // The language label sits in the room LeafStyleSpan leaves above the first line.
         val lang = fence?.lang.orEmpty()
@@ -189,20 +217,26 @@ class BlockSpan(val path: List<Container>, val leaf: Leaf, val marker: Marker?, 
         label.typeface = style.typeface
         label.textSize = paint.textSize * style.codeLabelScale
         label.letterSpacing = 0.02f
-        canvas.drawText(lang, left + margin + style.rawPad, boxTop + style.rawGap - label.ascent(), label)
+        canvas.drawText(lang, left + margin + style.rawPad, boxTop + style.rawLabelInset - label.ascent(), label)
     }
 }
 
 /**
- * Type size, face and colour for a block, plus the space around headings.
+ * Type size, face and colour for a block, plus the space around it: around
+ * headings, and [gap] after the block.
  * [quoted] text inside a quote is italic serif, as on the web.
  */
-class LeafStyleSpan(val leaf: Leaf, val dim: Boolean, val quoted: Boolean, private val style: EditorStyle) :
-    MetricAffectingSpan(),
+class LeafStyleSpan(
+    val leaf: Leaf,
+    val dim: Boolean,
+    val quoted: Boolean,
+    private val style: EditorStyle,
+    val gap: Gap = Gap.Paragraph
+) : MetricAffectingSpan(),
     LineHeightSpan,
     EditorSpan {
-    fun sameAs(leaf: Leaf, dim: Boolean, quoted: Boolean) =
-        this.leaf == leaf && this.dim == dim && this.quoted == quoted
+    fun sameAs(leaf: Leaf, dim: Boolean, quoted: Boolean, gap: Gap) =
+        this.leaf == leaf && this.dim == dim && this.quoted == quoted && this.gap == gap
 
     private val fence by lazy { (leaf as? Leaf.Raw)?.let { Fence.parse(it.source) } }
 
@@ -259,19 +293,19 @@ class LeafStyleSpan(val leaf: Leaf, val dim: Boolean, val quoted: Boolean, priva
             is Leaf.Heading -> height * 0.3f
 
             // Room for the language label BlockSpan draws.
-            is Leaf.Raw -> style.rawGap + height * if (fence?.lang.isNullOrEmpty()) 0.3f else 1.1f
+            is Leaf.Raw -> height * if (fence?.lang.isNullOrEmpty()) 0.3f else 1.1f
 
             else -> 0f
         }.toInt()
-        val gap = if (leaf is Leaf.Heading) style.dp(6f).toInt() else 0
+        val headingTop = if (leaf is Leaf.Heading) style.dp(6f).toInt() else 0
         val below = when (leaf) {
             Leaf.Title -> height * 0.05f
             is Leaf.Raw -> height * 0.3f
             else -> 0f
         }.toInt()
-        if (above + gap > 0 && start == spanned.getSpanStart(this)) {
-            fm.ascent -= above + gap
-            fm.top -= above + gap
+        if (above + headingTop > 0 && start == spanned.getSpanStart(this)) {
+            fm.ascent -= above + headingTop
+            fm.top -= above + headingTop
             // Layout spaces lines by their height; keep the raw block's room out of that.
             if (leaf is Leaf.Raw) fm.descent -= (above * (style.lineSpacing - 1) / style.lineSpacing).toInt()
         }
@@ -280,14 +314,26 @@ class LeafStyleSpan(val leaf: Leaf, val dim: Boolean, val quoted: Boolean, priva
         // half a large line under each. Layout adds that spacing below the descent,
         // so solve for a descent that lands the next line where the heading wants
         // it. The text's last line gets no spacing and has no next line.
+        val last = end >= spanned.getSpanEnd(this)
         if (leaf is Leaf.Heading && end < text.length) {
-            val want = fm.descent + (height * if (end >= spanned.getSpanEnd(this)) 0.27f else 0.1f).toInt()
+            // Close to the text it heads, unless what follows needs more.
+            val wide = if (gap == Gap.Block) style.space(gap) else 0f
+            val after = if (last) maxOf(height * 0.27f, wide) else height * 0.1f
+            val want = fm.descent + after.toInt()
             val m = style.lineSpacing
             fm.descent = ((want + fm.ascent * (m - 1)) / m).roundToInt()
         }
-        if (below > 0 && end >= spanned.getSpanEnd(this)) {
+        if (below > 0 && last) {
             fm.descent += below
             fm.bottom += below
+        }
+        // The gap to the next block; the text's last line has none. The title keeps its own unless a
+        // quote or raw block follows.
+        val spaced = leaf !is Leaf.Heading && (leaf != Leaf.Title || gap == Gap.Block)
+        if (spaced && last && end < text.length) {
+            val extra = style.gapDescent(gap)
+            fm.descent += extra
+            fm.bottom += extra
         }
     }
 }

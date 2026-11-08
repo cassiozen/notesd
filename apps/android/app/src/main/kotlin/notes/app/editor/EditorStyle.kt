@@ -7,6 +7,7 @@ import android.graphics.Typeface
 import android.util.TypedValue
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.res.ResourcesCompat
+import kotlin.math.roundToInt
 import notes.app.R
 import notes.app.ui.Tokens
 
@@ -73,8 +74,8 @@ class EditorStyle(
     val codeNumber = 0xFFFBA962.toInt()
     val codeLabelScale = 11f / 17f
 
-    /** Unpainted space above a raw block, so two in a row stay apart, and its text's inset. */
-    val rawGap = dp(8f)
+    /** The language label's inset from the top of a code block, and the block's text inset. */
+    val rawLabelInset = dp(8f)
     val rawPad = dp(10f)
 
     /** Four monospace spaces, as tab-size: 4 on the web. */
@@ -85,6 +86,22 @@ class EditorStyle(
 
     /** The view's line spacing multiplier; spans that size lines account for it. */
     val lineSpacing = 1.5f
+
+    /** Space after a line, as the web's margins (editor.module.css); from the body size, so it scales with it. */
+    fun space(gap: Gap): Float = when (gap) {
+        Gap.Item -> bodySize * 0.15f
+        Gap.Paragraph -> bodySize * 0.4f
+        Gap.Block -> bodySize * 12f / 17f
+    }
+
+    /**
+     * What to add to a line's descent for [gap] below it. Layout multiplies the line's
+     * height by [lineSpacing], so this is the space divided by it.
+     */
+    fun gapDescent(gap: Gap): Int = (space(gap) / lineSpacing).roundToInt()
+
+    /** The height [gapDescent] ends up adding once layout multiplies it. */
+    fun gapHeight(gap: Gap): Float = gapDescent(gap) * lineSpacing
 
     val semibold: Typeface = Typeface.create(typeface, 600, false)
     val serifItalic: Typeface = Typeface.create(serif, Typeface.ITALIC)

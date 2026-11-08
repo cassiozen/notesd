@@ -31,18 +31,22 @@ nonisolated struct Normalizer {
         let infos = assign(text, ranges)
         let markers = markers(infos)
         let edges = quoteEdges(infos)
+        let gaps = gaps(infos, edges)
         var changed = IndexSet()
         for (k, r) in ranges.enumerated() {
             let info = infos[k]
             let current = r.attr
-            if let current, current.sameAs(path: info.path, leaf: info.leaf, marker: markers[k], quoteEdges: edges[k]),
+            if let current,
+                current.sameAs(
+                    path: info.path, leaf: info.leaf, marker: markers[k], quoteEdges: edges[k], gap: gaps[k]),
                 attributeCovers(text, current, r.whole)
             {
                 continue
             }
             text.addAttribute(
                 .notesBlock,
-                value: BlockAttr(path: info.path, leaf: info.leaf, marker: markers[k], quoteEdges: edges[k]),
+                value: BlockAttr(
+                    path: info.path, leaf: info.leaf, marker: markers[k], quoteEdges: edges[k], gap: gaps[k]),
                 range: r.whole)
             changed.insert(k)
         }
@@ -181,6 +185,26 @@ nonisolated struct Normalizer {
             return QuoteEdges(
                 starts: quotes.count { !above.contains($0) }, ends: quotes.count { !below.contains($0) })
         }
+    }
+
+    /// The space after each line: wide around quotes and raw blocks, narrow inside a list.
+    private static func gaps(_ infos: [Info], _ edges: [QuoteEdges]) -> [Gap] {
+        infos.indices.map { k in
+            guard k + 1 < infos.count else { return .paragraph }
+            let next = infos[k + 1]
+            if isRaw(infos[k].leaf) || isRaw(next.leaf) || edges[k].ends > 0 || edges[k + 1].starts > 0 {
+                return .block
+            }
+            return sameList(infos[k].path, next.path) ? .item : .paragraph
+        }
+    }
+
+    /// Both lines are in one list, at whatever depth: they share its outermost item's list.
+    private static func sameList(_ a: [Container], _ b: [Container]) -> Bool {
+        guard let d = a.firstIndex(where: isItem), d < b.count, a[..<d] == b[..<d],
+            case .item(let x) = a[d], case .item(let y) = b[d]
+        else { return false }
+        return x.listId == y.listId
     }
 
     private static let markKeys: [NSAttributedString.Key] = [.notesBold, .notesItalic, .notesStrike, .notesLink]
