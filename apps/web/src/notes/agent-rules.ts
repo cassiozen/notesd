@@ -1,10 +1,14 @@
 import type { AgentConfig, AgentConfigInput, AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
 import { sentence } from '../auth/errors'
+import type { Idea } from './agent-examples'
 
 /** A space's agent being edited. */
 export type AgentDraft = Required<AgentConfigInput>
 export type AgentErrors = Partial<Record<string, string>>
+
+/** Notes it always reads, at most; as the server allows. */
+export const MAX_REFERENCES = 5
 
 export const emptyAgent: AgentDraft = { enabled: false, prompt: '', menuLabel: '', triggers: {}, referenceNotes: [] }
 
@@ -43,17 +47,17 @@ export const GROUPS: { key: TriggerGroup; title: string }[] = [
 ]
 
 /**
- * label: the trigger's name, as Activity shows it. rule: a rule's heading.
- * when: exactly when it happens. suggestion: a new rule's prompt, to change or replace.
+ * label: the trigger's name, as Activity shows it. rule: a rule's heading, always "When …".
+ * when: exactly when it happens. idea: a general one, where the examples have none or need a Digest.
  */
-export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; rule: string; when: string; suggestion: string }[] = [
+export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; rule: string; when: string; idea?: Idea }[] = [
   {
     key: 'noteCreated',
     group: 'writing',
     label: 'Note created',
     rule: 'When a new note is opened',
     when: 'Before you type anything. Good for a prompt or a template to start from.',
-    suggestion: 'Ask me a question to get me started, as a heading at the top.',
+    idea: { title: 'A question to start', prompt: 'Show me a card at the top with one short question to get me started.' },
   },
   {
     key: 'editStarted',
@@ -61,7 +65,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Started editing',
     rule: 'When you start editing a note',
     when: 'At your first change after opening an existing note, or after 3 minutes without changes.',
-    suggestion: 'If the note has no date, add today’s at the top.',
+    idea: { title: 'Date it', prompt: 'If the note has no date, add today’s at the top.' },
   },
   {
     key: 'menu',
@@ -69,7 +73,6 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Run from menu',
     rule: 'When you ask, from the note’s menu',
     when: 'A command in the note’s ⋯ menu. Also a handy way to try a prompt.',
-    suggestion: 'Suggest fixes for spelling and obvious typos.',
   },
   {
     key: 'newNoteDone',
@@ -77,7 +80,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'New note done',
     rule: 'When you finish a new note',
     when: 'When you close it, or leave it for 2 minutes.',
-    suggestion: 'Give the note a short title if it has none, and add 1–3 tags at the end.',
+    idea: { title: 'Title and tags', prompt: 'Give the note a short title if it has none, and add 1–3 tags at the end.' },
   },
   {
     key: 'editDone',
@@ -85,7 +88,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Note edit done',
     rule: 'When you finish editing a note',
     when: 'When you close a note you changed, or leave it for 2 minutes.',
-    suggestion: 'Move finished tasks to the end of their list.',
+    idea: { title: 'Finished tasks last', prompt: 'Move finished tasks to the end of their list.' },
   },
   {
     key: 'noteDeleted',
@@ -93,7 +96,6 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Note deleted',
     rule: 'When a note is deleted',
     when: 'The agent gets what the note said, and can update other notes.',
-    suggestion: 'Take out of the Digest anything that came only from this note.',
   },
   {
     key: 'movedIn',
@@ -101,7 +103,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Note moved in',
     rule: 'When a note is moved here',
     when: 'From another space.',
-    suggestion: 'Add the space’s tags that fit, at the end.',
+    idea: { title: 'Tag it for here', prompt: 'Add the space’s tags that fit, at the end.' },
   },
   {
     key: 'movedOut',
@@ -109,12 +111,8 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Note moved out',
     rule: 'When a note is moved away',
     when: 'To another space. The agent gets it as it left, and can’t change it.',
-    suggestion: 'Take out of the Digest anything that came only from this note.',
   },
 ]
-
-/** The menu rule's command name, when a suggestion fills in its prompt. */
-export const SUGGESTED_MENU_LABEL = 'Fix typos'
 
 /** A trigger's name, as Activity shows it. */
 export function triggerLabel(key: AgentTrigger): string {
