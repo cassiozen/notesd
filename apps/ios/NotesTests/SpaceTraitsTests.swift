@@ -59,4 +59,15 @@ struct SpaceTraitsTests {
         #expect(Traits.newExposure(from: [], to: [agent]).isEmpty, "kept to the account")
         #expect(Traits.newExposure(from: [], to: [future]) == [future], "unknown keys ask too")
     }
+
+    @Test func aMoveComparesWhoATraitReachesNotItsWords() {
+        func with(_ sentence: String, _ ids: [String]) -> SpaceTrait {
+            SpaceTrait(key: "shared", label: "Shared", exposure: sentence, audience: ids)
+        }
+        let anaBen = with("Visible to Ana and Ben", ["user:2", "user:3"])
+        let anaCy = with("Visible to Ana and Cy", ["user:2", "user:4"])
+        #expect(Traits.newExposure(from: [anaBen], to: [with("Visible to Ben and Ana", ["user:3", "user:2"])]).isEmpty)
+        #expect(Traits.newExposure(from: [anaBen], to: [with("Visible to Ana", ["user:2"])]).isEmpty, "fewer people")
+        #expect(Traits.newExposure(from: [anaBen], to: [anaCy]) == [anaCy])
+    }
 }

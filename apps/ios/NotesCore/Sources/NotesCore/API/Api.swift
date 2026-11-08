@@ -237,21 +237,26 @@ public struct RemoteSpace: Codable, Sendable, Hashable {
 }
 
 /// A feature on for a whole space (§7.8), worked out by the server. `exposure` is the sentence a move into the
-/// space asks with, nil when the trait keeps notes to the account; `problem` is set when it needs attention.
+/// space asks with, nil when the trait keeps notes to the account; `audience` is who it reaches ("user:3",
+/// "public"), what a move compares; `problem` is set when it needs attention.
 public struct SpaceTrait: Codable, Sendable, Hashable {
     public var key: String
     public var label: String
     public var summary: String
     public var exposure: String?
     public var problem: String?
+    public var audience: [String]?
 
-    public init(key: String, label: String = "", summary: String = "", exposure: String? = nil, problem: String? = nil)
-    {
+    public init(
+        key: String, label: String = "", summary: String = "", exposure: String? = nil, problem: String? = nil,
+        audience: [String]? = nil
+    ) {
         self.key = key
         self.label = label
         self.summary = summary
         self.exposure = exposure
         self.problem = problem
+        self.audience = audience
     }
 
     public init(from decoder: Decoder) throws {
@@ -261,6 +266,7 @@ public struct SpaceTrait: Codable, Sendable, Hashable {
         summary = try c.decodeIfPresent(String.self, forKey: .summary) ?? ""
         exposure = try c.decodeIfPresent(String.self, forKey: .exposure)
         problem = try c.decodeIfPresent(String.self, forKey: .problem)
+        audience = try c.decodeIfPresent([String].self, forKey: .audience)
     }
 }
 

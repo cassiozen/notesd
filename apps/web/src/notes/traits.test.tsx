@@ -77,6 +77,17 @@ describe('newExposure', () => {
     expect(newExposure(space(), space(calendar))).toEqual([calendar])
   })
 
+  it('compares who a trait reaches when the server says, not how it words it', () => {
+    const anaBen: SpaceTrait = { ...shared, exposure: 'Visible to Ana and Ben', audience: ['user:2', 'user:3'] }
+    const benAna: SpaceTrait = { ...shared, exposure: 'Visible to Ben and Ana', audience: ['user:3', 'user:2'] }
+    const ana: SpaceTrait = { ...shared, exposure: 'Visible to Ana', audience: ['user:2'] }
+    const anaCy: SpaceTrait = { ...shared, exposure: 'Visible to Ana and Cy', audience: ['user:2', 'user:4'] }
+    expect(newExposure(space(anaBen), space(benAna))).toEqual([])
+    expect(newExposure(space(anaBen), space(ana))).toEqual([])
+    expect(newExposure(space(anaBen), space(anaCy))).toEqual([anaCy])
+    expect(newExposure(space(anaBen), space({ ...published, audience: ['public'] }))).toHaveLength(1)
+  })
+
   it('treats a current space not loaded yet as exposing nothing', () => {
     expect(newExposure(undefined, space(shared))).toEqual([shared])
   })

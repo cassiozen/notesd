@@ -83,15 +83,19 @@ export function traitsLabel(traits: readonly SpaceTrait[]): string {
 }
 
 /**
- * Moving a note from one space to another: the destination's traits whose
- * exposure the current space doesn't already have. Empty: nothing to ask.
+ * Moving a note from one space to another: the destination's traits that
+ * reach someone the current space doesn't. Empty: nothing to ask.
  */
 export function newExposure(from: Pick<Space, 'traits'> | undefined, to: Pick<Space, 'traits'>): SpaceTrait[] {
-  const had = new Set(from?.traits.map((t) => t.exposure).filter(Boolean))
+  const reached = new Set(from?.traits.flatMap((t) => t.audience ?? []))
+  // A trait without an audience (one this app predates) can only be compared by its words.
+  const said = new Set(from?.traits.map((t) => t.exposure).filter(Boolean))
   // Two traits can expose to the same people; the dialog says so once.
   const seen = new Set<string>()
   return to.traits.filter((t) => {
-    if (!t.exposure || had.has(t.exposure) || seen.has(t.exposure)) return false
+    if (!t.exposure || seen.has(t.exposure)) return false
+    const fresh = t.audience?.length ? t.audience.some((a) => !reached.has(a)) : !said.has(t.exposure)
+    if (!fresh) return false
     seen.add(t.exposure)
     return true
   })

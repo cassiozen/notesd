@@ -237,7 +237,8 @@ data class RemoteSpace(
 
 /**
  * A feature on for a whole space (§7.8), worked out by the server. [exposure] is the sentence a move
- * into the space asks with, null when the trait keeps notes to the account; [problem] is set when it needs attention.
+ * into the space asks with, null when the trait keeps notes to the account; [audience] is who it reaches
+ * ("user:3", "public"), what a move compares; [problem] is set when it needs attention.
  */
 @Serializable
 data class SpaceTrait(
@@ -245,7 +246,8 @@ data class SpaceTrait(
     val label: String = "",
     val summary: String = "",
     val exposure: String? = null,
-    val problem: String? = null
+    val problem: String? = null,
+    val audience: List<String>? = null
 )
 
 @Serializable

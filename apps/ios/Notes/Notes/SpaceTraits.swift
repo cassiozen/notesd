@@ -69,13 +69,19 @@ enum Traits {
         return known + unknown
     }
 
-    /// What moving a note from `current` into `destination` would newly expose it to: the destination's
-    /// exposure sentences the current space doesn't have, once each. Empty: the move needn't ask.
+    /// What moving a note from `current` into `destination` would newly expose it to: the destination's traits
+    /// reaching someone the current space doesn't, once per sentence. Empty: the move needn't ask.
     static func newExposure(from current: [SpaceTrait], to destination: [SpaceTrait]) -> [SpaceTrait] {
-        var seen = Set(current.compactMap(\.exposure))
+        let reached = Set(current.flatMap { $0.audience ?? [] })
+        // A trait without an audience (one this app predates) can only be compared by its words.
+        let said = Set(current.compactMap(\.exposure))
+        var seen = Set<String>()
         return destination.filter { t in
-            guard let sentence = t.exposure else { return false }
-            return seen.insert(sentence).inserted
+            guard let sentence = t.exposure, !seen.contains(sentence) else { return false }
+            let audience = t.audience ?? []
+            let fresh = audience.isEmpty ? !said.contains(sentence) : audience.contains { !reached.contains($0) }
+            if fresh { seen.insert(sentence) }
+            return fresh
         }
     }
 }

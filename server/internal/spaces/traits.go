@@ -17,6 +17,9 @@ type Trait struct {
 	// Exposure is the sentence a move into the space asks with ("Visible to
 	// Ana and Ben"); empty when the trait keeps notes to the account.
 	Exposure string `json:"exposure,omitempty"`
+	// Audience is who Exposure reaches, as stable keys ("user:3", "public"),
+	// so apps compare people rather than sentences when a move asks.
+	Audience []string `json:"audience,omitempty"`
 	// Problem is set when the trait needs attention ("Publishing failed").
 	Problem string `json:"problem,omitempty"`
 }

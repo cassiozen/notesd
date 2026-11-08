@@ -80,14 +80,15 @@ class LocalSpace(
     val traits: Array<LocalSpaceTrait>
 )
 
-/** §7.8; [exposure] and [problem] null when absent (the server omits them; the web's host drops nulls). */
+/** §7.8; [exposure], [problem] and [audience] null when absent (the server omits them; the web's host drops nulls). */
 @JsExport
 class LocalSpaceTrait(
     val key: String,
     val label: String,
     val summary: String,
     val exposure: String?,
-    val problem: String?
+    val problem: String?,
+    val audience: Array<String>?
 )
 
 /** One wrapped copy of the locked-notes key, as the server's keyring has it (§10.1). */
@@ -247,7 +248,9 @@ class NotesEngine internal constructor(private val db: Database, files: ImageFil
     fun spaces(): Promise<Array<LocalSpace>> = scope.promise {
         engine.spaces.list()
             .map { sp ->
-                val traits = sp.traits.map { LocalSpaceTrait(it.key, it.label, it.summary, it.exposure, it.problem) }
+                val traits = sp.traits.map {
+                    LocalSpaceTrait(it.key, it.label, it.summary, it.exposure, it.problem, it.audience?.toTypedArray())
+                }
                 LocalSpace(sp.id, sp.name, sp.icon, sp.noteCount, sp.createdAt.toDouble(), traits.toTypedArray())
             }
             .toTypedArray()

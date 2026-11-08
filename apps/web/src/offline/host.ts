@@ -181,6 +181,7 @@ export function engineHost(
           label: t.label,
           summary: t.summary,
           ...(t.exposure != null && { exposure: t.exposure }),
+          ...(t.audience != null && { audience: [...t.audience] }),
           ...(t.problem != null && { problem: t.problem }),
         })),
       }))

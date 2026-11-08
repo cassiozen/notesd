@@ -50,12 +50,18 @@ fun describeTraits(traits: List<SpaceTrait>): String =
     traits.joinToString(", ") { t -> t.problem?.let { "${t.name()} ($it)" } ?: t.name() }
 
 /**
- * The traits of [to] that would expose a note moved there from [from] in a way [from] doesn't: those whose
- * exposure sentence [from] lacks. Empty: the move needn't ask.
+ * The traits of [to] that would expose a note moved there from [from] to someone [from] doesn't reach, once
+ * per sentence. Empty: the move needn't ask.
  */
 fun newExposures(from: Space?, to: Space): List<SpaceTrait> {
-    val already = from?.traits.orEmpty().mapNotNullTo(HashSet()) { it.exposure }
-    return to.traits.filter { t -> t.exposure.let { it != null && it !in already } }.distinctBy { it.exposure }
+    val reached = from?.traits.orEmpty().flatMapTo(HashSet()) { it.audience.orEmpty() }
+    // A trait without an audience (one this app predates) can only be compared by its words.
+    val said = from?.traits.orEmpty().mapNotNullTo(HashSet()) { it.exposure }
+    return to.traits.filter { t ->
+        val sentence = t.exposure ?: return@filter false
+        val audience = t.audience.orEmpty()
+        if (audience.isNotEmpty()) audience.any { it !in reached } else sentence !in said
+    }.distinctBy { it.exposure }
 }
 
 /** A row of Space info's traits group. */

@@ -62,6 +62,17 @@ class SpaceTraitsTest {
     }
 
     @Test
+    fun `a move compares who a trait reaches when the server says, not how it words it`() {
+        val anaBen = shared.copy(exposure = "Visible to Ana and Ben", audience = listOf("user:2", "user:3"))
+        val benAna = shared.copy(exposure = "Visible to Ben and Ana", audience = listOf("user:3", "user:2"))
+        val ana = shared.copy(exposure = "Visible to Ana", audience = listOf("user:2"))
+        val anaCy = shared.copy(exposure = "Visible to Ana and Cy", audience = listOf("user:2", "user:4"))
+        assertEquals(emptyList(), newExposures(space(anaBen), space(benAna)))
+        assertEquals(emptyList(), newExposures(space(anaBen), space(ana)))
+        assertEquals(listOf(anaCy), newExposures(space(anaBen), space(anaCy)))
+    }
+
+    @Test
     fun `an unknown trait's exposure still asks`() {
         val later = SpaceTrait("mirror", "Mirrored", "To a printer", exposure = "Printed at the office")
         assertEquals(listOf(later), newExposures(null, space(later)))

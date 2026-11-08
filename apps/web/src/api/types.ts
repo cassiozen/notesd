@@ -71,6 +71,8 @@ export type SpaceTrait = {
   summary: string
   /** Who else can see the space's notes; absent when they stay with the account. */
   exposure?: string
+  /** Who `exposure` reaches, as stable keys ("user:3", "public"): what a move compares. */
+  audience?: string[]
   /** Something wrong with it (publishing failed): shown in the danger colour. */
   problem?: string
 }
