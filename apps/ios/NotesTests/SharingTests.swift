@@ -26,15 +26,13 @@ struct SharingTests {
         #expect(Sharing.ago(now - 2 * 3_600_000, now: now) == "2h")
         #expect(Sharing.ago(now - 3 * 86_400_000, now: now) == "3d")
         #expect(Sharing.ago(now + 60_000, now: now) == "now", "a clock ahead of this one isn't the future")
-        let weekAgo = now - 8 * 86_400_000
-        let date = Date(timeIntervalSince1970: TimeInterval(weekAgo) / 1000)
-        let sameYear =
-            Calendar.current.component(.year, from: date)
-            == Calendar.current.component(.year, from: Date(timeIntervalSince1970: TimeInterval(now) / 1000))
-        let expected =
-            sameYear
-            ? date.formatted(.dateTime.month(.abbreviated).day()) : date.formatted(date: .numeric, time: .omitted)
-        #expect(Sharing.ago(weekAgo, now: now) == expected)
+        var utc = Calendar(identifier: .gregorian)
+        utc.timeZone = TimeZone(identifier: "UTC")!
+        let us = Locale(identifier: "en_US")
+        let day: Int64 = 86_400_000
+        // `now` is Jan 1, 2026: a week before is last year; Feb 20 is this year, seen on Mar 2.
+        #expect(Sharing.ago(now - 8 * day, now: now, calendar: utc, locale: us) == "12/24/2025")
+        #expect(Sharing.ago(now + 50 * day, now: now + 60 * day, calendar: utc, locale: us) == "Feb 20")
     }
 
     @Test func whatChangedCountsNotesAndNamesWho() {

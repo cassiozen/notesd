@@ -282,17 +282,10 @@ struct SharedSpacesTests {
         fixture.now = 4_000
         try await spaces.visit("fam", at: 2_500)
         #expect(try await spaces.news()["fam"]?.count == 1)
-        // Stamped ahead of this clock: past it, or it would stay news until the clock catches up.
-        _ = try await sync.applyPage(
-            SyncPage(
-                changes: [
-                    RemoteNote(
-                        id: "t", title: "Ahead", content: "", revision: 1, updatedAt: 9_000, spaceId: "fam",
-                        updatedBy: 2)
-                ],
-                nextCursor: 2, hasMore: false, generation: "h"),
-            feed: "fam")
         try await spaces.visit("fam", at: 4_000)
+        #expect(try await spaces.news().isEmpty)
+        // A visit timed earlier, landing late, doesn't bring it back.
+        try await spaces.visit("fam", at: 2_500)
         #expect(try await spaces.news().isEmpty)
     }
 

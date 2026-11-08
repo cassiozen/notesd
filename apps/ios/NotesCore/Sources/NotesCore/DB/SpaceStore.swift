@@ -133,17 +133,12 @@ public final class SpaceStore: Sendable {
     /// The space was shown until `at` (now if nil): what changed by then is no longer news. Pass the moment it was
     /// shown when the write may land later, or a change synced in between would never count.
     public func visit(_ id: String, at: Int64? = nil) async throws {
-        let now = clock()
+        let at = at ?? clock()
         try await db.write { sql in
-            // Past a note stamped ahead of this clock too, or it stays news until the clock catches up. Only those:
-            // one changed between `at` and now still counts.
+            // Never back: a visit timed earlier can land after a later one.
             try sql.exec(
-                """
-                UPDATE spaces SET visited_at = max(?,
-                    coalesce((SELECT max(updated_at) FROM notes WHERE space_id = ? AND updated_at > ?), 0))
-                WHERE id = ? AND shared IS NOT NULL
-                """,
-                at ?? now, id, now, id)
+                "UPDATE spaces SET visited_at = max(coalesce(visited_at, 0), ?) WHERE id = ? AND shared IS NOT NULL",
+                at, id)
         }
     }
 

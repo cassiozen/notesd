@@ -14,7 +14,9 @@ enum Sharing {
     }
 
     /// How long ago another member's change was, in a few characters: "now", "5m", "2h", "3d", then a date.
-    static func ago(_ ts: Int64, now: Int64 = systemNow(), calendar: Calendar = .current) -> String {
+    static func ago(
+        _ ts: Int64, now: Int64 = systemNow(), calendar: Calendar = .current, locale: Locale = .current
+    ) -> String {
         let minute: Int64 = 60_000
         let hour = 60 * minute
         let day = 24 * hour
@@ -27,8 +29,14 @@ enum Sharing {
         let sameYear =
             calendar.component(.year, from: at)
             == calendar.component(.year, from: Date(timeIntervalSince1970: TimeInterval(now) / 1000))
-        return sameYear
-            ? at.formatted(.dateTime.month(.abbreviated).day()) : at.formatted(date: .numeric, time: .omitted)
+        if sameYear {
+            return at.formatted(
+                Date.FormatStyle(locale: locale, calendar: calendar, timeZone: calendar.timeZone)
+                    .month(.abbreviated).day())
+        }
+        return at.formatted(
+            Date.FormatStyle(
+                date: .numeric, time: .omitted, locale: locale, calendar: calendar, timeZone: calendar.timeZone))
     }
 
     /// The switcher's line for a space others changed: "Ben edited 3 notes · 2h".

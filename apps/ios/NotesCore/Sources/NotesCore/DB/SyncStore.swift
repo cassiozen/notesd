@@ -139,9 +139,9 @@ public final class SyncStore: Sendable {
             for feed in gone {
                 for note in try sql.query("SELECT \(noteColumns) FROM notes WHERE space_id = ?", feed, row: noteRow) {
                     // Moved into it here, the move not yet sent: the server still has it where it was, so it goes
-                    // back.
+                    // back. Sent but not answered, the server may have it here: kept only as a copy, below.
                     if let back = note.baseSpaceId, note.serverRevision != nil, back != feed, !gone.contains(back),
-                        try sql.reaches(back)
+                        try sql.reaches(back), try !sql.sentAny(note.id)
                     {
                         try sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, note.id)
                         if note.deletedAt == nil {
@@ -163,11 +163,13 @@ public final class SyncStore: Sendable {
                     try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
                 }
                 // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note
-                // goes to the server again, as new, where it is.
+                // goes to the server again, as new, where it is. Sent but not answered, the move may have landed:
+                // sent again, its answer is found where the note went.
                 let strays = try sql.query(
                     """
-                    SELECT \(noteColumns) FROM notes
+                    SELECT \(noteColumns) FROM notes n
                     WHERE base_space_id = ? AND space_id != ? AND server_revision IS NOT NULL
+                        AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.sent = 1)
                     """, feed, feed, row: noteRow)
                 for note in strays {
                     try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)

@@ -169,6 +169,11 @@ extension Sql {
         return shared == true ? spaceId : ""
     }
 
+    /// Whether any of `noteId`'s queued changes has gone out unanswered.
+    func sentAny(_ noteId: String) throws -> Bool {
+        try int64("SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1", noteId) > 0
+    }
+
     /// Whether this device has the space, so its notes can follow a note moved there.
     func reaches(_ spaceId: String) throws -> Bool {
         try int64("SELECT count(*) FROM spaces WHERE id = ? AND pending_delete = 0", spaceId) > 0
