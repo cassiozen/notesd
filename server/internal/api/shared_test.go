@@ -123,9 +123,11 @@ func TestSharingASpace(t *testing.T) {
 		if len(got) != 1 || got[0]["title"] != "Groceries" || got[0]["spaceId"] != "fam" || got[0]["revision"] != 1.0 {
 			t.Fatalf("the space's feed has the note, as it was: %v", got)
 		}
-		// Its image came along.
-		if r := c.do("GET", "/api/v1/spaces/fam/images/"+s.image, nil); r.status != 200 {
-			t.Fatalf("image in the space: %d", r.status)
+		// Its image came along, and loads at the account's address too.
+		for _, path := range []string{"/api/v1/spaces/fam/images/", "/api/v1/images/"} {
+			if r := c.do("GET", path+s.image, nil); r.status != 200 {
+				t.Fatalf("image at %s: %d", path, r.status)
+			}
 		}
 	}
 
