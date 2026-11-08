@@ -1,6 +1,7 @@
 package notes.app.notes
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertTouchHeightIsEqualTo
 import androidx.compose.ui.test.assertTouchWidthIsEqualTo
@@ -88,10 +89,12 @@ class SpaceSwitcherTest {
     }
 
     @Test
-    fun `a trait without a summary is its label, and a space without traits is only you`() {
+    fun `a trait without a summary is its label, and a space without traits gets no line`() {
         assertEquals("Agent", cardLine(agent))
         show(listOf(notes, family), "default")
-        compose.onNodeWithText("Only you").assertExists()
+        compose.onNodeWithText("Notes").assertExists()
+        compose.onNodeWithText("Only you", substring = true, ignoreCase = true).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Space info").assertExists()
     }
 
     @Test
@@ -99,7 +102,7 @@ class SpaceSwitcherTest {
         show(listOf(notes, family, journal), "f")
         compose.onNodeWithText("SWITCH TO").assertExists()
         compose.onNode(hasContentDescription("Family", substring = true)).assertDoesNotExist()
-        compose.onNodeWithContentDescription("Notes, only you").performClick()
+        compose.onNodeWithContentDescription("Notes").performClick()
         assertEquals(listOf("default"), switched)
     }
 
@@ -112,16 +115,33 @@ class SpaceSwitcherTest {
     }
 
     @Test
-    fun `rows say their traits, a problem, a change, or only you`() {
-        show(listOf(notes, family, journal, work), "j", changes = mapOf("w" to "Ben edited 3 notes · 2h"))
-        compose.onNodeWithContentDescription("Notes, only you").assertExists()
-        compose.onNodeWithContentDescription("Family, Shared, Publishing failed").assertExists()
-        compose.onNode(hasContentDescription("Family, Shared, Publishing failed") and hasText("Publishing failed"))
-            .assertExists()
-        // A change replaces the trait labels on the second line.
-        compose.onNodeWithContentDescription("Work, Ben edited 3 notes · 2h").assertExists()
-        compose.onNode(hasText("Ben edited 3 notes · 2h") and hasText("Shared")).assertDoesNotExist()
+    fun `rows are one line, a second only for a change or a problem, and never say only you`() {
+        show(listOf(notes, family, journal, work), "default", changes = mapOf("w" to "Ben edited 3 notes · 2h"))
+        compose.onNodeWithText("only you", substring = true, ignoreCase = true).assertDoesNotExist()
+        // Glyphs only: the agent's label is in what TalkBack reads, not on the row.
+        assertEquals(listOf("Journal"), texts("Journal, Agent"))
+        // A problem is worth a line, in the danger colour; the labels still aren't.
+        assertEquals(listOf("Family", "Publishing failed"), texts("Family, Shared, Published (Publishing failed)"))
+        // A change is the line, and what TalkBack reads after the name.
+        assertEquals(listOf("Work", "Ben edited 3 notes · 2h"), texts("Work, Ben edited 3 notes · 2h"))
     }
+
+    @Test
+    fun `a row's second line and description`() {
+        val twoProblems = family.copy(traits = listOf(shared.copy(problem = "Owner left"), failing))
+        assertEquals("Owner left · Publishing failed", rowLine(twoProblems, null))
+        assertEquals(null, rowLine(journal, null))
+        assertEquals(null, rowLine(notes, null))
+        assertEquals("Ben edited 3 notes · 2h", rowLine(family, "Ben edited 3 notes · 2h"))
+        assertEquals("Notes", rowDescription(notes, null))
+        assertEquals("Journal, Agent", rowDescription(journal, null))
+        assertEquals("Work, Ben edited a note · 5m", rowDescription(work, "Ben edited a note · 5m"))
+    }
+
+    /** The texts shown in the row TalkBack reads as [description]. */
+    private fun texts(description: String): List<String> =
+        compose.onNodeWithContentDescription(description).fetchSemanticsNode().config[SemanticsProperties.Text]
+            .map { it.text }
 
     @Test
     fun `a long press opens that space's info without switching, as does TalkBack's action`() {
@@ -130,7 +150,9 @@ class SpaceSwitcherTest {
         assertEquals(listOf("j"), info)
         assertEquals(emptyList(), switched)
 
-        val node = compose.onNodeWithContentDescription("Family, Shared, Publishing failed").fetchSemanticsNode()
+        val node = compose.onNodeWithContentDescription(
+            "Family, Shared, Published (Publishing failed)"
+        ).fetchSemanticsNode()
         val action = node.config.getOrNull(SemanticsActions.CustomActions)?.single { it.label == "Space info" }
         compose.runOnIdle { action!!.action() }
         assertEquals(listOf("j", "f"), info)
@@ -193,7 +215,7 @@ class SpaceSwitcherTest {
         }
         compose.onNodeWithContentDescription("Space: Notes").performClick()
         compose.waitUntil { compose.onAllNodes(hasText("New space…")).fetchSemanticsNodes().isNotEmpty() }
-        compose.onNodeWithContentDescription("Family, Shared, Publishing failed").performClick()
+        compose.onNodeWithContentDescription("Family, Shared, Published (Publishing failed)").performClick()
         assertEquals(listOf("f"), switched)
         compose.waitUntil { compose.onAllNodes(hasText("New space…")).fetchSemanticsNodes().isEmpty() }
     }

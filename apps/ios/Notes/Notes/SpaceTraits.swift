@@ -8,15 +8,16 @@ struct TraitKind: Identifiable {
     let label: String
     /// An SF Symbol, drawn in one colour.
     let symbol: String
-    /// Its settings, opened from its Space info row while it's on; nil for none.
-    var settings: (@MainActor (Space) -> AnyView)?
-    /// Turns it on from Space info; nil while the feature can't be.
-    var turnOn: (@MainActor (Space) -> Void)?
+    /// Its part of Space info, on or off: everything it changes, in place, turning it on included (a feature is
+    /// turned on by using it). Nil: a row with the server's label and summary, and nothing to change.
+    var section: (@MainActor (Space) -> AnyView)?
+    /// Off, whether Space info offers it. Set only with a `section`: that section is what turns it on.
+    var canTurnOn = false
 
     var id: String { key }
 }
 
-/// A row of Space info's traits section.
+/// A trait on Space info: its own section, or a row.
 enum TraitRow: Identifiable {
     /// On: the server's trait, with what this app knows of it (nil for a key it doesn't).
     case on(SpaceTrait, TraitKind?)
@@ -58,12 +59,12 @@ enum Traits {
         traits.map { t in t.problem.map { "\(label(t)): \($0)" } ?? label(t) }.joined(separator: ", ")
     }
 
-    /// Space info's rows: each known trait in order, on, or off when it can be turned on; then those on that
+    /// Space info's traits: each known one in order, on, or off when it can be turned on; then those on that
     /// this app doesn't know, as the server sent them.
     static func rows(_ traits: [SpaceTrait], registry: [TraitKind] = registry) -> [TraitRow] {
         let known: [TraitRow] = registry.compactMap { kind in
             if let on = traits.first(where: { $0.key == kind.key }) { return .on(on, kind) }
-            return kind.turnOn == nil ? nil : .off(kind)
+            return kind.canTurnOn ? .off(kind) : nil
         }
         let unknown = traits.filter { t in !registry.contains { $0.key == t.key } }.map { TraitRow.on($0, nil) }
         return known + unknown
@@ -92,14 +93,22 @@ struct TraitGlyphs: View {
     let traits: [SpaceTrait]
     var spacing: CGFloat = 5
     var scale: Image.Scale = .small
+    /// One that turns on while it's shown arrives with a little movement: seen as it starts to mean something
+    /// (the space shared from Space info, say), it's read later.
+    var arrives = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: spacing) {
             ForEach(traits, id: \.key) { trait in
                 Image(systemName: Traits.symbol(trait.key))
                     .foregroundStyle(trait.problem == nil ? Color.ink3 : Color.danger)
+                    .transition(.scale(scale: 0.3).combined(with: .opacity))
             }
         }
+        .animation(
+            arrives && !reduceMotion ? .spring(response: 0.5, dampingFraction: 0.5) : nil, value: traits.map(\.key)
+        )
         .imageScale(scale)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Traits.spoken(traits))

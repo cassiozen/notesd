@@ -97,6 +97,12 @@
   align-self: start;
 }
 
+/* Name and Info only: centred on the icon instead of hanging from its top. */
+.card:not(:has(.cardLines)) > :first-child {
+  grid-row: auto;
+  align-self: center;
+}
+
 .cardName {
   min-width: 0;
   font-weight: 600;
@@ -224,6 +230,11 @@
   grid-row: 1 / span 2;
 }
 
+/* One line for most rows: a second (news, a problem) is something to look at. */
+.rowMain:not(:has(.rowLine)) {
+  min-height: 36px;
+}
+
 .row:hover .rowMain,
 .rowMain:focus-visible {
   background: var(--hover);
@@ -255,27 +266,13 @@
 .rowLine {
   grid-column: 2;
   min-width: 0;
-  display: flex;
-  align-items: center;
-  gap: 4px;
   font-size: 12px;
-  color: var(--ink-3);
+  color: var(--ink-2);
   white-space: nowrap;
   overflow: hidden;
-}
-
-.rowTrait {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.change {
-  min-width: 0;
-  overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--ink-2);
 }
+
 
 /* Shown with the row's hover or focus; → reaches it from the row. */
 .rowInfo {
@@ -354,4 +351,8 @@
   .rowInfo {
     opacity: 1;
   }
+}
+
+.rowLine.problem {
+  color: var(--danger);
 }

@@ -108,7 +108,17 @@ fun Heading(text: String, modifier: Modifier = Modifier, style: TextStyle = Type
 
 // --- buttons -----------------------------------------------------------------
 
-enum class ButtonKind { Solid, Accent, Chip, Ghost, Danger, DangerText }
+enum class ButtonKind {
+    Solid,
+    Accent,
+    Chip,
+    Ghost,
+    Danger,
+    DangerText,
+
+    /** Filled: the go-ahead inside a confirmation that's already on the danger tint. */
+    DangerSolid
+}
 
 /** The web's buttons: 50dp tall, rounded 16, pressed ones sink. */
 @Composable
@@ -130,6 +140,7 @@ fun NotesButton(
         ButtonKind.Ghost -> Color.Transparent to t.ink2
         ButtonKind.Danger -> t.dangerBg to t.danger
         ButtonKind.DangerText -> Color.Transparent to t.danger
+        ButtonKind.DangerSolid -> t.danger to t.bg
     }
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(if (small) 12.dp else 16.dp)

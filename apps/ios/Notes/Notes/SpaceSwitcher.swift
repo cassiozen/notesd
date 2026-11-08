@@ -26,21 +26,19 @@ struct SwitcherLine: Hashable {
     var problem = false
 }
 
-/// A row's second line.
+/// A row's second line, only for something to look at.
 enum SwitcherDetail: Equatable {
-    /// What changed there lately, after the trait glyphs.
-    case change(glyphs: [SwitcherLine], text: String)
-    case traits([SwitcherLine])
-    case onlyYou
+    /// What others changed there lately.
+    case change(String)
+    /// Its traits' problems, joined.
+    case problems(String)
 }
 
 enum Switcher {
-    static let onlyYou = "Only you"
-
-    /// The current space's card: a line per trait, in order, its problem or its label and summary.
+    /// The current space's card: a line per trait, in order, its problem or its label and summary. None for a
+    /// space without traits: private is the default and goes unsaid.
     static func cardLines(_ space: Space) -> [SwitcherLine] {
-        guard !space.traits.isEmpty else { return [SwitcherLine(text: onlyYou)] }
-        return space.traits.map { t in
+        space.traits.map { t in
             let symbol = Traits.symbol(t.key)
             if let problem = t.problem { return SwitcherLine(symbol: symbol, text: problem, problem: true) }
             let label = Traits.label(t)
@@ -53,26 +51,17 @@ enum Switcher {
         spaces.filter { $0.id != current }
     }
 
-    static func detail(_ space: Space, change: String?) -> SwitcherDetail {
-        let glyphs = space.traits.map {
-            SwitcherLine(symbol: Traits.symbol($0.key), text: "", problem: $0.problem != nil)
-        }
-        if let change { return .change(glyphs: glyphs, text: change) }
-        if space.traits.isEmpty { return .onlyYou }
-        return .traits(
-            space.traits.map { t in
-                SwitcherLine(
-                    symbol: Traits.symbol(t.key), text: t.problem ?? Traits.label(t), problem: t.problem != nil)
-            })
+    /// What changed there, else what's wrong with its traits; nil for a row of one line.
+    static func detail(_ space: Space, change: String?) -> SwitcherDetail? {
+        if let change { return .change(change) }
+        let problems = space.traits.compactMap(\.problem)
+        return problems.isEmpty ? nil : .problems(problems.joined(separator: " · "))
     }
 
-    /// What VoiceOver says for a row: its name, then what changed, its traits, or "only you".
+    /// What VoiceOver says for a row: its name, then what changed, else its traits (the glyphs, in words).
     static func spoken(_ space: Space, change: String?) -> String {
-        switch detail(space, change: change) {
-        case .change(_, let text): "\(space.name), \(text)"
-        case .traits(let lines): "\(space.name), " + lines.map(\.text).joined(separator: ", ")
-        case .onlyYou: "\(space.name), only you"
-        }
+        if let change { return "\(space.name), \(change)" }
+        return space.traits.isEmpty ? space.name : "\(space.name), \(Traits.spoken(space.traits))"
     }
 }
 
@@ -147,12 +136,14 @@ struct SpaceSwitcherSheet: View {
     }
 
     private func card(_ space: Space) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        let lines = Switcher.cardLines(space)
+        // Name and Info only: centred on the icon rather than hanging from its top.
+        return HStack(alignment: lines.isEmpty ? .center : .top, spacing: 14) {
             SpaceIconImage(icon: space.icon, size: 40)
             VStack(alignment: .leading, spacing: 4) {
                 Text(space.name).font(.notesRowTitle.weight(.semibold)).foregroundStyle(Color.ink)
                     .accessibilityAddTraits(.isHeader)
-                ForEach(Switcher.cardLines(space), id: \.self) { line in
+                ForEach(lines, id: \.self) { line in
                     HStack(alignment: .firstTextBaseline, spacing: 6) {
                         if let symbol = line.symbol {
                             Image(systemName: symbol)
@@ -181,7 +172,7 @@ struct SpaceSwitcherSheet: View {
                 .padding(.horizontal, 9)
                 .padding(.vertical, 4)
                 .background(Color.on, in: .rect(cornerRadius: 8, style: .continuous))
-                .frame(minWidth: 44, minHeight: 44, alignment: .topTrailing)
+                .frame(minWidth: 44, minHeight: 44, alignment: lines.isEmpty ? .trailing : .topTrailing)
                 .contentShape(.rect)
             }
             .buttonStyle(PressScaleStyle())
@@ -218,7 +209,8 @@ struct SpaceSwitcherSheet: View {
     }
 }
 
-/// A space to switch to. Tapping switches; holding opens its Space info without switching.
+/// A space to switch to: one line, its icon, name and trait glyphs; a second only for what changed there or a
+/// trait's problem. Tapping switches; holding opens its Space info without switching.
 private struct SwitcherRow: View {
     let space: Space
     let change: String?
@@ -227,19 +219,23 @@ private struct SwitcherRow: View {
     @State private var pressed = false
 
     var body: some View {
+        let detail = Switcher.detail(space, change: change)
         HStack(spacing: 12) {
             SpaceIconImage(icon: space.icon, size: 20)
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(space.name).font(.notesRowTitle).foregroundStyle(Color.ink).lineLimit(1)
+                    Text(space.name).foregroundStyle(Color.ink).lineLimit(1)
+                    if !space.traits.isEmpty { TraitGlyphs(traits: space.traits) }
                     if change != nil { Circle().fill(Color.ink).frame(width: 7, height: 7) }
                 }
-                detail.lineLimit(1)
+                .font(.notesRowTitle)
+                if let detail { line(detail) }
             }
             Spacer(minLength: 0)
         }
         .padding(.horizontal, 12)
-        .frame(minHeight: 52)
+        .padding(.vertical, 6)
+        .frame(minHeight: 44)
         .background(pressed ? Color.on : .clear, in: .rect(cornerRadius: 10, style: .continuous))
         .contentShape(.rect)
         .onTapGesture(perform: onSwitch)
@@ -252,26 +248,16 @@ private struct SwitcherRow: View {
         .accessibilityAction(named: "Space info") { onInfo() }
     }
 
-    private var detail: Text {
-        let small = Font.custom("InstrumentSans-Regular", size: 12.5, relativeTo: .caption)
-        switch Switcher.detail(space, change: change) {
-        case .change(let glyphs, let text):
-            let marks = glyphs.reduce(Text(verbatim: "")) { all, g in Text("\(all)\(glyph(g)) ") }
-            return Text("\(marks)\(Text(text).foregroundStyle(Color.ink2))").font(small)
-        case .traits(let lines):
-            let parts = lines.enumerated().map { i, line in
-                Text("\(i == 0 ? "" : " · ")\(glyph(line)) \(Text(line.text))")
-                    .foregroundStyle(line.problem ? Color.danger : Color.ink3)
+    private func line(_ detail: SwitcherDetail) -> some View {
+        let (text, color): (String, Color) =
+            switch detail {
+            case .change(let text): (text, .ink2)
+            case .problems(let text): (text, .danger)
             }
-            return parts.reduce(Text(verbatim: "")) { all, part in Text("\(all)\(part)") }.font(small)
-        case .onlyYou:
-            return Text(Switcher.onlyYou).font(small).foregroundStyle(Color.ink3)
-        }
-    }
-
-    private func glyph(_ line: SwitcherLine) -> Text {
-        Text(Image(systemName: line.symbol ?? Traits.unknownSymbol))
-            .foregroundStyle(line.problem ? Color.danger : Color.ink3)
+        return Text(text)
+            .font(.custom("InstrumentSans-Regular", size: 12.5, relativeTo: .caption))
+            .foregroundStyle(color)
+            .lineLimit(1)
     }
 }
 

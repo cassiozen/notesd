@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react'
+import type { ButtonHTMLAttributes, Ref } from 'react'
 import styles from './button.module.css'
 
 type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -12,6 +12,7 @@ type Props = ButtonHTMLAttributes<HTMLButtonElement> & {
   /** Stretch to fill the row (flex: 1). */
   grow?: boolean
   busy?: boolean
+  ref?: Ref<HTMLButtonElement>
 }
 
 export function Button({

@@ -176,6 +176,11 @@ final class FlowTests: XCTestCase {
     }
 
     /// Spaces (§7.7) work offline: the sidebar always names the space, and its switcher makes new ones.
+    /// Space info's name, edited where it's shown.
+    private var nameEditor: XCUIElement {
+        app.descendants(matching: .any).matching(NSPredicate(format: "label == %@", "Name")).firstMatch
+    }
+
     func testSpaces() throws {
         app.launch()
         XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
@@ -221,24 +226,26 @@ final class FlowTests: XCTestCase {
         let switcher = app.buttons["Space: Work"]
         XCTAssertTrue(switcher.waitForExistence(timeout: 5))
         switcher.tap()
-        // The current space is the card; the others are listed to switch to.
-        let notes = app.buttons["Notes, only you"]
+        // The current space is the card; the others are listed to switch to. Without traits a row is its name
+        // alone: private goes unsaid.
+        let notes = app.buttons["Notes"]
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
         XCTAssertTrue(switchTo.exists)
-        XCTAssertFalse(app.buttons["Work, only you"].exists)
+        XCTAssertFalse(app.buttons["Work"].exists)
+        XCTAssertFalse(app.staticTexts["Only you"].exists)
         screenshot("space switcher")
         try audit("space switcher", [.sufficientElementDescription, .hitRegion])
 
         // Holding a row opens that space's info (§7.8) without switching: the default can't be deleted.
         notes.press(forDuration: 1)
         XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Name and Icon"].exists)
-        XCTAssertFalse(app.buttons["Delete Space"].isEnabled)
+        XCTAssertTrue(nameEditor.exists)
+        XCTAssertTrue(app.buttons["Change icon"].exists)
+        XCTAssertFalse(app.buttons["Delete Space…"].isEnabled)
         screenshot("space info")
         try audit("space info", [.sufficientElementDescription, .hitRegion])
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-
-        app.buttons["Tags"].tap()
+        // Done: back on the sidebar it was opened from.
+        app.buttons["Done"].tap()
         XCTAssertTrue(switcher.waitForExistence(timeout: 5))
         switcher.tap()
         XCTAssertTrue(notes.waitForExistence(timeout: 5))
@@ -260,10 +267,10 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(info.waitForExistence(timeout: 5))
         info.tap()
         XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].waitForExistence(timeout: 5))
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Done"].tap()
 
         // Settings › Spaces: each row opens its Space info.
-        app.buttons["Tags"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
         app.buttons["Settings"].tap()
         let spaces = app.buttons["Spaces"]
         XCTAssertTrue(spaces.waitForExistence(timeout: 5))
@@ -272,7 +279,24 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(work.waitForExistence(timeout: 5))
         work.tap()
         XCTAssertTrue(app.staticTexts["Move or delete its notes to delete this space."].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Delete Space"].isEnabled)
+        XCTAssertFalse(app.buttons["Delete Space…"].isEnabled)
+
+        // Its owner renames it where the name is shown, and picks an icon under the header: each saved as made.
+        let nameField = nameEditor
+        nameField.tap()
+        nameField.typeText("Office\n")
+        app.buttons["Change icon"].tap()
+        let castle = app.buttons["Castle"]
+        XCTAssertTrue(castle.waitForExistence(timeout: 5))
+        castle.tap()
+        XCTAssertTrue(castle.isSelected)
+        screenshot("space info, icons")
+        app.buttons["Done"].tap()
+        let office = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Office,")).firstMatch
+        XCTAssertTrue(office.waitForExistence(timeout: 5))
+        office.tap()
+        XCTAssertEqual(app.buttons["Change icon"].value as? String, "Castle")
+        app.buttons["Done"].tap()
     }
 
     /// As another account would, from its own device: a JSON call with `token`'s session.
@@ -351,25 +375,48 @@ final class FlowTests: XCTestCase {
         join.tap()
         XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 15))
 
-        // Family, shared from its Space info: the people picker leaves out the account itself.
+        // A member's Space info: the name is the owner's to change; People lists who's in it, and Leave.
         app.buttons["Tags"].tap()
-        XCTAssertTrue(app.buttons["Space: Book club"].waitForExistence(timeout: 5))
-        app.buttons["Space: Book club"].tap()
-        let familyRow = app.buttons["Family, only you"]
+        let bookClubSwitcher = app.buttons["Space: Book club"]
+        XCTAssertTrue(bookClubSwitcher.waitForExistence(timeout: 5))
+        bookClubSwitcher.tap()
+        app.buttons["Space info"].tap()
+        XCTAssertTrue(app.staticTexts["Ana, Owner"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Sam, You"].exists)
+        XCTAssertTrue(app.buttons["Leave Space…"].exists)
+        XCTAssertFalse(nameEditor.exists)
+        XCTAssertFalse(app.buttons["Options for Ana"].exists)
+        XCTAssertFalse(app.buttons["Delete Space…"].exists)
+        screenshot("ios-shared-member")
+        app.buttons["Done"].tap()
+
+        // Family's Space info: People says what inviting does and lists everyone else, not the account itself.
+        XCTAssertTrue(bookClubSwitcher.waitForExistence(timeout: 5))
+        bookClubSwitcher.tap()
+        let familyRow = app.buttons["Family"]
         XCTAssertTrue(familyRow.waitForExistence(timeout: 5))
         familyRow.press(forDuration: 1)
-        let turnOn = app.buttons["Turn On Shared"]
-        XCTAssertTrue(turnOn.waitForExistence(timeout: 5))
-        turnOn.tap()
-        let anaRow = app.buttons["Ana"]
-        XCTAssertTrue(anaRow.waitForExistence(timeout: 10))
-        XCTAssertTrue(app.buttons["Ben"].exists)
-        XCTAssertFalse(app.buttons["Sam"].exists)
-        screenshot("ios-shared-people-picker")
-        anaRow.tap()
-        let sharedRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Shared")).firstMatch
-        XCTAssertTrue(sharedRow.waitForExistence(timeout: 15))
-        XCTAssertTrue(app.staticTexts["Invited Ana"].waitForExistence(timeout: 10))
+        let lead = "Invite people to read and edit every note in Family, and add their own."
+        XCTAssertTrue(app.staticTexts[lead].waitForExistence(timeout: 5))
+        let inviteAna = app.buttons["Invite Ana"]
+        XCTAssertTrue(inviteAna.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Invite Ben"].exists)
+        XCTAssertFalse(app.buttons["Invite Sam"].exists)
+        screenshot("ios-shared-people-invite")
+        // One tap invites, which shares it: Ana lands in the list, invited, and the glyph arrives.
+        inviteAna.tap()
+        XCTAssertTrue(app.staticTexts["Ana, Invited"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Sam, Owner · You"].exists)
+        XCTAssertTrue(app.buttons["Stop Sharing…"].exists)
+        screenshot("ios-shared-invited")
+        // Ben too, then not: Cancel needs no confirmation.
+        app.buttons["Invite Ben"].tap()
+        let cancelBen = app.buttons["Cancel invitation for Ben"]
+        XCTAssertTrue(cancelBen.waitForExistence(timeout: 15))
+        cancelBen.tap()
+        XCTAssertTrue(app.buttons["Invite Ben"].waitForExistence(timeout: 15))
+        app.buttons["Done"].tap()
+        app.buttons["Close sidebar"].tap()
 
         // Ana joins, edits the note and adds one.
         let invites = try await call("GET", "api/v1/invites", token: ana)["invites"] as? [[String: Any]] ?? []
@@ -390,7 +437,6 @@ final class FlowTests: XCTestCase {
             ])
 
         // Back on Book club's list: a sync brings what Ana did; the switcher says so.
-        app.navigationBars.buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 5))
         refreshList()
         app.buttons["Tags"].tap()
@@ -401,22 +447,30 @@ final class FlowTests: XCTestCase {
         sleep(1)
         screenshot("ios-shared-switcher-news")
 
-        // Space info, then the Shared page.
+        // Space info: Ana's in; the owner manages her from her row, each change asked first where it was asked.
         news.press(forDuration: 1)
-        let withAna = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Shared, With Ana")).firstMatch
-        XCTAssertTrue(withAna.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Ana"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Invite Ben"].exists)
+        XCTAssertTrue(app.buttons["Stop Sharing…"].exists)
         screenshot("ios-shared-space-info")
-        withAna.tap()
-        XCTAssertTrue(app.staticTexts["Ana"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Invite Someone…"].exists)
-        XCTAssertTrue(app.buttons["Stop Sharing"].exists)
-        screenshot("ios-shared-manage")
         try audit("shared", [.sufficientElementDescription, .hitRegion])
-        app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["Options for Ana"].tap()
+        let makeOwner = app.buttons["Make Owner"]
+        XCTAssertTrue(makeOwner.waitForExistence(timeout: 5))
+        makeOwner.tap()
+        XCTAssertTrue(app.staticTexts["Make Ana the owner of “Family”?"].waitForExistence(timeout: 5))
+        screenshot("ios-shared-make-owner")
+        // A popover on iOS 26 has no Cancel: tapping outside it is.
+        if app.buttons["Cancel"].exists {
+            app.buttons["Cancel"].tap()
+        } else {
+            app.otherElements["PopoverDismissRegion"].firstMatch.tap()
+        }
+        XCTAssertTrue(app.staticTexts["Ana"].waitForExistence(timeout: 5))
+        app.buttons["Done"].tap()
 
         // Family's list says who edited; having shown it, what changed there is no longer news.
-        app.buttons["Tags"].tap()
+        XCTAssertTrue(app.buttons["Space: Book club"].waitForExistence(timeout: 5))
         app.buttons["Space: Book club"].tap()
         XCTAssertTrue(news.waitForExistence(timeout: 5))
         news.tap()

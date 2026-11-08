@@ -57,7 +57,6 @@ import notes.app.settings.SettingsSection
 import notes.app.settings.SettingsSectionScreen
 import notes.app.settings.SpaceInfoScreen
 import notes.app.sharing.Shared
-import notes.app.sharing.SharingScreen
 import notes.app.ui.KeyboardBar
 import notes.app.ui.KeyboardBarSlot
 import notes.app.ui.LocalKeyboardBar
@@ -92,10 +91,6 @@ data class SettingsSectionKey(val section: SettingsSection) : NavKey
 /** A space's Space info (§7.8). */
 @Serializable
 data class SpaceInfoKey(val id: String) : NavKey
-
-/** Who a shared space is shared with (§7.9), from its Space info. */
-@Serializable
-data class SharingKey(val id: String) : NavKey
 
 /** Connecting to a server; with [signInAgain], signing back in to the one these notes belong to. */
 @Serializable
@@ -482,12 +477,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
 
                                         else -> "Notes"
                                     },
-                                    onBack = { pop() },
-                                    onSharing = { backStack += SharingKey(key.id) }
+                                    onBack = { pop() }
                                 )
-                            }
-                            entry<SharingKey> { key ->
-                                SharingScreen(graph, key.id, backLabel = spaces.nameOf(key.id), onBack = { pop() })
                             }
                             entry<OnboardingKey> { key ->
                                 val signedOut = account as? Account.SignedOut

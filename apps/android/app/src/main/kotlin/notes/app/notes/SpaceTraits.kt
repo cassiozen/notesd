@@ -8,27 +8,23 @@ import notes.core.db.Space
 
 /**
  * A space trait this app knows (§7.8). [label] names it while it's off; on, the server's label and summary
- * are shown. [settings] and [turnOn] are shown from Space info, and are given a way to close.
+ * are shown.
  */
 class TraitEntry(
     val key: String,
     @DrawableRes val glyph: Int,
     val label: String,
-    /** Opened from its Space info row while it's on; null: no settings, and no chevron. */
-    val settings: (@Composable (space: Space, onClose: () -> Unit) -> Unit)? = null,
-    /** Shown on Turn on; null: this app can't turn it on yet, so the row is left out while it's off. */
-    val turnOn: (@Composable (space: Space, onClose: () -> Unit) -> Unit)? = null,
-    /** Whether a space can have it at all; one that can't leaves the row out while it's off. */
-    val offeredFor: (Space) -> Boolean = { true }
+    /**
+     * Its part of Space info, on or off: everything it changes, turning it on included, in place. Null: Space
+     * info shows the server's label and summary, and there's nothing to change.
+     */
+    val section: (@Composable (space: Space) -> Unit)? = null,
+    /** Off, whether Space info offers it for [Space]. Set only with a [section]: that section is what turns it on. */
+    val canTurnOn: (Space) -> Boolean = { false }
 ) {
-    val canTurnOn: Boolean get() = turnOn != null
-
-    /** The same trait with this app's ways to change it. */
-    fun with(
-        settings: (@Composable (space: Space, onClose: () -> Unit) -> Unit)?,
-        turnOn: (@Composable (space: Space, onClose: () -> Unit) -> Unit)?,
-        offeredFor: (Space) -> Boolean
-    ) = TraitEntry(key, glyph, label, settings, turnOn, offeredFor)
+    /** The same trait with this app's way to change it. */
+    fun with(section: @Composable (space: Space) -> Unit, canTurnOn: (Space) -> Boolean) =
+        TraitEntry(key, glyph, label, section, canTurnOn)
 }
 
 /** Every trait this app knows, in the fixed order; a key is reserved here before its feature ships. */
@@ -79,7 +75,7 @@ fun newExposures(from: Space?, to: Space): List<SpaceTrait> {
     }.distinctBy { it.exposure }
 }
 
-/** A row of Space info's traits group. */
+/** A trait's place in Space info: its section, or a row. */
 sealed interface TraitRow {
     data class On(val entry: TraitEntry, val trait: SpaceTrait) : TraitRow
 
@@ -91,22 +87,18 @@ sealed interface TraitRow {
 }
 
 /**
- * Space info's trait rows: each [registry] entry in its order, an off one only if it can be turned on (for
- * [space], when given), then the keys the registry doesn't have, as sent.
+ * Space info's traits for [space]: each [registry] entry in its order, an off one only if it can be turned on
+ * there, then the keys the registry doesn't have, as sent.
  */
-fun traitRows(
-    traits: List<SpaceTrait>,
-    registry: List<TraitEntry> = SpaceTraits.entries,
-    space: Space? = null
-): List<TraitRow> {
+fun traitRows(space: Space, registry: List<TraitEntry> = SpaceTraits.entries): List<TraitRow> {
     val known = registry.mapNotNull { entry ->
-        val trait = traits.firstOrNull { it.key == entry.key }
+        val trait = space.traits.firstOrNull { it.key == entry.key }
         when {
             trait != null -> TraitRow.On(entry, trait)
-            entry.canTurnOn && (space == null || entry.offeredFor(space)) -> TraitRow.Off(entry)
+            entry.canTurnOn(space) -> TraitRow.Off(entry)
             else -> null
         }
     }
     val keys = registry.mapTo(HashSet()) { it.key }
-    return known + traits.filter { it.key !in keys }.map { TraitRow.Unknown(it) }
+    return known + space.traits.filter { it.key !in keys }.map { TraitRow.Unknown(it) }
 }

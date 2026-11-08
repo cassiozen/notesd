@@ -6,8 +6,11 @@ enum Route: Hashable {
     case note(id: String, startTag: String? = nil, isNew: Bool = false)
     case settings
     case settingsSection(SettingsSection)
-    /// A space's page of space-level settings (§7.8), by id.
-    case spaceInfo(String)
+}
+
+/// A space's Space info (§7.8), by id: one sheet, over whatever's open.
+struct SpaceInfoTarget: Identifiable, Hashable {
+    let id: String
 }
 
 /// What's open beside the list: the detail's first screen, then the ones pushed
@@ -20,6 +23,8 @@ final class Navigator {
     var path: [Route] = [] {
         didSet { compactColumn = path.isEmpty ? .sidebar : .detail }
     }
+    /// Space info's sheet, while it's up.
+    var spaceInfo: SpaceInfoTarget?
     /// The list and the open note side by side.
     var wide = false
     /// Narrow: whether the list or the detail is the one on screen.
@@ -46,9 +51,9 @@ final class Navigator {
         path = [.settings]
     }
 
-    /// A space's info, in place of what was open, as Settings opens from the sidebar.
+    /// A space's info, over what's open: closing it is back where it was opened from.
     func openSpaceInfo(_ id: String) {
-        path = [.spaceInfo(id)]
+        spaceInfo = SpaceInfoTarget(id: id)
     }
 
     /// Over the screen shown (a conflicted copy's original).

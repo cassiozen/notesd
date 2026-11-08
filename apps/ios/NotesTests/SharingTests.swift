@@ -66,6 +66,30 @@ struct SharingTests {
         #expect(Sharing.editedLine("Ana", at: today, now: now) == "Edited by Ana · 1m")
     }
 
+    @Test func peopleNamesTheOwnerAndYou() {
+        let owned = SharedSpace(
+            role: "owner", members: [Member(id: 2, username: "Ben"), Member(id: 1, username: "Ana")])
+        #expect(Sharing.role(of: owned.members[0], in: owned, me: 2) == "Owner · You")
+        #expect(Sharing.role(of: owned.members[1], in: owned, me: 2) == "")
+        let joined = family.shared!
+        #expect(Sharing.role(of: joined.members[0], in: joined, me: 2) == "Owner")
+        #expect(Sharing.role(of: joined.members[1], in: joined, me: 2) == "You")
+    }
+
+    @Test func everyoneElseOnTheServerCanBeInvited() {
+        let people = [
+            Member(id: 1, username: "Ana"), Member(id: 2, username: "Ben"), Member(id: 3, username: "Cy"),
+            Member(id: 4, username: "Dee"),
+        ]
+        let mine = Space(id: "trip", name: "Trip", noteCount: 0)
+        #expect(Sharing.invitable(people, to: mine, me: 1).map(\.username) == ["Ben", "Cy", "Dee"], "not yourself")
+        var trip = mine
+        trip.shared = SharedSpace(
+            role: "owner", members: [Member(id: 1, username: "Ana"), Member(id: 2, username: "Ben")],
+            invites: [Invitee(id: "i", userId: 3, username: "Cy")])
+        #expect(Sharing.invitable(people, to: trip, me: 1).map(\.username) == ["Dee"], "nor anyone in or invited")
+    }
+
     @Test func leavingWarnsOfChangesNotYetSynced() {
         #expect(Sharing.leaveWarning("Family", unsynced: 0) == "Its notes will be removed from this iPhone.")
         #expect(

@@ -5,6 +5,7 @@ import SwiftUI
 /// switcher can make one too.
 struct SpacesSection: View {
     @Environment(AppGraph.self) private var graph
+    @Environment(Navigator.self) private var nav
     /// A new space was made and switched to.
     let onCreated: () -> Void
     @State private var creating = false
@@ -12,8 +13,18 @@ struct SpacesSection: View {
     var body: some View {
         Section {
             ForEach(graph.spaces) { space in
-                NavigationLink(value: Route.spaceInfo(space.id)) {
-                    SpaceLabel(space: space, iconSize: 28, detail: space.noteCountLabel)
+                Button {
+                    nav.openSpaceInfo(space.id)
+                } label: {
+                    HStack {
+                        SpaceLabel(space: space, iconSize: 28, detail: space.noteCountLabel)
+                        Spacer(minLength: 8)
+                        // A plain button draws no chevron of its own; the row still reads as opening something.
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.ink3)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
             Button("New Space") { creating = true }
@@ -34,12 +45,31 @@ struct SpacesSection: View {
     }
 }
 
-/// A space's name and icon: a new one, or `editing`.
+/// What a space can be named: the server's rules (`Spaces.normalize`, `Spaces.maxName`) and, kept here, no two
+/// spaces with the same name.
+enum SpaceName: Equatable {
+    case valid(String)
+    case invalid(String)
+
+    /// `typed`, as the space would be named, among `spaces`; `id` is the space being renamed.
+    static func check(_ typed: String, among spaces: [Space], renaming id: String? = nil) -> SpaceName {
+        guard let name = Spaces.normalize(typed) else { return .invalid("Enter a name.") }
+        // Counted as the server counts: by Unicode scalar.
+        if name.unicodeScalars.count > Spaces.maxName { return .invalid("At most \(Spaces.maxName) characters.") }
+        if spaces.contains(where: { $0.id != id && $0.name.lowercased() == name.lowercased() }) {
+            return .invalid("Another space has this name.")
+        }
+        return .valid(name)
+    }
+
+    static let saveFailed = "The space couldn’t be saved on this iPhone. Try again."
+}
+
+/// A new space's name and icon.
 struct SpaceSheet: View {
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
     @Environment(\.spaceTheme) private var shownTheme
-    var editing: Space?
     let onDone: (String) -> Void
 
     @State private var name = ""
@@ -71,41 +101,28 @@ struct SpaceSheet: View {
             .font(.notesBody)
             .scrollContentBackground(.hidden)
             .background(Color.notesBg)
-            .navigationTitle(editing == nil ? "New Space" : "Edit Space")
+            .navigationTitle("New Space")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", role: .cancel) { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(editing == nil ? "Create" : "Save", action: save).disabled(busy)
+                    Button("Create", action: save).disabled(busy)
                 }
             }
         }
         // The icon picked brings its colours: the sheet shows them before the space has them.
         .environment(\.spaceTheme, icon.map(SpaceThemes.key) ?? shownTheme)
-        .onAppear {
-            if let editing {
-                name = editing.name
-                icon = editing.icon
-            } else {
-                nameFocused = true
-            }
-        }
+        .onAppear { nameFocused = true }
     }
 
     private func save() {
-        guard let n = Spaces.normalize(name) else {
-            error = "Enter a name."
-            return
-        }
-        // Counted as the server counts: by Unicode scalar.
-        if n.unicodeScalars.count > Spaces.maxName {
-            error = "At most \(Spaces.maxName) characters."
-            return
-        }
-        if graph.spaces.contains(where: { $0.id != editing?.id && $0.name.lowercased() == n.lowercased() }) {
-            error = "Another space has this name."
+        let n: String
+        switch SpaceName.check(name, among: graph.spaces) {
+        case .valid(let valid): n = valid
+        case .invalid(let problem):
+            error = problem
             return
         }
         guard let icon else {
@@ -115,18 +132,12 @@ struct SpaceSheet: View {
         busy = true
         Task {
             do {
-                let id: String
-                if let editing {
-                    try await graph.engine.spaces.update(editing.id, name: n, icon: icon)
-                    id = editing.id
-                } else {
-                    id = try await graph.engine.spaces.create(n, icon: icon)
-                }
+                let id = try await graph.engine.spaces.create(n, icon: icon)
                 graph.scheduler.request()
                 onDone(id)
             } catch {
                 // The sheet stays, with what was typed, to try again.
-                self.error = "The space couldn’t be saved on this iPhone. Try again."
+                self.error = SpaceName.saveFailed
                 busy = false
             }
         }

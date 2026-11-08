@@ -34,7 +34,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -240,12 +239,16 @@ internal fun SwitcherContent(
 internal fun cardLine(trait: SpaceTrait): String = trait.problem
     ?: if (trait.summary.isNotEmpty()) "${trait.name()} · ${trait.summary}" else trait.name()
 
-/** What a row says for TalkBack: with a change, the change; else its traits (problems named) or "only you". */
+/** What a row says for TalkBack: its name, then the change if there is one, else its traits, problems named. */
 internal fun rowDescription(space: Space, change: String?): String = when {
     change != null -> "${space.name}, $change"
-    space.traits.isEmpty() -> "${space.name}, only you"
-    else -> "${space.name}, " + space.traits.joinToString(", ") { it.problem ?: it.name() }
+    space.traits.isEmpty() -> space.name
+    else -> "${space.name}, ${describeTraits(space.traits)}"
 }
+
+/** A row's second line, only for something to look at: the change, else its traits' problems. */
+internal fun rowLine(space: Space, change: String?): String? =
+    change ?: space.traits.mapNotNull { it.problem }.takeIf { it.isNotEmpty() }?.joinToString(" · ")
 
 @Composable
 private fun CurrentCard(space: Space, onInfo: () -> Unit) {
@@ -256,7 +259,12 @@ private fun CurrentCard(space: Space, onInfo: () -> Unit) {
             .clip(RoundedCornerShape(12.dp))
             .background(t.hover.copy(alpha = t.hover.alpha * 0.65f))
     ) {
-        Row(Modifier.fillMaxWidth().padding(14.dp)) {
+        // Private is the default and goes unsaid: without traits, just the icon and name.
+        val plain = space.traits.isEmpty()
+        Row(
+            Modifier.fillMaxWidth().padding(14.dp),
+            verticalAlignment = if (plain) Alignment.CenterVertically else Alignment.Top
+        ) {
             SpaceIconImage(space.icon, 40.dp)
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
@@ -269,9 +277,6 @@ private fun CurrentCard(space: Space, onInfo: () -> Unit) {
                     // Room for Info, which sits over the corner so its touch target doesn't push the lines down.
                     modifier = Modifier.padding(end = 56.dp)
                 )
-                if (space.traits.isEmpty()) {
-                    Text("Only you", style = Type.small, color = t.ink2)
-                }
                 for (trait in space.traits) {
                     val color = if (trait.problem != null) t.danger else t.ink2
                     Row(Modifier.padding(top = 2.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -287,7 +292,7 @@ private fun CurrentCard(space: Space, onInfo: () -> Unit) {
                 }
             }
         }
-        InfoPill(onInfo, Modifier.align(Alignment.TopEnd))
+        InfoPill(onInfo, Modifier.align(if (plain) Alignment.CenterEnd else Alignment.TopEnd))
     }
 }
 
@@ -383,15 +388,20 @@ private fun Invitation(invite: SpaceInvite, onJoin: InviteAnswer, onDecline: Inv
     }
 }
 
-/** A space to switch to; a long press (or TalkBack's action) opens its Space info without switching. */
+/**
+ * A space to switch to, on one line: its icon, name and trait glyphs; a second line only for something to look
+ * at (what others changed, else its traits' problems). A long press (or TalkBack's action) opens its Space info
+ * without switching.
+ */
 @Composable
 private fun SwitchRow(space: Space, change: String?, onSwitch: () -> Unit, onInfo: () -> Unit) {
     val t = LocalTokens.current
     val description = rowDescription(space, change)
+    val line = rowLine(space, change)
     Row(
         Modifier
             .fillMaxWidth()
-            .heightIn(min = 56.dp)
+            .heightIn(min = 48.dp)
             .clip(RoundedCornerShape(12.dp))
             .combinedClickable(onLongClickLabel = "Space info", onLongClick = onInfo, onClick = onSwitch)
             .semantics(mergeDescendants = true) {
@@ -418,39 +428,20 @@ private fun SwitchRow(space: Space, change: String?, onSwitch: () -> Unit, onInf
                     overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f, fill = false)
                 )
+                if (space.traits.isNotEmpty()) Glyphs(space.traits, 13.dp, 4.dp, Modifier.padding(start = 7.dp))
                 if (change != null) {
-                    Spacer(Modifier.width(6.dp))
+                    Spacer(Modifier.width(7.dp))
                     Box(Modifier.size(6.dp).clip(CircleShape).background(t.ink))
                 }
             }
-            RowDetail(space.traits, change)
-        }
-    }
-}
-
-/** A row's second line: the change after the trait glyphs, else each trait (or its problem), else "Only you". */
-@Composable
-private fun RowDetail(traits: List<SpaceTrait>, change: String?) {
-    val t = LocalTokens.current
-    val style = Type.small.copy(fontSize = 12.5.sp, lineHeight = 17.sp)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        when {
-            change != null -> {
-                if (traits.isNotEmpty()) {
-                    Glyphs(traits, 13.dp, 3.dp, Modifier)
-                    Spacer(Modifier.width(4.dp))
-                }
-                Text(change, style = style, color = t.ink2, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-
-            traits.isEmpty() -> Text("Only you", style = style, color = t.ink3)
-
-            else -> for ((i, trait) in traits.withIndex()) {
-                if (i > 0) Text(" · ", style = style, color = t.ink3)
-                val color: Color = if (trait.problem != null) t.danger else t.ink3
-                Icon(painterResource(SpaceTraits.glyph(trait.key)), null, Modifier.size(13.dp), tint = color)
-                Spacer(Modifier.width(3.dp))
-                Text(trait.problem ?: trait.name(), style = style, color = color, maxLines = 1)
+            if (line != null) {
+                Text(
+                    line,
+                    style = Type.small.copy(fontSize = 12.5.sp, lineHeight = 17.sp),
+                    color = if (change != null) t.ink2 else t.danger,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
         }
     }

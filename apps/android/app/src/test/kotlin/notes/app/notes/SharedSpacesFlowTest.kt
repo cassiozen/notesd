@@ -2,11 +2,14 @@ package notes.app.notes
 
 import android.os.Looper
 import androidx.compose.ui.test.ExperimentalTestApi
+import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.hasAnySibling
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -122,7 +125,7 @@ class SharedSpacesFlowTest {
         compose.waitUntilExactlyOneExists(hasText("New space…"))
     }
 
-    private fun openSpaceInfo(name: String, until: String = "Shared") {
+    private fun openSpaceInfo(name: String, until: String = "People") {
         compose.onNodeWithContentDescription("Sidebar").performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Settings"))
         compose.onNodeWithContentDescription("Settings").performClick()
@@ -138,6 +141,20 @@ class SharedSpacesFlowTest {
 
     /** A dialog's button. */
     private fun answer(label: String) = compose.onNode(hasText(label) and hasClickAction()).performClick()
+
+    /** The go-ahead of the confirmation, opened in place, titled [title]. */
+    private fun confirm(title: String, action: String) {
+        compose.waitUntilExactlyOneExists(hasText(title, substring = true))
+        compose.onNode(hasText(action) and hasClickAction() and hasAnySibling(hasText(title, substring = true)))
+            .performScrollTo()
+            .performClick()
+    }
+
+    /** A button TalkBack names [description], scrolled to once it can be pressed (the last call has finished). */
+    private fun described(description: String): SemanticsNodeInteraction {
+        compose.waitUntilExactlyOneExists(hasContentDescription(description) and isEnabled())
+        return compose.onNodeWithContentDescription(description).performScrollTo()
+    }
 
     @Test
     fun `signing in gives the engine the account's id, which a server from before shared spaces never said`() {
@@ -181,64 +198,76 @@ class SharedSpacesFlowTest {
     }
 
     @Test
-    fun `Turn on shares a space of your own with someone from the server's people`() {
+    fun `one tap on someone in People shares a space of your own with them`() {
         runBlocking { graph.sync.spaces.create("Family") }
         launch("All Notes")
         openSpaceInfo("Family")
-        button("Turn on").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Share Family"))
-        // Not you.
-        compose.onNode(hasText("me") and hasClickAction()).assertDoesNotExist()
-        compose.onNode(hasText("ana") and hasClickAction()).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Invited ana"))
+        compose.onNodeWithText("Invite people to read and edit every note in Family, and add their own.").assertExists()
+        // Everyone on the server, read as the page opened; not you.
+        compose.waitUntilExactlyOneExists(hasContentDescription("Invite ana"))
+        compose.onNodeWithContentDescription("Invite me").assertDoesNotExist()
+        described("Invite ana").performClick()
+        // Shared: ana's row lands in the list, with the rest still a tap away.
+        compose.waitUntilExactlyOneExists(hasContentDescription("Cancel ana's invitation"), 10_000)
+        compose.onNodeWithText("Invited").assertExists()
+        compose.onNodeWithText("Owner · You").assertExists()
+        compose.onNodeWithText("Invite").assertExists()
+        compose.onNodeWithContentDescription("Invite ana").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Invite ben").assertExists()
         assertTrue(notesd.requests.any { it.matches(Regex("POST /api/v1/spaces/.+/invites")) })
+    }
+
+    @Test
+    fun `with no one else on the server, People says who adds them`() {
+        notesd.people = listOf(notesd.me)
+        runBlocking { graph.sync.spaces.create("Family") }
+        launch("All Notes")
+        openSpaceInfo("Family")
+        compose.waitUntilExactlyOneExists(hasText("There’s no one else on this server yet.", substring = true))
     }
 
     @Test
     fun `the default space can't be shared`() {
         launch("All Notes")
-        openSpaceInfo("Notes", until = "Name and icon")
-        compose.onNodeWithText("Turn on").assertDoesNotExist()
+        openSpaceInfo("Notes", until = "Delete space…")
+        compose.onNodeWithText("People").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Invite ana").assertDoesNotExist()
     }
 
     @Test
-    fun `offline, the people picker says it needs a connection`() {
+    fun `offline, People says it needs a connection, in place`() {
         runBlocking { graph.sync.spaces.create("Family") }
         launch("All Notes")
-        openSpaceInfo("Family")
         notesd.server.close()
-        button("Turn on").performClick()
+        openSpaceInfo("Family")
         compose.waitUntilExactlyOneExists(hasText("This needs a connection. Try again when you're online."))
+        compose.onNode(hasText("Try again") and hasClickAction()).assertExists()
     }
 
     @Test
-    fun `the owner removes a member, makes another the owner, and cancels an invitation`() {
+    fun `the owner removes a member, makes another the owner, and cancels an invitation, all in place`() {
         notesd.owned("fam", "Family", listOf(ana, ben), invitees = listOf(cy))
         launch("All Notes")
         openSpaceInfo("Family")
-        compose.onNodeWithText("With ana and ben · invited cy").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Sharing"))
-        compose.onNodeWithText("Owner").assertExists()
-        compose.onNodeWithText("You").assertExists()
+        compose.onNodeWithText("Owner · You").assertExists()
+        compose.onNodeWithText("Invited").assertExists()
 
-        compose.onNodeWithContentDescription("Cancel cy's invitation").performClick()
-        compose.waitUntilExactlyOneExists(hasText("cy's invitation was cancelled."))
-        compose.onNodeWithText("Hasn't joined yet").assertDoesNotExist()
+        // Cancelling an invitation needs no asking; cy is then someone to invite again.
+        described("Cancel cy's invitation").performClick()
+        compose.waitUntilDoesNotExist(hasText("Invited"))
+        compose.waitUntilExactlyOneExists(hasContentDescription("Invite cy"))
 
-        compose.onNode(hasText("ana") and hasClickAction()).performClick()
-        compose.onNodeWithText("Remove from space…").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Remove ana?"))
-        answer("Remove")
-        compose.waitUntilExactlyOneExists(hasText("ana was removed."))
-        compose.onNode(hasText("ana") and hasClickAction()).assertDoesNotExist()
+        described("Remove ana").performClick()
+        confirm("Remove ana?", "Remove")
+        compose.waitUntilDoesNotExist(hasContentDescription("Remove ana"))
+        compose.waitUntilDoesNotExist(hasText("Remove ana?", substring = true))
 
-        compose.onNode(hasText("ben") and hasClickAction()).performClick()
-        compose.onNodeWithText("Make owner…").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Make ben the owner?"))
-        answer("Make owner")
-        compose.waitUntilExactlyOneExists(hasText("ben owns Family now."))
+        described("Make ben the owner").performClick()
+        confirm("Make ben the owner?", "Make owner")
         // A member now: leaving is what's left to do.
-        compose.waitUntilExactlyOneExists(hasText("Leave space"))
+        compose.waitUntilExactlyOneExists(hasText("Leave space…"))
+        compose.onNodeWithText("You").assertExists()
+        compose.onNodeWithContentDescription("Remove ben").assertDoesNotExist()
         assertEquals(
             listOf(
                 "DELETE /api/v1/spaces/fam/invites/inv-4",
@@ -250,16 +279,35 @@ class SharedSpacesFlowTest {
     }
 
     @Test
+    fun `a confirmation closes with Cancel or Back, changing nothing`() {
+        notesd.owned("fam", "Family", listOf(ana))
+        launch("All Notes")
+        openSpaceInfo("Family")
+        described("Remove ana").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Remove ana?", substring = true))
+        compose.onNode(hasText("Cancel") and hasClickAction()).performClick()
+        compose.waitUntilDoesNotExist(hasText("Remove ana?", substring = true))
+
+        button("Stop sharing…").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Stop sharing Family?", substring = true))
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntilDoesNotExist(hasText("Stop sharing Family?", substring = true))
+        // Back closed the confirmation, not the page.
+        compose.onNodeWithText("People").assertExists()
+        assertTrue(notesd.requests.none { it.startsWith("DELETE") })
+    }
+
+    @Test
     fun `stopping sharing leaves the space yours alone`() {
         notesd.owned("fam", "Family", listOf(ana), invitees = listOf(ben))
         launch("All Notes")
         openSpaceInfo("Family")
-        compose.onNodeWithText("With ana · invited ben").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Sharing"))
-        button("Stop sharing").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Stop sharing Family?"))
-        compose.onAllNodes(hasText("Stop sharing") and hasClickAction()).onLast().performClick()
-        compose.waitUntilExactlyOneExists(hasText("Family is yours alone again."))
+        button("Stop sharing…").performClick()
+        confirm("Stop sharing Family?", "Stop sharing")
+        // Back to how it was before: People invites again.
+        compose.waitUntilExactlyOneExists(
+            hasText("Invite people to read and edit every note in Family, and add their own.")
+        )
         assertEquals(emptyList(), offMain { graph.sync.spaces.list() }.first { it.id == "fam" }.traits)
     }
 
@@ -291,15 +339,17 @@ class SharedSpacesFlowTest {
         launch("All Notes")
         offMain { graph.store.save("f1", "Picnic", "Picnic and games\n") }
         openSpaceInfo("Family")
-        compose.onNodeWithText("Only its owner, ana, can rename or delete it.").assertExists()
-        compose.onNodeWithText("Name and icon").assertDoesNotExist()
-        compose.onNodeWithText("With ana").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Sharing"))
-        button("Leave space").performClick()
+        // Its name, icon and existence are ana's.
+        compose.onNode(hasSetTextAction()).assertDoesNotExist()
+        compose.onNodeWithContentDescription("Change icon").assertDoesNotExist()
+        compose.onNodeWithText("Delete space…").assertDoesNotExist()
+        compose.onNodeWithText("Owner").assertExists()
+        compose.onNodeWithText("You").assertExists()
+        button("Leave space…").performClick()
         compose.waitUntilExactlyOneExists(hasText("1 note in Family has changes that haven't synced", substring = true))
-        answer("Leave")
-        // The space is gone: back past its pages.
-        compose.waitUntilDoesNotExist(hasText("Sharing"))
+        confirm("Leave Family?", "Leave")
+        // The space is gone: back past its page.
+        compose.waitUntilDoesNotExist(hasText("People"))
         until { graph.store.get("f1") == null }
         assertTrue("DELETE /api/v1/spaces/fam/members/1" in notesd.requests)
     }

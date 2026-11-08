@@ -1,7 +1,8 @@
-import NotesCore
+import SwiftUI
 import Testing
 
 @testable import Notes
+@testable import NotesCore
 
 struct SpaceTraitsTests {
     let shared = SpaceTrait(key: "shared", label: "Shared", summary: "With Ana", exposure: "Visible to Ana")
@@ -39,7 +40,7 @@ struct SpaceTraitsTests {
 
     @Test func spaceInfoOffersOnlyTraitsThatCanBeTurnedOn() {
         let registry = [
-            TraitKind(key: "shared", label: "Shared", symbol: "person.2", turnOn: { _ in }),
+            TraitKind(key: "shared", label: "Shared", symbol: "person.2", canTurnOn: true),
             TraitKind(key: "published", label: "Published", symbol: "globe"),
         ]
         let rows = Traits.rows([], registry: registry)
@@ -49,6 +50,27 @@ struct SpaceTraitsTests {
             return
         }
         #expect(Traits.rows([]).isEmpty, "none can be turned on yet")
+    }
+
+    @Test func spaceInfoGivesATraitWithASectionItsOwnAndGroupsTheRest() {
+        let registry = [
+            TraitKind(key: "shared", label: "Shared", symbol: "person.2", section: { _ in AnyView(EmptyView()) }),
+            TraitKind(key: "published", label: "Published", symbol: "globe"),
+            TraitKind(key: "agent", label: "Agent", symbol: "sparkles"),
+        ]
+        let blocks = SpaceInfoView.blocks(Traits.rows([shared, published, agent, future], registry: registry))
+        #expect(blocks.map(\.id) == ["shared", "published agent mirrored"])
+        let alone = SpaceInfoView.blocks(Traits.rows([published, shared, agent], registry: registry))
+        #expect(alone.map(\.id) == ["shared", "published agent"], "in the registry's order")
+    }
+
+    @Test func aSpaceIsNamedAsTheServerStoresItAndNeverTwice() {
+        let spaces = [Space(id: "a", name: "Work", noteCount: 0), Space(id: "b", name: "Home", noteCount: 0)]
+        #expect(SpaceName.check("  Side   project ", among: spaces) == .valid("Side project"))
+        #expect(SpaceName.check(" \n ", among: spaces) == .invalid("Enter a name."))
+        #expect(SpaceName.check("home", among: spaces) == .invalid("Another space has this name."))
+        #expect(SpaceName.check("WORK", among: spaces, renaming: "a") == .valid("WORK"), "its own name, recased")
+        #expect(SpaceName.check(String(repeating: "x", count: 65), among: spaces) == .invalid("At most 64 characters."))
     }
 
     @Test func aMoveAsksOnlyAboutWhatTheDestinationNewlyExposes() {

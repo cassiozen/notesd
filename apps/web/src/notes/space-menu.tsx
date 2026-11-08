@@ -176,20 +176,22 @@ export function SpaceMenu({
                 Info
                 <ChevronIcon size={10} />
               </button>
-              <ul className={styles.cardLines}>
-                {traits.length === 0 && <li>Only you</li>}
-                {traits.map((t) => {
-                  const Glyph = traitGlyph(t.key)
-                  return (
-                    <li key={t.key} className={t.problem ? styles.problem : undefined}>
-                      <span className={styles.lineGlyph}>
-                        <Glyph size={13} />
-                      </span>
-                      {cardLine(t)}
-                    </li>
-                  )
-                })}
-              </ul>
+              {/* Private is the default and goes unsaid: lines only for what's on. */}
+              {traits.length > 0 && (
+                <ul className={styles.cardLines}>
+                  {traits.map((t) => {
+                    const Glyph = traitGlyph(t.key)
+                    return (
+                      <li key={t.key} className={t.problem ? styles.problem : undefined}>
+                        <span className={styles.lineGlyph}>
+                          <Glyph size={13} />
+                        </span>
+                        {cardLine(t)}
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
             </section>
 
             {invites.length > 0 && (
@@ -244,38 +246,29 @@ export function SpaceMenu({
   )
 }
 
-/** Another space: switches on press; its ⓘ, shown on hover or focus, opens its Space info without switching. */
+/**
+ * Another space: switches on press; its ⓘ, shown on hover or focus, opens its Space info without switching. One
+ * line, its trait glyphs after the name; a second only for something to look at: what others changed there while
+ * away (with a dot), else a trait's problem.
+ */
 function SpaceRow({ space, change, onSwitch, onInfo }: { space: Space; change?: string; onSwitch: () => void; onInfo: () => void }) {
-  const detail = change ?? (space.traits.length > 0 ? traitsLabel(space.traits) : 'only you')
+  const problems = space.traits.flatMap((t) => (t.problem ? [t.problem] : []))
+  const line = change ?? (problems.length > 0 ? problems.join(' · ') : undefined)
+  const label = [space.name, change ?? (space.traits.length > 0 ? traitsLabel(space.traits) : undefined)].filter(Boolean).join(', ')
   return (
     <li className={styles.row}>
-      <button type="button" data-nav data-space={space.id} data-name={space.name} className={styles.rowMain} aria-label={`${space.name}, ${detail}`} onClick={onSwitch}>
+      <button type="button" data-nav data-space={space.id} data-name={space.name} className={styles.rowMain} aria-label={label} onClick={onSwitch}>
         <SpaceIcon space={space} size={20} />
         <span className={styles.rowName}>
           <span className={styles.rowNameText}>{space.name}</span>
+          <TraitGlyphs traits={space.traits} size={12} />
           {change && <span className={styles.dot} aria-hidden="true" />}
         </span>
-        <span className={styles.rowLine} aria-hidden="true">
-          {change ? (
-            <>
-              <TraitGlyphs traits={space.traits} size={12} />
-              <span className={styles.change}>{change}</span>
-            </>
-          ) : space.traits.length > 0 ? (
-            space.traits.map((t, i) => {
-              const Glyph = traitGlyph(t.key)
-              return (
-                <span key={t.key} className={[styles.rowTrait, t.problem && styles.problem].filter(Boolean).join(' ')}>
-                  {i > 0 && '· '}
-                  <Glyph size={12} />
-                  {t.problem ?? t.label}
-                </span>
-              )
-            })
-          ) : (
-            'Only you'
-          )}
-        </span>
+        {line && (
+          <span className={[styles.rowLine, !change && styles.problem].filter(Boolean).join(' ')} aria-hidden="true">
+            {line}
+          </span>
+        )}
       </button>
       <button type="button" data-info tabIndex={-1} className={styles.rowInfo} aria-label={`Space info: ${space.name}`} title="Space info" onClick={onInfo}>
         <InfoIcon />

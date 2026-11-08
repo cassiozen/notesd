@@ -39,7 +39,7 @@ async function switchTo(page: Page, name: string) {
     if (await spaces(page).isVisible()) await page.keyboard.press('Escape')
     if ((await switcher(page).getAttribute('aria-label')) === target) return
     await switcher(page).click()
-    await spaces(page).getByRole('button', { name: new RegExp(`^${name}, `) }).click({ timeout: 2_000 })
+    await spaces(page).getByRole('button', { name: new RegExp(`^${name}(,|$)`) }).click({ timeout: 2_000 })
   }).toPass({ timeout: 15_000 })
   await expect(switcher(page)).toHaveAccessibleName(target)
 }
@@ -61,14 +61,13 @@ test('a space shared with someone: they join, edit, and leave', async ({ page, b
   expect(created.status).toBe(201)
   await page.reload()
 
-  // The owner turns sharing on from Space info, picking the member.
+  // The owner shares it from Space info, pressing the member's name; they're listed there as invited.
   await switchTo(page, space.name)
   await switcher(page).click()
   await spaces(page).getByRole('button', { name: 'Space info', exact: true }).click()
   const info = page.getByRole('dialog', { name: space.name })
-  await info.getByRole('button', { name: 'Turn on Shared' }).click()
-  await page.getByRole('dialog', { name: `Share ${space.name}` }).getByRole('button', { name: new RegExp(member.username) }).click()
-  await expect(info.getByText(`Invited ${member.username}`)).toBeVisible()
+  await info.getByRole('button', { name: `Invite ${member.username}` }).click()
+  await expect(info.getByRole('list', { name: 'People in this space' })).toContainText(`${member.username}Invited`)
   await info.getByRole('button', { name: 'Done' }).click()
 
   // The member, in a browser of their own, joins from the switcher.
@@ -108,11 +107,11 @@ test('a space shared with someone: they join, edit, and leave', async ({ page, b
   // The member leaves; the space goes from their switcher.
   await switcher(them).click()
   await spaces(them).getByRole('button', { name: 'Space info', exact: true }).click()
-  await them.getByRole('dialog', { name: space.name }).getByRole('button', { name: 'Manage Shared' }).click()
-  await them.getByRole('dialog', { name: 'Shared' }).getByRole('button', { name: 'Leave space…' }).click()
-  await them.getByRole('dialog', { name: `Leave ${space.name}?` }).getByRole('button', { name: 'Leave' }).click()
+  const theirInfo = them.getByRole('dialog', { name: space.name })
+  await theirInfo.getByRole('button', { name: 'Leave space…' }).click()
+  await theirInfo.getByRole('group', { name: `Leave ${space.name}?` }).getByRole('button', { name: 'Leave' }).click()
   await expect(switcher(them)).toHaveAccessibleName('Space: Notes')
   await switcher(them).click()
-  await expect(spaces(them).getByRole('button', { name: new RegExp(`^${space.name}, `) })).toHaveCount(0)
+  await expect(spaces(them).getByRole('button', { name: new RegExp(`^${space.name}(,|$)`) })).toHaveCount(0)
   await theirs.close()
 })
