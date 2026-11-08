@@ -566,6 +566,8 @@ type ListItem struct {
 	// Locked notes have an encrypted body and so an empty preview (§10.1).
 	Locked  bool   `json:"locked"`
 	SpaceID string `json:"spaceId"`
+	// The account that last changed it (§7.9), so a shared space's list says who.
+	UpdatedBy *int64 `json:"updatedBy,omitempty"`
 }
 
 // Count is the number of live (not deleted) notes matching filter.
@@ -592,7 +594,7 @@ func (s *Store) List(ctx context.Context, filter search.Filter, limit int, curso
 	cond, args := filter.SQL()
 	rows, err := s.db.R.QueryContext(ctx, `
 		SELECT n.id, n.title, n.revision, n.created_at, n.updated_at,
-		       substr(COALESCE(f.body_text, ''), 1, ?), substr(n.content, 1, ?) = ?, n.space_id
+		       substr(COALESCE(f.body_text, ''), 1, ?), substr(n.content, 1, ?) = ?, n.space_id, n.updated_by
 		FROM notes n
 		LEFT JOIN notes_fts f ON f.rowid = n.seq
 		WHERE n.deleted_at IS NULL
@@ -608,8 +610,12 @@ func (s *Store) List(ctx context.Context, filter search.Filter, limit int, curso
 	items = []ListItem{}
 	for rows.Next() {
 		var it ListItem
-		if err := rows.Scan(&it.ID, &it.Title, &it.Revision, &it.CreatedAt, &it.UpdatedAt, &it.Preview, &it.Locked, &it.SpaceID); err != nil {
+		var by sql.NullInt64
+		if err := rows.Scan(&it.ID, &it.Title, &it.Revision, &it.CreatedAt, &it.UpdatedAt, &it.Preview, &it.Locked, &it.SpaceID, &by); err != nil {
 			return nil, "", err
+		}
+		if by.Valid {
+			it.UpdatedBy = &by.Int64
 		}
 		it.Preview = preview(it.Preview, utf8.RuneCountInString(it.Preview) == previewFetch)
 		items = append(items, it)

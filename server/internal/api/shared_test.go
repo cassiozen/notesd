@@ -157,6 +157,9 @@ func TestSharingASpace(t *testing.T) {
 	if n.body["updatedBy"] != float64(s.kidID) {
 		t.Fatalf("updatedBy: %s", n.raw)
 	}
+	if l := s.owner.do("GET", "/api/v1/spaces/fam/notes", nil); l.body["notes"].([]any)[0].(map[string]any)["updatedBy"] != float64(s.kidID) {
+		t.Fatalf("the list says who: %s", l.raw)
+	}
 
 	// The owner's old address for it answers that it moved.
 	r = s.owner.do("PUT", "/api/v1/notes/groceries", map[string]any{

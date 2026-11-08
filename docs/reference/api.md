@@ -239,7 +239,7 @@ recorded. `movedTo` is on a tombstone a [move](#shared-spaces) left: the space t
 
 `tag`, `untagged` and `locked` exclude each other. `total` counts every note that matches, not
 just this page. A summary has `id`, `title`, `revision`, `createdAt`, `updatedAt`, `locked`,
-`spaceId`, and `preview`: up to 160 characters of plain text, one line per block (paragraph, list item, heading), empty for
+`spaceId`, `updatedBy` (when recorded), and `preview`: up to 160 characters of plain text, one line per block (paragraph, list item, heading), empty for
 locked notes.
 
 **Spaces.** `spaceId` on create puts the note in that space; left out, it goes in `default`. On
