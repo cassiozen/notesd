@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useAuth } from '../auth/auth-context'
 import { dragRegion } from '../desktop'
 import { TouchIdOffer } from '../locks/unlock'
 import type { SyncNotice } from '../offline/protocol'
@@ -12,6 +13,7 @@ import { Toast } from '../ui/toast'
 import { EmptyPane } from './empty'
 import { NoteList } from './note-list'
 import { NotePane } from './note-pane'
+import { decline, join, newsLine, setSharingAccount, sharingError, showSpace, tabSeen, useMinutes, useSharing } from './sharing'
 import { notesSource, type Saver } from './source'
 import { useSpaceTheme } from './space-theme'
 import { DEFAULT_SPACE, onSpacesChange, spaceName, useSpaces } from './spaces'
@@ -65,6 +67,18 @@ function ShellView({ username }: { username: string }) {
   const [newSpace, setNewSpace] = useState(false)
   // Space info, from the switcher's glyphs or its menu.
   const [info, setInfo] = useState<string | null>(null)
+  const { state: auth } = useAuth()
+  const me = 'userId' in auth ? auth.userId : undefined
+  const { invites, news } = useSharing()
+
+  // Before showSpace below: its visit is this account's.
+  useEffect(() => setSharingAccount(me ?? null), [me])
+  // Shown, what others changed there is seen (§7.9).
+  useEffect(() => void showSpace(space), [space])
+  useEffect(() => {
+    document.addEventListener('visibilitychange', tabSeen)
+    return () => document.removeEventListener('visibilitychange', tabSeen)
+  }, [])
 
   // Settings and the tags screen open over the app; the note behind them stays open.
   const over = route.name === 'settings' || route.name === 'tags'
@@ -203,6 +217,23 @@ function ShellView({ username }: { username: string }) {
     setNotice({ id: saver.id, text: `Moved to ${spaceName(spaces, spaceId)}`, undo: false })
   }
 
+  const minutes = useMinutes(Object.keys(news).length > 0)
+  const sharing = useMemo(
+    () => ({
+      invites: invites.map((i) => ({ id: i.id, spaceName: i.spaceName, spaceIcon: i.spaceIcon, from: i.from.username })),
+      changes: Object.fromEntries(Object.values(news).map((n) => [n.spaceId, newsLine(n)])),
+      onJoin: (id: string) => {
+        join(id).then(switchSpace, (err: unknown) => setNotice({ id, text: sharingError(err), undo: false }))
+      },
+      onDecline: (id: string) => {
+        decline(id).catch((err: unknown) => setNotice({ id, text: sharingError(err), undo: false }))
+      },
+    }),
+    // minutes isn't read: it's there so the lines' "5m" moves on, not only when the news changes.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps, react/memo-dependencies
+    [invites, news, switchSpace, minutes],
+  )
+
   const undo = (id: string) => {
     undoRemove(id)
     select(id)
@@ -251,6 +282,7 @@ function ShellView({ username }: { username: string }) {
       onSpace={switchSpace}
       onNewSpace={() => setNewSpace(true)}
       onSpaceInfo={setInfo}
+      sharing={sharing}
       onHide={docked?.onHide}
       hidden={docked?.hidden}
       hideRef={hideButton}

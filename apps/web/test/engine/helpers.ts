@@ -65,20 +65,47 @@ export async function signIn(username: string, password: string): Promise<string
   return ((await res.json()) as SessionInfo).csrfToken
 }
 
-/** A server, an owner signed in as "the browser", and the engine for them. */
-export async function engineSignedIn(): Promise<{ server: TestServer; engine: ReturnType<typeof inProcessEngine>; password: string }> {
-  // Long enough that only what a test triggers runs; tests that want the scheduler shorten these.
+/** Long enough that only what a test triggers runs; tests that want the scheduler shorten these. */
+function onlyWhatTestsRun() {
   Object.assign(syncTiming, { afterEditMs: 60_000, intervalMs: 60_000, visibleIntervalMs: 60_000, openFreshMs: 60_000, firstRetryMs: 60_000 })
   onTestFinished(() => {
     Object.assign(syncTiming, defaults)
   })
-  const server = await startServer()
-  const { username, password } = await createOwner(server)
-  await server.api('POST', '/auth/login', { username, password, client: 'web' })
+}
+
+/** The engine for an account the browser signs in as, after its first sync. */
+async function engineAs(username: string, password: string) {
   const engine = inProcessEngine(username, await signIn(username, password))
   // The first sync starts on open; done before the test makes its own.
   await waitFor(async () => (await engine.call('status')).kind === 'Synced')
+  return engine
+}
+
+/** A server, an owner signed in as "the browser", and the engine for them. */
+export async function engineSignedIn(): Promise<{ server: TestServer; engine: ReturnType<typeof inProcessEngine>; password: string }> {
+  onlyWhatTestsRun()
+  const server = await startServer()
+  const { username, password } = await createOwner(server)
+  await server.api('POST', '/auth/login', { username, password, client: 'web' })
+  const engine = await engineAs(username, password)
   return { server, engine, password }
+}
+
+/**
+ * For shared spaces (§7.9): the owner "me", signed in on server.api, and Ana, another account on a client of her
+ * own. This device's engine is [device]'s, knowing its account's id.
+ */
+export async function twoAccounts(device: 'me' | 'ana' = 'me') {
+  onlyWhatTestsRun()
+  const server = await startServer()
+  const owner = await createOwner(server)
+  await server.api('POST', '/auth/login', { ...owner, client: 'web' })
+  const me = (await server.api<SessionInfo>('GET', '/auth/session')).body.userId
+  if (me === undefined) throw new Error('the session names no userId')
+  const ana = await server.addAccount('ana')
+  const engine = device === 'me' ? await engineAs(owner.username, owner.password) : await engineAs(ana.username, ana.password)
+  await engine.call('setUserId', device === 'me' ? me : ana.id)
+  return { server, ana, me, engine }
 }
 
 export async function waitFor(check: () => Promise<boolean> | boolean, timeoutMs = 5_000) {

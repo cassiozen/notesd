@@ -30,6 +30,10 @@ export type UpdateNote = {
   imageIds?: string[]
 }
 
+/**
+ * Every call is at the account's address: the server finds a note in whichever file it is, and ?space= reads a
+ * shared space's (§7.9).
+ */
 export const notes = {
   list: (filter: NoteFilter, space: string, cursor?: string, signal?: AbortSignal) =>
     request<NoteList>(

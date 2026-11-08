@@ -7,7 +7,7 @@ import { keepOnDevice } from '../src/auth/session-hint'
 import { closeNotes, setEngineStart } from '../src/offline/device'
 import { connectEngine, type Engine } from '../src/offline/tab'
 import { inProcessEngine, signIn } from './engine/helpers'
-import { createOwner, startServer, type TestServer } from './server'
+import { createOwner, PASSWORD, startServer, type TestServer } from './server'
 
 export type Session = { id: string }
 
@@ -38,12 +38,22 @@ export async function signedIn({
   seed,
   resendUrl,
   onDevice = false,
-}: { path?: string; seed?: (server: TestServer) => Promise<void>; resendUrl?: string; onDevice?: boolean } = {}) {
+  as,
+}: {
+  path?: string
+  seed?: (server: TestServer) => Promise<void>
+  resendUrl?: string
+  onDevice?: boolean
+  /** Another account the seed made (with PASSWORD), to sign in as instead of the owner. */
+  as?: string
+} = {}) {
   const server = await startServer({ ...(resendUrl && { resendUrl }) })
-  const { username, password } = await createOwner(server)
+  const owner = await createOwner(server)
   // The other client (curl, a phone) signs in too, for edits from "another device".
-  await server.api('POST', '/auth/login', { username, password, client: 'web' })
+  await server.api('POST', '/auth/login', { username: owner.username, password: owner.password, client: 'web' })
   await seed?.(server)
+  const username = as ?? owner.username
+  const password = as ? PASSWORD : owner.password
   window.history.replaceState(null, '', path)
   const user = userEvent.setup()
   let engine: ReturnType<typeof inProcessEngine> | undefined

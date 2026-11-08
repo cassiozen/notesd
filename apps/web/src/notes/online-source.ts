@@ -1,7 +1,9 @@
 import { imageURL, images } from '../api/images'
 import { locks } from '../api/locks'
 import { notes, SEARCH_PAGE } from '../api/notes'
-import { spaces } from '../api/spaces'
+import { sharing, spaces } from '../api/spaces'
+import type { Space } from '../api/types'
+import { feedNews, markVisited } from './online-feeds'
 import { NoteSaver } from './saver'
 import type { NotesSource } from './source'
 
@@ -10,6 +12,8 @@ const STALE_MS = 30_000
 
 let loadedAt = 0
 let lists = 0
+/** The last list fetched: who's in each shared space, for what changed. */
+let known: Space[] = []
 
 /** Everything on the server, as it is right now; nothing kept on this device. */
 export const onlineSource: NotesSource = {
@@ -20,6 +24,7 @@ export const onlineSource: NotesSource = {
     if (n === lists) loadedAt = Date.now()
     return page
   },
+  // The server finds a note in whichever file it is (§7.9).
   get: (id) => notes.get(id),
   filters: (space, signal) => notes.filters(space, signal),
   async search(q, filter, scope, offset, signal) {
@@ -39,11 +44,25 @@ export const onlineSource: NotesSource = {
     changed: async () => {},
   },
   spaces: {
-    list: async () => (await spaces.list()).spaces,
+    async list() {
+      const list = (await spaces.list()).spaces
+      known = list
+      return list
+    },
     put: (id, name, icon) => spaces.put(id, name, icon),
     remove: async (id) => {
       await spaces.remove(id)
     },
+  },
+  sharing: {
+    invites: () => sharing.invites(),
+    news: async (me) => (me === null ? [] : feedNews(known, me)),
+    async visit(space, me) {
+      if (me !== null && known.some((s) => s.id === space && s.shared)) markVisited(me, space)
+    },
+    // Edits not yet on the server are the open notes' own: the screens count those.
+    unsynced: async () => [],
+    settle: async () => {},
   },
   // Only a refetch sees other devices' changes: on coming back to the tab after a while, and on reconnecting.
   onStale(listener) {
@@ -55,6 +74,7 @@ export const onlineSource: NotesSource = {
     return () => {
       // The notes unmount (signed out): the next account's list hasn't loaded.
       loadedAt = 0
+      known = []
       window.removeEventListener('focus', onFocus)
       window.removeEventListener('online', listener)
     }

@@ -8,7 +8,7 @@ import { TraitGlyphs, TraitGroup } from './space-identity'
 import { traitGlyph, traitsLabel } from './traits'
 import styles from './space-menu.module.css'
 
-/** An invitation into someone else's space (§7.7). Nothing provides these yet: shared spaces will. */
+/** An invitation into someone else's space (§7.7, §7.9). */
 export type SpaceInvite = { id: string; spaceName: string; spaceIcon: string; from: string }
 
 const NO_INVITES: readonly SpaceInvite[] = []

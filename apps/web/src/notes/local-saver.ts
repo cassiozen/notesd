@@ -183,6 +183,7 @@ export class LocalSaver extends SaverCore {
     const created = this.created
     this.created = true
     this.updatedAt = note.updatedAt
+    this.updatedBy = note.updatedBy
     // Moved again meanwhile: that move is the next save's.
     if (this.space === s.spaceId) this.space = note.spaceId
     this.baseSpace = note.spaceId
@@ -264,15 +265,16 @@ export class LocalSaver extends SaverCore {
       return
     }
     const same = note.title === this.stored?.title && note.content === this.stored.content
-    if (same && note.spaceId === this.space) return
+    if (same && note.spaceId === this.space && note.updatedBy === this.updatedBy) return
     const opened = same ? null : await this.open(note)
     if (this.dirty || this.inflight) return
     if (opened) {
       this.adopt(note, opened)
       this.pushRemote(opened.fields)
     } else {
-      // Moved, or locked text this session can't open: only the space follows.
+      // Moved, or locked text this session can't open: only the space and who changed it follow.
       this.space = this.baseSpace = note.spaceId
+      this.updatedBy = note.updatedBy
     }
     this.set(this.state)
   }
@@ -284,6 +286,7 @@ export class LocalSaver extends SaverCore {
     this.space = this.baseSpace = note.spaceId
     this.sealed = opened.locked ? { plain: this.base.content, envelope: note.content } : null
     this.updatedAt = note.updatedAt
+    this.updatedBy = note.updatedBy
   }
 
   /** The note as the editor shows it, a locked body decrypted; null when it can't be. */

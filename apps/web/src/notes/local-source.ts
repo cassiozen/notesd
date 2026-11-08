@@ -97,6 +97,16 @@ export function localSource(engine: Engine): NotesSource {
         requestSync()
       },
     },
+    sharing: {
+      invites: () => engine.call('invites'),
+      // The engine knows the account from setUserId.
+      news: () => engine.call('news'),
+      visit: (space) => engine.call('visit', space),
+      unsynced: (space) => engine.call('unsynced', space),
+      async settle() {
+        await engine.call('sync')
+      },
+    },
     onStale(listener) {
       let timer: ReturnType<typeof setTimeout> | undefined
       const off = engine.on((e) => {
@@ -194,7 +204,11 @@ function watchSync(engine: Engine, listener: (state: SyncState) => void): () => 
 }
 
 // Revision 0 is how the screens tell a note the server doesn't have yet.
-const listItem = ({ revision, ...item }: LocalListItem): ListItem => ({ ...item, revision: revision ?? 0 })
+const listItem = ({ revision, updatedBy, ...item }: LocalListItem): ListItem => ({
+  ...item,
+  revision: revision ?? 0,
+  ...(updatedBy !== null && { updatedBy }),
+})
 
 function note(n: LocalNote): Note {
   return {
@@ -208,5 +222,6 @@ function note(n: LocalNote): Note {
     deletedAt: null,
     ...(n.conflictOf !== null && { conflictOf: n.conflictOf }),
     spaceId: n.spaceId,
+    ...(n.updatedBy !== null && { updatedBy: n.updatedBy }),
   }
 }

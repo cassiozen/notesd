@@ -53,7 +53,14 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
       onClose()
     } catch (err) {
       const notEmpty = err instanceof ApiError && err.code === 'space_not_empty'
-      setError(notEmpty ? 'Notes arrived in this space from another device. Move or delete them first.' : genericMessage(err))
+      const busy = err instanceof ApiError && err.code === 'space_busy'
+      setError(
+        notEmpty
+          ? 'Notes arrived in this space from another device. Move or delete them first.'
+          : busy
+            ? 'Someone is using this space right now. Try again in a moment.'
+            : genericMessage(err),
+      )
       // Its count then shows those notes, and Delete turns off.
       if (notEmpty) void reloadSpaces()
       setDeleting(false)
@@ -79,30 +86,33 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
               ))}
             </ul>
           )}
-          <div className={styles.group}>
-            <button type="button" className={styles.action} onClick={() => setEditing(true)}>
-              Name and icon
-              <span className={styles.chevron} aria-hidden="true">
-                <ChevronIcon />
-              </span>
-            </button>
-            <button
-              type="button"
-              className={styles.action}
-              data-danger=""
-              disabled={why !== null || deleting}
-              aria-busy={deleting || undefined}
-              aria-describedby={why ? deleteWhyId : undefined}
-              onClick={() => void remove()}
-            >
-              Delete space
-            </button>
-            {why && (
-              <p id={deleteWhyId} className={styles.why}>
-                {why}
-              </p>
-            )}
-          </div>
+          {/* A shared space's name, icon and existence are its owner's (§7.9). */}
+          {space.shared?.role !== 'member' && (
+            <div className={styles.group}>
+              <button type="button" className={styles.action} onClick={() => setEditing(true)}>
+                Name and icon
+                <span className={styles.chevron} aria-hidden="true">
+                  <ChevronIcon />
+                </span>
+              </button>
+              <button
+                type="button"
+                className={styles.action}
+                data-danger=""
+                disabled={why !== null || deleting}
+                aria-busy={deleting || undefined}
+                aria-describedby={why ? deleteWhyId : undefined}
+                onClick={() => void remove()}
+              >
+                Delete space
+              </button>
+              {why && (
+                <p id={deleteWhyId} className={styles.why}>
+                  {why}
+                </p>
+              )}
+            </div>
+          )}
           {error && (
             <p role="alert" className={settings.error}>
               {error}

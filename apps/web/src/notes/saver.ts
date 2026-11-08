@@ -44,6 +44,8 @@ export type Snapshot = {
   imagesBusy: boolean
   /** The space the note is (to be) in. */
   spaceId: string
+  /** The account that last changed it, when that wasn't this one here (§7.9). */
+  updatedBy: number | null
   /** Gone from the store underneath the editor; [copy] holds edits that were still unsaved. */
   gone: { copy: Saver | null } | null
   /** Edits from another device were merged in (§6.2) and undoMerge() can still split them apart. */
@@ -94,7 +96,14 @@ export function canonicalFields(f: Fields): Fields {
 export const timing = { debounceMs: 1500, retryBaseMs: 2000, retryMaxMs: 30_000, undoDeleteMs: 5000, quietMs: 2000 }
 
 /** Codes for a save the server will never take as it is: retrying the same thing can't help. */
-const PERMANENT = new Set(['invalid_request', 'hash_mismatch', 'image_too_large', 'unsupported_image', 'space_default'])
+const PERMANENT = new Set([
+  'invalid_request',
+  'hash_mismatch',
+  'image_too_large',
+  'unsupported_image',
+  'space_default',
+  'locked_in_shared_space',
+])
 
 /** How many bytes a keepalive request may carry (browsers cap the total at 64 KB). */
 const KEEPALIVE_LIMIT = 60_000
@@ -113,6 +122,8 @@ export abstract class SaverCore implements Saver {
   /** The note's space, here and as last stored (§7.7). */
   protected space: string
   protected baseSpace: string
+  /** Who last changed it, when it wasn't this account here; null once this side saves. */
+  protected updatedBy: number | null
   /** The stored envelope and the text it holds: unchanged text is sent as the same envelope, never re-encrypted. */
   protected sealed: { plain: string; envelope: string } | null
   /** The editor's current values; read lazily so serialization happens per save, not per keystroke. */
@@ -150,6 +161,7 @@ export abstract class SaverCore implements Saver {
     this.baseLocked = this.created && this.locked
     this.space = init.spaceId ?? DEFAULT_SPACE
     this.baseSpace = this.space
+    this.updatedBy = init.updatedBy ?? null
     this.sealed = init.envelope ? { plain: this.base.content, envelope: init.envelope } : null
     const fields = { ...init.fields }
     this.blank = init.blank ?? { title: '', content: '' }
@@ -420,6 +432,7 @@ export abstract class SaverCore implements Saver {
       imageError: this.imageError,
       imagesBusy: this.imagesBusy > 0,
       spaceId: this.space,
+      updatedBy: this.updatedBy,
       gone: this.gone,
       merged: this.merged,
       split: this.split,
@@ -553,6 +566,7 @@ export class NoteSaver extends SaverCore {
     )
   }
 
+  // Moving into or out of a shared space is an update like any other: the server moves it between files (§7.9).
   private request(p: Pending, keepalive: boolean): Promise<MutationResult> {
     return p.create
       ? notes.create(
@@ -605,6 +619,7 @@ export class NoteSaver extends SaverCore {
       this.failures = 0
       this.created = true
       this.revision = result.revision
+      this.updatedBy = null
       this.base = p.fields
       this.baseLocked = p.locked
       this.sealed = p.locked ? { plain: p.fields.content, envelope: p.wire.content } : null
@@ -792,6 +807,7 @@ export class NoteSaver extends SaverCore {
     this.space = current.spaceId
     this.sealed = remote.envelope ? { plain: this.base.content, envelope: remote.envelope } : null
     this.updatedAt = current.updatedAt
+    this.updatedBy = current.updatedBy ?? null
     this.created = true
     this.problem = null
   }

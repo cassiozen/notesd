@@ -14,7 +14,7 @@ import { LockNoteDialog, SetupDialog } from '../locks/unlock'
 import { useEmailSettings } from './email-settings'
 import type { Saver } from './source'
 import { SpaceIdentity } from './space-identity'
-import { useSpaces } from './spaces'
+import { loadedSpaces, useSpaces } from './spaces'
 import { newExposure, traitGlyph } from './traits'
 import styles from './share.module.css'
 
@@ -53,7 +53,9 @@ export function NoteMenu({
   const [open, setOpen] = useState(false)
   const [emailing, setEmailing] = useState(false)
   const [moving, setMoving] = useState(false)
-  const [confirming, setConfirming] = useState<{ space: Space; exposure: SpaceTrait[] } | null>(null)
+  const [confirming, setConfirming] = useState<{ space: Space; exposure: SpaceTrait[]; lost: SpaceTrait[] } | null>(null)
+  // Why locking (or moving a locked note) can't happen here (§7.9).
+  const [explaining, setExplaining] = useState<{ title: string; text: string } | null>(null)
   const [copied, setCopied] = useState(false)
   const [locking, setLocking] = useState<'setup' | 'unlock' | null>(null)
   const { locked } = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
@@ -61,6 +63,22 @@ export function NoteMenu({
   const menuId = useId()
   const anchor = useRef<HTMLSpanElement>(null)
   const canShare = typeof navigator.share === 'function'
+
+  const lock = (list: Space[] | null) => {
+    const here = list?.find((sp) => sp.id === saver.spaceId())
+    if (here?.shared) {
+      setExplaining({
+        title: 'Locked notes can’t be in a shared space.',
+        text: `Only you can read a locked note, and everyone in ${here.name} can read this one. Move it to a space of your own to lock it.`,
+      })
+    } else if (lockSession.key()) void saver.changeLock(true)
+    else {
+      // Until the keyring is fetched, 'unknown' can't tell a first lock from a later one.
+      const choose = () => setLocking(lockSession.getStatus() === 'none' ? 'setup' : 'unlock')
+      if (lockStatus === 'unknown') lockSession.load().then(choose, choose)
+      else choose()
+    }
+  }
 
   useEffect(() => {
     if (!open) return
@@ -183,14 +201,13 @@ export function NoteMenu({
             className={styles.item}
             onClick={() => {
               setOpen(false)
-              if (locked) void saver.changeLock(false)
-              else if (lockSession.key()) void saver.changeLock(true)
-              else {
-                // Until the keyring is fetched, 'unknown' can't tell a first lock from a later one.
-                const choose = () => setLocking(lockSession.getStatus() === 'none' ? 'setup' : 'unlock')
-                if (lockStatus === 'unknown') lockSession.load().then(choose, choose)
-                else choose()
+              if (locked) {
+                void saver.changeLock(false)
+                return
               }
+              // Until the list loads, a shared space can't be told apart, and the server would refuse the lock.
+              if (spaces) lock(spaces)
+              else void loadedSpaces().then(lock)
             }}
           >
             {locked ? 'Remove lock' : 'Lock note'}
@@ -253,8 +270,18 @@ export function NoteMenu({
           onClose={() => setMoving(false)}
           onMove={(to) => {
             setMoving(false)
-            const exposure = newExposure(spaces.find((sp) => sp.id === saver.spaceId()), to)
-            if (exposure.length > 0) setConfirming({ space: to, exposure })
+            if (locked && to.shared) {
+              setExplaining({
+                title: 'Locked notes can’t be in a shared space.',
+                text: `Remove this note’s lock to move it to ${to.name}.`,
+              })
+              return
+            }
+            const from = spaces.find((sp) => sp.id === saver.spaceId())
+            // Into a space that shows it to more people, or out of one: either way, who sees it changes.
+            const exposure = newExposure(from, to)
+            const lost = from ? newExposure(to, from) : []
+            if (exposure.length > 0 || lost.length > 0) setConfirming({ space: to, exposure, lost })
             else onMove(to.id)
           }}
         />
@@ -264,6 +291,7 @@ export function NoteMenu({
           title={saver.fields().title.trim() || 'New note'}
           space={confirming.space}
           exposure={confirming.exposure}
+          lost={confirming.lost}
           onClose={() => setConfirming(null)}
           onMove={() => {
             setConfirming(null)
@@ -271,6 +299,7 @@ export function NoteMenu({
           }}
         />
       )}
+      {explaining && <ExplainDialog {...explaining} onClose={() => setExplaining(null)} />}
     </span>
   )
 }
@@ -300,17 +329,22 @@ function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () 
   )
 }
 
-/** The destination shows the note to people its current space doesn't: said before it moves. */
+/**
+ * Who sees the note changes: the destination shows it to people its current space doesn't ([exposure]), or no
+ * longer to some who see it now ([lost]). Said before it moves.
+ */
 function ConfirmMoveDialog({
   title,
   space,
   exposure,
+  lost,
   onClose,
   onMove,
 }: {
   title: string
   space: Space
   exposure: SpaceTrait[]
+  lost: SpaceTrait[]
   onClose: () => void
   onMove: () => void
 }) {
@@ -321,26 +355,61 @@ function ConfirmMoveDialog({
         <h2 id={titleId} className={styles.title}>
           Move “{title}” to {space.name}?
         </h2>
-        <p className={styles.text}>In {space.name}, this note will be:</p>
-        <ul className={styles.exposure}>
-          {exposure.map((t) => {
-            const Glyph = traitGlyph(t.key)
-            return (
-              <li key={t.key}>
-                <span className={styles.exposureGlyph}>
-                  <Glyph size={15} />
-                </span>
-                {t.exposure}
-              </li>
-            )
-          })}
-        </ul>
+        {exposure.length > 0 && (
+          <>
+            <p className={styles.text}>In {space.name}, this note will be:</p>
+            <ExposureList traits={exposure} />
+          </>
+        )}
+        {lost.length > 0 && (
+          <>
+            <p className={styles.text}>It will no longer be:</p>
+            <ExposureList traits={lost} />
+          </>
+        )}
         <div className={styles.actions}>
           <Button size="md" onClick={onClose}>
             Cancel
           </Button>
           <Button variant="solid" size="md" onClick={onMove}>
             Move
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  )
+}
+
+function ExposureList({ traits }: { traits: SpaceTrait[] }) {
+  return (
+    <ul className={styles.exposure}>
+      {traits.map((t) => {
+        const Glyph = traitGlyph(t.key)
+        return (
+          <li key={t.key}>
+            <span className={styles.exposureGlyph}>
+              <Glyph size={15} />
+            </span>
+            {t.exposure}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+function ExplainDialog({ title, text, onClose }: { title: string; text: string; onClose: () => void }) {
+  const titleId = useId()
+  return (
+    <Dialog labelledBy={titleId} onClose={onClose}>
+      <div className={styles.stack}>
+        <h2 id={titleId} className={styles.title}>
+          {title}
+        </h2>
+        <p className={styles.text}>{text}</p>
+        <div className={styles.actions}>
+          <Button variant="solid" size="md" onClick={onClose}>
+            OK
           </Button>
         </div>
       </div>

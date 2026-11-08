@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { csrfTokenNow, sessionGone } from '../api/client'
-import { declineDevice, deviceDeclined, deviceUser, keepOnDevice } from '../auth/session-hint'
+import { declineDevice, deviceDeclined, deviceUser, keepOnDevice, userIdOf } from '../auth/session-hint'
 import { inDesktopApp } from '../desktop'
 import { isInstalledApp } from '../install'
 import { localSource } from '../notes/local-source'
@@ -58,6 +58,7 @@ async function detectSupport(): Promise<boolean> {
 
 /** Before the screens mount, and on every sign-in (a new token). Booted offline, there's no token yet. */
 export function openNotes(user: string): Engine | null {
+  const userId = userIdOf(user)
   if (deviceUser() !== user) {
     closeNotes()
     return null
@@ -65,6 +66,7 @@ export function openNotes(user: string): Engine | null {
   const token = csrfTokenNow()
   if (current?.user === user) {
     if (token) current.engine.setCsrfToken(token)
+    if (userId !== undefined) void current.engine.call('setUserId', userId).catch(() => {})
     return current.engine
   }
   closeNotes()
@@ -75,6 +77,8 @@ export function openNotes(user: string): Engine | null {
   })
   current = { user, engine, off }
   failure = null
+  // Its edits are told from other members' by it (§7.9).
+  if (userId !== undefined) void engine.call('setUserId', userId).catch(() => {})
   setNotesSource(localSource(engine))
   // A worker that can't start (storage blocked since opting in): the server's notes, not errors everywhere.
   engine.call('status').catch((err: unknown) => {

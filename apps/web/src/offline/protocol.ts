@@ -1,4 +1,4 @@
-import type { LockKey, NoteFilter, SearchResult, SearchScope, Space, TagCount } from '../api/types'
+import type { Invite, LockKey, NoteFilter, SearchResult, SearchScope, Space, SpaceNews, TagCount } from '../api/types'
 
 // What tabs ask of the engine worker. Everything here
 // crosses postMessage, so plain data only.
@@ -16,6 +16,8 @@ export type LocalNote = {
   /** Changed here since the last sync. */
   dirty: boolean
   spaceId: string
+  /** The account that last changed it (§7.9); null before that was recorded. */
+  updatedBy: number | null
 }
 
 export type LocalListItem = {
@@ -28,6 +30,7 @@ export type LocalListItem = {
   /** Null until the server has the note. */
   revision: number | null
   spaceId: string
+  updatedBy: number | null
 }
 
 export type SyncOutcome = 'Done' | 'NotConnected' | 'Offline' | 'SignedOut' | 'UpgradeRequired' | 'Failed'
@@ -104,6 +107,16 @@ export type EngineApi = {
   updateSpace(id: string, name: string, icon?: string): Promise<void>
   /** False for the default space or one with notes. */
   deleteSpace(id: string): Promise<boolean>
+  /** Invitations waiting for this account, as last synced (§7.9). */
+  invites(): Promise<Invite[]>
+  /** By shared space, what others changed since this device last showed it. */
+  news(): Promise<SpaceNews[]>
+  /** The space is being shown: what's in it is no longer news. */
+  visit(space: string): Promise<void>
+  /** The signed-in account's id, from the session, to tell its edits from others'. */
+  setUserId(id: number): Promise<void>
+  /** The ids of [space]'s notes with changes the server doesn't have yet. */
+  unsynced(space: string): Promise<string[]>
   lockKeys(): Promise<LockKey[]>
   replaceLockKeys(keys: LockKey[]): Promise<void>
   wipe(): Promise<void>

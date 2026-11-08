@@ -13,7 +13,10 @@ export type StoredImage = { id: string; contentType: string; size: number; creat
 export const imagePath = (id: string) => `/images/${id}`
 
 export const images = {
-  /** Idempotent: the id is the bytes' SHA-256, so a retry stores nothing new. */
+  /**
+   * Idempotent: the id is the bytes' SHA-256, so a retry stores nothing new. Always to the account's address: a
+   * note written into a shared space takes the pictures it shows there (§7.9).
+   */
   put: (id: string, body: Uint8Array<ArrayBuffer>, contentType: string) => upload<StoredImage>(imagePath(id), body, contentType),
   get: (id: string, signal?: AbortSignal) => download(imagePath(id), { ...(signal && { signal }) }),
 }

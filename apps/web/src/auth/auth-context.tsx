@@ -4,9 +4,10 @@ import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { SessionInfo } from '../api/types'
 import { forgetTouchId } from '../locks/touch-id'
 import { forgetEmailSettings } from '../notes/email-settings'
+import { forgetSharing } from '../notes/sharing'
 import { forgetSpaces } from '../notes/spaces'
 import { closeNotes, forgetNotesHere, keepIfInstalledApp, openNotes } from '../offline/device'
-import { deviceUser, rememberSession } from './session-hint'
+import { deviceUser, forgetUserId, rememberSession, rememberUserId, userIdOf } from './session-hint'
 
 export type AuthState =
   // retrying: after 'unreachable', where the shell skeleton would just flash between two error screens.
@@ -20,7 +21,8 @@ export type AuthState =
   // firstRun: just finished onboarding, for the welcome empty state.
   // offline: opened from this device's copy, the server not yet reached.
   // isAdmin: unknown (undefined) until the server answers.
-  | { status: 'signed-in'; username: string; isAdmin?: boolean; firstRun?: boolean; offline?: boolean }
+  // userId: the account's (§7.9), unknown from a server before sharing, or offline before any session here.
+  | { status: 'signed-in'; username: string; userId?: number; isAdmin?: boolean; firstRun?: boolean; offline?: boolean }
 
 type AuthContextValue = {
   state: AuthState
@@ -82,8 +84,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signedIn = useCallback((info: SessionInfo, opts: { firstRun?: boolean } = {}) => {
     setCsrfToken(info.csrfToken)
+    rememberUserId(info.username, info.userId)
     openNotes(info.username)
-    setState({ status: 'signed-in', username: info.username, isAdmin: info.isAdmin, firstRun: opts.firstRun ?? false })
+    setState({ status: 'signed-in', ...accountOf(info), firstRun: opts.firstRun ?? false })
   }, [])
 
   const account = useRef<string | null>(null)
@@ -99,8 +102,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Signed out, nothing of the account stays in this browser.
       void forgetNotesHere().catch(() => undefined)
       if (account.current) forgetTouchId(account.current)
+      forgetUserId()
       // Already on the server's notes, the source doesn't change: the next account would get these.
       forgetSpaces()
+      forgetSharing()
       forgetEmailSettings()
       setState({ status: 'signed-out' })
     }
@@ -142,8 +147,13 @@ async function fromServer(): Promise<{ status: 'setup' | 'signed-out' | 'unreach
 /** The server can't be reached: this device's copy, if it keeps one that has synced. */
 function adopt(info: SessionInfo): AuthState {
   setCsrfToken(info.csrfToken)
+  rememberUserId(info.username, info.userId)
   openNotes(info.username)
-  return { status: 'signed-in', username: info.username, isAdmin: info.isAdmin }
+  return { status: 'signed-in', ...accountOf(info) }
+}
+
+function accountOf(info: SessionInfo) {
+  return { username: info.username, isAdmin: info.isAdmin, ...(info.userId !== undefined && { userId: info.userId }) }
 }
 
 async function offlineBoot(): Promise<AuthState> {
@@ -152,7 +162,10 @@ async function offlineBoot(): Promise<AuthState> {
   try {
     const engine = openNotes(user)
     // Never synced (or cleared by the browser): an empty list would look like every note gone.
-    if (engine && (await engine.call('lastSyncAt')) !== null) return { status: 'signed-in', username: user, offline: true }
+    const userId = userIdOf(user)
+    if (engine && (await engine.call('lastSyncAt')) !== null) {
+      return { status: 'signed-in', username: user, offline: true, ...(userId !== undefined && { userId }) }
+    }
   } catch {
     // The engine didn't start.
   }

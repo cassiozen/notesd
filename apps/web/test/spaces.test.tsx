@@ -215,8 +215,9 @@ describe('Space info', () => {
 
     const info = await screen.findByRole('dialog', { name: 'Work' })
     expect(within(info).getByText('2 notes')).toBeTruthy()
-    // Without traits, no group for them.
-    expect(within(info).queryByRole('list', { name: 'Features' })).toBeNull()
+    // Without traits, only what can be turned on: sharing, for a space of the account's own.
+    const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
+    expect(rows.map((r) => r.textContent)).toEqual(['SharedOffTurn on'])
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Work' })).toBeNull())
   })
@@ -273,12 +274,12 @@ describe('traits', () => {
     const info = await screen.findByRole('dialog', { name: 'Work' })
     const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
     expect(rows.map((r) => r.textContent)).toEqual([
-      'SharedWith Ana and Ben',
+      'SharedWith Ana and BenManage',
       'PublishedPublishing failed',
       'CalendarSynced with iCloudUpdate the app to change this.',
     ])
-    // Nothing to manage or turn on yet.
-    expect(within(info).queryByRole('button', { name: /^(Manage|Turn on)/ })).toBeNull()
+    // Only sharing has settings yet.
+    expect(within(info).getAllByRole('button', { name: /^(Manage|Turn on)/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Manage Shared'])
   })
 
   it('asks before moving a note where more people see it', async () => {
@@ -312,7 +313,7 @@ describe('traits', () => {
     })
   })
 
-  it('moves to a space that exposes less without asking', async () => {
+  it('asks before moving a note out, saying who will no longer see it', async () => {
     const { user } = await withTraits()
     await switchTo(user, 'Work')
     await openNote(user, 'Budget')
@@ -320,6 +321,16 @@ describe('traits', () => {
     await user.click(screen.getByRole('menuitem', { name: 'Move to space…' }))
     const dialog = await screen.findByRole('dialog', { name: 'Move to space' })
     await user.click(within(dialog).getByRole('button', { name: 'Notes' }))
+
+    const confirm = await screen.findByRole('dialog', { name: 'Move “Budget” to Notes?' })
+    expect(within(confirm).getByText('It will no longer be:')).toBeTruthy()
+    expect(within(confirm).queryByText(/this note will be/)).toBeNull()
+    expect(within(confirm).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
+      'Visible to Ana and Ben',
+      'Public at notes.example',
+      'Sent to Apple',
+    ])
+    await user.click(within(confirm).getByRole('button', { name: 'Move' }))
     expect(await screen.findByText('Moved to Notes')).toBeTruthy()
   })
 })

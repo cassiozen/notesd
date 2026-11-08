@@ -68,3 +68,33 @@ export function declineDevice() {
     // Storage blocked: nothing is kept anyway.
   }
 }
+
+const USER_ID_KEY = 'notes.user-id'
+
+/** The account's id from its last session, for telling its edits from others' (§7.9) while offline. */
+export function userIdOf(username: string): number | undefined {
+  try {
+    const saved = JSON.parse(localStorage.getItem(USER_ID_KEY) ?? 'null') as { username?: string; id?: number } | null
+    return saved?.username === username && typeof saved.id === 'number' ? saved.id : undefined
+  } catch {
+    return undefined
+  }
+}
+
+/** Signed out, the device's copy goes too: nothing needs the id offline. */
+export function forgetUserId() {
+  try {
+    localStorage.removeItem(USER_ID_KEY)
+  } catch {
+    // Storage blocked: nothing was kept anyway.
+  }
+}
+
+export function rememberUserId(username: string, id: number | undefined) {
+  try {
+    if (id === undefined) localStorage.removeItem(USER_ID_KEY)
+    else localStorage.setItem(USER_ID_KEY, JSON.stringify({ username, id }))
+  } catch {
+    // Offline, this account's own edits may show as someone's until the server answers.
+  }
+}

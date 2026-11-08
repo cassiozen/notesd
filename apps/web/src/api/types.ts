@@ -11,9 +11,13 @@ export type Note = {
   conflictOf?: string
   /** The space the note is in (architecture §7.7). */
   spaceId: string
+  /** The account that last changed it (§7.9); absent for changes from before it was recorded. */
+  updatedBy?: number
+  /** On a tombstone a move between files left: the space the note went to (§7.9). */
+  movedTo?: string
 }
 
-export type ListItem = Pick<Note, 'id' | 'title' | 'revision' | 'createdAt' | 'updatedAt' | 'spaceId'> & {
+export type ListItem = Pick<Note, 'id' | 'title' | 'revision' | 'createdAt' | 'updatedAt' | 'spaceId' | 'updatedBy'> & {
   preview: string
   /** The body is encrypted (§10.1): no preview. */
   locked: boolean
@@ -62,6 +66,42 @@ export type Space = {
   noteCount: number
   /** On, in the server's order (§7.8); [] for none. */
   traits: SpaceTrait[]
+  /** Who's in it, when it's shared (§7.9); absent for the account's own. */
+  shared?: SharedSpace
+}
+
+/** An account, as sharing names it: by username only. */
+export type Account = { id: number; username: string }
+
+/** A shared space's people as this account sees them (§7.9). */
+export type SharedSpace = {
+  role: 'owner' | 'member'
+  /** The owner first. */
+  members: Account[]
+  /** Waiting invitations; the owner's only, absent for members. */
+  invites?: { id: string; userId: number; username: string }[]
+}
+
+/** An invitation into someone else's space, waiting for this account (§7.9). */
+export type Invite = {
+  id: string
+  spaceId: string
+  spaceName: string
+  spaceIcon: string
+  from: Account
+  createdAt: number
+}
+
+/** What other members changed in a shared space since this device last showed it (§7.9). */
+export type SpaceNews = {
+  spaceId: string
+  /** Notes changed. */
+  count: number
+  /** count is a floor: online, only the list's first pages are read, and more remained. */
+  atLeast?: boolean
+  /** Who changed them, latest first. */
+  usernames: string[]
+  latestAt: number
 }
 
 /** A feature on for a whole space (§7.8), worded by the server. */
@@ -98,6 +138,8 @@ export type Session = {
 
 export type SessionInfo = {
   session: Session
+  /** The account's id, as notes' updatedBy and shared spaces' members name it; absent from servers before sharing. */
+  userId?: number
   username: string
   /** May change server-wide settings and manage accounts. */
   isAdmin: boolean
@@ -126,7 +168,7 @@ export type ErrorBody = {
   message?: string
   field?: string
   current?: Note
-  /** space_not_empty: the notes still in the space. */
+  /** space_not_empty: the notes still in the space; space_has_locked: its locked notes. */
   count?: number
   /** upgrade_required: the oldest app version the server takes. */
   minVersion?: string

@@ -1,17 +1,19 @@
 import { memo, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type Ref } from 'react'
 import type { Space } from '../api/types'
+import { useAuth } from '../auth/auth-context'
 import { dragRegion } from '../desktop'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime, useMidnight } from './list-time'
 import { useSearch } from './search'
+import { ago, editorName, useMinutes } from './sharing'
 import { SpaceIcon } from './space-icon'
 import { SpaceIdentity, TraitGroup } from './space-identity'
 import { spaceName, useSpaces } from './spaces'
 import { useNotes } from './store'
 import styles from './note-list.module.css'
 
-type Badge = Pick<Space, 'icon' | 'name' | 'traits'>
+type Badge = Pick<Space, 'icon' | 'name' | 'traits' | 'shared'>
 
 /** A result's space while the list loads: spaceName's fallback. */
 const LOADING: Badge = { icon: '', name: 'Notes', traits: [] }
@@ -55,6 +57,8 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   const others = spaces?.filter((s) => s.id !== space) ?? []
   const elsewhere = others.length === 1 && others[0] ? others[0].name : 'other spaces'
   const current = spaces?.find((s) => s.id === space) ?? LOADING
+  const { state: auth } = useAuth()
+  const me = 'userId' in auth ? auth.userId : undefined
   // The sidebar beside the list, showing.
   const docked = tags === null
 
@@ -247,6 +251,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
                     onSelect={onSelect}
                     locked={note.locked}
                     preview={note.preview}
+                    by={editorName(current, note.updatedBy, me)}
                   />
                 ))}
               </Section>
@@ -290,6 +295,8 @@ type RowProps = {
   time: number
   /** The space a result from another space is in. */
   badge?: Badge
+  /** Another member, who changed it last (§7.9). */
+  by?: string | null
   locked: boolean
   /** A listed note's first lines… */
   preview?: string
@@ -304,8 +311,9 @@ type RowProps = {
 const plainClick = (e: MouseEvent) => e.button === 0 && !e.metaKey && !e.ctrlKey && !e.shiftKey
 
 /** Plain props, so a list change re-renders only the rows it touched; typing in a note changes the list every few keystrokes. */
-const Row = memo(function Row({ id, title, time, badge, locked, preview, excerpt, selected, onSelect }: RowProps) {
+const Row = memo(function Row({ id, title, time, badge, by, locked, preview, excerpt, selected, onSelect }: RowProps) {
   const href = `/notes/${id}`
+  useMinutes(!!by)
   return (
     <li>
       <a
@@ -326,7 +334,7 @@ const Row = memo(function Row({ id, title, time, badge, locked, preview, excerpt
         <span className={styles.rowTitle}>{title.trim() || 'New note'}</span>
         <span className={styles.rowMeta}>
           {badge && <SpaceIdentity space={badge} icon={false} nameClassName={styles.rowSpace} glyphSize={12} />}
-          <span className={styles.rowTime}>{listTime(time)}</span>
+          <span className={styles.rowTime}>{by ? `${by} · ${ago(time)}` : listTime(time)}</span>
           <span className={styles.rowPreview}>
             {locked ? (
               <Locked />

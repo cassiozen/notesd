@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import type { LockKey, MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, TagCount } from '../api/types'
+import type { Invite, LockKey, MutationResult, Note, NoteFilter, NoteList, SearchResult, SearchScope, Space, SpaceNews, TagCount } from '../api/types'
 import type { SyncNotice, SyncStatus } from '../offline/protocol'
 import { onlineSource } from './online-source'
 import type { Fields, Snapshot } from './saver'
@@ -21,6 +21,8 @@ export type SaverInit = {
   /** The locked body as stored. */
   envelope?: string | null
   spaceId?: string
+  /** The account that last changed it (§7.9). */
+  updatedBy?: number
 }
 
 export type SaverHooks = {
@@ -124,6 +126,19 @@ export interface NotesSource {
     load(): Promise<LockKey[]>
     /** After a change made here: a copy on this device is in use offline before sync brings it. */
     changed(keys: readonly LockKey[]): Promise<void>
+  }
+  /** Shared spaces (§7.9): what's waiting for and new to this account. Joining, leaving and the rest are the server's. */
+  sharing: {
+    /** Invitations into other people's spaces. */
+    invites(): Promise<Invite[]>
+    /** By shared space, what others changed since it was last shown here; [me] tells their edits from this account's. */
+    news(me: number | null): Promise<SpaceNews[]>
+    /** The space is being shown: what's in it is no longer news. */
+    visit(space: string, me: number | null): Promise<void>
+    /** The notes [space] has here that the server doesn't have yet; leaving would lose them. */
+    unsynced(space: string): Promise<string[]>
+    /** After a change on the server (joined, left, shared): this device catches up before the list is read again. */
+    settle(): Promise<void>
   }
   /** Calls [listener] whenever what was fetched may be out of date. Returns the unsubscribe function. */
   onStale(listener: () => void): () => void
