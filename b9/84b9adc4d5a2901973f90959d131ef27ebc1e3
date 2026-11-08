@@ -1,0 +1,55 @@
+apps/web/src/notes/tags-panel.tsx
+  s_c6f2b44348fc0d::t_babd70941b7b9b 3,152-161,175-178,244-252
+apps/web/src/notes/space-identity.tsx
+  s_c6f2b44348fc0d::t_762c8996de66df 66
+apps/web/src/notes/space-menu.module.css
+  s_c6f2b44348fc0d::t_150599f44fe595 1
+  s_c6f2b44348fc0d::t_be6212c1a9237b 29-30
+  s_c6f2b44348fc0d::t_8ddeb15d63a0bb 2-3,8,17,19,21,28,48,53
+  s_c6f2b44348fc0d::t_d7e5a8b78a37a8 31-32
+apps/web/src/notes/note-list.tsx
+  s_c6f2b44348fc0d::t_8e6f08b7f28675 4,65-82,128,270
+apps/web/src/notes/space-menu.tsx
+  s_c6f2b44348fc0d::t_be6212c1a9237b 162
+  s_c6f2b44348fc0d::t_8ddeb15d63a0bb 165
+apps/web/src/notes/space-identity.module.css
+  s_c6f2b44348fc0d::t_6745ff77dcb320 18-19,24
+  s_c6f2b44348fc0d::t_762c8996de66df 26,34
+docs/get-started/04-write-your-first-note.md
+  s_c6f2b44348fc0d::t_f4f6ce0dff9b53 29
+apps/web/src/desktop.ts
+  s_c6f2b44348fc0d::t_51f429b789c168 1-2,15-33
+apps/web/src/notes/tags-panel.module.css
+  s_c6f2b44348fc0d::t_3c92827aadb0f4 102-103,145-151,153-154,156-175,290
+  s_c6f2b44348fc0d::t_150599f44fe595 96
+  s_c6f2b44348fc0d::t_be6212c1a9237b 104,291
+  s_c6f2b44348fc0d::t_2963592aaf2116 152,155
+  s_e03b39751b20f4::t_5c11fcad5d090b 58-59
+apps/web/src/notes/note-list.module.css
+  s_c6f2b44348fc0d::t_8e6f08b7f28675 399,407-412
+  s_c6f2b44348fc0d::t_2524eadfef3b4c 413-414
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b984b9adc4d5a2901973f90959d131ef27ebc1e3",
+  "prompts": {},
+  "sessions": {
+    "s_c6f2b44348fc0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e19d8e1-db2b-4d23-9fff-965450448cfd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_e03b39751b20f4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "19e91b83-0fc9-425f-99a7-8768a14d9eaf",
+        "model": "unknown"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,25 @@
+server/internal/sharing/sharing_test.go
+  s_c4b534f44e1767::t_c33c2c02dbd592 254-274
+server/internal/userdata/userdata.go
+  s_c4b534f44e1767::t_390ecab8a1ad36 10
+  s_c4b534f44e1767::t_09a66eacde0e54 153-156
+  s_c4b534f44e1767::t_342bfb0b9756b2 169-177
+server/internal/notes/notes.go
+  s_c4b534f44e1767::t_a48a5e3d8f7346 836
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "aa4f5842f6f392233c51c36a5f8d1921ebe92d49",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

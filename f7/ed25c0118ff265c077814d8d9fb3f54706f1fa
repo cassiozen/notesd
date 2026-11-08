@@ -1,0 +1,71 @@
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_8bcb046323ce1f 26-30,60-62,91,112-113,134-154,174-177,179-187,239,241
+apps/web/src/notes/account-store.ts
+  s_cc6cacc0a6fc01::t_c2121d2f1fb689 5,40-45,69-74,83
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_dbfbce274e0d63 11,99-130,157-159,239-251,319-325
+apps/web/src/notes/agent-config.ts
+  s_cc6cacc0a6fc01::t_6fccb927a5b721 16
+apps/web/src/notes/shell.tsx
+  s_cc6cacc0a6fc01::t_2dafd1614d7706 1,123-138
+apps/web/test/activity.test.tsx
+  s_cc6cacc0a6fc01::t_90804ed6605d1e 2,76-141
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_693f7e1f4458cd 385-417
+apps/web/test/agent-triggers.test.tsx
+  s_cc6cacc0a6fc01::t_4e3dee73eb9b12 123-149
+apps/web/test/settings-stores.test.tsx
+  s_cc6cacc0a6fc01::t_79d66381476df8 29-45
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_dd35136af26590 34-38
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_c783302c42928d 378,592-593,688-741,947
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_7c1eaa6081bca9 1-302
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_1cf87bc772319e 63-64,106-107
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_2dbb050218d771 103-105
+server/cmd/notesd/import.go
+  s_cc6cacc0a6fc01::t_784fd8258e06d7 42-43
+server/cmd/notesd/import_test.go
+  s_cc6cacc0a6fc01::t_e7deb68446ce7f 5,7,21,228-244
+server/internal/api/notes_handlers.go
+  s_cc6cacc0a6fc01::t_38b758bd2f9f51 158
+server/internal/notes/notes.go
+  s_cc6cacc0a6fc01::t_1a2b704ae52984 259-264,377-380
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_cc6cacc0a6fc01::t_852ae2944483d9 334-349,362-363,365,367
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Rows.kt
+  s_cc6cacc0a6fc01::t_dfd2f94913e4a9 90-92,167-169
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_cc6cacc0a6fc01::t_56e315a1e6bac6 7,55,494-496
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_cc6cacc0a6fc01::t_d24b3df2956cd8 23,324-326,337-338,341,400,412-413,426-427,435-436
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_cc6cacc0a6fc01::t_d497bb93fef160 22,37-39,44,47,51-54,56,58-60,64-67,72-75,132-167
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncEngineTest.kt
+  s_cc6cacc0a6fc01::t_257e2590974960 30,32-33,35-36
+shared/sync-engine/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_cc6cacc0a6fc01::t_4b2082a9159f29 32-33,35-36,38-39,77,82
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_cc6cacc0a6fc01::t_8ff33e4ac600a5 105-106,108-109,111-112,371-377
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_cc6cacc0a6fc01::t_6fc9bc3011d1f5 111,115,117,120,123,227-237
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f7ed25c0118ff265c077814d8d9fb3f54706f1fa",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,49 @@
+server/internal/notes/notes.go
+  s_cc6cacc0a6fc01::t_a7a93b28f989d1 228
+apps/web/src/settings/agent-section.tsx
+  s_cc6cacc0a6fc01::t_e98376a5f9690d 1,4,6-11,13,234-310
+apps/web/src/settings/space-info.tsx
+  s_cc6cacc0a6fc01::t_b947f62955d560 8,32,40
+apps/web/src/api/spaces.ts
+  s_cc6cacc0a6fc01::t_226477eb1bfa83 34
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_9749826eb24d55 17-21,23-24,30,37,40,42-44,49,51,53,56-58,61-70,73,80,85-87,92,94,105-109,113-131
+apps/web/src/notes/sharing.ts
+  s_cc6cacc0a6fc01::t_a63ee61e78c522 246-247
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_172f48fe6e9049 337-339,471-477,550
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_a2b06096132ec9 215-216
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_b7a00345e79c84 66-68
+server/internal/userdata/userdata.go
+  s_cc6cacc0a6fc01::t_9afcf5f39d1fc7 68-69,77-79,83-87,89-93,135,173
+apps/web/src/notes/traits.test.tsx
+  s_cc6cacc0a6fc01::t_316a56aa2869d9 12,26-27,32-37,57-63
+apps/web/src/notes/traits.tsx
+  s_cc6cacc0a6fc01::t_eee59bbbf39d10 3,75-76,111-118,128,132
+server/internal/sharing/sharing.go
+  s_cc6cacc0a6fc01::t_5c9f8e3b9b8c71 34-35,347-351
+server/internal/api/agent_trait_test.go
+  s_cc6cacc0a6fc01::t_a733635ae6f8a7 1-68
+server/internal/api/image_test.go
+  s_cc6cacc0a6fc01::t_138edf0ad87f28 257-259
+server/internal/agent/trait.go
+  s_cc6cacc0a6fc01::t_639fb24b47a3e8 1-86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ffbd9f358c906893960c87ad9c838ff078b6afd",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
