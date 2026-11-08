@@ -1,0 +1,40 @@
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_a0fc22670a88c5::t_f6bc79963b6aa4 117
+  s_a0fc22670a88c5::t_053724b847c1c8 270-280
+  s_a0fc22670a88c5::t_74fef98ca251af 72-75,105-116
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_a0fc22670a88c5::t_958ab517f4a552 111-113,115-117,119-127,673-674
+  s_a0fc22670a88c5::t_45a4759956515a 118
+  s_a0fc22670a88c5::t_58acafe69a3eed 134-140,142-170
+  s_a0fc22670a88c5::t_8d6b6d07dc6e33 109-110,114
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_a0fc22670a88c5::t_58acafe69a3eed 277,279-282,285
+  s_a0fc22670a88c5::t_31e4dd3012c027 120-124,126
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_a0fc22670a88c5::t_8d6b6d07dc6e33 210-220
+  s_a0fc22670a88c5::t_958ab517f4a552 195-204,207-209,221-239
+  s_a0fc22670a88c5::t_83837967db4dff 172-194,240-250
+  s_a0fc22670a88c5::t_8f8b19bf80c7c9 205-206
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Parking.kt
+  s_a0fc22670a88c5::t_e2e0dca3df29c9 100-102
+  s_a0fc22670a88c5::t_58acafe69a3eed 84-85,87-99,103-104
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_a0fc22670a88c5::t_b009709b8ceb69 192-193,203-204
+  s_a0fc22670a88c5::t_58acafe69a3eed 252-257
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f08f6191aa0e42e71c8fa6a79598bb0122c03a6",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}
