@@ -86,8 +86,8 @@ const canExpose = (space: Space) => space.id !== DEFAULT_SPACE && (!space.shared
 export const TRAITS: readonly TraitEntry[] = [
   { key: 'shared', label: 'Shared', Glyph: SharedGlyph, Section: PeopleSection, canTurnOn: canExpose },
   { key: 'published', label: 'Published', Glyph: PublishedGlyph, Section: PublishedSection, canTurnOn: canExpose },
-  // Agents run in an account's own spaces only (§7.11).
-  { key: 'agent', label: 'Agent', Glyph: AgentGlyph, Section: AgentSection, canTurnOn: (space) => !space.shared },
+  // Any space, shared or not, and by any member (§7.11).
+  { key: 'agent', label: 'Agent', Glyph: AgentGlyph, Section: AgentSection, canTurnOn: () => true },
 ]
 
 export function traitEntry(key: string): TraitEntry | undefined {

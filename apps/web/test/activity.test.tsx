@@ -55,7 +55,7 @@ describe('Activity', () => {
     expect(row.textContent).toContain('Note deleted')
     expect(row.textContent).toContain('Changed the note')
     // Its own request, beside the list's.
-    expect(await within(sheet).findByText(/^Today: 24 of 1,000,000 tokens$/)).toBeTruthy()
+    expect(await within(sheet).findByText(/^Today in this space: 24 of 1,000,000 tokens$/)).toBeTruthy()
 
     await user.click(row)
     const changes = await within(sheet).findByRole('region', { name: 'Changes to Digest' })

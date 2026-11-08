@@ -162,7 +162,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   // Leaving: save what's left, then the store forgets it; agents hear of both.
   useEffect(() => {
     if (!saver) return
-    agentSocket.noteOpened(saver.id)
+    agentSocket.noteOpened(saver.id, saver.spaceId())
     return () =>
       void saver
         .savedRevision()

@@ -21,12 +21,15 @@ var (
 	RetryProvider = 30 * time.Second
 )
 
-// Account is what the runner needs of one account's data.
+// Account is what the runner needs of one file's data: an account's own, or a shared space's (§7.9).
 type Account struct {
-	// UserID is the account's: what its agent writes is the account's edit (§7.9's last editor).
-	UserID int64
-	Notes  *notes.Store
-	Agent  *Store
+	// Owner is the account whose file it is; 0 for a shared space's. A run is for its event's By, else Owner:
+	// its writes are that account's edit (§7.9's last editor), and "today" is in its time zone.
+	Owner int64
+	// Zone is an account's time zone.
+	Zone  func(ctx context.Context, userID int64) (*time.Location, error)
+	Notes *notes.Store
+	Agent *Store
 	// SpaceName names a space for the agent, by id.
 	SpaceName func(ctx context.Context, id string) string
 	// Editors are the account's open note editors; nil reads and writes
@@ -48,6 +51,14 @@ type RunUpdate struct {
 	Outcome string  `json:"outcome,omitempty"`
 }
 
+// forUser is the account a run is for.
+func (a Account) forUser(r queuedRun) int64 {
+	if r.Event.By != 0 {
+		return r.Event.By
+	}
+	return a.Owner
+}
+
 func (a Account) notify(u RunUpdate) {
 	if a.OnRun != nil {
 		a.OnRun(u)
@@ -67,7 +78,7 @@ type runState struct {
 	// inEditor holds the notes read from an editor; their writes go back to it.
 	inEditor map[string]*editorRead
 	ops      int    // writes so far, for their operation ids
-	day      string // in the account's time zone, for usage
+	day      string // in the time zone of the account the run is for, for usage
 	// budget is the tokens this attempt may use: what's left of MaxRunTokens,
 	// or less when that's all the day has left (dailyLimited).
 	budget       int64
@@ -81,11 +92,11 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	began := time.Now()
 	waited := rn.now().Sub(time.UnixMilli(r.CreatedAt))
 	var f finished
-	// Without the account's time zone, the day's usage would go to the wrong day.
-	if settings, err := acct.Agent.Settings(ctx); err != nil {
+	// Without the time zone, the day's usage would go to the wrong day.
+	if loc, err := acct.Zone(ctx, acct.forUser(r)); err != nil {
 		f = failed(FailInterrupted, err)
 	} else {
-		f = rn.attempt(ctx, acct, st, r, rn.now().In(settings.Location()))
+		f = rn.attempt(ctx, acct, st, r, rn.now().In(loc))
 	}
 	if ctx.Err() != nil && f.Status == "" {
 		f = finished{Status: StatusFailed, Failure: FailInterrupted, Message: "The server stopped during the run."}
@@ -146,12 +157,12 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		note = &n
 	}
 
-	used, err := acct.Agent.usedOn(ctx, day)
+	used, err := acct.Agent.usedOn(ctx, r.SpaceID, day)
 	if err != nil {
 		return failed(FailInterrupted, err)
 	}
 	if used >= st.DailyTokenCap {
-		return skipped(FailDailyCap, fmt.Sprintf("The account used its %d tokens for today.", st.DailyTokenCap))
+		return skipped(FailDailyCap, fmt.Sprintf("The space used its %d tokens for today.", st.DailyTokenCap))
 	}
 	left, today := MaxRunTokens-r.PriorTokens, st.DailyTokenCap-used
 	// Spent before a crash: another call would only go over.
@@ -320,7 +331,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		f.CompletionTokens += completion
 		// Recorded even if the run's time ran out as the answer came back: they were spent.
 		saved, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-		err = rs.acct.Agent.addUsage(saved, rs.run.ID, rs.day, res.Model, prompt, completion)
+		err = rs.acct.Agent.addUsage(saved, rs.run.ID, rs.run.SpaceID, rs.day, res.Model, prompt, completion)
 		cancel()
 		if err != nil {
 			interrupted(ctx, f, err)

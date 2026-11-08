@@ -56,13 +56,13 @@ describe('AI settings', () => {
     await openSettings(user, 'Integrations')
     await user.click(await screen.findByRole('button', { name: 'Manage AI' }))
     let dialog = screen.getByRole('dialog', { name: 'AI' })
-    expect(within(dialog).getByLabelText<HTMLInputElement>('Daily tokens per account').value).toBe('5000')
+    expect(within(dialog).getByLabelText<HTMLInputElement>('Daily tokens per space').value).toBe('5000')
     await user.click(within(dialog).getByRole('button', { name: 'Disconnect…' }))
     await user.click(within(screen.getByRole('dialog', { name: 'Disconnect AI?' })).getByRole('button', { name: 'Disconnect' }))
 
     await user.click(await screen.findByRole('button', { name: 'Connect AI' }))
     dialog = screen.getByRole('dialog', { name: 'Connect AI' })
-    expect(within(dialog).getByLabelText<HTMLInputElement>('Daily tokens per account').value).toBe('1000000')
+    expect(within(dialog).getByLabelText<HTMLInputElement>('Daily tokens per space').value).toBe('1000000')
   })
 
   it('says why a test failed', async () => {

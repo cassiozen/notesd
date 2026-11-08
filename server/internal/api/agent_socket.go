@@ -13,6 +13,8 @@ import (
 
 	"notes/server/internal/agent"
 	"notes/server/internal/auth"
+	"notes/server/internal/sharing"
+	"notes/server/internal/userdata"
 )
 
 // noteIDPattern is a note id, as the notes API takes one.
@@ -57,7 +59,7 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusForbidden, "csrf_failed", "cross-origin request rejected")
 		return
 	}
-	data, userID := userFrom(r.Context()), sessionFrom(r.Context()).UserID
+	userID := sessionFrom(r.Context()).UserID
 	if s.editors.Full(userID) {
 		writeError(w, http.StatusTooManyRequests, "rate_limited", "too many open connections")
 		return
@@ -101,6 +103,12 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 		if !noteIDPattern.MatchString(m.NoteID) {
 			continue
 		}
+		f, err := s.socketFile(ctx, userID, m.NoteID, m.SpaceID)
+		if err != nil {
+			s.log.Error("agent socket: find the note's file", "error", err)
+			continue
+		}
+		data := f.data
 		switch m.Type {
 		case "editor.opened":
 			// Locked through queuing: a list read before a newer one went out would undo it here.
@@ -122,7 +130,7 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 				if closed, err := data.Agent.CloseOverlays(ctx, m.NoteID); err != nil {
 					s.log.Error("agent socket: close overlays", "error", err)
 				} else if closed {
-					s.editors.Broadcast(userID, agent.OverlaysMessage(m.NoteID, nil))
+					s.editors.BroadcastTo(f.members, agent.OverlaysMessage(m.NoteID, nil))
 				}
 			}
 			unlock()
@@ -137,12 +145,12 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			if m.Before != nil && m.Shows != nil {
 				applied = &agent.EditorApplied{Before: *m.Before, Revision: m.Revision, Shows: *m.Shows}
 			}
-			s.answerOverlay(ctx, data.Agent, userID, m.ID, m.Answer, applied)
+			s.answerOverlay(ctx, data.Agent, f.members, m.ID, m.Answer, applied)
 		case "run.request":
 			// Before the run is queued, which starts it.
 			s.editors.Claim(ec, m.NoteID)
 			_, err := data.Agent.RequestRun(ctx, agent.RunRequest{Trigger: m.Trigger, NoteID: m.NoteID, SpaceID: m.SpaceID,
-				ConnectionID: ec.ID, Note: m.Note})
+				ConnectionID: ec.ID, By: userID, Note: m.Note})
 			if err != nil {
 				s.editors.Unclaim(ec, m.NoteID)
 			}
@@ -197,7 +205,7 @@ func (s *Server) pingSocket(ctx context.Context, cancel func(), c *websocket.Con
 
 // answerOverlay records an answer and tells the account's editors what's
 // left, locked so answers from two tabs reach them in order.
-func (s *Server) answerOverlay(ctx context.Context, a *agent.Store, userID int64, id, answer string, applied *agent.EditorApplied) {
+func (s *Server) answerOverlay(ctx context.Context, a *agent.Store, members []int64, id, answer string, applied *agent.EditorApplied) {
 	defer a.LockOverlays()()
 	noteID, err := a.AnswerOverlay(ctx, id, answer, applied)
 	switch {
@@ -212,5 +220,36 @@ func (s *Server) answerOverlay(ctx context.Context, a *agent.Store, userID int64
 		s.log.Error("agent socket: overlays", "error", err)
 		return
 	}
-	s.editors.Broadcast(userID, agent.OverlaysMessage(noteID, list))
+	s.editors.BroadcastTo(members, agent.OverlaysMessage(noteID, list))
+}
+
+// socketFile is the file a socket message is about, and whose editors hear of it.
+type socketFile struct {
+	data    *userdata.Data
+	members []int64
+}
+
+// socketFile finds the file of a message's note (§7.11): wherever the note is, else, for a new note not
+// saved yet, the space's the editor names, else the account's own. In a shared space's, every member's
+// editors hear of it.
+func (s *Server) socketFile(ctx context.Context, userID int64, noteID, spaceID string) (socketFile, error) {
+	files, release, err := s.sharing.Files(ctx, userID)
+	if err != nil {
+		return socketFile{}, err
+	}
+	// Not held through the message: a run started from it outlives it, and keeps its file open itself.
+	defer release()
+	f := files[0]
+	if found, ok, err := sharing.FileOf(ctx, files, noteID); err != nil {
+		return socketFile{}, err
+	} else if ok {
+		f = found
+	} else if spaceID != "" {
+		f = sharing.FileFor(files, spaceID)
+	}
+	if f.SpaceID == "" {
+		return socketFile{data: f.Data, members: []int64{userID}}, nil
+	}
+	members, err := s.sharing.Members(ctx, f.SpaceID)
+	return socketFile{data: f.Data, members: members}, err
 }

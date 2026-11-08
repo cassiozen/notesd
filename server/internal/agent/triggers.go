@@ -45,6 +45,9 @@ type Event struct {
 	Content *string `json:"content,omitempty"`
 	// ConnectionID is the editor that asked for the run, for an editor trigger.
 	ConnectionID string `json:"connectionId,omitempty"`
+	// By is the account the run is for: the one whose editor asked, or whose write
+	// fired it. Its writes are that account's, in its time zone. 0: the file's account.
+	By int64 `json:"by,omitempty"`
 }
 
 // OnScheduled has fn called when a run is queued or a writing session
@@ -115,18 +118,18 @@ func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
 			return nil
 		}
 		return s.queueIfActs(ctx, tx, ev.Before.SpaceID, Event{
-			Trigger: NoteDeleted, NoteID: ev.NoteID, Title: &ev.Before.Title, Content: &ev.Before.Content,
+			Trigger: NoteDeleted, NoteID: ev.NoteID, Title: &ev.Before.Title, Content: &ev.Before.Content, By: ev.By,
 		}, now)
 	case notes.EventUpdated:
 		if ev.SpaceChanged() && !locks.IsLocked(ev.After.Content) {
 			from, to := ev.Before.SpaceID, ev.After.SpaceID
 			if err := s.queueIfActs(ctx, tx, from, Event{
 				Trigger: MovedOut, NoteID: ev.NoteID, FromSpaceID: from, ToSpaceID: to,
-				Title: &ev.After.Title, Content: &ev.After.Content,
+				Title: &ev.After.Title, Content: &ev.After.Content, By: ev.By,
 			}, now); err != nil {
 				return err
 			}
-			if err := s.queueIfActs(ctx, tx, to, Event{Trigger: MovedIn, NoteID: ev.NoteID, FromSpaceID: from, ToSpaceID: to}, now); err != nil {
+			if err := s.queueIfActs(ctx, tx, to, Event{Trigger: MovedIn, NoteID: ev.NoteID, FromSpaceID: from, ToSpaceID: to, By: ev.By}, now); err != nil {
 				return err
 			}
 		}
@@ -208,8 +211,9 @@ func anyAgent(ctx context.Context, tx *sql.Tx) (bool, error) {
 // progress. A session starts only where a "done" trigger could fire; the
 // space is checked again when it ends, in case the note moved.
 func (s *Store) extendSession(ctx context.Context, tx *sql.Tx, ev notes.Event, kind string, startRevision, now int64) error {
-	res, err := tx.ExecContext(ctx, `UPDATE agent_sessions SET last_revision = ?, last_user_save_at = ? WHERE note_id = ?`,
-		ev.After.Revision, now, ev.NoteID)
+	// Its "done" run is for whoever wrote last.
+	res, err := tx.ExecContext(ctx, `UPDATE agent_sessions SET last_revision = ?, last_user_save_at = ?, by_user = ? WHERE note_id = ?`,
+		ev.After.Revision, now, ev.By, ev.NoteID)
 	if err != nil {
 		return err
 	}
@@ -226,8 +230,8 @@ func (s *Store) extendSession(ctx context.Context, tx *sql.Tx, ev notes.Event, k
 	if !c.Acts(doneTrigger(kind)) {
 		return nil
 	}
-	if _, err = tx.ExecContext(ctx, `INSERT INTO agent_sessions (note_id, kind, start_revision, last_revision, last_user_save_at)
-		VALUES (?, ?, ?, ?, ?)`, ev.NoteID, kind, startRevision, ev.After.Revision, now); err != nil {
+	if _, err = tx.ExecContext(ctx, `INSERT INTO agent_sessions (note_id, kind, start_revision, last_revision, last_user_save_at, by_user)
+		VALUES (?, ?, ?, ?, ?, ?)`, ev.NoteID, kind, startRevision, ev.After.Revision, now, ev.By); err != nil {
 		return err
 	}
 	s.scheduled()
@@ -361,9 +365,9 @@ func (s *Store) EditorClosed(ctx context.Context, noteID string, revision int64)
 // if the note was changed and its space's agent still acts on it.
 func (s *Store) closeSession(ctx context.Context, tx *sql.Tx, noteID string, cutoff, now int64) (bool, error) {
 	var kind string
-	var start, last int64
+	var start, last, by int64
 	err := tx.QueryRowContext(ctx, `DELETE FROM agent_sessions WHERE note_id = ? AND last_user_save_at <= ?
-		RETURNING kind, start_revision, last_revision`, noteID, cutoff).Scan(&kind, &start, &last)
+		RETURNING kind, start_revision, last_revision, by_user`, noteID, cutoff).Scan(&kind, &start, &last, &by)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil // changed again since, or closed elsewhere
 	}
@@ -390,7 +394,7 @@ func (s *Store) closeSession(ctx context.Context, tx *sql.Tx, noteID string, cut
 	if !c.Acts(trigger) {
 		return false, nil
 	}
-	if _, err = queue(ctx, tx, spaceID, Event{Trigger: trigger, NoteID: noteID}, 0, now); err != nil {
+	if _, err = queue(ctx, tx, spaceID, Event{Trigger: trigger, NoteID: noteID, By: by}, 0, now); err != nil {
 		return false, err
 	}
 	s.scheduled()

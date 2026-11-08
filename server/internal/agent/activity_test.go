@@ -60,7 +60,7 @@ func TestActivityLists(t *testing.T) {
 		}
 	}
 
-	u, err := h.d.Agent.UsageToday(ctx)
+	u, err := h.d.Agent.UsageToday(ctx, "work", time.UTC)
 	if err != nil || u.Tokens != 330 || u.Runs != 2 || u.Day != "2023-11-14" {
 		t.Fatalf("usage: %+v %v", u, err)
 	}

@@ -53,7 +53,9 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -70,6 +72,7 @@ import (
 	"notes/server/internal/locks"
 	"notes/server/internal/mirror"
 	"notes/server/internal/search"
+	"notes/server/internal/sharing"
 	"notes/server/internal/spaces"
 	"notes/server/internal/userdata"
 )
@@ -635,28 +638,64 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		}
 	}
 	hub := editors.NewHub()
+	// Set once the server is made, before the runner starts.
+	var share *sharing.Service
+	zone := func(ctx context.Context, userID int64) (*time.Location, error) {
+		if userID == 0 {
+			return time.UTC, nil
+		}
+		d, err := users.Open(ctx, userID)
+		if err != nil {
+			return nil, err
+		}
+		st, err := d.Agent.Settings(ctx)
+		return st.Location(), err
+	}
 	runner := agent.NewRunner(agent.RunnerConfig{
-		Accounts: func(ctx context.Context) ([]int64, error) {
+		Homes: func(ctx context.Context) ([]agent.Home, error) {
 			list, err := authSvc.ListUsers(ctx)
-			ids := make([]int64, len(list))
-			for i, u := range list {
-				ids[i] = u.ID
+			if err != nil {
+				return nil, err
 			}
-			return ids, err
+			var homes []agent.Home
+			for _, u := range list {
+				homes = append(homes, agent.UserHome(u.ID))
+			}
+			shared, err := share.SharedIDs(ctx)
+			for _, id := range shared {
+				homes = append(homes, agent.SpaceHome(id))
+			}
+			return homes, err
 		},
-		Exists: func(ctx context.Context, userID int64) (bool, error) {
-			_, err := authSvc.User(ctx, userID)
+		Exists: func(ctx context.Context, home agent.Home) (bool, error) {
+			if id, ok := strings.CutPrefix(string(home), "space:"); ok {
+				shared, err := share.SharedIDs(ctx)
+				return slices.Contains(shared, id), err
+			}
+			userID, err := strconv.ParseInt(strings.TrimPrefix(string(home), "user:"), 10, 64)
+			if err != nil {
+				return false, err
+			}
+			_, err = authSvc.User(ctx, userID)
 			if errors.Is(err, auth.ErrNoUser) {
 				return false, nil
 			}
 			return err == nil, err
 		},
-		Open: func(ctx context.Context, userID int64) (agent.Account, error) {
+		Open: func(ctx context.Context, home agent.Home) (agent.Account, error) {
+			if id, ok := strings.CutPrefix(string(home), "space:"); ok {
+				return sharedAgentAccount(ctx, id, users, share, hub, zone, log)
+			}
+			userID, err := strconv.ParseInt(strings.TrimPrefix(string(home), "user:"), 10, 64)
+			if err != nil {
+				return agent.Account{}, err
+			}
 			d, err := users.Open(ctx, userID)
 			if err != nil {
 				return agent.Account{}, err
 			}
 			a := agentAccount(d, userID)
+			a.Zone = zone
 			a.Editors = hub.For(userID)
 			a.OnRun = func(u agent.RunUpdate) { hub.Broadcast(userID, runMessage{Type: "run", RunUpdate: u}) }
 			a.OnOverlays = func(noteID string, list []agent.Overlay) { hub.Broadcast(userID, agent.OverlaysMessage(noteID, list)) }
@@ -672,6 +711,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
 	server := api.New(system, users, authSvc, log, cfg)
+	share = server.Sharing()
 	if err := server.Recover(ctx); err != nil {
 		return fmt.Errorf("finish moving notes between files: %w", err)
 	}
@@ -996,18 +1036,18 @@ func humanBytes(n int64) string {
 	return fmt.Sprintf("%d bytes", n)
 }
 
-// agentAccount is what agents need of an account's data.
 // runMessage tells the user's editors a run started or ended (the agent socket's "run").
 type runMessage struct {
 	Type string `json:"type"`
 	agent.RunUpdate
 }
 
+// agentAccount is what agents need of an account's data.
 func agentAccount(d *userdata.Data, userID int64) agent.Account {
 	return agent.Account{
-		UserID: userID,
-		Notes:  d.Notes,
-		Agent:  d.Agent,
+		Owner: userID,
+		Notes: d.Notes,
+		Agent: d.Agent,
 		SpaceName: func(ctx context.Context, id string) string {
 			list, err := d.Spaces.List(ctx)
 			if err != nil {
@@ -1021,4 +1061,45 @@ func agentAccount(d *userdata.Data, userID int64) agent.Account {
 			return "another space"
 		},
 	}
+}
+
+// sharedAgentAccount is what agents need of a shared space's file (§7.11): every member's editors
+// are its editors, and hear its runs.
+func sharedAgentAccount(ctx context.Context, spaceID string, users *userdata.Registry, share *sharing.Service,
+	hub *editors.Hub, zone func(context.Context, int64) (*time.Location, error), log *slog.Logger) (agent.Account, error) {
+	d, err := users.OpenSpaceIfExists(ctx, spaceID)
+	if err != nil {
+		return agent.Account{}, err
+	}
+	if d == nil {
+		return agent.Account{}, fmt.Errorf("shared space %s has no file", spaceID)
+	}
+	members := func() []int64 {
+		ids, err := share.Members(context.WithoutCancel(ctx), spaceID)
+		if err != nil {
+			log.Warn("agent: members of a shared space", "space", spaceID, "err", err)
+		}
+		return ids
+	}
+	return agent.Account{
+		Notes:   d.Notes,
+		Agent:   d.Agent,
+		Zone:    zone,
+		Editors: hub.ForMembers(members),
+		// The space's file holds only it, with its name (§7.9).
+		SpaceName: func(ctx context.Context, id string) string {
+			sp, err := d.Spaces.Get(ctx, id)
+			if err != nil {
+				if !errors.Is(err, spaces.ErrNotFound) {
+					log.Warn("agent: shared space's name", "space", id, "err", err)
+				}
+				return "another space"
+			}
+			return sp.Name
+		},
+		OnRun: func(u agent.RunUpdate) { hub.BroadcastTo(members(), runMessage{Type: "run", RunUpdate: u}) },
+		OnOverlays: func(noteID string, list []agent.Overlay) {
+			hub.BroadcastTo(members(), agent.OverlaysMessage(noteID, list))
+		},
+	}, nil
 }

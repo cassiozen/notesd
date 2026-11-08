@@ -5,15 +5,16 @@ import (
 	"time"
 )
 
-// RunNext runs an account's next due run now, on the caller's goroutine,
+// RunNext runs account userID's next due run now, on the caller's goroutine,
 // and reports whether there was one. Test-only: beside a running worker it
 // would break one run at a time per note.
 func (rn *Runner) RunNext(ctx context.Context, userID int64) (bool, error) {
-	acct, err := rn.open(ctx, userID)
+	home := UserHome(userID)
+	acct, err := rn.open(ctx, home)
 	if err != nil {
 		return false, err
 	}
-	return rn.step(ctx, userID, acct, false), nil
+	return rn.step(ctx, home, acct, false), nil
 }
 
 // RecoverRuns puts back the runs a stopped server left running; workers do

@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/database"
 	"notes/server/internal/notes"
 	"notes/server/internal/spaces"
@@ -31,8 +32,6 @@ var (
 	ErrSelf          = errors.New("you're already in this space")
 	ErrIDTaken       = errors.New("a shared space has this id")
 	ErrBusy          = errors.New("the space is in use; try again")
-	// Agents run in an account's own spaces only (§7.11).
-	ErrHasAgent = errors.New("turn off the space's agent before sharing it")
 )
 
 // Service shares spaces.
@@ -360,11 +359,6 @@ func (s *Service) share(ctx context.Context, ownerID int64, spaceID string) erro
 	} else if !ok {
 		return ErrNotFound
 	}
-	if c, err := own.Agent.Config(ctx, spaceID); err != nil {
-		return err
-	} else if c.Enabled {
-		return ErrHasAgent
-	}
 	s.moving.Lock()
 	defer s.moving.Unlock()
 	moveID := newID()
@@ -391,7 +385,12 @@ func (s *Service) share(ctx context.Context, ownerID int64, spaceID string) erro
 		return s.undoShare(ctx, moveID, spaceID, err)
 	}
 	err = own.Notes.ShareOut(ctx, spaceID, ownerID, func(row notes.SpaceRow, carried []notes.Carried) error {
-		if err := dest.Notes.ShareIn(ctx, row, carried); err != nil {
+		// Read while ShareOut holds the owner's file, so the agent is as it leaves.
+		ag, err := own.Agent.Export(ctx, spaceID, ownerID)
+		if err != nil {
+			return err
+		}
+		if err := dest.Notes.ShareIn(ctx, row, carried, func(tx *sql.Tx) error { return agent.ImportTx(ctx, tx, ag) }); err != nil {
 			return err
 		}
 		return s.system.WriteTx(ctx, func(tx *sql.Tx) error {
@@ -896,4 +895,22 @@ func (s *Service) exposes(ctx context.Context, spaceID string) (bool, error) {
 	err := s.system.R.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM space_members WHERE space_id = ?) > 1
 		OR EXISTS (SELECT 1 FROM space_invites WHERE space_id = ?)`, spaceID, spaceID).Scan(&on)
 	return on, err
+}
+
+// SharedIDs lists every shared space ready to use: routing for what works on all of them (agents' runner).
+func (s *Service) SharedIDs(ctx context.Context) ([]string, error) {
+	rows, err := s.system.R.QueryContext(ctx, `SELECT ss.id FROM shared_spaces ss WHERE `+ready)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		out = append(out, id)
+	}
+	return out, rows.Err()
 }

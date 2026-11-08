@@ -1,7 +1,6 @@
 import { screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { agent, type AgentConfig } from '../src/api/agent'
-import type { Space } from '../src/api/types'
 import { createNote, openSettings, signedIn } from './helpers'
 import { startFakeLLM, type TestServer } from './server'
 
@@ -281,22 +280,49 @@ describe('a space’s agent', () => {
   })
 })
 
-describe('sharing a space with an agent', () => {
-  it('is refused while the agent is on', async () => {
-    const { server, user } = await signedIn({
-      seed: async (s) => {
-        await withAI(s)
-        await s.api('PUT', '/spaces/work', { name: 'Work', icon: '' })
-        await s.api('PUT', '/agent/spaces/work', { enabled: true, prompt: 'Work.', triggers: { newNoteDone: 'Tag it.' } })
-        await s.addAccount('ana')
-      },
-    })
+/** Work, shared with ana, who joined; the owner signs in unless as says otherwise. */
+async function sharedWork(s: TestServer, agentOn: boolean) {
+  await withAI(s)
+  await s.api('PUT', '/spaces/work', { name: 'Work', icon: '' })
+  await s.api('POST', '/notes', { operationId: 'op-milk', id: 'milk', title: 'Milk', content: 'Milk', spaceId: 'work' })
+  if (agentOn) await s.api('PUT', '/agent/spaces/work', { enabled: true, prompt: 'Work.', triggers: { noteDeleted: 'Note it.' } })
+  const ana = await s.addAccount('ana')
+  expect((await s.api('POST', '/spaces/work/invites', { userId: ana.id })).status).toBe(201)
+  const [invite] = (await ana.api<{ invites: { id: string }[] }>('GET', '/invites')).body.invites
+  expect((await ana.api('POST', `/invites/${invite?.id}/accept`)).status).toBe(200)
+  return ana
+}
+
+describe('a shared space’s agent', () => {
+  it('goes with the space when it’s shared, and any member manages it', async () => {
+    const { user } = await signedIn({ as: 'ana', seed: async (s) => void (await sharedWork(s, true)) })
+    const { info, page } = await agentPage(user, 'Work')
+    expect((within(page).getByLabelText('What this space is for') as HTMLTextAreaElement).value).toBe('Work.')
+    expect(within(info).getByRole('img', { name: 'Shared, Agent' })).toBeTruthy()
+  })
+
+  it('can be turned on by a member', async () => {
+    const { server, user } = await signedIn({ as: 'ana', seed: async (s) => void (await sharedWork(s, false)) })
     const info = await spaceInfo(user, 'Work')
-    const people = await within(info).findByRole('region', { name: 'People' })
-    await user.click(await within(people).findByRole('button', { name: 'Invite ana' }))
-    expect(await within(people).findByText(/^Turn off its agent to share it/)).toBeTruthy()
-    const work = (await server.api<{ spaces: Space[] }>('GET', '/spaces')).body.spaces.find((s) => s.id === 'work')
-    expect(work?.shared).toBeUndefined()
+    const page = await within(info).findByRole('region', { name: 'Agent' })
+    await user.click(within(page).getByRole('checkbox', { name: 'Agent' }))
+    await user.type(within(page).getByLabelText('What this space is for'), 'Work.')
+    await user.click(within(page).getByRole('button', { name: 'Save' }))
+    await saved(page)
+    expect((await server.api('GET', '/agent/spaces/work')).body).toMatchObject({ enabled: true, prompt: 'Work.' })
+  })
+
+  it('shows each run in every member’s Activity, saying who it was for', async () => {
+    let ana: Awaited<ReturnType<typeof sharedWork>> | undefined
+    const { user } = await signedIn({ seed: async (s) => void (ana = await sharedWork(s, true)) })
+    if (!ana) throw new Error('ana wasn’t made')
+    expect((await ana.api('DELETE', '/notes/milk', { operationId: 'op-del', baseRevision: 1 })).status).toBe(200)
+    const { page } = await agentPage(user, 'Work')
+    await user.click(await within(page).findByRole('button', { name: 'Activity…' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Activity' })
+    const runs = await within(sheet).findByRole('list', { name: 'Runs' })
+    expect(within(runs).getByRole('button').textContent).toContain('for ana')
+    expect(await within(sheet).findByText(/^Today in this space: .* tokens$/)).toBeTruthy()
   })
 })
 

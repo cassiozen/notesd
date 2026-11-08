@@ -30,6 +30,8 @@ type RunRequest struct {
 	// SpaceID is the note's space as the editor shows it.
 	SpaceID      string
 	ConnectionID string
+	// By is the account whose editor asked.
+	By int64
 	// Note is what the editor showed as it asked, if it said: the run
 	// starts from it rather than asking the editor again.
 	Note *EditorNote
@@ -67,7 +69,7 @@ func (s *Store) RequestRun(ctx context.Context, req RunRequest) (string, error) 
 			}
 			return err
 		}
-		if id, err = queue(ctx, tx, space, Event{Trigger: req.Trigger, NoteID: req.NoteID, ConnectionID: req.ConnectionID},
+		if id, err = queue(ctx, tx, space, Event{Trigger: req.Trigger, NoteID: req.NoteID, ConnectionID: req.ConnectionID, By: req.By},
 			editorPriority, s.now().UnixMilli()); err != nil {
 			return err
 		}

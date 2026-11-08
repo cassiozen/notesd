@@ -236,8 +236,6 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: err.Error(), Field: "userId"})
 	case errors.Is(err, sharing.ErrBusy):
 		writeError(w, http.StatusConflict, "space_busy", err.Error())
-	case errors.Is(err, sharing.ErrHasAgent):
-		writeError(w, http.StatusConflict, "space_has_agent", err.Error())
 	case errors.Is(err, sharing.ErrIDTaken):
 		writeJSON(w, http.StatusConflict, errorBody{Error: "space_exists", Message: err.Error(), Field: "id"})
 	case errors.Is(err, auth.ErrLastAdmin):

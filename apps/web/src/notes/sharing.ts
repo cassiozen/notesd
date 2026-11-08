@@ -245,8 +245,6 @@ export function sharingError(err: unknown): string {
       case 'space_has_locked':
         if (err.count === 1) return 'Unlock its locked note to share it.'
         return err.count === undefined ? 'Unlock its locked notes to share it.' : `Unlock its ${err.count} locked notes to share it.`
-      case 'space_has_agent':
-        return 'Turn off its agent to share it: agents only run in spaces that aren’t shared.'
       case 'space_default':
         return 'This space can’t be shared. Share another one.'
       case 'not_space_owner':

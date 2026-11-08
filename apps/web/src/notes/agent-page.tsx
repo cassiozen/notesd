@@ -48,7 +48,7 @@ type FocusOn = { key: AgentTrigger; what: 'prompt' | 'moment' }
 export function useAgentOffered(): (space: Space) => boolean {
   const configs = useAgentConfigs()
   const ai = useAiSettings()
-  return (space) => !space.shared && configs !== null && ai !== null && (ai.configured || configs.has(space.id))
+  return (space) => configs !== null && ai !== null && (ai.configured || configs.has(space.id))
 }
 
 /**

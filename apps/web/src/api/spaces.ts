@@ -31,7 +31,7 @@ export const spaces = {
 export const sharing = {
   /** Every account on the server, to invite. */
   people: async () => (await request<{ people: Account[] }>('GET', '/people')).people,
-  /** The first shares the space, its notes moving to its own file (409 space_default, space_has_locked, space_has_agent). */
+  /** The first shares the space, its notes moving to its own file (409 space_default, space_has_locked). */
   invite: (space: string, userId: number) =>
     request<{ id: string; userId: number; username: string }>('POST', `${path(space)}/invites`, { userId }),
   cancel: (space: string, invite: string) => request<undefined>('DELETE', `${path(space)}/invites/${encodeURIComponent(invite)}`),

@@ -8,7 +8,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
 	"notes/server/internal/notes"
@@ -348,5 +350,52 @@ func TestRenamingASharedSpaceRenamesItInItsFile(t *testing.T) {
 	// Keeping the icon.
 	if sp, err := e.s.Rename(e.ctx, 1, "fam", "Home", nil); err != nil || sp.Name != "Home" || sp.Icon != "garden" {
 		t.Fatalf("renamed again: %+v %v", sp, err)
+	}
+}
+
+// A space's agent goes with it to its own file: its setup, finished runs and usage; its queue stays
+// behind and goes (§7.11).
+func TestSharingCarriesTheAgent(t *testing.T) {
+	e := newEnv(t)
+	if _, err := e.owner.Agent.Put(e.ctx, agent.Config{SpaceID: "fam", Enabled: true, Prompt: "Family.",
+		Triggers: map[agent.Trigger]string{agent.NoteDeleted: "Note it."}}); err != nil {
+		t.Fatal(err)
+	}
+	for _, q := range []string{
+		`INSERT INTO agent_runs (id, status, trigger, space_id, note_id, event_json, created_at, finished_at)
+			VALUES ('run_done', 'done', 'noteDeleted', 'fam', 'a', '{"trigger":"noteDeleted","noteId":"a"}', 1, 2)`,
+		`INSERT INTO agent_runs (id, status, trigger, space_id, note_id, event_json, created_at)
+			VALUES ('run_queued', 'queued', 'noteDeleted', 'fam', 'b', '{"trigger":"noteDeleted","noteId":"b"}', 3)`,
+		`INSERT INTO agent_usage (space_id, day, prompt_tokens) VALUES ('fam', '2026-11-08', 40)`,
+	} {
+		if _, err := e.owner.DB.W.ExecContext(e.ctx, q); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err := auth.NewService(e.system).AddUser(e.ctx, "kid", "another horse battery", false); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := e.s.Invite(e.ctx, 1, "fam", 2); err != nil {
+		t.Fatal(err)
+	}
+	dest, err := e.files.OpenSpace(e.ctx, "fam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c, err := dest.Agent.Config(e.ctx, "fam"); err != nil || !c.Enabled || c.Triggers[agent.NoteDeleted] != "Note it." {
+		t.Fatalf("setup: %+v %v", c, err)
+	}
+	runs, _, err := dest.Agent.Runs(e.ctx, agent.RunFilter{}, 10, "")
+	if err != nil || len(runs) != 1 || runs[0].ID != "run_done" || runs[0].ForUserID != 1 {
+		t.Fatalf("runs carried: %+v %v", runs, err)
+	}
+	u, err := dest.Agent.UsageToday(e.ctx, "fam", time.UTC)
+	if err != nil || (u.Day == "2026-11-08" && u.Tokens != 40) {
+		t.Fatalf("usage: %+v %v", u, err)
+	}
+	var left int
+	if err := e.owner.DB.R.QueryRowContext(e.ctx, `SELECT (SELECT count(*) FROM agent_runs) + (SELECT count(*) FROM agent_spaces)
+		+ (SELECT count(*) FROM agent_usage)`).Scan(&left); err != nil || left != 0 {
+		t.Fatalf("left in the owner's file: %d %v", left, err)
 	}
 }

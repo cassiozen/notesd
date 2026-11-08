@@ -65,6 +65,8 @@ export type AgentRun = {
   edits: RunEdit[]
   /** What it showed beside its note, when it did: cards, and suggested changes with how many were accepted. */
   overlays?: { cards: number; suggestions: number; accepted: number }
+  /** The account it was for: whose editor asked, or whose write fired it (0: not recorded). */
+  forUserId: number
 }
 
 /** A line of a diff; "…" stands for count unchanged lines left out. */
@@ -105,8 +107,9 @@ export const agent = {
     return request<RunsPage>('GET', `/agent/runs?${q.toString()}`, undefined, { signal })
   },
   run: (id: string) => request<AgentRunDetail>('GET', `/agent/runs/${encodeURIComponent(id)}`),
-  /** Today's, against the daily cap. */
-  usage: (signal?: AbortSignal) => request<AgentUsage>('GET', '/agent/usage', undefined, { signal }),
+  /** A space's today, against the daily cap per space. */
+  usage: (space: string, signal?: AbortSignal) =>
+    request<AgentUsage>('GET', `/agent/usage?space=${encodeURIComponent(space)}`, undefined, { signal }),
   /** 409 nothing_to_undo when none of its changes can be: the run's edits then say why. */
   undo: (id: string) => request<UndoResult>('POST', `/agent/runs/${encodeURIComponent(id)}/undo`),
   account: () => request<AccountSettings>('GET', '/settings/account'),

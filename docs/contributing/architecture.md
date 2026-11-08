@@ -166,8 +166,9 @@ CREATE TABLE agent_run_edits (run_id TEXT REFERENCES agent_runs(id) ON DELETE CA
 CREATE TABLE agent_overlays (id TEXT PRIMARY KEY, run_id TEXT REFERENCES agent_runs(id) ON DELETE CASCADE, note_id TEXT,
                              kind TEXT, place TEXT, body TEXT, change TEXT, status TEXT, created_at INTEGER,
                              answered_at INTEGER);  -- place, change: JSON
--- Tokens per day in the account's time zone, against the daily cap.
-CREATE TABLE agent_usage (day TEXT PRIMARY KEY, prompt_tokens INTEGER, completion_tokens INTEGER, runs INTEGER);
+-- Tokens per space and day (in the time zone of the account each run was for), against the daily cap per space.
+CREATE TABLE agent_usage (space_id TEXT, day TEXT, prompt_tokens INTEGER, completion_tokens INTEGER, runs INTEGER,
+                          PRIMARY KEY (space_id, day));
 -- Writing sessions in progress: a "done" trigger fires 2 minutes after the user's last change.
 CREATE TABLE agent_sessions (note_id TEXT PRIMARY KEY, kind TEXT, start_revision INTEGER, last_revision INTEGER,
                              last_user_save_at INTEGER);
@@ -632,13 +633,13 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   in order but best-effort: an editor that's slow or reconnecting misses them. The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
-- **Runner.** Each account has two slots: one runs its queue in order, editor triggers first; the
+- **Runner.** Each file (an account's, or a shared space's, §7.9) has its own queue, writing sessions and two slots: one runs its queue in order, editor triggers first; the
   other starts each editor trigger's run at once, beside the rest, so someone in a note never waits
   behind other runs. A run waits while another on its note runs. A slot sleeps until a write queues a run or starts a
   session, or the next of those is due. At most 4 provider calls run at once across accounts. With
   AI removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
   prompt, which stay the same from run to run so the provider can cache them, then the event: the
-  time in the account's time zone and the note. Each run logs where its time went: waiting, getting
+  time in the time zone of the account the run is for, and the note. Each run logs where its time went: waiting, getting
   ready, the model's calls and the tools'. So the model can act
   in its first call, the event also carries the cursor (in an editor), the space's tags, the space's
   reference notes, and which of the note's lines the agent wrote itself (`yourText`, from its recorded
@@ -684,12 +685,12 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   `find` the user typed over is answered `stale`. They close when the note's last editor closes it,
   or a later run of the same rule shows its own; locking or deleting the note clears their text. At
   most 3 cards and 20 suggestions per run. Changing a note's overlays and sending its list hold one
-  lock per account, from before the read to the message queued, so editors never get an older list
+  lock per file, from before the read to the message queued, so editors never get an older list
   after a newer one.
-- **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
+- **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per space
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the
-  run changed nothing and showed nothing. The queue holds at most 500 runs per account.
+  run changed nothing and showed nothing. The queue holds at most 500 runs per file.
 - **Record.** Each run keeps its status, tokens, the model's last line or why it failed, and for
   each note it changed the text before and after (`agent_run_edits`), written in the same
   transaction as the change. A finished run drops the note's body from its event, and its title
@@ -712,12 +713,23 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   "AI isn’t set up". The agent is set up in its section of Space info, in place: off, it's one line
   with its switch; on, its purpose, rules and reference notes, saved together with the section's Save
   (unsaved, Space info asks before it closes). The section shows once AI is set up, or to resume a
-  paused agent.
-- **Own spaces only.** Agents run in an account's own spaces, never a shared one (§7.9): a shared
-  space's file has no agent store and its writes reach no hook, its setup is `404 not_found`, and a
-  space whose agent is on can't be shared (`409 space_has_agent`); a paused agent goes with the
-  space's row when it's shared. Shared spaces would need their own answers first: whose AI settings
-  and token cap a run uses, who sees its Activity and can undo it, and where its setup is kept.
+  paused agent, in any space.
+- **Shared spaces.** Sharing and agents are independent: any space can have an agent, any member
+  sets it up or turns it off, and sharing a space keeps it. As for every trait (§7.8, Storage), the
+  file that holds a space keeps everything about its agent: setup, writing sessions, runs with their
+  edits and cards, and token use; the account's own file keeps its time zone. `system.db` keeps
+  nothing of it: the runner lists accounts and shared spaces there to know which files to open
+  (homes `user:<id>` and `space:<id>`). Sharing a space carries its setup, finished runs
+  and token use into the space's file in the same transaction that stores its notes there
+  (`agent.Export`, `ImportTx`); its writing sessions and queue stay behind and go
+  (`notes.Store.OnSpaceLeft`). A run is *for* an account (`by` in its event): the one whose
+  editor asked, whose write fired it, or who last wrote in the note for a "done" trigger
+  (`agent_sessions.by_user`). Its writes are that account's (`updatedBy`), "today" is in its time
+  zone, and Activity says who it was for when that's another member. Every member's editors read
+  and apply a shared space's runs and hear its run updates and cards; every member sees its
+  Activity, by merged pages across the files they reach (a cursor of time and run id), and can undo
+  its runs, the undo's writes being theirs. The socket finds a message's file by its note, or by the
+  space an editor names for a new note it hasn't saved.
 
 ### 7.12 Writes nobody typed
 
@@ -834,7 +846,7 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `GET` `PUT` `DELETE` | `/api/v1/agent/spaces/:id` | A space's agent: on or off, its prompt, a prompt per trigger, the menu command's name |
 | `GET` | `/api/v1/agent/socket` | WebSocket: editors say which notes they have open (§7.11) |
 | `GET` `PUT` | `/api/v1/settings/account` | The account's time zone; devices send theirs as `X-Notesd-Time-Zone` |
-| `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per account |
+| `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per space |
 | `POST` | `/api/v1/settings/ai/test` | Check the provider answers and the model calls tools |
 | `GET` | `/api/v1/sync` | Download changes |
 | `GET` | `/api/v1/search` | Search notes; same filters as listing, or `?exceptSpace=`; with `?space=` the first page counts `otherSpaces` |

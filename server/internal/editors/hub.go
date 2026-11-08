@@ -171,11 +171,16 @@ func (h *Hub) Send(c *Conn, msg any) {
 
 // Broadcast sends msg to each of the user's editors, without waiting:
 // one that's slow or gone misses it.
-func (h *Hub) Broadcast(userID int64, msg any) {
+func (h *Hub) Broadcast(userID int64, msg any) { h.BroadcastTo([]int64{userID}, msg) }
+
+// BroadcastTo is Broadcast to several users' editors: a shared space's members'.
+func (h *Hub) BroadcastTo(userIDs []int64, msg any) {
 	h.mu.Lock()
-	conns := make([]*Conn, 0, len(h.users[userID]))
-	for c := range h.users[userID] {
-		conns = append(conns, c)
+	var conns []*Conn
+	for _, id := range userIDs {
+		for c := range h.users[id] {
+			conns = append(conns, c)
+		}
 	}
 	h.mu.Unlock()
 	for _, c := range conns {
@@ -197,14 +202,21 @@ func (h *Hub) Answer(c *Conn, id string, reply json.RawMessage) {
 	}
 }
 
-// owner is the editor a run talks to about a note: the connection prefer
-// names if it has the note open or claimed, else the one that opened it last.
-func (h *Hub) owner(userID int64, noteID, prefer string) *Conn {
+// owner is the editor a run talks to about a note, among the users': the
+// connection prefer names if it has the note open or claimed, else the one
+// that opened it last.
+func (h *Hub) owner(userIDs []int64, noteID, prefer string) *Conn {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 	var best *Conn
 	var at time.Time
-	for c := range h.users[userID] {
+	var conns []*Conn
+	for _, id := range userIDs {
+		for c := range h.users[id] {
+			conns = append(conns, c)
+		}
+	}
+	for _, c := range conns {
 		opened, ok := c.open[noteID]
 		_, claimed := c.claimed[noteID]
 		switch {
@@ -256,11 +268,17 @@ func (h *Hub) call(ctx context.Context, c *Conn, msg map[string]any) (json.RawMe
 }
 
 // For is the user's editors, as agents reach them.
-func (h *Hub) For(userID int64) agent.Editors { return account{h, userID} }
+func (h *Hub) For(userID int64) agent.Editors {
+	return account{h, func() []int64 { return []int64{userID} }}
+}
+
+// ForMembers is the editors of a shared space's members (§7.11), as agents reach them: members is
+// asked as each run does, so joining and leaving count at once.
+func (h *Hub) ForMembers(members func() []int64) agent.Editors { return account{h, members} }
 
 type account struct {
-	h      *Hub
-	userID int64
+	h       *Hub
+	members func() []int64
 }
 
 // reply is an editor's answer; Error is set when it couldn't do it.
@@ -274,7 +292,7 @@ type reply struct {
 }
 
 func (a account) Read(ctx context.Context, noteID, prefer string) (agent.EditorNote, error) {
-	c := a.h.owner(a.userID, noteID, prefer)
+	c := a.h.owner(a.members(), noteID, prefer)
 	if c == nil {
 		return agent.EditorNote{}, agent.ErrNotOpen
 	}
@@ -283,7 +301,7 @@ func (a account) Read(ctx context.Context, noteID, prefer string) (agent.EditorN
 }
 
 func (a account) Apply(ctx context.Context, noteID, prefer string, ch agent.EditorChange) (agent.EditorApplied, error) {
-	c := a.h.owner(a.userID, noteID, prefer)
+	c := a.h.owner(a.members(), noteID, prefer)
 	if c == nil {
 		return agent.EditorApplied{}, agent.ErrNotOpen
 	}

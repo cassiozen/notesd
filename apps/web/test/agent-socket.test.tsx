@@ -134,24 +134,24 @@ describe('the agent socket, connecting', () => {
       FakeSocket.all = []
     })
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     const [first] = FakeSocket.all
     if (!first) throw new Error('no socket')
     first.hello()
-    expect(first.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
-    agentSocket.noteOpened('n2')
+    expect(first.sent).toEqual([{ type: 'editor.opened', noteId: 'n1', spaceId: 'default' }])
+    agentSocket.noteOpened('n2', 'default')
     agentSocket.noteClosed('n2', 3)
     expect(first.sent.slice(1)).toEqual([
-      { type: 'editor.opened', noteId: 'n2' },
-      { type: 'editor.closed', noteId: 'n2', revision: 3 },
+      { type: 'editor.opened', noteId: 'n2', spaceId: 'default' },
+      { type: 'editor.closed', noteId: 'n2', revision: 3, spaceId: 'default' },
     ])
     // Reopened before the close (it waits on the save) lands: still open.
-    agentSocket.noteOpened('n2')
-    agentSocket.noteOpened('n2')
+    agentSocket.noteOpened('n2', 'default')
+    agentSocket.noteOpened('n2', 'default')
     agentSocket.noteClosed('n2', 3)
     expect(first.sent.slice(3).map((m) => (m as { type: string }).type)).toEqual(['editor.opened', 'editor.opened'])
     agentSocket.noteClosed('n2', 4)
-    expect(first.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n2', revision: 4 })
+    expect(first.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n2', revision: 4, spaceId: 'default' })
 
     first.dispatchEvent(new MessageEvent('message', { data: JSON.stringify({ type: 'read', id: 's1', noteId: 'n1' }) }))
     await waitFor(() => expect(first.sent.at(-1)).toEqual({ type: 'result', id: 's1', error: 'not_open' }))
@@ -180,7 +180,7 @@ describe('the agent socket, connecting', () => {
     second?.hello()
     answer?.({})
     await new Promise((r) => setTimeout(r, 0))
-    expect(second?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
+    expect(second?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1', spaceId: 'default' }])
   })
 
   it('closes once the notes open here have said they closed', async () => {
@@ -194,7 +194,7 @@ describe('the agent socket, connecting', () => {
       FakeSocket.all = []
     })
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     const [socket] = FakeSocket.all
     if (!socket) throw new Error('no socket')
     socket.hello()
@@ -203,12 +203,12 @@ describe('the agent socket, connecting', () => {
     agentSocket.stop()
     expect(socket.readyState).toBe(WebSocket.OPEN)
     agentSocket.noteClosed('n1', 4)
-    expect(socket.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n1', revision: 4 })
+    expect(socket.sent.at(-1)).toEqual({ type: 'editor.closed', noteId: 'n1', revision: 4, spaceId: 'default' })
     expect(socket.readyState).toBe(WebSocket.CLOSED)
 
     // Back before it closed: the same socket carries on.
     agentSocket.start()
-    agentSocket.noteOpened('n2')
+    agentSocket.noteOpened('n2', 'default')
     const [, again] = FakeSocket.all
     again?.hello()
     agentSocket.stop()
@@ -225,7 +225,7 @@ describe('the agent socket, connecting', () => {
     // Stopped twice while waiting, then started again: the first wait doesn't close the next socket.
     socketTiming.closeWaitMs = 20
     agentSocket.start()
-    agentSocket.noteOpened('n3')
+    agentSocket.noteOpened('n3', 'default')
     const third = FakeSocket.all.at(-1)
     third?.hello()
     agentSocket.stop()
@@ -245,7 +245,7 @@ describe('the agent socket, connecting', () => {
       FakeSocket.all = []
     })
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     agentSocket.reset()
     agentSocket.start()
     const socket = FakeSocket.all.at(-1)
@@ -287,7 +287,7 @@ describe('the agent socket, connecting', () => {
       FakeSocket.all = []
     })
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     const socket = FakeSocket.all.at(-1)
     if (!socket) throw new Error('no socket')
     socket.hello()
@@ -327,7 +327,7 @@ describe('the agent socket, connecting', () => {
       FakeSocket.all = []
     })
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     const first = FakeSocket.all.at(-1)
     if (!first) throw new Error('no socket')
     first.hello()
@@ -339,7 +339,7 @@ describe('the agent socket, connecting', () => {
     second?.hello()
     expect(second?.sent).toEqual([
       { type: 'overlay.answer', noteId: 'n1', id: 'ov1', answer: 'dismiss' },
-      { type: 'editor.opened', noteId: 'n1' },
+      { type: 'editor.opened', noteId: 'n1', spaceId: 'default' },
     ])
   })
 
@@ -358,7 +358,7 @@ describe('the agent socket, connecting', () => {
     expect(agentSocket.requestRun('menu', 'n1', 's1')).toBe(false) // no socket wanted
 
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     const shown = { spaceId: 's1', title: 'T', content: 'Typed', cursor: 5, revision: null }
     const stop = agentSocket.serve('n1', { read: () => shown, apply: () => Promise.resolve({}) })
     onTestFinished(stop)
@@ -369,7 +369,7 @@ describe('the agent socket, connecting', () => {
     expect(first.sent).toEqual([])
     first.hello()
     expect(first.sent).toEqual([
-      { type: 'editor.opened', noteId: 'n1' },
+      { type: 'editor.opened', noteId: 'n1', spaceId: 'default' },
       { type: 'run.request', trigger: 'noteCreated', noteId: 'n1', spaceId: 's1', note: shown },
     ])
 
@@ -380,7 +380,7 @@ describe('the agent socket, connecting', () => {
     await waitFor(() => expect(FakeSocket.all).toHaveLength(2))
     const again = FakeSocket.all[1]
     again?.hello()
-    expect(again?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
+    expect(again?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1', spaceId: 'default' }])
   })
 
   it('says when a run asked for never reached the server, and why', async () => {
@@ -402,11 +402,11 @@ describe('the agent socket, connecting', () => {
 
     // No hello in time: dropped then, and not sent once it comes.
     agentSocket.start()
-    agentSocket.noteOpened('n1')
+    agentSocket.noteOpened('n1', 'default')
     expect(agentSocket.requestRun('menu', 'n1', 's1')).toBe(true)
     await waitFor(() => expect(dropped).toEqual(['menu:n1:off', 'menu:n1:unreachable']))
     FakeSocket.all[0]?.hello()
-    expect(FakeSocket.all[0]?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
+    expect(FakeSocket.all[0]?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1', spaceId: 'default' }])
 
     // Signing out says nothing: it was another account's.
     FakeSocket.all[0]?.drop()

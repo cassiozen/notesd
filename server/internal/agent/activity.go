@@ -1,11 +1,14 @@
 package agent
 
 import (
+	"cmp"
 	"context"
 	"database/sql"
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -36,8 +39,10 @@ type Run struct {
 	NoteID  string  `json:"noteId"`
 	// NoteTitle is the note's title now, or as the event recorded it for a
 	// note since deleted; NoteDeleted says it's gone.
-	NoteTitle        string    `json:"noteTitle"`
-	NoteDeleted      bool      `json:"noteDeleted"`
+	NoteTitle   string `json:"noteTitle"`
+	NoteDeleted bool   `json:"noteDeleted"`
+	// ForUserID is the account the run was for (its editor asked, or its write fired it); 0 when not recorded.
+	ForUserID        int64     `json:"forUserId"`
 	Outcome          string    `json:"outcome"`
 	Failure          string    `json:"failure"`
 	Message          string    `json:"message"`
@@ -51,7 +56,6 @@ type Run struct {
 	Edits            []RunEdit `json:"edits"`
 	// Overlays is what the run showed on its note, when it did.
 	Overlays *RunOverlays `json:"overlays,omitempty"`
-	rowid    int64
 }
 
 // RunOverlays counts what a run showed: cards, and suggestions with how many
@@ -100,10 +104,10 @@ type RunFilter struct {
 // MaxRunsPage bounds one page of the activity log.
 const MaxRunsPage = 100
 
-const runColumns = `r.rowid, r.id, r.trigger, r.status, r.space_id, r.note_id, r.outcome, r.failure, r.message, r.model,
+const runColumns = `r.id, r.trigger, r.status, r.space_id, r.note_id, r.outcome, r.failure, r.message, r.model,
 	r.tool_calls, r.prompt_tokens, r.completion_tokens, r.created_at, r.started_at, r.finished_at,
 	coalesce(CASE WHEN n.deleted_at IS NULL THEN n.title END, json_extract(r.event_json, '$.title'), ''),
-	n.id IS NULL OR n.deleted_at IS NOT NULL`
+	n.id IS NULL OR n.deleted_at IS NOT NULL, coalesce(json_extract(r.event_json, '$.by'), 0)`
 
 // Runs lists runs newest first, limit at a time; next continues the list,
 // empty at its end.
@@ -111,14 +115,15 @@ func (s *Store) Runs(ctx context.Context, f RunFilter, limit int, cursor string)
 	if limit <= 0 || limit > MaxRunsPage {
 		limit = MaxRunsPage
 	}
-	at, rowid := int64(1<<62), int64(1<<62)
+	at, id := int64(1<<62), "~"
 	if cursor != "" {
-		if at, rowid, err = parseRunCursor(cursor); err != nil {
+		if at, id, err = parseRunCursor(cursor); err != nil {
 			return nil, "", err
 		}
 	}
-	// Only the filters given, so SQLite can use their index.
-	where, args := "(r.created_at < ? OR (r.created_at = ? AND r.rowid < ?))", []any{at, at, rowid}
+	// Only the filters given, so SQLite can use their index. By time, then id rather than rowid: one
+	// cursor then pages through several files' runs at once (MergeRuns).
+	where, args := "(r.created_at < ? OR (r.created_at = ? AND r.id < ?))", []any{at, at, id}
 	if f.Space != "" {
 		where, args = where+" AND r.space_id = ?", append(args, f.Space)
 	}
@@ -129,7 +134,7 @@ func (s *Store) Runs(ctx context.Context, f RunFilter, limit int, cursor string)
 		rows, err := tx.QueryContext(ctx, `SELECT `+runColumns+`
 			FROM agent_runs r LEFT JOIN notes n ON n.id = r.note_id
 			WHERE `+where+`
-			ORDER BY r.created_at DESC, r.rowid DESC LIMIT ?`,
+			ORDER BY r.created_at DESC, r.id DESC LIMIT ?`,
 			append(args, limit+1)...)
 		if err != nil {
 			return err
@@ -140,8 +145,7 @@ func (s *Store) Runs(ctx context.Context, f RunFilter, limit int, cursor string)
 		}
 		if len(runs) > limit {
 			runs = runs[:limit]
-			last := runs[limit-1]
-			next = base64.RawURLEncoding.EncodeToString(fmt.Appendf(nil, "%d.%d", last.CreatedAt, last.rowid))
+			next = cursorAfter(runs[limit-1])
 		}
 		if err := s.fillEdits(ctx, tx, runs); err != nil {
 			return err
@@ -203,9 +207,9 @@ func scanRuns(rows *sql.Rows) ([]Run, error) {
 	var out []Run
 	for rows.Next() {
 		var r Run
-		if err := rows.Scan(&r.rowid, &r.ID, &r.Trigger, &r.Status, &r.SpaceID, &r.NoteID, &r.Outcome, &r.Failure,
+		if err := rows.Scan(&r.ID, &r.Trigger, &r.Status, &r.SpaceID, &r.NoteID, &r.Outcome, &r.Failure,
 			&r.Message, &r.Model, &r.ToolCalls, &r.PromptTokens, &r.CompletionTokens, &r.CreatedAt, &r.StartedAt,
-			&r.FinishedAt, &r.NoteTitle, &r.NoteDeleted); err != nil {
+			&r.FinishedAt, &r.NoteTitle, &r.NoteDeleted, &r.ForUserID); err != nil {
 			return nil, err
 		}
 		r.Edits = []RunEdit{}
@@ -265,34 +269,66 @@ func (s *Store) fillEdits(ctx context.Context, tx *sql.Tx, runs []Run) error {
 	return rows.Err()
 }
 
-func parseRunCursor(c string) (at, rowid int64, err error) {
-	raw, err := base64.RawURLEncoding.DecodeString(c)
-	if err == nil {
-		_, err = fmt.Sscanf(string(raw), "%d.%d", &at, &rowid)
-	}
-	// Only what Runs writes: Sscanf would accept anything after the numbers.
-	if err != nil || fmt.Sprintf("%d.%d", at, rowid) != string(raw) || at < 0 || rowid <= 0 {
-		return 0, 0, &InputError{Field: "cursor", Message: "not a cursor from this list"}
-	}
-	return at, rowid, nil
+func cursorAfter(r Run) string {
+	return base64.RawURLEncoding.EncodeToString(fmt.Appendf(nil, "%d.%s", r.CreatedAt, r.ID))
 }
 
-// Usage is the tokens the account's agents used today, in its time zone.
+func parseRunCursor(c string) (at int64, id string, err error) {
+	raw, err := base64.RawURLEncoding.DecodeString(c)
+	var rest string
+	if err == nil {
+		var ok bool
+		var num string
+		num, rest, ok = strings.Cut(string(raw), ".")
+		if at, err = strconv.ParseInt(num, 10, 64); err == nil && (!ok || !strings.HasPrefix(rest, "run_")) {
+			err = errors.New("no id")
+		}
+	}
+	if err != nil || at < 0 {
+		return 0, "", &InputError{Field: "cursor", Message: "not a cursor from this list"}
+	}
+	return at, rest, nil
+}
+
+// MergeRuns is one page of several files' activity, newest first: each list a page Runs gave for the
+// same cursor, more saying whether any had more.
+func MergeRuns(lists [][]Run, limit int, more bool) (runs []Run, next string) {
+	if limit <= 0 || limit > MaxRunsPage {
+		limit = MaxRunsPage
+	}
+	for _, l := range lists {
+		runs = append(runs, l...)
+	}
+	slices.SortFunc(runs, func(a, b Run) int {
+		if c := cmp.Compare(b.CreatedAt, a.CreatedAt); c != 0 {
+			return c
+		}
+		return strings.Compare(b.ID, a.ID)
+	})
+	if len(runs) > limit {
+		runs, more = runs[:limit], true
+	}
+	if more && len(runs) > 0 {
+		next = cursorAfter(runs[len(runs)-1])
+	}
+	if runs == nil {
+		runs = []Run{}
+	}
+	return runs, next
+}
+
+// Usage is the tokens a space's agent used today, against the daily cap per space.
 type Usage struct {
 	Day    string `json:"day"`
 	Tokens int64  `json:"tokens"`
 	Runs   int    `json:"runs"`
 }
 
-// UsageToday reports today's usage.
-func (s *Store) UsageToday(ctx context.Context) (Usage, error) {
-	st, err := s.Settings(ctx)
-	if err != nil {
-		return Usage{}, err
-	}
-	u := Usage{Day: s.now().In(st.Location()).Format(time.DateOnly)}
-	err = s.db.R.QueryRowContext(ctx, `SELECT prompt_tokens + completion_tokens, runs FROM agent_usage WHERE day = ?`, u.Day).
-		Scan(&u.Tokens, &u.Runs)
+// UsageToday reports a space's usage today, the day as in loc: the time zone of whoever asks.
+func (s *Store) UsageToday(ctx context.Context, spaceID string, loc *time.Location) (Usage, error) {
+	u := Usage{Day: s.now().In(loc).Format(time.DateOnly)}
+	err := s.db.R.QueryRowContext(ctx, `SELECT prompt_tokens + completion_tokens, runs FROM agent_usage WHERE space_id = ? AND day = ?`,
+		spaceID, u.Day).Scan(&u.Tokens, &u.Runs)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = nil
 	}
@@ -327,4 +363,11 @@ func fillOverlays(ctx context.Context, tx *sql.Tx, runs []Run) error {
 		byID[id].Overlays = &o
 	}
 	return rows.Err()
+}
+
+// HasRun reports whether this file's activity has the run.
+func (s *Store) HasRun(ctx context.Context, id string) (bool, error) {
+	var ok bool
+	err := s.db.R.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM agent_runs WHERE id = ?)`, id).Scan(&ok)
+	return ok, err
 }

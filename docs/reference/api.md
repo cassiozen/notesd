@@ -339,10 +339,9 @@ anyone else).
 - Renaming, changing the icon and deleting a shared space (`PUT`/`DELETE /spaces/{id}`) are for
   its owner (`403 not_space_owner`). Names may match one of a member's own spaces; ids may not:
   a space of your own with a shared space's id is refused (`409 space_exists`).
-- Sharing refuses `default` (`409 space_default`) and a space whose agent is on
-  (`409 space_has_agent`). Any invitation, the first one too, refuses a space holding locked notes
-  (`409 space_has_locked`, with `count`). While anyone else is in it or invited, a shared space
-  refuses locked notes (`422 locked_in_exposed_space`).
+- Sharing refuses `default` (`409 space_default`). Any invitation, the first one too, refuses a
+  space holding locked notes (`409 space_has_locked`, with `count`). While anyone else is in it or
+  invited, a shared space refuses locked notes (`422 locked_in_exposed_space`).
 - The owner can't leave (`409 owner_cannot_leave`): hand the space on, or remove every member.
 - A note another member moved into a space of their own is deleted as far as you can tell: `GET`
   answers `410`, an update `409 note_deleted` (its tombstone without `movedTo`), a delete
@@ -514,7 +513,7 @@ What an app does to take part (the socket, editor triggers, applying a run's cha
 | `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
 | `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore}`, newest first |
-| `GET` | `/agent/usage` | → `{day, tokens, runs, dailyTokenCap}` |
+| `GET` | `/agent/usage?space=` | → `{day, tokens, runs, dailyTokenCap}`, the space's today |
 | `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
 | `GET` | `/agent/socket` | WebSocket; see below |
@@ -527,8 +526,8 @@ space and how its agent behaves. `triggers` maps each trigger the agent acts on 
 `menu` prompt. Prompts can be up to 16 KiB. `referenceNotes` are up to 5 titles of notes in the
 space, each up to 200 characters, sent with every run: the newest unlocked note with that title, if
 any. `PUT` replaces the whole config, except that leaving out `referenceNotes` keeps them. A space that doesn't
-exist is `404 not_found`, and so is a shared space: agents run in the account's own spaces.
-Deleting or sharing a space deletes its agent.
+exist is `404 not_found`. Deleting a space deletes its agent. A shared space has one like any other:
+every member reads and changes it, and sharing a space keeps its agent, finished runs and token use.
 
 A space whose agent is on with at least one prompt has the `agent` trait. Its `summary` names
 when the agent acts ("While you write · when you’re done"); its `exposure` is the AI provider
@@ -543,7 +542,8 @@ a name that isn't a time zone is `400 invalid_request` on `timeZone`.
 The **activity log** lists every run: queued, running and finished, kept 30 days after it
 finishes. A **run** is `{id, trigger, status, spaceId, noteId, noteTitle, noteDeleted, outcome,
 failure, message, model, toolCalls, promptTokens, completionTokens, createdAt, startedAt,
-finishedAt, edits, overlays?}`. `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
+finishedAt, edits, overlays?, forUserId}`. `forUserId` is the account the run was for: whose editor
+asked, whose write fired it, or who last wrote in the note (`0` when not recorded). `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
 why a run failed or was skipped, and `outcome` what a finished one did (`edited`, `created`,
 `no_change`, or after undo `undone` or `partly_undone`; a suggestion accepted later makes a
 `no_change` run `edited`). `message` is the model's last words, or what went wrong. `overlays`, when
@@ -551,8 +551,10 @@ the run showed any, counts them: `{cards, suggestions, accepted}`. `edits` lists
 changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
 `create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked`,
 `changed` (the note changed since the run wrote it) or `not_saved` (the run changed it in an open
-editor, which hasn't saved exactly that). `limit` is up to 100, 50 by default. `GET /agent/usage`
-is today's, in the account's time zone.
+editor, which hasn't saved exactly that). `limit` is up to 100, 50 by default. The log covers the
+account's spaces and the shared ones it's in; `space` narrows it to one. `GET /agent/usage` needs
+`space` (`400 invalid_request` without), and is that space's today, in the time zone of the account
+asking.
 
 `GET /agent/runs/{id}` adds `diffs`, one per note changed: `{noteId, kind, titleBefore, titleAfter,
 lines, textRemoved}`. `lines` compares the content before the run's first change with after its last: each is
@@ -586,11 +588,11 @@ ignored, so either may add some, except that an editor answers a request it can'
 | From | Message | Meaning |
 | --- | --- | --- |
 | Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
-| Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
+| Editor | `{type: "editor.opened", noteId, spaceId?}` | The editor shows the note. Again after reconnecting. `spaceId` finds a new note the server hasn't got yet |
 | Editor | `{type: "run.request", trigger, noteId, spaceId, note?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking |
-| Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
+| Editor | `{type: "editor.closed", noteId, revision, spaceId?}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Editor | `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered overlay `id`: `dismiss` for a card; `accept`, `reject` or `stale` (it no longer fits) for a suggestion. An accepted one's change was made in the editor as for an `apply`, and `before`, `revision` and `shows` are as its result's |
-| Server | `{type: "overlays", noteId, overlays}` | What runs show on the note now, all of it: on `editor.opened` when there's any, and to every editor of the account when a run shows more, one is answered, or the note's last editor closes it |
+| Server | `{type: "overlays", noteId, overlays}` | What runs show on the note now, all of it: on `editor.opened` when there's any, and to every editor of the account (in a shared space, of every member) when a run shows more, one is answered, or the note's last editor closes it |
 | Server | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | A run started (`running`) or ended; to every editor of the account |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
 | Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}, op}` | A run changes the note. If the editor shows `before`, it changes it to `after`; otherwise, the user having typed meanwhile, it makes `op` to what it shows. As one undoable step, saved as any edit. It answers `{type: "result", id, before, revision, shows}`: what it showed just before (`revision`: the server's revision of exactly that, or `null`), and the note as it then saves it |
@@ -625,7 +627,7 @@ connection drops, and hears them again on `editor.opened`.
 [agents](../guides/using/agents.md). `baseUrl` is where requests go, without `/chat/completions`
 (a trailing one is removed); plain `http` is accepted only for a loopback, private or link-local
 address, a `.local` name or a name with no dot. `apiKey` can be left out to keep the saved one; it's never returned,
-and `keyHint` is its last 4 characters, or empty for a key shorter than 8. `dailyTokenCap` is tokens per account per day, 1,000,000
+and `keyHint` is its last 4 characters, or empty for a key shorter than 8. `dailyTokenCap` is tokens per space per day, 1,000,000
 when left out or `0`. `editable` says whether this account is an admin; other accounts get
 `403 admin_only` when they change it.
 
@@ -679,7 +681,6 @@ Outside `/api/v1`, need no session, and expose no data:
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
 | `space_has_locked` | 409 | A space holding locked notes can't be shared or published; see `count` |
-| `space_has_agent` | 409 | A space whose agent is on can't be shared |
 | `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
 | `already_member` | 409 | That account is already in the space |
 | `space_exists` | 409 | A shared space has this id |

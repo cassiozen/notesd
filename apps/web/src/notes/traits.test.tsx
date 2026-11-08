@@ -29,14 +29,15 @@ describe('the registry', () => {
     expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [{ id: 1, username: 'me', displayName: '', avatar: '' }] } })).toEqual([
       'shared',
       'published',
+      'agent',
     ])
-    expect(canTurnOn({ ...space(), shared: { role: 'member', members: [] } })).toEqual([])
+    expect(canTurnOn({ ...space(), shared: { role: 'member', members: [] } })).toEqual(['agent'])
   })
 
-  it('offers an agent for any space of the account’s own, never a shared one', () => {
+  it('offers an agent for any space, shared or not, to any member', () => {
     expect(canTurnOn(space())).toContain('agent')
     expect(canTurnOn({ ...space(), id: 'default' })).toEqual(['agent'])
-    expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [] } })).not.toContain('agent')
+    expect(canTurnOn({ ...space(), shared: { role: 'member', members: [] } })).toEqual(['agent'])
   })
 })
 

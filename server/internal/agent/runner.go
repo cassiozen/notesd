@@ -4,20 +4,31 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"strconv"
 	"sync"
 	"time"
 
 	"notes/server/internal/llm"
 )
 
+// Home is a notes file whose agents one worker runs: an account's own, or a
+// shared space's (§7.9). Each has its own queue and writing sessions.
+type Home string
+
+// UserHome is an account's own file.
+func UserHome(id int64) Home { return Home("user:" + strconv.FormatInt(id, 10)) }
+
+// SpaceHome is a shared space's file.
+func SpaceHome(id string) Home { return Home("space:" + id) }
+
 // RunnerConfig is what a Runner needs from the server.
 type RunnerConfig struct {
-	// Accounts lists every account's id.
-	Accounts func(ctx context.Context) ([]int64, error)
-	// Exists reports whether an account is still there.
-	Exists func(ctx context.Context, userID int64) (bool, error)
-	// Open returns an account's data.
-	Open func(ctx context.Context, userID int64) (Account, error)
+	// Homes lists every file: each account's and each shared space's.
+	Homes func(ctx context.Context) ([]Home, error)
+	// Exists reports whether a file's account or shared space is still there.
+	Exists func(ctx context.Context, home Home) (bool, error)
+	// Open returns a file's data.
+	Open func(ctx context.Context, home Home) (Account, error)
 	// Settings returns the AI provider's settings, or llm.ErrNotConfigured.
 	Settings func(ctx context.Context) (llm.Settings, error)
 	Provider Provider
@@ -33,14 +44,14 @@ const MaxConcurrentCalls = 4
 // for AI coming back, or an error clearing.
 var idleCheck = time.Minute
 
-// Runner runs every account's queued agent runs, one at a time per note.
-// Each account has two slots: one runs any run, one after another; the
+// Runner runs every file's queued agent runs, one at a time per note.
+// Each file has two slots: one runs any run, one after another; the
 // other starts each run an open editor asked for at once, beside the rest,
 // so someone in a note never waits behind others.
 type Runner struct {
-	accounts func(ctx context.Context) ([]int64, error)
-	exists   func(ctx context.Context, userID int64) (bool, error)
-	open     func(ctx context.Context, userID int64) (Account, error)
+	homes    func(ctx context.Context) ([]Home, error)
+	exists   func(ctx context.Context, home Home) (bool, error)
+	open     func(ctx context.Context, home Home) (Account, error)
 	settings func(ctx context.Context) (llm.Settings, error)
 	provider Provider
 	log      *slog.Logger
@@ -49,15 +60,15 @@ type Runner struct {
 
 	mu      sync.Mutex
 	ctx     context.Context // set by Run
-	workers map[int64]*worker
+	workers map[Home]*worker
 	wg      sync.WaitGroup
 }
 
 // NewRunner returns a runner; Run starts it.
 func NewRunner(c RunnerConfig) *Runner {
 	r := &Runner{
-		accounts: c.Accounts, exists: c.Exists, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
-		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[int64]*worker{},
+		homes: c.Homes, exists: c.Exists, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
+		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[Home]*worker{},
 	}
 	if r.now == nil {
 		r.now = time.Now
@@ -68,13 +79,13 @@ func NewRunner(c RunnerConfig) *Runner {
 	return r
 }
 
-// Run starts a worker for every account and runs until ctx ends, then
+// Run starts a worker for every file and runs until ctx ends, then
 // waits for the runs in progress to be recorded.
 func (rn *Runner) Run(ctx context.Context) {
 	rn.mu.Lock()
 	rn.ctx = ctx
 	rn.mu.Unlock()
-	// Until every account has a worker, queued runs wait for something new to wake theirs.
+	// Until every file has a worker, queued runs wait for something new to wake theirs.
 	started := rn.startWorkers(ctx)
 	retry := time.NewTicker(startRetry)
 	defer retry.Stop()
@@ -95,25 +106,25 @@ func (rn *Runner) Run(ctx context.Context) {
 	}
 }
 
-// worker is an account's two slots' wake-ups.
+// worker is a file's two slots' wake-ups.
 type worker struct{ any, editor chan struct{} }
 
-// Wake has an account's worker look at its queue, starting the worker if
+// Wake has a file's worker look at its queue, starting the worker if
 // there's none yet. It never blocks.
-func (rn *Runner) Wake(userID int64) {
+func (rn *Runner) Wake(home Home) {
 	rn.mu.Lock()
 	defer rn.mu.Unlock()
 	if rn.ctx == nil || rn.ctx.Err() != nil {
 		return
 	}
-	w, ok := rn.workers[userID]
+	w, ok := rn.workers[home]
 	if !ok {
 		w = &worker{any: make(chan struct{}, 1), editor: make(chan struct{}, 1)}
-		rn.workers[userID] = w
+		rn.workers[home] = w
 		rn.wg.Add(1)
 		go func() {
 			defer rn.wg.Done()
-			rn.work(rn.ctx, userID, w)
+			rn.work(rn.ctx, home, w)
 		}()
 	}
 	for _, c := range []chan struct{}{w.any, w.editor} {
@@ -127,22 +138,22 @@ func (rn *Runner) Wake(userID int64) {
 // WakeAll wakes every worker: AI was set up or changed.
 func (rn *Runner) WakeAll() {
 	rn.mu.Lock()
-	ids := make([]int64, 0, len(rn.workers))
-	for id := range rn.workers {
-		ids = append(ids, id)
+	homes := make([]Home, 0, len(rn.workers))
+	for h := range rn.workers {
+		homes = append(homes, h)
 	}
 	rn.mu.Unlock()
-	for _, id := range ids {
-		rn.Wake(id)
+	for _, h := range homes {
+		rn.Wake(h)
 	}
 }
 
-func (rn *Runner) work(ctx context.Context, userID int64, w *worker) {
-	acct, err := rn.open(ctx, userID)
+func (rn *Runner) work(ctx context.Context, home Home, w *worker) {
+	acct, err := rn.open(ctx, home)
 	if err != nil {
-		rn.log.Error("agent runner: open account", "user", userID, "err", err)
+		rn.log.Error("agent runner: open", "home", home, "err", err)
 		rn.mu.Lock()
-		delete(rn.workers, userID)
+		delete(rn.workers, home)
 		rn.mu.Unlock()
 		return
 	}
@@ -155,7 +166,7 @@ func (rn *Runner) work(ctx context.Context, userID int64, w *worker) {
 		if ctx.Err() != nil {
 			return
 		}
-		rn.log.Error("agent runner: recover runs", "user", userID, "err", err)
+		rn.log.Error("agent runner: recover runs", "home", home, "err", err)
 		t := time.NewTimer(idleCheck)
 		select {
 		case <-ctx.Done():
@@ -167,16 +178,16 @@ func (rn *Runner) work(ctx context.Context, userID int64, w *worker) {
 	rn.wg.Add(1)
 	go func() {
 		defer rn.wg.Done()
-		rn.slot(ctx, userID, acct, true, w.editor)
+		rn.slot(ctx, home, acct, true, w.editor)
 	}()
-	rn.slot(ctx, userID, acct, false, w.any)
+	rn.slot(ctx, home, acct, false, w.any)
 }
 
-// slot runs an account's runs one after another; editorOnly, it starts
+// slot runs a file's runs one after another; editorOnly, it starts
 // each one an open editor asked for, without waiting for it to end.
-func (rn *Runner) slot(ctx context.Context, userID int64, acct Account, editorOnly bool, wake <-chan struct{}) {
+func (rn *Runner) slot(ctx context.Context, home Home, acct Account, editorOnly bool, wake <-chan struct{}) {
 	for ctx.Err() == nil {
-		if rn.step(ctx, userID, acct, editorOnly) {
+		if rn.step(ctx, home, acct, editorOnly) {
 			continue
 		}
 		// With nothing queued and no one writing, only a wake brings work.
@@ -204,19 +215,19 @@ func (rn *Runner) slot(ctx context.Context, userID int64, acct Account, editorOn
 // step ends the writing sessions gone idle (the slot for any run only),
 // then runs the next due run if AI is set up and there is one, and reports
 // whether it did.
-func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOnly bool) bool {
+func (rn *Runner) step(ctx context.Context, home Home, acct Account, editorOnly bool) bool {
 	// remove-user runs beside the server and keeps the account's data, queue
 	// included: none of it may reach the provider after.
-	if ok, err := rn.exists(ctx, userID); err != nil || !ok {
+	if ok, err := rn.exists(ctx, home); err != nil || !ok {
 		if err != nil && ctx.Err() == nil {
-			rn.log.Error("agent runner: account", "user", userID, "err", err)
+			rn.log.Error("agent runner: home", "home", home, "err", err)
 		}
 		return false
 	}
 	// Before AI is checked: while it's paused, the "done" runs still queue.
 	if !editorOnly {
 		if _, err := acct.Agent.CloseIdleSessions(ctx); err != nil && ctx.Err() == nil {
-			rn.log.Error("agent runner: end writing sessions", "user", userID, "err", err)
+			rn.log.Error("agent runner: end writing sessions", "home", home, "err", err)
 		}
 	}
 	st, err := rn.settings(ctx)
@@ -230,7 +241,7 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOn
 	r, ok, err := acct.Agent.claim(ctx, editorOnly)
 	if err != nil {
 		if ctx.Err() == nil {
-			rn.log.Error("agent runner: claim", "user", userID, "err", err)
+			rn.log.Error("agent runner: claim", "home", home, "err", err)
 		}
 		return false
 	}
@@ -241,7 +252,7 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOn
 		acct.notify(RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: StatusRunning})
 		rn.execute(ctx, acct, st, r)
 		// The other slot may have passed over a run on this note.
-		rn.Wake(userID)
+		rn.Wake(home)
 	}
 	if !editorOnly {
 		run()
@@ -261,34 +272,34 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOn
 // it couldn't at startup.
 var startRetry = 30 * time.Second
 
-// startWorkers wakes every account's worker, and reports whether it could
+// startWorkers wakes every file's worker, and reports whether it could
 // list them.
 func (rn *Runner) startWorkers(ctx context.Context) bool {
-	ids, err := rn.accounts(ctx)
+	homes, err := rn.homes(ctx)
 	if err != nil {
 		if ctx.Err() == nil {
-			rn.log.Error("agent runner: accounts", "err", err)
+			rn.log.Error("agent runner: homes", "err", err)
 		}
 		return false
 	}
-	for _, id := range ids {
-		rn.Wake(id)
+	for _, h := range homes {
+		rn.Wake(h)
 	}
 	return true
 }
 
 func (rn *Runner) purge(ctx context.Context) {
-	ids, err := rn.accounts(ctx)
+	homes, err := rn.homes(ctx)
 	if err != nil {
 		return
 	}
-	for _, id := range ids {
-		acct, err := rn.open(ctx, id)
+	for _, h := range homes {
+		acct, err := rn.open(ctx, h)
 		if err == nil {
 			err = acct.Agent.Purge(ctx)
 		}
 		if err != nil && ctx.Err() == nil {
-			rn.log.Error("agent runner: purge", "user", id, "err", err)
+			rn.log.Error("agent runner: purge", "home", h, "err", err)
 		}
 	}
 }
