@@ -194,6 +194,7 @@ apps/web/src/notes/saver.ts
 apps/web/src/offline/host.ts
   s_ea3fb0e0444a59::t_531d0af6155a3b 118,192-193,202-210,213-232,297
   s_ea3fb0e0444a59::t_3bca53007d69f5 9,173-185,187-191,194-201
+  s_bfcd6b4ecf53cb::t_fbfad60bb991fc 186
 apps/web/src/offline/protocol.ts
   s_ea3fb0e0444a59::t_531d0af6155a3b 1,19-20,33,110-119
 apps/web/src/notes/store.tsx
@@ -215,6 +216,14 @@ apps/web/src/notes/online-feeds.ts
       "agent_id": {
         "tool": "claude",
         "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_bfcd6b4ecf53cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31b52478-a5e2-4747-9061-63358b92a553",
         "model": "claude-opus-5-5"
       },
       "human_author": "Cassio Zen <cassiozen@gmail.com>"
