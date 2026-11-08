@@ -1,0 +1,24 @@
+apps/android/app/src/main/kotlin/notes/app/account/Avatars.kt
+  s_82799bf566b6e4::t_497c81f1164568 4,6,11-12,22-28,30-33,36-37,43,46,50,56-60,64-67,70-72,76-89,97,100,108-111,113-116
+apps/android/app/src/test/kotlin/notes/app/account/AvatarsTest.kt
+  s_82799bf566b6e4::t_7ad1b34cf676d4 1-13,15-86,88-101,103-110
+  s_82799bf566b6e4::t_8e686a78fa2b2e 14,87,102
+apps/android/app/src/main/kotlin/notes/app/settings/Profile.kt
+  s_82799bf566b6e4::t_09412ed59120de 144-146,188-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8f49d18c0bf921037b4a0ef9d9f0a22d5162dc07",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
