@@ -77,6 +77,7 @@ type harness struct {
 	setupErr error
 	removed  bool
 	editor   *fakeEditor
+	onRun    func(agent.RunUpdate)
 }
 
 func newHarness(t *testing.T) *harness {
@@ -91,6 +92,11 @@ func newHarness(t *testing.T) *harness {
 				SpaceName: func(_ context.Context, id string) string { return "space " + id }}
 			if h.editor != nil {
 				a.Editors = h.editor
+			}
+			a.OnRun = func(u agent.RunUpdate) {
+				if h.onRun != nil {
+					h.onRun(u)
+				}
 			}
 			return a, nil
 		},
@@ -800,6 +806,91 @@ func TestTimeoutDuringAModelCallIsATimeout(t *testing.T) {
 	}
 }
 
+func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone, agent.EditStarted, agent.Menu)
+	h.done("n1", "a")
+	h.create("n2", "work", "b")
+	h.create("n3", "work", "c")
+	// Editor triggers: the user has each note open.
+	for id, content := range map[string]string{"n1": "a", "n2": "b", "n3": "c"} {
+		h.openInEditor(id, content, nil)
+	}
+	entered, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	free := func() { once.Do(func() { close(release) }) }
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		close(entered)
+		<-release
+		return say("No change."), nil
+	})
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); h.runner.Run(runCtx) }()
+	defer func() { stop(); <-done }()
+	// Before the runner's stopped, or a failed test waits on n1's run forever.
+	defer free()
+	status := func(trigger agent.Trigger, note string) string {
+		for _, r := range h.runs() {
+			if r.Trigger == string(trigger) && r.Note == note {
+				return r.Status
+			}
+		}
+		return ""
+	}
+	waitFor := func(what string, ok func() bool) {
+		t.Helper()
+		deadline := time.Now().Add(5 * time.Second)
+		for !ok() {
+			if time.Now().After(deadline) {
+				t.Fatalf("waiting for %s: %+v", what, h.runs())
+			}
+			time.Sleep(5 * time.Millisecond)
+		}
+	}
+	// At the model, not just running: before it gets there, n2's run could take this step.
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatalf("n1's run never reached the model: %+v", h.runs())
+	}
+
+	// The other note's: done while n1's still runs.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n2"}); err != nil {
+		t.Fatal(err)
+	}
+	h.runner.Wake(1)
+	waitFor("n2's run", func() bool { return status(agent.EditStarted, "n2") == agent.StatusDone })
+
+	// The same note's: it waits for n1's to end.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: "n1"}); err != nil {
+		t.Fatal(err)
+	}
+	// Queued after it: done means the slot has passed n1's over.
+	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n3"}); err != nil {
+		t.Fatal(err)
+	}
+	h.runner.Wake(1)
+	waitFor("n3's run", func() bool { return status(agent.EditStarted, "n3") == agent.StatusDone })
+	if s := status(agent.Menu, "n1"); s != agent.StatusQueued {
+		t.Fatalf("ran beside another run on its note: %s", s)
+	}
+	free()
+	waitFor("n1's menu run", func() bool { return status(agent.Menu, "n1") == agent.StatusDone })
+}
+
+func TestTimeoutBeforeTheModelIsATimeout(t *testing.T) {
+	timeout := agent.RunTimeout
+	agent.RunTimeout = time.Nanosecond
+	t.Cleanup(func() { agent.RunTimeout = timeout })
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	h.done("n1", "a")
+	if r := h.next(); r.Status != agent.StatusFailed || r.Failure != agent.FailTimeout {
+		t.Fatalf("run: %+v", r)
+	}
+}
+
 func TestWorkersEndIdleSessionsWhenWoken(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NewNoteDone)
@@ -927,5 +1018,88 @@ func TestNothingMoreIsDoneWithANoteDeletedMidRun(t *testing.T) {
 	h.next()
 	if r := h.only(); r.Status != agent.StatusSkipped || r.Failure != agent.FailNoteGone || h.model.calls() != 1 {
 		t.Fatalf("run %+v after %d calls", r, h.model.calls())
+	}
+}
+
+func TestEditorRunsOnDifferentNotesGoAtOnce(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.Menu)
+	for id, content := range map[string]string{"n1": "a", "n2": "b", "n3": "c"} {
+		h.create(id, "work", content)
+		h.openInEditor(id, content, nil)
+	}
+	entered, release := make(chan struct{}, 2), make(chan struct{})
+	var once sync.Once
+	free := func() { once.Do(func() { close(release) }) }
+	held := func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		entered <- struct{}{}
+		<-release
+		return say("No change."), nil
+	}
+	h.model.steps = append(h.model.steps, held, held)
+	runCtx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() { defer close(done); h.runner.Run(runCtx) }()
+	defer func() { stop(); <-done }()
+	defer free()
+	ask := func(id string) {
+		t.Helper()
+		if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: id}); err != nil {
+			t.Fatal(err)
+		}
+		h.runner.Wake(1)
+	}
+	// Two at the model, more than the account's slots could hold one each.
+	for _, id := range []string{"n1", "n2"} {
+		ask(id)
+		select {
+		case <-entered:
+		case <-time.After(5 * time.Second):
+			t.Fatalf("%s's run never reached the model: %+v", id, h.runs())
+		}
+	}
+	ask("n3")
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		runs := h.runs()
+		if len(runs) == 3 && runs[2].Note == "n3" && runs[2].Status == agent.StatusDone {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("runs: %+v", runs)
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
+func TestTheModelIsToldWhichTextIsItsOwn(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone, agent.EditDone)
+	h.done("n1", "Milk")
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "start", "text": "## What went well today?", "done": "Asked."}`))
+	h.next()
+	event := func() string {
+		t.Helper()
+		return h.model.requests[len(h.model.requests)-1].Messages[1].Content
+	}
+
+	// The user writes under the agent's question: only the question is the agent's.
+	h.update("n1", "## What went well today?\n\nMilk, and a walk.\n", nil)
+	h.advance(agent.IdleAfter)
+	h.close()
+	h.model.steps = append(h.model.steps, final("No change."))
+	h.next()
+	if e := event(); !strings.Contains(e, `"yourText": [`+"\n"+`      "## What went well today?"`+"\n"+`    ]`) || strings.Contains(e, `"yourText": [`+"\n"+`      "Milk`) {
+		t.Fatalf("event: %s", e)
+	}
+
+	// Deleted since: nothing of the agent's is left.
+	h.update("n1", "Milk, and a walk.\n", nil)
+	h.advance(agent.IdleAfter)
+	h.close()
+	h.model.steps = append(h.model.steps, final("No change."))
+	h.next()
+	if e := event(); strings.Contains(e, "yourText") {
+		t.Fatalf("event: %s", e)
 	}
 }

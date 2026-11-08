@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, 
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { Person, SessionInfo } from '../api/types'
+import { agentSocket } from '../agent/socket'
 import { forgetTouchId } from '../locks/touch-id'
 import { forgetAgentConfigs } from '../notes/agent-config'
 import { forgetAiSettings } from '../notes/ai-settings'
@@ -56,6 +57,8 @@ function forgetAccountSettings() {
   forgetAiSettings()
   forgetEmailSettings()
   forgetAgentConfigs()
+  // At once: its editors' notes and runs are this account's.
+  agentSocket.reset()
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

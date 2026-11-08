@@ -96,6 +96,13 @@ func (e *stopError) Error() string { return e.f.Message }
 // note in it: the change may or may not have landed, so the run stops.
 var errEditorGone = errors.New("the editor went away")
 
+// errEditorClosed and errLockedInEditor end an editor trigger's run: no
+// editor shows its note any more, or the one that does has it locked.
+var (
+	errEditorClosed   = errors.New("no editor has the note open")
+	errLockedInEditor = errors.New("the note is locked in its editor")
+)
+
 // editorRead is a note as an editor showed it.
 type editorRead struct {
 	revision *int64 // the server's, if the editor had saved everything
@@ -171,11 +178,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		out := []map[string]any{}
-		for _, t := range tags {
-			out = append(out, map[string]any{"tag": "#" + t.Name, "notes": t.Count})
-		}
-		return jsonString(out), nil
+		return jsonString(tagViews(tags)), nil
 	case "set_title":
 		if args.Title == nil {
 			return "", refuse("title is required")
@@ -210,12 +213,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		at := *rs.inEditor[n.ID].cursor
-		runes := []rune(n.Content)
-		return jsonString(map[string]any{
-			"before": string(runes[max(0, at-cursorContext):at]),
-			"after":  string(runes[at:min(len(runes), at+cursorContext)]),
-		}), nil
+		return jsonString(cursorView(n.Content, *rs.inEditor[n.ID].cursor)), nil
 	case "set_content":
 		if args.Content == nil {
 			return "", refuse("content is required")
@@ -315,6 +313,16 @@ func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
 	if n, ok := rs.reads[id]; ok {
 		return n, nil
 	}
+	if rs.editorOnly(id) {
+		n, err := rs.readEditor(ctx, id)
+		if err != nil && ctx.Err() != nil {
+			return n, err // the deadline or a shutdown, told apart by the caller
+		}
+		if f := unusable(n, err, rs.run.SpaceID, true); f.Status != "" {
+			return n, &stopError{f}
+		}
+		return n, nil
+	}
 	n, err := rs.acct.Notes.Get(ctx, id)
 	if err != nil && ctx.Err() != nil {
 		return n, err // the deadline or a shutdown, told apart by the caller
@@ -347,7 +355,7 @@ func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
 			rs.reads[id] = n
 			rs.inEditor[id] = &editorRead{revision: en.Revision, cursor: en.Cursor}
 			return n, nil
-		case !errors.Is(err, ErrNotOpen) && !errors.Is(err, ErrEditorGone):
+		case !errors.Is(err, ErrNotOpen) && !errors.Is(err, ErrEditorGone) && !errors.Is(err, ErrEditorLocked):
 			return n, err
 		}
 	}
@@ -356,6 +364,46 @@ func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
 	}
 	rs.reads[id] = n
 	return n, nil
+}
+
+// stop ends the run: why says its own note can't be worked on any more.
+func (rs *runState) stop(why error) error {
+	return &stopError{unusable(notes.Note{}, why, rs.run.SpaceID, true)}
+}
+
+// editorOnly reports whether the run reads and writes note id only in its
+// editor: an editor trigger's own note.
+func (rs *runState) editorOnly(id string) bool {
+	return id == rs.run.NoteID && rs.run.Trigger.InEditor()
+}
+
+// readEditor reads note id from the editor that has it open: the run's own
+// first. It never reads the store, so the note needn't have reached it.
+func (rs *runState) readEditor(ctx context.Context, id string) (notes.Note, error) {
+	if rs.acct.Editors == nil {
+		return notes.Note{}, errEditorClosed
+	}
+	en, err := rs.acct.Editors.Read(ctx, id, rs.prefer())
+	switch {
+	case errors.Is(err, ErrEditorLocked):
+		return notes.Note{}, errLockedInEditor
+	case errors.Is(err, ErrNotOpen), errors.Is(err, ErrEditorGone):
+		return notes.Note{}, errEditorClosed
+	case err != nil:
+		return notes.Note{}, err
+	}
+	return rs.fromEditor(id, en), nil
+}
+
+// fromEditor is note id as an editor shows it, for the rest of the run.
+func (rs *runState) fromEditor(id string, en EditorNote) notes.Note {
+	n := notes.Note{ID: id, SpaceID: en.SpaceID, Title: en.Title, Content: en.Content}
+	if en.Revision != nil {
+		n.Revision = *en.Revision
+	}
+	rs.reads[id] = n
+	rs.inEditor[id] = &editorRead{revision: en.Revision, cursor: en.Cursor}
+	return n
 }
 
 // cursor reads the run's note again, for where the user's cursor is now.
@@ -374,7 +422,7 @@ func (rs *runState) cursor(ctx context.Context) (notes.Note, error) {
 }
 
 // prefer is the editor this run talks to first: the one that asked for it.
-func (rs *runState) prefer() string { return rs.run.ConnectionID }
+func (rs *runState) prefer() string { return rs.run.Event.ConnectionID }
 
 // writeTries bounds how often a write is made again to a note that keeps
 // changing under it.
@@ -415,9 +463,12 @@ func (rs *runState) write(ctx context.Context, id string, e edit) (string, error
 		if next.Title == cur.Title && next.Content == cur.Content {
 			return `{"ok": true, "changed": false}`, nil
 		}
-		if er, ok := rs.inEditor[id]; ok {
+		switch er, ok := rs.inEditor[id]; {
+		case ok:
 			err = rs.writeInEditor(ctx, id, er, cur, next, e)
-		} else {
+		case rs.editorOnly(id):
+			err = rs.stop(errEditorClosed) // never under the user, in the store
+		default:
 			err = rs.writeStore(ctx, id, cur, next)
 		}
 		switch {
@@ -463,10 +514,14 @@ func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead
 	before, after := Fields{cur.Title, cur.Content}, Fields{next.Title, next.Content}
 	applied, err := rs.acct.Editors.Apply(ctx, id, rs.prefer(), EditorChange{RunID: rs.run.ID, Before: before, After: after, Op: e})
 	switch {
-	case errors.Is(err, ErrEditorChanged), errors.Is(err, ErrNotOpen):
-		// The change no longer fits what it shows, or it closed the note:
-		// read it again, from the store if need be.
-		return errChanged
+	case errors.Is(err, ErrEditorChanged):
+		return errChanged // the change no longer fits what it shows: read it again
+	case rs.editorOnly(id) && errors.Is(err, ErrNotOpen):
+		return rs.stop(errEditorClosed)
+	case rs.editorOnly(id) && errors.Is(err, ErrEditorLocked):
+		return rs.stop(errLockedInEditor)
+	case errors.Is(err, ErrNotOpen), errors.Is(err, ErrEditorLocked):
+		return errChanged // closed, or locked there: read it again, from the store
 	case errors.Is(err, ErrEditorGone):
 		return errEditorGone
 	case err != nil:

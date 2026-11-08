@@ -78,6 +78,25 @@ func TestReadsFromTheRightEditor(t *testing.T) {
 	}
 }
 
+func TestAClaimReachesTheEditorBeforeItsOpen(t *testing.T) {
+	h := editors.NewHub()
+	ed := h.For(1)
+	a := connect(t, h, showing("from a"))
+	b := connect(t, h, showing("from b"))
+	h.Opened(b.c, "n1")
+	h.Claim(a.c, "n1")
+	if n, err := ed.Read(ctx, "n1", a.c.ID); err != nil || n.Content != "from a" {
+		t.Fatalf("the run's own, claimed: %+v %v", n, err)
+	}
+	if n, err := ed.Read(ctx, "n1", ""); err != nil || n.Content != "from b" {
+		t.Fatalf("no run's own: only an open counts: %+v %v", n, err)
+	}
+	// A claim keeps no session going.
+	if !h.Closed(b.c, "n1") {
+		t.Fatal("a's claim counted as an open")
+	}
+}
+
 func TestEditorAnswers(t *testing.T) {
 	h := editors.NewHub()
 	ed := h.For(1)
@@ -88,8 +107,8 @@ func TestEditorAnswers(t *testing.T) {
 		return map[string]any{"error": "locked"}
 	})
 	h.Opened(tb.c, "n1")
-	if _, err := ed.Read(ctx, "n1", ""); !errors.Is(err, agent.ErrNotOpen) {
-		t.Fatalf("a refusal reads from the store instead: %v", err)
+	if _, err := ed.Read(ctx, "n1", ""); !errors.Is(err, agent.ErrEditorLocked) {
+		t.Fatalf("locked: %v", err)
 	}
 	ch := agent.EditorChange{RunID: "run_1", Before: agent.Fields{Content: "a"}, After: agent.Fields{Content: "b"}}
 	if _, err := ed.Apply(ctx, "n1", "", ch); !errors.Is(err, agent.ErrEditorChanged) {
@@ -154,6 +173,47 @@ func TestARunsOwnEndIsntTheEditorGoing(t *testing.T) {
 	stopped, cancel := context.WithCancel(ctx)
 	cancel()
 	if _, err := h.For(1).Read(stopped, "n1", ""); !errors.Is(err, context.Canceled) {
+		t.Fatalf("got %v", err)
+	}
+}
+
+func TestBroadcastKeepsOrder(t *testing.T) {
+	h := editors.NewHub()
+	release := make(chan struct{})
+	got := make(chan any, 2)
+	c, err := h.Add(1, func(_ context.Context, msg any) error {
+		if msg == "running" {
+			<-release
+		}
+		got <- msg
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Remove(c)
+	// The start is slow to send; the end mustn't overtake it.
+	h.Broadcast(1, "running")
+	h.Broadcast(1, "done")
+	close(release)
+	for _, want := range []string{"running", "done"} {
+		select {
+		case m := <-got:
+			if m != want {
+				t.Fatalf("got %v, want %s", m, want)
+			}
+		case <-time.After(5 * time.Second):
+			t.Fatalf("waiting for %s", want)
+		}
+	}
+}
+
+func TestAClaimForARefusedRunIsDropped(t *testing.T) {
+	h := editors.NewHub()
+	a := connect(t, h, showing("from a"))
+	h.Claim(a.c, "n1")
+	h.Unclaim(a.c, "n1")
+	if _, err := h.For(1).Read(ctx, "n1", a.c.ID); !errors.Is(err, agent.ErrNotOpen) {
 		t.Fatalf("got %v", err)
 	}
 }

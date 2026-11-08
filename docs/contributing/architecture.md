@@ -149,7 +149,7 @@ CREATE TABLE lock_state (id INTEGER PRIMARY KEY CHECK (id = 1), verifier_hash TE
 CREATE TABLE account_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
 -- Each space's agent (kept when turned off) and its prompt per trigger; both go with the space.
 CREATE TABLE agent_spaces (space_id TEXT PRIMARY KEY REFERENCES spaces(id) ON DELETE CASCADE, enabled INTEGER,
-                           prompt TEXT, menu_label TEXT, updated_at INTEGER);
+                           prompt TEXT, menu_label TEXT, reference_notes TEXT, updated_at INTEGER);
 CREATE TABLE agent_triggers (space_id TEXT REFERENCES agent_spaces(space_id) ON DELETE CASCADE, trigger TEXT,
                              prompt TEXT, PRIMARY KEY (space_id, trigger));
 -- Agents' runs: queued and running ones are the queue, finished ones the activity log (§7.11).
@@ -607,23 +607,37 @@ The user guide is [agents](../guides/using/agents.md).
   for the space the note is in then, or at once when an editor closes the note and the server has
   what it last saved (`editor.closed` on the socket below). A note moved to or from a shared space's
   file (§7.9) reaches the hook as a move too: the file it left queues *moved out* and drops its
-  session, the file it came to *moved in*. Never a trigger: the agent's own writes and saves holding
+  session, the file it came to *moved in*. The editor asks for *note created*,
+  *started editing* and the menu command on the socket, sending what it shows, and the run starts
+  from that, at once; asked while the socket is still connecting, the request waits for it (up to
+  10 seconds, and only while the note is still open). Their runs
+  work on the note only as an editor shows it, the asking one's first, never the store's copy, which
+  may not exist yet: with no editor showing it, before or during the run, the run is skipped
+  (`note_closed`). A new note
+  whose first save holds only an agent's change starts its session at that revision, so only the
+  user's writing ends it with a trigger. Never a trigger: the agent's own writes and saves holding
   only its change, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
   locked notes, and conflicted or recovered copies.
 - **Socket.** `GET /api/v1/agent/socket` is a WebSocket (`coder/websocket`) behind the usual
   authentication; a browser session also needs a same-origin `Origin`, since a cross-site page can
-  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it shows has its
-  agent on, and says which notes its editor opens and closes; leaving for a space without one, it
-  closes once the open note has said it closed. The server pings every 25 seconds,
+  open a WebSocket with the cookie and no preflight. Each web tab keeps one open while the space it
+  shows has its agent on, and says which notes its editor opens and closes; leaving for a space
+  without one, it closes once the open note has said it closed. The server tells the account's
+  connected editors when a run starts and ends (a marker in the note where the agent is likely to write, a failure on the note),
+  in order but best-effort: an editor that's slow or reconnecting misses them. The server pings every 25 seconds,
   under proxies' idle timeouts (nginx: 60); net/http clears the server's timeouts on the upgraded
   connection. A hub (`internal/editors`) keeps each account's connections, at most 50.
-- **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
-  time, so one at a time per note. It sleeps until a write queues a run or starts a session, or
-  the next of those is due. At most 4 provider calls run at once across accounts. With AI
-  removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
+- **Runner.** Each account has two slots: one runs its queue in order, editor triggers first; the
+  other starts each editor trigger's run at once, beside the rest, so someone in a note never waits
+  behind other runs. A run waits while another on its note runs. A slot sleeps until a write queues a run or starts a
+  session, or the next of those is due. At most 4 provider calls run at once across accounts. With
+  AI removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
   prompt, which stay the same from run to run so the provider can cache them, then the event: the
   time in the account's time zone and the note. Each run logs where its time went: waiting, getting
-  ready, the model's calls and the tools'.
+  ready, the model's calls and the tools'. So the model can act
+  in its first call, the event also carries the cursor (in an editor), the space's tags, the space's
+  reference notes, and which of the note's lines the agent wrote itself (`yourText`, from its recorded
+  edits), so it doesn't take its own question for the user's writing.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
   `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a
@@ -648,8 +662,8 @@ The user guide is [agents](../guides/using/agents.md).
   `applied_from`, not text); otherwise the user's unsaved typing went out with it, and it counts
   as theirs too. A save with typing after the change isn't linked, so undo can't take that
   typing; the edit then can't be undone from Activity (`not_saved`). An editor that doesn't answer within 10
-  seconds counts as gone: a read falls back to the store, a write fails the run
-  (`editor_disconnected`).
+  seconds counts as gone: a read falls back to the store (not for an editor trigger's own note), a
+  write fails the run (`editor_disconnected`).
 - **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
   (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
   are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the

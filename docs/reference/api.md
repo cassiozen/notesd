@@ -505,7 +505,7 @@ Removing an account leaves its notes database on disk, as
 | --- | --- | --- |
 | `GET` | `/agent/spaces` | → `{spaces: [config, …]}`, every space whose agent has been set up |
 | `GET` | `/agent/spaces/{id}` | → the space's config; off and empty if none was set up |
-| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers}` → the config as stored |
+| `PUT` | `/agent/spaces/{id}` | `{enabled, prompt, menuLabel, triggers, referenceNotes?}` → the config as stored |
 | `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
 | `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
@@ -515,12 +515,14 @@ Removing an account leaves its notes database on disk, as
 | `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
 | `GET` | `/agent/socket` | WebSocket; see below |
 
-A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
+A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, referenceNotes, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
 `noteCreated`, `editStarted`, `newNoteDone`, `editDone`, `noteDeleted`, `movedIn`, `movedOut` and
 `menu`. A trigger with an empty prompt is dropped, and so is one the server doesn't know.
 `menuLabel` names the `menu` command in a note's menu, up to 40 characters, and is required with a
-`menu` prompt. Prompts can be up to 16 KiB. `PUT` replaces the whole config. A space that doesn't
+`menu` prompt. Prompts can be up to 16 KiB. `referenceNotes` are up to 5 titles of notes in the
+space, each up to 200 characters, sent with every run: the newest unlocked note with that title, if
+any. `PUT` replaces the whole config, except that leaving out `referenceNotes` keeps them. A space that doesn't
 exist is `404 not_found`, and so is a shared space: agents run in the account's own spaces.
 Deleting or sharing a space deletes its agent.
 
@@ -561,6 +563,14 @@ note is undone on its own, so one changed note doesn't stop the rest; `skipped` 
 undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
 `partly_undone` while some of its changes stand. Undo fires no triggers.
 
+**Asking for a run.** An editor asks for `noteCreated`, `editStarted` or `menu` runs on the socket
+below (`run.request`); the others come from writes. The run works on the note only as an editor
+shows it, the asking one's first, never the server's copy: with no editor showing it, before or
+during the run, it's skipped as `note_closed`; an editor that disconnects while the run is changing
+the note fails it as `editor_disconnected`, since the change may or may not have landed. It starts at once, beside other runs, one at a time
+per note; asked again before it starts, it's the same run. A request the space's agent doesn't act
+on, for a note that's gone or locked, or one the server hasn't got with no `spaceId`, is dropped.
+
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
 account is `429 rate_limited`. Messages are JSON text with a `type`; a type a side doesn't know is
@@ -571,7 +581,9 @@ ignored, so either may add some, except that an editor answers a request it can'
 | --- | --- | --- |
 | Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
 | Editor | `{type: "editor.opened", noteId}` | The editor shows the note. Again after reconnecting |
+| Editor | `{type: "run.request", trigger, noteId, spaceId, note?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking |
 | Editor | `{type: "editor.closed", noteId, revision}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
+| Server | `{type: "run", runId, noteId, trigger, status, failure?, outcome?}` | A run started (`running`) or ended; to every editor of the account |
 | Server | `{type: "read", id, noteId}` | A run reads the note. The editor answers `{type: "result", id, spaceId, title, content, cursor, revision}`: `content` as it would save it, `cursor` in Unicode code points into it, `revision` the server's of exactly this or `null` |
 | Server | `{type: "apply", id, noteId, runId, before: {title, content}, after: {title, content}, op}` | A run changes the note. If the editor shows `before`, it changes it to `after`; otherwise, the user having typed meanwhile, it makes `op` to what it shows. As one undoable step, saved as any edit. It answers `{type: "result", id, before, revision, shows}`: what it showed just before (`revision`: the server's revision of exactly that, or `null`), and the note as it then saves it |
 

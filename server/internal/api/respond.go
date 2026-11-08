@@ -142,6 +142,14 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusNotFound, "not_found", "space not found")
 	case errors.Is(err, agent.ErrRunNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "run not found")
+	case errors.Is(err, agent.ErrNoteGone):
+		writeError(w, http.StatusNotFound, "not_found", "note not found")
+	case errors.Is(err, agent.ErrAgentOff):
+		writeError(w, http.StatusConflict, "agent_disabled", err.Error())
+	case errors.Is(err, agent.ErrTriggerOff):
+		writeError(w, http.StatusConflict, "trigger_off", err.Error())
+	case errors.Is(err, agent.ErrNoteLocked):
+		writeError(w, http.StatusConflict, "note_locked", "locked notes are never sent to an agent")
 	case errors.As(err, &lerr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: lerr.Message, Field: lerr.Field})
 	case errors.As(err, &serr):

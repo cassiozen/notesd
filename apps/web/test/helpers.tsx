@@ -1,3 +1,4 @@
+import { StrictMode } from 'react'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, onTestFinished } from 'vitest'
@@ -39,6 +40,7 @@ export async function signedIn({
   resendUrl,
   onDevice = false,
   as,
+  strict = false,
 }: {
   path?: string
   seed?: (server: TestServer) => Promise<void>
@@ -46,6 +48,7 @@ export async function signedIn({
   onDevice?: boolean
   /** Another account the seed made (with PASSWORD), to sign in as instead of the owner. */
   as?: string
+  strict?: boolean
 } = {}) {
   const server = await startServer({ ...(resendUrl && { resendUrl }) })
   const owner = await createOwner(server)
@@ -66,7 +69,7 @@ export async function signedIn({
     keepOnDevice(username)
     startEngines(() => e)
   }
-  render(<App />)
+  render(strict ? <StrictMode><App /></StrictMode> : <App />)
   if (!onDevice) {
     await user.type(await screen.findByLabelText('Username'), username)
     await user.type(screen.getByLabelText('Password'), `${password}{Enter}`)
@@ -148,11 +151,15 @@ export const list = () => screen.getByRole('complementary', { name: 'Notes' })
 export const body = () => screen.getByRole('textbox', { name: 'Note' })
 /** The note's first line. */
 export const noteTitle = () => body().querySelector('[data-title]')?.textContent
-/** Everything after the first line. */
+/** Everything after the first line, without what shows the agent at work. */
 export const bodyText = () =>
   [...body().children]
     .slice(1)
-    .map((el) => el.textContent)
+    .map((el) => {
+      const copy = el.cloneNode(true) as Element
+      copy.querySelectorAll('[data-agent-widget]').forEach((w) => w.remove())
+      return copy.textContent
+    })
     .join('')
 
 /** Puts the caret at the end of el (jsdom has no layout, so a click can't place it). */
