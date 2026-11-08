@@ -1,0 +1,26 @@
+server/internal/api/image_handlers.go
+  s_a0fc22670a88c5::t_26fafe48ac9bf9 11,59-63,94-122
+  s_a0fc22670a88c5::t_cae2247cccbf3d 123
+server/internal/api/shared_test.go
+  s_a0fc22670a88c5::t_26fafe48ac9bf9 126-130
+docs/contributing/architecture.md
+  s_a0fc22670a88c5::t_2b5612aceb3ec8 512
+docs/reference/api.md
+  s_a0fc22670a88c5::t_f65e134592f1ac 355-357
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5de1cc151b1be9f0d6c373f2d80d21b2f23ae5d1",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
