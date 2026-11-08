@@ -1,0 +1,57 @@
+apps/android/app/src/main/kotlin/notes/app/images/PrepareImage.kt
+  s_82799bf566b6e4::t_0a0f8e6f0c6fc9 5-6,8,10,84-106,108-118
+  s_82799bf566b6e4::t_80185eed24cce4 107
+  s_82799bf566b6e4::t_809f47c91a9a4c 119
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_82799bf566b6e4::t_46d052cfc18099 60,92-98,105,181-182,325,329-330,332,342-344,347-348
+apps/android/app/src/main/kotlin/notes/app/account/AccountStore.kt
+  s_82799bf566b6e4::t_1b4b1febd3fac3 16-21,30-35,41,59-65,73-89,144-145
+docs/contributing/settings-guidelines.md
+  s_82799bf566b6e4::t_0ae93d5ab29705 68
+apps/android/app/src/main/kotlin/notes/app/account/Avatars.kt
+  s_82799bf566b6e4::t_0a0f8e6f0c6fc9 1-60
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_82799bf566b6e4::t_db6c2644a5f88d 78-80,196,205-209
+  s_82799bf566b6e4::t_5386591f9125e7 26,28,40
+  s_82799bf566b6e4::t_5c19cda845516e 210-211
+apps/android/app/src/main/kotlin/notes/app/settings/Profile.kt
+  s_82799bf566b6e4::t_1496d7b6011547 197-198
+  s_82799bf566b6e4::t_1df7e1656d7282 1-2,4-7,10-22,24-34,36-89,95-196,199-267
+  s_82799bf566b6e4::t_ee31ce9709d744 3,8-9,23,35,90-94
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_82799bf566b6e4::t_ad21748d6b8c74 100-127,249-253,255-256
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/ApiClientTest.kt
+  s_82799bf566b6e4::t_d5f785f7ac5471 204,207-226,229-238
+  s_82799bf566b6e4::t_b5e47d23ca74a4 205-206,227-228
+  s_82799bf566b6e4::t_aea4f49b4d855f 203
+apps/android/app/src/test/kotlin/notes/app/account/AccountStoreTest.kt
+  s_82799bf566b6e4::t_5c91ca1697d96f 55-69
+  s_82799bf566b6e4::t_8c46dbc4fa8498 54
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_82799bf566b6e4::t_ad21748d6b8c74 84-87,103-106
+  s_82799bf566b6e4::t_86d168f9de6bea 88-89
+apps/android/app/src/main/kotlin/notes/app/settings/People.kt
+  s_82799bf566b6e4::t_021c1e15cb6a64 423,425,427,429,432
+  s_82799bf566b6e4::t_1496d7b6011547 430-431
+  s_82799bf566b6e4::t_9faa42c027b259 166-174,244,256,265,278,313-315,323,336,345-353,356-362,382,404,406,419,458-469,484
+apps/android/app/src/test/kotlin/notes/app/settings/ProfileTest.kt
+  s_82799bf566b6e4::t_e338016527be3b 1-155
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_82799bf566b6e4::t_73af542ead8f48 353,380,382
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9de9d3d7924c1973767262cd285681c5e3adaced",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
