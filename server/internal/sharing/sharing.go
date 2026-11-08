@@ -46,12 +46,19 @@ type Service struct {
 	// A space's file is held for reading by each request using it, and for writing by Delete, so a note
 	// can't land in a file that's being removed.
 	holdsMu sync.Mutex
-	holds   map[string]*sync.RWMutex
+	holds   map[string]*hold
+}
+
+// hold is a space's lock while anyone has it: dropped after, so ids that were asked for but don't exist
+// don't pile up.
+type hold struct {
+	sync.RWMutex
+	users int
 }
 
 // New returns a Service over the system database and every notes file.
 func New(system *database.DB, files *userdata.Registry) *Service {
-	return &Service{system: system, files: files, now: time.Now, holds: map[string]*sync.RWMutex{}}
+	return &Service{system: system, files: files, now: time.Now, holds: map[string]*hold{}}
 }
 
 // SetClock overrides the clock, for tests.
@@ -106,21 +113,32 @@ func (s *Service) Open(ctx context.Context, userID int64, spaceID string) (d *us
 	return d, release, nil
 }
 
-func (s *Service) hold(spaceID string) *sync.RWMutex {
+// hold returns spaceID's lock, kept until the returned func is called.
+func (s *Service) hold(spaceID string) (*hold, func()) {
 	s.holdsMu.Lock()
 	defer s.holdsMu.Unlock()
 	h := s.holds[spaceID]
 	if h == nil {
-		h = &sync.RWMutex{}
+		h = &hold{}
 		s.holds[spaceID] = h
 	}
-	return h
+	h.users++
+	return h, func() {
+		s.holdsMu.Lock()
+		defer s.holdsMu.Unlock()
+		if h.users--; h.users == 0 {
+			delete(s.holds, spaceID)
+		}
+	}
 }
 
 func (s *Service) read(spaceID string) func() {
-	h := s.hold(spaceID)
+	h, done := s.hold(spaceID)
 	h.RLock()
-	return h.RUnlock
+	return func() {
+		h.RUnlock()
+		done()
+	}
 }
 
 // SpaceIDs lists the shared spaces userID is in.
@@ -658,7 +676,8 @@ func (s *Service) Delete(ctx context.Context, ownerID int64, spaceID string) err
 	if err := s.mustOwn(ctx, ownerID, spaceID); err != nil {
 		return err
 	}
-	h := s.hold(spaceID)
+	h, done := s.hold(spaceID)
+	defer done()
 	for deadline := s.now().Add(deleteWait); !h.TryLock(); time.Sleep(20 * time.Millisecond) {
 		if s.now().After(deadline) {
 			return ErrBusy

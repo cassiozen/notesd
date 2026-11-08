@@ -129,6 +129,11 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 func (r *Registry) OpenSpace(ctx context.Context, spaceID string) (*Data, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
+	return r.openSpace(ctx, spaceID)
+}
+
+// openSpace is OpenSpace with r.mu held.
+func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error) {
 	if d, ok := r.spaces[spaceID]; ok {
 		return d, nil
 	}
@@ -157,12 +162,12 @@ func (r *Registry) OpenSpace(ctx context.Context, spaceID string) (*Data, error)
 }
 
 // OpenSpaceIfExists is OpenSpace for a background job: nil, without creating one, when the file is gone
-// (the space was deleted since it was listed).
+// (the space was deleted since it was listed). Checked and opened under the lock RemoveSpace takes, so a
+// removal can't land between the two and leave a new, empty file.
 func (r *Registry) OpenSpaceIfExists(ctx context.Context, spaceID string) (*Data, error) {
 	r.mu.Lock()
-	d, open := r.spaces[spaceID]
-	r.mu.Unlock()
-	if open {
+	defer r.mu.Unlock()
+	if d, open := r.spaces[spaceID]; open {
 		return d, nil
 	}
 	if _, err := os.Stat(SpacePath(r.dir, spaceID)); errors.Is(err, fs.ErrNotExist) {
@@ -170,7 +175,7 @@ func (r *Registry) OpenSpaceIfExists(ctx context.Context, spaceID string) (*Data
 	} else if err != nil {
 		return nil, err
 	}
-	return r.OpenSpace(ctx, spaceID)
+	return r.openSpace(ctx, spaceID)
 }
 
 // RemoveSpace closes a shared space's database, if open, and deletes its

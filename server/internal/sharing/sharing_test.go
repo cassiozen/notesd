@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -226,5 +227,27 @@ func TestRemovingAMemberTellsThemToo(t *testing.T) {
 	}
 	if !told[2] || !told[1] {
 		t.Fatalf("told: %v", told)
+	}
+}
+
+func TestAskingForSpacesThatDontExistKeepsNothing(t *testing.T) {
+	e := newEnv(t)
+	for _, id := range []string{"nope", "nada", "fam"} {
+		if _, _, err := e.s.Open(e.ctx, 1, id); !errors.Is(err, sharing.ErrNotFound) {
+			t.Fatalf("open %s: %v", id, err)
+		}
+	}
+	if n := e.s.Holds(); n != 0 {
+		t.Fatalf("locks kept: %d", n)
+	}
+}
+
+func TestOpeningASpaceFileIfItExistsDoesntMakeOne(t *testing.T) {
+	e := newEnv(t)
+	if d, err := e.files.OpenSpaceIfExists(e.ctx, "gone"); err != nil || d != nil {
+		t.Fatalf("a space with no file: %v %v", d, err)
+	}
+	if _, err := os.Stat(userdata.SpacePath(e.dir, "gone")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("file made: %v", err)
 	}
 }
