@@ -519,6 +519,7 @@ class ScreenshotTest {
         compose.waitUntilExactlyOneExists(hasContentDescription("Sidebar"))
         compose.onNode(hasContentDescription("Sidebar")).performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Space: Family"))
+        shoot("tags-traits-$suffix")
         compose.onNode(hasContentDescription("Space: Family")).performClick()
         compose.waitUntilExactlyOneExists(hasText("New space…"))
         shoot("switcher-phone-$suffix")

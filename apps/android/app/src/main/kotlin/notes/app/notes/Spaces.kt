@@ -9,9 +9,11 @@ import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -29,7 +31,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
-import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -166,7 +167,12 @@ fun SpaceIdentity(
 ) {
     // With a subtitle the glyphs stay on the name's line, so they can't be a button apart from it.
     val inline = subtitle != null
-    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+    val grouped = !inline && onTraits != null && traits.isNotEmpty()
+    // Grouped, the row is as tall as the name's area, so the trait button's fill matches its highlight.
+    Row(
+        if (grouped) modifier.height(IntrinsicSize.Min) else modifier,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
         Row(nameArea.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
             SpaceIconImage(icon, iconSize)
             Spacer(Modifier.width(iconGap))
@@ -186,13 +192,12 @@ fun SpaceIdentity(
                 subtitle?.invoke()
             }
         }
-        if (!inline && traits.isNotEmpty()) {
-            if (onTraits != null) {
-                Spacer(Modifier.width(4.dp))
-                TraitGroup(traits, onTraits)
-            } else {
-                TraitGlyphs(traits, glyphSize)
-            }
+        if (grouped) {
+            // Apart, so the name's highlight and the button's fill never touch.
+            Spacer(Modifier.width(6.dp))
+            TraitGroup(traits, onTraits, Modifier.fillMaxHeight(), glyphSize)
+        } else if (!inline && traits.isNotEmpty()) {
+            TraitGlyphs(traits, glyphSize)
         }
     }
 }
@@ -205,27 +210,28 @@ fun TraitGlyphs(traits: List<SpaceTrait>, size: Dp, modifier: Modifier = Modifie
 }
 
 /**
- * Beside the switcher and the list's title: the space's trait glyphs in one filled button opening Space info.
- * Nothing without traits.
+ * Beside the switcher and the list's title: the space's trait glyphs in one filled button opening Space info,
+ * as tall as [modifier] makes it. Nothing without traits.
  */
 @Composable
-fun TraitGroup(traits: List<SpaceTrait>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun TraitGroup(traits: List<SpaceTrait>, onClick: () -> Unit, modifier: Modifier = Modifier, glyphSize: Dp = 16.dp) {
     if (traits.isEmpty()) return
     val t = LocalTokens.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val description = "Space info: ${describeTraits(traits)}"
+    // No minimumInteractiveComponentSize: padding one glyph out to 48dp wide would widen the gap beside it. Hit
+    // testing extends a smaller target to 48dp anyway.
     Glyphs(
         traits,
-        18.dp,
-        6.dp,
+        glyphSize,
+        9.dp,
         modifier
-            .minimumInteractiveComponentSize()
             .clip(RoundedCornerShape(10.dp))
             .background(if (pressed) t.on else t.hover)
             .clickable(interaction, ripple(), role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
-            .padding(horizontal = 8.dp, vertical = 6.dp)
+            .padding(horizontal = 9.dp)
     )
 }
 

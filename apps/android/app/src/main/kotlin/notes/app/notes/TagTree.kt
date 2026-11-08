@@ -205,8 +205,12 @@ fun TagsPane(
                         onSpace,
                         onNewSpace,
                         Modifier.weight(1f).offset(x = (-6).dp).semantics { heading() },
-                        style = Type.title.copy(fontSize = 26.sp, lineHeight = 30.sp),
-                        iconSize = 30.dp,
+                        // Docked, the sidebar's 280dp: at the phone's size, a name like "Family" with two trait
+                        // glyphs and Settings beside it is cut short.
+                        style = if (docked) Type.space.copy(fontSize = 20.sp, lineHeight = 24.sp) else Type.space,
+                        iconSize = if (docked) 26.dp else 30.dp,
+                        // At 26sp, 16dp glyphs look lost.
+                        glyphSize = if (docked) 16.dp else 18.dp,
                         onInfo = onSpaceInfo,
                         // Docked, a sheet from the bottom would land far from the sidebar's top corner.
                         popup = docked,
