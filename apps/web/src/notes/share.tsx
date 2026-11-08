@@ -1,7 +1,7 @@
 import { useEffect, useId, useRef, useState, useSyncExternalStore, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { notes as api } from '../api/notes'
-import type { Space } from '../api/types'
+import type { Space, SpaceTrait } from '../api/types'
 import { genericMessage, sentence } from '../auth/errors'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -13,8 +13,9 @@ import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
 import { useEmailSettings } from './email-settings'
 import type { Saver } from './source'
-import { SpaceIcon } from './space-icon'
+import { SpaceIdentity } from './space-identity'
 import { useSpaces } from './spaces'
+import { newExposure, traitGlyph } from './traits'
 import styles from './share.module.css'
 
 /** The note as one Markdown file: the title as a heading, then the body. */
@@ -29,7 +30,8 @@ function exportMarkdown(saver: Saver): string {
  * action to their share sheet, hence a menu. With [onDelete] it's the desktop's
  * one "More" menu and ends with Delete; phones keep Delete as its own button.
  * Lock note / Remove lock sit there too; a locked note can't be emailed, since
- * the server only has its ciphertext. With more than one space, Move to space.
+ * the server only has its ciphertext. With more than one space, Move to space,
+ * which asks first when the destination shows the note to more people (§7.8).
  * [onFind] (desktop) leads with Find and Find and replace.
  */
 export function NoteMenu({
@@ -51,6 +53,7 @@ export function NoteMenu({
   const [open, setOpen] = useState(false)
   const [emailing, setEmailing] = useState(false)
   const [moving, setMoving] = useState(false)
+  const [confirming, setConfirming] = useState<{ space: Space; exposure: SpaceTrait[] } | null>(null)
   const [copied, setCopied] = useState(false)
   const [locking, setLocking] = useState<'setup' | 'unlock' | null>(null)
   const { locked } = useSyncExternalStore(saver.subscribe, saver.getSnapshot)
@@ -248,9 +251,23 @@ export function NoteMenu({
         <MoveDialog
           spaces={spaces.filter((sp) => sp.id !== saver.spaceId())}
           onClose={() => setMoving(false)}
-          onMove={(id) => {
+          onMove={(to) => {
             setMoving(false)
-            onMove(id)
+            const exposure = newExposure(spaces.find((sp) => sp.id === saver.spaceId()), to)
+            if (exposure.length > 0) setConfirming({ space: to, exposure })
+            else onMove(to.id)
+          }}
+        />
+      )}
+      {confirming && (
+        <ConfirmMoveDialog
+          title={saver.fields().title.trim() || 'New note'}
+          space={confirming.space}
+          exposure={confirming.exposure}
+          onClose={() => setConfirming(null)}
+          onMove={() => {
+            setConfirming(null)
+            onMove(confirming.space.id)
           }}
         />
       )}
@@ -258,7 +275,7 @@ export function NoteMenu({
   )
 }
 
-function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () => void; onMove: (id: string) => void }) {
+function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () => void; onMove: (to: Space) => void }) {
   const titleId = useId()
   return (
     <Dialog labelledBy={titleId} onClose={onClose}>
@@ -268,15 +285,62 @@ function MoveDialog({ spaces, onClose, onMove }: { spaces: Space[]; onClose: () 
         </h2>
         <div className={styles.choices} role="group" aria-labelledby={titleId}>
           {spaces.map((sp) => (
-            <Button key={sp.id} size="md" onClick={() => onMove(sp.id)}>
-              <SpaceIcon space={sp} />
-              <span className={styles.choiceName}>{sp.name}</span>
+            <Button key={sp.id} size="md" onClick={() => onMove(sp)}>
+              <SpaceIdentity space={sp} nameClassName={styles.choiceName} />
             </Button>
           ))}
         </div>
         <div className={styles.actions}>
           <Button size="md" onClick={onClose}>
             Cancel
+          </Button>
+        </div>
+      </div>
+    </Dialog>
+  )
+}
+
+/** The destination shows the note to people its current space doesn't: said before it moves. */
+function ConfirmMoveDialog({
+  title,
+  space,
+  exposure,
+  onClose,
+  onMove,
+}: {
+  title: string
+  space: Space
+  exposure: SpaceTrait[]
+  onClose: () => void
+  onMove: () => void
+}) {
+  const titleId = useId()
+  return (
+    <Dialog labelledBy={titleId} onClose={onClose}>
+      <div className={styles.stack}>
+        <h2 id={titleId} className={styles.title}>
+          Move “{title}” to {space.name}?
+        </h2>
+        <p className={styles.text}>In {space.name}, this note will be:</p>
+        <ul className={styles.exposure}>
+          {exposure.map((t) => {
+            const Glyph = traitGlyph(t.key)
+            return (
+              <li key={t.key}>
+                <span className={styles.exposureGlyph}>
+                  <Glyph size={15} />
+                </span>
+                {t.exposure}
+              </li>
+            )
+          })}
+        </ul>
+        <div className={styles.actions}>
+          <Button size="md" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="solid" size="md" onClick={onMove}>
+            Move
           </Button>
         </div>
       </div>

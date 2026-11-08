@@ -193,6 +193,12 @@
   gap: 6px;
 }
 
+.newNoteIcon {
+  width: 32px;
+  padding: 0;
+  justify-content: center;
+}
+
 .search {
   position: relative;
 }

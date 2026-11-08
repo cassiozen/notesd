@@ -4,6 +4,9 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -26,6 +29,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -35,6 +40,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -46,11 +53,15 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import notes.app.R
+import notes.app.ui.ButtonKind
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
+import notes.app.ui.NotesButton
+import notes.app.ui.NotesDialog
 import notes.app.ui.Sheet
 import notes.app.ui.SpaceThemes
 import notes.app.ui.Type
+import notes.core.api.SpaceTrait
 import notes.core.db.Space
 import notes.core.db.Spaces
 
@@ -133,97 +144,135 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
 }
 
 /**
- * The switcher between spaces (§7.7): the current space's icon and name,
- * opening a sheet of every space and, last, New space.
+ * A space's icon, name and trait glyphs (§7.8), together wherever a space is named; with no traits, the icon
+ * and name alone. [nameArea] decorates the icon and name (a button, say), [afterName] ends it (a chevron), and
+ * with [onTraits] the glyphs are grouped in a [TraitGroup]. A [subtitle] goes under the name, beside the icon.
  */
 @Composable
-fun SpaceSwitcher(
-    spaces: List<Space>,
-    current: String,
-    onSwitch: (String) -> Unit,
-    onCreate: () -> Unit,
+fun SpaceIdentity(
+    icon: String,
+    name: String,
+    traits: List<SpaceTrait>,
     modifier: Modifier = Modifier,
-    style: TextStyle = Type.title,
-    iconSize: Dp = 24.dp
+    style: TextStyle = Type.body.copy(fontSize = 16.sp),
+    color: Color = LocalTokens.current.ink,
+    iconSize: Dp = 24.dp,
+    iconGap: Dp = 14.dp,
+    glyphSize: Dp = 16.dp,
+    nameArea: Modifier = Modifier,
+    afterName: @Composable () -> Unit = {},
+    onTraits: (() -> Unit)? = null,
+    subtitle: (@Composable () -> Unit)? = null
 ) {
-    val t = LocalTokens.current
-    var open by remember { mutableStateOf(false) }
-    val name = spaces.nameOf(current)
-    Row(
-        modifier
-            .clip(RoundedCornerShape(12.dp))
-            .clickable(role = Role.Button) { open = true }
-            .semantics { contentDescription = "Space: $name" }
-            .padding(horizontal = 6.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        SpaceIconImage(spaces.iconOf(current), iconSize)
-        Spacer(Modifier.width(10.dp))
-        Text(
-            name,
-            style = style,
-            color = t.ink,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false)
-        )
-        Spacer(Modifier.width(4.dp))
-        // The chevron points right; turned down, it reads as a menu.
-        Icon(Icons.Chevron, null, Modifier.size(14.dp).rotate(90f), tint = t.ink3)
-    }
-    if (open) {
-        SpacePicker(
-            "Spaces",
-            spaces,
-            current,
-            onDismiss = { open = false },
-            onCreate = {
-                open = false
-                onCreate()
+    // With a subtitle the glyphs stay on the name's line, so they can't be a button apart from it.
+    val inline = subtitle != null
+    Row(modifier, verticalAlignment = Alignment.CenterVertically) {
+        Row(nameArea.weight(1f, fill = false), verticalAlignment = Alignment.CenterVertically) {
+            SpaceIconImage(icon, iconSize)
+            Spacer(Modifier.width(iconGap))
+            Column(Modifier.weight(1f, fill = false)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        name,
+                        style = style,
+                        color = color,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    afterName()
+                    if (inline && traits.isNotEmpty()) TraitGlyphs(traits, glyphSize)
+                }
+                subtitle?.invoke()
             }
-        ) { id ->
-            open = false
-            onSwitch(id)
+        }
+        if (!inline && traits.isNotEmpty()) {
+            if (onTraits != null) {
+                Spacer(Modifier.width(4.dp))
+                TraitGroup(traits, onTraits)
+            } else {
+                TraitGlyphs(traits, glyphSize)
+            }
         }
     }
 }
 
-/** A sheet listing [spaces] to pick one, [current] checked; with [onCreate], New space last. */
+/** Trait glyphs after a space's name, packed in the server's order. */
 @Composable
-fun SpacePicker(
-    title: String,
-    spaces: List<Space>,
-    current: String?,
-    onDismiss: () -> Unit,
-    onCreate: (() -> Unit)? = null,
-    onPick: (String) -> Unit
-) {
+fun TraitGlyphs(traits: List<SpaceTrait>, size: Dp, modifier: Modifier = Modifier) {
+    val description = describeTraits(traits)
+    Glyphs(traits, size, 4.dp, modifier.padding(start = 6.dp).semantics { contentDescription = description })
+}
+
+/**
+ * Beside the switcher and the list's title: the space's trait glyphs in one filled button opening Space info.
+ * Nothing without traits.
+ */
+@Composable
+fun TraitGroup(traits: List<SpaceTrait>, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    if (traits.isEmpty()) return
     val t = LocalTokens.current
+    val interaction = remember { MutableInteractionSource() }
+    val pressed by interaction.collectIsPressedAsState()
+    val description = "Space info: ${describeTraits(traits)}"
+    Glyphs(
+        traits,
+        18.dp,
+        6.dp,
+        modifier
+            .minimumInteractiveComponentSize()
+            .clip(RoundedCornerShape(10.dp))
+            .background(if (pressed) t.on else t.hover)
+            .clickable(interaction, ripple(), role = Role.Button, onClick = onClick)
+            .semantics { contentDescription = description }
+            .padding(horizontal = 8.dp, vertical = 6.dp)
+    )
+}
+
+/** The glyphs alone, in the tertiary ink; one whose trait has a problem in the danger colour. */
+@Composable
+internal fun Glyphs(traits: List<SpaceTrait>, size: Dp, gap: Dp, modifier: Modifier) {
+    val t = LocalTokens.current
+    Row(modifier, horizontalArrangement = Arrangement.spacedBy(gap), verticalAlignment = Alignment.CenterVertically) {
+        for (trait in traits) {
+            Icon(
+                painterResource(SpaceTraits.glyph(trait.key)),
+                null,
+                Modifier.size(size),
+                tint = if (trait.problem != null) t.danger else t.ink3
+            )
+        }
+    }
+}
+
+/** A sheet listing [spaces] to pick one, [current] checked. */
+@Composable
+fun SpacePicker(title: String, spaces: List<Space>, current: String?, onDismiss: () -> Unit, onPick: (String) -> Unit) {
     Sheet(onDismiss = onDismiss, title = title) {
         // Scrolls once there are more spaces than the sheet's height shows.
         Column(Modifier.verticalScroll(rememberScrollState())) {
             SpaceRows(spaces, current, onPick)
-            if (onCreate != null) {
-                Box(
-                    Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp).height(1.dp).background(t.edge)
-                )
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .clip(RoundedCornerShape(16.dp))
-                        .clickable(role = Role.Button, onClick = onCreate)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Plus, null, Modifier.size(18.dp), tint = t.ink2)
-                    }
-                    Spacer(Modifier.width(14.dp))
-                    Text("New space", style = Type.body.copy(fontSize = 16.sp), color = t.ink)
-                }
-            }
         }
+    }
+}
+
+@Composable
+internal fun MenuRow(icon: ImageVector, label: String, onClick: () -> Unit) {
+    val t = LocalTokens.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(18.dp), tint = t.ink2)
+        }
+        Spacer(Modifier.width(14.dp))
+        Text(label, style = Type.body.copy(fontSize = 16.sp), color = t.ink)
     }
 }
 
@@ -237,21 +286,40 @@ private fun SpaceRows(spaces: List<Space>, current: String?, onPick: (String) ->
                 .heightIn(min = 56.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .clickable(role = Role.RadioButton) { onPick(s.id) }
-                .semantics { selected = s.id == current }
+                .semantics(mergeDescendants = true) { selected = s.id == current }
                 .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            SpaceIconImage(s.icon, 24.dp)
-            Spacer(Modifier.width(14.dp))
-            Text(
-                s.name,
-                style = Type.body.copy(fontSize = 16.sp),
-                color = t.ink,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            SpaceIdentity(s.icon, s.name, s.traits, Modifier.weight(1f))
             if (s.id == current) Icon(Icons.Check, null, Modifier.size(20.dp), tint = t.ink)
+        }
+    }
+}
+
+/**
+ * Before a move into a space that shows the note to more people (§7.8): who will see it there, one
+ * [exposures] sentence a line, beside its trait's glyph.
+ */
+@Composable
+fun MoveAcrossDialog(title: String, to: Space, exposures: List<SpaceTrait>, onDismiss: () -> Unit, onMove: () -> Unit) {
+    val t = LocalTokens.current
+    NotesDialog(onDismiss, "Move “$title” to ${to.name}?") {
+        Text("In ${to.name}, this note will be:", style = Type.body, color = t.ink2)
+        Spacer(Modifier.height(12.dp))
+        for (exposure in exposures) {
+            Row(
+                Modifier.padding(vertical = 4.dp).semantics(mergeDescendants = true) {},
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(painterResource(SpaceTraits.glyph(exposure.key)), null, Modifier.size(18.dp), tint = t.ink3)
+                Spacer(Modifier.width(10.dp))
+                Text(exposure.exposure.orEmpty(), style = Type.body, color = t.ink)
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
+            NotesButton("Move", onMove, Modifier.weight(1f))
         }
     }
 }

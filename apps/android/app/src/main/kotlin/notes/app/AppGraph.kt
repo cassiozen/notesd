@@ -30,6 +30,7 @@ import notes.app.locks.Biometrics
 import notes.app.locks.FingerprintUnlock
 import notes.app.locks.KeystoreBiometrics
 import notes.app.notes.Deletions
+import notes.app.notes.SpaceInvite
 import notes.app.notes.TagTreeState
 import notes.app.settings.Appearance
 import notes.app.sync.SyncScheduler
@@ -117,6 +118,13 @@ class AppGraph(
 
     /** The space the list, tags and search show: this phone's own, never synced, the default at a cold start. */
     val space: StateFlow<String> = _space
+
+    /**
+     * For the space switcher: invitations to others' spaces, and a "what changed" line per space id. Sharing
+     * will fill them; nothing does yet.
+     */
+    val spaceInvites = MutableStateFlow<List<SpaceInvite>>(emptyList())
+    val spaceChanges = MutableStateFlow<Map<String, String>>(emptyMap())
 
     /** Shows another space, from All notes. */
     fun switchSpace(id: String) {

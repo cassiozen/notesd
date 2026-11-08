@@ -1,6 +1,9 @@
 package notes.core.db
 
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.Json
 import notes.core.api.RemoteSpace
+import notes.core.api.SpaceTrait
 import notes.core.text.Uuid7
 import notes.core.text.codePointLength
 import notes.core.text.isIsoControl
@@ -32,9 +35,25 @@ object Spaces {
 
 /**
  * A space as this device has it, with how many live notes are in it here.
- * [icon] is a key into the app's set; "" for the default one.
+ * [icon] is a key into the app's set; "" for the default one. [traits] are as the server last sent them (§7.8).
  */
-data class Space(val id: String, val name: String, val noteCount: Int, val icon: String = "", val createdAt: Long = 0)
+data class Space(
+    val id: String,
+    val name: String,
+    val noteCount: Int,
+    val icon: String = "",
+    val createdAt: Long = 0,
+    val traits: List<SpaceTrait> = emptyList()
+)
+
+private val traitsJson = Json { ignoreUnknownKeys = true }
+private val traitsSerializer = ListSerializer(SpaceTrait.serializer())
+
+// A row this release can't read (a later one wrote it) shows no traits rather than failing the list.
+private fun decodeTraits(text: String): List<SpaceTrait> =
+    runCatching { traitsJson.decodeFromString(traitsSerializer, text) }.getOrDefault(emptyList())
+
+private fun encodeTraits(traits: List<SpaceTrait>): String = traitsJson.encodeToString(traitsSerializer, traits)
 
 /** A space change waiting to go to the server. */
 class SpaceChange internal constructor(val id: String, val name: String, val icon: String, val delete: Boolean)
@@ -50,12 +69,22 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
         sql.query(
             """
             SELECT s.id, s.name,
-                (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.created_at
+                (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.created_at,
+                s.traits
             FROM spaces s WHERE s.pending_delete = 0
             ORDER BY s.id != ?, lower(s.name), s.id
             """,
             Spaces.DEFAULT
-        ) { Space(it.getText(0), it.getText(1), it.getLong(2).toInt(), it.getText(3), it.getLong(4)) }
+        ) {
+            Space(
+                it.getText(0),
+                it.getText(1),
+                it.getLong(2).toInt(),
+                it.getText(3),
+                it.getLong(4),
+                decodeTraits(it.getText(5))
+            )
+        }
     }
 
     /**
@@ -120,6 +149,7 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                 change.name,
                 change.icon
             )
+            sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", encodeTraits(stored.traits), change.id)
         }
     }
 
@@ -167,6 +197,8 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                     s.icon,
                     s.createdAt
                 )
+                // Even on a row with a change waiting: traits are the server's, not this device's.
+                sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", encodeTraits(s.traits), s.id)
             }
         }
     }

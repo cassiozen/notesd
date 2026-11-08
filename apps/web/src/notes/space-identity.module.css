@@ -1,0 +1,37 @@
+.glyphs {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--ink-3);
+}
+
+.glyphs > span {
+  display: grid;
+}
+
+/* The only colour a glyph takes: "look at this", never "this is on". */
+.glyphs > .problem {
+  color: var(--danger);
+}
+
+/* Filled at rest: it reads as one group, and as something to press. */
+.group {
+  flex: none;
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--hover);
+  cursor: pointer;
+}
+
+.group .glyphs {
+  gap: 6px;
+}
+
+.group:hover {
+  background: var(--on);
+}

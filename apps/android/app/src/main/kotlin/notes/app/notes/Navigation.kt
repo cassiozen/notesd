@@ -52,6 +52,7 @@ import notes.app.settings.NewSpaceDialog
 import notes.app.settings.SettingsScreen
 import notes.app.settings.SettingsSection
 import notes.app.settings.SettingsSectionScreen
+import notes.app.settings.SpaceInfoScreen
 import notes.app.ui.KeyboardBar
 import notes.app.ui.KeyboardBarSlot
 import notes.app.ui.LocalKeyboardBar
@@ -82,6 +83,10 @@ data object SettingsKey : NavKey
 /** One of Settings' categories, opened from its list. */
 @Serializable
 data class SettingsSectionKey(val section: SettingsSection) : NavKey
+
+/** A space's Space info (§7.8). */
+@Serializable
+data class SpaceInfoKey(val id: String) : NavKey
 
 /** Connecting to a server; with [signInAgain], signing back in to the one these notes belong to. */
 @Serializable
@@ -118,6 +123,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
     val account by graph.accounts.account.collectAsStateWithLifecycle()
     val spaces by graph.spaces.collectAsStateWithLifecycle()
     val space by graph.space.collectAsStateWithLifecycle()
+    val invites by graph.spaceInvites.collectAsStateWithLifecycle()
+    val changes by graph.spaceChanges.collectAsStateWithLifecycle()
     val reduce = LocalReduceMotion.current
 
     val directive = calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth(currentWindowAdaptiveInfo())
@@ -171,6 +178,12 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
         show(null)
     }
 
+    fun spaceInfo(id: String) {
+        if (backStack.lastOrNull() == SpaceInfoKey(id)) return
+        view.hideKeyboard()
+        backStack += SpaceInfoKey(id)
+    }
+
     // A note open: coming back after a while doesn't move the list to the default space from under it.
     val editorOpen by remember { derivedStateOf { backStack.any { it is EditorKey } } }
     LaunchedEffect(editorOpen) { graph.editorOpen = editorOpen }
@@ -190,7 +203,9 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
     // Folded, unfolded, resized: the tags move between sidebar and screen.
     LaunchedEffect(wide) {
         if (wide) {
-            if (backStack.lastOrNull() == TagsKey) backStack += NotesKey
+            // The list takes the tags' place, so a page opened from them (Space info) keeps it beneath.
+            val at = backStack.indexOf(TagsKey)
+            if (at >= 0 && NotesKey !in backStack) backStack[at] = NotesKey
             backStack.removeAll { it == TagsKey }
         }
     }
@@ -258,7 +273,10 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                         spaces = spaces,
                         space = space,
                         onSpace = ::switchSpace,
-                        onNewSpace = { creatingSpace = true }
+                        onNewSpace = { creatingSpace = true },
+                        onSpaceInfo = ::spaceInfo,
+                        invites = invites,
+                        changes = changes
                     )
                 }
                 Box(Modifier.weight(1f)) {
@@ -303,7 +321,10 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     spaces = spaces,
                                     space = space,
                                     onSpace = ::switchSpace,
-                                    onNewSpace = { creatingSpace = true }
+                                    onNewSpace = { creatingSpace = true },
+                                    onSpaceInfo = ::spaceInfo,
+                                    invites = invites,
+                                    changes = changes
                                 )
                             }
                             entry<NotesKey>(
@@ -335,7 +356,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onOpenElsewhere = { id, s ->
                                         graph.switchSpace(s)
                                         open(id)
-                                    }
+                                    },
+                                    onSpaceInfo = ::spaceInfo
                                 )
                             }
                             entry<EditorKey>(metadata = ListDetailSceneStrategy.detailPane()) { key ->
@@ -397,7 +419,24 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onSpaceCreated = { id ->
                                         graph.switchSpace(id)
                                         home()
-                                    }
+                                    },
+                                    onSpaceInfo = ::spaceInfo
+                                )
+                            }
+                            entry<SpaceInfoKey> { key ->
+                                val from = backStack.getOrNull(backStack.lastIndexOf(key) - 1)
+                                SpaceInfoScreen(
+                                    graph,
+                                    key.id,
+                                    backLabel = when (from) {
+                                        is SettingsSectionKey -> from.section.title
+
+                                        // The sidebar screen has no name to go back to.
+                                        TagsKey -> null
+
+                                        else -> "Notes"
+                                    },
+                                    onBack = { pop() }
                                 )
                             }
                             entry<OnboardingKey> { key ->

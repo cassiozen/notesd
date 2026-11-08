@@ -192,6 +192,8 @@ fun EditorScreen(
     var linkDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var menu by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
+    // A move that would let more people see the note, waiting for the person to say yes (§7.8).
+    var crossing by remember { mutableStateOf<Space?>(null) }
     var emailing by remember { mutableStateOf(false) }
 
     /** Null while the find bar is closed. The queries stay for this note while it's open. */
@@ -568,8 +570,26 @@ fun EditorScreen(
             onDismiss = { moving = false }
         ) { id ->
             moving = false
-            vm.move(id)
-            onMoved(id)
+            val to = spaces.firstOrNull { it.id == id }
+            if (to != null && newExposures(spaces.firstOrNull { it.id == vm.spaceId() }, to).isNotEmpty()) {
+                crossing = to
+            } else {
+                vm.move(id)
+                onMoved(id)
+            }
+        }
+    }
+
+    crossing?.let { to ->
+        MoveAcrossDialog(
+            editor?.document()?.title?.trim()?.ifEmpty { null } ?: "New note",
+            to,
+            newExposures(spaces.firstOrNull { it.id == vm.spaceId() }, to),
+            onDismiss = { crossing = null }
+        ) {
+            crossing = null
+            vm.move(to.id)
+            onMoved(to.id)
         }
     }
 

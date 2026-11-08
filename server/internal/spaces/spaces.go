@@ -27,11 +27,12 @@ const MaxNameRunes = 64
 
 // Space is one space, with how many live notes it holds.
 type Space struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	Icon      string `json:"icon"`
-	CreatedAt int64  `json:"createdAt"`
-	NoteCount int    `json:"noteCount"`
+	ID        string  `json:"id"`
+	Name      string  `json:"name"`
+	Icon      string  `json:"icon"`
+	CreatedAt int64   `json:"createdAt"`
+	NoteCount int     `json:"noteCount"`
+	Traits    []Trait `json:"traits"`
 }
 
 // Errors.
@@ -63,6 +64,7 @@ type Store struct {
 	db       *database.DB
 	now      func() time.Time
 	onCommit func()
+	traits   map[string]TraitSource
 }
 
 // NewStore returns a Store using the system clock.
@@ -96,7 +98,12 @@ func (s *Store) List(ctx context.Context) ([]Space, error) {
 		}
 		out = append(out, sp)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	// Trait sources may need a connection of their own from the read pool.
+	rows.Close()
+	return out, s.withTraits(ctx, out)
 }
 
 // Put creates the space id or renames it, and sets its icon unless icon is
@@ -115,6 +122,12 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 		return Space{}, err
 	}
 	var out Space
+	// Before the write: a trait source failing after it would report a failed PUT that was stored.
+	// Traits depend on the space's id, not its name or icon.
+	pre := []Space{{ID: id}}
+	if err := s.withTraits(ctx, pre); err != nil {
+		return Space{}, err
+	}
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		stored := name
 		for i := 2; ; i++ {
@@ -139,10 +152,12 @@ func (s *Store) Put(ctx context.Context, id, name string, icon *string) (Space, 
 		return tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL`,
 			id).Scan(&out.NoteCount)
 	})
-	if err == nil {
-		s.committed()
+	if err != nil {
+		return Space{}, err
 	}
-	return out, err
+	s.committed()
+	out.Traits = pre[0].Traits
+	return out, nil
 }
 
 // Delete removes an empty space. Deleting one that is already gone succeeds.

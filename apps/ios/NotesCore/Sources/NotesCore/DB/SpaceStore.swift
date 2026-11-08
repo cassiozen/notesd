@@ -33,6 +33,19 @@ public struct Space: Hashable, Sendable, Identifiable {
     public var noteCount: Int
     /// A key into the app's icons; "" for the default one.
     public var icon: String = ""
+    /// As the server last sent them (§7.8).
+    public var traits: [SpaceTrait] = []
+}
+
+enum TraitsColumn {
+    // A row this release can't read (a later one wrote it) shows no traits rather than failing the list.
+    static func decode(_ text: String) -> [SpaceTrait] {
+        (try? JSONDecoder().decode([SpaceTrait].self, from: Data(text.utf8))) ?? []
+    }
+
+    static func encode(_ traits: [SpaceTrait]) -> String {
+        (try? JSONEncoder().encode(traits)).map { String(decoding: $0, as: UTF8.self) } ?? "[]"
+    }
 }
 
 /// A space change waiting to go to the server.
@@ -61,12 +74,16 @@ public final class SpaceStore: Sendable {
             try sql.query(
                 """
                 SELECT s.id, s.name,
-                    (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon
+                    (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.traits
                 FROM spaces s WHERE s.pending_delete = 0
                 ORDER BY s.id != ?, lower(s.name), s.id
                 """,
                 Spaces.defaultId
-            ) { Space(id: $0.text(0), name: $0.text(1), noteCount: Int($0.int64(2)), icon: $0.text(3)) }
+            ) {
+                Space(
+                    id: $0.text(0), name: $0.text(1), noteCount: Int($0.int64(2)), icon: $0.text(3),
+                    traits: TraitsColumn.decode($0.text(4)))
+            }
         }
     }
 
@@ -127,6 +144,7 @@ public final class SpaceStore: Sendable {
             try sql.exec(
                 "UPDATE spaces SET name = ?, icon = ?, dirty = 0, attempts = 0 WHERE id = ? AND name = ? AND icon = ?",
                 stored.name, stored.icon, change.id, change.name, change.icon)
+            try sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", TraitsColumn.encode(stored.traits), change.id)
         }
     }
 
@@ -181,6 +199,8 @@ public final class SpaceStore: Sendable {
                     WHERE dirty = 0 AND pending_delete = 0
                     """,
                     s.id, s.name, s.icon, s.createdAt)
+                // Even on a row with a change waiting: traits are the server's, not this device's.
+                try sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", TraitsColumn.encode(s.traits), s.id)
             }
         }
     }

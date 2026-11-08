@@ -6,6 +6,8 @@ enum Route: Hashable {
     case note(id: String, startTag: String? = nil, isNew: Bool = false)
     case settings
     case settingsSection(SettingsSection)
+    /// A space's page of space-level settings (§7.8), by id.
+    case spaceInfo(String)
 }
 
 /// What's open beside the list: the detail's first screen, then the ones pushed
@@ -42,6 +44,11 @@ final class Navigator {
     /// Settings, in place of what was open.
     func openSettings() {
         path = [.settings]
+    }
+
+    /// A space's info, in place of what was open, as Settings opens from the sidebar.
+    func openSpaceInfo(_ id: String) {
+        path = [.spaceInfo(id)]
     }
 
     /// Over the screen shown (a conflicted copy's original).

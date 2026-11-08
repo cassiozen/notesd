@@ -90,8 +90,15 @@ struct NotesListView: View {
                             }
                         }
                     } else {
-                        Button("\(othersCount) more in \(otherSpaces)") {
+                        Button {
                             elsewhereShownFor = query.trimmed
+                        } label: {
+                            HStack(spacing: 6) {
+                                Text("\(othersCount) more in \(otherSpaces)")
+                                if let other = onlyOtherSpace, !other.traits.isEmpty {
+                                    TraitGlyphs(traits: other.traits)
+                                }
+                            }
                         }
                         .font(.notesButton)
                         .foregroundStyle(Color(Palette.link))
@@ -177,9 +184,11 @@ struct NotesListView: View {
     private var spaceName: String { graph.spaceName(graph.space) }
 
     /// With two spaces, the other one by name.
-    private var otherSpaces: String {
+    private var otherSpaces: String { onlyOtherSpace?.name ?? "other spaces" }
+
+    private var onlyOtherSpace: Space? {
         let others = graph.spaces.filter { $0.id != graph.space }
-        return others.count == 1 ? others[0].name : "other spaces"
+        return others.count == 1 ? others[0] : nil
     }
 
     /// What the list follows: a change to any of these reloads it.
@@ -199,11 +208,13 @@ struct NotesListView: View {
         }
     }
 
-    /// The large title, the filter shown, led by the space's icon so the space
-    /// shows with the sidebar away; with a filter, a way back to all notes.
+    /// The large title, the filter shown, led by the space's icon and its traits so the space shows with the
+    /// sidebar away; with a filter, a way back to all notes.
     private var header: some View {
-        HStack(spacing: 12) {
-            SpaceIconImage(icon: graph.spaces.first { $0.id == graph.space }?.icon ?? "", size: 30)
+        let space = graph.spaces.first { $0.id == graph.space }
+        return HStack(spacing: 12) {
+            SpaceIconImage(icon: space?.icon ?? "", size: 30)
+            TraitGroup(traits: space?.traits ?? []) { nav.openSpaceInfo(graph.space) }
             Text(title)
                 .font(.notesDisplay)
                 .foregroundStyle(Color.ink)

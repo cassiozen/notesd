@@ -4,6 +4,7 @@ import { TouchIdOffer } from '../locks/unlock'
 import type { SyncNotice } from '../offline/protocol'
 import { navigate, parseRoute, usePathname } from '../router'
 import { SettingsSheet } from '../settings/settings'
+import { SpaceInfo } from '../settings/space-info'
 import { NewSpaceDialog } from '../settings/spaces'
 import { Backdrop } from '../ui/backdrop'
 import { PHONE, WIDE, useMediaQuery } from '../ui/media'
@@ -62,6 +63,8 @@ function ShellView({ username }: { username: string }) {
   const [notice, setNotice] = useState<Notice | null>(null)
   // New space…, from the sidebar's switcher.
   const [newSpace, setNewSpace] = useState(false)
+  // Space info, from the switcher's glyphs or its menu.
+  const [info, setInfo] = useState<string | null>(null)
 
   // Settings and the tags screen open over the app; the note behind them stays open.
   const over = route.name === 'settings' || route.name === 'tags'
@@ -247,6 +250,7 @@ function ShellView({ username }: { username: string }) {
       space={space}
       onSpace={switchSpace}
       onNewSpace={() => setNewSpace(true)}
+      onSpaceInfo={setInfo}
       onHide={docked?.onHide}
       hidden={docked?.hidden}
       hideRef={hideButton}
@@ -276,6 +280,7 @@ function ShellView({ username }: { username: string }) {
               onTags={() => (wide ? hideSidebar(false) : navigate('/tags'))}
               showTagsRef={showButton}
               mobile={mobile}
+              onSpaceInfo={() => setInfo(space)}
             />
           )}
           {showPane &&
@@ -329,6 +334,8 @@ function ShellView({ username }: { username: string }) {
           }}
         />
       )}
+
+      {info && <SpaceInfo id={info} onClose={() => setInfo(null)} />}
     </>
   )
 }

@@ -19,13 +19,17 @@ struct TagsView: View {
         ScrollView {
             LazyVStack(alignment: .leading, spacing: 2) {
                 HStack {
-                    // The space, always: its menu makes new ones too.
+                    // The space, always: its switcher makes new ones too.
                     SpaceMenu(
                         font: .custom("InstrumentSerif-Regular", size: 27, relativeTo: .title), iconSize: 31,
-                        onSwitched: { switched() }
-                    ) {
-                        creating = true
-                    }
+                        invites: invites, changes: changes,
+                        onSwitched: { switched() },
+                        onInfo: { id in
+                            drawer.close()
+                            nav.openSpaceInfo(id)
+                        },
+                        onCreate: { creating = true }
+                    )
                     .accessibilityAddTraits(.isHeader)
                     Spacer()
                     Button(action: openSettings) {
@@ -92,6 +96,22 @@ struct TagsView: View {
             await reload()
             for await _ in changes { await reload() }
         }
+    }
+
+    /// Invitations to others' spaces. Nothing provides them yet (sharing will); DEBUG builds can fake them.
+    private var invites: [SpaceInvite] {
+        #if DEBUG
+            if FakeSwitcher.on { return FakeSwitcher.invites }
+        #endif
+        return []
+    }
+
+    /// What changed lately in each space, by id: as `invites`.
+    private var changes: [String: String] {
+        #if DEBUG
+            if FakeSwitcher.on { return FakeSwitcher.changes(graph.spaces) }
+        #endif
+        return [:]
     }
 
     /// The space's tags (§7.7).

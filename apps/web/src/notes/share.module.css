@@ -141,3 +141,29 @@
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Who else the note would reach: the destination's exposure sentences (§7.8). */
+.exposure {
+  list-style: none;
+  margin: -6px 0 0;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-radius: 14px;
+  background: var(--field);
+  border: 1px solid var(--hair);
+  font-size: 14.5px;
+}
+
+.exposure > li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.exposureGlyph {
+  flex: none;
+  display: grid;
+  color: var(--ink-2);
+}
