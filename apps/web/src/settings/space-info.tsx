@@ -183,19 +183,21 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
  * Escape closes the page). An empty name is put back too.
  */
 function NameField({ space, onError }: { space: Space; onError: (message: string) => void }) {
-  // Typing; null when the field isn't being edited.
+  // What's typed; null until a key changes it, so a rename from elsewhere while it's focused isn't saved over.
   const [draft, setDraft] = useState<string | null>(null)
   // Saved and on its way: shown until the list has it, rather than the old name in between.
   const [pending, setPending] = useState<string | null>(null)
   const value = draft ?? pending ?? space.name
 
   async function commit() {
-    const name = (draft ?? '').trim().replace(/\s+/g, ' ')
+    if (draft === null) return
+    const name = draft.trim().replace(/\s+/g, ' ')
     setDraft(null)
     if (!name || name === space.name) return
     setPending(name)
     try {
-      await putSpace(space.id, name, space.icon)
+      // No icon: the server keeps its own, so a pick still on its way isn't undone by a rename.
+      await putSpace(space.id, name)
     } catch (err) {
       onError(genericMessage(err))
     } finally {
@@ -211,17 +213,16 @@ function NameField({ space, onError }: { space: Space; onError: (message: string
       spellCheck={false}
       maxLength={64}
       value={value}
-      onFocus={() => setDraft(value)}
       onChange={(e) => setDraft(e.target.value)}
       onBlur={() => void commit()}
       onKeyDown={(e) => {
         if (e.key === 'Enter') {
           e.preventDefault()
           e.currentTarget.blur()
-        } else if (e.key === 'Escape' && draft !== null && draft !== space.name) {
+        } else if (e.key === 'Escape' && draft !== null) {
           e.preventDefault()
           e.stopPropagation()
-          setDraft(space.name)
+          setDraft(null)
         }
       }}
     />

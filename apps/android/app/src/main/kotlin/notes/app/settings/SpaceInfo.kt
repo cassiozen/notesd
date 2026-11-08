@@ -248,7 +248,7 @@ internal fun SpaceInfoPage(
                 }
                 error?.let { PageError(it, Modifier.padding(bottom = 8.dp)) }
                 Traits(space, registry)
-                if (own) DeleteSpace(space, onDelete)
+                if (own) DeleteSpace(space, onDelete, work)
             }
         }
     }
@@ -540,9 +540,8 @@ private fun TraitLine(row: TraitRow) {
 
 /** Delete, confirmed under it; off, with why, for the default space or one with notes. */
 @Composable
-private fun DeleteSpace(space: Space, onDelete: suspend () -> String?) {
+private fun DeleteSpace(space: Space, onDelete: suspend () -> String?, work: CoroutineScope) {
     val t = LocalTokens.current
-    val scope = rememberCoroutineScope()
     var asking by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
@@ -566,7 +565,8 @@ private fun DeleteSpace(space: Space, onDelete: suspend () -> String?) {
                 busy = busy,
                 onConfirm = {
                     busy = true
-                    scope.launch {
+                    // On [work], not this composable's scope: leaving the page mustn't cancel a delete under way.
+                    work.launch {
                         // Done: the space leaves the list and the page goes back by itself.
                         onDelete()?.let {
                             error = it

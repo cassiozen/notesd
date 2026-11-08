@@ -216,6 +216,8 @@ describe('creating spaces', () => {
     // Asked in place first; Cancel leaves it.
     await user.click(within(within(info).getByRole('group', { name: 'Delete Empty?' })).getByRole('button', { name: 'Cancel' }))
     expect(within(info).queryByRole('group', { name: 'Delete Empty?' })).toBeNull()
+    // Back on Delete, though it was off while the confirmation was open.
+    expect(document.activeElement).toBe(remove)
     await user.click(remove)
     await user.click(within(within(info).getByRole('group', { name: 'Delete Empty?' })).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Empty' })).toBeNull())

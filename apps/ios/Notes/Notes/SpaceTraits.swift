@@ -11,7 +11,7 @@ struct TraitKind: Identifiable {
     /// Its part of Space info, on or off: everything it changes, in place, turning it on included (a feature is
     /// turned on by using it). Nil: a row with the server's label and summary, and nothing to change.
     var section: (@MainActor (Space) -> AnyView)?
-    /// Off, whether Space info shows it at all.
+    /// Off, whether Space info offers it. Set only with a `section`: that section is what turns it on.
     var canTurnOn = false
 
     var id: String { key }

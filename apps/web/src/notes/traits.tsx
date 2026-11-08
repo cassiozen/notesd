@@ -17,7 +17,7 @@ export type TraitEntry = {
    * label and summary, and there is nothing to change.
    */
   Section?: ComponentType<{ space: Space }>
-  /** Off, whether Space info shows it at all. */
+  /** Off, whether Space info offers it. Set only with a Section: that section is what turns it on. */
   canTurnOn: (space: Space) => boolean
 }
 

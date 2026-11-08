@@ -16,7 +16,15 @@ struct SpacesSection: View {
                 Button {
                     nav.openSpaceInfo(space.id)
                 } label: {
-                    SpaceLabel(space: space, iconSize: 28, detail: space.noteCountLabel)
+                    HStack {
+                        SpaceLabel(space: space, iconSize: 28, detail: space.noteCountLabel)
+                        Spacer(minLength: 8)
+                        // A plain button draws no chevron of its own; the row still reads as opening something.
+                        Image(systemName: "chevron.right")
+                            .font(.footnote.weight(.semibold))
+                            .foregroundStyle(Color.ink3)
+                            .accessibilityHidden(true)
+                    }
                 }
             }
             Button("New Space") { creating = true }

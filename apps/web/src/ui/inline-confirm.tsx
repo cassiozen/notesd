@@ -1,4 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
+import { flushSync } from 'react-dom'
 import { Button } from './button'
 import styles from './inline-confirm.module.css'
 
@@ -26,14 +27,17 @@ export function InlineConfirm({
   const from = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    from.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    // Kept from the first run: StrictMode's second would find Cancel focused.
+    from.current ??= document.activeElement instanceof HTMLElement ? document.activeElement : null
     cancelRef.current?.focus()
   }, [])
 
   const cancel = () => {
     if (busy) return
-    if (from.current?.isConnected) from.current.focus()
-    onCancel()
+    const back = from.current
+    // Closed first: the button that asked may be disabled while this is open, and can't take focus until then.
+    flushSync(onCancel)
+    if (back?.isConnected) back.focus()
   }
 
   return (

@@ -50,7 +50,7 @@
 
 /* Reads as the title, not a field, until hovered or focused: the name is edited where it's shown. */
 .nameInput {
-  width: 100%;
+  width: calc(100% + 16px);
   min-width: 0;
   margin: -3px -8px;
   padding: 3px 8px;

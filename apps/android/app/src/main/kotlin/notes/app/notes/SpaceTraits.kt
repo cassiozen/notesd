@@ -19,7 +19,7 @@ class TraitEntry(
      * info shows the server's label and summary, and there's nothing to change.
      */
     val section: (@Composable (space: Space) -> Unit)? = null,
-    /** Off, whether Space info shows it for [Space] at all: a feature is turned on by using its section. */
+    /** Off, whether Space info offers it for [Space]. Set only with a [section]: that section is what turns it on. */
     val canTurnOn: (Space) -> Boolean = { false }
 ) {
     /** The same trait with this app's way to change it. */
