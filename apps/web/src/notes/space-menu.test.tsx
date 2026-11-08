@@ -62,6 +62,22 @@ describe('SpaceMenu', () => {
     expect(row.querySelector('[data-trait="shared"]')).toBeTruthy()
   })
 
+  it('keeps a row to one line, private unsaid; a problem gets words', async () => {
+    const { show } = open({ current: 'work' })
+    await show()
+    expect(within(pop()).getByRole('button', { name: 'Notes' }).textContent).toBe('Notes')
+    const row = within(pop()).getByRole('button', { name: /^Family, / })
+    expect(row.getAttribute('aria-label')).toBe('Family, Shared, Published (Publishing failed)')
+    expect(row.textContent).toBe('FamilyPublishing failed')
+    expect(row.querySelectorAll('[data-trait]')).toHaveLength(2)
+  })
+
+  it('says nothing on the card of a space without traits', async () => {
+    const { show } = open({ current: 'notes' })
+    await show()
+    expect(within(pop()).getByRole('region', { name: 'Notes' }).textContent).toBe('NotesInfo')
+  })
+
   it('opens another space’s info without switching to it', async () => {
     const { show, user, onInfo, onSwitch } = open()
     await show()
@@ -73,7 +89,7 @@ describe('SpaceMenu', () => {
   it('switches, opens the current space’s info and starts a new one', async () => {
     const { show, user, onInfo, onSwitch, onCreate } = open()
     await show()
-    await user.click(within(pop()).getByRole('button', { name: /^Notes, / }))
+    await user.click(within(pop()).getByRole('button', { name: 'Notes' }))
     expect(onSwitch).toHaveBeenCalledWith('notes')
     await show()
     await user.click(within(pop()).getByRole('button', { name: 'Space info' }))

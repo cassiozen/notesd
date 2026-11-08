@@ -1,23 +1,137 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 18px;
 }
 
 .head {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
-  text-align: center;
+  gap: 18px;
+}
+
+/* Pressed, the picker opens under the header. A ring on hover says it can be. */
+.iconButton {
+  flex: none;
+  display: grid;
+  padding: 4px;
+  margin: -4px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.2s var(--spring);
+}
+
+.iconButton:hover,
+.iconButton[aria-expanded='true'] {
+  background: var(--hover);
+}
+
+.iconButton:active {
+  transform: scale(0.96);
+}
+
+.headText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .name {
-  max-width: 100%;
-  margin: 2px 0 0;
-  font: 400 26px/1.15 var(--font-serif);
+  margin: 0;
+  font: 400 30px/1.15 var(--font-serif);
   overflow-wrap: anywhere;
+}
+
+/* Reads as the title, not a field, until hovered or focused: the name is edited where it's shown. */
+.nameInput {
+  width: 100%;
+  min-width: 0;
+  margin: -3px -8px;
+  padding: 3px 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  font: 400 30px/1.15 var(--font-serif);
+  text-overflow: ellipsis;
+  transition: background 0.15s;
+}
+
+.nameInput:hover {
+  background: var(--hover);
+}
+
+.nameInput:focus {
+  outline: none;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1.5px var(--focus);
+}
+
+.meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.glyphs {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.glyphs > span {
+  display: grid;
+}
+
+.glyphs > [data-problem] {
+  color: var(--danger);
+}
+
+.glyphs > [data-new] {
+  animation: glyph-in 0.6s var(--spring);
+}
+
+@keyframes glyph-in {
+  from {
+    opacity: 0;
+    transform: scale(0.4);
+  }
+}
+
+.picker {
+  margin-top: -6px;
+  animation: picker-in 0.3s var(--spring);
+}
+
+@keyframes picker-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+/* A trait's part of the page: a caption, its group, then what it does to the whole space. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.caption {
+  margin: 0;
+  padding: 0 4px;
+  font: 600 11px/1 var(--font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
 }
 
 .group {
@@ -29,6 +143,18 @@
   border: 1px solid var(--hair);
 }
 
+/* Under a section's group: its one action on the whole space, and that action's confirmation. */
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.footer > [role='group'] {
+  align-self: stretch;
+}
+
 .trait {
   display: flex;
   align-items: center;
@@ -36,8 +162,7 @@
   padding: 10px 12px;
 }
 
-.trait + .trait,
-.action + .action {
+.trait + .trait {
   border-top: 1px solid var(--hair);
 }
 
@@ -85,73 +210,35 @@
   color: var(--ink-2);
 }
 
-.manage {
-  flex: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  padding: 6px 4px 6px 8px;
-  border: 0;
-  border-radius: 8px;
-  background: transparent;
-  color: var(--ink-3);
-  font: 400 13px/1 var(--font-sans);
-  cursor: pointer;
-}
-
-.manage:hover {
-  background: var(--hover);
-}
-
-.action {
-  width: 100%;
-  min-height: 42px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+.error {
   margin: 0;
-  padding: 10px 12px;
-  border: 0;
-  background: transparent;
-  color: var(--ink);
-  font: 400 14.5px/1.2 var(--font-sans);
-  text-align: left;
-  cursor: pointer;
-}
-
-.group > .action:first-of-type {
-  border-top-left-radius: 13px;
-  border-top-right-radius: 13px;
-}
-
-.group > .action:last-of-type {
-  border-bottom-left-radius: 13px;
-  border-bottom-right-radius: 13px;
-}
-
-.action:not(:disabled):hover {
-  background: var(--hover);
-}
-
-.action[data-danger] {
+  font-size: 13px;
   color: var(--danger);
 }
 
-.action:disabled {
-  color: var(--ink-3);
-  cursor: default;
-}
-
-.chevron {
-  flex: none;
-  display: grid;
-  color: var(--ink-3);
+.end {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
 }
 
 .why {
-  margin: -6px 0 0;
-  padding: 0 12px 10px;
+  margin: -4px 0 0;
   font-size: 12.5px;
   color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .glyphs > [data-new],
+  .picker {
+    animation: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .name,
+  .nameInput {
+    font-size: 26px;
+  }
 }

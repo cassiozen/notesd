@@ -22,31 +22,34 @@ struct SpaceSwitcherTests {
             ])
     }
 
-    @Test func aSpaceWithoutTraitsIsOnlyYou() {
-        #expect(Switcher.cardLines(space("notes")) == [SwitcherLine(text: "Only you")])
-        #expect(Switcher.detail(space("notes"), change: nil) == .onlyYou)
-        #expect(Switcher.spoken(space("notes"), change: nil) == "Notes, only you")
+    @Test func aSpaceWithoutTraitsGoesUnsaid() {
+        #expect(Switcher.cardLines(space("notes")).isEmpty)
+        #expect(Switcher.detail(space("notes"), change: nil) == nil)
+        #expect(Switcher.spoken(space("notes"), change: nil) == "Notes")
     }
 
-    @Test func aRowNamesItsTraitsOrTheirProblems() {
-        #expect(
-            Switcher.detail(space("family", [shared, failing]), change: nil)
-                == .traits([
-                    SwitcherLine(symbol: "person.2", text: "Shared"),
-                    SwitcherLine(symbol: "globe", text: "Publishing failed", problem: true),
-                ]))
+    @Test func aRowIsOneLineUnlessATraitHasAProblem() {
+        #expect(Switcher.detail(space("work", [shared, agent]), change: nil) == nil, "the glyphs say it")
+        #expect(Switcher.spoken(space("work", [shared]), change: nil) == "Work, Shared")
         let family = space("family", [shared, failing])
-        #expect(Switcher.spoken(family, change: nil) == "Family, Shared, Publishing failed")
+        #expect(Switcher.detail(family, change: nil) == .problems("Publishing failed"))
+        #expect(Switcher.spoken(family, change: nil) == "Family, Shared, Published: Publishing failed")
+        var broken = agent
+        broken.problem = "Agent stopped"
+        #expect(
+            Switcher.detail(space("family", [shared, failing, broken]), change: nil)
+                == .problems("Publishing failed · Agent stopped"))
     }
 
-    @Test func whatChangedTakesTheRowAfterTheGlyphs() {
-        let work = space("work", [shared])
+    @Test func whatChangedTakesTheSecondLine() {
+        let news = "Ana edited 2 notes · 2h"
+        let family = space("family", [shared, failing])
+        #expect(Switcher.detail(family, change: news) == .change(news), "before a problem")
+        #expect(Switcher.spoken(family, change: news) == "Family, Ana edited 2 notes · 2h")
+        #expect(Switcher.detail(space("notes"), change: news) == .change(news))
         #expect(
-            Switcher.detail(work, change: "Ben edited 3 notes · 2h")
-                == .change(glyphs: [SwitcherLine(symbol: "person.2", text: "")], text: "Ben edited 3 notes · 2h"))
-        #expect(Switcher.spoken(work, change: "Ben edited 3 notes · 2h") == "Work, Ben edited 3 notes · 2h")
-        let edited = "Ana edited 1 note"
-        #expect(Switcher.detail(space("notes"), change: edited) == .change(glyphs: [], text: edited))
+            Switcher.spoken(space("work", [shared]), change: "Ana edited a note · 2h") == "Work, Ana edited a note · 2h"
+        )
     }
 
     @Test func theCurrentSpaceIsntListedAndTheOthersKeepTheirOrder() {

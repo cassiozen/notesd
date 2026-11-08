@@ -4,6 +4,7 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -452,8 +453,8 @@ class ScreenshotTest {
         compose.waitUntilExactlyOneExists(hasText("New space…"))
         shoot("space-menu-$suffix")
         compose.onNode(hasContentDescription("Space info")).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
-        shoot("space-info-$suffix")
+        compose.waitUntilExactlyOneExists(hasText("Delete space…"))
+        shoot("space-info-traits-$suffix")
     }
 
     @Test fun traitsLight() = traits("light", null)
@@ -608,22 +609,89 @@ class ScreenshotTest {
 
     @Test fun sharedSwitcherDark() = sharedSwitcher("dark", "+night")
 
+    /** Space info for a space of this account's shared with ben, cy invited (§7.8, §7.9). */
     private fun sharedManage(suffix: String, qualifiers: String?) = sharedSeed().use {
         launch(qualifiers)
         graph.switchSpace("work")
         compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared"))
         compose.onNode(hasContentDescription("Space info: Shared")).performClick()
-        compose.waitUntilExactlyOneExists(hasText("With ben · invited cy"))
+        compose.waitUntilExactlyOneExists(hasContentDescription("Invite dee"))
         shoot("shared-info-$suffix")
-        compose.onNode(hasText("With ben · invited cy")).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Sharing"))
-        shoot("shared-manage-$suffix")
-        compose.onNode(hasText("Invite someone") and hasClickAction()).performClick()
-        compose.waitUntilExactlyOneExists(hasText("dee"))
-        shoot("shared-picker-$suffix")
+        compose.onNode(hasContentDescription("Remove ben")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Remove ben?", substring = true))
+        shoot("shared-confirm-$suffix")
     }
 
     @Test fun sharedManageLight() = sharedManage("light", null)
 
     @Test fun sharedManageDark() = sharedManage("dark", "+night")
+
+    @Test
+    fun sharedManageLargeText() {
+        RuntimeEnvironment.setFontScale(2f)
+        sharedManage("text200", null)
+    }
+
+    /** Space info for someone else's space: the name and icon are theirs, Leave is this account's. */
+    @Test
+    fun sharedMemberInfo() = sharedSeed().use {
+        launch()
+        graph.switchSpace("fam")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared"))
+        compose.onNode(hasContentDescription("Space info: Shared")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Leave space…"))
+        shoot("shared-member-info")
+    }
+
+    /** A space not shared yet: People invites with a tap; the icon opens its picker in place. */
+    private fun spaceInfo(suffix: String, qualifiers: String?) = sharedSeed().use {
+        val travel = runBlocking { graph.sync.spaces.create("Travel", "treasure-map") }
+        launch(qualifiers)
+        graph.switchSpace(travel)
+        compose.waitUntilExactlyOneExists(hasContentDescription("Sidebar"))
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Travel"))
+        compose.onNode(hasContentDescription("Space: Travel")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("New space…"))
+        compose.onNode(hasContentDescription("Space info")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Invite dee"))
+        shoot("space-info-$suffix")
+        compose.onNode(hasContentDescription("Change icon")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Dragon"))
+        shoot("space-info-icons-$suffix")
+        compose.onNode(hasContentDescription("Change icon")).performClick()
+        compose.onNode(hasContentDescription("Invite dee")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Cancel dee's invitation"), 10_000)
+        compose.waitUntilExactlyOneExists(hasText("Stop sharing…") and isEnabled(), 10_000)
+        shoot("space-info-invited-$suffix")
+    }
+
+    @Test fun spaceInfoLight() = spaceInfo("light", null)
+
+    /** Short and long names: the pencil stays beside the name, which ellipsizes rather than pushing it off. */
+    @Test
+    fun spaceInfoNames() {
+        graph.setOnboardingDismissed(true)
+        seed()
+        val long = "Grandma's recipes and the whole family's notes"
+        val ids = runBlocking { graph.sync.spaces.create("Io", "comet") to graph.sync.spaces.create(long, "quill") }
+        launch()
+        for ((id, name) in listOf(ids.first to "Io", ids.second to long)) {
+            graph.switchSpace(id)
+            // Back from Space info lands on the tags screen, already showing the switcher.
+            if (compose.onAllNodes(hasContentDescription("Sidebar")).fetchSemanticsNodes().isNotEmpty()) {
+                compose.onNode(hasContentDescription("Sidebar")).performClick()
+            }
+            compose.waitUntilExactlyOneExists(hasContentDescription("Space: $name"))
+            compose.onNode(hasContentDescription("Space: $name")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("New space…"))
+            compose.onNode(hasContentDescription("Space info")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Delete space…"))
+            shoot(if (name == long) "space-info-name-long" else "space-info-name-short")
+            scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+            compose.waitUntilDoesNotExist(hasText("Delete space…"))
+        }
+    }
+
+    @Test fun spaceInfoDark() = spaceInfo("dark", "+night")
 }

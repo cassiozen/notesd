@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
@@ -94,8 +95,7 @@ private fun Picture(icon: SpaceIcon, size: Dp, modifier: Modifier = Modifier) {
 fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String? = null) {
     val t = LocalTokens.current
     val shape = RoundedCornerShape(14.dp)
-    // An icon comes with its colours: each choice shows its theme's accent.
-    val accents = remember(t.dark) { choices.associate { it.key to SpaceThemes.colors(it.key, t.dark).accent } }
+    val accents = accents()
     Column {
         Text("Icon", style = Type.label, color = t.ink2)
         Spacer(Modifier.height(6.dp))
@@ -111,36 +111,72 @@ fun SpaceIconPicker(selected: String?, onSelect: (String) -> Unit, error: String
             contentPadding = PaddingValues(4.dp)
         ) {
             items(choices, key = { it.key }) { icon ->
-                val on = icon.key == selected
-                val cell = RoundedCornerShape(10.dp)
-                Box(
-                    Modifier
-                        .height(58.dp)
-                        .clip(cell)
-                        .then(if (on) Modifier.background(t.chip).border(2.dp, t.ink2, cell) else Modifier)
-                        .selectable(on, role = Role.RadioButton) { onSelect(icon.key) }
-                        .semantics { contentDescription = icon.name },
-                    contentAlignment = Alignment.Center
-                ) {
-                    Picture(icon, 40.dp)
-                    Box(
-                        Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(6.dp)
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(t.bg)
-                            .padding(2.dp)
-                            .clip(CircleShape)
-                            .background(accents.getValue(icon.key))
-                    )
-                }
+                IconChoice(icon, icon.key == selected, accents.getValue(icon.key), Modifier) { onSelect(icon.key) }
             }
         }
         if (error != null) {
             Spacer(Modifier.height(6.dp))
             Text(error, style = Type.small, color = t.danger)
         }
+    }
+}
+
+/**
+ * Every icon to choose from, [selected] ringed, all shown at once: for a page that scrolls, where a grid
+ * scrolling inside it would fight the page.
+ */
+@Composable
+fun SpaceIconGrid(selected: String, onSelect: (String) -> Unit, modifier: Modifier = Modifier) {
+    val accents = accents()
+    BoxWithConstraints(modifier.fillMaxWidth()) {
+        val columns = (maxWidth / 58.dp).toInt().coerceAtLeast(1)
+        val cell = maxWidth / columns
+        Column(Modifier.selectableGroup()) {
+            for (row in choices.chunked(columns)) {
+                Row {
+                    for (icon in row) {
+                        IconChoice(icon, icon.key == selected, accents.getValue(icon.key), Modifier.width(cell)) {
+                            onSelect(icon.key)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** An icon comes with its colours: each choice shows its theme's accent. */
+@Composable
+private fun accents(): Map<String, Color> {
+    val dark = LocalTokens.current.dark
+    return remember(dark) { choices.associate { it.key to SpaceThemes.colors(it.key, dark).accent } }
+}
+
+@Composable
+private fun IconChoice(icon: SpaceIcon, on: Boolean, accent: Color, modifier: Modifier, onSelect: () -> Unit) {
+    val t = LocalTokens.current
+    val cell = RoundedCornerShape(10.dp)
+    Box(
+        modifier
+            .height(58.dp)
+            .clip(cell)
+            .then(if (on) Modifier.background(t.chip).border(2.dp, t.ink2, cell) else Modifier)
+            .selectable(on, role = Role.RadioButton, onClick = onSelect)
+            .semantics { contentDescription = icon.name },
+        contentAlignment = Alignment.Center
+    ) {
+        Picture(icon, 40.dp)
+        Box(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .padding(6.dp)
+                .size(12.dp)
+                .clip(CircleShape)
+                .background(t.bg)
+                .padding(2.dp)
+                .clip(CircleShape)
+                .background(accent)
+        )
     }
 }
 

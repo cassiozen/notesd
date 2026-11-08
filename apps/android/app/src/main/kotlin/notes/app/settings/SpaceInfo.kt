@@ -1,73 +1,110 @@
 package notes.app.settings
 
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
+import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
+import notes.app.notes.SpaceIconGrid
 import notes.app.notes.SpaceIconImage
 import notes.app.notes.SpaceTraits
 import notes.app.notes.TraitEntry
 import notes.app.notes.TraitRow
+import notes.app.notes.describeTraits
 import notes.app.notes.name
 import notes.app.notes.traitRows
-import notes.app.sharing.PeoplePicker
-import notes.app.ui.ButtonKind
+import notes.app.sharing.PeopleSection
 import notes.app.ui.Icons
+import notes.app.ui.InlineConfirm
+import notes.app.ui.LocalReduceMotion
 import notes.app.ui.LocalTokens
-import notes.app.ui.NotesButton
+import notes.app.ui.Reveal
+import notes.app.ui.SpaceTheme
+import notes.app.ui.SpaceThemes
 import notes.app.ui.Type
+import notes.app.ui.pressScale
+import notes.core.api.SpaceTrait
 import notes.core.db.Space
 import notes.core.db.Spaces
 
 /**
- * A space's Space info (§7.8), from the list of spaces. Goes back by itself once the space is gone, deleted
- * here or elsewhere.
+ * A space's Space info (§7.8): its one page of space-level settings, everything changed in place. Goes back by
+ * itself once the space is gone, deleted here or elsewhere, or left.
  */
 @Composable
-fun SpaceInfoScreen(
-    graph: AppGraph,
-    id: String,
-    backLabel: String?,
-    onBack: () -> Unit,
-    /** Sharing's own page, for this space. */
-    onSharing: () -> Unit = {}
-) {
+fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () -> Unit) {
     val spaces by graph.spaces.collectAsStateWithLifecycle()
-    val registry = remember(graph, onSharing) { sharingRegistry(graph, onSharing) }
+    val registry = remember(graph) { spaceInfoRegistry(graph) }
     val space = spaces.firstOrNull { it.id == id }
-    val scope = rememberCoroutineScope()
-    var editing by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
-    var saveError by remember { mutableStateOf<String?>(null) }
     // The list starts empty while it loads: only a space seen here and then missing is gone.
     var seen by remember { mutableStateOf(false) }
     LaunchedEffect(space != null) {
@@ -86,228 +123,463 @@ fun SpaceInfoScreen(
         space,
         backLabel,
         onBack,
-        error = error,
         registry = registry,
-        onEdit = { editing = true },
-        onDelete = {
-            error = null
-            scope.launch {
-                val deleted = runCatching { graph.sync.spaces.delete(space.id) }
-                if (deleted.getOrNull() == true) {
+        // The app's scope: a name typed and then left by going back is still saved.
+        work = graph.scope,
+        onSave = { name, icon ->
+            when {
+                // The server refuses them, so the store does too; a paste can bring them in.
+                name.any { Character.isISOControl(it) } -> "Remove the special characters from the name."
+
+                spaces.any { it.id != id && it.name.equals(name, ignoreCase = true) } -> "Another space has this name."
+
+                runCatching { graph.sync.spaces.update(id, name, icon) }.isFailure ->
+                    "Couldn't save on this phone. Try again."
+
+                else -> {
                     graph.scheduler.request()
-                } else {
-                    error = if (deleted.isFailure) {
-                        "The space couldn't be deleted on this phone. Try again."
-                    } else {
-                        "Notes arrived in this space from another device. Move or delete them first."
-                    }
+                    null
                 }
+            }
+        },
+        onDelete = {
+            val deleted = runCatching { graph.sync.spaces.delete(id) }
+            when {
+                deleted.getOrNull() == true -> {
+                    graph.scheduler.request()
+                    null
+                }
+
+                deleted.isFailure -> "The space couldn't be deleted on this phone. Try again."
+
+                else -> "Notes arrived in this space from another device. Move or delete them first."
             }
         }
     )
-    if (editing) {
-        SpaceDialog(
-            title = "Name and icon",
-            action = "Save",
-            initial = space.name,
-            initialIcon = space.icon,
-            taken = { name -> spaces.any { it.id != space.id && it.name.equals(name, ignoreCase = true) } },
-            onDismiss = {
-                editing = false
-                saveError = null
-            },
-            failure = saveError
-        ) { name, icon ->
-            saveError = null
-            scope.launch {
-                if (runCatching { graph.sync.spaces.update(space.id, name, icon) }.isFailure) {
-                    saveError = "Couldn't save on this phone. Try again."
-                    return@launch
-                }
-                editing = false
-                graph.scheduler.request()
-            }
-        }
-    }
 }
 
 /**
- * The app's traits with sharing's ways in (§7.9): on, its row opens the Sharing page; off, Turn on picks someone
- * to invite. Offered for the account's own spaces but the default, and for a shared one its owner stopped sharing.
+ * The app's traits with sharing's section, People (§7.9): inviting someone is what shares a space, so it's
+ * there to use for the account's own spaces but the default, and for a shared one its owner stopped sharing.
  */
-internal fun sharingRegistry(graph: AppGraph, onSharing: () -> Unit): List<TraitEntry> = SpaceTraits.entries.map {
+internal fun spaceInfoRegistry(graph: AppGraph): List<TraitEntry> = SpaceTraits.entries.map {
     if (it.key != "shared") return@map it
     it.with(
-        settings = { _, onClose ->
-            // A page of its own rather than a sheet over Space info: it has a lot to show.
-            LaunchedEffect(Unit) {
-                onClose()
-                onSharing()
-            }
-        },
-        turnOn = { space, onClose ->
-            val me by graph.userId.collectAsStateWithLifecycle()
-            PeoplePicker(graph, space, me, onDismiss = onClose, onInvited = onClose)
-        },
-        offeredFor = { space -> space.id != Spaces.DEFAULT && space.shared?.isOwner != false }
+        section = { space -> PeopleSection(graph, space) },
+        canTurnOn = { space -> space.id != Spaces.DEFAULT && space.shared?.isOwner != false }
     )
 }
 
-/** The page itself: the space, its traits, then Name and icon, and Delete. */
+/**
+ * The page itself: icon, name and note count with the trait glyphs (the owner changes the name and icon right
+ * there), a section per trait, then Delete. [onSave] saves a name and icon, [onDelete] deletes the space; each
+ * comes back with why it couldn't, or null. They run on [work].
+ */
 @Composable
 internal fun SpaceInfoPage(
     space: Space,
     backLabel: String?,
     onBack: () -> Unit,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    error: String? = null,
-    registry: List<TraitEntry> = SpaceTraits.entries
+    onSave: suspend (name: String, icon: String) -> String?,
+    onDelete: suspend () -> String?,
+    registry: List<TraitEntry> = SpaceTraits.entries,
+    work: CoroutineScope = rememberCoroutineScope()
 ) {
     val t = LocalTokens.current
-    // A trait's settings, or its turn-on flow, over the page.
-    var opened by remember { mutableStateOf<(@Composable (Space, () -> Unit) -> Unit)?>(null) }
-    val rows = traitRows(space.traits, registry, space)
-    // A member's view of someone else's space: only its owner renames or deletes it (§7.9).
-    val owner = space.shared?.let { if (it.isOwner) null else it.members.firstOrNull()?.username.orEmpty() }
-    val deletable = space.id != Spaces.DEFAULT && space.noteCount == 0
+    val focus = LocalFocusManager.current
+    // A shared space's name, icon and existence are its owner's (§7.9).
+    val own = space.shared?.isOwner != false
+    var picking by rememberSaveable { mutableStateOf(false) }
+    // Saved and on their way to the list: shown meanwhile rather than the old ones in between.
+    var name by remember { mutableStateOf<String?>(null) }
+    var icon by remember { mutableStateOf<String?>(null) }
+    val shownName = name ?: space.name
+    val shownIcon = icon ?: space.icon
+    LaunchedEffect(space.name) { if (space.name == name) name = null }
+    LaunchedEffect(space.icon) { if (space.icon == icon) icon = null }
+    var error by remember { mutableStateOf<String?>(null) }
+    // Glyphs there when the page opened; one that turns on later arrives with a little movement.
+    val initialTraits = remember { space.traits.mapTo(HashSet()) { it.key } }
 
-    SettingsFrame(backLabel, onBack, null) {
-        Column(
-            Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            SpaceIconImage(space.icon, 72.dp)
-            Spacer(Modifier.height(12.dp))
+    fun save(newName: String, newIcon: String) {
+        error = null
+        name = newName.takeIf { it != space.name }
+        icon = newIcon.takeIf { it != space.icon }
+        work.launch {
+            onSave(newName, newIcon)?.let {
+                error = it
+                name = null
+                icon = null
+            }
+        }
+    }
+
+    // The page takes the theme of the icon shown, a pick's before the list has it.
+    SpaceTheme(SpaceThemes.key(shownIcon)) {
+        SettingsFrame(backLabel, onBack, null) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    // A tap off the name ends editing it, as leaving the field does on the web.
+                    .pointerInput(Unit) { detectTapGestures(onTap = { focus.clearFocus() }) }
+            ) {
+                Header(
+                    space,
+                    shownName,
+                    shownIcon,
+                    own,
+                    picking,
+                    initialTraits,
+                    onIcon = { picking = !picking },
+                    onRename = { save(it, shownIcon) }
+                )
+                Reveal(own && picking) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(t.field)
+                            .border(1.dp, t.hair, RoundedCornerShape(20.dp))
+                            .padding(6.dp)
+                    ) {
+                        SpaceIconGrid(shownIcon, onSelect = { save(shownName, it) })
+                    }
+                }
+                error?.let { PageError(it, Modifier.padding(bottom = 8.dp)) }
+                Traits(space, registry)
+                if (own) DeleteSpace(space, onDelete)
+            }
+        }
+    }
+}
+
+@Composable
+private fun PageError(text: String, modifier: Modifier = Modifier) {
+    Text(
+        text,
+        style = Type.small,
+        color = LocalTokens.current.danger,
+        modifier = modifier.padding(horizontal = 8.dp).semantics { liveRegion = LiveRegionMode.Polite }
+    )
+}
+
+/** Icon, name, note count and glyphs; the owner's icon opens the picker under it and the name is a field. */
+@Composable
+private fun Header(
+    space: Space,
+    name: String,
+    icon: String,
+    own: Boolean,
+    picking: Boolean,
+    initialTraits: Set<String>,
+    onIcon: () -> Unit,
+    onRename: (String) -> Unit
+) {
+    val t = LocalTokens.current
+    Column(
+        Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (own) IconButton(icon, picking, onIcon) else SpaceIconImage(icon, 72.dp, Modifier.padding(8.dp))
+        Spacer(Modifier.height(6.dp))
+        if (own) {
+            NameField(name, onRename)
+        } else {
             Text(
-                space.name,
+                name,
                 style = Type.display,
                 color = t.ink,
                 textAlign = TextAlign.Center,
-                modifier = Modifier.semantics { heading() }
+                modifier = Modifier.padding(horizontal = 12.dp).semantics { heading() }
             )
+        }
+        Spacer(Modifier.height(2.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
             Text(noteCount(space), style = Type.rowMeta, color = t.ink3)
-        }
-        if (rows.isNotEmpty()) {
-            Card {
-                for ((i, row) in rows.withIndex()) {
-                    if (i > 0) Divider()
-                    when (row) {
-                        is TraitRow.On -> TraitLine(
-                            row.entry.glyph,
-                            row.trait.name(),
-                            row.trait.problem ?: row.trait.summary,
-                            problem = row.trait.problem != null,
-                            onClick = row.entry.settings?.let { { opened = it } }
-                        )
-
-                        is TraitRow.Off -> TraitLine(
-                            row.entry.glyph,
-                            row.entry.label,
-                            "Off",
-                            dimmed = true,
-                            action = { NotesButton("Turn on", { opened = row.entry.turnOn }, small = true) }
-                        )
-
-                        is TraitRow.Unknown -> TraitLine(
-                            SpaceTraits.unknownGlyph,
-                            row.trait.name(),
-                            row.trait.problem ?: row.trait.summary,
-                            problem = row.trait.problem != null,
-                            note = "Update the app to change this."
-                        )
-                    }
-                }
-            }
-            Spacer(Modifier.height(16.dp))
-        }
-        if (owner != null) {
-            val who = if (owner.isEmpty()) "its owner" else "its owner, $owner,"
-            Footnote("Only $who can rename or delete it.")
-        } else {
-            Card {
-                Row(
-                    Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 56.dp)
-                        .clickable(role = Role.Button, onClick = onEdit)
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Name and icon", style = Type.rowTitle, color = t.ink, modifier = Modifier.weight(1f))
-                    Icon(Icons.Chevron, null, Modifier.size(16.dp), tint = t.ink3)
-                }
-                Divider()
-                Action("Delete space", t.danger, enabled = deletable, onClick = onDelete)
-            }
-            when {
-                space.id == Spaces.DEFAULT -> Footnote("This space can be renamed, not deleted.")
-                space.noteCount > 0 -> Footnote("Move or delete its notes to delete it.")
-            }
-        }
-        error?.let {
-            Text(
-                it,
-                style = Type.small,
-                color = t.danger,
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 8.dp).semantics {
-                    liveRegion = LiveRegionMode.Polite
-                }
-            )
+            HeadGlyphs(space.traits, initialTraits)
         }
     }
-    opened?.invoke(space) { opened = null }
+}
+
+/** The owner's icon: pressed, the picker opens under the header. A pencil says it can be. */
+@Composable
+private fun IconButton(icon: String, picking: Boolean, onClick: () -> Unit) {
+    val t = LocalTokens.current
+    val interaction = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(24.dp)
+    Box(
+        Modifier
+            .size(88.dp)
+            .pressScale(interaction)
+            .clip(shape)
+            .background(if (picking) t.hover else Color.Transparent)
+            .clickable(
+                interaction,
+                ripple(),
+                role = Role.Button,
+                onClickLabel = if (picking) "Hide icons" else "Show icons"
+            ) { onClick() }
+            .semantics {
+                contentDescription = "Change icon"
+                stateDescription = if (picking) "Icons shown" else "Icons hidden"
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        SpaceIconImage(icon, 72.dp)
+        Box(
+            Modifier
+                .align(Alignment.BottomEnd)
+                .size(26.dp)
+                .clip(CircleShape)
+                .background(t.bg)
+                .border(1.dp, t.hair, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(Icons.Edit, null, Modifier.size(13.dp), tint = t.ink2)
+        }
+    }
 }
 
 /**
- * A trait's row: glyph, label, and its summary (a problem in the danger colour). With [onClick], it opens
- * the trait's settings; [dimmed] while off; [action] at the end; [note] under the summary.
+ * The owner's name, edited where it's shown: saved on Done, on a tap elsewhere or when the keyboard goes; put
+ * back with Escape, or when emptied or left as it was. Trimmed, inner spaces collapsed, as the server keeps it.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TraitLine(
-    glyph: Int,
-    label: String,
-    summary: String,
-    problem: Boolean = false,
-    dimmed: Boolean = false,
-    note: String? = null,
-    onClick: (() -> Unit)? = null,
-    action: (@Composable () -> Unit)? = null
-) {
+private fun NameField(name: String, onRename: (String) -> Unit) {
     val t = LocalTokens.current
+    val focus = LocalFocusManager.current
+    // Typing; null when the field isn't being edited.
+    var draft by remember { mutableStateOf<String?>(null) }
+    var focused by remember { mutableStateOf(false) }
+    val current by rememberUpdatedState(name)
+    val rename by rememberUpdatedState(onRename)
+
+    fun commit() {
+        val typed = draft ?: return
+        draft = null
+        val normalized = Spaces.normalize(typed)
+        if (normalized != null && normalized != current) rename(normalized)
+    }
+
+    // Leaving the page with the field still open saves what was typed.
+    DisposableEffect(Unit) { onDispose { commit() } }
+    // The keyboard closed with Back: done typing, so the field lets go too.
+    val ime = WindowInsets.isImeVisible
+    var imeWas by remember { mutableStateOf(false) }
+    LaunchedEffect(ime) {
+        if (imeWas && !ime && focused) focus.clearFocus()
+        imeWas = ime
+    }
+
+    BasicTextField(
+        value = draft ?: name,
+        onValueChange = { v -> if (v.codePointCount(0, v.length) <= Spaces.MAX_NAME) draft = v },
+        singleLine = true,
+        textStyle = Type.display.copy(color = t.ink),
+        cursorBrush = SolidColor(t.tint),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Done),
+        keyboardActions = KeyboardActions(onDone = { focus.clearFocus() }),
+        // Hugs the name, so the pencil and the field's outline sit beside it rather than at the page's edges.
+        modifier = Modifier
+            .onFocusChanged {
+                if (it.isFocused && !focused) draft = current
+                if (!it.isFocused && focused) commit()
+                focused = it.isFocused
+            }
+            .onPreviewKeyEvent {
+                val escape = it.key == Key.Escape && it.type == KeyEventType.KeyDown && draft != null
+                if (escape) {
+                    draft = current
+                    focus.clearFocus()
+                }
+                escape
+            }
+            .semantics { contentDescription = "Name" },
+        decorationBox = { inner ->
+            val shape = RoundedCornerShape(14.dp)
+            Row(
+                Modifier
+                    // Room to tap even for a short name.
+                    .widthIn(min = 160.dp)
+                    .clip(shape)
+                    .background(if (focused) t.field else Color.Transparent)
+                    .border(1.5.dp, if (focused) t.focus else Color.Transparent, shape)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Balances the pencil, so the name stays centred under the icon.
+                Spacer(Modifier.width(PENCIL))
+                // The field's own width is its text's, so the pencil sits right after it; a long name takes what's
+                // left and scrolls, the pencil kept in view.
+                Box(Modifier.weight(1f, fill = false).width(IntrinsicSize.Max)) { inner() }
+                Box(Modifier.width(PENCIL), contentAlignment = Alignment.CenterStart) {
+                    if (!focused) Icon(Icons.Edit, null, Modifier.padding(start = 6.dp).size(15.dp), tint = t.ink3)
+                }
+            }
+        }
+    )
+}
+
+private val PENCIL = 24.dp
+
+/** The space's trait glyphs after its count, one not in [initial] arriving with a little movement. */
+@Composable
+private fun HeadGlyphs(traits: List<SpaceTrait>, initial: Set<String>) {
+    if (traits.isEmpty()) return
+    val description = describeTraits(traits)
+    Row(
+        Modifier.padding(start = 10.dp).semantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        for (trait in traits) key(trait.key) { HeadGlyph(trait, arriving = trait.key !in initial) }
+    }
+}
+
+@Composable
+private fun HeadGlyph(trait: SpaceTrait, arriving: Boolean) {
+    val t = LocalTokens.current
+    val reduce = LocalReduceMotion.current
+    val shown = remember { Animatable(if (arriving && !reduce) 0f else 1f) }
+    LaunchedEffect(Unit) { shown.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 260f)) }
+    Icon(
+        painterResource(SpaceTraits.glyph(trait.key)),
+        null,
+        Modifier.size(16.dp).graphicsLayer {
+            val p = shown.value
+            scaleX = 0.4f + 0.6f * p
+            scaleY = 0.4f + 0.6f * p
+            alpha = p.coerceIn(0f, 1f)
+            rotationZ = (1f - p) * -40f
+        },
+        tint = if (trait.problem != null) t.danger else t.ink3
+    )
+}
+
+/** A trait with a section of its own gets it; the others, a row each, share a card between sections. */
+@Composable
+private fun Traits(space: Space, registry: List<TraitEntry>) {
+    val blocks = ArrayList<List<TraitRow>>()
+    for (row in traitRows(space, registry)) {
+        val last = blocks.lastOrNull()
+        if (row.section() == null && last != null && last.last().section() == null) {
+            blocks[blocks.lastIndex] = last + row
+        } else {
+            blocks += listOf(row)
+        }
+    }
+    for (block in blocks) {
+        Spacer(Modifier.height(if (block === blocks.first()) 4.dp else 24.dp))
+        val section = block.first().section()
+        if (section != null) {
+            key(block.first().key()) { section(space) }
+        } else {
+            Card {
+                for ((i, row) in block.withIndex()) {
+                    if (i > 0) Divider()
+                    TraitLine(row)
+                }
+            }
+        }
+    }
+}
+
+private fun TraitRow.section(): (@Composable (Space) -> Unit)? = when (this) {
+    is TraitRow.On -> entry.section
+    is TraitRow.Off -> entry.section
+    is TraitRow.Unknown -> null
+}
+
+private fun TraitRow.key(): String = when (this) {
+    is TraitRow.On -> trait.key
+    is TraitRow.Off -> entry.key
+    is TraitRow.Unknown -> trait.key
+}
+
+/** A trait without a section: glyph, label, and its summary or problem; dimmed while off. */
+@Composable
+private fun TraitLine(row: TraitRow) {
+    val t = LocalTokens.current
+    val off = row is TraitRow.Off
+    val (glyph, label) = when (row) {
+        is TraitRow.On -> row.entry.glyph to row.trait.name()
+        is TraitRow.Off -> row.entry.glyph to row.entry.label
+        is TraitRow.Unknown -> SpaceTraits.unknownGlyph to row.trait.name()
+    }
+    val trait = (row as? TraitRow.On)?.trait ?: (row as? TraitRow.Unknown)?.trait
+    val problem = trait?.problem
+    val summary = problem ?: trait?.summary ?: "Off"
     Row(
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .then(if (onClick != null) Modifier.clickable(role = Role.Button, onClick = onClick) else Modifier)
             .semantics(mergeDescendants = true) {}
             .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-            // Off: the glyph dims; the words stay at a readable contrast.
-            Icon(
-                painterResource(glyph),
-                null,
-                Modifier.size(22.dp).alpha(if (dimmed) 0.5f else 1f),
-                tint = if (problem) t.danger else t.ink3
-            )
-            Spacer(Modifier.width(14.dp))
-            Column {
-                Text(label, style = Type.rowTitle, color = if (dimmed) t.ink2 else t.ink)
-                if (summary.isNotEmpty()) {
-                    Text(summary, style = Type.rowMeta, color = if (problem) t.danger else t.ink2)
-                }
-                if (note != null) Text(note, style = Type.small, color = t.ink3)
+        // Off: the glyph dims; the words stay at a readable contrast.
+        Icon(
+            painterResource(glyph),
+            null,
+            Modifier.size(22.dp).alpha(if (off) 0.5f else 1f),
+            tint = if (problem != null) t.danger else t.ink3
+        )
+        Spacer(Modifier.width(14.dp))
+        Column {
+            Text(label, style = Type.rowTitle, color = if (off) t.ink2 else t.ink)
+            if (summary.isNotEmpty()) {
+                Text(summary, style = Type.rowMeta, color = if (problem != null) t.danger else t.ink2)
             }
-        }
-        if (action != null) {
-            Spacer(Modifier.width(8.dp))
-            action()
-        }
-        if (onClick != null) {
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.Chevron, null, Modifier.size(16.dp), tint = t.ink3)
+            if (row is TraitRow.Unknown) Text("Update the app to change this.", style = Type.small, color = t.ink3)
         }
     }
+}
+
+/** Delete, confirmed under it; off, with why, for the default space or one with notes. */
+@Composable
+private fun DeleteSpace(space: Space, onDelete: suspend () -> String?) {
+    val t = LocalTokens.current
+    val scope = rememberCoroutineScope()
+    var asking by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    val why = when {
+        space.id == Spaces.DEFAULT -> "This space can be renamed, not deleted."
+        space.noteCount > 0 -> "Move or delete its notes to delete it."
+        else -> null
+    }
+    Spacer(Modifier.height(32.dp))
+    Card {
+        Column(Modifier.animateContentSize()) {
+            Action("Delete space…", t.danger, enabled = why == null && !asking) {
+                error = null
+                asking = true
+            }
+            InlineConfirm(
+                visible = asking && why == null,
+                title = "Delete ${space.name}?",
+                text = "It has no notes: only the space itself goes.",
+                action = "Delete",
+                busy = busy,
+                onConfirm = {
+                    busy = true
+                    scope.launch {
+                        // Done: the space leaves the list and the page goes back by itself.
+                        onDelete()?.let {
+                            error = it
+                            asking = false
+                        }
+                        busy = false
+                    }
+                },
+                onCancel = { asking = false },
+                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+            )
+        }
+    }
+    why?.let { Footnote(it) }
+    error?.let { PageError(it, Modifier.padding(top = 8.dp)) }
 }

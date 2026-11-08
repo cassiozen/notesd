@@ -21,8 +21,8 @@ class SpaceTraitsTest {
     }
 
     @Test
-    fun `nothing can be turned on yet, and nothing has settings`() {
-        assertTrue(SpaceTraits.entries.none { it.canTurnOn || it.settings != null })
+    fun `on its own the registry turns nothing on and has no sections`() {
+        assertTrue(SpaceTraits.entries.none { it.canTurnOn(space()) || it.section != null })
     }
 
     @Test
@@ -88,19 +88,19 @@ class SpaceTraitsTest {
                 TraitRow.On(SpaceTraits.entries[2], agent),
                 TraitRow.Unknown(later)
             ),
-            traitRows(listOf(later, agent, shared))
+            traitRows(space(later, agent, shared))
         )
-        assertEquals(emptyList(), traitRows(emptyList()))
+        assertEquals(emptyList(), traitRows(space()))
 
-        val canPublish = TraitEntry("published", R.drawable.trait_published, "Published", turnOn = { _, _ -> })
+        val canPublish = TraitEntry("published", R.drawable.trait_published, "Published", canTurnOn = { true })
         val registry = listOf(SpaceTraits.entries[0], canPublish)
-        assertEquals(listOf(TraitRow.Off(canPublish)), traitRows(emptyList(), registry))
+        assertEquals(listOf(TraitRow.Off(canPublish)), traitRows(space(), registry))
     }
 
     @Test
     fun `an off trait a space can't have isn't offered there`() {
-        val canShare = SpaceTraits.entries[0].with(null, { _, _ -> }) { it.id != "default" }
-        assertEquals(listOf(TraitRow.Off(canShare)), traitRows(emptyList(), listOf(canShare), space().copy(id = "w")))
-        assertEquals(emptyList(), traitRows(emptyList(), listOf(canShare), space().copy(id = "default")))
+        val canShare = SpaceTraits.entries[0].with({}) { it.id != "default" }
+        assertEquals(listOf(TraitRow.Off(canShare)), traitRows(space().copy(id = "w"), listOf(canShare)))
+        assertEquals(emptyList(), traitRows(space().copy(id = "default"), listOf(canShare)))
     }
 }

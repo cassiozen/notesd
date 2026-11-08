@@ -1,30 +1,49 @@
-.head {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.people {
+  margin: 0;
+  padding: 0;
+  list-style: none;
 }
 
 .person {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  min-height: 48px;
+  flex-direction: column;
+  gap: 8px;
   padding: 8px 12px;
 }
 
-.person + .person,
-.pickRow + .pickRow {
+.person:has(> [role='group']) {
+  padding-bottom: 12px;
+}
+
+.person + .person {
   border-top: 1px solid var(--hair);
 }
 
-.pickRow:first-child > button {
-  border-top-left-radius: 13px;
-  border-top-right-radius: 13px;
+.line {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
-.pickRow:last-child > button {
-  border-bottom-left-radius: 13px;
-  border-bottom-right-radius: 13px;
+/* Just invited: the row eases in and glows once, where the eye goes after pressing a name. */
+.person[data-fresh] {
+  animation:
+    person-in 0.4s var(--spring),
+    person-glow 1.6s ease-out;
+}
+
+@keyframes person-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes person-glow {
+  from {
+    background: var(--on);
+  }
 }
 
 .who {
@@ -65,6 +84,12 @@
   font: 600 13px/1 var(--font-sans);
 }
 
+.avatar[data-small] {
+  width: 22px;
+  height: 22px;
+  font-size: 11px;
+}
+
 /* Not in yet: an outline, not a fill. */
 .avatar[data-pending] {
   background: transparent;
@@ -74,11 +99,97 @@
 .actions {
   flex: none;
   display: flex;
-  gap: 4px;
+  gap: 2px;
+  margin-right: -6px;
 }
 
-.pickAction {
-  flex: none;
+.lead {
+  margin: 0;
+  padding: 12px 12px 4px;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--ink-2);
+}
+
+/* Everyone else on the server, one press each: few enough on a home server to show them all. */
+.invite {
+  padding: 10px 12px 12px;
+}
+
+.people + .invite {
+  border-top: 1px solid var(--hair);
+}
+
+.chips {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.inviteLabel {
+  display: flex;
+  align-items: center;
+  margin-right: 4px;
   font-size: 13px;
   color: var(--ink-3);
+}
+
+.chip {
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px 0 5px;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  background: var(--chip);
+  color: var(--ink);
+  font: 500 13.5px/1 var(--font-sans);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    transform 0.15s;
+}
+
+.chip:not(:disabled):hover {
+  background: var(--glass-hi);
+  transform: translateY(-1px);
+}
+
+.chip:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.chip[aria-busy='true'] {
+  opacity: 1;
+  animation: chip-busy 1.2s ease-in-out infinite;
+}
+
+@keyframes chip-busy {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+.plus {
+  margin-left: 1px;
+  font-size: 15px;
+  color: var(--ink-3);
+}
+
+.none {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .person[data-fresh],
+  .chip[aria-busy='true'] {
+    animation: none;
+  }
 }

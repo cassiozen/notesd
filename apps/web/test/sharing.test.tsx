@@ -22,7 +22,7 @@ type Ana = Client & { id: number }
 const panel = () => screen.getByRole('navigation', { name: 'Sidebar' })
 const switcher = () => within(panel()).getByRole('button', { name: /^Space: / })
 const popover = () => screen.getByRole('dialog', { name: 'Spaces' })
-const spaceRow = (name: string) => within(popover()).getByRole('button', { name: new RegExp(`^${name}, `) })
+const spaceRow = (name: string) => within(popover()).getByRole('button', { name: new RegExp(`^${name}(,|$)`) })
 const rowTitles = () =>
   within(list())
     .queryAllByRole('link')
@@ -76,7 +76,7 @@ async function anaEdits(ana: Ana, id: string, content: string) {
 }
 
 describe('sharing a space', () => {
-  it('turns on from Space info: the first person picked is invited, and its notes stay in the list', async () => {
+  it('shares from Space info: the first person pressed is invited, in place, and its notes stay in the list', async () => {
     let ana: Ana | undefined
     const { server, user } = await signedIn({ seed: async (s) => void ({ ana } = await seedWork(s)) })
     await act(() => reloadSpaces())
@@ -84,17 +84,20 @@ describe('sharing a space', () => {
     await waitFor(() => expect(rowTitles()).toEqual(['Standup']))
 
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Turn on Shared' }))
-    const picker = await screen.findByRole('dialog', { name: 'Share Work' })
+    expect(within(info).getByText('Invite people to read and edit every note in Work, and add their own.')).toBeTruthy()
     // Everyone but the account itself.
-    const people = await within(picker).findByRole('list', { name: 'People' })
-    expect(within(people).getAllByRole('button').map((b) => b.textContent)).toEqual(['AanaInvite'])
-    await user.click(within(people).getByRole('button', { name: /ana/ }))
+    const people = await within(info).findByRole('list', { name: 'People to invite' })
+    expect(within(people).getAllByRole('button').map((b) => b.getAttribute('aria-label'))).toEqual(['Invite ana'])
+    await user.click(within(people).getByRole('button', { name: 'Invite ana' }))
 
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Share Work' })).toBeNull())
+    // Lands on the same page: nothing opened over it.
+    const inSpace = await within(info).findByRole('list', { name: 'People in this space' })
+    expect(within(inSpace).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['MmeOwner · You', 'AanaInvitedCancel'])
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
+    expect(within(info).getByRole('img', { name: 'Shared' })).toBeTruthy()
+    expect(within(info).queryByRole('list', { name: 'People to invite' })).toBeNull()
     const work = (await remoteSpaces(server)).find((s) => s.id === 'work')
     expect(work?.shared?.invites?.map((i) => i.userId)).toEqual([ana?.id])
-    await waitFor(() => expect(within(info).getByText('Invited ana')).toBeTruthy())
     // Its notes moved to the space's own file, where the list now reads them.
     await waitFor(() => expect(rowTitles()).toEqual(['Standup']))
   })
@@ -114,13 +117,11 @@ describe('sharing a space', () => {
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Turn on Shared' }))
-    const picker = await screen.findByRole('dialog', { name: 'Share Work' })
-    await user.click(await within(picker).findByRole('button', { name: /ana/ }))
-    expect((await within(picker).findByRole('alert')).textContent).toBe('Unlock its locked note to share it.')
+    await user.click(await within(info).findByRole('button', { name: 'Invite ana' }))
+    expect((await within(info).findByRole('alert')).textContent).toBe('Unlock its locked note to share it.')
   })
 
-  it('Manage lists who’s in it; the owner removes someone, cancels an invitation and stops sharing', async () => {
+  it('lists who’s in it; the owner cancels an invitation and removes someone, confirmed in place', async () => {
     let ana: Ana | undefined
     const { server, user } = await signedIn({
       seed: async (s) => {
@@ -132,22 +133,30 @@ describe('sharing a space', () => {
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Manage Shared' }))
-    const page = await screen.findByRole('dialog', { name: 'Shared' })
-    const people = within(page).getByRole('list', { name: 'People in this space' })
+    const people = within(info).getByRole('list', { name: 'People in this space' })
     expect(within(people).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'MmeOwner · You',
       'AanaMake ownerRemove',
       'BbenInvitedCancel',
     ])
 
-    await user.click(within(page).getByRole('button', { name: 'Cancel ben’s invitation' }))
+    await user.click(within(info).getByRole('button', { name: 'Cancel ben’s invitation' }))
     await waitFor(() => expect(within(people).queryByText('ben')).toBeNull())
+    // Back among the people to invite.
+    expect(within(info).getByRole('button', { name: 'Invite ben' })).toBeTruthy()
 
-    await user.click(within(page).getByRole('button', { name: 'Remove ana' }))
-    const confirm = await screen.findByRole('dialog', { name: 'Remove ana?' })
-    await user.click(within(confirm).getByRole('button', { name: 'Remove' }))
-    await waitFor(() => expect(within(people).getAllByRole('listitem')).toHaveLength(1))
+    await user.click(within(info).getByRole('button', { name: 'Remove ana' }))
+    const confirm = within(info).getByRole('group', { name: 'Remove ana?' })
+    expect(document.activeElement?.textContent).toBe('Cancel')
+    // Escape closes the confirmation, not the page.
+    await user.keyboard('{Escape}')
+    expect(within(info).queryByRole('group', { name: 'Remove ana?' })).toBeNull()
+    expect(document.activeElement?.getAttribute('aria-label')).toBe('Remove ana')
+    await user.click(within(info).getByRole('button', { name: 'Remove ana' }))
+    await user.click(within(within(info).getByRole('group', { name: 'Remove ana?' })).getByRole('button', { name: 'Remove' }))
+    expect(confirm.isConnected).toBe(false)
+    await waitFor(() => expect(within(info).queryByRole('list', { name: 'People in this space' })).toBeNull())
+    expect(screen.getAllByRole('dialog')).toHaveLength(1)
     const work = (await remoteSpaces(server)).find((s) => s.id === 'work')
     expect(work?.shared?.members.map((m) => m.username)).toEqual(['me'])
     expect(work?.traits).toEqual([])
@@ -165,15 +174,13 @@ describe('sharing a space', () => {
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Manage Shared' }))
-    const page = await screen.findByRole('dialog', { name: 'Shared' })
     // Cancelled on another device, after this page listed it.
     const [invite] = (await remoteSpaces(server)).find((s) => s.id === 'work')?.shared?.invites ?? []
     expect((await server.api('DELETE', `/spaces/work/invites/${invite?.id}`)).status).toBe(204)
 
-    await user.click(within(page).getByRole('button', { name: 'Cancel ben’s invitation' }))
-    expect((await within(page).findByRole('alert')).textContent).toBe('That’s no longer there. It may have changed on another device.')
-    const people = within(page).getByRole('list', { name: 'People in this space' })
+    await user.click(within(info).getByRole('button', { name: 'Cancel ben’s invitation' }))
+    expect((await within(info).findByRole('alert')).textContent).toBe('That’s no longer there. It may have changed on another device.')
+    const people = within(info).getByRole('list', { name: 'People in this space' })
     await waitFor(() => expect(within(people).queryByText('ben')).toBeNull())
   })
 
@@ -183,18 +190,18 @@ describe('sharing a space', () => {
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Manage Shared' }))
-    const page = await screen.findByRole('dialog', { name: 'Shared' })
-    await user.click(within(page).getByRole('button', { name: 'Make owner: ana' }))
-    const confirm = await screen.findByRole('dialog', { name: 'Make ana the owner?' })
+    await user.click(within(info).getByRole('button', { name: 'Make owner: ana' }))
+    const confirm = within(info).getByRole('group', { name: 'Make ana the owner?' })
     await user.click(within(confirm).getByRole('button', { name: 'Make owner' }))
 
-    await waitFor(() => expect(within(page).getByRole('button', { name: 'Leave space…' })).toBeTruthy())
+    await waitFor(() => expect(within(info).getByRole('button', { name: 'Leave space…' })).toBeTruthy())
     expect((await remoteSpaces(server)).find((s) => s.id === 'work')?.shared?.role).toBe('member')
     expect((await remoteSpaces(ana as Ana)).find((s) => s.id === 'work')?.shared?.role).toBe('owner')
     // A member doesn't rename or delete it.
-    expect(within(info).queryByRole('button', { name: 'Name and icon' })).toBeNull()
-    expect(within(info).queryByRole('button', { name: 'Delete space' })).toBeNull()
+    expect(within(info).queryByRole('textbox', { name: 'Name' })).toBeNull()
+    expect(within(info).queryByRole('button', { name: 'Change icon' })).toBeNull()
+    expect(within(info).queryByRole('button', { name: 'Delete space…' })).toBeNull()
+    expect(within(info).getByRole('heading', { name: 'Work' })).toBeTruthy()
   })
 })
 
@@ -229,16 +236,15 @@ describe('as a member', () => {
     await switchTo(user, 'Work')
     await waitFor(() => expect(rowTitles()).toEqual(['Standup']))
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Manage Shared' }))
-    const page = await screen.findByRole('dialog', { name: 'Shared' })
-    expect(within(page).queryByRole('button', { name: 'Invite someone…' })).toBeNull()
-    await user.click(within(page).getByRole('button', { name: 'Leave space…' }))
-    const confirm = await screen.findByRole('dialog', { name: 'Leave Work?' })
+    expect(within(info).queryByRole('list', { name: 'People to invite' })).toBeNull()
+    expect(within(info).queryByRole('button', { name: /^Remove / })).toBeNull()
+    await user.click(within(info).getByRole('button', { name: 'Leave space…' }))
+    const confirm = await within(info).findByRole('group', { name: 'Leave Work?' })
     expect(within(confirm).getByText(/Its notes will be removed from this device/)).toBeTruthy()
     await user.click(within(confirm).getByRole('button', { name: 'Leave' }))
 
     await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Notes'))
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Shared' })).toBeNull())
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Work' })).toBeNull())
     expect((await remoteSpaces(server)).find((s) => s.id === 'work')?.shared?.members.map((m) => m.username)).toEqual(['me'])
   })
 })
@@ -451,10 +457,8 @@ describe('on this device', () => {
     await waitFor(() => expect(within(list()).getByRole('link', { name: /^Standup/ }).textContent).toMatch(/ana · /))
 
     const info = await spaceInfo(user, 'Work')
-    await user.click(within(info).getByRole('button', { name: 'Manage Shared' }))
-    const page = await screen.findByRole('dialog', { name: 'Shared' })
-    await user.click(within(page).getByRole('button', { name: 'Leave space…' }))
-    await user.click(within(await screen.findByRole('dialog', { name: 'Leave Work?' })).getByRole('button', { name: 'Leave' }))
+    await user.click(within(info).getByRole('button', { name: 'Leave space…' }))
+    await user.click(within(await within(info).findByRole('group', { name: 'Leave Work?' })).getByRole('button', { name: 'Leave' }))
 
     await waitFor(() => expect(switcher().getAttribute('aria-label')).toBe('Space: Notes'))
     expect(await engine?.call('list', null, 'work')).toEqual([])

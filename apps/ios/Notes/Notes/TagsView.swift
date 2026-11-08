@@ -31,10 +31,8 @@ struct TagsView: View {
                             Task { if let problem = await graph.decline(invite) { graph.notice = problem } }
                         },
                         onSwitched: { switched() },
-                        onInfo: { id in
-                            drawer.close()
-                            nav.openSpaceInfo(id)
-                        },
+                        // Over the sidebar, which is still there once it's done.
+                        onInfo: { nav.openSpaceInfo($0) },
                         onCreate: { creating = true }
                     )
                     .accessibilityAddTraits(.isHeader)

@@ -10,6 +10,14 @@
   padding: 32px 30px 26px;
 }
 
+/* Held near the top rather than centred: a page that grows as it's changed (a row added, a picker opened)
+   grows downward, and what's already on it stays put. */
+.wide {
+  width: min(560px, calc(100vw - 24px));
+  margin-top: min(12dvh, 120px);
+  max-height: calc(100dvh - min(12dvh, 120px) - 12px);
+}
+
 .dialog::backdrop {
   background: var(--scrim);
   backdrop-filter: blur(10px);

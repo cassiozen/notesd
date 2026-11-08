@@ -129,6 +129,7 @@ struct RootView: View {
                 nav.openSettings()
             }
         }
+        .sheet(item: $nav.spaceInfo) { SpaceInfoView(id: $0.id) }
         .environment(nav)
         .environment(drawer)
         // A note opened from elsewhere (a conflicted copy's banner) closes the sidebar under it.
@@ -187,7 +188,6 @@ struct RootView: View {
             .id(id)
         case .settings: SettingsView()
         case .settingsSection(let section): SettingsSectionView(section: section)
-        case .spaceInfo(let id): SpaceInfoView(id: id)
         }
     }
 

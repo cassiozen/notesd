@@ -51,8 +51,8 @@ const rowTitles = () =>
     .map((a) => a.querySelector('span')?.textContent)
 const switcher = () => within(panel()).getByRole('button', { name: /^Space: / })
 const popover = () => screen.getByRole('dialog', { name: 'Spaces' })
-/** A space in the switcher's list: its name, then what it is ("Work, only you"). */
-const spaceRow = (name: string) => within(popover()).getByRole('button', { name: new RegExp(`^${name}, `) })
+/** A space in the switcher's list: its name, then its traits if it has any ("Work, Shared"). */
+const spaceRow = (name: string) => within(popover()).getByRole('button', { name: new RegExp(`^${name}(,|$)`) })
 
 type User = Awaited<ReturnType<typeof signedIn>>['user']
 
@@ -79,7 +79,8 @@ describe('one space', () => {
     // The space is named all the same, and its switcher offers only a new one.
     await user.click(await waitFor(() => switcher()))
     expect(switcher().getAttribute('aria-label')).toBe('Space: Notes')
-    expect(within(popover()).getByRole('region', { name: 'Notes' }).textContent).toBe('NotesInfoOnly you')
+    // Nothing said about who sees it: private is the default.
+    expect(within(popover()).getByRole('region', { name: 'Notes' }).textContent).toBe('NotesInfo')
     expect(within(popover()).queryByRole('heading', { name: 'Switch to' })).toBeNull()
     expect(within(popover()).getByRole('button', { name: 'New space…' })).toBeTruthy()
     await user.keyboard('{Escape}')
@@ -141,40 +142,55 @@ describe('creating spaces', () => {
     })
   })
 
-  it('changes a space’s name and icon from its Space info', async () => {
+  it('changes a space’s name and icon in place on its Space info', async () => {
     const { server, user } = await withWork()
     const info = await infoFromSettings(user, 'Notes')
-    await user.click(within(info).getByRole('button', { name: 'Name and icon' }))
+    expect(within(info).queryByRole('radiogroup')).toBeNull()
+    await user.click(within(info).getByRole('button', { name: 'Change icon' }))
+    // The default space starts with the app's icon. A pick is saved as it's made.
+    expect((within(info).getByRole('radio', { name: 'App icon' }) as HTMLInputElement).checked).toBe(true)
+    await user.click(within(info).getByRole('radio', { name: 'Castle' }))
+    await waitFor(async () => expect((await spaces(server))[0]?.icon).toBe('castle'))
+    expect(info.getAttribute('data-space')).toBe('castle')
 
-    const dialog = await screen.findByRole('dialog', { name: 'Edit space' })
-    // The default space starts with the app's icon.
-    expect((within(dialog).getByRole('radio', { name: 'App icon' }) as HTMLInputElement).checked).toBe(true)
-    await user.clear(within(dialog).getByLabelText('Name'))
-    await user.type(within(dialog).getByLabelText('Name'), 'Home')
-    await user.click(within(dialog).getByRole('radio', { name: 'Castle' }))
-    await user.click(within(dialog).getByRole('button', { name: 'Save' }))
+    const name = within(info).getByRole('textbox', { name: 'Name' })
+    // Escape puts back what was typed, and the page stays.
+    await user.clear(name)
+    await user.type(name, 'Nope')
+    await user.keyboard('{Escape}')
+    expect((name as HTMLInputElement).value).toBe('Notes')
+    expect(screen.getByRole('dialog', { name: 'Notes' })).toBeTruthy()
 
-    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Edit space' })).toBeNull())
-    // Back on Space info, which follows the change.
+    await user.clear(name)
+    await user.type(name, '  Home {Enter}')
+    await waitFor(async () =>
+      expect((await spaces(server)).map((s) => [s.name, s.icon])).toEqual([
+        ['Home', 'castle'],
+        ['Work', ''],
+      ]),
+    )
     expect(await screen.findByRole('dialog', { name: 'Home' })).toBeTruthy()
-    expect((await spaces(server)).map((s) => [s.name, s.icon])).toEqual([
-      ['Home', 'castle'],
-      ['Work', ''],
-    ])
+    expect(screen.queryByRole('dialog', { name: 'Edit space' })).toBeNull()
+
+    // An empty name is put back rather than saved.
+    await user.clear(name)
+    await user.tab()
+    expect((name as HTMLInputElement).value).toBe('Home')
   })
 
   it('shows the notes that stopped a delete', async () => {
     const { server, user } = await withWork()
     await server.api('PUT', '/spaces/empty', { name: 'Empty' })
     const info = await infoFromSettings(user, 'Empty')
-    const remove = within(info).getByRole('button', { name: 'Delete space' })
+    const remove = within(info).getByRole('button', { name: 'Delete space…' })
     expect(remove.hasAttribute('disabled')).toBe(false)
     // Another device files a note there meanwhile.
     await noteIn(server, 'empty', 'Late', 'x\n')
     await user.click(remove)
+    await user.click(within(within(info).getByRole('group', { name: 'Delete Empty?' })).getByRole('button', { name: 'Delete' }))
 
     expect((await within(info).findByRole('alert')).textContent).toMatch(/another device/)
-    await waitFor(() => expect(within(info).getByRole('button', { name: 'Delete space' }).hasAttribute('disabled')).toBe(true))
+    await waitFor(() => expect(within(info).getByRole('button', { name: 'Delete space…' }).hasAttribute('disabled')).toBe(true))
     expect(within(info).getByText('1 note')).toBeTruthy()
   })
 
@@ -183,20 +199,25 @@ describe('creating spaces', () => {
     await server.api('PUT', '/spaces/empty', { name: 'Empty' })
 
     let info = await infoFromSettings(user, 'Work')
-    let remove = within(info).getByRole('button', { name: 'Delete space' })
+    let remove = within(info).getByRole('button', { name: 'Delete space…' })
     expect(remove.hasAttribute('disabled')).toBe(true)
     expect(remove.getAttribute('aria-describedby')).toBeTruthy()
     expect(within(info).getByText('Move or delete its notes to delete it.')).toBeTruthy()
     await user.click(within(info).getByRole('button', { name: 'Done' }))
 
     info = await infoFromSettings(user, 'Notes')
-    expect(within(info).getByRole('button', { name: 'Delete space' }).hasAttribute('disabled')).toBe(true)
+    expect(within(info).getByRole('button', { name: 'Delete space…' }).hasAttribute('disabled')).toBe(true)
     expect(within(info).getByText(/can be renamed, not deleted/)).toBeTruthy()
     await user.click(within(info).getByRole('button', { name: 'Done' }))
 
     info = await infoFromSettings(user, 'Empty')
-    remove = within(info).getByRole('button', { name: 'Delete space' })
+    remove = within(info).getByRole('button', { name: 'Delete space…' })
     await user.click(remove)
+    // Asked in place first; Cancel leaves it.
+    await user.click(within(within(info).getByRole('group', { name: 'Delete Empty?' })).getByRole('button', { name: 'Cancel' }))
+    expect(within(info).queryByRole('group', { name: 'Delete Empty?' })).toBeNull()
+    await user.click(remove)
+    await user.click(within(within(info).getByRole('group', { name: 'Delete Empty?' })).getByRole('button', { name: 'Delete' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Empty' })).toBeNull())
     const card = screen.getByRole('region', { name: 'Spaces' })
     await waitFor(() => expect(within(card).queryByText('Empty')).toBeNull())
@@ -215,9 +236,10 @@ describe('Space info', () => {
 
     const info = await screen.findByRole('dialog', { name: 'Work' })
     expect(within(info).getByText('2 notes')).toBeTruthy()
-    // Without traits, only what can be turned on: sharing, for a space of the account's own.
-    const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
-    expect(rows.map((r) => r.textContent)).toEqual(['SharedOffTurn on'])
+    // Without traits, sharing is its People section, to invite from: not a feature turned off.
+    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
+    expect(within(info).queryByRole('list', { name: 'Features' })).toBeNull()
+    expect(within(info).queryByText('Off')).toBeNull()
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Work' })).toBeNull())
   })
@@ -254,7 +276,8 @@ describe('traits', () => {
     // Another space's row: each trait's label, a problem in its place.
     const row = spaceRow('Work')
     expect(row.getAttribute('aria-label')).toBe('Work, Shared, Published (Publishing failed), Calendar')
-    expect(row.textContent).toBe('WorkShared· Publishing failed· Calendar')
+    // One line of glyphs after the name; words only for the problem.
+    expect(row.textContent).toBe('WorkPublishing failed')
     await user.click(row)
 
     // In Work, the card words each trait; Notes is the one to switch to.
@@ -265,21 +288,18 @@ describe('traits', () => {
       'Publishing failed',
       'Calendar · Synced with iCloud',
     ])
-    expect(spaceRow('Notes').getAttribute('aria-label')).toBe('Notes, only you')
+    expect(spaceRow('Notes').getAttribute('aria-label')).toBe('Notes')
+    expect(spaceRow('Notes').textContent).toBe('Notes')
     expect(within(popover()).queryByRole('button', { name: /^Work, / })).toBeNull()
     await user.keyboard('{Escape}')
 
     const glyphs = await within(panel()).findByRole('button', { name: 'Space info: Shared, Published (Publishing failed), Calendar' })
     await user.click(glyphs)
     const info = await screen.findByRole('dialog', { name: 'Work' })
+    // Sharing is a section of its own; the rest, without settings here, are rows.
+    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
     const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
-    expect(rows.map((r) => r.textContent)).toEqual([
-      'SharedWith Ana and BenManage',
-      'PublishedPublishing failed',
-      'CalendarSynced with iCloudUpdate the app to change this.',
-    ])
-    // Only sharing has settings yet.
-    expect(within(info).getAllByRole('button', { name: /^(Manage|Turn on)/ }).map((b) => b.getAttribute('aria-label'))).toEqual(['Manage Shared'])
+    expect(rows.map((r) => r.textContent)).toEqual(['PublishedPublishing failed', 'CalendarSynced with iCloudUpdate the app to change this.'])
   })
 
   it('asks before moving a note where more people see it', async () => {

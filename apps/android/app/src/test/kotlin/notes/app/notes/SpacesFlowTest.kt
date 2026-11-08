@@ -3,17 +3,22 @@ package notes.app.notes
 import android.content.Context
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.assertIsNotEnabled
+import androidx.compose.ui.test.assertTextEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.longClick
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performImeAction
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.requestFocus
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -164,7 +169,7 @@ class SpacesFlowTest {
         compose.onNodeWithText("Spaces").performClick()
         compose.waitUntilExactlyOneExists(hasText(name) and hasClickAction())
         compose.onNode(hasText(name) and hasClickAction()).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+        compose.waitUntilExactlyOneExists(hasText("Delete space…"))
     }
 
     @Test
@@ -176,10 +181,11 @@ class SpacesFlowTest {
         launch("Groceries")
         openSpaceInfoFromSettings("Work")
         compose.onNodeWithText("0 notes").assertExists()
-        // No traits on, but a space of your own can be shared.
-        compose.onNodeWithText("Shared").assertExists()
-        compose.onNodeWithText("Turn on").assertExists()
-        compose.onNodeWithText("Delete space").performClick()
+        // No traits on, but a space of your own can be shared: by inviting someone, right there.
+        compose.onNodeWithText("People").assertExists()
+        compose.onNodeWithText("Invite people to read and edit every note in Work, and add their own.").assertExists()
+        compose.onNodeWithText("Delete space…").performScrollTo().performClick()
+        compose.onNode(hasText("Delete") and hasClickAction()).performScrollTo().performClick()
         // Gone: back to the list of spaces.
         compose.waitUntilExactlyOneExists(hasText("New space"))
         compose.onNode(hasText("Work") and hasClickAction()).assertDoesNotExist()
@@ -192,8 +198,10 @@ class SpacesFlowTest {
         launch("Groceries")
         openSpaceInfoFromSettings("Notes")
         compose.onNodeWithText("1 note").assertExists()
-        compose.onNodeWithText("Delete space").assertIsNotEnabled()
+        compose.onNodeWithText("Delete space…").assertIsNotEnabled()
         compose.onNodeWithText("This space can be renamed, not deleted.").assertExists()
+        // Everyone keeps a space of their own: the default can't be shared.
+        compose.onNodeWithText("People").assertDoesNotExist()
     }
 
     @Test
@@ -210,13 +218,14 @@ class SpacesFlowTest {
         // The list's title carries the traits' button, which opens Space info.
         compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared, Archived"))
         compose.onNodeWithContentDescription("Space info: Shared, Archived").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
-        compose.onNodeWithText("With Ana and Ben").assertExists()
+        compose.waitUntilExactlyOneExists(hasText("Delete space…"))
+        // Sharing has a section of its own; a trait without one is a row with the server's words.
+        compose.onNodeWithText("People").assertExists()
+        compose.onNodeWithText("Archived").assertExists()
         compose.onNodeWithText("Read only").assertExists()
         compose.onNodeWithText("Update the app to change this.").assertExists()
-        // Publishing can't be turned on from this app yet, so its row is left out while off.
+        // Publishing can't be turned on from this app yet, so it's left out while off.
         compose.onNodeWithText("Published").assertDoesNotExist()
-        compose.onNodeWithText("Turn on").assertDoesNotExist()
     }
 
     @Test
@@ -268,13 +277,13 @@ class SpacesFlowTest {
         compose.onNodeWithContentDescription("Sidebar").performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
         compose.onNodeWithContentDescription("Space: Notes").performClick()
-        compose.waitUntilExactlyOneExists(hasContentDescription("Work, only you"))
-        compose.onNodeWithContentDescription("Work, only you").performTouchInput { longClick() }
-        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+        compose.waitUntilExactlyOneExists(hasContentDescription("Work"))
+        compose.onNodeWithContentDescription("Work").performTouchInput { longClick() }
+        compose.waitUntilExactlyOneExists(hasText("Delete space…"))
 
         RuntimeEnvironment.setQualifiers("w1280dp-h800dp")
         scenario.recreate()
-        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+        compose.waitUntilExactlyOneExists(hasText("Delete space…"))
         scenario.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntilExactlyOneExists(hasText("Groceries"))
     }
@@ -289,10 +298,31 @@ class SpacesFlowTest {
         compose.onNodeWithContentDescription("Sidebar").performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
         compose.onNodeWithContentDescription("Space: Notes").performClick()
-        compose.waitUntilExactlyOneExists(hasContentDescription("Work, only you"))
-        compose.onNodeWithContentDescription("Work, only you").performTouchInput { longClick() }
-        compose.waitUntilExactlyOneExists(hasText("Name and icon"))
+        compose.waitUntilExactlyOneExists(hasContentDescription("Work"))
+        compose.onNodeWithContentDescription("Work").performTouchInput { longClick() }
+        compose.waitUntilExactlyOneExists(hasText("Delete space…"))
         compose.onNodeWithText("0 notes").assertExists()
         assertEquals(Spaces.DEFAULT, graph.space.value)
+    }
+
+    @Test
+    fun `Space info renames the space and changes its icon in place`() {
+        runBlocking {
+            graph.store.save("a", "Groceries", "Milk\n")
+            graph.sync.spaces.create("Work", "castle")
+        }
+        launch("Groceries")
+        openSpaceInfoFromSettings("Work")
+        val name = compose.onNode(hasSetTextAction())
+        name.requestFocus()
+        name.performTextReplacement("Deep  work")
+        name.performImeAction()
+        compose.waitUntil { compose.runOffMain { graph.sync.spaces.list() }.any { it.name == "Deep work" } }
+
+        compose.onNodeWithContentDescription("Change icon").performClick()
+        compose.onNodeWithContentDescription("Dragon").performScrollTo().performClick()
+        compose.waitUntil { compose.runOffMain { graph.sync.spaces.list() }.any { it.icon == "dragon" } }
+        // Nothing opened over the page: it's still Space info, with the new name.
+        name.assertTextEquals("Deep work")
     }
 }

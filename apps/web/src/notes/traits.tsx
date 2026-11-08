@@ -1,25 +1,24 @@
 import type { ComponentType } from 'react'
 import type { Space, SpaceTrait } from '../api/types'
-import { InvitePicker, SharedSettings } from '../settings/shared-space'
+import { PeopleSection } from '../settings/shared-space'
 import { DEFAULT_SPACE } from './default-space'
 
 // Space traits (architecture §7.8): this app's registry, the glyphs it draws and the move check.
 
 type GlyphProps = { size?: number }
 
-/** What a trait's settings or its Turn on flow get: the space, and a way back to Space info. */
-export type TraitFlowProps = { space: Space; onClose: () => void }
-
 export type TraitEntry = {
   key: string
   /** Named while it's off; on, the server's label is shown. */
   label: string
   Glyph: ComponentType<GlyphProps>
-  /** Space info's Manage, while it's on. None: Space info has nothing to change. */
-  Settings?: ComponentType<TraitFlowProps>
-  /** Off, whether Space info offers Turn on, which shows turnOn. */
+  /**
+   * Its part of Space info, on or off: everything it changes, in place. None: Space info shows the server's
+   * label and summary, and there is nothing to change.
+   */
+  Section?: ComponentType<{ space: Space }>
+  /** Off, whether Space info shows it at all. */
   canTurnOn: (space: Space) => boolean
-  turnOn?: ComponentType<TraitFlowProps>
 }
 
 // Line glyphs as in ui/icons.tsx: a 16-unit grid in currentColor.
@@ -69,7 +68,7 @@ const canShare = (space: Space) => space.id !== DEFAULT_SPACE && (!space.shared 
 
 /** In the server's order (spaces.TraitOrder); a key keeps its place before its feature ships. */
 export const TRAITS: readonly TraitEntry[] = [
-  { key: 'shared', label: 'Shared', Glyph: SharedGlyph, Settings: SharedSettings, canTurnOn: canShare, turnOn: InvitePicker },
+  { key: 'shared', label: 'Shared', Glyph: SharedGlyph, Section: PeopleSection, canTurnOn: canShare },
   { key: 'published', label: 'Published', Glyph: PublishedGlyph, canTurnOn: off },
   { key: 'agent', label: 'Agent', Glyph: AgentGlyph, canTurnOn: off },
 ]

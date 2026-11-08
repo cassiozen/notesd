@@ -75,6 +75,19 @@ enum Sharing {
         }
     }
 
+    /// Who of `people` can be invited to `space`: not `me`, nor anyone in it or invited to it already.
+    static func invitable(_ people: [Member], to space: Space, me: Int64?) -> [Member] {
+        let taken = Set((space.shared?.members ?? []).map(\.id) + (space.shared?.invites ?? []).map(\.userId))
+        return people.filter { $0.id != me && !taken.contains($0.id) }
+    }
+
+    /// A member's part in a space, as People lists it: "Owner", "You", "Owner · You"; "" for anyone else.
+    static func role(of member: Member, in shared: SharedSpace, me: Int64?) -> String {
+        let owner = member.id == shared.members.first?.id ? "Owner" : nil
+        let you = member.id == me ? "You" : nil
+        return [owner, you].compactMap { $0 }.joined(separator: " · ")
+    }
+
     static let lockedInShared = "Locked notes can’t be in a shared space."
 
     /// A membership call's failure in words. `locked`: the space's locked notes here, for a refused share; 0 when
@@ -127,13 +140,12 @@ extension AppGraph {
         await call { await $0.declineInvite(invite.id) }
     }
 
-    /// Everyone on the server but this account and those already in `space` or invited to it.
-    func invitable(to space: Space) async -> Result<[Member], SharingError> {
+    /// Everyone with an account on the server, for an owner to invite (`Sharing.invitable` leaves out who's in).
+    func people() async -> Result<[Member], SharingError> {
         guard let client = accounts.client() else { return .failure(SharingError(Self.signInToShare)) }
         let result = await client.people()
         guard case .ok(let people) = result else { return .failure(SharingError(Sharing.message(result) ?? "")) }
-        let taken = Set((space.shared?.members ?? []).map(\.id) + (space.shared?.invites ?? []).map(\.userId))
-        return .success(people.filter { $0.id != userId && !taken.contains($0.id) })
+        return .success(people)
     }
 
     /// The first invitation shares the space: its notes move to a file of their own.
