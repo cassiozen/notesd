@@ -9,12 +9,17 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import java.io.File
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.onSubscription
@@ -32,7 +37,10 @@ import notes.app.locks.KeystoreBiometrics
 import notes.app.notes.Deletions
 import notes.app.notes.SpaceInvite
 import notes.app.notes.TagTreeState
+import notes.app.notes.changeLine
+import notes.app.notes.memberId
 import notes.app.settings.Appearance
+import notes.app.sharing.Sharing
 import notes.app.sync.SyncScheduler
 import notes.app.ui.SpaceThemes
 import notes.core.api.ApiClient
@@ -119,18 +127,49 @@ class AppGraph(
     /** The space the list, tags and search show: this phone's own, never synced, the default at a cold start. */
     val space: StateFlow<String> = _space
 
+    /** Who's in shared spaces (§7.9): invitations, members, leaving. */
+    val sharing = Sharing({ api() }, sync, store, scope)
+
+    /** The space switcher is open: only then are its invitations and "what changed" lines kept current. */
+    val switcherShown = MutableStateFlow(false)
+
+    /** For the space switcher: invitations into others' spaces, as of the last sync (§7.9). */
+    val spaceInvites: StateFlow<List<SpaceInvite>> = whileSwitcherShown {
+        sync.spaces.invites().map { SpaceInvite(it.id, it.spaceName, it.spaceIcon, it.from.username) }
+    }.stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
+
+    /** For the space switcher: by space id, what other members changed there since this phone last showed it. */
+    val spaceChanges: StateFlow<Map<String, String>> = whileSwitcherShown {
+        sync.spaces.news().mapValues { (_, news) -> changeLine(news) }
+    }.stateIn(scope, SharingStarted.WhileSubscribed(), emptyMap())
+
+    // Re-read on every write otherwise, for a sheet that's usually closed.
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun <T> whileSwitcherShown(read: suspend () -> T): Flow<T> = switcherShown.flatMapLatest { shown ->
+        if (shown) store.changes.onSubscription { emit(Unit) }.map { read() } else emptyFlow()
+    }
+
     /**
-     * For the space switcher: invitations to others' spaces, and a "what changed" line per space id. Sharing
-     * will fill them; nothing does yet.
+     * This account's id, as notes' last editor and shared spaces' members name it (§7.9). An account signed in
+     * before the app kept it is found by its username among a shared space's members.
      */
-    val spaceInvites = MutableStateFlow<List<SpaceInvite>>(emptyList())
-    val spaceChanges = MutableStateFlow<Map<String, String>>(emptyMap())
+    val userId: StateFlow<Long?> = combine(accounts.account, spaces) { a, list -> ownId(a, list) }
+        .stateIn(scope, SharingStarted.WhileSubscribed(), null)
 
     /** Shows another space, from All notes. */
     fun switchSpace(id: String) {
         if (_space.value == id) return
+        val left = _space.value
         _space.value = id
         listFilter.value = null
+        // Both were on screen until now: what changed in them so far isn't news (§7.9). Timed here, not when the
+        // launch runs, so changes synced in between stay news.
+        val at = System.currentTimeMillis()
+        scope.launch(Dispatchers.Default) { runCatching { visit(at, left, id) } }
+    }
+
+    private suspend fun visit(at: Long, vararg ids: String) {
+        for (id in ids) sync.spaces.visit(id, at)
     }
 
     /**
@@ -228,7 +267,9 @@ class AppGraph(
         ProcessLifecycleOwner.get().lifecycle.addObserver(
             object : DefaultLifecycleObserver {
                 override fun onStop(owner: LifecycleOwner) {
-                    backgroundSince = System.currentTimeMillis()
+                    val at = System.currentTimeMillis()
+                    backgroundSince = at
+                    scope.launch(Dispatchers.Default) { runCatching { visit(at, _space.value) } }
                 }
 
                 override fun onStart(owner: LifecycleOwner) {
@@ -238,6 +279,26 @@ class AppGraph(
                 }
             }
         )
+    }
+
+    /**
+     * The engine stamps this account's edits with its id and tells others' apart by it (§7.9). An account from
+     * before the app kept the id learns it from the first shared space it's in. Started with sync.
+     */
+    fun watchAccount() {
+        // Off Main: nothing here is for the screen.
+        scope.launch(Dispatchers.Default) {
+            combine(accounts.account, store.changes.onSubscription { emit(Unit) }) { a, _ -> a }.collect { a ->
+                if (a !is Account.SignedIn || a.userId != null) return@collect
+                memberId(sync.spaces.list(), a.username)?.let { accounts.userIdFound(a, it) }
+            }
+        }
+        scope.launch(Dispatchers.Default) {
+            // Not known (another account, an older server): none, rather than the last account's.
+            accounts.account.map { (it as? Account.SignedIn)?.userId }.distinctUntilChanged().collect { id ->
+                sync.store.setUserId(id ?: 0)
+            }
+        }
     }
 
     /** Each sync may bring the first lock password, a changed one, or a reset. Started with sync. */
@@ -256,6 +317,12 @@ class AppGraph(
         const val SPACE_RESET_MS = 30 * 60_000L
         const val LOGOUT_WAIT_MS = 5_000L
     }
+}
+
+private fun ownId(account: Account, spaces: List<Space>): Long? = when (account) {
+    Account.None -> null
+    is Account.SignedIn -> account.userId ?: memberId(spaces, account.username)
+    is Account.SignedOut -> memberId(spaces, account.username)
 }
 
 /** This app, as every request names it: the server may ask for a newer one. */

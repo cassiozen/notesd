@@ -44,6 +44,9 @@ import notes.core.text.tagText
 
 enum class SaveStatus { Blank, Unsaved, Saved }
 
+/** The account that last changed a note (§7.9), null when not recorded, and when. */
+data class LastEdit(val by: Long?, val at: Long)
+
 /** The note a conflicted copy was split from. */
 data class Original(val id: String, val title: String)
 
@@ -133,6 +136,11 @@ class EditorViewModel(
 
     /** Locked with a key the keyring no longer has (it was reset, or there's no lock password at all): it can't be opened. */
     val unreadable: StateFlow<Boolean> = _unreadable
+
+    private val _lastEdit = MutableStateFlow<LastEdit?>(null)
+
+    /** Who changed the stored note last, and when; null until it's stored. */
+    val lastEdit: StateFlow<LastEdit?> = _lastEdit
 
     private val _title = MutableStateFlow("")
 
@@ -428,6 +436,7 @@ class EditorViewModel(
     }
 
     private suspend fun show(note: Note) {
+        _lastEdit.value = LastEdit(note.updatedBy, note.updatedAt)
         if (edits == saved) _status.value = SaveStatus.Saved
         val originalId = note.conflictOf
         if (originalId != null && _original.value?.id != originalId) {

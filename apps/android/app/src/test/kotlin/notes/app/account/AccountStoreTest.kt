@@ -65,6 +65,19 @@ class AccountStoreTest {
     }
 
     @Test
+    fun `an id found for an account no longer the one signed in isn't kept`() = runBlocking {
+        val store = AccountStore(file, sealer)
+        store.signedIn("https://n.example/", signIn)
+        val looked = store.account.value as Account.SignedIn
+        store.signedIn("https://n.example/", signIn.copy(username = "ana"))
+        store.userIdFound(looked, 7)
+        assertEquals(Account.SignedIn("https://n.example/", "ana"), AccountStore(file, sealer).account.value)
+        store.signedIn("https://n.example/", signIn)
+        store.userIdFound(looked, 7)
+        assertEquals(Account.SignedIn("https://n.example/", "me", userId = 7), AccountStore(file, sealer).account.value)
+    }
+
+    @Test
     fun `refreshing replaces the tokens`() = runBlocking {
         val store = AccountStore(file, sealer)
         store.signedIn("https://n.example/", signIn)

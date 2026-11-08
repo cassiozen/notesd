@@ -39,6 +39,7 @@ import notes.app.notes.TraitEntry
 import notes.app.notes.TraitRow
 import notes.app.notes.name
 import notes.app.notes.traitRows
+import notes.app.sharing.PeoplePicker
 import notes.app.ui.ButtonKind
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
@@ -52,8 +53,16 @@ import notes.core.db.Spaces
  * here or elsewhere.
  */
 @Composable
-fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () -> Unit) {
+fun SpaceInfoScreen(
+    graph: AppGraph,
+    id: String,
+    backLabel: String?,
+    onBack: () -> Unit,
+    /** Sharing's own page, for this space. */
+    onSharing: () -> Unit = {}
+) {
     val spaces by graph.spaces.collectAsStateWithLifecycle()
+    val registry = remember(graph, onSharing) { sharingRegistry(graph, onSharing) }
     val space = spaces.firstOrNull { it.id == id }
     val scope = rememberCoroutineScope()
     var editing by remember { mutableStateOf(false) }
@@ -78,6 +87,7 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
         backLabel,
         onBack,
         error = error,
+        registry = registry,
         onEdit = { editing = true },
         onDelete = {
             error = null
@@ -121,6 +131,28 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
     }
 }
 
+/**
+ * The app's traits with sharing's ways in (§7.9): on, its row opens the Sharing page; off, Turn on picks someone
+ * to invite. Offered for the account's own spaces but the default, and for a shared one its owner stopped sharing.
+ */
+internal fun sharingRegistry(graph: AppGraph, onSharing: () -> Unit): List<TraitEntry> = SpaceTraits.entries.map {
+    if (it.key != "shared") return@map it
+    it.with(
+        settings = { _, onClose ->
+            // A page of its own rather than a sheet over Space info: it has a lot to show.
+            LaunchedEffect(Unit) {
+                onClose()
+                onSharing()
+            }
+        },
+        turnOn = { space, onClose ->
+            val me by graph.userId.collectAsStateWithLifecycle()
+            PeoplePicker(graph, space, me, onDismiss = onClose, onInvited = onClose)
+        },
+        offeredFor = { space -> space.id != Spaces.DEFAULT && space.shared?.isOwner != false }
+    )
+}
+
 /** The page itself: the space, its traits, then Name and icon, and Delete. */
 @Composable
 internal fun SpaceInfoPage(
@@ -135,7 +167,9 @@ internal fun SpaceInfoPage(
     val t = LocalTokens.current
     // A trait's settings, or its turn-on flow, over the page.
     var opened by remember { mutableStateOf<(@Composable (Space, () -> Unit) -> Unit)?>(null) }
-    val rows = traitRows(space.traits, registry)
+    val rows = traitRows(space.traits, registry, space)
+    // A member's view of someone else's space: only its owner renames or deletes it (§7.9).
+    val owner = space.shared?.let { if (it.isOwner) null else it.members.firstOrNull()?.username.orEmpty() }
     val deletable = space.id != Spaces.DEFAULT && space.noteCount == 0
 
     SettingsFrame(backLabel, onBack, null) {
@@ -187,24 +221,29 @@ internal fun SpaceInfoPage(
             }
             Spacer(Modifier.height(16.dp))
         }
-        Card {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp)
-                    .clickable(role = Role.Button, onClick = onEdit)
-                    .padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("Name and icon", style = Type.rowTitle, color = t.ink, modifier = Modifier.weight(1f))
-                Icon(Icons.Chevron, null, Modifier.size(16.dp), tint = t.ink3)
+        if (owner != null) {
+            val who = if (owner.isEmpty()) "its owner" else "its owner, $owner,"
+            Footnote("Only $who can rename or delete it.")
+        } else {
+            Card {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 56.dp)
+                        .clickable(role = Role.Button, onClick = onEdit)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Name and icon", style = Type.rowTitle, color = t.ink, modifier = Modifier.weight(1f))
+                    Icon(Icons.Chevron, null, Modifier.size(16.dp), tint = t.ink3)
+                }
+                Divider()
+                Action("Delete space", t.danger, enabled = deletable, onClick = onDelete)
             }
-            Divider()
-            Action("Delete space", t.danger, enabled = deletable, onClick = onDelete)
-        }
-        when {
-            space.id == Spaces.DEFAULT -> Footnote("This space can be renamed, not deleted.")
-            space.noteCount > 0 -> Footnote("Move or delete its notes to delete it.")
+            when {
+                space.id == Spaces.DEFAULT -> Footnote("This space can be renamed, not deleted.")
+                space.noteCount > 0 -> Footnote("Move or delete its notes to delete it.")
+            }
         }
         error?.let {
             Text(

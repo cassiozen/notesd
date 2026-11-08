@@ -46,7 +46,9 @@ class OnboardingViewModel(
     private val clientFor: (HttpUrl) -> ApiClient,
     val lockedServer: String? = null,
     username: String = "",
-    private val clock: () -> Long = System::currentTimeMillis
+    private val clock: () -> Long = System::currentTimeMillis,
+    /** Gives the sync engine the account's id (§7.9); 0 when the server didn't say. */
+    private val engineUserId: suspend (Long) -> Unit = {}
 ) : ViewModel() {
     /** Whose notes this phone holds while signed out; nobody else may sign in. */
     val lockedUsername: String? = (accounts.account.value as? Account.SignedOut)?.username
@@ -163,6 +165,9 @@ class OnboardingViewModel(
     private suspend fun finish(signIn: SignIn) {
         // The server's spelling of the username, in case it compares names differently than this phone.
         if (!isLockedUser(signIn.username)) return fail(message = otherUserMessage())
+        // Before the account says signed in, which starts a sync: that sync tells this account's changes and moves
+        // from others' by the id.
+        engineUserId(signIn.userId)
         accounts.signedIn(url.toString(), signIn)
         state = state.copy(done = true, password = "", confirm = "")
     }

@@ -19,9 +19,14 @@ sealed interface Account {
 
     /**
      * [isAdmin]: as of sign-in, or the last time the server said; People asks it again. Null: not known, for an
-     * account signed in before the app kept it.
+     * account signed in before the app kept it. [userId] likewise: the account's id, as shared spaces name it (§7.9).
      */
-    data class SignedIn(val server: String, val username: String, val isAdmin: Boolean? = false) : Account
+    data class SignedIn(
+        val server: String,
+        val username: String,
+        val isAdmin: Boolean? = false,
+        val userId: Long? = null
+    ) : Account
 
     /**
      * Connected once, no session now (signed out, or the session was revoked).
@@ -45,7 +50,8 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         val accessExpiresAt: Long = 0,
         val refresh: String? = null,
         // Absent from files written before the app kept it: unknown, not "no".
-        val isAdmin: Boolean? = null
+        val isAdmin: Boolean? = null,
+        val userId: Long? = null
     )
 
     private val lock = Mutex()
@@ -54,7 +60,25 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
     val account: StateFlow<Account> = _account
 
     suspend fun signedIn(server: String, signIn: SignIn) = write {
-        Saved(server, signIn.username, signIn.accessToken, signIn.accessExpiresAt, signIn.refreshToken, signIn.isAdmin)
+        Saved(
+            server,
+            signIn.username,
+            signIn.accessToken,
+            signIn.accessExpiresAt,
+            signIn.refreshToken,
+            signIn.isAdmin,
+            // 0 from a server older than shared spaces.
+            signIn.userId.takeIf { it > 0 }
+        )
+    }
+
+    /**
+     * [id] is [of]'s, found out after signing in on a server that didn't say. Kept only if [of] is still the account:
+     * the lookup may have outlasted it.
+     */
+    suspend fun userIdFound(of: Account.SignedIn, id: Long) = write {
+        if (it == null || it.server != of.server || it.username != of.username || it.userId != null) return@write it
+        it.copy(userId = id)
     }
 
     /** What the server last said: another admin can change it at any time. */
@@ -81,6 +105,7 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
 
     private suspend fun write(change: (Saved?) -> Saved?) = lock.withLock {
         val next = change(saved)
+        if (next == saved) return@withLock
         withContext(Dispatchers.IO) {
             if (next == null) {
                 file.delete()
@@ -109,7 +134,7 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
 
         fun accountOf(s: Saved?): Account = when {
             s == null -> Account.None
-            s.access != null && s.refresh != null -> Account.SignedIn(s.server, s.username, s.isAdmin)
+            s.access != null && s.refresh != null -> Account.SignedIn(s.server, s.username, s.isAdmin, s.userId)
             else -> Account.SignedOut(s.server, s.username)
         }
     }

@@ -156,11 +156,14 @@ fun NotesListScreen(
     /** A search result from another space: switch to its space, then open it. */
     onOpenElsewhere: (id: String, space: String) -> Unit = { id, _ -> onOpen(id) },
     /** A space's Space info (§7.8), from the title's trait glyphs. */
-    onSpaceInfo: (String) -> Unit = {}
+    onSpaceInfo: (String) -> Unit = {},
+    /** This account's id: another member's changes name them (§7.9). */
+    me: Long? = null
 ) {
     val t = LocalTokens.current
     val state by vm.state.collectAsStateWithLifecycle()
     val many = spaces.size > 1
+    val current = spaces.firstOrNull { it.id == space }
     val spaceName = spaces.nameOf(space)
     // The other spaces' matches, listed once asked for, for these words.
     var elsewhereFor by remember { mutableStateOf<String?>(null) }
@@ -414,7 +417,8 @@ fun NotesListScreen(
                             items(group.items, key = { it.id }, contentType = { "row" }) { note ->
                                 NoteRow(
                                     title = note.title,
-                                    time = listTime(note.updatedAt),
+                                    time = editedBy(current, note.updatedBy, me)?.let { byLine(it, note.updatedAt) }
+                                        ?: listTime(note.updatedAt),
                                     preview = AnnotatedString(
                                         note.preview.split('\n').joinToString(" · ").ifEmpty { "No additional text" }
                                     ),

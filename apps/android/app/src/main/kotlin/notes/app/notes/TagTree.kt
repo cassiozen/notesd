@@ -155,8 +155,9 @@ fun TagsPane(
     /** For the switcher: invitations to answer, and each space's "what changed" line. */
     invites: List<SpaceInvite> = emptyList(),
     changes: Map<String, String> = emptyMap(),
-    onJoin: (String) -> Unit = {},
-    onDecline: (String) -> Unit = {}
+    onJoin: InviteAnswer = { null },
+    onDecline: InviteAnswer = { null },
+    onSwitcherShown: (Boolean) -> Unit = {}
 ) {
     val t = LocalTokens.current
     val tags by vm.tags.collectAsStateWithLifecycle()
@@ -212,7 +213,8 @@ fun TagsPane(
                         invites = invites,
                         changes = changes,
                         onJoin = onJoin,
-                        onDecline = onDecline
+                        onDecline = onDecline,
+                        onShown = onSwitcherShown
                     )
                     SettingsButton(onSettings)
                 }

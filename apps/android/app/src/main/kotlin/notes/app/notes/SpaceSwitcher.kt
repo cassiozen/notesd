@@ -23,9 +23,12 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,9 +38,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -56,6 +61,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Popup
 import androidx.compose.ui.window.PopupPositionProvider
 import androidx.compose.ui.window.PopupProperties
+import kotlinx.coroutines.launch
 import notes.app.ui.ButtonKind
 import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
@@ -69,6 +75,9 @@ import notes.core.db.Spaces
 
 /** An invitation to someone else's space; [from] is the inviter's name. */
 data class SpaceInvite(val id: String, val spaceName: String, val spaceIcon: String, val from: String)
+
+/** Joins or declines an invitation by id: null once done, else why not, in words. */
+typealias InviteAnswer = suspend (String) -> String?
 
 /**
  * The switcher between spaces (§7.7): the current space's icon and name, opening the current space's card,
@@ -88,8 +97,10 @@ fun SpaceSwitcher(
     popup: Boolean = false,
     invites: List<SpaceInvite> = emptyList(),
     changes: Map<String, String> = emptyMap(),
-    onJoin: (String) -> Unit = {},
-    onDecline: (String) -> Unit = {}
+    onJoin: InviteAnswer = { null },
+    onDecline: InviteAnswer = { null },
+    /** Opened and closed: [invites] and [changes] need only be kept current while it's open. */
+    onShown: (Boolean) -> Unit = {}
 ) {
     val t = LocalTokens.current
     var open by remember { mutableStateOf(false) }
@@ -116,6 +127,10 @@ fun SpaceSwitcher(
             onTraits = { onInfo(current) }
         )
         if (open) {
+            DisposableEffect(Unit) {
+                onShown(true)
+                onDispose { onShown(false) }
+            }
             val content: @Composable () -> Unit = {
                 SwitcherContent(
                     spaces,
@@ -134,7 +149,8 @@ fun SpaceSwitcher(
                         open = false
                         onCreate()
                     },
-                    onJoin = onJoin,
+                    // Joining shows the space: the switcher's done.
+                    onJoin = { id -> onJoin(id).also { if (it == null) open = false } },
                     onDecline = onDecline
                 )
             }
@@ -193,8 +209,8 @@ internal fun SwitcherContent(
     onSwitch: (String) -> Unit,
     onInfo: (String) -> Unit,
     onCreate: () -> Unit,
-    onJoin: (String) -> Unit,
-    onDecline: (String) -> Unit
+    onJoin: InviteAnswer,
+    onDecline: InviteAnswer
 ) {
     val t = LocalTokens.current
     val here = spaces.firstOrNull { it.id == current } ?: Space(current, Spaces.DEFAULT_NAME, 0)
@@ -204,7 +220,7 @@ internal fun SwitcherContent(
         CurrentCard(here) { onInfo(here.id) }
         for (invite in invites) {
             Spacer(Modifier.height(8.dp))
-            Invitation(invite, onJoin, onDecline)
+            key(invite.id) { Invitation(invite, onJoin, onDecline) }
         }
         if (others.isNotEmpty()) {
             Text(
@@ -302,8 +318,20 @@ private fun InfoPill(onClick: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Invitation(invite: SpaceInvite, onJoin: (String) -> Unit, onDecline: (String) -> Unit) {
+private fun Invitation(invite: SpaceInvite, onJoin: InviteAnswer, onDecline: InviteAnswer) {
     val t = LocalTokens.current
+    val scope = rememberCoroutineScope()
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    fun answer(with: InviteAnswer) {
+        if (busy) return
+        busy = true
+        error = null
+        scope.launch {
+            error = with(invite.id)
+            busy = false
+        }
+    }
     Row(
         Modifier
             .fillMaxWidth()
@@ -329,16 +357,26 @@ private fun Invitation(invite: SpaceInvite, onJoin: (String) -> Unit, onDecline:
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 NotesButton(
                     "Join",
-                    { onJoin(invite.id) },
+                    { answer(onJoin) },
                     Modifier.semantics { contentDescription = "Join ${invite.spaceName}" },
+                    enabled = !busy,
                     small = true
                 )
                 NotesButton(
                     "Decline",
-                    { onDecline(invite.id) },
+                    { answer(onDecline) },
                     Modifier.semantics { contentDescription = "Decline ${invite.spaceName}" },
                     kind = ButtonKind.Chip,
+                    enabled = !busy,
                     small = true
+                )
+            }
+            error?.let {
+                Text(
+                    it,
+                    style = Type.small,
+                    color = t.danger,
+                    modifier = Modifier.padding(top = 8.dp).semantics { liveRegion = LiveRegionMode.Polite }
                 )
             }
         }
