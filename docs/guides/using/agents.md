@@ -11,15 +11,19 @@ what it does and when.
 
 Agents are being built. They act on **new note done**, **note edit done**, **note deleted** and the
 two **moved** triggers. Note created, started editing and the menu command come with the editor
-work; the activity log and undo come next.
+work.
 
 ## Give a space an agent
 
-Once an admin has [set up AI](#set-it-up-admins), every space that has synced to the server has an
-**Agent** switch: in **Edit
-space** (Settings → Spaces), and as **Add an agent** when you make a new space, which also offers
-examples to start from (Journal, Meeting notes, Recipes, Auto-tags). Turning it on says where your
-notes will be sent. [Locked notes](locked-notes.md) never are.
+Once an admin has [set up AI](#set-it-up-admins), open a space's **Space info** (**Info** in the
+space switcher, or the space's row in Settings → Spaces) and pick **Turn on** beside **Agent**. It
+offers examples to start from (Journal, Meeting notes, Recipes, Auto-tags), and says where your
+notes will be sent. [Locked notes](locked-notes.md) never are. Afterwards, **Manage** beside
+**Agent** changes it. A space with an agent shows the agent's glyph after its name, and moving a
+note into it asks first, since its notes go to the AI provider.
+
+Agents run in your own spaces. A shared space can't have one, and a space whose
+agent is on can't be shared until you turn the agent off.
 
 **What this space is for** describes the space and how the agent should behave. It goes with every
 prompt, and on its own does nothing:
@@ -43,6 +47,28 @@ nothing.
 
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.
+
+## See what it did, and undo it
+
+Everything an agent does is in **Activity**: in the space's Space info, pick **Manage** beside
+**Agent**, then **Activity**. On the web for now.
+
+Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
+changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it
+used, its last words, and each note it changed, line by line. Today's token use is at the top,
+against the daily limit.
+
+**Undo** puts each note the run changed back as it was, and deletes a note it made. A note you've
+changed since is left alone, so undo never loses your writing; Activity says which and why. Undo
+doesn't make the agent act again.
+
+If an agent's last run on a note failed, the note says so when you open it, with a link to the run
+in Activity. **Dismiss** hides it.
+
+When you lock or delete a note, Activity forgets its text too, as the note itself does. As with
+the note, backups made before still have it; see
+[what locking doesn't cover](../../concepts/security-model.md#locked-notes). Runs are kept for 30
+days.
 
 ## Time zone
 

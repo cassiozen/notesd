@@ -509,6 +509,10 @@ Removing an account leaves its notes database on disk, as
 | `DELETE` | `/agent/spaces/{id}` | → `204`; forgets the space's agent |
 | `GET` | `/settings/account` | → `{timeZone, timeZoneSource}` |
 | `PUT` | `/settings/account` | `{timeZone}` → the same as `GET` |
+| `GET` | `/agent/runs?space=&note=&limit=&cursor=` | → `{runs: [run, …], nextCursor, hasMore}`, newest first |
+| `GET` | `/agent/usage` | → `{day, tokens, runs, dailyTokenCap}` |
+| `GET` | `/agent/runs/{id}` | → the run, with `diffs` |
+| `POST` | `/agent/runs/{id}/undo` | → `{undone: [noteId, …], skipped: [{noteId, reason}, …]}` |
 
 A **config** is `{spaceId, enabled, prompt, menuLabel, triggers, updatedAt}`. `prompt` describes the
 space and how its agent behaves. `triggers` maps each trigger the agent acts on to its prompt:
@@ -528,6 +532,32 @@ The account's **time zone** decides "today" for agents. It's `UTC` (`timeZoneSou
 until a device says otherwise: any signed-in request may carry `X-Notesd-Time-Zone` with an IANA
 name such as `Europe/Lisbon`, and the first valid one is kept (`"auto"`). `PUT` sets it (`"user"`);
 a name that isn't a time zone is `400 invalid_request` on `timeZone`.
+
+The **activity log** lists every run: queued, running and finished, kept 30 days after it
+finishes. A **run** is `{id, trigger, status, spaceId, noteId, noteTitle, noteDeleted, outcome,
+failure, message, model, toolCalls, promptTokens, completionTokens, createdAt, startedAt,
+finishedAt, edits}`. `status` is `queued`, `running`, `done`, `failed` or `skipped`; `failure` says
+why a run failed or was skipped, and `outcome` what a finished one did (`edited`, `created`,
+`no_change`, or after undo `undone` or `partly_undone`). `message` is the model's last words, or what went wrong. `edits` lists the notes it
+changed: `{noteId, kind, title, writtenAt, undoneAt, undoable, blocked?}`, where `kind` is `edit` or
+`create` and `blocked` says why one can't be undone: `undone`, `running`, `deleted`, `locked` or
+`changed` (the note changed since the run wrote it). `limit` is up to 100, 50 by default. `GET /agent/usage`
+is today's, in the account's time zone.
+
+`GET /agent/runs/{id}` adds `diffs`, one per note changed: `{noteId, kind, titleBefore, titleAfter,
+lines, textRemoved}`. `lines` compares the content before the run's first change with after its last: each is
+`{op, text}` with `op` `=` (kept), `-` (removed) or `+` (added), `text` left out for a blank line;
+or `{op: "…", count}` for unchanged lines left out, three kept around each change. Each change lists
+its removed lines, then its added ones. `textRemoved` says the note was locked (its content) or
+deleted (title and content) since: notesd then clears the run's copies too, and `lines` is empty.
+An unknown run is `404 not_found`.
+
+**Undo** puts back each note a finished run changed, if nobody has changed it since: an edit's
+title and content are restored as a new revision, and a note the run created is deleted. Each
+note is undone on its own, so one changed note doesn't stop the rest; `skipped` gives each
+`reason`, as `blocked` above. Undoing again retries only what was skipped. When nothing can be
+undone it's `409 nothing_to_undo`, with `skipped`. The run's `outcome` becomes `undone`, or
+`partly_undone` while some of its changes stand. Undo fires no triggers.
 
 ### AI
 
@@ -589,7 +619,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `admin_only` | 403 | Only an admin can do this |
 | `not_space_owner` | 403 | Only the shared space's owner can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
-| `not_found` | 404 | No such note, session, lock key, image, account or profile photo |
+| `not_found` | 404 | No such note, session, lock key, image, account, profile photo, space or agent run |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `not_published` | 404 | The space has never been published |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
@@ -614,6 +644,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `note_locked` | 409 | Locked notes can't be emailed |
 | `email_not_configured` | 409 | Email isn't set up on this server |
 | `ai_not_configured` | 409 | AI isn't set up on this server |
+| `nothing_to_undo` | 409 | None of the run's changes can be undone; see `skipped` |
 | `generation_mismatch` | 409 | The server was restored; reconcile in full |
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |

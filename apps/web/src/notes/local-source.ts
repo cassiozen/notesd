@@ -30,7 +30,13 @@ export function localSource(engine: Engine): NotesSource {
     async get(id) {
       // Opening a note is when a stale copy shows; an open note takes the newer text when it arrives.
       void engine.call('requestSync', syncTiming.openFreshMs).catch(() => {})
-      const local = await engine.call('get', id)
+      let local = await engine.call('get', id)
+      // Just turned on, the first download may not have brought it yet (a note open behind Settings is opened
+      // again from here): one cycle, then look again. Offline, that cycle fails and it's not here.
+      if (!local && (await engine.call('lastSyncAt')) === null) {
+        await engine.call('sync').catch(() => {})
+        local = await engine.call('get', id)
+      }
       if (!local) throw new ApiError(404, { error: 'not_found', message: 'No such note on this device' })
       return note(local)
     },
