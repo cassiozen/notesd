@@ -1,0 +1,35 @@
+apps/android/app/src/main/kotlin/notes/app/editor/Spans.kt
+  s_a8904d79fb0485::t_2315dfe3b0ed7e 320-321
+  s_a8904d79fb0485::t_44387ed7aa0c7f 300,306-308,334-336
+  s_a8904d79fb0485::t_53650734de9c2f 100-102
+  s_a8904d79fb0485::t_b2fc564ad03f0c 27-32,46-48,50-57,60-68,98-99,103,109-110,112,209-210,220,225-226,229-235,238-239,296,317,319,322,326,330-333,337
+apps/web/src/editor/editor.module.css
+  s_a8904d79fb0485::t_200ab7a7bb95c6 195-197,224,254-261,270-271,276,347,558
+apps/android/app/src/main/kotlin/notes/app/editor/Normalizer.kt
+  s_a8904d79fb0485::t_2315dfe3b0ed7e 286-288
+  s_a8904d79fb0485::t_0f682ae9516f21 48-51,241-278,284,293,301,310,315
+apps/ios/Notes/Editor/EditorStyle.swift
+  s_a8904d79fb0485::t_b3ae27d6521083 42-51,55,59-61,64,67-68,71
+apps/ios/Notes/Editor/Normalizer.swift
+  s_a8904d79fb0485::t_b3ae27d6521083 34,39-41,48-49,190-208
+  s_a8904d79fb0485::t_641e6d619925dd 209
+apps/ios/Notes/Editor/EditorText.swift
+  s_a8904d79fb0485::t_b3ae27d6521083 43-44,46-49,54,57,59,81-86
+  s_a8904d79fb0485::t_43c5f424f9fc24 87-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fa45b2e7005ee1601e1187d52fa8be59f23a8c29",
+  "prompts": {},
+  "sessions": {
+    "s_a8904d79fb0485": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "174788e2-28b4-4ba2-9cbe-3d2dce559aed",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
