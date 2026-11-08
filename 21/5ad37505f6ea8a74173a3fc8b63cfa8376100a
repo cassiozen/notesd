@@ -1,0 +1,23 @@
+docs/reference/api.md
+  s_a0fc22670a88c5::t_4834160a2244cb 182,193-194
+server/internal/api/auth_handlers.go
+  s_a0fc22670a88c5::t_4834160a2244cb 14-24,96,125,153
+server/internal/api/shared_test.go
+  s_a0fc22670a88c5::t_4834160a2244cb 355-361
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "215ad37505f6ea8a74173a3fc8b63cfa8376100a",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,200 @@
+server/internal/mirror/mirror.go
+  s_a0fc22670a88c5::t_430825856dafd7 40-49,54-56,211,215
+server/cmd/notesd/export_test.go
+  s_a0fc22670a88c5::t_f010b303335624 358,377
+docs/contributing/architecture.md
+  s_a0fc22670a88c5::t_f8eeeff662b5f2 498,705
+  s_a0fc22670a88c5::t_572eb8c77125ac 253-254,258-266,526,530
+  s_a0fc22670a88c5::t_f04ffbe63a2a74 525
+  s_a0fc22670a88c5::t_7c4c952bb9041a 269
+  s_a0fc22670a88c5::t_df3b07d1f77425 270
+server/cmd/notesd/export.go
+  s_a0fc22670a88c5::t_dd51c550008b9b 61-63,65
+server/internal/mirror/user.go
+  s_a0fc22670a88c5::t_430825856dafd7 36,42-48,52-54,70-71,120-122,187-189,201-202,205-253,255,259-275,280,282-283,297,301,306,310-311,317-318,320,326-327,331-333,406,411,423-424,428-430,433,443
+server/cmd/notesd/main.go
+  s_a0fc22670a88c5::t_611b753df01153 70
+  s_a0fc22670a88c5::t_dd51c550008b9b 253-270,437-439,448-454,473-477,481-484,486-492
+  s_a0fc22670a88c5::t_70b92f418211aa 531,536-548,557-565,594-597,811-852
+  s_a0fc22670a88c5::t_ce7a4bb605dc8e 853
+server/internal/mirror/mirror_test.go
+  s_a0fc22670a88c5::t_297de2b9ce1f6e 40-41,62-64,567-599,601-613,615-617
+  s_a0fc22670a88c5::t_f010b303335624 65
+  s_a0fc22670a88c5::t_970e748043db94 600,614
+  s_a0fc22670a88c5::t_31929c07ddf47a 531,536
+server/cmd/notesd/main_test.go
+  s_a0fc22670a88c5::t_b315d588ee45fc 16-18
+  s_a0fc22670a88c5::t_bff2eff9d40899 227-282
+docs/concepts/where-data-lives.md
+  s_a0fc22670a88c5::t_4c14540cab4038 18
+docs/guides/self-hosting/markdown-mirror-and-export.md
+  s_a0fc22670a88c5::t_3284c02b45395e 33-35
+docs/guides/self-hosting/users.md
+  s_a0fc22670a88c5::t_6f85771a89cd36 57-58
+docs/reference/cli.md
+  s_a0fc22670a88c5::t_a9cad54b2393f7 53,129-130,145,156-157
+shared/sync-engine/src/jvmTest/kotlin/notes/core/db/NoteStoreJvmTest.kt
+  s_a0fc22670a88c5::t_9515add6319f86 75-76,82-85
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_a0fc22670a88c5::t_017ff13219cdc3 45-47,67-68,74-84,88-118,133,136,155,191,207,223-224,231-233,281-284,331-340,342-355,363-402,407,412-413,415-419,422,425-427,434-435,442-443,445,447-453,457-464,466,468-469,500-501,504-508,520-526,532-537,539-547,624-639,797-798,808-809,816-817,828,872-873,875-878
+  s_a0fc22670a88c5::t_a228e608a3e2bc 69-71,85-87,225-230,259,356-362,428-433
+  s_a0fc22670a88c5::t_e4511746843dcd 341
+  s_a0fc22670a88c5::t_ca25867d46ebb2 234
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_a0fc22670a88c5::t_d8fe52cd329dbf 166-175,225-229,254-256,259-294,335-338,340-348
+  s_a0fc22670a88c5::t_b4d307f1fe9a7e 11-16,124-125,159
+  s_a0fc22670a88c5::t_ad534983f0876b 88-90
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_a0fc22670a88c5::t_14ca283d4d727c 46
+  s_a0fc22670a88c5::t_f54c3629fab668 73-78,83,85,88-97,104-109,161-164,179-184
+  s_a0fc22670a88c5::t_2e58103417de87 1-45,47-72,79-82,84,86-87,98-103,110-113,158-160,165-178,185-192
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Rows.kt
+  s_a0fc22670a88c5::t_a228e608a3e2bc 203-210
+  s_a0fc22670a88c5::t_e1c6d69395b2fb 18-20,23,38-39,101-105,107,110-111,117-118,122,127,131-164,167-169,172-177,179,181-182,184,187-192,195-202,211-223,242-243
+  s_a0fc22670a88c5::t_75320b396d64f8 180,183,185-186,193-194
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Parking.kt
+  s_a0fc22670a88c5::t_a228e608a3e2bc 76-82
+  s_a0fc22670a88c5::t_1887e54064b260 46,72-75,83-94
+  s_a0fc22670a88c5::t_3072a0d9ef0fe4 95-96
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_a0fc22670a88c5::t_65af72bd81ab44 43-45,58-60,84-86,89-113,207-208,286-292,306-308,317-332,456-457
+  s_a0fc22670a88c5::t_a228e608a3e2bc 293-301,309-316
+shared/sync-engine/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_a0fc22670a88c5::t_9caa60d98f8278 24-31,33,36,39-42,46,49-51,71
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncEngineTest.kt
+  s_a0fc22670a88c5::t_4533ab11264cce 10,48-52
+  s_a0fc22670a88c5::t_0cfe02182d0254 53
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_a0fc22670a88c5::t_a228e608a3e2bc 122-124,253-254,256
+  s_a0fc22670a88c5::t_990d4e503aa554 5,7,48-50,53-58,68-70,86,98-115,120-121,125-152,215-220,251-252,257-259,273-301
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_a0fc22670a88c5::t_9caa60d98f8278 220
+  s_a0fc22670a88c5::t_a228e608a3e2bc 107,110,154-155,191-199,221-237,288-298
+  s_a0fc22670a88c5::t_1887e54064b260 104,112-137,140-153,156-189,411,420-421
+  s_a0fc22670a88c5::t_3fd4975c57b3ab 190,200
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_a0fc22670a88c5::t_b4d307f1fe9a7e 26,256-259,263,270-281,340-345,372-376,379-383,385-386,401-416,453,455-460,463,466,474,477-479,519-520
+  s_a0fc22670a88c5::t_03e89ab074ddcb 189-192
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_a0fc22670a88c5::t_65af72bd81ab44 43-45,128,145-146
+  s_a0fc22670a88c5::t_501c930ebfe015 303-306,331,476-477,490,509-510,516,539,549-550,562-564
+  s_a0fc22670a88c5::t_e1c6d69395b2fb 28-30
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_a0fc22670a88c5::t_4533ab11264cce 17,67-72
+shared/sync-engine/src/commonMain/migrations/0014_shared_spaces.sql
+  s_a0fc22670a88c5::t_b6d226e919f945 1-37
+apps/ios/NotesCore/Sources/NotesCore/Sync/NoteMailer.swift
+  s_db351bae56ef1d::t_c4f477d0caf9b3 41-43,45
+apps/ios/Notes/Notes/EditorModel.swift
+  s_db351bae56ef1d::t_0795435f6f6d62 92-94,371-372
+apps/ios/Notes/Notes/NotesListView.swift
+  s_db351bae56ef1d::t_f4eefd17fd10ca 113,119-121
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_db351bae56ef1d::t_093a456b3ab6d9 476-484
+  s_db351bae56ef1d::t_f0ccccb073e7b2 10-11,94-95,135,144,259-262,280,428-429,441,462-463,470,497,503
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_db351bae56ef1d::t_11f3800d0d1c8b 6-8,25-26,45-46,94-95,107,111,147-150,155,168-169,186-187,192,231-232,235-236,244,255-315,319-334
+  s_db351bae56ef1d::t_7e7a1778a0de75 316-318
+apps/ios/NotesCore/Sources/NotesCore/DB/Database.swift
+  s_db351bae56ef1d::t_3c8e60839addcb 234-238
+apps/ios/Notes/Notes/TagsView.swift
+  s_db351bae56ef1d::t_a3e4cc60949f32 26-33,109,114,117,122
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_db351bae56ef1d::t_093a456b3ab6d9 158-162
+  s_db351bae56ef1d::t_54a0dfe4ddf983 86-88,103-123,181,186-187,192-200,211,236-241,248,318-380,387,507
+apps/ios/Notes/Notes/SpaceMenu.swift
+  s_db351bae56ef1d::t_8b138499f273cd 13-15,48-49
+apps/ios/NotesCore/Tests/NotesCoreTests/TestClient.swift
+  s_db351bae56ef1d::t_a118b36f332f04 169-170,172-174,176,179
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_db351bae56ef1d::t_7e7a1778a0de75 117-119,519-523
+  s_db351bae56ef1d::t_3c8e60839addcb 442
+  s_db351bae56ef1d::t_d9264f988759a4 524
+  s_db351bae56ef1d::t_8f2b76fd264090 236,242
+  s_db351bae56ef1d::t_2b8dce5d4c3306 582-583
+  s_db351bae56ef1d::t_5c3393ab7edd83 508-510,576-581
+  s_db351bae56ef1d::t_ec7258266e719f 32-33,63,68,90-91,93-95,100-116,120-148,213-214,237-239,243-245,283-286,329-389,396,403-404,407-410,413,416-424,431-433,435-441,446-452,454-457,477-482,496-498,503-507,511-518,525,584-597,734-735,738,744-745,749
+apps/ios/NotesCore/Sources/NotesCore/DB/Rows.swift
+  s_db351bae56ef1d::t_f0ccccb073e7b2 197-205
+  s_db351bae56ef1d::t_d17c4e3e283abe 9-10,28-29,36,52-53,143-150,152-154,157-158,161-162,164,169,172,180-191,194-196,206-215,217-232,236-246,250-263,274-275
+  s_db351bae56ef1d::t_7e7a1778a0de75 176-179,235
+apps/ios/NotesCore/Sources/NotesCore/DB/SpaceStore.swift
+  s_db351bae56ef1d::t_63dde7114fcfb2 38-53,67-76,103-104,112,117-136,144-151,155-177,235-237,282-287,297-315
+  s_db351bae56ef1d::t_7e7a1778a0de75 152-154
+  s_db351bae56ef1d::t_04374fc980915b 137-143
+apps/ios/Notes/App/AppGraph.swift
+  s_db351bae56ef1d::t_ddf3ff37a2c60c 41-46,73-82,93,175-178,203-216,218-220,233,235,304
+apps/ios/Notes/Notes/Sharing.swift
+  s_db351bae56ef1d::t_4675e79c5f1490 1-59,61-79
+  s_db351bae56ef1d::t_25ad83ac9ca5e2 60
+  s_db351bae56ef1d::t_04374fc980915b 80-168
+apps/ios/NotesCore/Tests/NotesCoreTests/SyncAnswerTests.swift
+  s_db351bae56ef1d::t_d56b0b8ce2c2e2 12,60,198,205
+apps/ios/NotesCore/Tests/NotesCoreTests/TestServer.swift
+  s_db351bae56ef1d::t_a118b36f332f04 77-78,81-85,88-107
+  s_db351bae56ef1d::t_bf9dac6881718d 86-87
+  s_db351bae56ef1d::t_7e7a1778a0de75 79-80
+apps/ios/NotesCore/Sources/NotesCore/Images/ImageStore.swift
+  s_db351bae56ef1d::t_c4f477d0caf9b3 182,201-218
+  s_db351bae56ef1d::t_34e2453dd07462 219-221
+apps/ios/Notes/Settings/SharingView.swift
+  s_db351bae56ef1d::t_88db3d9793c36e 1-3,6-158,164-252
+  s_db351bae56ef1d::t_7e7a1778a0de75 159-163
+  s_db351bae56ef1d::t_5030c5e07ad2e7 4-5
+apps/ios/Notes/Settings/SpaceInfoView.swift
+  s_db351bae56ef1d::t_5030c5e07ad2e7 14-15,27-29,46,60,98-116,119-121
+apps/ios/NotesCore/Tests/NotesCoreTests/SharedSpacesTests.swift
+  s_db351bae56ef1d::t_5c3393ab7edd83 120-137
+  s_db351bae56ef1d::t_fac8b32964ae15 1-73,75,77-119,138-200
+  s_db351bae56ef1d::t_e859a207f0cfca 74,76
+apps/ios/NotesCore/Tests/NotesCoreTests/SharedSpacesSyncTests.swift
+  s_db351bae56ef1d::t_bf9dac6881718d 1-157
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0010_shared_spaces.sql
+  s_db351bae56ef1d::t_dff73e886b4216 1-37
+apps/ios/Notes/Account/OnboardingModel.swift
+  s_db351bae56ef1d::t_c4f477d0caf9b3 171
+apps/ios/NotesCore/Sources/NotesCore/DB/Migrations.swift
+  s_db351bae56ef1d::t_dff73e886b4216 11
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_db351bae56ef1d::t_0795435f6f6d62 18,20-21,113-120,190-194,315-322,344-348,385-386,394-395,397-398,423-425,429-432,436-438
+  s_db351bae56ef1d::t_fa218316670421 388-391
+  s_db351bae56ef1d::t_7e7a1778a0de75 433-435
+  s_db351bae56ef1d::t_7334740621acc3 195
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_db351bae56ef1d::t_16dda9efcf61c5 308-321,326,362-364
+  s_db351bae56ef1d::t_76c969c20b170f 174-177,238-239,244-257,365-369,372-375,394,396-403,406,409,411,415-418,432
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_db351bae56ef1d::t_7e7a1778a0de75 126-127
+  s_db351bae56ef1d::t_e6e06ff0b12ebb 99-100
+  s_db351bae56ef1d::t_6db58ce17c8f08 80-98,101-125,128-162
+apps/ios/Notes/Notes/SpaceSwitcher.swift
+  s_db351bae56ef1d::t_8b138499f273cd 4,7,10,14-21,85-86,204,207,296-297
+apps/ios/NotesTests/SharingTests.swift
+  s_db351bae56ef1d::t_da7eab5b9c28b1 1-90
+apps/ios/NotesUITests/FlowTests.swift
+  s_db351bae56ef1d::t_59dac6a3dace42 278-457,498-499,514
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6fa90b4426e8cdc498a0a2e287064da23b0727c",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_db351bae56ef1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "949ac290-2225-48f5-bced-adbe4a1b458a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

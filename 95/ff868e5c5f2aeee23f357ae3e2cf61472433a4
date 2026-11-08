@@ -1,0 +1,20 @@
+apps/ios/NotesUITests/FlowTests.swift
+  s_bfcd6b4ecf53cb::t_b6698e65948408 378,380,386
+  s_bfcd6b4ecf53cb::t_9cacdd309f77b6 387-390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95ff868e5c5f2aeee23f357ae3e2cf61472433a4",
+  "prompts": {},
+  "sessions": {
+    "s_bfcd6b4ecf53cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31b52478-a5e2-4747-9061-63358b92a553",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+docs/reference/cli.md
+  s_8fbeb1047e9ed0::t_4783c8cded0114 195
+server/cmd/notesd/main.go
+  s_8fbeb1047e9ed0::t_4783c8cded0114 253,257-278,280-281,549,554,558-560,832-834,837-838
+server/cmd/notesd/main_test.go
+  s_8fbeb1047e9ed0::t_5631724a1fa385 278-280,284-302
+  s_8fbeb1047e9ed0::t_85d539a10aa3ff 303
+docs/contributing/architecture.md
+  s_8fbeb1047e9ed0::t_4783c8cded0114 690
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b1b1bcb21f11f2306ef6cd4c5c9852c1cdba810",
+  "prompts": {},
+  "sessions": {
+    "s_8fbeb1047e9ed0": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5ee09ba0-4eba-407a-8816-fdf2413530e7",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

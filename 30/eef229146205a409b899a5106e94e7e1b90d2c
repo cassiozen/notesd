@@ -1,0 +1,52 @@
+apps/web/src/notes/note-pane.tsx
+  s_bfcd6b4ecf53cb::t_45d0db7d9f9ce2 106,301
+apps/web/src/images/store.ts
+  s_bfcd6b4ecf53cb::t_45d0db7d9f9ce2 12-13,23,28-29,32,34,148
+apps/web/src/notes/search.ts
+  s_bfcd6b4ecf53cb::t_7e6f73dab1722d 53,55,69,72
+apps/web/e2e/sharing.spec.ts
+  s_bfcd6b4ecf53cb::t_59daf5f6ae5297 35-44
+  s_bfcd6b4ecf53cb::t_1481ded2101978 98
+apps/web/src/settings/shared-space.tsx
+  s_bfcd6b4ecf53cb::t_fcad18f3691182 128,153,267-271,315
+apps/web/src/notes/source.ts
+  s_bfcd6b4ecf53cb::t_45d0db7d9f9ce2 95-96,119-120
+apps/web/src/notes/online-source.ts
+  s_bfcd6b4ecf53cb::t_45d0db7d9f9ce2 5,27-28,30-33,37-38,61
+  s_bfcd6b4ecf53cb::t_4e221897edc9a7 48
+apps/web/src/notes/share.tsx
+  s_bfcd6b4ecf53cb::t_07b3d8ce05e66e 445
+apps/web/src/api/images.ts
+  s_bfcd6b4ecf53cb::t_45d0db7d9f9ce2 17-18,20
+apps/web/test/engine/engine.test.ts
+  s_bfcd6b4ecf53cb::t_0bd3ef68b05b98 381,397-399
+  s_bfcd6b4ecf53cb::t_1481ded2101978 323,333,335,359-360,376
+  s_bfcd6b4ecf53cb::t_5a8eb59fb870fb 420,432
+  s_bfcd6b4ecf53cb::t_cb89e1c5fd7f49 401
+  s_bfcd6b4ecf53cb::t_90b18189884e0d 362-363
+  s_bfcd6b4ecf53cb::t_bc8f70887b1598 436,445,451
+apps/web/test/sharing.test.tsx
+  s_bfcd6b4ecf53cb::t_5a8eb59fb870fb 346,354
+  s_bfcd6b4ecf53cb::t_afdc69f871a6ce 387,405-406
+  s_bfcd6b4ecf53cb::t_1481ded2101978 73-74,327-328,343,425
+apps/web/src/api/notes.ts
+  s_bfcd6b4ecf53cb::t_45d0db7d9f9ce2 6,33-36,41,45-52,55,60-61,63
+apps/web/src/notes/saver.ts
+  s_bfcd6b4ecf53cb::t_3c6b57dc9ea3fe 69,514,538,569,571-572,583,600,625,875
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "30eef229146205a409b899a5106e94e7e1b90d2c",
+  "prompts": {},
+  "sessions": {
+    "s_bfcd6b4ecf53cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31b52478-a5e2-4747-9061-63358b92a553",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
