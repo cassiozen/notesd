@@ -297,29 +297,50 @@ private fun SpaceRows(spaces: List<Space>, current: String?, onPick: (String) ->
 }
 
 /**
- * Before a move into a space that shows the note to more people (§7.8): who will see it there, one
- * [exposures] sentence a line, beside its trait's glyph.
+ * Before a move that changes who sees the note (§7.8): who will see it in [to], one [exposures] sentence a line
+ * beside its trait's glyph, and who no longer will, the [lost] sentences of the space it leaves.
  */
 @Composable
-fun MoveAcrossDialog(title: String, to: Space, exposures: List<SpaceTrait>, onDismiss: () -> Unit, onMove: () -> Unit) {
+fun MoveAcrossDialog(
+    title: String,
+    to: Space,
+    exposures: List<SpaceTrait>,
+    onDismiss: () -> Unit,
+    lost: List<SpaceTrait> = emptyList(),
+    onMove: () -> Unit
+) {
     val t = LocalTokens.current
     NotesDialog(onDismiss, "Move “$title” to ${to.name}?") {
-        Text("In ${to.name}, this note will be:", style = Type.body, color = t.ink2)
-        Spacer(Modifier.height(12.dp))
-        for (exposure in exposures) {
-            Row(
-                Modifier.padding(vertical = 4.dp).semantics(mergeDescendants = true) {},
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(painterResource(SpaceTraits.glyph(exposure.key)), null, Modifier.size(18.dp), tint = t.ink3)
-                Spacer(Modifier.width(10.dp))
-                Text(exposure.exposure.orEmpty(), style = Type.body, color = t.ink)
-            }
+        if (exposures.isNotEmpty()) {
+            Text("In ${to.name}, this note will be:", style = Type.body, color = t.ink2)
+            Spacer(Modifier.height(12.dp))
+            Exposures(exposures)
+        }
+        if (lost.isNotEmpty()) {
+            if (exposures.isNotEmpty()) Spacer(Modifier.height(16.dp))
+            Text("It will no longer be:", style = Type.body, color = t.ink2)
+            Spacer(Modifier.height(12.dp))
+            Exposures(lost)
         }
         Spacer(Modifier.height(24.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NotesButton("Cancel", onDismiss, Modifier.weight(1f), kind = ButtonKind.Chip)
             NotesButton("Move", onMove, Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun Exposures(traits: List<SpaceTrait>) {
+    val t = LocalTokens.current
+    for (exposure in traits) {
+        Row(
+            Modifier.padding(vertical = 4.dp).semantics(mergeDescendants = true) {},
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(painterResource(SpaceTraits.glyph(exposure.key)), null, Modifier.size(18.dp), tint = t.ink3)
+            Spacer(Modifier.width(10.dp))
+            Text(exposure.exposure.orEmpty(), style = Type.body, color = t.ink)
         }
     }
 }

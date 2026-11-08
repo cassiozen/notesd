@@ -20,9 +20,10 @@ import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import notes.app.editor.SAMPLE_MARKDOWN
 import notes.app.editor.SAMPLE_TITLE
-import notes.app.notes.SpaceInvite
+import notes.core.api.Member
 import notes.core.api.RemoteNote
 import notes.core.api.Session
+import notes.core.api.SharedSpace
 import notes.core.api.SignIn
 import notes.core.api.SpaceTrait
 import notes.core.api.SyncPage
@@ -456,7 +457,7 @@ class ScreenshotTest {
 
     @Test fun traitsDark() = traits("dark", "+night")
 
-    /** The switcher with an invitation and a change line, as sharing will fill them. */
+    /** The switcher with an invitation and a change line (§7.9). */
     private fun switcherSeed() {
         graph.setOnboardingDismissed(true)
         seed()
@@ -472,11 +473,23 @@ class ScreenshotTest {
             )
             graph.setTraits(journal, SpaceTrait("agent", "Agent", "Local model"))
             graph.setTraits(work, SpaceTrait("shared", "Shared", "With Ben", exposure = "Visible to Ben"))
+            graph.setShared(work, SharedSpace("member", listOf(Member(3, "Ben"), Member(1, "me"))))
+            graph.addInvite("i1", "club", "Book club", "open-book", Member(2, "Ana"))
+            graph.sync.store.setUserId(1)
+            val at = System.currentTimeMillis() - 2 * 3_600_000L
+            graph.sync.store.applyPage(
+                SyncPage(
+                    (1..3).map {
+                        RemoteNote("w$it", "Standup $it", "", 1, 10L + it, at, at, spaceId = work, updatedBy = 3)
+                    },
+                    13,
+                    false,
+                    "g"
+                )
+            )
             family to work
         }
         graph.switchSpace(ids.first)
-        graph.spaceInvites.value = listOf(SpaceInvite("i1", "Book club", "open-book", "Ana"))
-        graph.spaceChanges.value = mapOf(ids.second to "Ben edited 3 notes · 2h")
     }
 
     private fun switcherPhone(suffix: String, qualifiers: String?) {
@@ -503,4 +516,92 @@ class ScreenshotTest {
         compose.waitUntilExactlyOneExists(hasText("New space…"))
         shoot("switcher-wide")
     }
+
+    /**
+     * Shared spaces (§7.9) as a fake notesd syncs them: Family, someone else's, with notes others changed; Work,
+     * this account's, shared with Ben and Cy invited; and an invitation into Book club.
+     */
+    private fun sharedSeed(): FakeNotesd {
+        graph.setOnboardingDismissed(true)
+        seed()
+        val ana = Member(2, "ana")
+        val ben = Member(3, "ben")
+        val now = System.currentTimeMillis()
+        fun note(id: String, title: String, content: String, by: Long, ago: Long, seq: Long) =
+            RemoteNote(id, title, content, 1, seq, now - ago, now - ago, spaceId = "fam", updatedBy = by)
+        val notesd = FakeNotesd()
+        notesd.people = listOf(notesd.me, ana, ben, Member(4, "cy"), Member(5, "dee"), Member(6, "eli"))
+        notesd.memberOf("fam", "Family", ana, ben, icon = "sunset")
+        notesd.feeds["fam"] = listOf(
+            note("f1", "Picnic", "Blanket, lemonade, the good frisbee.\n", 2, 2 * 3_600_000L, 1),
+            note("f2", "Packing list", "- Sunscreen\n- Hats\n- Snacks\n", 3, 5 * 60_000L, 2),
+            note("f3", "Recipes", "Grandma's plum cake, the real one.\n", 1, 26 * 3_600_000L, 3)
+        )
+        notesd.owned("work", "Work", listOf(ben), invitees = listOf(Member(4, "cy")))
+        notesd.invite("i1", "club", "Book club", ana, icon = "open-book")
+        notesd.start()
+        notesd.signIn(graph)
+        runBlocking {
+            graph.sync.store.setUserId(1)
+            graph.sync.sync()
+            // Joined before those changes: they're news.
+            graph.lastShown("fam", now - 3 * 3_600_000L)
+        }
+        return notesd
+    }
+
+    private fun sharedList(suffix: String, qualifiers: String?) = sharedSeed().use {
+        launch(qualifiers)
+        graph.switchSpace("fam")
+        compose.waitUntilExactlyOneExists(hasText("ana · 2h"))
+        shoot("shared-list-$suffix")
+        compose.onNode(hasText("Picnic")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Edited by ana · 2h"))
+        waitForEditor()
+        shoot("shared-editor-$suffix")
+        compose.onNode(hasContentDescription("More")).performClick()
+        compose.onNode(hasText("Move to space…")).performClick()
+        val notes = hasText("Notes") and hasClickAction() and !hasContentDescription("Back")
+        compose.waitUntilExactlyOneExists(notes)
+        compose.onNode(notes).performClick()
+        compose.waitUntilExactlyOneExists(hasText("It will no longer be:"))
+        shoot("shared-move-$suffix")
+    }
+
+    @Test fun sharedListLight() = sharedList("light", null)
+
+    @Test fun sharedListDark() = sharedList("dark", "+night")
+
+    private fun sharedSwitcher(suffix: String, qualifiers: String?) = sharedSeed().use {
+        launch(qualifiers)
+        compose.onNode(hasContentDescription("Sidebar")).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space: Notes"))
+        compose.onNode(hasContentDescription("Space: Notes")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("ana invited you to Book club"))
+        compose.waitUntilExactlyOneExists(hasText("ben and ana edited 2 notes · 5m"))
+        shoot("shared-switcher-$suffix")
+    }
+
+    @Test fun sharedSwitcherLight() = sharedSwitcher("light", null)
+
+    @Test fun sharedSwitcherDark() = sharedSwitcher("dark", "+night")
+
+    private fun sharedManage(suffix: String, qualifiers: String?) = sharedSeed().use {
+        launch(qualifiers)
+        graph.switchSpace("work")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared"))
+        compose.onNode(hasContentDescription("Space info: Shared")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("With ben · invited cy"))
+        shoot("shared-info-$suffix")
+        compose.onNode(hasText("With ben · invited cy")).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Sharing"))
+        shoot("shared-manage-$suffix")
+        compose.onNode(hasText("Invite someone") and hasClickAction()).performClick()
+        compose.waitUntilExactlyOneExists(hasText("dee"))
+        shoot("shared-picker-$suffix")
+    }
+
+    @Test fun sharedManageLight() = sharedManage("light", null)
+
+    @Test fun sharedManageDark() = sharedManage("dark", "+night")
 }

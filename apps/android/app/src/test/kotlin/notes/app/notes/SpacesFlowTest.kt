@@ -176,8 +176,9 @@ class SpacesFlowTest {
         launch("Groceries")
         openSpaceInfoFromSettings("Work")
         compose.onNodeWithText("0 notes").assertExists()
-        // No traits: no traits group.
-        compose.onNodeWithText("Shared").assertDoesNotExist()
+        // No traits on, but a space of your own can be shared.
+        compose.onNodeWithText("Shared").assertExists()
+        compose.onNodeWithText("Turn on").assertExists()
         compose.onNodeWithText("Delete space").performClick()
         // Gone: back to the list of spaces.
         compose.waitUntilExactlyOneExists(hasText("New space"))
@@ -213,7 +214,7 @@ class SpacesFlowTest {
         compose.onNodeWithText("With Ana and Ben").assertExists()
         compose.onNodeWithText("Read only").assertExists()
         compose.onNodeWithText("Update the app to change this.").assertExists()
-        // Nothing can be turned on yet, so traits that are off aren't listed.
+        // Publishing can't be turned on from this app yet, so its row is left out while off.
         compose.onNodeWithText("Published").assertDoesNotExist()
         compose.onNodeWithText("Turn on").assertDoesNotExist()
     }

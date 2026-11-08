@@ -354,7 +354,7 @@ private fun PersonRow(person: Person, you: Boolean, enabled: Boolean, onClick: (
     }
 }
 
-private fun initial(name: String): String =
+internal fun initial(name: String): String =
     name.trim().let { if (it.isEmpty()) "?" else it.substring(0, it.offsetByCodePoints(0, 1)).uppercase() }
 
 /** A person's actions, from tapping their row: a sheet, as a note's are. */

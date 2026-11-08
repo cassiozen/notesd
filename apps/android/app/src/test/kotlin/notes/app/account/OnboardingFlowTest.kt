@@ -18,6 +18,7 @@ import mockwebserver3.MockWebServer
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.runOffMain
 import notes.app.shutDown
 import notes.core.api.Session
 import notes.core.api.SignIn
@@ -107,6 +108,29 @@ class OnboardingFlowTest {
         button("Sign in").performClick()
         compose.waitUntilExactlyOneExists(hasText("No notes yet"))
         assertEquals(Account.SignedIn(server.url("/").toString(), "me"), graph.accounts.account.value)
+    }
+
+    @Test
+    fun `signing in gives the sync engine the account's id`() {
+        server.enqueue(MockResponse.Builder().code(200).body("ok").build())
+        server.enqueue(json(200, """{"setupRequired":false}"""))
+        server.enqueue(
+            json(
+                200,
+                """{"session":{"id":"s","kind":"device","name":"P","createdAt":1,"lastUsedAt":1},"username":"me",""" +
+                    """"accessToken":"a","accessExpiresAt":${System.currentTimeMillis() + 3_600_000},""" +
+                    """"refreshToken":"r","userId":5}"""
+            )
+        )
+        launch()
+        enterServer()
+        compose.waitUntilExactlyOneExists(hasText("Sign in") and hasClickAction())
+        compose.onNodeWithText("Username").performTextInput("me")
+        compose.onNodeWithText("Password").performTextInput("right-one")
+        button("Sign in").performClick()
+        compose.waitUntilExactlyOneExists(hasText("No notes yet"))
+        // Tests start no account watcher: sign-in itself set it.
+        assertEquals(5L, compose.runOffMain { graph.sync.store.userId() })
     }
 
     @Test

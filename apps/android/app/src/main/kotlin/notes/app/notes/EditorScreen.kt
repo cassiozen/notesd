@@ -74,6 +74,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -130,6 +131,9 @@ import notes.core.sync.EmailOutcome
 
 private const val SAVE_DELAY_MS = 700L
 
+private val LOCK_REFUSED =
+    "Can't lock this note" to "Locked notes can't be in a shared space. Move it to a space of your own to lock it."
+
 /**
  * A note. Saves locally shortly after typing stops, and at once on leaving or
  * backgrounding. [showBack] is false beside the list (two panes), where
@@ -157,7 +161,9 @@ fun EditorScreen(
     /** Every space (§7.7); with two or more the menu can move the note. */
     spaces: List<Space> = emptyList(),
     /** The note went to another space: leave it. */
-    onMoved: (String) -> Unit = {}
+    onMoved: (String) -> Unit = {},
+    /** This account's id: another member's last change is named (§7.9). */
+    me: Long? = null
 ) {
     val context = LocalContext.current
     val t = LocalTokens.current
@@ -174,6 +180,9 @@ fun EditorScreen(
     val unsupported by vm.unsupported.collectAsStateWithLifecycle()
     val storedTitle by vm.title.collectAsStateWithLifecycle()
     val imageProblem by vm.imageProblem.collectAsStateWithLifecycle()
+    val lastEdit by vm.lastEdit.collectAsStateWithLifecycle()
+    // Read each time: sync can move the note while it's open.
+    val here = spaces.firstOrNull { it.id == vm.spaceId() }
 
     /** Lock note was chosen, and the session needs a password created or entered first. */
     var locking by remember { mutableStateOf<LockSession.State?>(null) }
@@ -192,8 +201,11 @@ fun EditorScreen(
     var linkDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
     var menu by remember { mutableStateOf(false) }
     var moving by remember { mutableStateOf(false) }
-    // A move that would let more people see the note, waiting for the person to say yes (§7.8).
+    // A move that would change who sees the note, waiting for the person to say yes (§7.8).
     var crossing by remember { mutableStateOf<Space?>(null) }
+
+    /** Lock in a shared space, or a locked note's move into one, which can't hold locked notes (§7.9): why not. */
+    var refused by remember { mutableStateOf<Pair<String, String>?>(null) }
     var emailing by remember { mutableStateOf(false) }
 
     /** Null while the find bar is closed. The queries stay for this note while it's open. */
@@ -462,6 +474,16 @@ fun EditorScreen(
         }
         val doc = loaded
         if (doc != null && !needsUnlock && !unsupported) {
+            val by = lastEdit?.let { e -> editedBy(here, e.by, me)?.let { "Edited by $it · ${ago(e.at)}" } }
+            if (by != null) {
+                Text(
+                    by,
+                    style = Type.small,
+                    color = t.ink3,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 2.dp)
+                )
+            }
             AndroidView(
                 factory = { ctx ->
                     // The scroll view, not the EditText, scrolls: TextView's own scrolling has no fling or edge stretch.
@@ -534,11 +556,12 @@ fun EditorScreen(
                     share(context, it, emailNoteId = vm.id.takeIf { emailFrom != null && !locked })
                 }
             })
-            // A blank new note has nothing to lock yet.
-            if (status != SaveStatus.Blank) {
+            // A blank new note has nothing to lock yet. Nor does one whose space isn't known yet (the list still
+            // loading): it may be shared.
+            if (status != SaveStatus.Blank && (locked || here != null)) {
                 SheetItem(Icons.Lock, if (locked) "Remove lock" else "Lock note", {
                     menu = false
-                    setLocked(!locked)
+                    if (!locked && here?.shared != null) refused = LOCK_REFUSED else setLocked(!locked)
                 })
             }
             // Nor anything to move: a new note goes to the space it was written in.
@@ -571,7 +594,10 @@ fun EditorScreen(
         ) { id ->
             moving = false
             val to = spaces.firstOrNull { it.id == id }
-            if (to != null && newExposures(spaces.firstOrNull { it.id == vm.spaceId() }, to).isNotEmpty()) {
+            if (locked && to?.shared != null) {
+                refused = "Can't move this note" to "Locked notes can't be in a shared space. Remove this note's " +
+                    "lock to move it to ${to.name}."
+            } else if (to != null && (newExposures(here, to).isNotEmpty() || lostExposures(here, to).isNotEmpty())) {
                 crossing = to
             } else {
                 vm.move(id)
@@ -584,12 +610,25 @@ fun EditorScreen(
         MoveAcrossDialog(
             editor?.document()?.title?.trim()?.ifEmpty { null } ?: "New note",
             to,
-            newExposures(spaces.firstOrNull { it.id == vm.spaceId() }, to),
+            newExposures(here, to),
+            lost = lostExposures(here, to),
             onDismiss = { crossing = null }
         ) {
             crossing = null
             vm.move(to.id)
             onMoved(to.id)
+        }
+    }
+
+    refused?.let { (title, text) ->
+        NotesDialog({ refused = null }, title) {
+            Text(
+                text,
+                style = Type.body,
+                color = t.ink2
+            )
+            Spacer(Modifier.height(24.dp))
+            NotesButton("OK", { refused = null }, Modifier.fillMaxWidth())
         }
     }
 

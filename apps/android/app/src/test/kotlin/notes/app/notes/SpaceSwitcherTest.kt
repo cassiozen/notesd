@@ -40,6 +40,9 @@ class SpaceSwitcherTest {
     private val declined = ArrayList<String>()
     private var created = 0
 
+    /** What answering an invitation comes to: null, done. */
+    private var refusal: String? = null
+
     private fun show(
         spaces: List<Space>,
         current: String,
@@ -56,8 +59,14 @@ class SpaceSwitcherTest {
                     onSwitch = { switched += it },
                     onInfo = { info += it },
                     onCreate = { created++ },
-                    onJoin = { joined += it },
-                    onDecline = { declined += it }
+                    onJoin = {
+                        joined += it
+                        refusal
+                    },
+                    onDecline = {
+                        declined += it
+                        refusal
+                    }
                 )
             }
         }
@@ -135,6 +144,15 @@ class SpaceSwitcherTest {
         compose.onNodeWithContentDescription("Decline Chess").performClick()
         assertEquals(listOf("i1"), joined)
         assertEquals(listOf("i2"), declined)
+    }
+
+    @Test
+    fun `an invitation that can't be answered says why, in place`() {
+        refusal = "This needs a connection. Try again when you're online."
+        show(listOf(notes), "default", invites = listOf(SpaceInvite("i1", "Book club", "open-book", "Ana")))
+        compose.onNodeWithContentDescription("Join Book club").performClick()
+        compose.onNodeWithText("This needs a connection. Try again when you're online.").assertExists()
+        assertEquals(listOf("i1"), joined)
     }
 
     @Test

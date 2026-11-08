@@ -14,6 +14,8 @@ open class NotesApp : Application() {
 
     /** Tests drive sync themselves, against their own servers. */
     protected open fun startSync() {
+        // Account first: the first sync tells this account's changes apart by its id.
+        graph.watchAccount()
         graph.scheduler.start()
         graph.watchKeyring()
         graph.watchSpaces()

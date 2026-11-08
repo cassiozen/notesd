@@ -96,4 +96,11 @@ class SpaceTraitsTest {
         val registry = listOf(SpaceTraits.entries[0], canPublish)
         assertEquals(listOf(TraitRow.Off(canPublish)), traitRows(emptyList(), registry))
     }
+
+    @Test
+    fun `an off trait a space can't have isn't offered there`() {
+        val canShare = SpaceTraits.entries[0].with(null, { _, _ -> }) { it.id != "default" }
+        assertEquals(listOf(TraitRow.Off(canShare)), traitRows(emptyList(), listOf(canShare), space().copy(id = "w")))
+        assertEquals(emptyList(), traitRows(emptyList(), listOf(canShare), space().copy(id = "default")))
+    }
 }

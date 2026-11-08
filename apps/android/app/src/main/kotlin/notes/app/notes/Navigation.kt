@@ -40,8 +40,11 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.serialization.Serializable
 import notes.app.AppGraph
 import notes.app.account.Account
@@ -53,6 +56,8 @@ import notes.app.settings.SettingsScreen
 import notes.app.settings.SettingsSection
 import notes.app.settings.SettingsSectionScreen
 import notes.app.settings.SpaceInfoScreen
+import notes.app.sharing.Shared
+import notes.app.sharing.SharingScreen
 import notes.app.ui.KeyboardBar
 import notes.app.ui.KeyboardBarSlot
 import notes.app.ui.LocalKeyboardBar
@@ -88,11 +93,21 @@ data class SettingsSectionKey(val section: SettingsSection) : NavKey
 @Serializable
 data class SpaceInfoKey(val id: String) : NavKey
 
+/** Who a shared space is shared with (§7.9), from its Space info. */
+@Serializable
+data class SharingKey(val id: String) : NavKey
+
 /** Connecting to a server; with [signInAgain], signing back in to the one these notes belong to. */
 @Serializable
 data class OnboardingKey(val signInAgain: Boolean = false) : NavKey
 
 private const val MOTION_MS = 320
+
+/** How long a joined space may take to reach the list shown before the switcher stays where it is. */
+private const val JOIN_WAIT_MS = 5_000L
+
+/** Answered instead of switching, so the switcher stays open to pick the space once it shows. */
+private const val JOINED_NOT_SHOWN = "Joined. The space shows here once it has synced."
 
 /** From this wide, the tags sit in a sidebar beside the list and the note. */
 private const val SIDEBAR_DP = 1000
@@ -125,6 +140,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
     val space by graph.space.collectAsStateWithLifecycle()
     val invites by graph.spaceInvites.collectAsStateWithLifecycle()
     val changes by graph.spaceChanges.collectAsStateWithLifecycle()
+    val me by graph.userId.collectAsStateWithLifecycle()
     val reduce = LocalReduceMotion.current
 
     val directive = calculatePaneScaffoldDirectiveWithTwoPanesOnMediumWidth(currentWindowAdaptiveInfo())
@@ -177,6 +193,28 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
         backStack.removeAll { it is EditorKey }
         show(null)
     }
+
+    /**
+     * Joins a space (§7.9) and shows it, its notes synced. On the app's scope: the invitation leaves the switcher
+     * with the sync, taking the caller's scope with it.
+     */
+    suspend fun join(invite: String): String? = graph.scope.async {
+        when (val r = graph.sharing.join(invite)) {
+            is Shared.Failed -> r.message
+
+            is Shared.Done -> {
+                // Once the list shown has it: a list read before the sync stored it would switch straight back.
+                withTimeoutOrNull(JOIN_WAIT_MS) { graph.spaces.first { list -> list.any { it.id == r.value } } }
+                    ?.let {
+                        switchSpace(r.value)
+                        null
+                    }
+                    ?: JOINED_NOT_SHOWN
+            }
+        }
+    }.await()
+
+    suspend fun decline(invite: String): String? = (graph.sharing.decline(invite) as? Shared.Failed)?.message
 
     fun spaceInfo(id: String) {
         if (backStack.lastOrNull() == SpaceInfoKey(id)) return
@@ -276,7 +314,10 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                         onNewSpace = { creatingSpace = true },
                         onSpaceInfo = ::spaceInfo,
                         invites = invites,
-                        changes = changes
+                        changes = changes,
+                        onJoin = ::join,
+                        onDecline = ::decline,
+                        onSwitcherShown = { graph.switcherShown.value = it }
                     )
                 }
                 Box(Modifier.weight(1f)) {
@@ -324,7 +365,10 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onNewSpace = { creatingSpace = true },
                                     onSpaceInfo = ::spaceInfo,
                                     invites = invites,
-                                    changes = changes
+                                    changes = changes,
+                                    onJoin = ::join,
+                                    onDecline = ::decline,
+                                    onSwitcherShown = { graph.switcherShown.value = it }
                                 )
                             }
                             entry<NotesKey>(
@@ -357,7 +401,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         graph.switchSpace(s)
                                         open(id)
                                     },
-                                    onSpaceInfo = ::spaceInfo
+                                    onSpaceInfo = ::spaceInfo,
+                                    me = me
                                 )
                             }
                             entry<EditorKey>(metadata = ListDetailSceneStrategy.detailPane()) { key ->
@@ -391,6 +436,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     },
                                     onOpen = { backStack += EditorKey(it) },
                                     spaces = spaces,
+                                    me = me,
                                     onMoved = { pop() },
                                     onOpenTag = { name ->
                                         graph.listFilter.value = NoteFilter.Tag(tagKey(name), name)
@@ -436,8 +482,12 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
 
                                         else -> "Notes"
                                     },
-                                    onBack = { pop() }
+                                    onBack = { pop() },
+                                    onSharing = { backStack += SharingKey(key.id) }
                                 )
+                            }
+                            entry<SharingKey> { key ->
+                                SharingScreen(graph, key.id, backLabel = spaces.nameOf(key.id), onBack = { pop() })
                             }
                             entry<OnboardingKey> { key ->
                                 val signedOut = account as? Account.SignedOut
@@ -449,7 +499,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             graph.deviceName,
                                             { apiClient(it) },
                                             lockedServer = signedOut?.server?.takeIf { key.signInAgain },
-                                            username = signedOut?.username.orEmpty()
+                                            username = signedOut?.username.orEmpty(),
+                                            engineUserId = { graph.sync.store.setUserId(it) }
                                         )
                                     },
                                     onDone = { home() },

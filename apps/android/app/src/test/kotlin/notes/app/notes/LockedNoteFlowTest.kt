@@ -29,11 +29,15 @@ import notes.app.FakeBiometrics
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.setShared
 import notes.app.shutDown
+import notes.core.api.Member
+import notes.core.api.SharedSpace
 import notes.core.crypto.Keyring
 import notes.core.crypto.LockSession
 import notes.core.crypto.LockedNotes
 import notes.core.crypto.UnsupportedKdfException
+import notes.core.db.Spaces
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -312,6 +316,24 @@ class LockedNoteFlowTest {
         compose.onNodeWithText("Account password").assertExists()
         compose.onNode(hasText("Cancel") and hasClickAction()).performScrollTo().performClick()
         compose.waitUntilDoesNotExist(hasText("Reset locked notes?"))
+    }
+
+    @Test
+    fun `a locked note isn't moved into a shared space`() {
+        onMain {
+            graph.sync.spaces.create("Family", id = "fam")
+            graph.setShared("fam", SharedSpace("member", listOf(Member(2, "ana"), Member(1, "me"))))
+        }
+        openBank()
+        unlock(PASSWORD)
+        compose.waitUntilExactlyOneExists(hasContentDescription("Lock now"))
+        compose.onNodeWithContentDescription("More").performClick()
+        compose.onNodeWithText("Move to space…").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Move to space"))
+        compose.onNode(hasText("Family") and hasClickAction()).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Remove this note's lock to move it to Family", substring = true))
+        compose.onNode(hasText("OK") and hasClickAction()).performClick()
+        assertEquals(Spaces.DEFAULT, read { graph.store.spaceOf("n") })
     }
 
     private companion object {
