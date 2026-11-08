@@ -121,6 +121,10 @@ internal suspend fun Sql.unsentOp(noteId: String): PendingOp? = one(
     noteId
 ) { PendingOp(it.getText(0), it.getText(1), outboxJson.decodeFromString(it.getText(2))) }
 
+/** Whether any of [noteId]'s queued changes has gone out unanswered. */
+internal suspend fun Sql.sentAny(noteId: String): Boolean =
+    long("SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1", noteId) > 0
+
 /** The feed a space's notes download in (§7.9): a shared space's own, else the account's (''). */
 internal suspend fun Sql.feedOf(spaceId: String?): String {
     if (spaceId == null) return ""

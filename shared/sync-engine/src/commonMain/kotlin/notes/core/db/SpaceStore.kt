@@ -123,7 +123,12 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
      */
     suspend fun visit(id: String, at: Long = clock()) {
         db.write { sql ->
-            sql.exec("UPDATE spaces SET visited_at = ? WHERE id = ? AND shared IS NOT NULL", at, id)
+            // Never back: a visit timed earlier can land after a later one.
+            sql.exec(
+                "UPDATE spaces SET visited_at = max(coalesce(visited_at, 0), ?) WHERE id = ? AND shared IS NOT NULL",
+                at,
+                id
+            )
         }
     }
 

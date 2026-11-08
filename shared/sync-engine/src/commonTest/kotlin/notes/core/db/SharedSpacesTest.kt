@@ -281,5 +281,8 @@ class SharedSpacesTest {
         now = 4_000
         spaces.visit("fam")
         assertEquals(emptyMap(), spaces.news())
+        // A visit timed earlier, landing late, doesn't bring it back.
+        spaces.visit("fam", at = 2_500)
+        assertEquals(emptyMap(), spaces.news())
     }
 }

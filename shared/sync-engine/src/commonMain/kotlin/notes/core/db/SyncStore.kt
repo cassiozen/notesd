@@ -106,8 +106,9 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
             val notes = sql.query("SELECT $NOTE_COLUMNS FROM notes WHERE space_id = ?", feed, row = ::noteRow)
             for (note in notes) {
                 // Moved into it here, the move not yet sent: the server still has it where it was, so it goes back.
+                // Sent but not answered, the server may have it here: kept only as a copy, below.
                 val back = note.baseSpaceId?.takeIf { note.serverRevision != null && it != feed && it !in gone }
-                if (back != null && sql.reaches(back)) {
+                if (back != null && sql.reaches(back) && !sql.sentAny(note.id)) {
                     sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, note.id)
                     if (note.deletedAt == null) sql.queueText(note.id, note.title, note.content, back, clock())
                     continue
@@ -124,9 +125,14 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                 sql.exec("DELETE FROM notes WHERE id = ?", note.id)
             }
             // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note goes
-            // to the server again, as new, where it is.
+            // to the server again, as new, where it is. Sent but not answered, the move may have landed: sent again,
+            // its answer is found where the note went.
             val strays = sql.query(
-                "SELECT $NOTE_COLUMNS FROM notes WHERE base_space_id = ? AND space_id <> ? AND server_revision IS NOT NULL",
+                """
+                SELECT $NOTE_COLUMNS FROM notes n
+                WHERE base_space_id = ? AND space_id <> ? AND server_revision IS NOT NULL
+                    AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.sent = 1)
+                """,
                 feed,
                 feed,
                 row = ::noteRow
