@@ -16,6 +16,7 @@ import (
 	"notes/server/internal/mail"
 	"notes/server/internal/notes"
 	"notes/server/internal/search"
+	"notes/server/internal/sharing"
 	"notes/server/internal/spaces"
 	notesync "notes/server/internal/sync"
 )
@@ -37,6 +38,8 @@ type errorBody struct {
 	Count *int `json:"count,omitempty"`
 	// MinVersion is the oldest app version this server accepts, on upgrade_required.
 	MinVersion string `json:"minVersion,omitempty"`
+	// SpaceID is the space whose notes are in another file, on space_elsewhere.
+	SpaceID string `json:"spaceId,omitempty"`
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {
@@ -98,6 +101,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	var terr *images.TypeError
 	var serr *spaces.InputError
 	var full *spaces.NotEmptyError
+	var elsewhere *notes.ElsewhereError
+	var lockedIn *notes.LockedInSpaceError
 	switch {
 	case errors.As(err, &verr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: verr.Message, Field: verr.Field})
@@ -160,6 +165,30 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusGone, "link_invalid", err.Error())
 	case errors.Is(err, auth.ErrSelf):
 		writeError(w, http.StatusConflict, "cannot_change_self", err.Error())
+	case errors.As(err, &elsewhere):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "space_elsewhere", Message: err.Error(), SpaceID: elsewhere.SpaceID})
+	case errors.As(err, &lockedIn):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "space_has_locked", Message: err.Error(), Count: &lockedIn.Count})
+	case errors.Is(err, notes.ErrLockedInShared):
+		writeError(w, http.StatusUnprocessableEntity, "locked_in_shared_space", err.Error())
+	case errors.Is(err, sharing.ErrNotOwner):
+		writeError(w, http.StatusForbidden, "not_space_owner", err.Error())
+	case errors.Is(err, sharing.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "space not found")
+	case errors.Is(err, sharing.ErrNoInvite):
+		writeError(w, http.StatusNotFound, "not_found", "invitation not found")
+	case errors.Is(err, sharing.ErrNoUser):
+		writeError(w, http.StatusNotFound, "not_found", "user not found")
+	case errors.Is(err, sharing.ErrOwnerLeaving):
+		writeError(w, http.StatusConflict, "owner_cannot_leave", err.Error())
+	case errors.Is(err, sharing.ErrAlreadyMember):
+		writeError(w, http.StatusConflict, "already_member", err.Error())
+	case errors.Is(err, sharing.ErrSelf):
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: err.Error(), Field: "userId"})
+	case errors.Is(err, sharing.ErrIDTaken):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "space_exists", Message: err.Error(), Field: "id"})
+	case errors.Is(err, sharing.ErrSameFile):
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: err.Error(), Field: "spaceId"})
 	case errors.Is(err, auth.ErrLastAdmin):
 		writeError(w, http.StatusConflict, "last_admin", err.Error())
 	case errors.Is(err, r.Context().Err()) && r.Context().Err() != nil:

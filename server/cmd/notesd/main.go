@@ -66,6 +66,7 @@ import (
 	"notes/server/internal/locks"
 	"notes/server/internal/mirror"
 	"notes/server/internal/search"
+	"notes/server/internal/sharing"
 	"notes/server/internal/userdata"
 )
 
@@ -176,6 +177,7 @@ func run(args []string) error {
 		return fmt.Errorf("upgrade data directory: %w", err)
 	}
 	authSvc := auth.NewService(system)
+	authSvc.BeforeRemove(sharing.HandOff)
 
 	switch cmd {
 	case "serve":
@@ -260,24 +262,24 @@ func run(args []string) error {
 				return fmt.Errorf("%s: %w", systemPath, err)
 			}
 		}
-		list, err := someUsers(ctx, authSvc, o.username)
+		files, err := notesFiles(ctx, system, authSvc, o)
 		if err != nil {
 			return err
 		}
-		for _, u := range list {
-			err := withUserDB(ctx, o.dataDir, u, func(db *database.DB) error {
+		for _, f := range files {
+			err := withDB(ctx, f.path, func(db *database.DB) error {
 				switch cmd {
 				case "reindex":
 					n, err := search.Rebuild(ctx, db)
 					if err != nil {
 						return err
 					}
-					fmt.Printf("%s: search index rebuilt (%d notes)\n", u.Username, n)
+					fmt.Printf("%s: search index rebuilt (%d notes)\n", f.label, n)
 				case "check":
 					if err := checkDB(ctx, db, images.NewStore(db)); err != nil {
 						return err
 					}
-					fmt.Printf("%s: ok\n", u.Username)
+					fmt.Printf("%s: ok\n", f.label)
 				case "gc-images":
 					n, size, err := images.NewStore(db).Collect(ctx, time.Now().Add(-images.Grace), o.dryRun)
 					if err != nil {
@@ -287,12 +289,12 @@ func run(args []string) error {
 					if o.dryRun {
 						verb = "would delete"
 					}
-					fmt.Printf("%s: %s %d images (%s) that no note has shown for 30 days\n", u.Username, verb, n, humanBytes(size))
+					fmt.Printf("%s: %s %d images (%s) that no note has shown for 30 days\n", f.label, verb, n, humanBytes(size))
 				}
 				return nil
 			})
 			if err != nil {
-				return fmt.Errorf("%s: %w", u.Username, err)
+				return fmt.Errorf("%s: %w", f.label, err)
 			}
 		}
 	}
@@ -327,11 +329,47 @@ func oneUser(ctx context.Context, a *auth.Service, username string) (auth.User, 
 	return list[0], nil
 }
 
-// withUserDB opens a user's notes database for a command. Unlike the
-// server, it doesn't rebuild derived data first: check and export must
-// leave the database as they found it.
+// notesFile is a notes database a command works through.
+type notesFile struct{ label, path string }
+
+// notesFiles is the named user's notes database, or every user's and every
+// shared space's (§7.9).
+func notesFiles(ctx context.Context, system *database.DB, a *auth.Service, o options) ([]notesFile, error) {
+	list, err := someUsers(ctx, a, o.username)
+	if err != nil {
+		return nil, err
+	}
+	var out []notesFile
+	for _, u := range list {
+		out = append(out, notesFile{u.Username, userdata.Path(o.dataDir, u.ID)})
+	}
+	if o.username != "" {
+		return out, nil
+	}
+	rows, err := system.R.QueryContext(ctx, `SELECT id, name FROM shared_spaces ORDER BY name, id`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var id, name string
+		if err := rows.Scan(&id, &name); err != nil {
+			return nil, err
+		}
+		out = append(out, notesFile{"shared space " + name, userdata.SpacePath(o.dataDir, id)})
+	}
+	return out, rows.Err()
+}
+
+// withUserDB opens a user's notes database for a command.
 func withUserDB(ctx context.Context, dataDir string, u auth.User, fn func(*database.DB) error) error {
-	path := userdata.Path(dataDir, u.ID)
+	return withDB(ctx, userdata.Path(dataDir, u.ID), fn)
+}
+
+// withDB opens a notes database for a command. Unlike the server, it doesn't
+// rebuild derived data first: check and export must leave the database as
+// they found it.
+func withDB(ctx context.Context, path string, fn func(*database.DB) error) error {
 	db, err := database.Open(ctx, path)
 	if err != nil {
 		return fmt.Errorf("open database %s: %w", path, err)
@@ -488,8 +526,12 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
+	server := api.New(system, users, authSvc, log, cfg)
+	if err := server.Recover(ctx); err != nil {
+		return fmt.Errorf("finish moving notes between files: %w", err)
+	}
 	srv := &http.Server{
-		Handler:           api.New(system, users, authSvc, log, cfg).Handler(),
+		Handler:           server.Handler(),
 		ReadHeaderTimeout: 10 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      60 * time.Second,
@@ -512,7 +554,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
-	go collectImages(ctx, authSvc, users, log)
+	go collectImages(ctx, system, authSvc, users, log)
 	if mirr != nil {
 		mirrorCtx, stopMirror := context.WithCancel(ctx)
 		done := make(chan struct{})
@@ -655,8 +697,8 @@ const (
 )
 
 // collectImages deletes images no note has shown for images.Grace, from
-// every user's database, until ctx ends (§7.6).
-func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registry, log *slog.Logger) {
+// every user's and shared space's database, until ctx ends (§7.6).
+func collectImages(ctx context.Context, system *database.DB, a *auth.Service, users *userdata.Registry, log *slog.Logger) {
 	t := time.NewTimer(collectFirst)
 	defer t.Stop()
 	for {
@@ -683,8 +725,47 @@ func collectImages(ctx context.Context, a *auth.Service, users *userdata.Registr
 				log.Info("deleted unused images", "username", u.Username, "count", n, "bytes", size)
 			}
 		}
+		for _, id := range sharedSpaceIDs(ctx, system, log) {
+			d, err := users.OpenSpace(ctx, id)
+			if err != nil {
+				log.Error("delete unused images", "space", id, "err", err)
+				continue
+			}
+			n, size, err := d.Images.Collect(ctx, time.Now().Add(-images.Grace), false)
+			switch {
+			case err != nil && ctx.Err() == nil:
+				log.Error("delete unused images", "space", id, "err", err)
+			case n > 0:
+				log.Info("deleted unused images", "space", id, "count", n, "bytes", size)
+			}
+		}
 		t.Reset(collectEvery)
 	}
+}
+
+// sharedSpaceIDs lists every shared space (§7.9), logging a failure as none.
+func sharedSpaceIDs(ctx context.Context, system *database.DB, log *slog.Logger) []string {
+	rows, err := system.R.QueryContext(ctx, `SELECT id FROM shared_spaces ORDER BY id`)
+	if err != nil {
+		if ctx.Err() == nil {
+			log.Error("list shared spaces", "err", err)
+		}
+		return nil
+	}
+	defer rows.Close()
+	var ids []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			log.Error("list shared spaces", "err", err)
+			return ids
+		}
+		ids = append(ids, id)
+	}
+	if err := rows.Err(); err != nil && ctx.Err() == nil {
+		log.Error("list shared spaces", "err", err)
+	}
+	return ids
 }
 
 func humanBytes(n int64) string {

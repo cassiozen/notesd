@@ -12,7 +12,7 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 
 - [Basics](#basics): requests, compatibility, authentication, writing notes, errors
 - [Endpoints](#endpoints): [auth](#auth), [notes](#notes), [sync](#sync),
-  [search and filters](#search-and-filters), [spaces](#spaces), [images](#images),
+  [search and filters](#search-and-filters), [spaces](#spaces), [shared spaces](#shared-spaces), [images](#images),
   [locked notes](#locked-notes), [email](#email), [updates](#updates), [health](#health)
 - [Error codes](#error-codes)
 
@@ -200,6 +200,7 @@ Browsers get `csrfToken` instead of the four token fields, and the cookie.
 | `GET` | `/notes/{id}` | → the note. A deleted note is `410 note_deleted`, with the tombstone in `current` |
 | `PUT` | `/notes/{id}` | `{operationId, baseRevision, title, content, spaceId?, imageIds?, updatedAt?}` → [result](#writing-notes) |
 | `DELETE` | `/notes/{id}` | `{operationId, baseRevision}` → [result](#writing-notes) |
+| `POST` | `/notes/{id}/move` | `{operationId, baseRevision, spaceId}` → [result](#writing-notes), with the note's revision where it went. Moves it to a space in another file: into or out of a [shared space](#shared-spaces) |
 
 A note:
 
@@ -220,6 +221,8 @@ A note:
 `content` is the Markdown body, without the title. A deleted note (a tombstone) has `deletedAt`
 set and an empty title and content. `conflictOf` is set on a conflicted or recovered copy, with
 the ID of the note it came from. `imageIds` is only on [locked notes](#locked-notes).
+`updatedBy` is the id of the account that last changed it, absent for changes from before it was
+recorded. `movedTo` is on a tombstone a [move](#shared-spaces) left: the space the note went to.
 
 **`GET /notes` parameters:**
 
@@ -239,7 +242,10 @@ locked notes.
 
 **Spaces.** `spaceId` on create puts the note in that space; left out, it goes in `default`. On
 update, `spaceId` moves the note, and leaving it out keeps it where it is. If the space doesn't
-exist, the note goes in `default`. The result's `spaceId` says where it ended up.
+exist, the note goes in `default`. The result's `spaceId` says where it ended up. A space whose
+notes are in another file (a [shared space](#shared-spaces), or your own space when writing in a
+shared one) is refused with `409 space_elsewhere` and its `spaceId`: send the note there, or move
+it with `/notes/{id}/move`.
 
 ### Sync
 
@@ -296,6 +302,40 @@ parents of nested tags. `count` is the number of notes with the tag or one neste
   icon. Left out, the icon stays as it is.
 - A space with notes in it can't be deleted (`409 space_not_empty`, with `count`), and neither can
   `default` (`409 space_default`).
+
+### Shared spaces
+
+A space's owner shares it, with every note in it, with other accounts on the server
+([architecture §7.9](../contributing/architecture.md#79-shared-spaces)). Its notes are in a file of
+their own, reached under `/spaces/{id}/`: `notes`, `notes/{note}`, `notes/{note}/move`,
+`notes/{note}/email`, `images/{image}`, `sync`, `search` and `filters` work exactly as the
+account's endpoints, for members only (`404 not_found` for anyone else). Sync each shared space's
+feed with its own cursor and generation.
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `POST` | `/spaces/{id}/invites` | `{userId}` → `201 {id, userId, username}`. Owner only. The first invitation shares the space, moving its notes to its own file |
+| `DELETE` | `/spaces/{id}/invites/{invite}` | → `204`. Owner only |
+| `DELETE` | `/spaces/{id}/members/{userId}` | → `204`. The owner removes a member, or a member leaves |
+| `PUT` | `/spaces/{id}/owner` | `{userId}` → `204`. The owner hands the space to another member |
+| `GET` | `/invites` | → `{invites: [{id, spaceId, spaceName, spaceIcon, from: {id, username}, createdAt}]}`: waiting for you |
+| `POST` | `/invites/{invite}/accept` | → the space. Joins it |
+| `POST` | `/invites/{invite}/decline` | → `204` |
+| `GET` | `/people` | → `{people: [{id, username}]}`: every account, to invite |
+
+- `GET /spaces` lists shared spaces you're in with your own. A shared one adds
+  `shared: {role, members: [{id, username}], invites?}`: `role` is `owner` or `member`, members
+  start with the owner, and `invites` (`[{id, userId, username}]`) is there for the owner only.
+  Its `shared` trait names everyone else from your side.
+- Renaming, changing the icon and deleting a shared space (`PUT`/`DELETE /spaces/{id}`) are for
+  its owner (`403 not_space_owner`). Names may match one of a member's own spaces; ids may not:
+  a space of your own with a shared space's id is refused (`409 space_exists`).
+- Sharing refuses `default` (`409 space_default`) and a space holding locked notes
+  (`409 space_has_locked`, with `count`). A shared space refuses locked notes
+  (`422 locked_in_shared_space`).
+- The owner can't leave (`409 owner_cannot_leave`): hand the space on, or remove every member.
+- A note that moved answers `409 note_moved`, with its tombstone (and `movedTo`) in `current`:
+  send the change to where it went.
 
 ### Images
 
@@ -437,18 +477,25 @@ Outside `/api/v1`, need no session, and expose no data:
 | `invalid_credentials` | 401 | Wrong username or password |
 | `csrf_failed` | 403 | A browser request without the right `X-CSRF-Token`, or from another origin |
 | `admin_only` | 403 | Only an admin can do this |
+| `not_space_owner` | 403 | Only the shared space's owner can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
 | `not_found` | 404 | No such note, session, lock key, image or account |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
+| `note_moved` | 409 | The note moved to another file; `current` has its tombstone, with `movedTo` |
+| `space_elsewhere` | 409 | That space's notes are in another file; see `spaceId` |
+| `space_has_locked` | 409 | A space holding locked notes can't be shared; see `count` |
+| `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
+| `already_member` | 409 | That account is already in the space |
+| `space_exists` | 409 | A shared space has this id |
 | `already_set_up` | 409 | The server already has an account |
 | `username_taken` | 409 | Another account has this username |
 | `cannot_change_self` | 409 | An admin can't change, remove or make a setup link for their own account from People |
 | `last_admin` | 409 | That would leave no admin who can sign in |
 | `space_not_empty` | 409 | The space still holds notes; see `count` |
-| `space_default` | 409 | The default space can't be deleted |
+| `space_default` | 409 | The default space can't be deleted or shared |
 | `no_lock_password` | 409 | The keyring's first entry must be the password |
 | `password_key_required` | 409 | The password entry can't be deleted |
 | `stale_revision` | 409 | The note changed since the revision you sent; sync first |
@@ -461,6 +508,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `image_too_large` | 413 | Images can be up to 10 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
+| `locked_in_shared_space` | 422 | Locked notes can't be in a shared space |
 | `upgrade_required` | 426 | This app is older than the server accepts; see `minVersion` and [Compatibility](#compatibility) |
 | `rate_limited` | 429 | Too many failed attempts; see `Retry-After` |
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |

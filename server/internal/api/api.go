@@ -19,6 +19,7 @@ import (
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
 	"notes/server/internal/mail"
+	"notes/server/internal/sharing"
 	"notes/server/internal/userdata"
 	"notes/server/internal/web"
 )
@@ -51,17 +52,29 @@ type Server struct {
 	log      *slog.Logger
 	cfg      Config
 	releases *releases
+	sharing  *sharing.Service
 }
 
 // New returns a server over the system database and users' notes databases.
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
+	share := sharing.New(system, users)
+	share.Install()
+	authSvc.BeforeRemove(sharing.HandOff)
 	return &Server{
 		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
 		limiter:  auth.NewLimiter(10, 15*time.Minute),
 		mailer:   mail.NewClient(cfg.ResendURL),
 		releases: newReleases(cfg.ReleasesURL),
+		sharing:  share,
 	}
 }
+
+// Recover finishes or undoes moves of notes between files that a stop cut
+// short (§7.9). Run it before serving.
+func (s *Server) Recover(ctx context.Context) error { return s.sharing.Recover(ctx) }
+
+// Sharing is the server's shared spaces, for hooks that follow them.
+func (s *Server) Sharing() *sharing.Service { return s.sharing }
 
 // Handler returns the root HTTP handler.
 func (s *Server) Handler() http.Handler {
@@ -113,6 +126,29 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/spaces", s.authed(s.listSpaces))
 	mux.Handle("PUT /api/v1/spaces/{id}", s.authed(s.putSpace))
 	mux.Handle("DELETE /api/v1/spaces/{id}", s.authed(s.deleteSpace))
+	mux.Handle("POST /api/v1/spaces/{id}/invites", s.authed(s.invite))
+	mux.Handle("DELETE /api/v1/spaces/{id}/invites/{invite}", s.authed(s.cancelInvite))
+	mux.Handle("DELETE /api/v1/spaces/{id}/members/{user}", s.authed(s.removeMember))
+	mux.Handle("PUT /api/v1/spaces/{id}/owner", s.authed(s.transferSpace))
+	mux.Handle("GET /api/v1/invites", s.authed(s.listInvites))
+	mux.Handle("POST /api/v1/invites/{invite}/accept", s.authed(s.acceptInvite))
+	mux.Handle("POST /api/v1/invites/{invite}/decline", s.authed(s.declineInvite))
+	mux.Handle("GET /api/v1/people", s.authed(s.listPeople))
+	mux.Handle("POST /api/v1/notes/{id}/move", s.authed(s.moveNote))
+
+	// A shared space's file (§7.9): the same handlers, over that file.
+	mux.Handle("GET /api/v1/spaces/{space}/notes", gzipped(s.authed(s.inSpace(s.listNotes))))
+	mux.Handle("POST /api/v1/spaces/{space}/notes", s.authed(s.inSpace(s.createNote)))
+	mux.Handle("GET /api/v1/spaces/{space}/notes/{id}", s.authed(s.inSpace(s.getNote)))
+	mux.Handle("PUT /api/v1/spaces/{space}/notes/{id}", s.authed(s.inSpace(s.updateNote)))
+	mux.Handle("DELETE /api/v1/spaces/{space}/notes/{id}", s.authed(s.inSpace(s.deleteNote)))
+	mux.Handle("POST /api/v1/spaces/{space}/notes/{id}/email", s.authed(s.inSpace(s.emailNote)))
+	mux.Handle("POST /api/v1/spaces/{space}/notes/{id}/move", s.authed(s.inSpace(s.moveNote)))
+	mux.Handle("PUT /api/v1/spaces/{space}/images/{id}", s.authed(s.inSpace(s.putImage)))
+	mux.Handle("GET /api/v1/spaces/{space}/images/{id}", s.authed(s.inSpace(s.getImage)))
+	mux.Handle("GET /api/v1/spaces/{space}/sync", gzipped(s.authed(s.inSpace(s.sync))))
+	mux.Handle("GET /api/v1/spaces/{space}/search", gzipped(s.authed(s.inSpace(s.search))))
+	mux.Handle("GET /api/v1/spaces/{space}/filters", gzipped(s.authed(s.inSpace(s.listFilters))))
 
 	mux.Handle("PUT /api/v1/images/{id}", s.authed(s.putImage))
 	mux.Handle("GET /api/v1/images/{id}", s.authed(s.getImage))
@@ -164,7 +200,30 @@ type ctxKey int
 const (
 	sessionKey ctxKey = iota
 	userKey
+	spaceKey
 )
+
+// inSpace has a handler behind authed serve a shared space's file instead of
+// the account's, once the account is found to be a member.
+func (s *Server) inSpace(h http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		space := r.PathValue("space")
+		d, err := s.sharing.Open(r.Context(), sessionFrom(r.Context()).UserID, space)
+		if err != nil {
+			s.writeErr(w, r, err)
+			return
+		}
+		ctx := context.WithValue(context.WithValue(r.Context(), userKey, d), spaceKey, space)
+		h(w, r.WithContext(ctx))
+	}
+}
+
+// spaceFrom is the shared space whose file a request is served from; "" for
+// the account's own.
+func spaceFrom(ctx context.Context) string {
+	id, _ := ctx.Value(spaceKey).(string)
+	return id
+}
 
 func sessionFrom(ctx context.Context) auth.Session {
 	sess, _ := ctx.Value(sessionKey).(auth.Session)

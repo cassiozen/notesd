@@ -81,11 +81,12 @@ internal/notes     create/update/delete, revisions, tombstones, idempotency, lis
 internal/sync      change feed
 internal/search    Markdown → plain text and tags, FTS5 query building, search, tag listing, reindex
 internal/locks     locked-note envelopes, keyring
-internal/spaces    the list of spaces
+internal/spaces    the list of spaces, traits
+internal/sharing   shared spaces: members, invitations, moving notes between files, crash recovery
 internal/images    image blobs: validation, storage, references, collection, integrity check
 internal/mail      email settings, note Markdown → HTML email, Resend client
 internal/auth      Argon2id, accounts, sessions, login rate limiting
-internal/userdata  each account's notes database and stores; the upgrade from one notes.db
+internal/userdata  each account's and shared space's notes database and stores; the upgrade from one notes.db
 internal/api       routing, auth/CSRF middleware, handlers, gzip, logging
 internal/web       embedded web app (apps/web builds into internal/web/dist)
 migrations         numbered SQL files, tracked with PRAGMA user_version (system/ for system.db)
