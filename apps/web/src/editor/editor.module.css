@@ -192,6 +192,9 @@
   color: var(--ink);
   caret-color: var(--tint);
   overflow-wrap: anywhere;
+  /* Above and below what isn't running text (quotes, code, images), so it stands apart from
+     the paragraphs around it. */
+  --block-gap: 12px;
 }
 
 /* The caret already shows where you are; base.css's focus ring would frame the whole note.
@@ -218,7 +221,7 @@
 }
 
 .prose p {
-  margin: 0 0 0.15em;
+  margin: 0 0 0.4em;
   min-height: 1.6em;
   text-wrap: pretty;
 }
@@ -248,7 +251,14 @@
 .prose ul,
 .prose ol {
   padding-left: 1.4em;
-  margin: 0.2em 0 0.5em;
+  margin: 0.4em 0;
+}
+
+/* A nested list's margin would collapse through its item and part the items around it more
+   than siblings are parted. */
+.prose li ul,
+.prose li ol {
+  margin: 0;
 }
 
 .prose li {
@@ -257,12 +267,19 @@
   text-wrap: pretty;
 }
 
-.prose li > p {
+/* A picture that ends its paragraph brings its own margin; the paragraph's would add to it.
+   ProseMirror follows a trailing picture with a separator image (Chrome, Safari) or a break. */
+.prose p:has(> [data-image-view] + :is(img.ProseMirror-separator, br.ProseMirror-trailingBreak)) {
+  margin-bottom: 0;
+}
+
+.prose li > p,
+.prose li > div > p {
   margin: 0;
 }
 
 .prose blockquote {
-  margin: 0.6em 0;
+  margin: var(--block-gap) 0;
   padding: 0 0 0 18px;
   border-left: 2px solid var(--ink-3);
   font: italic 400 20px/1.45 var(--note-serif);
@@ -333,7 +350,7 @@
 
 /* Raw Markdown the editor can't represent: shown as written, read-only. */
 .prose pre[data-raw] {
-  margin: 0.4em 0;
+  margin: var(--block-gap) 0;
   padding: 10px 14px;
   border-radius: 10px;
   border: 1px dashed var(--hair-strong);
@@ -544,7 +561,7 @@
 /* --- images (spec §7.6): one per line, as wide as the text at most --- */
 .prose [data-image-view] {
   display: block;
-  margin: 0.6em 0;
+  margin: var(--block-gap) 0;
   line-height: 0;
 }
 

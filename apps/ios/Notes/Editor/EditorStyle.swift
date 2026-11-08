@@ -16,10 +16,6 @@ nonisolated struct EditorStyle {
     /// Width one quote level adds; the bar sits at its start.
     let quoteIndent: CGFloat = 18
     let quoteBar: CGFloat = 2
-    /// Space a quote adds above and below itself (with a line's own 4 after,
-    /// about the web's 0.6em), so two quotes in a row read as two.
-    let quoteSpaceBefore: CGFloat = 6
-    let quoteSpaceAfter: CGFloat = 10
     let boxSize: CGFloat = 18
     // Under half a space: two tags in a row keep a gap between their pills.
     let tagPadX: CGFloat = 2
@@ -43,25 +39,39 @@ nonisolated struct EditorStyle {
         }
     }
 
+    /// Space after a line, as the web's margins (editor.module.css). In body units, so it
+    /// grows with the text size.
+    func space(_ gap: Gap) -> CGFloat {
+        switch gap {
+        case .item: body * 0.15
+        case .paragraph: body * 0.4
+        case .block: body * 12 / 17
+        }
+    }
+
     func paragraphStyle(_ attr: BlockAttr) -> NSParagraphStyle {
         let p = NSMutableParagraphStyle()
         let indent = margin(attr)
+        let unit = body / 17
         p.firstLineHeadIndent = indent
         p.headIndent = indent
-        p.lineHeightMultiple = 1.18
+        // The web's line heights (1.6 for text, 1.45 for quotes) over the faces' own: Instrument
+        // Sans is 1.22 tall, Instrument Serif 1.3.
+        p.lineHeightMultiple = attr.quoted && attr.leaf == .paragraph ? 1.45 / 1.3 : 1.6 / 1.22
+        // The title and headings keep their own space below, close to the text they head,
+        // unless what follows needs more.
+        let wide = attr.gap == .block ? space(.block) : 0
         switch attr.leaf {
         case .title:
-            p.paragraphSpacing = 6
+            p.paragraphSpacing = max(6 * unit, wide)
             p.lineHeightMultiple = 1.0
         case .heading:
-            p.paragraphSpacingBefore = 13
-            p.paragraphSpacing = 2
+            p.paragraphSpacingBefore = 13 * unit
+            p.paragraphSpacing = max(2 * unit, wide)
             p.lineHeightMultiple = 1.05
         default:
-            p.paragraphSpacing = 4
+            p.paragraphSpacing = space(attr.gap)
         }
-        if attr.quoteEdges.starts > 0 { p.paragraphSpacingBefore += quoteSpaceBefore }
-        if attr.quoteEdges.ends > 0 { p.paragraphSpacing = max(p.paragraphSpacing, quoteSpaceAfter) }
         return p
     }
 

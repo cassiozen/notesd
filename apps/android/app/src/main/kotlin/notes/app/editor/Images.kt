@@ -50,7 +50,7 @@ class ImageSpan(val source: String, val ref: ImageRef, private val host: ImageHo
     private val clip = Path()
 
     /** Width and height to draw at: the picture's own size in dp, shrunk to fit the line. */
-    private fun size(): Pair<Int, Int> {
+    fun size(): Pair<Int, Int> {
         val style = host.editorStyle
         val max = host.imageMaxWidth.takeIf { it > 0 } ?: style.dp(FALLBACK_WIDTH_DP).toInt()
         val w = minOf(max, (ref.width * style.density).roundToInt()).coerceAtLeast(1)

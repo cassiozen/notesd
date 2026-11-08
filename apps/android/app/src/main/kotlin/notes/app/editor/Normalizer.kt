@@ -7,6 +7,7 @@ import notes.core.doc.Container
 import notes.core.doc.Ids
 import notes.core.doc.Leaf
 import notes.core.doc.ListKind
+import notes.core.images.ImageRef
 import notes.core.text.OBJECT
 import notes.core.text.scanTags
 
@@ -45,8 +46,10 @@ class Normalizer(private val style: EditorStyle, private val images: ImageSpans?
             infos = assign(text, ranges)
         }
         val markers = markers(infos)
-        applyBlockSpans(text, ranges, infos, markers)
-        applyLeafStyles(text, ranges, infos)
+        val edges = quoteEdges(infos)
+        val gaps = gaps(infos, edges, ranges.map { hasPicture(text, it) })
+        applyBlockSpans(text, ranges, infos, markers, gaps, edges)
+        applyLeafStyles(text, ranges, infos, gaps)
         clipMarks(text, ranges, infos)
         applyTags(text)
         images?.apply(text)
@@ -236,19 +239,65 @@ class Normalizer(private val style: EditorStyle, private val images: ImageSpans?
         }
     }
 
-    private fun applyBlockSpans(text: Editable, ranges: List<Range>, infos: List<Info>, markers: List<Marker?>) {
+    /** How many of each block's innermost quotes start on it, and how many end on it: those its neighbour isn't in. */
+    private fun quoteEdges(infos: List<Info>): List<Pair<Int, Int>> = infos.indices.map { k ->
+        val quotes = infos[k].path.filterIsInstance<Container.Quote>()
+        val above = infos.getOrNull(k - 1)?.path.orEmpty()
+        val below = infos.getOrNull(k + 1)?.path.orEmpty()
+        quotes.count { it !in above } to quotes.count { it !in below }
+    }
+
+    /** The space after each block: wide around quotes, raw blocks and pictures, narrow inside a list. */
+    private fun gaps(infos: List<Info>, edges: List<Pair<Int, Int>>, pictures: List<Boolean>): List<Gap> =
+        infos.indices.map { k ->
+            val next = infos.getOrNull(k + 1) ?: return@map Gap.Paragraph
+            val wide = infos[k].leaf is Leaf.Raw || next.leaf is Leaf.Raw || pictures[k] || pictures[k + 1] ||
+                edges[k].second > 0 || edges[k + 1].first > 0
+            when {
+                wide -> Gap.Block
+                sameList(infos[k].path, next.path) -> Gap.Item
+                else -> Gap.Paragraph
+            }
+        }
+
+    private fun hasPicture(text: Spanned, r: Range) =
+        text.getSpans(r.start, r.contentEnd, RawInlineSpan::class.java).any {
+            text.getSpanStart(it) >= r.start && text.getSpanEnd(it) <= r.contentEnd &&
+                ImageRef.parse(it.source) != null
+        }
+
+    /** Both blocks are in one list, at whatever depth: they share its outermost item's list. */
+    private fun sameList(a: List<Container>, b: List<Container>): Boolean {
+        val d = a.indexOfFirst { it is Container.Item }
+        if (d < 0 || d >= b.size || a.subList(0, d) != b.subList(0, d)) return false
+        val x = a[d] as Container.Item
+        val y = b[d] as? Container.Item ?: return false
+        return x.listId == y.listId
+    }
+
+    private fun applyBlockSpans(
+        text: Editable,
+        ranges: List<Range>,
+        infos: List<Info>,
+        markers: List<Marker?>,
+        gaps: List<Gap>,
+        edges: List<Pair<Int, Int>>
+    ) {
         val existing = text.getSpans(0, text.length, BlockSpan::class.java)
         val byStart = existing.groupBy { text.getSpanStart(it) }
         val keep = HashSet<BlockSpan>()
         ranges.forEachIndexed { k, r ->
             val info = infos[k]
+            val ends = edges[k].second
             val reuse = byStart[r.start]?.firstOrNull {
-                it !in keep && it.sameAs(info.path, info.leaf, markers[k]) && text.getSpanEnd(it) == r.end
+                it !in keep &&
+                    it.sameAs(info.path, info.leaf, markers[k], gaps[k], ends) &&
+                    text.getSpanEnd(it) == r.end
             }
             if (reuse != null) {
                 keep += reuse
             } else {
-                val span = BlockSpan(info.path, info.leaf, markers[k], style)
+                val span = BlockSpan(info.path, info.leaf, markers[k], style, gaps[k], ends)
                 text.setSpan(span, r.start, r.end, Spanned.SPAN_INCLUSIVE_EXCLUSIVE)
                 keep += span
             }
@@ -256,7 +305,7 @@ class Normalizer(private val style: EditorStyle, private val images: ImageSpans?
         for (span in existing) if (span !in keep) text.removeSpan(span)
     }
 
-    private fun applyLeafStyles(text: Editable, ranges: List<Range>, infos: List<Info>) {
+    private fun applyLeafStyles(text: Editable, ranges: List<Range>, infos: List<Info>, gaps: List<Gap>) {
         val existing = text.getSpans(0, text.length, LeafStyleSpan::class.java)
         val byStart = existing.groupBy { text.getSpanStart(it) }
         val keep = HashSet<LeafStyleSpan>()
@@ -265,12 +314,12 @@ class Normalizer(private val style: EditorStyle, private val images: ImageSpans?
             val dim = info.path.any { it is Container.Item && it.kind == ListKind.Task && it.checked }
             val quoted = info.path.any { it is Container.Quote }
             val reuse = byStart[r.start]?.firstOrNull {
-                it !in keep && it.sameAs(info.leaf, dim, quoted) && text.getSpanEnd(it) == r.end
+                it !in keep && it.sameAs(info.leaf, dim, quoted, gaps[k]) && text.getSpanEnd(it) == r.end
             }
             if (reuse != null) {
                 keep += reuse
             } else {
-                val span = LeafStyleSpan(info.leaf, dim, quoted, style)
+                val span = LeafStyleSpan(info.leaf, dim, quoted, style, gaps[k])
                 text.setSpan(span, r.start, r.end, Spanned.SPAN_INCLUSIVE_EXCLUSIVE)
                 keep += span
             }

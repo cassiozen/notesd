@@ -40,16 +40,23 @@ nonisolated final class BlockAttr: NSObject {
     /// How many of its innermost quotes start and end on this line: separate
     /// quotes get space between them, and their bars stop at their own lines.
     let quoteEdges: QuoteEdges
+    /// The space between this line and the next.
+    let gap: Gap
 
-    init(path: [Container], leaf: Leaf, marker: Marker? = nil, quoteEdges: QuoteEdges = .init()) {
+    init(
+        path: [Container], leaf: Leaf, marker: Marker? = nil, quoteEdges: QuoteEdges = .init(),
+        gap: Gap = .paragraph
+    ) {
         self.path = path
         self.leaf = leaf
         self.marker = marker
         self.quoteEdges = quoteEdges
+        self.gap = gap
     }
 
-    func sameAs(path: [Container], leaf: Leaf, marker: Marker?, quoteEdges: QuoteEdges) -> Bool {
+    func sameAs(path: [Container], leaf: Leaf, marker: Marker?, quoteEdges: QuoteEdges, gap: Gap) -> Bool {
         self.path == path && self.leaf == leaf && self.marker == marker && self.quoteEdges == quoteEdges
+            && self.gap == gap
     }
 
     var item: Container.Item? {
@@ -69,6 +76,14 @@ nonisolated final class BlockAttr: NSObject {
 nonisolated struct QuoteEdges: Equatable {
     var starts = 0
     var ends = 0
+}
+
+/// How far a line is from the next, as the web spaces its blocks (editor.module.css): items of
+/// one list sit closest, so the list reads as one; quotes and raw blocks stand furthest apart.
+nonisolated enum Gap: Equatable {
+    case item
+    case paragraph
+    case block
 }
 
 /// A link's target. Equal by value, so adjacent runs of one link merge.
