@@ -1,0 +1,91 @@
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_82b4af1939564e 26-85,96-106
+apps/web/src/notes/activity.module.css
+  s_cc6cacc0a6fc01::t_4f1a210a651f77 1-245
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_73d5e0c1be13f0 1-381
+apps/web/src/notes/failed-run.test.ts
+  s_cc6cacc0a6fc01::t_a032b67b1dddd6 1-45
+apps/web/src/notes/failed-run.ts
+  s_cc6cacc0a6fc01::t_e316c792fc858b 1-45
+apps/web/src/notes/local-storage.ts
+  s_cc6cacc0a6fc01::t_94f73cb80a4b2e 1-18
+apps/web/src/notes/note-pane.tsx
+  s_cc6cacc0a6fc01::t_c235b31cedf7d9 19,21-22,281-282,531-551
+apps/web/src/notes/shell.tsx
+  s_cc6cacc0a6fc01::t_91f6d6e569ceff 6,13,85,277,353,357-358
+apps/web/src/notes/tags-panel.tsx
+  s_cc6cacc0a6fc01::t_5c960a2f912dad 5,64,71
+apps/web/src/router.ts
+  s_cc6cacc0a6fc01::t_95f76c25429e11 12,53-79,81,106
+apps/web/src/settings/agent-section.tsx
+  s_cc6cacc0a6fc01::t_b1f538174914cd 11,70-74,306-311
+apps/web/src/settings/settings.tsx
+  s_cc6cacc0a6fc01::t_8ba9ab0e9d3d5f 12,35,146
+apps/web/src/ui/icons.tsx
+  s_cc6cacc0a6fc01::t_35c689f3a76a94 77-84
+apps/web/test/activity.test.tsx
+  s_cc6cacc0a6fc01::t_002185f77edb0a 1-160
+apps/web/test/router.test.ts
+  s_cc6cacc0a6fc01::t_c28e8fca3cc41c 2,74-95
+apps/web/test/server.ts
+  s_cc6cacc0a6fc01::t_ad3fdf61f84fb2 170-171,176,190-200
+apps/web/tsconfig.tsbuildinfo
+  s_cc6cacc0a6fc01::t_265a4bda62501e 1
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_3f233301c926c2 605-617
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_004f49083cdc8c 14,18-26,51-72
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_53afde1c47130f 464-467,488-513,574,597
+server/internal/agent/activity.go
+  s_cc6cacc0a6fc01::t_a1f9d22edd8690 1-279
+server/internal/agent/activity_test.go
+  s_cc6cacc0a6fc01::t_a378ac380e78ef 1-113
+server/internal/agent/diff.go
+  s_cc6cacc0a6fc01::t_475ff597833cf9 1-181
+server/internal/agent/diff_test.go
+  s_cc6cacc0a6fc01::t_ba51e42da64893 1-129
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_f697671cf52e60 29-31
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_71a54bbf56a208 196-220
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_5fa1fa8c6b57d5 308-311,614,616,912-925
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_c9fc45c912238a 119-121,134-139
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_cba7aa3667e8db 64-66,128-160
+server/internal/agent/undo.go
+  s_cc6cacc0a6fc01::t_8eb47b8a6cd46e 1-149
+server/internal/agent/undo_test.go
+  s_cc6cacc0a6fc01::t_65f72fc7391f0c 1-256
+server/internal/api/agent_config_test.go
+  s_cc6cacc0a6fc01::t_f7ab43d94e47ec 76-98
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_3ba0525c66aa0a 4,8,91-154
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_4294c5b3433719 137-140
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_67fa34a596756d 131-132
+server/migrations/0016_agent_activity.sql
+  s_cc6cacc0a6fc01::t_aab70ce39b5d72 11
+server/migrations/0017_agent_text_removed.sql
+  s_cc6cacc0a6fc01::t_12da0e8868de7c 1-3
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba87f4ab1c7799dadc8ce25cb9d31156e38a8b0d",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
