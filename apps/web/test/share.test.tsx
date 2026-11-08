@@ -93,8 +93,9 @@ describe('email settings', () => {
     const available = await screen.findByRole('region', { name: 'Available' })
     // As the server says it to someone else; set once loaded, so the load can't overwrite it.
     act(() => setEmailSettings({ configured: false, from: '', keyHint: '', editable: false }))
-    expect(within(available).getByText(/An admin can connect it\.$/)).toBeTruthy()
-    expect(within(available).queryByRole('button')).toBeNull()
+    const row = within(available).getByText('Resend').closest('li') as HTMLElement
+    expect(within(row).getByText(/An admin can connect it\.$/)).toBeTruthy()
+    expect(within(row).queryByRole('button')).toBeNull()
   })
 })
 

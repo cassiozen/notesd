@@ -17,7 +17,7 @@ At the top, the account row shows who you're signed in as, and on which server. 
 | **Server** | The server address; sign in, connect or sign out; your name and photo; changing your account password. On the web: the server's version and [updating it](../self-hosting/upgrading.md#updating-from-settings) (admins) | Address: this device. Name, photo and password: account. Version and updates: the whole server |
 | **Security** | The lock password for [locked notes](locked-notes.md): create, lock now, change, reset. Passkeys (web), fingerprint (Android) or Face ID (iPhone) unlock. On the web: the browsers and devices signed in to your account | Account; fingerprint and Face ID on this phone only |
 | **Spaces** | Create, rename, change the icon of, and delete [spaces](organize-and-find.md#spaces) | Account |
-| **Integrations** | What's connected and what can be: [email](email.md) through Resend. Only admins can connect or change them | The whole server |
+| **Integrations** | What's connected and what can be: [email](email.md) through Resend and, on the web, the AI provider [agents](agents.md) use. Only admins can connect or change them | The whole server |
 | **Appearance** | Theme: system (Automatic on iPhone), light or dark. On the web, the note font too | This device |
 | **Sync & data** | On the web: [keep notes on this device](offline-and-sync.md#the-web-app), and install the app. On the phones: sync status and removing all data from the device | This device |
 | **About** | The app's version (phones only) | This device |
