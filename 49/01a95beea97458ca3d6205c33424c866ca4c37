@@ -9,6 +9,7 @@ apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
 apps/ios/NotesCore/Tests/NotesCoreTests/SharedSpacesTests.swift
   s_bfcd6b4ecf53cb::t_97e76f91cc9e63 34,39-41,44,48,194,199-240
   s_bfcd6b4ecf53cb::t_dd63e52e4b102a 241
+  s_bfcd6b4ecf53cb::t_b0cee51bb5c474 26,133,135,138,146,150,160,163-167,307
 apps/ios/NotesTests/SharingTests.swift
   s_bfcd6b4ecf53cb::t_a19c554c16947f 9-10
   s_bfcd6b4ecf53cb::t_510c29c7cca9e1 75
@@ -20,12 +21,15 @@ apps/ios/Notes/Notes/Sharing.swift
   s_bfcd6b4ecf53cb::t_d8a7c981b449a5 65-66
 apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
   s_bfcd6b4ecf53cb::t_649116dda503ad 61,66,125-130,132-133,140,153-163,192,257,360-364,366-378,380-386,388,398-399,480
+  s_bfcd6b4ecf53cb::t_7714afb2446072 141-147,169-173,175,184,188
+  s_bfcd6b4ecf53cb::t_e4c375503f72f2 148-149
 apps/ios/Notes/Account/OnboardingModel.swift
   s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 171
 apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
   s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 176,187,246-247,251,319,359-360,398,419
   s_bfcd6b4ecf53cb::t_8eb01dac1b26fc 332-334
   s_bfcd6b4ecf53cb::t_05a95ee90438da 335
+  s_bfcd6b4ecf53cb::t_e4c375503f72f2 231
 apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
   s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 6-7,24
 apps/ios/NotesCore/Sources/NotesCore/DB/Rows.swift
