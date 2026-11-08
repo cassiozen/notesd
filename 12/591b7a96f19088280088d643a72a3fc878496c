@@ -1,0 +1,30 @@
+docs/get-started/04-write-your-first-note.md
+  s_c6f2b44348fc0d::t_fc84539468efca 29
+apps/ios/Notes/UI/Theme.swift
+  s_c6f2b44348fc0d::t_4c5bbe3bc0657c 190-191
+  s_c6f2b44348fc0d::t_7f96dd3af1ffbe 189
+apps/web/src/notes/tags-panel.module.css
+  s_c6f2b44348fc0d::t_42c13ed549b068 96
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_c6f2b44348fc0d::t_42c13ed549b068 510,556-557
+apps/ios/Notes/Notes/NotesListView.swift
+  s_c6f2b44348fc0d::t_42c13ed549b068 144,221-222
+apps/web/src/notes/note-list.module.css
+  s_c6f2b44348fc0d::t_42c13ed549b068 23,27-28,449
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "12591b7a96f19088280088d643a72a3fc878496c",
+  "prompts": {},
+  "sessions": {
+    "s_c6f2b44348fc0d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2e19d8e1-db2b-4d23-9fff-965450448cfd",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
