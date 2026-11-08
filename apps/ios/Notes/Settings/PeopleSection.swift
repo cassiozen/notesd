@@ -77,7 +77,7 @@ struct PeopleSection: View {
         case .success(let list) where list.isEmpty:
             // With people listed above, nobody left to invite needs no words.
             if alone {
-                Text("There’s no one else on this server yet. An admin adds people in Settings › People.")
+                Text("There’s no one else on this server yet. An admin adds people from the web, Mac or Android app.")
                     .font(.notesSmall)
                     .foregroundStyle(Color.ink2)
             }

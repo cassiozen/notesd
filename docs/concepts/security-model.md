@@ -1,6 +1,6 @@
 ---
 title: Security model
-description: What the server can read, how accounts and sessions are protected, and what locked notes do and don't protect.
+description: What the server can read, how accounts and sessions are protected, who sees a shared space, and what locked notes do and don't protect.
 ---
 
 # Security model
@@ -17,9 +17,10 @@ description: What the server can read, how accounts and sessions are protected, 
 ## Accounts
 
 - Each account's notes, search index, spaces, locked-notes keyring and pictures are in their own
-  database file. A request only ever opens the file of the account it's signed in as, so one
-  account can't reach another's notes, even through a bug in a single check.
-- Accounts are added by an admin, in the web app or with `notesd add-user`. There's no public
+  database file. A request only ever opens one file: the account's own, or a
+  [shared space](#shared-spaces) it's a member of. So one account can't reach another's notes,
+  even through a bug in a single check.
+- Accounts are added by an admin, in the web, Mac or Android app, or with `notesd add-user`. There's no public
   sign-up and no email. An admin invites someone with a **setup link** they send themselves: it
   works once, for 7 days, and only a hash of it is kept on the server. A forgotten password is
   reset the same way, or on the server with `notesd reset-password`. Whoever has a link can set
@@ -31,6 +32,23 @@ description: What the server can read, how accounts and sessions are protected, 
   and create the account before putting HTTPS in front. On a hosting platform, create it right
   after deploying. To skip that window, `NOTESD_OWNER_USERNAME` and `NOTESD_OWNER_PASSWORD` create
   it when the server starts.
+
+## Shared spaces
+
+[Sharing a space](../guides/using/sharing.md) is the only way one account sees another's notes.
+
+- **Members can do almost everything.** Every member can read, edit and delete every note in the
+  space, and see its pictures. Only the owner can invite or remove people, rename the space or
+  delete it. Each note shows who last changed it.
+- **Moving a note into a shared space shares it.** The apps ask first, naming who will see it.
+- **Each shared space is its own database file.** The server opens it only for its members.
+  Anyone else gets "not found", so they can't even tell the space exists.
+- **Every account can see the usernames on the server,** so an owner can pick who to invite.
+  They can't see anyone's spaces or notes.
+- **No locked notes.** Locked notes are encrypted with a key only one account has, so a shared
+  space can't hold them. Its notes are as readable on the server as any regular note.
+- **Removing someone works from then on.** Their devices drop the space's notes the next time they
+  sync. A copy they already have stays with them: an export, or a device that never syncs again.
 
 ## Passwords and sessions
 

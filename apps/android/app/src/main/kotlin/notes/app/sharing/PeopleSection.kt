@@ -455,7 +455,7 @@ private fun Invite(
             }
 
             !shared -> Text(
-                "There’s no one else on this server yet. An admin adds people in Settings › People.",
+                "There’s no one else on this server yet. An admin adds people in Settings › Server › People.",
                 style = Type.small,
                 color = t.ink3,
                 modifier = pad
