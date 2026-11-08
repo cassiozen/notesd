@@ -1,0 +1,85 @@
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { describe, expect, it, vi } from 'vitest'
+import type { Person, SessionInfo } from '../src/api/types'
+import { openSettings, signedIn } from './helpers'
+
+/** An 8×8 JPEG: what the server takes. */
+const JPEG = Uint8Array.from(
+  atob(
+    '/9j/2wCEABALDA4MChAODQ4SERATGCgaGBYWGDEjJR0oOjM9PDkzODdASFxOQERXRTc4UG1RV19iZ2hnPk1xeXBkeFxlZ2MBERISGBUYLxoaL2NCOEJjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY2NjY//AABEIAAgACAMBIgACEQEDEQH/xAGiAAABBQEBAQEBAQAAAAAAAAAAAQIDBAUGBwgJCgsQAAIBAwMCBAMFBQQEAAABfQECAwAEEQUSITFBBhNRYQcicRQygZGhCCNCscEVUtHwJDNicoIJChYXGBkaJSYnKCkqNDU2Nzg5OkNERUZHSElKU1RVVldYWVpjZGVmZ2hpanN0dXZ3eHl6g4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8fLz9PX29/j5+gEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoLEQACAQIEBAMEBwUEBAABAncAAQIDEQQFITEGEkFRB2FxEyIygQgUQpGhscEJIzNS8BVictEKFiQ04SXxFxgZGiYnKCkqNTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2dri4+Tl5ufo6ery8/T19vf4+fr/2gAMAwEAAhEDEQA/AJqKKK889Q//2Q==',
+  ),
+  (c) => c.charCodeAt(0),
+)
+
+// jsdom can't decode or draw pictures: any picked file becomes the JPEG above.
+vi.mock('../src/settings/photo', () => ({ preparePhoto: async () => JPEG.slice() }))
+
+const nav = () => screen.getByRole('navigation', { name: 'Settings categories' })
+const accountRow = () => within(nav()).getByRole('link', { name: /^Server:/ })
+const dialog = () => screen.getByRole('dialog', { name: 'Name and photo' })
+const session = async (server: Awaited<ReturnType<typeof signedIn>>['server']) =>
+  (await server.api<SessionInfo>('GET', '/auth/session')).body
+
+describe('name and photo', () => {
+  it('are optional, set from Server, and shown in the account row', async () => {
+    const { server, user } = await signedIn()
+    await openSettings(user)
+    expect(accountRow().getAttribute('aria-label')).toBe(`Server: me on ${window.location.host}`)
+    expect(within(accountRow()).getByText('M')).toBeTruthy()
+    expect(screen.getByText('Optional. Without a name, you’re shown as me.')).toBeTruthy()
+
+    await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
+    await user.type(within(dialog()).getByLabelText('Name'), '  Maria Silva ')
+    fireEvent.change(screen.getByTestId('photo-input'), { target: { files: [new File(['x'], 'me.png', { type: 'image/png' })] } })
+    await within(dialog()).findByRole('button', { name: 'Change photo…' })
+    await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
+
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Name and photo' })).toBeNull())
+    const after = await session(server)
+    expect(after.displayName).toBe('Maria Silva')
+    expect(after.avatar).not.toBe('')
+    expect(accountRow().getAttribute('aria-label')).toBe(`Server: Maria Silva on ${window.location.host}`)
+    expect(accountRow().querySelector('img')?.getAttribute('src')).toBe(`/api/v1/users/${after.userId}/avatar?v=${after.avatar}`)
+    expect(screen.getByText('Shown as Maria Silva')).toBeTruthy()
+
+    // Removing both goes back to the username and its initial.
+    await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
+    await user.click(within(dialog()).getByRole('button', { name: 'Remove photo' }))
+    await user.clear(within(dialog()).getByLabelText('Name'))
+    await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
+    await waitFor(() => expect(accountRow().getAttribute('aria-label')).toBe(`Server: me on ${window.location.host}`))
+    expect(accountRow().querySelector('img')).toBeNull()
+    expect(await session(server)).toMatchObject({ displayName: '', avatar: '' })
+  })
+
+  it('a name the server refuses stays in the dialog with why', async () => {
+    const { user } = await signedIn()
+    await openSettings(user)
+    await user.click(screen.getByRole('button', { name: 'Edit name and photo' }))
+    // maxLength stops typing; a paste of control characters doesn't.
+    fireEvent.change(within(dialog()).getByLabelText('Name'), { target: { value: 'Maria\u0007' } })
+    await user.click(within(dialog()).getByRole('button', { name: 'Save' }))
+    expect(await within(dialog()).findByText('Use at most 64 characters, on one line.')).toBeTruthy()
+  })
+
+  it('People shows names and photos, and an invitation can suggest one', async () => {
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await s.api('POST', '/users', { username: 'sam', displayName: 'Sam' })
+      },
+    })
+    await openSettings(user)
+    const people = await screen.findByRole('list', { name: 'People' })
+    const sam = await within(people).findByText('Sam')
+    expect(sam.closest('li')?.textContent).toContain('sam · Invited')
+
+    await user.click(screen.getByRole('button', { name: 'Invite someone…' }))
+    const invite = screen.getByRole('dialog', { name: 'Invite someone' })
+    await user.type(within(invite).getByLabelText('Username'), 'mum')
+    await user.type(within(invite).getByLabelText('Name (optional)'), 'Mum')
+    await user.click(within(invite).getByRole('button', { name: 'Invite' }))
+    expect(await screen.findByRole('dialog', { name: 'Send Mum this link' })).toBeTruthy()
+    const { users } = (await server.api<{ users: Person[] }>('GET', '/users')).body
+    expect(users.find((p) => p.username === 'mum')?.displayName).toBe('Mum')
+  })
+})

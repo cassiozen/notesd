@@ -16,8 +16,9 @@ has several settings that don't fit any existing one. Update this file in the sa
 
 The list works like the system's own settings:
 
-1. **The account row** at the top: an initial, the username and the server. It opens Server. When
-   not connected, it says "Not connected" and opens Server, where you can connect.
+1. **The account row** at the top: the account's photo (or the first letter of its name), its name
+   (or the username, without one) and the server. It opens Server. When not connected, it says
+   "Not connected" and opens Server, where you can connect.
 2. **The groups.** Each has a one-line header that says where its settings are kept. The header
    is the group's only label: there's no separate description.
    - **Synced to your account**: stored on the server. Every device signed in to the account sees
@@ -46,7 +47,7 @@ iOS writes titles in title case, as its own settings do ("Sync & Data").
 
 | # | Group | Category | Route key | Icon | Value in the list |
 |---|-------|----------|-----------|------|-------------------|
-| 1 | (account row) | Server | `server` | initial | username and server; "Signed out"; "Not connected" |
+| 1 | (account row) | Server | `server` | photo or initial | name (or username) and server; "Signed out"; "Not connected" |
 | 2 | Synced | Security | `security` | lock | "Off" (no lock password), "Locked", "Unlocked" |
 | 3 | Synced | Spaces | `spaces` | four squares | the number of spaces |
 | 4 | Synced | Integrations | `integrations` | envelope | "Off", else what's connected: its name ("Resend"), or how many |
@@ -64,6 +65,7 @@ the list is its own screen and a category opens on top of it with a back button.
 |---------|----------|---------|-----|-----|---------|
 | Server address (the web uses the address it's served from) | Server | device | ✓ | ✓ | ✓ |
 | Signed-in username | Server | account | ✓ | ✓ | ✓ |
+| Name and photo: a line saying how you're shown, Edit… opening a dialog (photo: choose, change, remove; name). Both optional, never asked for elsewhere once signed in | Server | account | ✓ | – | – |
 | Server version, with a link to releases | Server | – | ✓ | – | – |
 | Update to the newest release (admins; needs `NOTESD_SELF_UPDATE`) | Server | – | ✓ | – | – |
 | Connect to a server / Sign in again | Server | – | – | ✓ | ✓ |

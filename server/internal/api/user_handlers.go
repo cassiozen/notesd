@@ -21,17 +21,19 @@ func (s *Server) listUsers(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, map[string]any{"users": list})
 }
 
-// POST /api/v1/users {"username": "..."} — invites someone: an account with
-// no password yet, and the link for them to choose one.
+// POST /api/v1/users {"username": "...", "displayName": "..."} — invites
+// someone: an account with no password yet, and the link for them to choose
+// one. displayName is optional, a suggestion they may change.
 func (s *Server) inviteUser(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Username string `json:"username"`
+		Username    string `json:"username"`
+		DisplayName string `json:"displayName"`
 	}
 	if err := decode(w, r, &req); err != nil {
 		s.writeErr(w, r, err)
 		return
 	}
-	u, link, err := s.auth.Invite(r.Context(), req.Username)
+	u, link, err := s.auth.Invite(r.Context(), req.Username, req.DisplayName)
 	if err != nil {
 		s.writeErr(w, r, err)
 		return
@@ -121,20 +123,26 @@ func (s *Server) peekSetupLink(w http.ResponseWriter, r *http.Request) {
 		s.linkFailed(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"username": u.Username, "pending": u.Pending})
+	resp := map[string]any{"username": u.Username, "pending": u.Pending}
+	// Only an invitation asks for a name; a reset is someone already settled in.
+	if u.Pending {
+		resp["displayName"] = u.DisplayName
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
-// POST /api/v1/auth/setup-link/use {"token": "...", "password": "..."} —
-// sets the password; the app then signs in with it.
+// POST /api/v1/auth/setup-link/use {"token": "...", "password": "...", "displayName": "..."}
+// — sets the password, and an invitation's name if given; the app then signs in.
 func (s *Server) useSetupLink(w http.ResponseWriter, r *http.Request) {
 	var req struct {
-		Token    string `json:"token"`
-		Password string `json:"password"`
+		Token       string  `json:"token"`
+		Password    string  `json:"password"`
+		DisplayName *string `json:"displayName"`
 	}
 	if !s.decodeLink(w, r, &req) {
 		return
 	}
-	u, err := s.auth.UseSetupLink(r.Context(), req.Token, req.Password)
+	u, err := s.auth.UseSetupLink(r.Context(), req.Token, req.Password, req.DisplayName)
 	if err != nil {
 		s.linkFailed(w, r, err)
 		return

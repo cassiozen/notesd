@@ -27,6 +27,9 @@ description: What the server can read, how accounts and sessions are protected, 
   that account's password, so it should be sent privately.
 - **Admins** can change settings that apply to the whole server (email), manage accounts, and
   update the server from Settings. The first account is one. Admins can't see other accounts' notes.
+- **Name and photo** are optional. They're stored unencrypted with the account, not with its notes,
+  and only you and the server's admins see them. The photo is encoded again on the server, so its
+  EXIF data (such as where it was taken) is never stored.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
   reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
   and create the account before putting HTTPS in front. On a hosting platform, create it right

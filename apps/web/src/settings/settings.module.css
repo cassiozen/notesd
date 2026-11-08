@@ -108,6 +108,25 @@
   color: var(--ink);
 }
 
+/* The name-and-photo dialog's preview, the account row's avatar larger. */
+.photoRow {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.photoPreview {
+  width: 72px;
+  height: 72px;
+  font-size: 34px;
+}
+
+.photoActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .accountText {
   flex: 1;
   min-width: 0;

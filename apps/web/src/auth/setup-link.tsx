@@ -20,9 +20,10 @@ type Link =
   | { status: 'checking' }
   | { status: 'invalid' }
   | { status: 'error'; message: string }
-  | { status: 'ready'; username: string; pending: boolean }
+  // displayName: the name the admin suggested, invitations only.
+  | { status: 'ready'; username: string; pending: boolean; displayName: string }
 
-type FieldErrors = Partial<Record<'password' | 'confirm', string>>
+type FieldErrors = Partial<Record<'displayName' | 'password' | 'confirm', string>>
 
 /**
  * The page a setup link opens (settings/people.tsx makes them): an invited person chooses their password, or
@@ -118,6 +119,7 @@ export function SetupLinkPage() {
       token={token}
       username={link.username}
       pending={link.pending}
+      suggested={link.displayName}
       onInvalid={() => setLink({ status: 'invalid' })}
       onDone={(info) => {
         navigate('/', { replace: true })
@@ -129,8 +131,8 @@ export function SetupLinkPage() {
 
 async function checkLink(token: string): Promise<Link> {
   try {
-    const { username, pending } = await setupLinks.peek(token)
-    return { status: 'ready', username, pending }
+    const { username, pending, displayName = '' } = await setupLinks.peek(token)
+    return { status: 'ready', username, pending, displayName }
   } catch (err) {
     return err instanceof ApiError && err.code === 'link_invalid' ? { status: 'invalid' } : { status: 'error', message: genericMessage(err) }
   }
@@ -147,15 +149,18 @@ function PasswordForm({
   token,
   username,
   pending,
+  suggested,
   onInvalid,
   onDone,
 }: {
   token: string
   username: string
   pending: boolean
+  suggested: string
   onInvalid: () => void
   onDone: (info: Awaited<ReturnType<typeof auth.login>>) => void
 }) {
+  const [name, setName] = useState(suggested)
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [errors, setErrors] = useState<FieldErrors>({})
@@ -175,12 +180,15 @@ function PasswordForm({
 
     setBusy(true)
     try {
-      await setupLinks.use(token, password)
+      await setupLinks.use(token, password, pending ? name.trim() : undefined)
     } catch (err) {
       setBusy(false)
       if (err instanceof ApiError && err.code === 'link_invalid') onInvalid()
       else if (err instanceof ApiError && err.field === 'password') {
         setErrors({ password: sentence(err.message) })
+        shake()
+      } else if (err instanceof ApiError && err.field === 'displayName') {
+        setErrors({ displayName: 'Use at most 64 characters, on one line.' })
         shake()
       } else {
         setFormError(genericMessage(err))
@@ -203,7 +211,7 @@ function PasswordForm({
     <AuthLayout>
       <form className={styles.stack} onSubmit={(e) => void submit(e)} noValidate>
         <Kicker>{pending ? 'Invitation' : 'Password reset'}</Kicker>
-        <h1>{pending ? `Welcome, ${username}.` : `A new password for ${username}`}</h1>
+        <h1>{pending ? `Welcome, ${suggested || username}.` : `A new password for ${username}`}</h1>
         <p className={styles.lede}>
           {pending
             ? `You’ve been invited to notesd at ${window.location.host}. Choose a password, and you’re in.`
@@ -211,6 +219,19 @@ function PasswordForm({
         </p>
         <div ref={fieldsRef} className={styles.fields}>
           <Field label="Username" name="username" autoComplete="username" value={username} readOnly />
+          {pending && (
+            <Field
+              label="Your name (optional)"
+              name="name"
+              autoComplete="name"
+              maxLength={64}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              error={errors.displayName}
+              hint="Shown instead of your username. You can change it later in Settings."
+              readOnly={busy}
+            />
+          )}
           <Field
             label={pending ? 'Password' : 'New password'}
             name="password"

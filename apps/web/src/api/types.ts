@@ -141,6 +141,10 @@ export type SessionInfo = {
   /** The account's id, as notes' updatedBy and shared spaces' members name it; absent from servers before sharing. */
   userId?: number
   username: string
+  /** The name chosen to show instead of the username; '' for none. */
+  displayName: string
+  /** The photo's version, for avatarURL; '' for none. */
+  avatar: string
   /** May change server-wide settings and manage accounts. */
   isAdmin: boolean
   csrfToken: string
@@ -152,6 +156,9 @@ export type SessionInfo = {
 export type Person = {
   id: number
   username: string
+  /** As on SessionInfo. */
+  displayName: string
+  avatar: string
   isAdmin: boolean
   createdAt: number
   /** Invited: no password chosen yet. */

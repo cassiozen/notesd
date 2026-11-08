@@ -12,7 +12,7 @@ Everything is in the data directory: `/var/lib/notesd` with the
 `notesd-data` volume with [Docker](../guides/self-hosting/docker.md).
 
 ```text
-system.db        accounts, sessions and server-wide settings (email)
+system.db        accounts (with their names and photos), sessions and server-wide settings (email)
 users/1.db       the first account's notes, pictures, spaces and locked-notes keyring
 users/2.db       the next account's, and so on: one file per account
 spaces/<id>.db   a shared space's notes, pictures, name and icon, one file per shared space

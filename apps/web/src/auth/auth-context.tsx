@@ -1,13 +1,16 @@
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
-import type { SessionInfo } from '../api/types'
+import type { Person, SessionInfo } from '../api/types'
 import { forgetTouchId } from '../locks/touch-id'
 import { forgetEmailSettings } from '../notes/email-settings'
 import { forgetSharing } from '../notes/sharing'
 import { forgetSpaces } from '../notes/spaces'
 import { closeNotes, forgetNotesHere, keepIfInstalledApp, openNotes } from '../offline/device'
 import { deviceUser, forgetUserId, rememberSession, rememberUserId, userIdOf } from './session-hint'
+
+/** The account's name and photo (SessionInfo's), once the server has said. */
+export type Profile = { userId: number; displayName: string; avatar: string }
 
 export type AuthState =
   // retrying: after 'unreachable', where the shell skeleton would just flash between two error screens.
@@ -20,13 +23,23 @@ export type AuthState =
   | { status: 'expired'; username: string }
   // firstRun: just finished onboarding, for the welcome empty state.
   // offline: opened from this device's copy, the server not yet reached.
-  // isAdmin: unknown (undefined) until the server answers.
+  // isAdmin, profile: unknown (undefined) until the server answers.
   // userId: the account's (§7.9), unknown from a server before sharing, or offline before any session here.
-  | { status: 'signed-in'; username: string; userId?: number; isAdmin?: boolean; firstRun?: boolean; offline?: boolean }
+  | {
+      status: 'signed-in'
+      username: string
+      userId?: number
+      isAdmin?: boolean
+      profile?: Profile
+      firstRun?: boolean
+      offline?: boolean
+    }
 
 type AuthContextValue = {
   state: AuthState
   signedIn: (info: SessionInfo, opts?: { firstRun?: boolean }) => void
+  /** The account's name or photo changed here: the server's answer. */
+  profileChanged: (account: Person) => void
   signOut: () => Promise<void>
   retry: () => void
 }
@@ -89,6 +102,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setState({ status: 'signed-in', ...accountOf(info), firstRun: opts.firstRun ?? false })
   }, [])
 
+  const profileChanged = useCallback((account: Person) => {
+    setState((s) =>
+      s.status === 'signed-in' && s.username === account.username
+        ? { ...s, profile: { userId: account.id, displayName: account.displayName, avatar: account.avatar } }
+        : s,
+    )
+  }, [])
+
   const account = useRef<string | null>(null)
   useEffect(() => {
     account.current = 'username' in state ? state.username : null
@@ -116,7 +137,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void boot().then(setState)
   }, [])
 
-  const value = useMemo(() => ({ state, signedIn, signOut, retry }), [state, signedIn, signOut, retry])
+  const value = useMemo(
+    () => ({ state, signedIn, profileChanged, signOut, retry }),
+    [state, signedIn, profileChanged, signOut, retry],
+  )
   return <AuthContext value={value}>{children}</AuthContext>
 }
 
@@ -153,7 +177,16 @@ function adopt(info: SessionInfo): AuthState {
 }
 
 function accountOf(info: SessionInfo) {
-  return { username: info.username, isAdmin: info.isAdmin, ...(info.userId !== undefined && { userId: info.userId }) }
+  return {
+    username: info.username,
+    isAdmin: info.isAdmin,
+    profile: profileOf(info),
+    ...(info.userId !== undefined && { userId: info.userId }),
+  }
+}
+
+function profileOf(info: SessionInfo): Profile {
+  return { userId: info.userId ?? 0, displayName: info.displayName, avatar: info.avatar }
 }
 
 async function offlineBoot(): Promise<AuthState> {
@@ -171,6 +204,14 @@ async function offlineBoot(): Promise<AuthState> {
   }
   closeNotes()
   return { status: 'unreachable' }
+}
+
+/** Who's signed in, as the apps show them: their chosen name, or else their username. */
+export function useAccount(): { username: string; name: string; profile?: Profile } {
+  const { state } = useAuth()
+  const username = 'username' in state ? state.username : ''
+  const profile = state.status === 'signed-in' ? state.profile : undefined
+  return { username, name: profile?.displayName || username, profile }
 }
 
 export function useAuth(): AuthContextValue {

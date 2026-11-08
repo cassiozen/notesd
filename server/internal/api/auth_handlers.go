@@ -16,12 +16,20 @@ type sessionResponse struct {
 	UserID           int64  `json:"userId"`
 	Username         string `json:"username"`
 	IsAdmin          bool   `json:"isAdmin"`
+	DisplayName      string `json:"displayName"`
+	Avatar           string `json:"avatar"`
 	CSRFToken        string `json:"csrfToken,omitempty"`
 	AccessToken      string `json:"accessToken,omitempty"`
 	AccessExpiresAt  int64  `json:"accessExpiresAt,omitempty"`
 	RefreshToken     string `json:"refreshToken,omitempty"`
 	RefreshExpiresAt int64  `json:"refreshExpiresAt,omitempty"`
 	ServerVersion    string `json:"serverVersion,omitempty"`
+}
+
+// setAccount fills in whose session it is.
+func (r *sessionResponse) setAccount(sess auth.Session) {
+	r.UserID, r.Username, r.IsAdmin = sess.UserID, sess.Username, sess.IsAdmin
+	r.DisplayName, r.Avatar = sess.DisplayName, sess.Avatar
 }
 
 // GET /api/v1/auth/status — lets the apps decide between the setup and
@@ -93,7 +101,8 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	}
 	s.limiter.Reset(key)
 
-	resp := sessionResponse{Session: creds.Session, UserID: creds.Session.UserID, Username: creds.Session.Username, IsAdmin: creds.Session.IsAdmin, ServerVersion: s.version()}
+	resp := sessionResponse{Session: creds.Session, ServerVersion: s.version()}
+	resp.setAccount(creds.Session)
 	if creds.Session.Kind == auth.KindWeb {
 		setSessionCookie(w, r, creds.AccessToken, time.UnixMilli(creds.AccessExpiresAt))
 		resp.CSRFToken = creds.CSRFToken
@@ -120,17 +129,16 @@ func (s *Server) refresh(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
-	writeJSON(w, http.StatusOK, sessionResponse{
+	resp := sessionResponse{
 		Session:          creds.Session,
-		UserID:           creds.Session.UserID,
-		Username:         creds.Session.Username,
-		IsAdmin:          creds.Session.IsAdmin,
 		AccessToken:      creds.AccessToken,
 		AccessExpiresAt:  creds.AccessExpiresAt,
 		RefreshToken:     creds.RefreshToken,
 		RefreshExpiresAt: creds.RefreshExpiresAt,
 		ServerVersion:    s.version(),
-	})
+	}
+	resp.setAccount(creds.Session)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // POST /api/v1/auth/logout
@@ -150,7 +158,9 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 // returns the CSRF token, which the web app keeps only in memory.
 func (s *Server) currentSession(w http.ResponseWriter, r *http.Request) {
 	sess := sessionFrom(r.Context())
-	writeJSON(w, http.StatusOK, sessionResponse{Session: sess, UserID: sess.UserID, Username: sess.Username, IsAdmin: sess.IsAdmin, CSRFToken: sess.CSRFToken, ServerVersion: s.version()})
+	resp := sessionResponse{Session: sess, CSRFToken: sess.CSRFToken, ServerVersion: s.version()}
+	resp.setAccount(sess)
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // POST /api/v1/auth/password {"currentPassword": "...", "newPassword": "..."}

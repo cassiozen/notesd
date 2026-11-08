@@ -18,13 +18,14 @@ type Link struct {
 }
 
 // Invite adds a non-admin account with no password yet, and a link for
-// its person to choose one.
-func (s *Service) Invite(ctx context.Context, username string) (User, Link, error) {
+// its person to choose one. displayName is the admin's suggestion, which
+// the person may change when they use the link.
+func (s *Service) Invite(ctx context.Context, username, displayName string) (User, Link, error) {
 	var u User
 	var l Link
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		var err error
-		if u, err = s.insert(ctx, tx, username, "", false, false); err != nil {
+		if u, err = s.insert(ctx, tx, username, displayName, "", false, false); err != nil {
 			return err
 		}
 		l, err = s.putLink(ctx, tx, u.ID)
@@ -73,10 +74,19 @@ func (s *Service) PeekSetupLink(ctx context.Context, token string) (User, error)
 }
 
 // UseSetupLink sets the password of the link's account, ends the link and
-// signs the account out everywhere.
-func (s *Service) UseSetupLink(ctx context.Context, token, password string) (User, error) {
+// signs the account out everywhere. An invited account also takes
+// displayName when given: the name its person settled on beside their
+// password. A reset leaves the name alone.
+func (s *Service) UseSetupLink(ctx context.Context, token, password string, displayName *string) (User, error) {
 	if err := validatePassword(password); err != nil {
 		return User{}, err
+	}
+	var name string
+	if displayName != nil {
+		var err error
+		if name, err = cleanDisplayName(*displayName); err != nil {
+			return User{}, err
+		}
 	}
 	hash, err := HashPassword(password)
 	if err != nil {
@@ -86,6 +96,12 @@ func (s *Service) UseSetupLink(ctx context.Context, token, password string) (Use
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if u, err = s.linkUser(ctx, tx, token); err != nil {
 			return err
+		}
+		if u.Pending && displayName != nil {
+			if err = s.writeDisplayName(ctx, tx, u.ID, name); err != nil {
+				return err
+			}
+			u.DisplayName = name
 		}
 		return s.writePassword(ctx, tx, u.ID, hash, "")
 	})
@@ -101,10 +117,10 @@ func (s *Service) linkUser(ctx context.Context, q querier, token string) (User, 
 	var u User
 	var hash string
 	err := q.QueryRowContext(ctx, `
-		SELECT u.id, u.username, u.is_admin, u.created_at, u.password_hash, l.expires_at
+		SELECT u.id, u.username, u.display_name, u.avatar, u.is_admin, u.created_at, u.password_hash, l.expires_at
 		FROM setup_links l JOIN users u ON u.id = l.user_id
 		WHERE l.token_hash = ? AND l.expires_at > ?`, HashToken(token), s.now().UnixMilli()).Scan(
-		&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &hash, &u.LinkExpiresAt)
+		&u.ID, &u.Username, &u.DisplayName, &u.Avatar, &u.IsAdmin, &u.CreatedAt, &hash, &u.LinkExpiresAt)
 	if errors.Is(err, sql.ErrNoRows) {
 		return User{}, ErrLinkInvalid
 	}
@@ -126,8 +142,8 @@ func (s *Service) SetAdmin(ctx context.Context, actorID, userID int64, admin boo
 		}
 		err := tx.QueryRowContext(ctx, `
 			UPDATE users SET is_admin = ?, updated_at = ? WHERE id = ?
-			RETURNING id, username, is_admin, created_at, password_hash = ''`,
-			admin, s.now().UnixMilli(), userID).Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &u.Pending)
+			RETURNING id, username, display_name, avatar, is_admin, created_at, password_hash = ''`,
+			admin, s.now().UnixMilli(), userID).Scan(&u.ID, &u.Username, &u.DisplayName, &u.Avatar, &u.IsAdmin, &u.CreatedAt, &u.Pending)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ErrNoUser
 		}

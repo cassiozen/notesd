@@ -37,10 +37,12 @@ notesd can hold a few accounts, such as for family or friends. Each has its own 
 
 Admins see **People** in **Settings → Server**, in the web app, the Mac app and the Android app:
 
-1. Choose **Invite someone…** and enter the username they'll sign in with.
+1. Choose **Invite someone…** and enter the username they'll sign in with. You can add the name
+   they'll be shown by, too, such as "Mum"; it's optional, and they can change it.
 2. Send them the link you get, however you like: a message, an email. On Android, **Share…** opens
    the share sheet with a message ready. It works once, for 7 days.
-3. They open it, choose a password, and they're signed in. From then on they can sign in on a phone too.
+3. They open it, choose a password (and keep or change their name), and they're signed in. From
+   then on they can sign in on a phone too.
 
 The link uses the address you opened notesd at (on Android, the server address the app is connected to). Open it at the address the other person will use
 (your domain, say, or the machine's name on your network), not `localhost`, or the link won't work
@@ -61,6 +63,12 @@ For an invitation still waiting, it has **New invite link** and **Cancel invitat
 ends the link and frees the username.
 
 You can't change or remove your own account there; another admin can, or the command line.
+
+### Names and photos
+
+Everyone can choose a name and a photo in **Settings → Server → Name and photo**. Both are
+optional: without them, notesd shows the username and its first letter. The name never replaces
+the username for signing in. Only you and the server's admins, in People, see them.
 
 ### From the command line
 

@@ -69,6 +69,37 @@ test('an admin invites someone, who joins from the link, and is removed later', 
   await theirs.close()
 })
 
+test('an invitation suggests a name, which the invitee may change as they join', async ({ page, browser }) => {
+  const username = `mum-${crypto.randomUUID().slice(0, 6)}`
+  await signIn(page, owner.username, owner.password)
+  await page.goto('/settings/server')
+  const people = page.getByRole('region', { name: 'People' })
+  await people.getByRole('button', { name: 'Invite someone…' }).click()
+  const invite = page.getByRole('dialog', { name: 'Invite someone' })
+  await invite.getByLabel('Username').fill(username)
+  await invite.getByLabel('Name (optional)').fill('Mum')
+  await invite.getByRole('button', { name: 'Invite', exact: true }).click()
+  const sent = page.getByRole('dialog', { name: 'Send Mum this link' })
+  const url = await sent.getByLabel('Link').inputValue()
+  await sent.getByRole('button', { name: 'Done' }).click()
+
+  const theirs = await browser.newContext()
+  const them = await theirs.newPage()
+  await them.goto(url)
+  await expect(them.getByRole('heading', { name: 'Welcome, Mum.' })).toBeVisible()
+  const name = them.getByLabel('Your name (optional)')
+  await expect(name).toHaveValue('Mum')
+  await name.fill('Maria')
+  await them.getByLabel('Password', { exact: true }).fill('her own password')
+  await them.getByLabel('Confirm password').fill('her own password')
+  await them.getByRole('button', { name: 'Get started' }).click()
+  await expect(them.getByText('You’re all set, Maria')).toBeVisible({ timeout: 30_000 })
+  await theirs.close()
+
+  await page.reload()
+  await expect(people.getByRole('listitem').filter({ hasText: username })).toContainText('Maria')
+})
+
 test('copies the link on plain http too, where there is no Clipboard API', async ({ page, context, browserName }) => {
   test.skip(browserName !== 'chromium', 'reading the clipboard back takes Chromium’s permissions')
   await context.grantPermissions(['clipboard-read', 'clipboard-write'])

@@ -182,6 +182,8 @@ Accounts after the first are added by an admin, from [People](#people) or with
   "userId": 2,
   "username": "sam",
   "isAdmin": false,
+  "displayName": "Sam Smith",
+  "avatar": "3f9a1c0e7b2d4a65",
   "accessToken": "…",
   "accessExpiresAt": 1767229200000,
   "refreshToken": "…",
@@ -191,7 +193,8 @@ Accounts after the first are added by an admin, from [People](#people) or with
 ```
 
 Browsers get `csrfToken` instead of the four token fields, and the cookie. `userId` is the
-account's id, as notes' `updatedBy` and shared spaces' members name it.
+account's id, as notes' `updatedBy` and shared spaces' members name it. `displayName` and
+`avatar` are the account's [profile](#profile).
 
 ### Notes
 
@@ -424,17 +427,34 @@ account. `apiKey` starts with `re_`, and can be left out to keep the saved one. 
 returned: `keyHint` is its last 4 characters. `editable` says whether this account is an admin;
 other accounts get `403 admin_only` when they change it.
 
+### Profile
+
+An account's name and photo, both optional. Without them, the apps show the username and its
+initial.
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `PATCH` | `/profile` | `{displayName}` → the account. `""` goes back to the username |
+| `PUT` | `/profile/avatar` | A square JPEG of at most 512 px a side, at most 1 MiB, as the body (`Content-Type: image/jpeg`) → the account |
+| `DELETE` | `/profile/avatar` | → the account, without a photo |
+| `GET` | `/users/{id}/avatar?v={avatar}` | → the JPEG. Your own, or anyone's for an admin; `404 not_found` otherwise, as for an account without one |
+
+A name is at most 64 characters, trimmed, without control characters, and needn't be unique; it
+never replaces the username for signing in. `avatar` on an account is the photo's version, `""`
+without one. The server encodes the photo again, so nothing but its pixels is kept (no EXIF).
+With `v` the current version, the photo is cached for good; a new photo has a new version.
+
 ### People
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `GET` | `/users` | → `{users: [{id, username, isAdmin, createdAt, pending, linkExpiresAt?}]}`, oldest first. Admins only |
-| `POST` | `/users` | `{username}` → `201 {user, link: {token, expiresAt}}`. Invites someone. Admins only |
+| `GET` | `/users` | → `{users: [{id, username, displayName, avatar, isAdmin, createdAt, pending, linkExpiresAt?}]}`, oldest first. Admins only |
+| `POST` | `/users` | `{username, displayName?}` → `201 {user, link: {token, expiresAt}}`. Invites someone; `displayName` is a suggestion they can change when they use the link. Admins only |
 | `POST` | `/users/{id}/link` | → `{user, link: {token, expiresAt}}`, a new setup link replacing the account's last, and the account as it is now. Admins only |
 | `PATCH` | `/users/{id}` | `{isAdmin}` → the account. Admins only |
 | `DELETE` | `/users/{id}` | → `204`. Removes the account and signs it out. Admins only |
-| `POST` | `/auth/setup-link` | `{token}` → `{username, pending}`: whose the link is. No session needed |
-| `POST` | `/auth/setup-link/use` | `{token, password}` → `204`. Sets the password and signs the account out everywhere; sign in after. No session needed |
+| `POST` | `/auth/setup-link` | `{token}` → `{username, pending, displayName?}`: whose the link is, and for an invitation the suggested name. No session needed |
+| `POST` | `/auth/setup-link/use` | `{token, password, displayName?}` → `204`. Sets the password, and an invitation's name when given (a reset ignores it), and signs the account out everywhere; sign in after. No session needed |
 
 **Invited** accounts (`pending`) have no password until their setup link is used, so they can't
 sign in. A **setup link** works once, for 7 days, and an account has at most one: a new one, or
