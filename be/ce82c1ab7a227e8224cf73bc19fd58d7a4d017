@@ -1,0 +1,72 @@
+shared/sync-engine/src/jvmTest/kotlin/notes/core/db/NoteStoreJvmTest.kt
+  s_a0fc22670a88c5::t_9515add6319f86 75-76,82-85
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_a0fc22670a88c5::t_017ff13219cdc3 45-47,67-68,74-84,88-118,133,136,155,191,207,223-224,231-233,281-284,331-340,342-355,363-402,407,412-413,415-419,422,425-427,434-435,442-443,445,447-453,457-464,466,468-469,500-501,504-508,520-526,532-547,609-624,782-783,793-794,801-802,813,857-858,860-863
+  s_a0fc22670a88c5::t_a228e608a3e2bc 69-71,85-87,225-230,259,356-362,428-433
+  s_a0fc22670a88c5::t_e4511746843dcd 341
+  s_a0fc22670a88c5::t_ca25867d46ebb2 234
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_a0fc22670a88c5::t_d8fe52cd329dbf 166-175,225-229,254-256,259-294,333-336,338-346
+  s_a0fc22670a88c5::t_b4d307f1fe9a7e 11-16,124-125,159
+  s_a0fc22670a88c5::t_ad534983f0876b 88-90
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_a0fc22670a88c5::t_14ca283d4d727c 46
+  s_a0fc22670a88c5::t_f54c3629fab668 73-78,83,85,88-97,104-109,117-120,135-140
+  s_a0fc22670a88c5::t_2e58103417de87 1-45,47-72,79-82,84,86-87,98-103,110-116,121-134,141-148
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Rows.kt
+  s_a0fc22670a88c5::t_a228e608a3e2bc 203-210
+  s_a0fc22670a88c5::t_e1c6d69395b2fb 18-20,23,38-39,101-105,107,110-111,117-118,122,127,131-164,167-169,172-177,179,181-182,184,187-192,195-202,211-223,242-243
+  s_a0fc22670a88c5::t_75320b396d64f8 180,183,185-186,193-194
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/Parking.kt
+  s_a0fc22670a88c5::t_a228e608a3e2bc 76-82
+  s_a0fc22670a88c5::t_1887e54064b260 46,72-75,83-94
+  s_a0fc22670a88c5::t_3072a0d9ef0fe4 95-96
+shared/sync-engine/src/jsMain/kotlin/notes/core/web/Engine.kt
+  s_a0fc22670a88c5::t_65af72bd81ab44 43-45,58-60,84-86,89-113,206-207,283-289,303-305,314-329,453-454
+  s_a0fc22670a88c5::t_a228e608a3e2bc 290-298,306-313
+shared/sync-engine/src/jsMain/kotlin/notes/core/api/FetchApi.kt
+  s_a0fc22670a88c5::t_9caa60d98f8278 24-31,33,36,39-42,46,49-51,71
+docs/contributing/architecture.md
+  s_a0fc22670a88c5::t_572eb8c77125ac 253-254,258-266,526-527,530
+  s_a0fc22670a88c5::t_f04ffbe63a2a74 525
+  s_a0fc22670a88c5::t_7c4c952bb9041a 269
+  s_a0fc22670a88c5::t_df3b07d1f77425 270
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncEngineTest.kt
+  s_a0fc22670a88c5::t_4533ab11264cce 10,48-52
+  s_a0fc22670a88c5::t_0cfe02182d0254 53
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_a0fc22670a88c5::t_a228e608a3e2bc 122-124,253-254,256
+  s_a0fc22670a88c5::t_990d4e503aa554 5,7,48-50,53-58,68-70,86,98-115,120-121,125-152,215-220,251-252,257-259,273-301
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_a0fc22670a88c5::t_9caa60d98f8278 220
+  s_a0fc22670a88c5::t_a228e608a3e2bc 107,110,154-155,191-199,221-237,288-298
+  s_a0fc22670a88c5::t_1887e54064b260 104,112-137,140-153,156-189,411,420-421
+  s_a0fc22670a88c5::t_3fd4975c57b3ab 190,200
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_a0fc22670a88c5::t_b4d307f1fe9a7e 26,256-259,263,270-281,340-345,372-385,400-415,452,454-459,462,465,473,476-478,518-519
+  s_a0fc22670a88c5::t_03e89ab074ddcb 189-192
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/NoteStore.kt
+  s_a0fc22670a88c5::t_65af72bd81ab44 43-45,128,145-146
+  s_a0fc22670a88c5::t_501c930ebfe015 303-306,331,476-477,490,509-510,516,539,549-550,562-564
+  s_a0fc22670a88c5::t_e1c6d69395b2fb 28-30
+shared/sync-engine/src/commonTest/kotlin/notes/core/sync/SyncClassificationTest.kt
+  s_a0fc22670a88c5::t_4533ab11264cce 17,67-72
+shared/sync-engine/src/commonMain/migrations/0014_shared_spaces.sql
+  s_a0fc22670a88c5::t_b6d226e919f945 1-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bece82c1ab7a227e8224cf73bc19fd58d7a4d017",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

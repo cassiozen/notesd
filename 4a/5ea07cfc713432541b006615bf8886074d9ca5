@@ -1,0 +1,48 @@
+server/internal/mirror/mirror.go
+  s_a0fc22670a88c5::t_430825856dafd7 40-49,54-56,211,215
+server/cmd/notesd/export_test.go
+  s_a0fc22670a88c5::t_f010b303335624 358,377
+docs/contributing/architecture.md
+  s_a0fc22670a88c5::t_f8eeeff662b5f2 485,690
+server/cmd/notesd/export.go
+  s_a0fc22670a88c5::t_dd51c550008b9b 61-63,65
+server/internal/mirror/user.go
+  s_a0fc22670a88c5::t_430825856dafd7 36,42-48,52-54,70-71,120-122,187-189,201-202,205-253,255,259-275,280,282-283,297,301,306,310-311,317-318,320,326-327,331-333,406,411,423-424,428-430,433,443
+server/cmd/notesd/main.go
+  s_a0fc22670a88c5::t_611b753df01153 70
+  s_a0fc22670a88c5::t_dd51c550008b9b 253-270,437-439,448-454,473-477,481-484,486-492
+  s_a0fc22670a88c5::t_70b92f418211aa 531,536-548,557-565,594-597,811-852
+  s_a0fc22670a88c5::t_ce7a4bb605dc8e 853
+server/internal/mirror/mirror_test.go
+  s_a0fc22670a88c5::t_297de2b9ce1f6e 40-41,62-64,567-599,601-613,615-617
+  s_a0fc22670a88c5::t_f010b303335624 65
+  s_a0fc22670a88c5::t_970e748043db94 600,614
+  s_a0fc22670a88c5::t_31929c07ddf47a 531,536
+server/cmd/notesd/main_test.go
+  s_a0fc22670a88c5::t_b315d588ee45fc 16-18
+  s_a0fc22670a88c5::t_bff2eff9d40899 227-282
+docs/concepts/where-data-lives.md
+  s_a0fc22670a88c5::t_4c14540cab4038 18
+docs/guides/self-hosting/markdown-mirror-and-export.md
+  s_a0fc22670a88c5::t_3284c02b45395e 33-35
+docs/guides/self-hosting/users.md
+  s_a0fc22670a88c5::t_6f85771a89cd36 57-58
+docs/reference/cli.md
+  s_a0fc22670a88c5::t_a9cad54b2393f7 53,129-130,145,156-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a5ea07cfc713432541b006615bf8886074d9ca5",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
