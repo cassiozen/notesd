@@ -141,9 +141,9 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val profile = account.profile
-    // What the draft started from: a refresh while open mustn't turn an untouched name into a change.
-    val startName = remember { profile.displayName }
-    var name by remember { mutableStateOf(startName) }
+    // The name as this dialog last saw it saved: a refresh while open mustn't turn an untouched name into a change.
+    var savedName by remember { mutableStateOf(profile.displayName) }
+    var name by remember { mutableStateOf(savedName) }
     var photo by remember { mutableStateOf<Photo?>(null) }
     var preparing by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf<String?>(null) }
@@ -185,7 +185,9 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
                 }
                 return failed == null
             }
-            if (name.trim() != startName) step { api?.setDisplayName(name.trim()) }
+            if (name.trim() != savedName && step { api?.setDisplayName(name.trim()) }) {
+                saved?.let { savedName = it.displayName }
+            }
             when (val p = photo) {
                 is Photo.Chosen -> if (failed == null && step { api?.setAvatar(p.bytes) }) {
                     saved?.let { graph.avatars.put(it.id, it.avatar, p.bytes) }
