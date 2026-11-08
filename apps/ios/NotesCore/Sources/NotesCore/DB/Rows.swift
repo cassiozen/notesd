@@ -6,6 +6,8 @@ import Foundation
 let createOp = "create"
 let updateOp = "update"
 let deleteOp = "delete"
+/// Moves a note to a space in another file (§7.9); its payload's spaceId is the destination.
+let moveOp = "move"
 
 public struct Note: Hashable, Sendable {
     public var id: String
@@ -23,13 +25,15 @@ public struct Note: Hashable, Sendable {
     /// The space the note is in (§7.7), and the synced one while `dirty`.
     public var spaceId: String = Spaces.defaultId
     public var baseSpaceId: String?
+    /// The account that last changed it (§7.9): another member's, or this account's own.
+    public var updatedBy: Int64?
 
     public var locked: Bool { LockedNotes.isLocked(content) }
 }
 
 let noteColumns =
     "id, title, content, created_at, updated_at, deleted_at, conflict_of, server_revision, dirty, base_title, base_content, "
-    + "space_id, base_space_id"
+    + "space_id, base_space_id, updated_by"
 
 func noteRow(_ r: Row) -> Note {
     Note(
@@ -45,7 +49,8 @@ func noteRow(_ r: Row) -> Note {
         baseTitle: r.textOrNil(9),
         baseContent: r.textOrNil(10),
         spaceId: r.text(11),
-        baseSpaceId: r.textOrNil(12)
+        baseSpaceId: r.textOrNil(12),
+        updatedBy: r.int64OrNil(13)
     )
 }
 
@@ -135,47 +140,125 @@ struct Payload: Codable, Hashable, Sendable {
     }
 }
 
+/// An outbox entry not sent yet: the one later edits coalesce into.
+struct PendingOp {
+    var operationId: String
+    var type: String
+    var payload: Payload
+    var feed: String
+}
+
 extension Sql {
-    func enqueue(_ noteId: String, type: String, payload: Payload?, now: Int64) throws {
+    /// Queues `type` for `noteId`, to `feed`: by default the feed of the space the payload names, or of the
+    /// note's (§7.9).
+    func enqueue(_ noteId: String, type: String, payload: Payload?, now: Int64, feed: String? = nil) throws {
         var sent = payload
         if let content = payload?.content { sent?.imageIds = try lockedImageIds(content) }
+        let to: String
+        if let feed { to = feed } else { to = try feedOf(payload?.spaceId ?? note(noteId)?.spaceId) }
         try exec(
             """
-            INSERT INTO sync_outbox (operation_id, note_id, operation_type, base_revision, payload_json, created_at)
-            VALUES (?, ?, ?, NULL, ?, ?)
+            INSERT INTO sync_outbox (operation_id, note_id, operation_type, base_revision, payload_json, created_at, feed)
+            VALUES (?, ?, ?, NULL, ?, ?, ?)
             """,
-            Uuid7.generate(), noteId, type, sent?.json ?? "{}", now
+            Uuid7.generate(), noteId, type, sent?.json ?? "{}", now, to
         )
     }
 
     /// The newest operation for `noteId` that hasn't been sent: the one later edits coalesce into.
-    func unsentOp(_ noteId: String) throws -> (operationId: String, type: String, payload: Payload)? {
+    func unsentOp(_ noteId: String) throws -> PendingOp? {
         try one(
             """
-            SELECT operation_id, operation_type, payload_json FROM sync_outbox
+            SELECT operation_id, operation_type, payload_json, feed FROM sync_outbox
             WHERE note_id = ? AND sent = 0 ORDER BY created_at DESC, rowid DESC LIMIT 1
             """,
             noteId
-        ) { ($0.text(0), $0.text(1), try Payload.decode($0.text(2))) }
+        ) {
+            PendingOp(
+                operationId: $0.text(0), type: $0.text(1), payload: try Payload.decode($0.text(2)), feed: $0.text(3))
+        }
     }
 
-    /// Makes sure the server will receive `title`/`content` in `spaceId` for `noteId`: rewrites the
-    /// unsent create or update, or queues a new update (a sent payload is never changed).
+    /// The feed a space's notes sync in (§7.9): a shared space's own, else the account's ("").
+    func feedOf(_ spaceId: String?) throws -> String {
+        guard let spaceId else { return "" }
+        let shared = try one("SELECT shared IS NOT NULL FROM spaces WHERE id = ?", spaceId) { $0.int64(0) == 1 }
+        return shared == true ? spaceId : ""
+    }
+
+    /// Whether this device has the space, so its notes can follow a note moved there.
+    func reaches(_ spaceId: String) throws -> Bool {
+        try int64("SELECT count(*) FROM spaces WHERE id = ? AND pending_delete = 0", spaceId) > 0
+    }
+
+    /// The space the server holds `note` in once its queued changes have gone: its last queued move's destination,
+    /// else the space it last synced in, else what a create that went out named. Nil if the server never had it.
+    func serverSpace(_ note: Note) throws -> String? {
+        let moved =
+            try one(
+                """
+                SELECT payload_json FROM sync_outbox WHERE note_id = ? AND operation_type = ?
+                ORDER BY created_at DESC, rowid DESC LIMIT 1
+                """,
+                note.id, moveOp
+            ) { try Payload.decode($0.text(0)).spaceId } ?? nil
+        if let moved { return moved }
+        if note.serverRevision != nil { return note.baseSpaceId ?? note.spaceId }
+        return try one(
+            "SELECT payload_json FROM sync_outbox WHERE note_id = ? AND sent = 1 AND operation_type = ? LIMIT 1",
+            note.id, createOp
+        ) { try Payload.decode($0.text(0)).spaceId ?? Spaces.defaultId }
+    }
+
+    /// Makes sure the server will receive `title`/`content` in `spaceId` for `noteId`: rewrites the unsent create
+    /// or update, or queues a new update (a sent payload is never changed). A space in another feed than the
+    /// server's copy (§7.9) queues the text where the server has it, then a move.
     func queueText(_ noteId: String, title: String, content: String, spaceId: String, now: Int64) throws {
-        if let pending = try unsentOp(noteId), pending.type != deleteOp {
-            var payload = pending.payload
-            payload.title = title
-            payload.content = content
-            payload.updatedAt = now
-            payload.imageIds = try lockedImageIds(content)
-            payload.spaceId = spaceId
-            try exec(
-                "UPDATE sync_outbox SET payload_json = ? WHERE operation_id = ?", payload.json, pending.operationId)
-        } else {
+        let target = try feedOf(spaceId)
+        var pending = try unsentOp(noteId)
+        // Moved back before the move went: no move at all.
+        if let move = pending, move.type == moveOp, move.feed == target {
+            try exec("DELETE FROM sync_outbox WHERE operation_id = ?", move.operationId)
+            pending = try unsentOp(noteId)
+        }
+        let server = try note(noteId).flatMap { try serverSpace($0) }
+        let open = pending.flatMap { $0.type != deleteOp && $0.type != moveOp ? $0 : nil }
+        let serverFeed = try server.map { try feedOf($0) }
+        if server == nil, let open, open.type == createOp {
+            // The server never had it: its unsent create goes wherever it's filed now.
+            try rewrite(open, title, content, spaceId, now, target)
+        } else if let open, open.feed == target, serverFeed == nil || serverFeed == target {
+            try rewrite(open, title, content, spaceId, now, target)
+        } else if serverFeed == nil || serverFeed == target {
             try enqueue(
                 noteId, type: updateOp,
-                payload: Payload(title: title, content: content, updatedAt: now, spaceId: spaceId), now: now)
+                payload: Payload(title: title, content: content, updatedAt: now, spaceId: spaceId),
+                now: now, feed: target)
+        } else if let server, let from = serverFeed {
+            if let open, open.type == updateOp, open.feed == from {
+                try rewrite(open, title, content, server, now, from)
+            } else {
+                try enqueue(
+                    noteId, type: updateOp,
+                    payload: Payload(title: title, content: content, updatedAt: now, spaceId: server), now: now,
+                    feed: from)
+            }
+            try enqueue(noteId, type: moveOp, payload: Payload(spaceId: spaceId), now: now, feed: from)
         }
+    }
+
+    private func rewrite(
+        _ pending: PendingOp, _ title: String, _ content: String, _ spaceId: String, _ now: Int64, _ feed: String
+    ) throws {
+        var payload = pending.payload
+        payload.title = title
+        payload.content = content
+        payload.updatedAt = now
+        payload.imageIds = try lockedImageIds(content)
+        payload.spaceId = spaceId
+        try exec(
+            "UPDATE sync_outbox SET payload_json = ?, feed = ? WHERE operation_id = ?", payload.json, feed,
+            pending.operationId)
     }
 
     /// A new note holding `title`/`content` in `spaceId`, queued for upload. Conflicted and
@@ -188,8 +271,8 @@ extension Sql {
         try rememberImages(id, content: content, imageIds: imageIds ?? lockedImageIds(content))
         try exec(
             """
-            INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, (SELECT user_id FROM sync_state WHERE id = 1))
             """,
             id, title, content, now, now, conflictOf, spaceId
         )

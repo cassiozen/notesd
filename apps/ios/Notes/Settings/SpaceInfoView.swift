@@ -11,6 +11,8 @@ struct SpaceInfoView: View {
     @State private var editing = false
     @State private var left = false
     @State private var deleteError: String?
+    /// Sharing was turned on: who to invite first.
+    @State private var sharing = false
 
     var body: some View {
         let space = graph.spaces.first { $0.id == id }
@@ -21,6 +23,9 @@ struct SpaceInfoView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $editing) {
             if let space { SpaceSheet(editing: space) { _ in editing = false } }
+        }
+        .sheet(isPresented: $sharing) {
+            if let space { PeoplePicker(space: space) { sharing = false } }
         }
         // Deleted, here or on another device.
         .onChange(of: space == nil && !graph.spaces.isEmpty) { _, gone in if gone { leave() } }
@@ -38,7 +43,7 @@ struct SpaceInfoView: View {
             .listRowBackground(Color.clear)
             .accessibilityElement(children: .combine)
         }
-        let rows = Traits.rows(space.traits)
+        let rows = Traits.rows(space.traits, registry: registry(space))
         if !rows.isEmpty {
             Section {
                 ForEach(rows) { row in traitRow(row, space) }
@@ -52,6 +57,7 @@ struct SpaceInfoView: View {
         }
         Section {
             Button("Name and Icon") { editing = true }
+                .disabled(!owns(space))
             Button("Delete Space", role: .destructive) { delete(space) }
                 .disabled(whyNotDeletable(space) != nil)
         } footer: {
@@ -89,8 +95,30 @@ struct SpaceInfoView: View {
         }
     }
 
+    /// The traits this app knows, with what Space info can do about sharing here (§7.9).
+    private func registry(_ space: Space) -> [TraitKind] {
+        Traits.registry.map { kind in
+            guard kind.key == "shared" else { return kind }
+            var shared = kind
+            if space.shared != nil { shared.settings = { AnyView(SharingView(id: $0.id)) } }
+            if canShare(space) { shared.turnOn = { _ in sharing = true } }
+            return shared
+        }
+    }
+
+    /// The owner shares; never the default space, and only through a server.
+    private func canShare(_ space: Space) -> Bool {
+        space.id != Spaces.defaultId && owns(space) && graph.account.isSignedIn
+    }
+
+    /// Only a shared space's owner renames it, changes its icon or deletes it.
+    private func owns(_ space: Space) -> Bool { space.shared?.isOwner ?? true }
+
     private func whyNotDeletable(_ space: Space) -> String? {
         if space.id == Spaces.defaultId { return "This space can be renamed but not deleted." }
+        if let owner = space.shared?.members.first, !owns(space) {
+            return "Only \(owner.username), its owner, can rename or delete this space."
+        }
         if space.noteCount > 0 { return "Move or delete its notes to delete this space." }
         return nil
     }

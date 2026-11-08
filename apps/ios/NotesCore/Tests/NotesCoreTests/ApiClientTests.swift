@@ -77,6 +77,89 @@ struct ApiClientTests {
         #expect(body(sent) == ["username": "me", "password": "secret", "client": "device", "deviceName": "Pixel"])
     }
 
+    @Test func aSharedSpacesFileIsReachedUnderItsPrefixAndTheRestStayTheAccounts() async throws {
+        let result = #"{"id":"n","status":"updated","revision":2,"changeSeq":3,"updatedAt":4}"#
+        let stub = StubTransport { _ in (200, result, jsonHeaders) }
+        let fam = api(stub).inSpace("fam")
+        _ = await fam.createNote(NoteRequest(operationId: "o", id: "n"))
+        _ = await fam.updateNote("n", NoteRequest(operationId: "o"))
+        _ = await fam.deleteNote("n", NoteRequest(operationId: "o"))
+        _ = await fam.moveNote("n", NoteRequest(operationId: "o", baseRevision: 1, spaceId: "default"))
+        _ = await fam.sync(since: 0, limit: 1, generation: nil)
+        _ = await fam.spaces()
+        _ = await api(stub).moveNote("n", NoteRequest(operationId: "o", spaceId: "fam"))
+        _ = await api(stub).emailNote("n", to: ["a@b.c"], revision: 1, spaceId: "fam")
+        #expect(
+            stub.requests.map { "\($0.method) \($0.path)" } == [
+                "POST /api/v1/spaces/fam/notes", "PUT /api/v1/spaces/fam/notes/n",
+                "DELETE /api/v1/spaces/fam/notes/n", "POST /api/v1/spaces/fam/notes/n/move",
+                "GET /api/v1/spaces/fam/sync", "GET /api/v1/spaces", "POST /api/v1/notes/n/move",
+                "POST /api/v1/spaces/fam/notes/n/email",
+            ])
+        let move = try #require(stub.requests[3].httpBody)
+        #expect(String(decoding: move, as: UTF8.self) == #"{"baseRevision":1,"operationId":"o","spaceId":"default"}"#)
+    }
+
+    @Test func membershipCalls() async throws {
+        let stub = StubTransport { request in
+            switch (request.method, request.path) {
+            case ("GET", "/api/v1/invites"):
+                (
+                    200,
+                    #"{"invites":[{"id":"i","spaceId":"s","spaceName":"Trip","from":{"id":1,"username":"ana"},"createdAt":5}]}"#,
+                    jsonHeaders
+                )
+            case ("GET", "/api/v1/people"): (200, #"{"people":[{"id":1,"username":"ana"}]}"#, jsonHeaders)
+            case ("POST", "/api/v1/spaces/s/invites"): (201, #"{"id":"i","userId":2,"username":"ben"}"#, jsonHeaders)
+            case ("POST", "/api/v1/invites/i/accept"):
+                (
+                    200,
+                    #"{"id":"s","name":"Trip","createdAt":1,"noteCount":0,"shared":{"role":"member","members":[{"id":1,"username":"ana"}]}}"#,
+                    jsonHeaders
+                )
+            default: (204, "", [:])
+            }
+        }
+        let api = api(stub)
+        #expect(
+            await api.invites().value == [
+                RemoteInvite(
+                    id: "i", spaceId: "s", spaceName: "Trip", from: Member(id: 1, username: "ana"), createdAt: 5)
+            ])
+        #expect(await api.people().value == [Member(id: 1, username: "ana")])
+        #expect(await api.inviteToSpace("s", userId: 2).value == Invitee(id: "i", userId: 2, username: "ben"))
+        #expect(await api.acceptInvite("i").value?.shared?.members == [Member(id: 1, username: "ana")])
+        #expect(await api.declineInvite("i").value != nil)
+        #expect(await api.cancelInvite("s", inviteId: "i").value != nil)
+        #expect(await api.removeMember("s", userId: 2).value != nil)
+        #expect(await api.transferSpace("s", userId: 2).value != nil)
+        #expect(
+            stub.requests.suffix(4).map { "\($0.method) \($0.path)" } == [
+                "POST /api/v1/invites/i/decline", "DELETE /api/v1/spaces/s/invites/i",
+                "DELETE /api/v1/spaces/s/members/2", "PUT /api/v1/spaces/s/owner",
+            ])
+        let owner = try #require(stub.requests.last?.httpBody)
+        #expect(String(decoding: owner, as: UTF8.self) == #"{"userId":2}"#)
+    }
+
+    @Test func aConflictNamesTheSpaceElsewhereAndASignInItsAccount() async throws {
+        let stub = StubTransport(queue: [
+            (409, #"{"error":"space_elsewhere","message":"m","spaceId":"fam"}"#, jsonHeaders),
+            (
+                200,
+                #"{"userId":7,"username":"me","accessToken":"a","accessExpiresAt":5,"refreshToken":"r","refreshExpiresAt":6}"#,
+                jsonHeaders
+            ),
+        ])
+        let api = api(stub)
+        guard case .conflict("space_elsewhere", _, _, "fam") = await api.updateNote("n", NoteRequest(operationId: "o"))
+        else {
+            Issue.record(Comment(rawValue: "expected space_elsewhere"))
+            return
+        }
+        #expect(await api.login(username: "me", password: "p", deviceName: "d").value?.userId == 7)
+    }
+
     @Test func aWrongPasswordIsARejectionNotALostSession() async throws {
         let stub = StubTransport(queue: [
             (401, #"{"error":"invalid_credentials","message":"invalid username or password"}"#, jsonHeaders)

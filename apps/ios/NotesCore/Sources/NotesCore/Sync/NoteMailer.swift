@@ -38,9 +38,13 @@ public final class NoteMailer: Sendable {
             }
             guard !note.dirty, let revision = note.serverRevision else { return .notSynced }
             guard let client = await api() else { return .notSynced }
-            switch await client.emailNote(id, to: to, revision: revision) {
+            // A shared space's file has its notes (§7.9); not knowing which file, asking the account's would answer
+            // that the note doesn't exist.
+            guard let feeds = try? await engine.store.feeds() else { return .notSynced }
+            let shared = feeds.contains(note.spaceId)
+            switch await client.emailNote(id, to: to, revision: revision, spaceId: shared ? note.spaceId : nil) {
             case .ok: return .sent
-            case .conflict(let code, let message, _):
+            case .conflict(let code, let message, _, _):
                 if code != "stale_revision" { return .failed(sentence(message)) }
             case .unreachable: return .offline
             case .unauthenticated: return .notSynced

@@ -179,7 +179,7 @@ public final class ImageStore: Sendable {
                 }
                 throw error
             }
-            switch await client.putImage(image.id, bytes: bytes, type: image.type) {
+            switch try await putToEachFile(client, image, bytes) {
             case .ok:
                 try await uploaded(image, name)
             // Refused for good (bytes not matching the id, too large, not an
@@ -194,6 +194,40 @@ public final class ImageStore: Sendable {
             case let other:
                 return other
             }
+        }
+        return .ok(())
+    }
+
+    /// Uploads an image to the file of each note here that shows it (§7.9): the account's, and each shared space's.
+    /// One no note shows yet goes to the account's file.
+    private func putToEachFile(_ client: ApiClient, _ image: PendingImage, _ bytes: Data) async throws
+        -> ApiResult<Void>
+    {
+        let id = image.id
+        let feeds = try await db.read { sql in
+            let ref = "notesd:image/\(id)"
+            // Notes here that show it, plain (their image references, not any mention) or locked (as recorded).
+            let plain = try sql.query(
+                "SELECT space_id, content FROM notes WHERE deleted_at IS NULL AND instr(content, ?) > 0", ref
+            ) { ($0.text(0), $0.text(1)) }
+            .filter { ImageRef.ids($0.1).contains(id) }.map(\.0)
+            let locked = try sql.query(
+                """
+                SELECT DISTINCT n.space_id FROM locked_images l JOIN notes n ON n.id = l.note_id
+                WHERE n.deleted_at IS NULL AND instr(l.image_ids, ?) > 0
+                """, id, row: { $0.text(0) })
+            // And each feed a queued change showing it goes to: an edit before a move goes where the note was.
+            let queued = try sql.query(
+                "SELECT feed, payload_json FROM sync_outbox WHERE instr(payload_json, ?) > 0", ref
+            ) { ($0.text(0), try Payload.decode($0.text(1))) }
+            .filter { ImageRef.ids($0.1.content).contains(id) }.map(\.0)
+            let feeds = Set(try (plain + locked).map { try sql.feedOf($0) } + queued)
+            return feeds.isEmpty ? [""] : feeds.sorted()
+        }
+        for feed in feeds {
+            let to = feed.isEmpty ? client : client.inSpace(feed)
+            let r = await to.putImage(image.id, bytes: bytes, type: image.type)
+            guard case .ok = r else { return r }
         }
         return .ok(())
     }

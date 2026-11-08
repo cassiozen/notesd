@@ -73,8 +73,7 @@ struct NotesListView: View {
                 ForEach(hits) { hit in
                     row(id: hit.id, locked: hit.locked) {
                         NoteRow(
-                            title: hit.title, time: listTime(hit.updatedAt), preview: highlighted(hit.excerpt),
-                            locked: hit.locked)
+                            title: hit.title, time: time(hit), preview: highlighted(hit.excerpt), locked: hit.locked)
                     }
                 }
                 if othersCount > 0 {
@@ -83,7 +82,7 @@ struct NotesListView: View {
                         ForEach(others) { hit in
                             row(id: hit.id, locked: hit.locked, open: { openElsewhere(hit) }) {
                                 NoteRow(
-                                    title: hit.title, time: listTime(hit.updatedAt),
+                                    title: hit.title, time: time(hit),
                                     preview: AttributedString(graph.spaceName(hit.spaceId) + " · ")
                                         + highlighted(hit.excerpt),
                                     locked: hit.locked)
@@ -110,12 +109,15 @@ struct NotesListView: View {
             } else if loaded {
                 let visible = notes.filter { pendingDeletes[$0.id] == nil }
                 if visible.isEmpty { empty }
+                let space = graph.spaces.first { $0.id == graph.space }
                 ForEach(groupByDate(visible, updatedAt: \.updatedAt), id: \.label) { group in
                     GroupLabel(group.label)
                     ForEach(group.items) { note in
                         row(id: note.id, locked: note.locked) {
                             NoteRow(
-                                title: note.title, time: listTime(note.updatedAt),
+                                title: note.title,
+                                time: Sharing.rowTime(
+                                    note.updatedAt, by: Sharing.editor(note.updatedBy, in: space, me: graph.userId)),
                                 preview: AttributedString(preview(note)), locked: note.locked)
                         }
                     }
@@ -369,6 +371,12 @@ struct NotesListView: View {
             .padding(.horizontal, 16)
             .transition(.move(edge: .bottom).combined(with: .opacity))
         }
+    }
+
+    /// As the list's rows: another member's edit names them (§7.9).
+    private func time(_ hit: SearchHit) -> String {
+        let space = graph.spaces.first { $0.id == hit.spaceId }
+        return Sharing.rowTime(hit.updatedAt, by: Sharing.editor(hit.updatedBy, in: space, me: graph.userId))
     }
 
     private func preview(_ note: NoteSummary) -> String {

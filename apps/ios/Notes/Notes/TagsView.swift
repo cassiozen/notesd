@@ -23,6 +23,14 @@ struct TagsView: View {
                     SpaceMenu(
                         font: .custom("InstrumentSerif-Regular", size: 27, relativeTo: .title), iconSize: 31,
                         invites: invites, changes: changes,
+                        onJoin: { invite in
+                            Task {
+                                if let problem = await graph.join(invite) { graph.notice = problem } else { switched() }
+                            }
+                        },
+                        onDecline: { invite in
+                            Task { if let problem = await graph.decline(invite) { graph.notice = problem } }
+                        },
                         onSwitched: { switched() },
                         onInfo: { id in
                             drawer.close()
@@ -98,20 +106,20 @@ struct TagsView: View {
         }
     }
 
-    /// Invitations to others' spaces. Nothing provides them yet (sharing will); DEBUG builds can fake them.
+    /// Invitations to others' spaces (§7.9); DEBUG builds can fake them.
     private var invites: [SpaceInvite] {
         #if DEBUG
             if FakeSwitcher.on { return FakeSwitcher.invites }
         #endif
-        return []
+        return graph.invites.map(SpaceInvite.init)
     }
 
-    /// What changed lately in each space, by id: as `invites`.
+    /// What others changed in each shared space since it was last shown, by id: as `invites`.
     private var changes: [String: String] {
         #if DEBUG
             if FakeSwitcher.on { return FakeSwitcher.changes(graph.spaces) }
         #endif
-        return [:]
+        return graph.news.mapValues { Sharing.newsLine($0) }
     }
 
     /// The space's tags (§7.7).

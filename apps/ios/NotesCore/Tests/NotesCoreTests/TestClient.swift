@@ -166,12 +166,17 @@ final class TestClient: @unchecked Sendable {
 
     func clearFaults() { transport.clearFaults() }
 
+    /// Signs in as the owner, or another account `TestServer.addAccount` made. Like the app, tells the engine
+    /// whose edits are this device's.
     @discardableResult
-    func signIn() async throws -> TestClient {
+    func signIn(_ username: String = TestServer.username, password: String = TestServer.password) async throws
+        -> TestClient
+    {
         let result = await ApiClient(baseURL: server.url, transport: transport)
-            .login(username: TestServer.username, password: TestServer.password, deviceName: "test")
+            .login(username: username, password: password, deviceName: "test")
         guard case .ok(let signIn) = result else { throw CancellationError() }
         credentials.current = signIn.tokens
+        try await engine.store.setUserId(signIn.userId)
         return self
     }
 

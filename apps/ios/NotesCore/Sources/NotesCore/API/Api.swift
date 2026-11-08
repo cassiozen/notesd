@@ -3,8 +3,9 @@ import Foundation
 /// The outcome of one request. Transport failures are values too: callers decide what offline means.
 public enum ApiResult<T: Sendable>: Sendable {
     case ok(T)
-    /// 409: the server's current state is in `current` (a note, for note conflicts), as JSON.
-    case conflict(code: String, message: String, current: Data?)
+    /// 409: the server's current state is in `current` (a note, for note conflicts), as JSON; `spaceId` names
+    /// the space whose notes are in another file, on `space_elsewhere` (§7.9).
+    case conflict(code: String, message: String, current: Data?, spaceId: String? = nil)
     /// No usable session: never signed in, or the session was revoked.
     case unauthenticated
     case rateLimited(retryAfterSeconds: Int64)
@@ -21,7 +22,8 @@ public enum ApiResult<T: Sendable>: Sendable {
     func failure<U>() -> ApiResult<U> {
         switch self {
         case .ok: preconditionFailure("not a failure")
-        case .conflict(let code, let message, let current): .conflict(code: code, message: message, current: current)
+        case .conflict(let code, let message, let current, let spaceId):
+            .conflict(code: code, message: message, current: current, spaceId: spaceId)
         case .unauthenticated: .unauthenticated
         case .rateLimited(let seconds): .rateLimited(retryAfterSeconds: seconds)
         case .rejected(let status, let error, let message, let field):
@@ -40,7 +42,8 @@ public enum ApiResult<T: Sendable>: Sendable {
 
 /// notesd error codes that mean a queued change can never succeed as sent: it's dropped, and the user told.
 let permanentErrors: Set<String> = [
-    "invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default",
+    "invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default", "not_space_owner",
+    "space_exists", "locked_in_shared_space",
 ]
 
 /// Device tokens. `accessExpiresAt` is Unix ms.
@@ -88,6 +91,8 @@ public struct SignIn: Decodable, Sendable {
     public var accessExpiresAt: Int64
     public var refreshToken: String
     public var refreshExpiresAt: Int64
+    /// The account's id, as notes' updatedBy and shared spaces' members name it (§7.9). 0 from older servers.
+    public var userId: Int64
 
     public var tokens: Tokens { Tokens(access: accessToken, accessExpiresAt: accessExpiresAt, refresh: refreshToken) }
 
@@ -99,10 +104,11 @@ public struct SignIn: Decodable, Sendable {
         accessExpiresAt = try c.decodeIfPresent(Int64.self, forKey: .accessExpiresAt) ?? 0
         refreshToken = try c.decodeIfPresent(String.self, forKey: .refreshToken) ?? ""
         refreshExpiresAt = try c.decodeIfPresent(Int64.self, forKey: .refreshExpiresAt) ?? 0
+        userId = try c.decodeIfPresent(Int64.self, forKey: .userId) ?? 0
     }
 
     private enum CodingKeys: String, CodingKey {
-        case session, username, accessToken, accessExpiresAt, refreshToken, refreshExpiresAt
+        case session, username, accessToken, accessExpiresAt, refreshToken, refreshExpiresAt, userId
     }
 }
 
@@ -138,11 +144,15 @@ public struct RemoteNote: Codable, Sendable, Hashable {
     public var imageIds: [String]?
     /// The space the note is in (§7.7).
     public var spaceId: String
+    /// The account that last changed it (§7.9); nil for changes from before that was recorded.
+    public var updatedBy: Int64?
+    /// On a tombstone a move to another file left: the space the note went to (§7.9).
+    public var movedTo: String?
 
     public init(
         id: String, title: String = "", content: String = "", revision: Int64, changeSeq: Int64 = 0,
         createdAt: Int64 = 0, updatedAt: Int64 = 0, deletedAt: Int64? = nil, conflictOf: String? = nil,
-        imageIds: [String]? = nil, spaceId: String = Spaces.defaultId
+        imageIds: [String]? = nil, spaceId: String = Spaces.defaultId, updatedBy: Int64? = nil, movedTo: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -155,6 +165,8 @@ public struct RemoteNote: Codable, Sendable, Hashable {
         self.conflictOf = conflictOf
         self.imageIds = imageIds
         self.spaceId = spaceId
+        self.updatedBy = updatedBy
+        self.movedTo = movedTo
     }
 
     public init(from decoder: any Decoder) throws {
@@ -171,10 +183,13 @@ public struct RemoteNote: Codable, Sendable, Hashable {
         conflictOf = try c.decodeIfPresent(String.self, forKey: .conflictOf)
         imageIds = try c.decodeIfPresent([String].self, forKey: .imageIds)
         spaceId = try c.decodeIfPresent(String.self, forKey: .spaceId) ?? Spaces.defaultId
+        updatedBy = try c.decodeIfPresent(Int64.self, forKey: .updatedBy)
+        movedTo = try c.decodeIfPresent(String.self, forKey: .movedTo)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, title, content, revision, changeSeq, createdAt, updatedAt, deletedAt, conflictOf, imageIds, spaceId
+        case updatedBy, movedTo
     }
 }
 
@@ -213,9 +228,12 @@ public struct RemoteSpace: Codable, Sendable, Hashable {
     public var noteCount: Int
     /// Absent from servers older than traits: none.
     public var traits: [SpaceTrait]
+    /// Who's in a shared space (§7.9); nil for the account's own.
+    public var shared: SharedSpace?
 
     public init(
-        id: String, name: String, icon: String = "", createdAt: Int64 = 0, noteCount: Int = 0, traits: [SpaceTrait] = []
+        id: String, name: String, icon: String = "", createdAt: Int64 = 0, noteCount: Int = 0,
+        traits: [SpaceTrait] = [], shared: SharedSpace? = nil
     ) {
         self.id = id
         self.name = name
@@ -223,6 +241,7 @@ public struct RemoteSpace: Codable, Sendable, Hashable {
         self.createdAt = createdAt
         self.noteCount = noteCount
         self.traits = traits
+        self.shared = shared
     }
 
     public init(from decoder: Decoder) throws {
@@ -233,6 +252,86 @@ public struct RemoteSpace: Codable, Sendable, Hashable {
         createdAt = try c.decode(Int64.self, forKey: .createdAt)
         noteCount = try c.decode(Int.self, forKey: .noteCount)
         traits = try c.decodeIfPresent([SpaceTrait].self, forKey: .traits) ?? []
+        shared = try c.decodeIfPresent(SharedSpace.self, forKey: .shared)
+    }
+}
+
+/// A shared space's people, as this account sees them (§7.9). `role` is `owner` or `member`.
+public struct SharedSpace: Codable, Sendable, Hashable {
+    public var role: String
+    /// The owner first.
+    public var members: [Member]
+    /// Pending invitations; only the owner gets them.
+    public var invites: [Invitee]
+
+    public var isOwner: Bool { role == "owner" }
+
+    public init(role: String, members: [Member] = [], invites: [Invitee] = []) {
+        self.role = role
+        self.members = members
+        self.invites = invites
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        role = try c.decode(String.self, forKey: .role)
+        members = try c.decodeIfPresent([Member].self, forKey: .members) ?? []
+        invites = try c.decodeIfPresent([Invitee].self, forKey: .invites) ?? []
+    }
+}
+
+/// An account as other accounts see it.
+public struct Member: Codable, Sendable, Hashable, Identifiable {
+    public var id: Int64
+    public var username: String
+
+    public init(id: Int64, username: String) {
+        self.id = id
+        self.username = username
+    }
+}
+
+/// A pending invitation into a shared space, as its owner sees it.
+public struct Invitee: Codable, Sendable, Hashable, Identifiable {
+    public var id: String
+    public var userId: Int64
+    public var username: String
+
+    public init(id: String, userId: Int64, username: String) {
+        self.id = id
+        self.userId = userId
+        self.username = username
+    }
+}
+
+/// An invitation waiting for this account (§7.9).
+public struct RemoteInvite: Codable, Sendable, Hashable, Identifiable {
+    public var id: String
+    public var spaceId: String
+    public var spaceName: String
+    public var spaceIcon: String
+    public var from: Member
+    public var createdAt: Int64
+
+    public init(
+        id: String, spaceId: String, spaceName: String, spaceIcon: String = "", from: Member, createdAt: Int64 = 0
+    ) {
+        self.id = id
+        self.spaceId = spaceId
+        self.spaceName = spaceName
+        self.spaceIcon = spaceIcon
+        self.from = from
+        self.createdAt = createdAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        spaceId = try c.decode(String.self, forKey: .spaceId)
+        spaceName = try c.decode(String.self, forKey: .spaceName)
+        spaceIcon = try c.decodeIfPresent(String.self, forKey: .spaceIcon) ?? ""
+        from = try c.decode(Member.self, forKey: .from)
+        createdAt = try c.decodeIfPresent(Int64.self, forKey: .createdAt) ?? 0
     }
 }
 

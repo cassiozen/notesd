@@ -171,6 +171,11 @@ public final class SyncEngine: Sendable {
         var parked = Set<String>()
         if let stop = try await pushSpaces(api, deletes: true, final: false, &rejection, &parked) { return stop }
         if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
+        // Before the notes: which spaces are shared, so each change goes to its space's file (§7.9). An odd answer
+        // (a portal's page) doesn't stop the cycle here: the changes get their attempts, and parking, as before.
+        if let stop = try await fetchSpaces(api), stop.outcome != .failed { return stop }
+        let invited = try await invites(api)
+        if let stop = invited, stop.outcome != .failed { return stop }
         if let stop = try await push(api, &events, &rejection, &parked, &pushed) { return stop }
         if let stop = try await pushSpaces(api, deletes: true, &rejection, &parked) { return stop }
         // The names those deletes freed, for the spaces made here meanwhile.
@@ -180,6 +185,8 @@ public final class SyncEngine: Sendable {
         }
         if let stop = try await pull(api, &events) { return stop }
         if let stop = try await fetchSpaces(api) { return stop }
+        // Asked again, so an odd answer earlier fails the cycle once the changes had their attempts.
+        if invited != nil, let stop = try await invites(api) { return stop }
         if let stop = try await keyring(api) { return stop }
         return try await store.nextOperation() != nil ? try await push(api, &events, &rejection, &parked, &pushed) : nil
     }
@@ -220,6 +227,10 @@ public final class SyncEngine: Sendable {
                 case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
                     try await spaces.dropped(change)
                     rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? error : message)"
+                // A shared space has this id (§7.9): a 409, so a conflict, but no retry changes it.
+                case .conflict(let code, let message, _, _) where permanentErrors.contains(code):
+                    try await spaces.dropped(change)
+                    rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? code : message)"
                 case .unexpected(let status),
                     .rejected(let status, _, _, _) where status < 500:
                     try await spaces.attempted(change)
@@ -231,11 +242,26 @@ public final class SyncEngine: Sendable {
         return nil
     }
 
-    /// The list is small and has no change feed: fetched whole every cycle, like the keyring.
+    /// The list is small and has no change feed: fetched whole every cycle, like the keyring. A shared space new to
+    /// it gets a feed; one gone from it takes its notes off the device (§7.9).
     private func fetchSpaces(_ api: ApiClient) async throws -> Stop? {
         switch await api.spaces() {
         case .ok(let list):
             try await spaces.replace(list)
+            try await store.syncFeeds()
+            return nil
+        case let other:
+            return stop(other)
+        }
+    }
+
+    private func invites(_ api: ApiClient) async throws -> Stop? {
+        switch await api.invites() {
+        case .ok(let list):
+            try await spaces.replaceInvites(list)
+            return nil
+        // A server from before shared spaces: none.
+        case .rejected(_, "no_such_endpoint", _, _):
             return nil
         case let other:
             return stop(other)
@@ -286,11 +312,25 @@ public final class SyncEngine: Sendable {
             var reminted = false
             while true {
                 let result = await send(api, op)
+                if case .conflict(let code, _, let current, let spaceId) = result {
+                    // Its space's notes are in another file now (shared since it was queued): sent there instead.
+                    if code == "space_elsewhere", let spaceId, try await store.refile(op, to: spaceId) { break }
+                    if code == "note_moved", let to = movedTo(current) {
+                        // A move there is done; other changes follow it, if this device has the space. Otherwise
+                        // reconcile takes a move out of reach for a deletion.
+                        if op.type == moveOp && to == op.spaceId {
+                            try await store.moveDone(op)
+                            pushed = true
+                            break
+                        }
+                        if try await store.refile(op, to: to) { break }
+                    }
+                }
                 switch result {
                 case .ok(let result):
                     try await store.sent(op, result)
                     pushed = true
-                case .conflict(_, _, let current):
+                case .conflict(_, _, let current, _):
                     // Unreadable or missing: keep the operation for a later cycle rather than drop the user's change.
                     // Counted like an unexpected answer, so a server that keeps doing it can't block the queue.
                     guard let current, let note = try? JSONDecoder().decode(RemoteNote.self, from: current) else {
@@ -326,9 +366,20 @@ public final class SyncEngine: Sendable {
         }
     }
 
-    private func send(_ api: ApiClient, _ op: Operation) async -> ApiResult<MutationResult> {
+    /// Where a `note_moved` answer's tombstone says the note went (§7.9).
+    private func movedTo(_ current: Data?) -> String? {
+        current.flatMap { try? JSONDecoder().decode(RemoteNote.self, from: $0) }?.movedTo
+    }
+
+    private func send(_ root: ApiClient, _ op: Operation) async -> ApiResult<MutationResult> {
+        // The file the change goes to: the account's, or its space's (§7.9).
+        let api = op.feed.isEmpty ? root : root.inSpace(op.feed)
         let p = op.payload
         switch op.type {
+        case moveOp:
+            return await api.moveNote(
+                op.noteId,
+                NoteRequest(operationId: op.operationId, baseRevision: op.baseRevision, spaceId: p.spaceId))
         case createOp:
             return await api.createNote(
                 NoteRequest(
@@ -347,19 +398,31 @@ public final class SyncEngine: Sendable {
         }
     }
 
+    /// The account's feed, then each shared space's (§7.9).
     private func pull(_ api: ApiClient, _ events: inout [SyncEvent]) async throws -> Stop? {
+        if let stop = try await pullFeed(api, "", &events) { return stop }
+        for feed in try await store.feeds() {
+            if let stop = try await pullFeed(api.inSpace(feed), feed, &events) { return stop }
+        }
+        return nil
+    }
+
+    private func pullFeed(_ api: ApiClient, _ feed: String, _ events: inout [SyncEvent]) async throws -> Stop? {
         var restarted = false
         while true {
-            let state = try await store.state()
+            let state = try await store.state(feed: feed)
             switch await api.sync(since: state.cursor, limit: pageSize, generation: state.generation) {
             case .ok(let page):
-                emit(try await store.applyPage(page), into: &events)
+                emit(try await store.applyPage(page, feed: feed), into: &events)
                 if !page.hasMore { return nil }
-            case .conflict(let code, let message, _) where code == "generation_mismatch" || code == "cursor_ahead":
+            case .conflict(let code, let message, _, _) where code == "generation_mismatch" || code == "cursor_ahead":
                 // Restored from a backup. Once per cycle: a second time means something else is wrong.
                 if restarted { return Stop(outcome: .failed, message: message) }
                 restarted = true
-                try await store.startFullSync()
+                try await store.startFullSync(feed: feed)
+            // Left or removed since the list came: the next list drops the feed.
+            case .rejected(_, "not_found", _, _) where !feed.isEmpty:
+                return nil
             case .rejected(let status, let error, let message, _) where status < 500:
                 return Stop(outcome: .failed, message: message.isEmpty ? error : message)
             case let other:
@@ -373,7 +436,7 @@ public final class SyncEngine: Sendable {
         case .unauthenticated: Stop(outcome: .signedOut)
         case .unreachable, .rateLimited: Stop(outcome: .offline)
         case .rejected(let status, _, _, _): Stop(outcome: .failed, message: "The server had a problem (\(status)).")
-        case .conflict(_, let message, _): Stop(outcome: .failed, message: message)
+        case .conflict(_, let message, _, _): Stop(outcome: .failed, message: message)
         case .unexpected(let status): unexpected(status)
         case .upgradeRequired(let minVersion):
             Stop(outcome: .upgradeRequired, message: SyncMessages.upgradeRequired, minVersion: minVersion)
