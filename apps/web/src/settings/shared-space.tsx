@@ -125,7 +125,7 @@ type Confirm =
 export function SharedSettings({ space, onClose }: TraitFlowProps) {
   const titleId = useId()
   const self = useSelf()
-  const { refresh, unsavedIn } = useNotes()
+  const { refresh, unsavedIn, flushAll } = useNotes()
   const [picking, setPicking] = useState(false)
   const [confirm, setConfirm] = useState<Confirm | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -150,7 +150,7 @@ export function SharedSettings({ space, onClose }: TraitFlowProps) {
 
   async function askToLeave() {
     setBusy('leave')
-    // Saved here but not yet on the server: leaving takes the notes off this device, and these with them.
+    // Saved here but not yet on the server: leaving keeps these as copies in the account's own space.
     const kept = await notesSource()
       .sharing.unsynced(space.id)
       .catch(() => [])
@@ -264,6 +264,11 @@ export function SharedSettings({ space, onClose }: TraitFlowProps) {
               case 'stop':
                 return self === undefined ? undefined : stopSharing(space, self)
               case 'leave':
+                // What can still reach the server goes first; the rest the sync engine keeps as copies.
+                await flushAll()
+                await notesSource()
+                  .sharing.settle()
+                  .catch(() => {})
                 if (self !== undefined) await removeMember(space.id, self)
             }
           }}
@@ -307,7 +312,7 @@ function confirmText(c: Confirm, space: Space, others: string[]): { title: strin
         text:
           `Its notes will be removed from this device. You can join again only if you’re invited again.` +
           (c.unsynced > 0
-            ? ` ${c.unsynced === 1 ? '1 note has changes' : `${c.unsynced} notes have changes`} not yet synced, which will be lost.`
+            ? ` ${c.unsynced === 1 ? '1 note has changes' : `${c.unsynced} notes have changes`} not yet synced: they’re sent first, or kept as copies in your own notes if they can’t be.`
             : ''),
         action: 'Leave',
       }

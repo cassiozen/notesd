@@ -70,8 +70,8 @@ async function remoteSpaces(server: Client) {
 
 /** Ana changes a note in Work, as her own device would. */
 async function anaEdits(ana: Ana, id: string, content: string) {
-  const note = (await ana.api<Note>('GET', `/spaces/work/notes/${id}`)).body
-  const res = await ana.api('PUT', `/spaces/work/notes/${id}`, { operationId: op(), baseRevision: note.revision, title: note.title, content })
+  const note = (await ana.api<Note>('GET', `/notes/${id}`)).body
+  const res = await ana.api('PUT', `/notes/${id}`, { operationId: op(), baseRevision: note.revision, title: note.title, content })
   expect(res.status).toBe(200)
 }
 
@@ -324,8 +324,8 @@ describe('notes in a shared space', () => {
     await openNote(user, 'Standup')
     await typeAtEnd(user, ' done')
     await saved()
-    expect((await server.api<Note>('GET', `/spaces/work/notes/${id}`)).body.content).toBe('Status done\n')
-    expect(server.sent('PUT', `/spaces/work/notes/${id}`)).toHaveLength(1)
+    expect((await server.api<Note>('GET', `/notes/${id}`)).body.content).toBe('Status done\n')
+    expect(server.sent('PUT', `/notes/${id}`)).toHaveLength(1)
   })
 
   it('an edit to a note whose space was shared elsewhere follows it there', async () => {
@@ -340,10 +340,10 @@ describe('notes in a shared space', () => {
 
     await typeAtEnd(user, ' after')
     await saved()
-    expect((await server.api<Note>('GET', `/spaces/work/notes/${id}`)).body.content).toBe('Status after\n')
+    expect((await server.api<Note>('GET', `/notes/${id}`)).body.content).toBe('Status after\n')
   })
 
-  it('a picture goes to the space’s file, and loads from the account’s address', async () => {
+  it('a picture is uploaded to the account’s address, and loads from it', async () => {
     const { server, user } = await signedIn({ seed: async (s) => void (await seedWork(s, { share: true })) })
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
@@ -351,8 +351,7 @@ describe('notes in a shared space', () => {
     pick(pngFile())
     await saved()
     const image = await sha256Hex(PNG)
-    expect(server.sent('PUT', `/spaces/work/images/${image}`)).toBeDefined()
-    expect((await server.bytes('GET', `/spaces/work/images/${image}`)).status).toBe(200)
+    expect((await server.bytes('GET', `/images/${image}`)).status).toBe(200)
     await waitFor(() => expect(shown()[0]?.getAttribute('src')).toBe(`/api/v1/images/${image}`))
   })
 
@@ -385,7 +384,7 @@ describe('notes in a shared space', () => {
     expect(screen.queryByRole('dialog', { name: /Lock/ })).toBeNull()
   })
 
-  it('moving out asks who will no longer see it, then moves it between files', async () => {
+  it('moving out asks who will no longer see it, then moves it with one update', async () => {
     let id = ''
     const { server, user } = await signedIn({ seed: async (s) => void ({ noteId: id } = await seedWork(s, { share: true })) })
     await act(() => reloadSpaces())
@@ -403,8 +402,8 @@ describe('notes in a shared space', () => {
 
     expect(await screen.findByText('Moved to Notes')).toBeTruthy()
     await waitFor(async () => expect((await server.api<Note>('GET', `/notes/${id}`)).body.spaceId).toBe('default'))
-    expect((await server.api('GET', `/spaces/work/notes/${id}`)).status).toBe(410)
-    expect(server.sent('POST', `/spaces/work/notes/${id}/move`)).toHaveLength(1)
+    // One update naming the space: the server moved it between files.
+    expect(server.sent('PUT', `/notes/${id}`)).toHaveLength(1)
   })
 
   it('moving in asks who will see it, and a locked note says it can’t', async () => {
@@ -423,7 +422,7 @@ describe('notes in a shared space', () => {
     expect(within(confirm).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['Visible to ana'])
     await user.click(within(confirm).getByRole('button', { name: 'Move' }))
     await waitFor(async () => {
-      const work = (await server.api<{ notes: Note[] }>('GET', '/spaces/work/notes?space=work')).body.notes
+      const work = (await server.api<{ notes: Note[] }>('GET', '/notes?space=work')).body.notes
       expect(work.map((n) => n.title).toSorted()).toEqual(['Groceries', 'Standup'])
     })
   })

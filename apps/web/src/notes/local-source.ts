@@ -59,7 +59,6 @@ export function localSource(engine: Engine): NotesSource {
         if (!blob) throw new ApiError(404, { error: 'not_found', message: 'No such image' })
         return blob
       },
-      // Sync uploads it to the file of each note here that shows it (§7.9).
       async put(id, bytes, type) {
         await engine.call('addImage', id, bytes, type)
       },

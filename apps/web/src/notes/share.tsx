@@ -442,8 +442,7 @@ function EmailDialog({ saver, from, onClose }: { saver: Saver; from: string; onC
         setError('This note isn’t saved on the server yet. Send it once it shows Saved.')
         return
       }
-      // Saved, it's where the server has it: the file of its space (§7.9).
-      await api.email(saver.id, saver.spaceId(), recipients, revision)
+      await api.email(saver.id, recipients, revision)
       setSentTo(recipients)
     } catch (err) {
       setError(sendError(err))

@@ -32,11 +32,16 @@ const switcher = (page: Page) => page.getByRole('navigation', { name: 'Sidebar' 
 const spaces = (page: Page) => page.getByRole('dialog', { name: 'Spaces' })
 
 async function switchTo(page: Page, name: string) {
-  // A reload reopens the note that was open, in its space.
-  if ((await switcher(page).getAttribute('aria-label')) === `Space: ${name}`) return
-  await switcher(page).click()
-  await spaces(page).getByRole('button', { name: new RegExp(`^${name}, `) }).click()
-  await expect(switcher(page)).toHaveAccessibleName(`Space: ${name}`)
+  const target = `Space: ${name}`
+  // After a reload the app may still be reopening the last note's space: if that lands while the switcher is
+  // open, the space moves from its list to its card. Retried from a closed switcher until it's the current one.
+  await expect(async () => {
+    if (await spaces(page).isVisible()) await page.keyboard.press('Escape')
+    if ((await switcher(page).getAttribute('aria-label')) === target) return
+    await switcher(page).click()
+    await spaces(page).getByRole('button', { name: new RegExp(`^${name}, `) }).click({ timeout: 2_000 })
+  }).toPass({ timeout: 15_000 })
+  await expect(switcher(page)).toHaveAccessibleName(target)
 }
 
 test('a space shared with someone: they join, edit, and leave', async ({ page, browser }) => {
@@ -90,7 +95,7 @@ test('a space shared with someone: they join, edit, and leave', async ({ page, b
   await them.keyboard.press('End')
   await them.keyboard.type(' and socks')
   await expect(them.getByText('Saved', { exact: true })).toBeVisible({ timeout: 10_000 })
-  await expect.poll(async () => (await api<{ content: string }>(page, 'GET', `/spaces/${space.id}/notes/${note}`)).body.content).toBe('Boots and socks\n')
+  await expect.poll(async () => (await api<{ content: string }>(page, 'GET', `/notes/${note}`)).body.content).toBe('Boots and socks\n')
 
   await page.reload()
   await switchTo(page, space.name)

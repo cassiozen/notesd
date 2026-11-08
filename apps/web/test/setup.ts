@@ -1,6 +1,5 @@
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
-import { forgetFiles } from '../src/api/files'
 import { forgetFind } from '../src/editor/find-bar'
 import { forgetEmailSettings } from '../src/notes/email-settings'
 import { forgetSpaces } from '../src/notes/spaces'
@@ -85,7 +84,6 @@ afterEach(() => {
   cleanup()
   forgetEmailSettings()
   forgetSpaces()
-  forgetFiles()
   forgetFind()
   versionState.reset()
   globalThis.layout = 'wide'

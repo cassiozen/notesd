@@ -170,8 +170,6 @@ export type ErrorBody = {
   current?: Note
   /** space_not_empty: the notes still in the space; space_has_locked: its locked notes. */
   count?: number
-  /** space_elsewhere: the space whose file the note belongs in. */
-  spaceId?: string
   /** upgrade_required: the oldest app version the server takes. */
   minVersion?: string
 }

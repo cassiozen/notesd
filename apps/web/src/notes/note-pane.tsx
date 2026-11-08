@@ -103,7 +103,7 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
   useEffect(() => {
     if (load.kind !== 'loading' || !id) return
     let cancelled = false
-    notesSource().get(id, space).then(
+    notesSource().get(id).then(
       async (stored) => {
         let opened
         try {
@@ -298,7 +298,7 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
         for (const file of files) {
           // In order, each under the one before.
           // oxlint-disable-next-line no-await-in-loop
-          const ref = await storeImage(file, () => saver.isLocked(), () => saver.spaceId())
+          const ref = await storeImage(file, () => saver.isLocked())
           if (editor.isDestroyed) {
             // Closed while uploading: the picture goes at the end of the note.
             if (!saver.appendClosed(imageMarkdown(ref))) {

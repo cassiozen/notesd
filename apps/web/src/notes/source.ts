@@ -92,8 +92,8 @@ export interface Saver {
 export interface NotesSource {
   /** A page of live notes, newest first; [cursor] from the page before. */
   list(filter: NoteFilter, space: string, cursor?: string): Promise<NoteList>
-  /** Rejects with an ApiError 404 or 410 when there's no such note. [space]: where it likely is, looked in first. */
-  get(id: string, space?: string): Promise<Note>
+  /** Rejects with an ApiError 404 or 410 when there's no such note. */
+  get(id: string): Promise<Note>
   /** The tags and locked notes in [space], for the sidebar. */
   filters(space: string, signal?: AbortSignal): Promise<{ tags: TagCount[]; locked: number }>
   /** In one space, the first page also counts the matches in every other space. */
@@ -116,8 +116,8 @@ export interface NotesSource {
   images: {
     /** Rejects with an ApiError 404 when there's no such image. */
     get(id: string, signal?: AbortSignal): Promise<Blob>
-    /** Idempotent: the id is the bytes' SHA-256. [space]: the note's, whose file keeps it. */
-    put(id: string, bytes: Uint8Array<ArrayBuffer>, type: string, space: string): Promise<void>
+    /** Idempotent: the id is the bytes' SHA-256. */
+    put(id: string, bytes: Uint8Array<ArrayBuffer>, type: string): Promise<void>
     /** Where an <img> can load a plain image straight from; none when they're kept on this device. */
     url?: (id: string) => string
   }

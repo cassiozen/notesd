@@ -1,7 +1,6 @@
 import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
-import { forgetFiles } from '../api/files'
 import type { SessionInfo } from '../api/types'
 import { forgetTouchId } from '../locks/touch-id'
 import { forgetEmailSettings } from '../notes/email-settings'
@@ -105,7 +104,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       forgetUserId()
       // Already on the server's notes, the source doesn't change: the next account would get these.
       forgetSpaces()
-      forgetFiles()
       forgetEmailSettings()
       setState({ status: 'signed-out' })
     }

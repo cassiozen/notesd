@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { SEARCH_PAGE } from '../api/notes'
 import type { NoteFilter, SearchResult, SearchScope } from '../api/types'
 import { notesSource } from './source'
 
@@ -21,8 +20,6 @@ type Answer = {
   results: SearchResult[]
   hasMore: boolean
   otherSpaces: number
-  /** Pages loaded: the next starts at this many pages in, in every file it spans (online-source.ts). */
-  pages: number
 }
 
 type Scope = { filter: NoteFilter; in: SearchScope }
@@ -53,9 +50,9 @@ export function useSearch(query: string, filter: NoteFilter, where: SearchScope,
     const timer = setTimeout(() => {
       const s = JSON.parse(scope) as Scope
       notesSource().search(q, s.filter, s.in, 0, controller.signal).then(
-        ({ results, hasMore, otherSpaces = 0 }) => setAnswer({ q, scope, key, ok: true, results, hasMore, otherSpaces, pages: 1 }),
+        ({ results, hasMore, otherSpaces = 0 }) => setAnswer({ q, scope, key, ok: true, results, hasMore, otherSpaces }),
         () => {
-          if (!controller.signal.aborted) setAnswer({ q, scope, key, ok: false, results: [], hasMore: false, otherSpaces: 0, pages: 0 })
+          if (!controller.signal.aborted) setAnswer({ q, scope, key, ok: false, results: [], hasMore: false, otherSpaces: 0 })
         },
       )
     }, DEBOUNCE_MS)
@@ -69,9 +66,10 @@ export function useSearch(query: string, filter: NoteFilter, where: SearchScope,
     if (more.current || !answer) return
     const controller = new AbortController()
     more.current = controller
+    const have = answer.results
     const s = JSON.parse(answer.scope) as Scope
     notesSource()
-      .search(answer.q, s.filter, s.in, answer.pages * SEARCH_PAGE, controller.signal)
+      .search(answer.q, s.filter, s.in, have.length, controller.signal)
       .then(
         ({ results, hasMore }) => {
           if (controller.signal.aborted) return
@@ -81,7 +79,6 @@ export function useSearch(query: string, filter: NoteFilter, where: SearchScope,
                   ...a,
                   results: [...a.results, ...results.filter((r) => !a.results.some((x) => x.id === r.id))],
                   hasMore,
-                  pages: a.pages + 1,
                 }
               : a,
           )
