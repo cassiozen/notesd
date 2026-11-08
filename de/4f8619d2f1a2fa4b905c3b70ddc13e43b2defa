@@ -1,0 +1,107 @@
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_db351bae56ef1d::t_6db58ce17c8f08 80-98,101-125,128-162
+  s_db351bae56ef1d::t_7e7a1778a0de75 126-127
+  s_db351bae56ef1d::t_e6e06ff0b12ebb 99-100
+apps/ios/NotesCore/Tests/NotesCoreTests/TestClient.swift
+  s_db351bae56ef1d::t_a118b36f332f04 169-170,172-174,176,179
+apps/ios/NotesCore/Sources/NotesCore/Resources/migrations/0010_shared_spaces.sql
+  s_db351bae56ef1d::t_dff73e886b4216 1-37
+apps/ios/Notes/Notes/SpaceMenu.swift
+  s_db351bae56ef1d::t_8b138499f273cd 13-15,48-49
+apps/ios/NotesCore/Sources/NotesCore/DB/Rows.swift
+  s_db351bae56ef1d::t_d17c4e3e283abe 9-10,28-29,36,52-53,143-150,152-154,157-158,161-162,164,169,172,180-191,194-196,206-215,217-232,236-246,250-263,274-275
+  s_db351bae56ef1d::t_7e7a1778a0de75 176-179,235
+  s_db351bae56ef1d::t_f0ccccb073e7b2 197-205
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_db351bae56ef1d::t_76c969c20b170f 174-177,238-239,244-257,365-369,372-375,394,396-403,406,409,411,415-418,432
+  s_db351bae56ef1d::t_16dda9efcf61c5 308-321,326,362-364
+apps/ios/NotesCore/Sources/NotesCore/Images/ImageStore.swift
+  s_db351bae56ef1d::t_c4f477d0caf9b3 182,201-218
+  s_db351bae56ef1d::t_34e2453dd07462 219-221
+apps/ios/NotesCore/Tests/NotesCoreTests/SharedSpacesSyncTests.swift
+  s_db351bae56ef1d::t_bf9dac6881718d 1-157
+apps/ios/NotesCore/Tests/NotesCoreTests/TestServer.swift
+  s_db351bae56ef1d::t_bf9dac6881718d 86-87
+  s_db351bae56ef1d::t_a118b36f332f04 77-78,81-85,88-107
+  s_db351bae56ef1d::t_7e7a1778a0de75 79-80
+apps/ios/Notes/Settings/SharingView.swift
+  s_db351bae56ef1d::t_88db3d9793c36e 1-3,6-158,164-252
+  s_db351bae56ef1d::t_5030c5e07ad2e7 4-5
+  s_db351bae56ef1d::t_7e7a1778a0de75 159-163
+apps/ios/NotesCore/Sources/NotesCore/Sync/NoteMailer.swift
+  s_db351bae56ef1d::t_c4f477d0caf9b3 41-43,45
+apps/ios/Notes/Notes/Sharing.swift
+  s_db351bae56ef1d::t_4675e79c5f1490 1-76,78-96
+  s_db351bae56ef1d::t_25ad83ac9ca5e2 77
+  s_db351bae56ef1d::t_04374fc980915b 97-185
+apps/ios/NotesUITests/FlowTests.swift
+  s_db351bae56ef1d::t_59dac6a3dace42 278-457,498-499,514
+apps/ios/NotesCore/Tests/NotesCoreTests/SyncAnswerTests.swift
+  s_db351bae56ef1d::t_d56b0b8ce2c2e2 12,60,198,205
+apps/ios/Notes/Notes/NotesListView.swift
+  s_db351bae56ef1d::t_f4eefd17fd10ca 113,119-121
+apps/ios/Notes/Notes/SpaceSwitcher.swift
+  s_db351bae56ef1d::t_8b138499f273cd 4,7,10,14-21,85-86,204,207,296-297
+apps/ios/Notes/Settings/SpaceInfoView.swift
+  s_db351bae56ef1d::t_5030c5e07ad2e7 14-15,27-29,46,60,98-116,119-121
+apps/ios/Notes/Account/OnboardingModel.swift
+  s_db351bae56ef1d::t_c4f477d0caf9b3 171
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_db351bae56ef1d::t_7e7a1778a0de75 433-435
+  s_db351bae56ef1d::t_0795435f6f6d62 18,20-21,113-120,190-194,315-322,344-348,385-386,394-395,397-398,423-425,429-432,436-438
+  s_db351bae56ef1d::t_7334740621acc3 195
+  s_db351bae56ef1d::t_fa218316670421 388-391
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_db351bae56ef1d::t_54a0dfe4ddf983 86-88,103-123,181,186-187,192-200,211,236-241,248,318-380,387,507
+  s_db351bae56ef1d::t_093a456b3ab6d9 158-162
+apps/ios/NotesCore/Tests/NotesCoreTests/SharedSpacesTests.swift
+  s_db351bae56ef1d::t_e859a207f0cfca 74,76
+  s_db351bae56ef1d::t_5c3393ab7edd83 120-137
+  s_db351bae56ef1d::t_fac8b32964ae15 1-73,75,77-119,138-200
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_db351bae56ef1d::t_093a456b3ab6d9 476-484
+  s_db351bae56ef1d::t_f0ccccb073e7b2 10-11,94-95,135,144,259-262,280,428-429,441,462-463,470,497,503
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_db351bae56ef1d::t_11f3800d0d1c8b 6-8,25-26,45-46,94-95,107,111,147-150,155,168-169,186-187,192,231-232,235-236,244,255-315,319-334
+  s_db351bae56ef1d::t_7e7a1778a0de75 316-318
+apps/ios/Notes/Notes/EditorModel.swift
+  s_db351bae56ef1d::t_0795435f6f6d62 92-94,371-372
+apps/ios/NotesCore/Sources/NotesCore/DB/SpaceStore.swift
+  s_db351bae56ef1d::t_04374fc980915b 137-143
+  s_db351bae56ef1d::t_7e7a1778a0de75 152-154
+  s_db351bae56ef1d::t_63dde7114fcfb2 38-53,67-76,103-104,112,117-136,144-151,155-177,235-237,282-287,297-315
+apps/ios/Notes/App/AppGraph.swift
+  s_db351bae56ef1d::t_ddf3ff37a2c60c 41-46,73-82,93,175-178,203-216,218-220,233,235,304
+apps/ios/NotesTests/SharingTests.swift
+  s_db351bae56ef1d::t_da7eab5b9c28b1 1-108
+apps/ios/NotesCore/Sources/NotesCore/DB/Database.swift
+  s_db351bae56ef1d::t_3c8e60839addcb 234-238
+apps/ios/Notes/Notes/TagsView.swift
+  s_db351bae56ef1d::t_a3e4cc60949f32 26-33,109,114,117,122
+apps/ios/NotesCore/Sources/NotesCore/DB/Migrations.swift
+  s_db351bae56ef1d::t_dff73e886b4216 11
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_db351bae56ef1d::t_8f2b76fd264090 236,242
+  s_db351bae56ef1d::t_2b8dce5d4c3306 582-583
+  s_db351bae56ef1d::t_7e7a1778a0de75 117-119,519-523
+  s_db351bae56ef1d::t_ec7258266e719f 32-33,63,68,90-91,93-95,100-116,120-148,213-214,237-239,243-245,283-286,329-389,396,403-404,407-410,413,416-424,431-433,435-441,446-452,454-457,477-482,496-498,503-507,511-518,525,584-597,734-735,738,744-745,749
+  s_db351bae56ef1d::t_5c3393ab7edd83 508-510,576-581
+  s_db351bae56ef1d::t_d9264f988759a4 524
+  s_db351bae56ef1d::t_3c8e60839addcb 442
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de4f8619d2f1a2fa4b905c3b70ddc13e43b2defa",
+  "prompts": {},
+  "sessions": {
+    "s_db351bae56ef1d": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "949ac290-2225-48f5-bced-adbe4a1b458a",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
