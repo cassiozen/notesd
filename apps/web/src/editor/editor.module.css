@@ -267,6 +267,12 @@
   text-wrap: pretty;
 }
 
+/* A picture that ends its paragraph brings its own margin; the paragraph's would add to it.
+   ProseMirror follows a trailing picture with a separator image (Chrome, Safari) or a break. */
+.prose p:has(> [data-image-view] + :is(img.ProseMirror-separator, br.ProseMirror-trailingBreak)) {
+  margin-bottom: 0;
+}
+
 .prose li > p,
 .prose li > div > p {
   margin: 0;

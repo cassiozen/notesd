@@ -54,6 +54,8 @@ val PROSE_MARKDOWN = """
     |> Rest is part of the plan.
     |>
     |> Leave the laptop at home.
+    |>
+    |> ![A postcard](notesd:image/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb?w=120&h=80)
     |
     |![A sketch of the route](notesd:image/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?w=320&h=120)
     |

@@ -30,6 +30,8 @@ struct EditorScreenshotTests {
         > Rest is part of the plan.
         >
         > Leave the laptop at home.
+        >
+        > ![A postcard](notesd:image/\(String(repeating: "b", count: 64))?w=120&h=80)
 
         ![A sketch of the route](notesd:image/\(String(repeating: "a", count: 64))?w=320&h=120)
 

@@ -111,7 +111,10 @@ class BlockSpan(
         val lineEnd = layout?.let { it.getLineEnd(it.getLineForOffset(start)) } ?: end
         val ends = if (spanned != null && lineEnd >= spanned.getSpanEnd(this)) quoteEnds else 0
         val textBottom = if (spanned != null && ends > 0) {
-            baseline + textDescent(spanned, start, p)
+            // A picture hangs below the baseline (its line is spaced as text is): the bar reaches its bottom.
+            val picture = spanned.getSpans(start, lineEnd, ImageSpan::class.java).maxOfOrNull { top + it.size().second }
+            maxOf(baseline + textDescent(spanned, start, p), picture?.toFloat() ?: 0f)
+                .coerceAtMost(bottom - gapUnder(text, lineEnd))
         } else {
             bottom.toFloat()
         }
@@ -338,10 +341,19 @@ class LeafStyleSpan(
             fm.descent = ((want + fm.ascent * (m - 1)) / m).roundToInt()
         }
         // A quote's lines as on the web (line-height 1.45; Instrument Serif is 1.3 tall), not the
-        // view's spacing, which is for the sans. The gap after the block comes on top, below.
-        if (quoted && leaf == Leaf.Paragraph && end < text.length) {
+        // view's spacing, which is for the sans. The gap after the block comes on top, below. A
+        // picture's line is sized by the picture (ImageSpan) and stays so.
+        val picture = spanned.getSpans(start, end, ImageSpan::class.java).isNotEmpty()
+        if (quoted && leaf == Leaf.Paragraph && end < text.length && !picture) {
             val want = fm.descent + (height * (1.45f / 1.3f - 1)).toInt()
             fm.descent = ((want + fm.ascent * (m - 1)) / m).roundToInt()
+        }
+        // The line's text descent would add space under a picture, which already hangs below the
+        // baseline by the spacing layout adds: the line is only as tall as the picture, or its text.
+        if (picture && end < text.length) {
+            val asked = -fm.ascent
+            val tall = maxOf(asked * m, (asked + fm.descent).toFloat())
+            fm.descent = (tall / m).roundToInt() - asked
         }
         if (below > 0 && last) {
             fm.descent += below
