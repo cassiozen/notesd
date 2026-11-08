@@ -1,0 +1,90 @@
+server/migrations/system/0003_shared_spaces.sql
+  s_a0fc22670a88c5::t_d1b4a0a6a0afb1 1-40
+server/internal/api/api.go
+  s_a0fc22670a88c5::t_42d8bd5d653610 55,60-61,68,72-78,129-151,203,206-226
+  s_a0fc22670a88c5::t_36da1b88ddc515 22
+  s_a0fc22670a88c5::t_f32c5aad64af67 62
+  s_a0fc22670a88c5::t_7f8bfc7feee1c6 227
+server/internal/api/shared_test.go
+  s_a0fc22670a88c5::t_caba8ba476f5df 185-186
+  s_a0fc22670a88c5::t_44af96f7581c5e 1-165,169-184,187-354
+  s_a0fc22670a88c5::t_62eeff78d5046e 166-168
+server/internal/spaces/traits.go
+  s_a0fc22670a88c5::t_ed5f070a2904a5 44-46
+docs/reference/api.md
+  s_a0fc22670a88c5::t_c4b366e9f6a788 331-332,492
+  s_a0fc22670a88c5::t_51a61ca7ba684a 15,203,224-225,245-248,306-330,333-339,480,487-491,498,511
+server/internal/spaces/spaces.go
+  s_a0fc22670a88c5::t_afff7bd84c868b 146,236-237
+  s_a0fc22670a88c5::t_ed5f070a2904a5 36-64,135,157
+  s_a0fc22670a88c5::t_2139ebfd8ff33b 238
+server/internal/notes/notes.go
+  s_a0fc22670a88c5::t_ecb4638daf7171 79-86,117-118,123-124,128-158,199,219-227,233-246,249-253,256-265,295-296,316-317,328-329,342,369,378-380,410,428-429,434,457-458,460,505-508,527,529,638-639,787-791,795-831,848-855
+  s_a0fc22670a88c5::t_80baa419f3dfa0 856
+server/internal/userdata/userdata.go
+  s_a0fc22670a88c5::t_276147937c63e2 67-68,73-78
+  s_a0fc22670a88c5::t_e0f541fc4c525b 5,12-13,44-50,52-59,62,64-66,69-72,79,81-85,117-120,126-197,220-223
+  s_a0fc22670a88c5::t_e7d5eeb774b9da 80
+server/migrations/0013_shared_spaces.sql
+  s_a0fc22670a88c5::t_d1b4a0a6a0afb1 1-7
+server/internal/sharing/sharing.go
+  s_a0fc22670a88c5::t_99acc544430fa4 3-32,34-42,45-215,218-301,304,307,311-341,357-708,721-722,727-728,740-767,769-793,797-802,804-811
+  s_a0fc22670a88c5::t_ee7c62a1e6cae2 812-822
+  s_a0fc22670a88c5::t_f32c5aad64af67 709-720,723-726,729-739
+  s_a0fc22670a88c5::t_573d26f755b290 1-2,43-44,216-217,768,794-796,803
+  s_a0fc22670a88c5::t_caba8ba476f5df 33,302-303,305-306,308-310,342-356
+server/internal/api/respond.go
+  s_a0fc22670a88c5::t_caba8ba476f5df 188-189
+  s_a0fc22670a88c5::t_2acafd555b1fde 41-42,104-105,168-187,190-191
+  s_a0fc22670a88c5::t_36da1b88ddc515 19
+server/internal/auth/auth.go
+  s_a0fc22670a88c5::t_d28b9f431eeb0a 291-296,313-314
+  s_a0fc22670a88c5::t_f32c5aad64af67 96-98
+  s_a0fc22670a88c5::t_942721dd513600 315-317
+server/cmd/notesd/main.go
+  s_a0fc22670a88c5::t_c2fd3f3b0fa873 69,180,265,269-270,277,282,292,297,332-364,366-372,529-532,534,769
+  s_a0fc22670a88c5::t_8e853024adeec7 557,700-701,728-741,746-763,768
+  s_a0fc22670a88c5::t_8a1d7cd1790e7a 764-767
+  s_a0fc22670a88c5::t_6d32a7bb7a0df6 770
+server/internal/api/space_handlers.go
+  s_a0fc22670a88c5::t_c93080c2d623c4 3,5-6,8-14,17-22,27-32,48-61,65-67,75-76,79-213,221-224
+  s_a0fc22670a88c5::t_caba8ba476f5df 4,62-64,214-220
+  s_a0fc22670a88c5::t_6d26cdc03ce4f2 36-37
+server/internal/api/notes_handlers.go
+  s_a0fc22670a88c5::t_6d26cdc03ce4f2 6,11,71,119,146,225-231,238-243,253-302
+  s_a0fc22670a88c5::t_b5f5d1be0693c8 303
+server/README.md
+  s_a0fc22670a88c5::t_0ef45a77c5a8ee 84-85,89
+server/internal/images/copy.go
+  s_a0fc22670a88c5::t_279d65152c3e26 1-46
+docs/contributing/architecture.md
+  s_a0fc22670a88c5::t_c34a646edf9daa 69,118-120,169-180,475,482,502-509,512-521,612,614,677,679,758-761
+  s_a0fc22670a88c5::t_f67d12ae9268e5 584-591
+  s_a0fc22670a88c5::t_62eeff78d5046e 510-511
+server/internal/notes/move.go
+  s_a0fc22670a88c5::t_1c0794b85826e0 15-16,51-52,94-95,137-138
+  s_a0fc22670a88c5::t_faba1187d599c8 1-14,17-50,53-93,96-136,139-348
+server/internal/sharing/sharing_test.go
+  s_a0fc22670a88c5::t_0df1761f42095f 1-36,38-187
+  s_a0fc22670a88c5::t_1dbcdc669f4828 37
+server/internal/sharing/trait.go
+  s_a0fc22670a88c5::t_689c8343566c40 1-73
+server/internal/search/search.go
+  s_a0fc22670a88c5::t_8da7cb20d56f77 42-44,84-85,91,93,103
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ba6666c12f84f3f2ebd1425bb726ace44b12c581",
+  "prompts": {},
+  "sessions": {
+    "s_a0fc22670a88c5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "52235341-6a8f-4960-a630-4bc576e8b163",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
