@@ -507,7 +507,7 @@ private fun TopBar(collapsed: Boolean, title: String, onTags: (() -> Unit)?, mod
         ) {
             Text(
                 title,
-                style = Type.title.copy(fontSize = 20.sp),
+                style = Type.space.copy(fontSize = 18.sp, lineHeight = 22.sp),
                 color = t.ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -547,12 +547,14 @@ private fun Header(
         Spacer(Modifier.width(12.dp))
         // No name here to follow, so the traits follow the icon.
         if (traits.isNotEmpty()) {
-            TraitGroup(traits, onTraits)
+            // The switcher's trait button on the phone's tags screen, the same size here.
+            TraitGroup(traits, onTraits, Modifier.height(40.dp), glyphSize = 18.dp)
             Spacer(Modifier.width(8.dp))
         }
         Text(
             scope ?: "All Notes",
-            style = Type.display,
+            // As the sidebar's space name.
+            style = Type.space,
             color = t.ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

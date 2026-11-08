@@ -42,6 +42,22 @@ object Icons {
     val ChevronUp = icon("M3.5 10L8 5.5l4.5 4.5", stroke = 1.6f)
     val ChevronDown = icon("M3.5 6L8 10.5 12.5 6", stroke = 1.6f)
 
+    /** The space switcher's menu chevron, drawn edge to edge of a 10×6 box: the gaps around it are what they say. */
+    val Disclosure: ImageVector = ImageVector.Builder(
+        defaultWidth = 10.dp,
+        defaultHeight = 6.dp,
+        viewportWidth = 10f,
+        viewportHeight = 6f
+    ).apply {
+        addPath(
+            pathData = addPathNodes("M1 1l4 4 4-4"),
+            stroke = SolidColor(Color.Black),
+            strokeLineWidth = 1.8f,
+            strokeLineCap = StrokeCap.Round,
+            strokeLineJoin = StrokeJoin.Round
+        )
+    }.build()
+
     /** Find and replace: two arrows turning one into the other. */
     val Replace = icon(
         "M2.5 7a5 5 0 0 1 9.2-2.7",

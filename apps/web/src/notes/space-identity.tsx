@@ -63,7 +63,7 @@ export function TraitGroup({ traits, onOpen }: { traits: readonly SpaceTrait[]; 
   const label = traitsLabel(traits)
   return (
     <button type="button" className={styles.group} aria-label={`Space info: ${label}`} title={label} onClick={onOpen}>
-      <TraitGlyphs traits={traits} size={15} />
+      <TraitGlyphs traits={traits} size={16} />
     </button>
   )
 }

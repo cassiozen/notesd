@@ -55,7 +55,8 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 14px 12px 10px 14px;
+  /* The switcher's middle level with the list's title. */
+  padding: 13px 12px 10px 14px;
 }
 
 /*
@@ -92,39 +93,15 @@
   grid-column: 2;
 }
 
-/* Docked at 220px, the tools get a row of their own, as on macOS: beside them, the space's name and its
-   trait glyphs (§7.8) don't fit. The macOS rules above win where both apply. */
-.docked .header {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  grid-template-rows: 28px auto;
-  gap: 6px 0;
-  padding-top: 10px;
-}
-
-.docked .title {
-  grid-row: 2;
-  grid-column: 1 / -1;
-}
-
-.docked .tool {
-  grid-row: 1;
-  grid-column: 3;
-  margin-left: 8px;
-}
-
-.docked .hide {
-  grid-column: 2;
-}
-
-/* The space, as the list's title is set: the switcher looks like a heading until hovered. */
+/* Sans, as the switcher's card and rows name spaces, and as the list's title. */
 .title {
   flex: 1;
   min-width: 0;
   display: flex;
   margin: 0;
-  font: 400 21px/1 var(--font-serif);
-  letter-spacing: -0.01em;
+  font: 600 20px/1 var(--font-sans);
+  letter-spacing: -0.015em;
+  --switcher-icon: 26px;
 }
 
 /* Lines up with the rows' labels, past the expander column. */
@@ -163,6 +140,37 @@
 
 .docked .tool:hover {
   background: var(--hover);
+}
+
+/* As tall as the list's footer, so the two line up along the window's bottom. */
+.footer {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 37px;
+  padding: 0 8px 0 24px;
+}
+
+/* Its edge on the rows' edge, its icon in their labels' column. */
+.settings {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  margin: 0;
+  padding: 0 10px 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--ink-2);
+  font: 500 13px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.settings:hover {
+  background: var(--hover);
+  color: var(--ink);
 }
 
 .scroll {
@@ -278,9 +286,9 @@
     padding: calc(20px + env(safe-area-inset-top)) 16px 12px;
   }
 
-  /* As large as the list's title on a phone. */
   .title {
-    font-size: 30px;
+    font-size: 26px;
+    --switcher-icon: 30px;
   }
 
   .tool {

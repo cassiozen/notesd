@@ -141,7 +141,7 @@ struct NotesListView: View {
             }
             ToolbarItem(placement: .principal) {
                 if collapsed {
-                    Text(title).font(.custom("InstrumentSerif-Regular", size: 21)).foregroundStyle(Color.ink)
+                    Text(title).font(.notesListBarTitle).foregroundStyle(Color.ink)
                         .lineLimit(1)
                         .transition(.opacity)
                 } else {
@@ -218,7 +218,8 @@ struct NotesListView: View {
             SpaceIconImage(icon: space?.icon ?? "", size: 30)
             TraitGroup(traits: space?.traits ?? []) { nav.openSpaceInfo(graph.space) }
             Text(title)
-                .font(.notesDisplay)
+                .font(.notesSpaceName)
+                .tracking(-0.39)
                 .foregroundStyle(Color.ink)
                 .lineLimit(1)
                 .accessibilityAddTraits(.isHeader)

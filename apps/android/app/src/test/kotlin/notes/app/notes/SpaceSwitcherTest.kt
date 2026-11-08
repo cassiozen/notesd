@@ -2,6 +2,9 @@ package notes.app.notes
 
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertTouchHeightIsEqualTo
+import androidx.compose.ui.test.assertTouchWidthIsEqualTo
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -10,6 +13,8 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.assertEquals
 import notes.app.ui.NotesTheme
@@ -167,6 +172,17 @@ class SpaceSwitcherTest {
         compose.waitUntil { compose.onAllNodes(hasText("New space…")).fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithContentDescription("Space info").performClick()
         assertEquals(listOf("f", "f"), info)
+    }
+
+    @Test
+    fun `the trait button stands apart from the name, as tall, with a full-size target`() {
+        compose.setContent { NotesTheme(dark = false) { SpaceSwitcher(listOf(notes, work), "w", {}, {}) } }
+        val name = compose.onNodeWithContentDescription("Space: Work").getBoundsInRoot()
+        val traits = compose.onNodeWithContentDescription("Space info: Shared")
+        val button = traits.getBoundsInRoot()
+        assertEquals(6.dp, button.left - name.right)
+        assertEquals(name.height, button.height)
+        traits.assertTouchWidthIsEqualTo(48.dp).assertTouchHeightIsEqualTo(48.dp)
     }
 
     @Test

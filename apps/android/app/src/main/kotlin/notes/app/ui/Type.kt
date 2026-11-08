@@ -55,6 +55,18 @@ object Type {
         lineBreak = LineBreak.Heading
     )
     val title = TextStyle(fontFamily = Serif, fontSize = 22.sp, lineHeight = 26.sp, lineBreak = LineBreak.Heading)
+
+    /**
+     * The space switcher's name: sans, as the switcher names spaces. A thin serif looked lighter than the traits'
+     * button beside it.
+     */
+    val space = TextStyle(
+        fontFamily = Sans,
+        fontSize = 26.sp,
+        lineHeight = 30.sp,
+        fontWeight = FontWeight.SemiBold,
+        letterSpacing = (-0.015).em
+    )
     val lede = TextStyle(fontFamily = Sans, fontSize = 16.sp, lineHeight = 24.sp, lineBreak = LineBreak.Paragraph)
     val body = TextStyle(fontFamily = Sans, fontSize = 15.sp, lineHeight = 22.sp, lineBreak = LineBreak.Paragraph)
     val rowTitle = TextStyle(fontFamily = Sans, fontSize = 16.sp, lineHeight = 21.sp, fontWeight = FontWeight.Medium)

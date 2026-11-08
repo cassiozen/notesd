@@ -91,6 +91,7 @@ enum Traits {
 struct TraitGlyphs: View {
     let traits: [SpaceTrait]
     var spacing: CGFloat = 5
+    var scale: Image.Scale = .small
 
     var body: some View {
         HStack(spacing: spacing) {
@@ -99,7 +100,7 @@ struct TraitGlyphs: View {
                     .foregroundStyle(trait.problem == nil ? Color.ink3 : Color.danger)
             }
         }
-        .imageScale(.small)
+        .imageScale(scale)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Traits.spoken(traits))
     }
@@ -114,14 +115,19 @@ struct TraitGroup: View {
     var body: some View {
         if !traits.isEmpty {
             Button(action: onOpen) {
-                TraitGlyphs(traits: traits, spacing: 6)
-                    .font(.title3)
-                    .padding(.vertical, 6)
-                    .padding(.horizontal, 8)
-                    .background(Color.hover, in: .rect(cornerRadius: 10, style: .continuous))
-                    // Drawn smaller than a finger: the tap area keeps the full height.
-                    .frame(minHeight: 44)
-                    .contentShape(.rect)
+                ZStack {
+                    // A line of the space's name, unseen: the pill stands as tall as the switcher's highlight beside
+                    // it, at any text size.
+                    Text(verbatim: " ").font(.notesSpaceName).hidden()
+                    TraitGlyphs(traits: traits, spacing: 9, scale: .medium)
+                        .font(.custom("InstrumentSans-Regular", size: 16, relativeTo: .title))
+                }
+                .padding(.vertical, 4)
+                .padding(.horizontal, 9)
+                .background(Color.hover, in: .rect(cornerRadius: 10, style: .continuous))
+                // Drawn smaller than a finger: the tap area keeps the full height.
+                .frame(minHeight: 44)
+                .contentShape(.rect)
             }
             .buttonStyle(PressScaleStyle())
             .accessibilityLabel("Space info: \(Traits.spoken(traits))")

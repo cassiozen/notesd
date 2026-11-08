@@ -159,10 +159,10 @@ export function SpaceMenu({
           } else if (e.key === 'Escape' && open) close()
         }}
       >
-        <SpaceIcon space={space ?? { icon: '' }} size={24} />
+        <SpaceIcon space={space ?? { icon: '' }} size={26} />
         <span className={styles.name}>{name}</span>
         <span className={styles.chevron}>
-          <ChevronIcon />
+          <ChevronIcon size={14} />
         </span>
       </button>
       <TraitGroup traits={traits} onOpen={act(() => onInfo(current))} />

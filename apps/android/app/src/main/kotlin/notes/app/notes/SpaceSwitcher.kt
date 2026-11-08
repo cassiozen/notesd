@@ -33,7 +33,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
@@ -91,8 +90,9 @@ fun SpaceSwitcher(
     onSwitch: (String) -> Unit,
     onCreate: () -> Unit,
     modifier: Modifier = Modifier,
-    style: TextStyle = Type.title,
-    iconSize: Dp = 24.dp,
+    style: TextStyle = Type.space,
+    iconSize: Dp = 30.dp,
+    glyphSize: Dp = 16.dp,
     onInfo: (String) -> Unit = {},
     popup: Boolean = false,
     invites: List<SpaceInvite> = emptyList(),
@@ -113,16 +113,16 @@ fun SpaceSwitcher(
             space?.traits.orEmpty(),
             style = style,
             iconSize = iconSize,
-            iconGap = 10.dp,
+            iconGap = 8.dp,
+            glyphSize = glyphSize,
             nameArea = Modifier
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(10.dp))
                 .clickable(role = Role.Button) { open = true }
                 .semantics(mergeDescendants = true) { contentDescription = "Space: $name" }
-                .padding(horizontal = 6.dp, vertical = 4.dp),
+                .padding(start = 6.dp, end = 8.dp, top = 4.dp, bottom = 4.dp),
             afterName = {
-                Spacer(Modifier.width(4.dp))
-                // The chevron points right; turned down, it reads as a menu.
-                Icon(Icons.Chevron, null, Modifier.size(14.dp).rotate(90f), tint = t.ink3)
+                Spacer(Modifier.width(8.dp))
+                Icon(Icons.Disclosure, null, Modifier.size(10.dp, 6.dp), tint = t.ink2)
             },
             onTraits = { onInfo(current) }
         )
