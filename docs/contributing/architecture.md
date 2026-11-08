@@ -152,6 +152,21 @@ CREATE TABLE agent_spaces (space_id TEXT PRIMARY KEY REFERENCES spaces(id) ON DE
                            prompt TEXT, menu_label TEXT, updated_at INTEGER);
 CREATE TABLE agent_triggers (space_id TEXT REFERENCES agent_spaces(space_id) ON DELETE CASCADE, trigger TEXT,
                              prompt TEXT, PRIMARY KEY (space_id, trigger));
+-- Agents' runs: queued and running ones are the queue, finished ones the activity log (§7.11).
+CREATE TABLE agent_runs (id TEXT PRIMARY KEY, status TEXT, trigger TEXT, space_id TEXT, note_id TEXT, priority INTEGER,
+                         event_json TEXT, created_at INTEGER, started_at INTEGER, finished_at INTEGER, failure TEXT,
+                         not_before INTEGER, attempts INTEGER, model TEXT, tool_calls INTEGER, prompt_tokens INTEGER,
+                         completion_tokens INTEGER, outcome TEXT, message TEXT);
+-- Each note a run changed, before its first change and after its last: the diff, and what undo restores.
+CREATE TABLE agent_run_edits (run_id TEXT REFERENCES agent_runs(id) ON DELETE CASCADE, note_id TEXT, kind TEXT,
+                              before_revision INTEGER, before_title TEXT, before_content TEXT, after_revision INTEGER,
+                              after_title TEXT, after_content TEXT, written_at INTEGER, undone_at INTEGER,
+                              PRIMARY KEY (run_id, note_id));
+-- Tokens per day in the account's time zone, against the daily cap.
+CREATE TABLE agent_usage (day TEXT PRIMARY KEY, prompt_tokens INTEGER, completion_tokens INTEGER, runs INTEGER);
+-- Writing sessions in progress: a "done" trigger fires 2 minutes after the user's last change.
+CREATE TABLE agent_sessions (note_id TEXT PRIMARY KEY, kind TEXT, start_revision INTEGER, last_revision INTEGER,
+                             last_user_save_at INTEGER);
 
 CREATE TABLE applied_operations (
     operation_id  TEXT PRIMARY KEY,
@@ -575,6 +590,63 @@ A space's owner can publish it as a small website, by analogy with HEY World: ev
 - **Search.** The one dynamic page, and the only one that reads the database: FTS5 over the space's notes (§8), showing only what the site publishes, through a pool of 2 read connections to the file of its own, so searches never take the apps' connections. A few searches run at once (as many as the CPUs, at least 2), beyond which it answers `503` with `Retry-After`; each visitor (their address, or the one a proxy on a private address forwarded) may search 30 times a minute (`429`); answers are kept for a minute; results pages are `noindex`.
 - **Trait.** `published`: summary "At notes.example/@garden", exposure "Public at notes.example/@garden", audience `public`; problem "Publishing failed" when the last render failed.
 - **Apps.** The web app's Space info (the Mac app's too: it opens the server's) has a Published section (`settings/published-space.tsx`). Off, its owner publishes, sending the app's own origin. On: the address, its handle edited in place (asked first: the old address isn't redirected); Customize site, the section's page (§7.8), its row summarising what's set there; and Stop publishing. Customize site has the custom CSS, saved when Save is pressed, and the domain, saved the same way, asked first when emptied. For the domain the app says only what the proxy maps it onto (`/@<handle>`, with Copy) and links to the user guide, which has the steps for Caddy, nginx, Cloudflare Tunnel and other proxies: a proxy's setup is the docs' to keep, not the app's. A member sees the trait's summary. Every app shows publishing turned on or off at once: the space list carries the expected trait ("Publishing…" until the server gives its address) before the call returns, put back if it fails, and dropped once the list agrees. Turned off, the trait leaves the glyphs at once but still refuses locked notes until the server confirms (`Space.leaving`), since a note locked in between would be refused. On the web, each call syncs a device's own copy before reading the list again, as sharing does. Android's has the same section without Customize site, which is the web's to change (`sharing/PublishedSection.kt`): Publish, sending the address the app reaches the server by (`ApiClient.origin`), then the address with Open, Share (the system's sheet) and Change address (asked first), and Stop publishing; each call syncs after, so the trait and its lock rules arrive with the space list. iOS's is the same (`Settings/PublishedSection.swift`, `ApiClient.origin` in NotesCore), its handle a field in the form, Change Address asked in a confirmation dialog. In development, Vite proxies `/@<handle>/` to notesd like `/api`, leaving its own `/@vite/`, `/@fs/` and `/@id/`.
+### 7.11 Agents
+
+A space can have an agent: prompts the user writes, run by a model on the server when something
+happens to a note. It acts through tools on the notes in its own space and never sees a locked one.
+The user guide is [agents](../guides/using/agents.md).
+
+- **Provider.** One OpenAI-compatible chat completions API per server, set up by an admin
+  (`internal/llm`). The key stays in system.db. Test asks the model to call a tool; agents need
+  one that does.
+- **Triggers.** The notes store's in-transaction write hook (`notes.Store.OnWrite`) queues runs, so a
+  trigger commits or rolls back with its write. A delete queues *note deleted* with the note's last
+  title and content, since the tombstone has neither; a move queues *moved out* (as it left) and
+  *moved in*. A create or edit starts or extends a writing session (`agent_sessions`); the runner
+  ends it 2 minutes after the user's last change and queues *new note done* or *note edit done*
+  for the space the note is in then. A note moved to or from a shared space's file (§7.9) reaches
+  the hook as a move too: the file it left queues *moved out* and drops its session, the file it
+  came to *moved in*. Never a trigger: the agent's own writes, unchanged saves, writes sent with `X-Notesd-Sync` (a device's first sync, an import),
+  locked notes, and conflicted or recovered copies.
+- **Runner.** One worker per account runs its queue in order, editor triggers first, one run at a
+  time, so one at a time per note. It sleeps until a write queues a run or starts a session, or
+  the next of those is due. At most 4 provider calls run at once across accounts. With AI
+  removed the queue waits. A run is told notesd's instructions, the space's prompt and the trigger's
+  prompt, which stay the same from run to run so the provider can cache them, then the event: the
+  time in the account's time zone and the note. Each run logs where its time went: waiting, getting
+  ready, the model's calls and the tools'.
+- **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`. Write: `set_title`,
+  `edit_note` (find must match exactly once), `insert` (start or end),
+  `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a
+  note changed since), `create_note`. A write
+  can carry `done`, the run's summary: the run ends with it, without a model call just to say so. Nothing
+  deletes, moves or locks a note, or leaves the space; locked notes are left out of every listing
+  and search, not only hidden from reads. `get_cursor` and inserting at the cursor come with
+  the editor connection. Writes go through the store as ordinary
+  updates marked `agent: {runId, only: true}`, based on the revision the run read. If the note
+  changed since, the change is made to it as it is now, without starting over; one that no longer
+  fits (a find the user changed) comes back to the model with the note as it is now. The run's own
+  note deleted, moved or locked meanwhile stops the run. Its writes are the account's
+  (`updatedBy`, §7.9), so "Edited by" never names anyone else for them.
+- **Limits.** 20 tool calls, 150,000 tokens and 5 minutes per run; a daily token cap per account
+  (1,000,000 unless the admin sets one), which also stops a run that reaches it. Each call's tokens
+  are counted as it returns, so a crash can't spend tokens the cap never saw. A provider failure is retried once after 30 seconds if the
+  run changed nothing. The queue holds at most 500 runs per account.
+- **Record.** Each run keeps its status, tokens, the model's last line or why it failed, and for
+  each note it changed the text before and after (`agent_run_edits`), written in the same
+  transaction as the change. A *note deleted* run drops the note's text from its event when it
+  finishes, as the tombstone did. Finished runs are deleted after 30 days.
+- **Trait.** `agent` (§7.8) is on while the space's agent is on and has a prompt. Its summary names
+  the moments it has prompts for ("While you write · when you’re done"). Its exposure is the AI
+  provider ("Sent to the AI at api.example.com", audience `ai:<host>`): moving a note into the space
+  asks first, since its notes go there. With no AI set up it has no exposure and its problem is
+  "AI isn’t set up". The agent is set up from its row in Space info, the trait's settings; Turn on is
+  offered once AI is set up, or to resume a paused agent.
+- **Own spaces only.** Agents run in an account's own spaces, never a shared one (§7.9): a shared
+  space's file has no agent store and its writes reach no hook, its setup is `404 not_found`, and a
+  space whose agent is on can't be shared (`409 space_has_agent`); a paused agent goes with the
+  space's row when it's shared. Shared spaces would need their own answers first: whose AI settings
+  and token cap a run uses, who sees its Activity and can undo it, and where its setup is kept.
 
 ## 8. Search
 

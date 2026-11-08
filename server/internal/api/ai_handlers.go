@@ -46,6 +46,7 @@ func (s *Server) saveAISettings(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	s.aiChanged()
 	s.aiSettings(w, r)
 }
 
@@ -55,6 +56,7 @@ func (s *Server) deleteAISettings(w http.ResponseWriter, r *http.Request) {
 		s.writeErr(w, r, err)
 		return
 	}
+	s.aiChanged()
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -95,4 +97,10 @@ func (s *Server) testAISettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "model": res.Model, "latencyMs": res.Latency.Milliseconds()})
+}
+
+func (s *Server) aiChanged() {
+	if s.cfg.OnAIChanged != nil {
+		s.cfg.OnAIChanged()
+	}
 }

@@ -64,9 +64,10 @@ func (e *InputError) Error() string { return e.Field + ": " + e.Message }
 
 // Store holds an account's agent setup and settings, in its notes database.
 type Store struct {
-	db  *database.DB
-	now func() time.Time
-	tz  tzCache
+	db          *database.DB
+	now         func() time.Time
+	tz          tzCache
+	onScheduled func()
 }
 
 // NewStore returns a Store over an account's database.

@@ -60,10 +60,12 @@ import (
 
 	"golang.org/x/term"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
 	"notes/server/internal/images"
+	"notes/server/internal/llm"
 	"notes/server/internal/locks"
 	"notes/server/internal/mirror"
 	"notes/server/internal/search"
@@ -631,7 +633,35 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			return fmt.Errorf("%s: %w", u.Username, err)
 		}
 	}
-	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir}
+	runner := agent.NewRunner(agent.RunnerConfig{
+		Accounts: func(ctx context.Context) ([]int64, error) {
+			list, err := authSvc.ListUsers(ctx)
+			ids := make([]int64, len(list))
+			for i, u := range list {
+				ids[i] = u.ID
+			}
+			return ids, err
+		},
+		Exists: func(ctx context.Context, userID int64) (bool, error) {
+			_, err := authSvc.User(ctx, userID)
+			if errors.Is(err, auth.ErrNoUser) {
+				return false, nil
+			}
+			return err == nil, err
+		},
+		Open: func(ctx context.Context, userID int64) (agent.Account, error) {
+			d, err := users.Open(ctx, userID)
+			if err != nil {
+				return agent.Account{}, err
+			}
+			return agentAccount(d, userID), nil
+		},
+		Settings: func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) },
+		Provider: llm.NewClient(),
+		Log:      log,
+	})
+	users.OnAgentScheduled(runner.Wake)
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: runner.WakeAll}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
@@ -680,6 +710,14 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		<-published
 		_ = server.Publish().Close()
 	}()
+	runnerCtx, stopRunner := context.WithCancel(ctx)
+	runnerDone := make(chan struct{})
+	go func() {
+		defer close(runnerDone)
+		runner.Run(runnerCtx)
+	}()
+	// Runs in progress are recorded in the databases the caller closes next.
+	defer func() { stopRunner(); <-runnerDone }()
 	if mirr != nil {
 		mirrorCtx, stopMirror := context.WithCancel(ctx)
 		done := make(chan struct{})
@@ -950,4 +988,25 @@ func humanBytes(n int64) string {
 		return fmt.Sprintf("%.1f KiB", float64(n)/(1<<10))
 	}
 	return fmt.Sprintf("%d bytes", n)
+}
+
+// agentAccount is what agents need of an account's data.
+func agentAccount(d *userdata.Data, userID int64) agent.Account {
+	return agent.Account{
+		UserID: userID,
+		Notes:  d.Notes,
+		Agent:  d.Agent,
+		SpaceName: func(ctx context.Context, id string) string {
+			list, err := d.Spaces.List(ctx)
+			if err != nil {
+				slog.Warn("agent: list spaces for a name", "space", id, "err", err)
+			}
+			for _, sp := range list {
+				if sp.ID == id {
+					return sp.Name
+				}
+			}
+			return "another space"
+		},
+	}
 }

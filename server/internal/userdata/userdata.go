@@ -39,6 +39,7 @@ type Data struct {
 func New(db *database.DB) *Data {
 	d := newShared(db)
 	d.Agent = agent.NewStore(db)
+	d.Notes.OnWrite(d.Agent.OnWrite)
 	return d
 }
 
@@ -70,6 +71,7 @@ type Registry struct {
 	hooks         sync.RWMutex
 	onChange      []func(userID int64)
 	onSpaceChange []func(spaceID string)
+	onAgent       []func(userID int64)
 	onOpenUser    []func(userID int64, d *Data)
 	onOpenSpace   []func(spaceID string, d *Data)
 }
@@ -130,6 +132,23 @@ func (r *Registry) spaceChanged(spaceID string) {
 	}
 }
 
+// OnAgentScheduled adds fn, called when a write gives a user's agents
+// something new to wait for (see agent.Store.OnScheduled), also for
+// databases open already. fn must not block.
+func (r *Registry) OnAgentScheduled(fn func(userID int64)) {
+	r.hooks.Lock()
+	defer r.hooks.Unlock()
+	r.onAgent = append(r.onAgent, fn)
+}
+
+func (r *Registry) agentScheduled(userID int64) {
+	r.hooks.RLock()
+	defer r.hooks.RUnlock()
+	for _, fn := range r.onAgent {
+		fn(userID)
+	}
+}
+
 // Open returns a user's data, opening (and creating, for a new user) their
 // database the first time: migrations, then any pending rebuild of derived
 // data. A user added from the command line while the server runs is picked
@@ -151,6 +170,8 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 	}
 	d := New(db)
 	d.onCommit(func() { r.changed(userID) })
+	// Looked up when it fires, so a runner started after this database opened still hears it.
+	d.Agent.OnScheduled(func() { r.agentScheduled(userID) })
 	for _, fn := range r.onOpenUser {
 		fn(userID, d)
 	}
