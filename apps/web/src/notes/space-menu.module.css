@@ -1,9 +1,11 @@
-/* Pulled left so the name lines up with a title; on the anchor, not the button, whose
-   max-width: 100% would otherwise come out short by the margin and cut the name. */
+/* Pulled left so the icon, not the highlight, sits on the header's edge, as the list's title does; on the anchor, not the button, whose
+   max-width: 100% would otherwise come out short by the margin and cut the name. The gap keeps
+   the button's highlight off the trait group's fill: two buttons, two targets. */
 .anchor {
   position: relative;
   min-width: 0;
   display: inline-flex;
+  gap: 6px;
   margin-left: -6px;
 }
 
@@ -12,15 +14,20 @@
   max-width: 100%;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   margin: 0;
-  padding: 4px 6px;
+  padding: 4px 8px 4px 6px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: inherit;
   font: inherit;
   cursor: pointer;
+}
+
+.button > img {
+  width: var(--switcher-icon, 26px);
+  height: var(--switcher-icon, 26px);
 }
 
 .button:hover,
@@ -38,13 +45,12 @@
   text-overflow: ellipsis;
 }
 
-/* The chevron points right; turned down, it reads as a menu. Small and quiet: until hovered,
-   the switcher reads as a title rather than a field. */
+/* The chevron points right; turned down, it reads as a menu. */
 .chevron {
   flex: none;
   display: grid;
   place-items: center;
-  color: var(--ink-3);
+  color: var(--ink-2);
   transform: rotate(90deg);
 }
 

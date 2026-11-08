@@ -1,6 +1,6 @@
 import { useId, useMemo, useState, type CSSProperties, type KeyboardEvent, type Ref } from 'react'
 import type { Space, TagCount } from '../api/types'
-import { dragRegion } from '../desktop'
+import { dragRegion, useWindowButtons } from '../desktop'
 import { ChevronIcon, HashIcon, LockIcon, SettingsIcon, SidebarIcon } from '../ui/icons'
 import { SpaceMenu, type SpaceInvite } from './space-menu'
 import { DEFAULT_SPACE } from './spaces'
@@ -149,6 +149,16 @@ export function TagsPanel({
     )
   }
 
+  // Docked, the switcher gets the top row to itself, level with the list's title; the tools go to the bottom,
+  // level with the list's count. The macOS app keeps them up top, beside the window buttons.
+  const windowButtons = useWindowButtons()
+  const footer = !!onHide && !windowButtons
+  const hideButton = onHide && (
+    <button ref={hideRef} type="button" className={[styles.tool, styles.hide].join(' ')} onClick={onHide} aria-label="Hide sidebar" title="Hide sidebar">
+      <SidebarIcon />
+    </button>
+  )
+
   return (
     <nav
       className={[styles.panel, onHide ? styles.docked : '', hidden ? styles.collapsed : ''].join(' ')}
@@ -162,21 +172,12 @@ export function TagsPanel({
           <h1 className={styles.title}>
             <SpaceMenu spaces={spaces ?? [DEFAULT]} current={space} onSwitch={onSpace} onCreate={onNewSpace} onInfo={onSpaceInfo} {...sharing} />
           </h1>
-          {onHide && (
-            <button
-              ref={hideRef}
-              type="button"
-              className={[styles.tool, styles.hide].join(' ')}
-              onClick={onHide}
-              aria-label="Hide sidebar"
-              title="Hide sidebar"
-            >
-              <SidebarIcon />
+          {!footer && hideButton}
+          {!footer && (
+            <button type="button" className={styles.tool} onClick={onSettings} aria-label="Settings" title="Settings">
+              <SettingsIcon size={onHide ? 16 : 17} />
             </button>
           )}
-          <button type="button" className={styles.tool} onClick={onSettings} aria-label="Settings" title="Settings">
-            <SettingsIcon size={onHide ? 16 : 17} />
-          </button>
         </div>
         <div className={styles.scroll} onKeyDown={onKeyDown}>
           <ul className={styles.list} aria-label="Show">
@@ -240,6 +241,15 @@ export function TagsPanel({
             )}
           </section>
         </div>
+        {footer && (
+          <div className={styles.footer}>
+            <button type="button" className={styles.settings} onClick={onSettings}>
+              <SettingsIcon />
+              Settings
+            </button>
+            {hideButton}
+          </div>
+        )}
       </div>
     </nav>
   )

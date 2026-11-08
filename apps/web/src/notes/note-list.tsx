@@ -1,7 +1,7 @@
 import { memo, useEffect, useId, useMemo, useRef, useState, type MouseEvent, type PointerEvent, type ReactNode, type Ref } from 'react'
 import type { Space } from '../api/types'
 import { useAuth } from '../auth/auth-context'
-import { dragRegion } from '../desktop'
+import { dragRegion, useWindowButtons } from '../desktop'
 import { Button } from '../ui/button'
 import { LockIcon, PlusIcon, SearchIcon, SidebarIcon } from '../ui/icons'
 import { groupByDate, listTime, useMidnight } from './list-time'
@@ -62,6 +62,24 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
   // The sidebar beside the list, showing.
   const docked = tags === null
 
+  // Where the docked sidebar's Hide was, at the bottom of the seam between them; the macOS app keeps it up
+  // top, beside the window buttons.
+  const windowButtons = useWindowButtons()
+  const showTagsButton = (
+    <button
+      ref={showTagsRef}
+      type="button"
+      className={[styles.showTags, styles.reveal, windowButtons ? '' : styles.showTagsBelow].join(' ')}
+      data-shown={docked ? undefined : ''}
+      inert={docked}
+      onClick={onTags}
+      aria-label="Show sidebar"
+      title="Show sidebar"
+    >
+      <SidebarIcon />
+    </button>
+  )
+
   const midnight = useMidnight()
   // midnight isn't read: it's there so the sections move on with the day, not only when the notes change.
   // oxlint-disable-next-line react-hooks/exhaustive-deps, react/memo-dependencies
@@ -107,20 +125,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
               </button>
             )}
           </h1>
-          {tags !== 'back' && (
-            <button
-              ref={showTagsRef}
-              type="button"
-              className={[styles.showTags, styles.reveal].join(' ')}
-              data-shown={docked ? undefined : ''}
-              inert={docked}
-              onClick={onTags}
-              aria-label="Show sidebar"
-              title="Show sidebar"
-            >
-              <SidebarIcon />
-            </button>
-          )}
+          {tags !== 'back' && windowButtons && showTagsButton}
           {!mobile &&
             // Sidebar hidden, the column is narrow: the label goes so the space's traits and the title fit, in every space alike.
             (tags === 'show' ? (
@@ -262,6 +267,7 @@ export function NoteList({ selectedId, query, onQuery, onSelect, onSelectElsewhe
       </div>
 
       <div className={styles.footer}>
+        {tags !== 'back' && !windowButtons && showTagsButton}
         <span className={styles.count} aria-live="polite">
           {count}
         </span>

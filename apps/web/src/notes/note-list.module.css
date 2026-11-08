@@ -396,11 +396,20 @@
 }
 
 .footer {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 10px;
   min-height: 37px;
   padding: 9px 14px;
+}
+
+/* Out of the flow, so the count stays centred. */
+.showTagsBelow {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  margin-top: -14px;
 }
 
 .count {

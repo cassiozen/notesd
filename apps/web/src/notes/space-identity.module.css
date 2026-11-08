@@ -15,13 +15,15 @@
   color: var(--danger);
 }
 
-/* Filled at rest: it reads as one group, and as something to press. */
+/* Filled at rest: it reads as one group, and as something to press. At least as tall as the
+   switcher's highlight, which it stretches to beside the switcher. */
 .group {
   flex: none;
   display: grid;
   place-items: center;
+  min-height: 32px;
   margin: 0;
-  padding: 6px 8px;
+  padding: 0 9px;
   border: 0;
   border-radius: 10px;
   background: var(--hover);
@@ -29,7 +31,7 @@
 }
 
 .group .glyphs {
-  gap: 6px;
+  gap: 9px;
 }
 
 .group:hover {
