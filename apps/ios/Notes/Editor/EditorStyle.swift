@@ -55,7 +55,9 @@ nonisolated struct EditorStyle {
         let unit = body / 17
         p.firstLineHeadIndent = indent
         p.headIndent = indent
-        p.lineHeightMultiple = 1.18
+        // The web's line heights (1.6 for text, 1.45 for quotes) over the faces' own: Instrument
+        // Sans is 1.22 tall, Instrument Serif 1.3.
+        p.lineHeightMultiple = attr.quoted && attr.leaf == .paragraph ? 1.45 / 1.3 : 1.6 / 1.22
         // The title and headings keep their own space below, close to the text they head,
         // unless what follows needs more.
         let wide = attr.gap == .block ? space(.block) : 0

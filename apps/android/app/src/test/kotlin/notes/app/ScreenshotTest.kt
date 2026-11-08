@@ -18,6 +18,8 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
+import notes.app.editor.PROSE_MARKDOWN
+import notes.app.editor.PROSE_TITLE
 import notes.app.editor.SAMPLE_MARKDOWN
 import notes.app.editor.SAMPLE_TITLE
 import notes.core.api.RemoteNote
@@ -260,6 +262,25 @@ class ScreenshotTest {
     @Test fun editorCodeLight() = code("light", null)
 
     @Test fun editorCodeDark() = code("dark", "+night")
+
+    /** [PROSE_MARKDOWN]: paragraphs, a list, a quote and a picture, to judge spacing and line height by. */
+    private fun prose(suffix: String, qualifiers: String?) = runBlocking {
+        graph.setOnboardingDismissed(true)
+        val at = System.currentTimeMillis()
+        graph.sync.store.applyPage(
+            SyncPage(listOf(RemoteNote("p", PROSE_TITLE, PROSE_MARKDOWN, 1, 1, at, at)), 1, false, "g")
+        )
+        launch(qualifiers)
+        compose.waitUntilExactlyOneExists(hasText(PROSE_TITLE))
+        compose.onNode(hasText(PROSE_TITLE)).performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Undo"))
+        waitForEditor()
+        shoot("editor-prose-$suffix")
+    }
+
+    @Test fun editorProseLight() = prose("light", null)
+
+    @Test fun editorProseDark() = prose("dark", "+night")
 
     @Test fun editorLight() = editor("light", null)
 

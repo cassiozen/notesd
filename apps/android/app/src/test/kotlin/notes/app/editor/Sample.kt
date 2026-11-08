@@ -31,3 +31,35 @@ val SAMPLE_MARKDOWN = """
     |
     |Run `make deploy` when back.
 """.trimMargin() + "\n"
+
+/** Text-heavy, for judging spacing and line height: paragraphs in a row, a list between them, a quote, a picture. */
+const val PROSE_TITLE = "Typography"
+
+val PROSE_MARKDOWN = """
+    |# Saturday
+    |
+    |Pick up the **bike** from the shop before noon, then take the long way back along the river. If it rains, swap the ride for the museum.
+    |
+    |Tickets are cheaper before ten, and the café on the top floor opens at nine.
+    |
+    |- Groceries
+    |  - Bread
+    |  - Coffee beans
+    |- Laundry
+    |
+    |Back home by six.
+    |
+    |### Packing
+    |
+    |> Rest is part of the plan.
+    |>
+    |> Leave the laptop at home.
+    |
+    |![A sketch of the route](notesd:image/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa?w=320&h=120)
+    |
+    |```sh
+    |rsync -av ~/photos /backup
+    |```
+    |
+    |Run `make deploy` when back.
+""".trimMargin() + "\n"

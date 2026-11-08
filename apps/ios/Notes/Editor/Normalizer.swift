@@ -31,7 +31,7 @@ nonisolated struct Normalizer {
         let infos = assign(text, ranges)
         let markers = markers(infos)
         let edges = quoteEdges(infos)
-        let gaps = gaps(infos, edges)
+        let gaps = gaps(infos, edges, pictures: ranges.map { hasPicture(text, $0) })
         var changed = IndexSet()
         for (k, r) in ranges.enumerated() {
             let info = infos[k]
@@ -187,16 +187,29 @@ nonisolated struct Normalizer {
         }
     }
 
-    /// The space after each line: wide around quotes and raw blocks, narrow inside a list.
-    private static func gaps(_ infos: [Info], _ edges: [QuoteEdges]) -> [Gap] {
+    /// The space after each line: wide around quotes, raw blocks and pictures, narrow inside a list.
+    private static func gaps(_ infos: [Info], _ edges: [QuoteEdges], pictures: [Bool]) -> [Gap] {
         infos.indices.map { k in
             guard k + 1 < infos.count else { return .paragraph }
             let next = infos[k + 1]
-            if isRaw(infos[k].leaf) || isRaw(next.leaf) || edges[k].ends > 0 || edges[k + 1].starts > 0 {
+            if isRaw(infos[k].leaf) || isRaw(next.leaf) || pictures[k] || pictures[k + 1] || edges[k].ends > 0
+                || edges[k + 1].starts > 0
+            {
                 return .block
             }
             return sameList(infos[k].path, next.path) ? .item : .paragraph
         }
+    }
+
+    private static func hasPicture(_ text: NSAttributedString, _ block: BlockRange) -> Bool {
+        var found = false
+        text.enumerateAttribute(.attachment, in: block.content) { value, _, stop in
+            if (value as? RawAttachment)?.picture != nil {
+                found = true
+                stop.pointee = true
+            }
+        }
+        return found
     }
 
     /// Both lines are in one list, at whatever depth: they share its outermost item's list.

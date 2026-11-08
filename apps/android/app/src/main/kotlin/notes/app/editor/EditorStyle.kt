@@ -84,8 +84,11 @@ class EditorStyle(
         textSize = bodySize * rawScale
     }.measureText("    ").toInt()
 
-    /** The view's line spacing multiplier; spans that size lines account for it. */
-    val lineSpacing = 1.5f
+    /**
+     * The view's line spacing multiplier; spans that size lines account for it. The web's 1.6
+     * line height over Instrument Sans's own 1.22.
+     */
+    val lineSpacing = 1.6f / 1.22f
 
     /** Space after a line, as the web's margins (editor.module.css); from the body size, so it scales with it. */
     fun space(gap: Gap): Float = when (gap) {

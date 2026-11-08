@@ -7,6 +7,7 @@ import notes.core.doc.Container
 import notes.core.doc.Ids
 import notes.core.doc.Leaf
 import notes.core.doc.ListKind
+import notes.core.images.ImageRef
 import notes.core.text.OBJECT
 import notes.core.text.scanTags
 
@@ -46,7 +47,7 @@ class Normalizer(private val style: EditorStyle, private val images: ImageSpans?
         }
         val markers = markers(infos)
         val edges = quoteEdges(infos)
-        val gaps = gaps(infos, edges)
+        val gaps = gaps(infos, edges, ranges.map { hasPicture(text, it) })
         applyBlockSpans(text, ranges, infos, markers, gaps, edges)
         applyLeafStyles(text, ranges, infos, gaps)
         clipMarks(text, ranges, infos)
@@ -246,18 +247,24 @@ class Normalizer(private val style: EditorStyle, private val images: ImageSpans?
         quotes.count { it !in above } to quotes.count { it !in below }
     }
 
-    /** The space after each block: wide around quotes and raw blocks, narrow inside a list. */
-    private fun gaps(infos: List<Info>, edges: List<Pair<Int, Int>>): List<Gap> = infos.indices.map { k ->
-        val next = infos.getOrNull(k + 1) ?: return@map Gap.Paragraph
-        when {
-            infos[k].leaf is Leaf.Raw || next.leaf is Leaf.Raw || edges[k].second > 0 || edges[k + 1].first > 0 ->
-                Gap.Block
-
-            sameList(infos[k].path, next.path) -> Gap.Item
-
-            else -> Gap.Paragraph
+    /** The space after each block: wide around quotes, raw blocks and pictures, narrow inside a list. */
+    private fun gaps(infos: List<Info>, edges: List<Pair<Int, Int>>, pictures: List<Boolean>): List<Gap> =
+        infos.indices.map { k ->
+            val next = infos.getOrNull(k + 1) ?: return@map Gap.Paragraph
+            val wide = infos[k].leaf is Leaf.Raw || next.leaf is Leaf.Raw || pictures[k] || pictures[k + 1] ||
+                edges[k].second > 0 || edges[k + 1].first > 0
+            when {
+                wide -> Gap.Block
+                sameList(infos[k].path, next.path) -> Gap.Item
+                else -> Gap.Paragraph
+            }
         }
-    }
+
+    private fun hasPicture(text: Spanned, r: Range) =
+        text.getSpans(r.start, r.contentEnd, RawInlineSpan::class.java).any {
+            text.getSpanStart(it) >= r.start && text.getSpanEnd(it) <= r.contentEnd &&
+                ImageRef.parse(it.source) != null
+        }
 
     /** Both blocks are in one list, at whatever depth: they share its outermost item's list. */
     private fun sameList(a: List<Container>, b: List<Container>): Boolean {

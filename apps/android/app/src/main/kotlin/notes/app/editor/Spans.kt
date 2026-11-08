@@ -61,6 +61,15 @@ class BlockSpan(
         this.path == path && this.leaf == leaf && this.marker == marker && this.gap == gap &&
             this.quoteEnds == quoteEnds
 
+    /** How far the line's letters reach below the baseline, in the block's own type size. */
+    private fun textDescent(text: Spanned, at: Int, p: Paint): Float {
+        val tp = TextPaint(p)
+        text.getSpans(at, at, LeafStyleSpan::class.java)
+            .firstOrNull { text.getSpanStart(it) <= at && at < text.getSpanEnd(it) }
+            ?.updateMeasureState(tp)
+        return tp.descent()
+    }
+
     /** The space under [end]'s line that belongs to the gap after the block, not to the block. */
     private fun gapUnder(text: CharSequence, end: Int): Float {
         val spanned = text as? Spanned ?: return 0f
@@ -95,18 +104,24 @@ class BlockSpan(
         val savedColor = p.color
         val savedStyle = p.style
         var offset = 0f
-        // A quote that ends here stops its bar with its text, not across the gap to the next block.
+        // A quote that ends here stops its bar with its text, not in the space between it and the next block.
         val levels = path.count { it is Container.Quote }
-        // Layout passes the line's visible end here, short of its "\n"; the gap needs the real one.
+        val spanned = text as? Spanned
+        // Layout passes the line's visible end here, short of its "\n".
         val lineEnd = layout?.let { it.getLineEnd(it.getLineForOffset(start)) } ?: end
-        val under = gapUnder(text, lineEnd)
+        val ends = if (spanned != null && lineEnd >= spanned.getSpanEnd(this)) quoteEnds else 0
+        val textBottom = if (spanned != null && ends > 0) {
+            baseline + textDescent(spanned, start, p)
+        } else {
+            bottom.toFloat()
+        }
         var level = 0
         for (container in path) {
             if (container is Container.Quote) {
                 p.color = style.ink3
                 p.style = Paint.Style.FILL
                 val left = if (dir > 0) x + offset else x - offset - style.quoteBar
-                val barBottom = bottom - if (level >= levels - quoteEnds) under else 0f
+                val barBottom = if (level >= levels - ends) textBottom else bottom.toFloat()
                 c.drawRect(left, top.toFloat(), left + style.quoteBar, barBottom, p)
                 offset += style.quoteIndent
                 level++
@@ -114,7 +129,6 @@ class BlockSpan(
                 offset += style.itemIndent
             }
         }
-        val spanned = text as? Spanned
         if (marker != null && first && spanned != null && spanned.getSpanStart(this) == start) {
             drawMarker(c, p, x, dir, baseline)
         }
@@ -315,12 +329,18 @@ class LeafStyleSpan(
         // so solve for a descent that lands the next line where the heading wants
         // it. The text's last line gets no spacing and has no next line.
         val last = end >= spanned.getSpanEnd(this)
+        val m = style.lineSpacing
         if (leaf is Leaf.Heading && end < text.length) {
             // Close to the text it heads, unless what follows needs more.
             val wide = if (gap == Gap.Block) style.space(gap) else 0f
             val after = if (last) maxOf(height * 0.27f, wide) else height * 0.1f
             val want = fm.descent + after.toInt()
-            val m = style.lineSpacing
+            fm.descent = ((want + fm.ascent * (m - 1)) / m).roundToInt()
+        }
+        // A quote's lines as on the web (line-height 1.45; Instrument Serif is 1.3 tall), not the
+        // view's spacing, which is for the sans. The gap after the block comes on top, below.
+        if (quoted && leaf == Leaf.Paragraph && end < text.length) {
+            val want = fm.descent + (height * (1.45f / 1.3f - 1)).toInt()
             fm.descent = ((want + fm.ascent * (m - 1)) / m).roundToInt()
         }
         if (below > 0 && last) {
