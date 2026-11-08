@@ -85,13 +85,113 @@ public final class SyncStore: Sendable {
         set { fault.withLock { $0 = newValue } }
     }
 
-    public func state() async throws -> SyncState {
+    /// The account's feed's state, or (`feed`) a shared space's, with the account's last sync and error.
+    public func state(feed: String = "") async throws -> SyncState {
         try await db.read { sql in
-            try sql.one("SELECT cursor, generation, full_sync, last_sync_at, last_error FROM sync_state WHERE id = 1") {
+            var own = try sql.one(
+                "SELECT cursor, generation, full_sync, last_sync_at, last_error FROM sync_state WHERE id = 1"
+            ) {
                 SyncState(
                     cursor: $0.int64(0), generation: $0.textOrNil(1), fullSync: $0.int64(2) == 1,
                     lastSyncAt: $0.int64OrNil(3), lastError: $0.textOrNil(4))
             }!
+            if feed.isEmpty { return own }
+            let row = try sql.one("SELECT cursor, generation, full_sync FROM feeds WHERE space_id = ?", feed) {
+                ($0.int64(0), $0.textOrNil(1), $0.int64(2) == 1)
+            }
+            (own.cursor, own.generation, own.fullSync) = row ?? (0, nil, false)
+            return own
+        }
+    }
+
+    /// The signed-in account's id, so its own edits are told from other members' (§7.9).
+    public func setUserId(_ id: Int64) async throws {
+        try await db.write { sql in
+            try sql.exec("UPDATE sync_state SET user_id = ? WHERE id = 1", id > 0 ? id : nil)
+        }
+    }
+
+    public func userId() async throws -> Int64? {
+        try await db.read { sql in
+            try sql.one("SELECT user_id FROM sync_state WHERE id = 1") { $0.int64OrNil(0) } ?? nil
+        }
+    }
+
+    /// The shared spaces' feeds, as the space list last made them.
+    public func feeds() async throws -> [String] {
+        try await db.read { sql in try sql.query("SELECT space_id FROM feeds ORDER BY space_id") { $0.text(0) } }
+    }
+
+    /// A feed for each shared space in the list, and none for one no longer in it (left, removed, deleted): its
+    /// notes and merge records leave the device (§7.9), but an edit not yet synced becomes a recovered copy in the
+    /// default space first, since the space may be gone for reasons this device never warned about. A new feed
+    /// counts as seen now, so what was there before this device joined isn't news.
+    @discardableResult
+    public func syncFeeds() async throws -> [SyncEvent] {
+        let now = clock()
+        return try await db.write { sql in
+            var events: [SyncEvent] = []
+            try sql.exec("INSERT OR IGNORE INTO feeds (space_id) SELECT id FROM spaces WHERE shared IS NOT NULL")
+            try sql.exec("UPDATE spaces SET visited_at = ? WHERE shared IS NOT NULL AND visited_at IS NULL", now)
+            let gone = try sql.query(
+                "SELECT space_id FROM feeds WHERE space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)"
+            ) { $0.text(0) }
+            for feed in gone {
+                for note in try sql.query("SELECT \(noteColumns) FROM notes WHERE space_id = ?", feed, row: noteRow) {
+                    // Moved into it here, the move not yet sent: the server still has it where it was, so it goes
+                    // back. Sent but not answered, the server may have it here: kept only as a copy, below.
+                    if let back = note.baseSpaceId, note.serverRevision != nil, back != feed, !gone.contains(back),
+                        try sql.reaches(back), try !sql.sentAny(note.id)
+                    {
+                        try sql.exec("UPDATE notes SET space_id = ? WHERE id = ?", back, note.id)
+                        if note.deletedAt == nil {
+                            try sql.queueText(
+                                note.id, title: note.title, content: note.content, spaceId: back, now: now)
+                        }
+                        continue
+                    }
+                    if note.dirty && note.deletedAt == nil {
+                        let title = copyTitle(note.title, recoveredSuffix)
+                        let copy = try sql.insertCopy(
+                            title: title, content: note.content, conflictOf: nil, spaceId: Spaces.defaultId, now: now)
+                        events.append(.recoveredCopy(copyId: copy, title: title))
+                    }
+                    try sql.unindex(note.id)
+                    try sql.forgetMerge(note.id)
+                    try sql.forgetImages(note.id)
+                    try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                    try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+                }
+                // Moved out of it here, the move not yet sent: the server's copy is out of reach now, so the note
+                // goes to the server again, as new, where it is. Sent but not answered, the move may have landed:
+                // sent again, its answer is found where the note went.
+                let strays = try sql.query(
+                    """
+                    SELECT \(noteColumns) FROM notes n
+                    WHERE base_space_id = ? AND space_id != ? AND server_revision IS NOT NULL
+                        AND NOT EXISTS (SELECT 1 FROM sync_outbox o WHERE o.note_id = n.id AND o.sent = 1)
+                    """, feed, feed, row: noteRow)
+                for note in strays {
+                    try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
+                    if note.deletedAt != nil {
+                        try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+                        continue
+                    }
+                    try sql.exec(
+                        """
+                        UPDATE notes SET server_revision = NULL, server_change_seq = NULL, dirty = 1, base_title = NULL,
+                            base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                        WHERE id = ?
+                        """,
+                        note.id)
+                    let payload = Payload(
+                        title: note.title, content: note.content, createdAt: note.createdAt,
+                        updatedAt: note.updatedAt, conflictOf: note.conflictOf, spaceId: note.spaceId)
+                    try sql.enqueue(note.id, type: createOp, payload: payload, now: now)
+                }
+                try sql.exec("DELETE FROM feeds WHERE space_id = ?", feed)
+            }
+            return events
         }
     }
 
@@ -259,50 +359,107 @@ public final class SyncStore: Sendable {
         }
     }
 
+    /// The server refused `op` because it would put a locked body in a shared space (§7.9): locked offline, then
+    /// shared from another device. The locked version becomes a recovered copy in the default space, where it can
+    /// be locked, and the note goes back to the server's version, as the space's members have it.
+    public func lockedOut(_ op: Operation) async throws -> SyncEvent? {
+        let now = clock()
+        return try await db.write { sql in
+            guard let note = try sql.note(op.noteId) else { return nil }
+            let title = copyTitle(note.title, recoveredSuffix)
+            let copy = try sql.insertCopy(
+                title: title, content: note.content, conflictOf: nil, spaceId: Spaces.defaultId, now: now)
+            try self.dropOps(sql, note.id)
+            if note.serverRevision == nil {
+                // The server never had it: the copy is all of it.
+                try sql.unindex(note.id)
+                try sql.forgetImages(note.id)
+                try sql.exec("DELETE FROM notes WHERE id = ?", note.id)
+            } else {
+                let title0 = note.baseTitle ?? note.title
+                let content0 = note.baseContent ?? note.content
+                try sql.exec(
+                    """
+                    UPDATE notes SET title = ?, content = ?, space_id = COALESCE(base_space_id, space_id), dirty = 0,
+                        base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                    WHERE id = ?
+                    """,
+                    title0, content0, note.id)
+                try sql.index(note.id, title: title0, content: content0)
+            }
+            return .recoveredCopy(copyId: copy, title: title)
+        }
+    }
+
     /// `op` lost to a newer server version: the request recorded nothing, so drop it and reconcile with `current`.
     public func conflict(_ op: Operation, current: RemoteNote) async throws -> [SyncEvent] {
         try await db.write { sql in
             try sql.exec("DELETE FROM sync_outbox WHERE operation_id = ?", op.operationId)
             try sql.rememberRemoteImages(current)
             var events: [SyncEvent] = []
-            try self.reconcile(sql, current, &events, fullSync: false)
+            // The feed the server's version came from: wherever the note is now, which the server found.
+            try self.reconcile(sql, current, &events, fullSync: false, feed: try sql.feedOf(current.spaceId))
             return events
         }
     }
 
     // MARK: pull
 
-    /// Applies one page of the feed and stores the cursor it leads to, together.
-    public func applyPage(_ page: SyncPage) async throws -> [SyncEvent] {
+    /// Applies one page of `feed` (the account's, or a shared space's) and stores the cursor it leads to, together.
+    public func applyPage(_ page: SyncPage, feed: String = "") async throws -> [SyncEvent] {
         try await db.write { sql in
             var events: [SyncEvent] = []
-            let fullSync = try sql.int64("SELECT full_sync FROM sync_state WHERE id = 1") == 1
+            let fullSync =
+                feed.isEmpty
+                ? try sql.int64("SELECT full_sync FROM sync_state WHERE id = 1") == 1
+                : try sql.int64("SELECT count(*) FROM feeds WHERE space_id = ? AND full_sync = 1", feed) > 0
             for remote in page.changes {
                 try sql.rememberRemoteImages(remote)
-                try self.reconcile(sql, remote, &events, fullSync: fullSync)
+                try self.reconcile(sql, remote, &events, fullSync: fullSync, feed: feed)
                 if fullSync { try sql.exec("UPDATE notes SET full_sync_seen = 1 WHERE id = ?", remote.id) }
             }
-            try sql.exec(
-                "UPDATE sync_state SET cursor = ?, generation = ? WHERE id = 1", page.nextCursor, page.generation)
-            if fullSync && !page.hasMore { try self.finishFullSync(sql) }
+            if feed.isEmpty {
+                try sql.exec(
+                    "UPDATE sync_state SET cursor = ?, generation = ? WHERE id = 1", page.nextCursor, page.generation)
+            } else {
+                try sql.exec(
+                    "UPDATE feeds SET cursor = ?, generation = ? WHERE space_id = ?", page.nextCursor, page.generation,
+                    feed)
+            }
+            if fullSync && !page.hasMore { try self.finishFullSync(sql, feed: feed) }
             return events
         }
     }
 
     /// The server was restored from a backup: pull everything again from the
     /// start. What the full pull doesn't see is re-created on the server when
-    /// it ends; missing after a restore never means deleted.
-    public func startFullSync() async throws {
+    /// it ends; missing after a restore never means deleted. Per feed: a shared
+    /// space's file is restored on its own.
+    public func startFullSync(feed: String = "") async throws {
         try await db.write { sql in
-            try sql.exec("UPDATE sync_state SET cursor = 0, generation = NULL, full_sync = 1 WHERE id = 1")
-            try sql.exec("UPDATE notes SET full_sync_seen = 0")
+            if feed.isEmpty {
+                try sql.exec("UPDATE sync_state SET cursor = 0, generation = NULL, full_sync = 1 WHERE id = 1")
+            } else {
+                try sql.exec(
+                    "UPDATE feeds SET cursor = 0, generation = NULL, full_sync = 1 WHERE space_id = ?", feed)
+            }
+            let (inFeed, args) = Self.notesIn(feed)
+            try sql.execArray("UPDATE notes SET full_sync_seen = 0 WHERE \(inFeed)", args)
         }
     }
 
-    private func finishFullSync(_ sql: Sql) throws {
+    /// The notes of `feed`: a shared space's, or the account's (every space that isn't shared).
+    private static func notesIn(_ feed: String) -> (String, [(any SQLValue)?]) {
+        feed.isEmpty
+            ? ("space_id NOT IN (SELECT id FROM spaces WHERE shared IS NOT NULL)", []) : ("space_id = ?", [feed])
+    }
+
+    private func finishFullSync(_ sql: Sql, feed: String) throws {
         let now = clock()
-        let missing = try sql.query(
-            "SELECT \(noteColumns) FROM notes WHERE full_sync_seen = 0 AND server_revision IS NOT NULL", row: noteRow)
+        let (inFeed, args) = Self.notesIn(feed)
+        let missing = try sql.queryArray(
+            "SELECT \(noteColumns) FROM notes WHERE full_sync_seen = 0 AND server_revision IS NOT NULL AND \(inFeed)",
+            args, row: noteRow)
         for note in missing {
             try sql.exec("DELETE FROM sync_outbox WHERE note_id = ?", note.id)
             if note.deletedAt != nil {
@@ -324,7 +481,11 @@ public final class SyncStore: Sendable {
                 conflictOf: note.conflictOf, spaceId: note.spaceId)
             try sql.enqueue(note.id, type: createOp, payload: payload, now: now)
         }
-        try sql.exec("UPDATE sync_state SET full_sync = 0 WHERE id = 1")
+        if feed.isEmpty {
+            try sql.exec("UPDATE sync_state SET full_sync = 0 WHERE id = 1")
+        } else {
+            try sql.exec("UPDATE feeds SET full_sync = 0 WHERE space_id = ?", feed)
+        }
     }
 
     public func finished(error: String?) async throws {
@@ -337,9 +498,32 @@ public final class SyncStore: Sendable {
 
     // MARK: reconcile (§4.6): the one routine for pushes that lost and pulled changes
 
-    private func reconcile(_ sql: Sql, _ remote: RemoteNote, _ events: inout [SyncEvent], fullSync: Bool) throws {
+    private func reconcile(
+        _ sql: Sql, _ remote: RemoteNote, _ events: inout [SyncEvent], fullSync: Bool, feed: String = ""
+    ) throws {
         guard let local = try sql.note(remote.id) else {
             if remote.deletedAt == nil { try overwrite(sql, nil, remote) }
+            return
+        }
+        // A note in another file than this feed's, as far as this device knows (§7.9).
+        let elsewhere = try sql.serverSpace(local).map { try sql.feedOf($0) != feed } ?? false
+        if remote.deletedAt != nil, let movedTo = remote.movedTo {
+            // Left this feed: already followed (the move was ours, or the destination's feed came first), or follow it.
+            if elsewhere { return }
+            if try Self.follows(sql, remote, movedTo) { return try follow(sql, local, movedTo) }
+            // Moved where this device can't follow: for it, a deletion.
+            var deleted = remote
+            deleted.movedTo = nil
+            return try reconcile(sql, deleted, &events, fullSync: fullSync, feed: feed)
+        }
+        if elsewhere && remote.deletedAt == nil && !fullSync {
+            // Arrived from another file: its revisions there aren't comparable with the ones this device has.
+            let ops = try sql.int64("SELECT count(*) FROM sync_outbox WHERE note_id = ?", local.id)
+            if !local.dirty && ops == 0 {
+                try overwrite(sql, local, remote)
+            } else {
+                try merge(sql, local, remote, &events)
+            }
             return
         }
         let known = local.serverRevision
@@ -390,6 +574,31 @@ public final class SyncStore: Sendable {
         } else {
             try merge(sql, local, remote, &events)
         }
+    }
+
+    /// Whether this device follows a moved note: to a shared space it's in, or to one of the account's own only when
+    /// the account moved it. Another member's move to *their* own space can name an id this account has too
+    /// ("default"). Not knowing who moved it, or who this account is, it's a deletion: were the move this account's,
+    /// its own feed brings the note back.
+    private static func follows(_ sql: Sql, _ remote: RemoteNote, _ movedTo: String) throws -> Bool {
+        guard try sql.reaches(movedTo) else { return false }
+        if try !sql.feedOf(movedTo).isEmpty { return true }
+        guard let by = remote.updatedBy,
+            let me = try sql.one("SELECT user_id FROM sync_state WHERE id = 1", row: { $0.int64OrNil(0) }) ?? nil
+        else { return false }
+        return by == me
+    }
+
+    /// A note moved to `spaceId` elsewhere: it's there now, text unchanged, until that space's feed brings it.
+    private func follow(_ sql: Sql, _ local: Note, _ spaceId: String) throws {
+        let server = local.baseSpaceId ?? local.spaceId
+        try sql.exec(
+            """
+            UPDATE notes SET space_id = CASE WHEN dirty = 0 OR space_id = ? THEN ? ELSE space_id END,
+                base_space_id = CASE WHEN dirty = 1 THEN ? ELSE base_space_id END
+            WHERE id = ?
+            """,
+            server, spaceId, spaceId, local.id)
     }
 
     private func merge(_ sql: Sql, _ local: Note, _ remote: RemoteNote, _ events: inout [SyncEvent]) throws {
@@ -528,21 +737,22 @@ public final class SyncStore: Sendable {
             try sql.exec(
                 """
                 INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, server_revision,
-                    server_change_seq, space_id, dirty)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0)
+                    server_change_seq, space_id, dirty, updated_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
                 """,
                 remote.id, remote.title, remote.content, remote.createdAt, remote.updatedAt, remote.conflictOf,
-                remote.revision, remote.changeSeq, remote.spaceId)
+                remote.revision, remote.changeSeq, remote.spaceId, remote.updatedBy)
         } else {
             try sql.exec(
                 """
                 UPDATE notes SET title = ?, content = ?, created_at = ?, updated_at = ?, deleted_at = NULL,
                     conflict_of = ?, server_revision = ?, server_change_seq = ?, space_id = ?, dirty = 0,
-                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL
+                    base_title = NULL, base_content = NULL, base_deleted_at = NULL, base_space_id = NULL,
+                    updated_by = ?
                 WHERE id = ?
                 """,
                 remote.title, remote.content, remote.createdAt, remote.updatedAt, remote.conflictOf, remote.revision,
-                remote.changeSeq, remote.spaceId, remote.id)
+                remote.changeSeq, remote.spaceId, remote.updatedBy, remote.id)
         }
         try sql.index(remote.id, title: remote.title, content: remote.content)
         // Undo would keep the text from before the lock in plain text here.

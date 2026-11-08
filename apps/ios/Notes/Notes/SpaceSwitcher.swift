@@ -1,13 +1,22 @@
 import NotesCore
 import SwiftUI
 
-/// An invitation to someone else's space. Nothing provides these yet: the slot is for sharing.
+/// An invitation to someone else's space (§7.9).
 struct SpaceInvite: Identifiable, Hashable {
     let id: String
+    var spaceId = ""
     let spaceName: String
     let spaceIcon: String
-    /// The inviter's display name.
+    /// The inviter's username.
     let from: String
+}
+
+extension SpaceInvite {
+    init(_ remote: RemoteInvite) {
+        self.init(
+            id: remote.id, spaceId: remote.spaceId, spaceName: remote.spaceName, spaceIcon: remote.spaceIcon,
+            from: remote.from.username)
+    }
 }
 
 /// A line of the switcher: an optional glyph and its text, all in the danger colour for a problem.
@@ -73,8 +82,8 @@ struct SpaceSwitcherSheet: View {
     var invites: [SpaceInvite] = []
     /// What changed lately, by space id.
     var changes: [String: String] = [:]
-    var onJoin: (String) -> Void = { _ in }
-    var onDecline: (String) -> Void = { _ in }
+    var onJoin: (SpaceInvite) -> Void = { _ in }
+    var onDecline: (SpaceInvite) -> Void = { _ in }
     let onSwitch: (String) -> Void
     /// Space info for a space, by id.
     let onInfo: (String) -> Void
@@ -192,10 +201,10 @@ struct SpaceSwitcherSheet: View {
                     .font(.notesSmall)
                     .foregroundStyle(Color.ink)
                 HStack(spacing: 8) {
-                    Button("Join") { onJoin(invite.id) }
+                    Button("Join") { onJoin(invite) }
                         .buttonStyle(InviteButtonStyle(primary: true))
                         .accessibilityLabel("Join \(invite.spaceName)")
-                    Button("Decline") { onDecline(invite.id) }
+                    Button("Decline") { onDecline(invite) }
                         .buttonStyle(InviteButtonStyle(primary: false))
                         .accessibilityLabel("Decline \(invite.spaceName)")
                 }
@@ -284,8 +293,8 @@ private struct InviteButtonStyle: ButtonStyle {
 }
 
 #if DEBUG
-    /// `--fake-switcher`: invitations, change lines and traits to look at the switcher with, while nothing provides
-    /// them. Keyed by space name, so a test makes the spaces and these follow.
+    /// `--fake-switcher`: invitations, change lines and traits to look at the switcher with, without a second
+    /// account. Keyed by space name, so a test makes the spaces and these follow.
     enum FakeSwitcher {
         static let on = ProcessInfo.processInfo.arguments.contains("--fake-switcher")
         static let invites = [SpaceInvite(id: "invite", spaceName: "Book club", spaceIcon: "list", from: "Ana")]

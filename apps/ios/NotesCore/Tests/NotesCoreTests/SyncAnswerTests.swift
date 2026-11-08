@@ -9,6 +9,7 @@ private let noKeys = (200, #"{"keys":[]}"#, jsonHeaders)
 private let defaultSpace = (
     200, #"{"spaces":[{"id":"default","name":"Notes","createdAt":0,"noteCount":0}]}"#, jsonHeaders
 )
+private let noInvites = (200, #"{"invites":[]}"#, jsonHeaders)
 private let emptyPage = (200, #"{"changes":[],"nextCursor":0,"hasMore":false,"generation":"g"}"#, jsonHeaders)
 
 private func page(_ changes: String, cursor: Int64) -> (Int, String, [String: String]) {
@@ -56,6 +57,7 @@ struct SyncAnswerTests {
                 case "/api/v1/sync": pages.withLock { $0.isEmpty ? emptyPage : $0.removeFirst() }
                 case "/api/v1/locks": noKeys
                 case "/api/v1/spaces": defaultSpace
+                case "/api/v1/invites": noInvites
                 default: answer(request)
                 }
             }
@@ -171,6 +173,34 @@ struct SyncAnswerTests {
         #expect(engine.parked.value == 0)
     }
 
+    @Test func invitationsAnsweredOddlyAreAskedAgainOnceTheChangesWent() async throws {
+        let odd = Mutex(1)
+        let stub = StubTransport { request in
+            switch request.path {
+            case "/api/v1/sync": return emptyPage
+            case "/api/v1/locks": return noKeys
+            case "/api/v1/spaces": return defaultSpace
+            case "/api/v1/invites":
+                let portal = odd.withLock { left in
+                    defer { left = max(left - 1, 0) }
+                    return left > 0
+                }
+                return portal ? (403, "<html>Sign in to the Wi-Fi</html>", ["Content-Type": "text/html"]) : noInvites
+            default:
+                return (200, #"{"id":"x","status":"created","revision":1,"changeSeq":1,"updatedAt":1}"#, jsonHeaders)
+            }
+        }
+        let engine = engine(stub: stub) { _ in (500, "", [:]) }
+        try await notes.save("a", title: "A", content: "text")
+        #expect(await engine.sync().outcome == .done)
+        #expect(try await notes.pendingNotes() == 0)
+
+        try await notes.save("b", title: "B", content: "text")
+        odd.withLock { $0 = 2 }
+        #expect(await engine.sync().outcome == .failed)
+        #expect(try await notes.pendingNotes() == 0)
+    }
+
     @Test func aParkedChangeIsTriedAgainWhenTheAppStarts() async throws {
         try await notes.save("n", title: "T", content: "body")
         let portal = (302, "", ["Location": "https://portal.example/"])
@@ -193,13 +223,14 @@ struct SyncAnswerTests {
     @Test func aReusedOperationIdIsSentOnceMoreUnderANewOne() async throws {
         try await notes.save("n", title: "T", content: "body")
         let stub = StubTransport(queue: [
+            defaultSpace, noInvites,
             (422, #"{"error":"operation_id_reused","message":"reused"}"#, jsonHeaders),
             (200, #"{"id":"n","status":"created","revision":1,"changeSeq":1,"updatedAt":1}"#, jsonHeaders),
             emptyPage, defaultSpace, noKeys,
         ])
         let engine = engine(stub: stub) { _ in (500, "", [:]) }
         #expect(await engine.sync().outcome == .done)
-        let sent = stub.requests.prefix(2).map { body($0)["operationId"] }
+        let sent = stub.requests.dropFirst(2).prefix(2).map { body($0)["operationId"] }
         #expect(sent[0] != nil && sent[1] != nil && sent[0] != sent[1])
         #expect(try await notes.get("n")?.dirty == false)
     }
@@ -334,6 +365,26 @@ struct SyncAnswerTests {
         #expect(try await SyncStore(db: db).nextOperation()?.noteId == "n")
         try await notes.save("p", title: "Pic", content: ImageRef(id: image, width: 1, height: 1).markdown())
         #expect(try await SyncStore(db: db).parkedCount() == 1)
+    }
+
+    @Test func aSpaceWhoseIdASharedSpaceHasIsDroppedNotRetried() async throws {
+        let id = try await SpaceStore(db: db).create("Work")
+        let stub = StubTransport { request in
+            switch request.path {
+            case "/api/v1/sync": emptyPage
+            case "/api/v1/locks": noKeys
+            case "/api/v1/spaces": defaultSpace
+            case "/api/v1/invites": noInvites
+            default:
+                (409, #"{"error":"space_exists","message":"a shared space has this id"}"#, jsonHeaders)
+            }
+        }
+        let engine = engine(stub: stub) { _ in (500, "", [:]) }
+        #expect(await engine.sync().outcome == .done)
+        #expect(try await engine.store.state().lastError == "The space “Work” wasn’t saved: a shared space has this id")
+        // Gone from the queue: the next cycle doesn't send it again.
+        #expect(await engine.sync().outcome == .done)
+        #expect(stub.requests.filter { $0.path == "/api/v1/spaces/\(id)" }.count == 1)
     }
 
     @Test func aSpaceThatKeepsGettingUnexpectedAnswersIsParked() async throws {

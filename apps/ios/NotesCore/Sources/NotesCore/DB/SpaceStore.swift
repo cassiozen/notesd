@@ -35,6 +35,22 @@ public struct Space: Hashable, Sendable, Identifiable {
     public var icon: String = ""
     /// As the server last sent them (§7.8).
     public var traits: [SpaceTrait] = []
+    /// Who's in it, when it's shared (§7.9); nil for the account's own.
+    public var shared: SharedSpace? = nil
+}
+
+/// What other members changed in a shared space since this device last showed it (§7.9): `count` notes,
+/// `usernames` of who changed them (latest first), the latest at `latestAt`.
+public struct SpaceNews: Hashable, Sendable {
+    public var count: Int
+    public var usernames: [String]
+    public var latestAt: Int64
+
+    public init(count: Int, usernames: [String], latestAt: Int64) {
+        self.count = count
+        self.usernames = usernames
+        self.latestAt = latestAt
+    }
 }
 
 enum TraitsColumn {
@@ -45,6 +61,16 @@ enum TraitsColumn {
 
     static func encode(_ traits: [SpaceTrait]) -> String {
         (try? JSONEncoder().encode(traits)).map { String(decoding: $0, as: UTF8.self) } ?? "[]"
+    }
+}
+
+enum SharedColumn {
+    static func decode(_ text: String?) -> SharedSpace? {
+        text.flatMap { try? JSONDecoder().decode(SharedSpace.self, from: Data($0.utf8)) }
+    }
+
+    static func encode(_ shared: SharedSpace?) -> String? {
+        shared.flatMap { try? jsonEncoder.encode($0) }.map { String(decoding: $0, as: UTF8.self) }
     }
 }
 
@@ -74,7 +100,8 @@ public final class SpaceStore: Sendable {
             try sql.query(
                 """
                 SELECT s.id, s.name,
-                    (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.traits
+                    (SELECT count(*) FROM notes n WHERE n.space_id = s.id AND n.deleted_at IS NULL), s.icon, s.traits,
+                    s.shared
                 FROM spaces s WHERE s.pending_delete = 0
                 ORDER BY s.id != ?, lower(s.name), s.id
                 """,
@@ -82,8 +109,67 @@ public final class SpaceStore: Sendable {
             ) {
                 Space(
                     id: $0.text(0), name: $0.text(1), noteCount: Int($0.int64(2)), icon: $0.text(3),
-                    traits: TraitsColumn.decode($0.text(4)))
+                    traits: TraitsColumn.decode($0.text(4)), shared: SharedColumn.decode($0.textOrNil(5)))
             }
+        }
+    }
+
+    /// The invitations waiting for this account, as last synced (§7.9).
+    public func invites() async throws -> [RemoteInvite] {
+        try await db.read { sql in
+            try sql.query(
+                """
+                SELECT id, space_id, space_name, space_icon, from_id, from_username, created_at FROM invites
+                ORDER BY created_at, id
+                """
+            ) {
+                RemoteInvite(
+                    id: $0.text(0), spaceId: $0.text(1), spaceName: $0.text(2), spaceIcon: $0.text(3),
+                    from: Member(id: $0.int64(4), username: $0.text(5)), createdAt: $0.int64(6))
+            }
+        }
+    }
+
+    /// The space was shown until `at` (now if nil): what changed by then is no longer news. Pass the moment it was
+    /// shown when the write may land later, or a change synced in between would never count.
+    public func visit(_ id: String, at: Int64? = nil) async throws {
+        let at = at ?? clock()
+        try await db.write { sql in
+            // Never back: a visit timed earlier can land after a later one.
+            try sql.exec(
+                "UPDATE spaces SET visited_at = max(coalesce(visited_at, 0), ?) WHERE id = ? AND shared IS NOT NULL",
+                at, id)
+        }
+    }
+
+    /// By shared space, what other members changed since this device last showed it; spaces with none left out.
+    public func news() async throws -> [String: SpaceNews] {
+        try await db.read { sql in
+            guard let me = try sql.one("SELECT user_id FROM sync_state WHERE id = 1", row: { $0.int64OrNil(0) }) ?? nil
+            else { return [:] }
+            let spaces = try sql.query(
+                "SELECT id, coalesce(visited_at, 0), shared FROM spaces WHERE shared IS NOT NULL"
+            ) {
+                ($0.text(0), $0.int64(1), SharedColumn.decode($0.textOrNil(2)))
+            }
+            var news: [String: SpaceNews] = [:]
+            for (id, since, shared) in spaces {
+                let changed = try sql.query(
+                    """
+                    SELECT updated_by, updated_at FROM notes
+                    WHERE space_id = ? AND deleted_at IS NULL AND updated_by IS NOT NULL AND updated_by != ?
+                        AND updated_at > ?
+                    ORDER BY updated_at DESC
+                    """,
+                    id, me, since
+                ) { ($0.int64(0), $0.int64(1)) }
+                guard let latest = changed.first else { continue }
+                let names = Dictionary((shared?.members ?? []).map { ($0.id, $0.username) }) { a, _ in a }
+                var seen = Set<Int64>()
+                let who = changed.compactMap { seen.insert($0.0).inserted ? names[$0.0] : nil }
+                news[id] = SpaceNews(count: changed.count, usernames: who, latestAt: latest.1)
+            }
+            return news
         }
     }
 
@@ -144,7 +230,9 @@ public final class SpaceStore: Sendable {
             try sql.exec(
                 "UPDATE spaces SET name = ?, icon = ?, dirty = 0, attempts = 0 WHERE id = ? AND name = ? AND icon = ?",
                 stored.name, stored.icon, change.id, change.name, change.icon)
-            try sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", TraitsColumn.encode(stored.traits), change.id)
+            try sql.exec(
+                "UPDATE spaces SET traits = ?, shared = ? WHERE id = ?", TraitsColumn.encode(stored.traits),
+                SharedColumn.encode(stored.shared), change.id)
         }
     }
 
@@ -189,7 +277,12 @@ public final class SpaceStore: Sendable {
     /// The server's list replaces every row with nothing waiting to go.
     func replace(_ remote: [RemoteSpace]) async throws {
         try await db.write { sql in
-            try sql.exec("DELETE FROM spaces WHERE dirty = 0 AND pending_delete = 0 AND id != ?", Spaces.defaultId)
+            // Rows the list still has are updated in place: what this device keeps on them (visited_at) stays.
+            let listed = Set(remote.map(\.id))
+            let gone = try sql.query(
+                "SELECT id FROM spaces WHERE dirty = 0 AND pending_delete = 0 AND id != ?", Spaces.defaultId
+            ) { $0.text(0) }
+            for id in gone where !listed.contains(id) { try sql.exec("DELETE FROM spaces WHERE id = ?", id) }
             for s in remote {
                 try sql.exec(
                     """
@@ -199,8 +292,27 @@ public final class SpaceStore: Sendable {
                     WHERE dirty = 0 AND pending_delete = 0
                     """,
                     s.id, s.name, s.icon, s.createdAt)
-                // Even on a row with a change waiting: traits are the server's, not this device's.
-                try sql.exec("UPDATE spaces SET traits = ? WHERE id = ?", TraitsColumn.encode(s.traits), s.id)
+                // Even on a row with a change waiting: traits and members are the server's, not this device's.
+                try sql.exec(
+                    "UPDATE spaces SET traits = ?, shared = ? WHERE id = ?", TraitsColumn.encode(s.traits),
+                    SharedColumn.encode(s.shared), s.id)
+                // A space no longer shared forgets when it was shown: shared again, only what's new from then is news.
+                if s.shared == nil { try sql.exec("UPDATE spaces SET visited_at = NULL WHERE id = ?", s.id) }
+            }
+        }
+    }
+
+    /// The server's invitations replace this device's copy.
+    func replaceInvites(_ remote: [RemoteInvite]) async throws {
+        try await db.write { sql in
+            try sql.exec("DELETE FROM invites")
+            for i in remote {
+                try sql.exec(
+                    """
+                    INSERT INTO invites (id, space_id, space_name, space_icon, from_id, from_username, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    i.id, i.spaceId, i.spaceName, i.spaceIcon, i.from.id, i.from.username, i.createdAt)
             }
         }
     }

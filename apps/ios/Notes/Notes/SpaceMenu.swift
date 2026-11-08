@@ -10,8 +10,9 @@ struct SpaceMenu: View {
     var invites: [SpaceInvite] = []
     /// What changed lately, by space id.
     var changes: [String: String] = [:]
-    var onJoin: (String) -> Void = { _ in }
-    var onDecline: (String) -> Void = { _ in }
+    /// Joining switches to the space: the sheet closes first.
+    var onJoin: (SpaceInvite) -> Void = { _ in }
+    var onDecline: (SpaceInvite) -> Void = { _ in }
     /// After switching: the sidebar closes, onto the space's list.
     var onSwitched: () -> Void = {}
     /// Space info for a space, by id.
@@ -44,7 +45,8 @@ struct SpaceMenu: View {
         }
         .sheet(isPresented: $open, onDismiss: closed) {
             SpaceSwitcherSheet(
-                invites: invites, changes: changes, onJoin: onJoin, onDecline: onDecline,
+                invites: invites, changes: changes,
+                onJoin: { invite in close(then: { onJoin(invite) }) }, onDecline: onDecline,
                 onSwitch: { id in
                     open = false
                     graph.switchSpace(id)

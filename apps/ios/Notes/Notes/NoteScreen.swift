@@ -15,8 +15,10 @@ struct NoteScreen: View {
     @State private var model: EditorModel
     @State private var controller = EditorController()
     @State private var confirmDelete = false
-    /// A move that would show the note to more people, waiting for a yes.
+    /// A move that would show the note to more people, or fewer, waiting for a yes.
     @State private var confirmMove: MoveCheck?
+    /// Lock note was chosen in a shared space: it says why not.
+    @State private var lockRefused = false
     @State private var emailing = false
     @State private var picked: PhotosPickerItem?
     /// Lock note was chosen, and the session needs a password created or entered first.
@@ -108,6 +110,14 @@ struct NoteScreen: View {
             if let problem = model.imageProblem {
                 problemBanner(problem) { model.imageProblem = nil }
             }
+            if let edited = editedBy, !model.needsUnlock {
+                Text(edited)
+                    .font(.notesSmall)
+                    .foregroundStyle(Color.ink2)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 6)
+            }
             if model.needsUnlock || model.unreadable {
                 LockedNoteView(
                     title: model.title, unreadable: model.unreadable, locks: graph.locks,
@@ -177,7 +187,12 @@ struct NoteScreen: View {
             Button("Cancel", role: .cancel) {}
             Button("Move") { move(to: check.space.id) }
         } message: { check in
-            Text("In \(check.space.name), this note will be:\n" + check.exposure.joined(separator: "\n"))
+            Text(check.message)
+        }
+        .alert(Sharing.lockedInShared, isPresented: $lockRefused) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Everyone in a shared space can read its notes.")
         }
         .confirmationDialog("Delete this note?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -297,6 +312,14 @@ struct NoteScreen: View {
         Button("Delete", systemImage: "trash", role: .destructive) { confirmDelete = true }
     }
 
+    /// "Edited by Ana · 2h" when another member of the note's shared space made the last edit (§7.9).
+    private var editedBy: String? {
+        let space = graph.spaces.first { $0.id == model.spaceId }
+        return Sharing.editor(model.updatedBy, in: space, me: graph.userId).map {
+            Sharing.editedLine($0, at: model.updatedAt)
+        }
+    }
+
     /// The editor is showing the note's text, not the locked placeholder or nothing yet.
     private var showsText: Bool { !model.needsUnlock && !model.unreadable && model.document != nil }
 
@@ -318,6 +341,11 @@ struct NoteScreen: View {
     /// again encrypted, or plain, before the note is. Applied only once all
     /// have moved: a failure partway leaves the note as it was.
     private func setLocked(_ on: Bool) {
+        // Locking means only you can read it (§7.9): the server refuses one in a shared space's file.
+        if on && graph.spaces.first(where: { $0.id == model.spaceId })?.shared != nil {
+            lockRefused = true
+            return
+        }
         // The session itself, not the observed state: right after the sheet unlocks, that lags.
         let now = graph.locks.state.value
         if on && now != .unlocked {
@@ -354,13 +382,20 @@ struct NoteScreen: View {
         Binding(get: { controller.linkSheet != nil }, set: { if !$0 { controller.linkSheet = nil } })
     }
 
-    /// Moves the note, first asking when `space` would show it to people its own space doesn't (§7.8).
+    /// Moves the note, first asking when `space` would show it to people its own space doesn't (§7.8), or no
+    /// longer to people its own space does (moving out of a shared space, §7.9).
     private func askToMove(to space: Space) {
+        if model.locked && space.shared != nil {
+            lockRefused = true
+            return
+        }
         let current = graph.spaces.first { $0.id == model.spaceId }?.traits ?? []
         let exposure = Traits.newExposure(from: current, to: space.traits).compactMap(\.exposure)
-        guard !exposure.isEmpty else { return move(to: space.id) }
+        let lost = Traits.newExposure(from: space.traits, to: current).compactMap(\.exposure)
+        guard !exposure.isEmpty || !lost.isEmpty else { return move(to: space.id) }
         let title = (controller.document()?.title ?? model.title).trimmed
-        confirmMove = MoveCheck(space: space, title: title.isEmpty ? "Untitled" : title, exposure: exposure)
+        confirmMove = MoveCheck(
+            space: space, title: title.isEmpty ? "Untitled" : title, exposure: exposure, lost: lost)
     }
 
     /// Moves the note to another space (§7.7) and leaves it: it's no longer in the list behind.
@@ -385,11 +420,22 @@ struct NoteScreen: View {
     }
 }
 
-/// A move into a space that exposes the note more: where, and the destination's sentences the current space lacks.
-private struct MoveCheck {
+/// A move that changes who sees the note: where, the destination's sentences the current space lacks, and the
+/// current space's the destination lacks.
+struct MoveCheck {
     let space: Space
     let title: String
     let exposure: [String]
+    var lost: [String] = []
+
+    var message: String {
+        var parts: [String] = []
+        if !exposure.isEmpty {
+            parts.append("In \(space.name), this note will be:\n" + exposure.joined(separator: "\n"))
+        }
+        if !lost.isEmpty { parts.append("It will no longer be:\n" + lost.joined(separator: "\n")) }
+        return parts.joined(separator: "\n\n")
+    }
 }
 
 /// Add, change or remove the link on the selection.

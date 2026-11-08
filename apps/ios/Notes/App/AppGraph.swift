@@ -38,6 +38,12 @@ final class AppGraph {
 
     /// Every space (§7.7), the default first, kept current with every write.
     private(set) var spaces: [Space] = []
+    /// Invitations into other people's spaces (§7.9), as the last sync brought them.
+    private(set) var invites: [RemoteInvite] = []
+    /// What others changed in each shared space since this iPhone last showed it, by space id.
+    private(set) var news: [String: SpaceNews] = [:]
+    /// The signed-in account's id, to tell its edits from other members' (§7.9).
+    private(set) var userId: Int64?
 
     /// The space the list, tags and search show: this iPhone's own, never synced, the default at a cold start.
     private(set) var space = Spaces.defaultId
@@ -64,6 +70,18 @@ final class AppGraph {
         guard space != id else { return }
         space = id
         listFilter = nil
+        visitShown()
+    }
+
+    /// The space shown, while the app is in front: what others changed there is seen (§7.9).
+    private func visitShown() {
+        guard backgroundSince == nil, news[space] != nil else { return }
+        let id = space
+        // Its own write reloads the spaces, with this space's news gone: no loop.
+        news[id] = nil
+        // Timed here, not when the task runs, so changes synced in between stay news.
+        let at = systemNow()
+        Task { [engine] in try? await engine.spaces.visit(id, at: at) }
     }
 
     func enteredBackground() {
@@ -74,6 +92,7 @@ final class AppGraph {
         guard let since = backgroundSince else { return }
         backgroundSince = nil
         if Date().timeIntervalSince(since) > Self.spaceReset && !editorOpen { switchSpace(Spaces.defaultId) }
+        visitShown()
     }
 
     var appearance: Appearance {
@@ -155,13 +174,20 @@ final class AppGraph {
             for await _ in changes { await self?.reloadSpaces(engine) }
         }
         Task { [weak self, accounts] in
-            for await account in accounts.account.stream() { self?.account = account }
+            for await account in accounts.account.stream() {
+                self?.account = account
+                if account.isSignedIn { await self?.loadUserId() }
+            }
         }
         Task { [weak self, engine, locks] in
             for await status in engine.status.stream() {
                 self?.syncStatus = status
                 // The keyring came with the cycle: a password changed or reset elsewhere locks here too.
-                if case .synced = status { await locks.refresh() }
+                if case .synced = status {
+                    await locks.refresh()
+                    // Unknown if the server was out of reach at sign-in or start: it answered now.
+                    if self?.userId == nil { await self?.loadUserId() }
+                }
             }
         }
         Task { [weak self, engine] in
@@ -180,7 +206,24 @@ final class AppGraph {
         }
     }
 
+    /// The session's account id, once per database: sign-in, or a session from before shared spaces.
+    private func loadUserId() async {
+        if let known = try? await engine.store.userId() {
+            userId = known
+            return
+        }
+        guard let client = accounts.client(), case .ok(let session) = await client.session(), session.userId > 0
+        else { return }
+        try? await engine.store.setUserId(session.userId)
+        userId = session.userId
+    }
+
+    func reloadSpaces() async { await reloadSpaces(engine) }
+
     private func reloadSpaces(_ engine: SyncEngine) async {
+        invites = (try? await engine.spaces.invites()) ?? invites
+        news = (try? await engine.spaces.news()) ?? news
+        userId = (try? await engine.store.userId()) ?? userId
         guard var list = try? await engine.spaces.list() else { return }
         #if DEBUG
             if FakeSwitcher.on {
@@ -193,8 +236,9 @@ final class AppGraph {
         if let home = list.first(where: { $0.id == Spaces.defaultId }) {
             Self.defaults.set(SpaceThemes.key(home.icon), forKey: Self.defaultSpaceThemeKey)
         }
-        // The space shown was deleted, here or on another device: back to the default.
+        // The space shown was deleted, here or on another device, or left: back to the default.
         if !list.isEmpty && !list.contains(where: { $0.id == space }) { switchSpace(Spaces.defaultId) }
+        visitShown()
     }
 
     /// The space's name, or the default's while the list loads.
@@ -263,6 +307,7 @@ final class AppGraph {
         await locks.forget()
         biometrics.disable()
         listFilter = nil
+        userId = nil
         switchSpace(Spaces.defaultId)
         // The default space's colours belonged to the notes just wiped.
         Self.defaults.removeObject(forKey: Self.defaultSpaceThemeKey)

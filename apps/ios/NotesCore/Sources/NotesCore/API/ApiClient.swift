@@ -83,7 +83,9 @@ public final class ApiClient: Sendable {
     private let credentials: (any Credentials)?
     private let transport: any HTTPTransport
     private let clock: Clock
-    private let refreshLock = AsyncLock()
+    private let refreshLock: AsyncLock
+    /// Where the change feed is: the account's, or a shared space's (`inSpace`, §7.9).
+    private let file: String
 
     private static let refreshEarlyMs: Int64 = 60_000
     private static let defaultRetryAfter: Int64 = 60
@@ -98,6 +100,27 @@ public final class ApiClient: Sendable {
         self.credentials = credentials
         self.transport = transport
         self.clock = clock
+        refreshLock = AsyncLock()
+        file = Self.accountFile
+    }
+
+    private init(_ parent: ApiClient, file: String) {
+        baseURL = parent.baseURL
+        version = parent.version
+        credentials = parent.credentials
+        transport = parent.transport
+        clock = parent.clock
+        // One session: a refresh through either must be seen by both.
+        refreshLock = parent.refreshLock
+        self.file = file
+    }
+
+    private static let accountFile = "api/v1"
+
+    /// The same client for a shared space's change feed (§7.9): only `sync` is per file; every other call is at the
+    /// account's address, which finds a note in whichever file it is.
+    public func inSpace(_ spaceId: String) -> ApiClient {
+        ApiClient(self, file: "\(Self.accountFile)/spaces/\(spaceId)")
     }
 
     /// `/healthz`: is a server answering at this address at all.
@@ -130,6 +153,11 @@ public final class ApiClient: Sendable {
             }
             return signIn
         }
+    }
+
+    /// This session, with the account's id (§7.9).
+    public func session() async -> ApiResult<SignIn> {
+        await authed({ self.request("GET", "api/v1/auth/session", access: $0) }, decode: json(SignIn.self))
     }
 
     /// The account's password; the server signs out every other session, this one stays.
@@ -171,7 +199,7 @@ public final class ApiClient: Sendable {
         if let generation { query.append(URLQueryItem(name: "generation", value: generation)) }
         let items = query
         return await authed(
-            { self.request("GET", "api/v1/sync", query: items, access: $0) }, decode: json(SyncPage.self))
+            { self.request("GET", "\(self.file)/sync", query: items, access: $0) }, decode: json(SyncPage.self))
     }
 
     // MARK: email
@@ -272,6 +300,69 @@ public final class ApiClient: Sendable {
         let body = ["accountPassword": accountPassword]
         return await authed(
             { self.request("DELETE", "api/v1/locks", body: body, access: $0) }, decode: { _ in () })
+    }
+
+    // MARK: shared spaces (§7.9)
+
+    /// The invitations waiting for this account.
+    public func invites() async -> ApiResult<[RemoteInvite]> {
+        struct Invites: Decodable { var invites: [RemoteInvite]? }
+        return await authed(
+            { self.request("GET", "api/v1/invites", access: $0) },
+            decode: { try JSONDecoder().decode(Invites.self, from: $0.data).invites ?? [] })
+    }
+
+    /// Every account's id and username, to invite into a space.
+    public func people() async -> ApiResult<[Member]> {
+        struct People: Decodable { var people: [Member]? }
+        return await authed(
+            { self.request("GET", "api/v1/people", access: $0) },
+            decode: { try JSONDecoder().decode(People.self, from: $0.data).people ?? [] })
+    }
+
+    /// Invites an account into a space this account owns, sharing it the first time.
+    public func inviteToSpace(_ spaceId: String, userId: Int64) async -> ApiResult<Invitee> {
+        await authed(
+            { self.request("POST", "api/v1/spaces/\(spaceId)/invites", body: ["userId": userId], access: $0) },
+            decode: json(Invitee.self))
+    }
+
+    public func cancelInvite(_ spaceId: String, inviteId: String) async -> ApiResult<Void> {
+        await authed(
+            { self.request("DELETE", "api/v1/spaces/\(spaceId)/invites/\(inviteId)", access: $0) },
+            decode: Self.noContent)
+    }
+
+    /// Joins the space; the answer is the space as this account now sees it.
+    public func acceptInvite(_ inviteId: String) async -> ApiResult<RemoteSpace> {
+        await authed(
+            { self.request("POST", "api/v1/invites/\(inviteId)/accept", body: [String: String](), access: $0) },
+            decode: json(RemoteSpace.self))
+    }
+
+    public func declineInvite(_ inviteId: String) async -> ApiResult<Void> {
+        await authed(
+            { self.request("POST", "api/v1/invites/\(inviteId)/decline", body: [String: String](), access: $0) },
+            decode: Self.noContent)
+    }
+
+    /// The owner removes a member, or (`userId` this account's) a member leaves.
+    public func removeMember(_ spaceId: String, userId: Int64) async -> ApiResult<Void> {
+        await authed(
+            { self.request("DELETE", "api/v1/spaces/\(spaceId)/members/\(userId)", access: $0) },
+            decode: Self.noContent)
+    }
+
+    /// The owner hands the space to another member.
+    public func transferSpace(_ spaceId: String, userId: Int64) async -> ApiResult<Void> {
+        await authed(
+            { self.request("PUT", "api/v1/spaces/\(spaceId)/owner", body: ["userId": userId], access: $0) },
+            decode: Self.noContent)
+    }
+
+    /// Any other success came from something that isn't notesd: nothing may have happened.
+    private static let noContent: @Sendable (Reply) throws -> Void = { reply in
+        guard reply.code == 204 else { throw URLError(.cannotParseResponse) }
     }
 
     // MARK: images

@@ -74,6 +74,40 @@ final class TestServer: Sendable {
         }
     }
 
+    /// Makes another account, with `password`, through the owner (an admin): invited, then its setup link used.
+    func addAccount(_ username: String, password: String = TestServer.password) async throws {
+        let owner = await ApiClient(baseURL: url).login(
+            username: Self.username, password: Self.password, deviceName: "x")
+        guard case .ok(let signIn) = owner else {
+            Issue.record("owner login failed: \(owner)")
+            throw CancellationError()
+        }
+        struct Link: Decodable {
+            struct Token: Decodable { var token: String }
+            var link: Token
+        }
+        guard let invited: Link = try await post("api/v1/users", ["username": username], access: signIn.accessToken)
+        else { throw CancellationError() }
+        let _: Empty? = try await post(
+            "api/v1/auth/setup-link/use", ["token": invited.link.token, "password": password], access: nil)
+    }
+
+    private struct Empty: Decodable {}
+
+    private func post<T: Decodable>(_ path: String, _ body: [String: String], access: String?) async throws -> T? {
+        var request = URLRequest(url: url.appending(path: path))
+        request.httpMethod = "POST"
+        request.httpBody = try JSONEncoder().encode(body)
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if let access { request.setValue("Bearer \(access)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            Issue.record("\(path): \(String(decoding: data, as: UTF8.self))")
+            throw CancellationError()
+        }
+        return data.isEmpty ? nil : try JSONDecoder().decode(T.self, from: data)
+    }
+
     func stop() {
         guard
             let process = state.withLock({ state in

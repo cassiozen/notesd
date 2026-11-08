@@ -231,6 +231,11 @@ public final class Sql {
     }
 
     public func exec(_ sql: String, _ args: (any SQLValue)?...) throws {
+        try execArray(sql, args)
+    }
+
+    /// `exec` with the arguments as an array, for statements built from parts.
+    public func execArray(_ sql: String, _ args: [(any SQLValue)?]) throws {
         try withStatement(sql, args) { st in
             let rc = sqlite3_step(st)
             guard rc == SQLITE_DONE || rc == SQLITE_ROW else { throw conn.error(rc) }

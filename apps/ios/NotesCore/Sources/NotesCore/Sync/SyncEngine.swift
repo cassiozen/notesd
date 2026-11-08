@@ -171,6 +171,11 @@ public final class SyncEngine: Sendable {
         var parked = Set<String>()
         if let stop = try await pushSpaces(api, deletes: true, final: false, &rejection, &parked) { return stop }
         if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
+        // Before the notes: which spaces are shared, so each change goes to its space's file (§7.9). An odd answer
+        // (a portal's page) doesn't stop the cycle here: the changes get their attempts, and parking, as before.
+        if let stop = try await fetchSpaces(api, &events), stop.outcome != .failed { return stop }
+        let invited = try await invites(api)
+        if let stop = invited, stop.outcome != .failed { return stop }
         if let stop = try await push(api, &events, &rejection, &parked, &pushed) { return stop }
         if let stop = try await pushSpaces(api, deletes: true, &rejection, &parked) { return stop }
         // The names those deletes freed, for the spaces made here meanwhile.
@@ -179,7 +184,9 @@ public final class SyncEngine: Sendable {
             if let stop = try await pushSpaces(api, deletes: false, &rejection, &parked) { return stop }
         }
         if let stop = try await pull(api, &events) { return stop }
-        if let stop = try await fetchSpaces(api) { return stop }
+        if let stop = try await fetchSpaces(api, &events) { return stop }
+        // Asked again, so an odd answer earlier fails the cycle once the changes had their attempts.
+        if invited != nil, let stop = try await invites(api) { return stop }
         if let stop = try await keyring(api) { return stop }
         return try await store.nextOperation() != nil ? try await push(api, &events, &rejection, &parked, &pushed) : nil
     }
@@ -220,6 +227,10 @@ public final class SyncEngine: Sendable {
                 case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
                     try await spaces.dropped(change)
                     rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? error : message)"
+                // A shared space has this id (§7.9): a 409, so a conflict, but no retry changes it.
+                case .conflict(let code, let message, _) where permanentErrors.contains(code):
+                    try await spaces.dropped(change)
+                    rejection = "The space “\(change.name)” wasn’t saved: \(message.isEmpty ? code : message)"
                 case .unexpected(let status),
                     .rejected(let status, _, _, _) where status < 500:
                     try await spaces.attempted(change)
@@ -231,11 +242,26 @@ public final class SyncEngine: Sendable {
         return nil
     }
 
-    /// The list is small and has no change feed: fetched whole every cycle, like the keyring.
-    private func fetchSpaces(_ api: ApiClient) async throws -> Stop? {
+    /// The list is small and has no change feed: fetched whole every cycle, like the keyring. A shared space new to
+    /// it gets a feed; one gone from it takes its notes off the device, an unsynced edit kept as a copy (§7.9).
+    private func fetchSpaces(_ api: ApiClient, _ events: inout [SyncEvent]) async throws -> Stop? {
         switch await api.spaces() {
         case .ok(let list):
             try await spaces.replace(list)
+            emit(try await store.syncFeeds(), into: &events)
+            return nil
+        case let other:
+            return stop(other)
+        }
+    }
+
+    private func invites(_ api: ApiClient) async throws -> Stop? {
+        switch await api.invites() {
+        case .ok(let list):
+            try await spaces.replaceInvites(list)
+            return nil
+        // A server from before shared spaces: none.
+        case .rejected(_, "no_such_endpoint", _, _):
             return nil
         case let other:
             return stop(other)
@@ -303,6 +329,10 @@ public final class SyncEngine: Sendable {
                 case .rejected(_, "not_found", _, _) where op.type == deleteOp:
                     try await store.gone(op)
                     pushed = true
+                // Locked offline, then the space was shared from another device (§7.9): kept as a copy.
+                case .rejected(_, "locked_in_shared_space", _, _):
+                    if let event = try await store.lockedOut(op) { emit([event], into: &events) }
+                    pushed = true
                 case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
                     let reason = message.isEmpty ? error : message
                     try await store.rejected(op, message: reason)
@@ -326,6 +356,7 @@ public final class SyncEngine: Sendable {
         }
     }
 
+    /// Every change goes to the account's address, whatever space the note is in: the server finds the file (§7.9).
     private func send(_ api: ApiClient, _ op: Operation) async -> ApiResult<MutationResult> {
         let p = op.payload
         switch op.type {
@@ -347,19 +378,31 @@ public final class SyncEngine: Sendable {
         }
     }
 
+    /// The account's feed, then each shared space's (§7.9).
     private func pull(_ api: ApiClient, _ events: inout [SyncEvent]) async throws -> Stop? {
+        if let stop = try await pullFeed(api, "", &events) { return stop }
+        for feed in try await store.feeds() {
+            if let stop = try await pullFeed(api.inSpace(feed), feed, &events) { return stop }
+        }
+        return nil
+    }
+
+    private func pullFeed(_ api: ApiClient, _ feed: String, _ events: inout [SyncEvent]) async throws -> Stop? {
         var restarted = false
         while true {
-            let state = try await store.state()
+            let state = try await store.state(feed: feed)
             switch await api.sync(since: state.cursor, limit: pageSize, generation: state.generation) {
             case .ok(let page):
-                emit(try await store.applyPage(page), into: &events)
+                emit(try await store.applyPage(page, feed: feed), into: &events)
                 if !page.hasMore { return nil }
             case .conflict(let code, let message, _) where code == "generation_mismatch" || code == "cursor_ahead":
                 // Restored from a backup. Once per cycle: a second time means something else is wrong.
                 if restarted { return Stop(outcome: .failed, message: message) }
                 restarted = true
-                try await store.startFullSync()
+                try await store.startFullSync(feed: feed)
+            // Left or removed since the list came: the next list drops the feed.
+            case .rejected(_, "not_found", _, _) where !feed.isEmpty:
+                return nil
             case .rejected(let status, let error, let message, _) where status < 500:
                 return Stop(outcome: .failed, message: message.isEmpty ? error : message)
             case let other:

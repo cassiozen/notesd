@@ -7,6 +7,8 @@ public struct NoteSummary: Hashable, Sendable, Identifiable {
     public var preview: String
     public var updatedAt: Int64
     public var locked: Bool
+    /// The account that last changed it (§7.9).
+    public var updatedBy: Int64? = nil
 }
 
 /// Narrows a query to one space (§7.7), or to every space but one; nil leaves it open.
@@ -80,6 +82,8 @@ public struct SearchHit: Hashable, Sendable, Identifiable {
     public var updatedAt: Int64
     public var locked: Bool
     public var spaceId: String = Spaces.defaultId
+    /// The account that last changed it (§7.9).
+    public var updatedBy: Int64?
 }
 
 public struct OutboxEntry: Hashable, Sendable {
@@ -128,7 +132,7 @@ public final class NoteStore: Sendable {
             let all: [(any SQLValue)?] = [LockedNotes.familyPrefix.utf8.count, LockedNotes.familyPrefix] + args
             return try sql.queryArray(
                 """
-                SELECT n.id, n.title, n.updated_at, f.body_text, substr(n.content, 1, ?) = ?
+                SELECT n.id, n.title, n.updated_at, f.body_text, substr(n.content, 1, ?) = ?, n.updated_by
                 FROM notes n LEFT JOIN notes_fts f ON f.rowid = n.seq
                 WHERE n.deleted_at IS NULL AND \(cond)
                 ORDER BY n.updated_at DESC, n.id DESC
@@ -137,7 +141,7 @@ public final class NoteStore: Sendable {
             ) {
                 NoteSummary(
                     id: $0.text(0), title: $0.text(1), preview: previewOf($0.textOrNil(3) ?? ""),
-                    updatedAt: $0.int64(2), locked: $0.int64(4) == 1)
+                    updatedAt: $0.int64(2), locked: $0.int64(4) == 1, updatedBy: $0.int64OrNil(5))
             }
         }
     }
@@ -169,7 +173,7 @@ public final class NoteStore: Sendable {
             return try sql.queryArray(
                 """
                 SELECT n.id, n.title, n.updated_at, snippet(notes_fts, 1, ?, ?, '…', 20), substr(n.content, 1, ?) = ?,
-                    n.space_id
+                    n.space_id, n.updated_by
                 FROM notes_fts JOIN notes n ON n.seq = notes_fts.rowid
                 WHERE notes_fts MATCH ? AND n.deleted_at IS NULL AND \(cond)
                 ORDER BY bm25(notes_fts, ?, ?), n.updated_at DESC
@@ -179,7 +183,7 @@ public final class NoteStore: Sendable {
             ) {
                 SearchHit(
                     id: $0.text(0), title: $0.text(1), excerpt: $0.textOrNil(3) ?? "", updatedAt: $0.int64(2),
-                    locked: $0.int64(4) == 1, spaceId: $0.text(5))
+                    locked: $0.int64(4) == 1, spaceId: $0.text(5), updatedBy: $0.int64OrNil(6))
             }
         }
     }
@@ -252,7 +256,10 @@ public final class NoteStore: Sendable {
         _ sql: Sql, _ id: String, _ title: String, _ content: String, _ spaceId: String, _ now: Int64
     ) throws -> Note {
         try sql.exec(
-            "INSERT INTO notes (id, title, content, created_at, updated_at, space_id, dirty) VALUES (?, ?, ?, ?, ?, ?, 1)",
+            """
+            INSERT INTO notes (id, title, content, created_at, updated_at, space_id, dirty, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?, 1, (SELECT user_id FROM sync_state WHERE id = 1))
+            """,
             id, title, content, now, now, spaceId
         )
         try sql.index(id, title: title, content: content)
@@ -270,6 +277,7 @@ public final class NoteStore: Sendable {
         try sql.exec(
             """
             UPDATE notes SET title = ?, content = ?, space_id = ?, updated_at = ?, dirty = 1,
+                updated_by = (SELECT user_id FROM sync_state WHERE id = 1),
                 base_title = CASE WHEN dirty = 0 THEN title ELSE base_title END,
                 base_content = CASE WHEN dirty = 0 THEN content ELSE base_content END,
                 base_deleted_at = CASE WHEN dirty = 0 THEN deleted_at ELSE base_deleted_at END,
@@ -449,21 +457,29 @@ public final class NoteStore: Sendable {
             try sql.exec("DELETE FROM merge_undo")
             try sql.exec("DELETE FROM pending_images")
             try sql.exec("DELETE FROM lock_keys")
+            try sql.exec("DELETE FROM feeds")
+            try sql.exec("DELETE FROM invites")
             try sql.exec("DELETE FROM spaces")
             try sql.exec(
                 "INSERT INTO spaces (id, name, created_at) VALUES (?, ?, 0)", Spaces.defaultId, Spaces.defaultName)
             try sql.exec(
                 """
                 UPDATE sync_state SET cursor = 0, generation = NULL, last_sync_at = NULL, last_error = NULL,
-                    full_sync = 0
+                    full_sync = 0, user_id = NULL
                 """
             )
         }
     }
 
-    /// How many notes have changes the server hasn't confirmed, queued or not (one dropped, or parked, still counts).
-    public func pendingNotes() async throws -> Int {
-        try await db.read { Int(try $0.int64("SELECT count(*) FROM notes WHERE dirty = 1")) }
+    /// How many notes have changes the server hasn't confirmed, queued or not (one dropped, or parked, still counts);
+    /// in `space` only, if given.
+    public func pendingNotes(space: String? = nil) async throws -> Int {
+        try await db.read { sql in
+            let (cond, args) = space.map { SpaceScope.only($0) }.sql
+            return try sql.queryArray("SELECT count(*) FROM notes n WHERE n.dirty = 1 AND \(cond)", args) {
+                Int($0.int64(0))
+            }.first ?? 0
+        }
     }
 
     /// For tests of coalescing without a server: pretend `operationId` went out.

@@ -23,13 +23,15 @@ public struct Note: Hashable, Sendable {
     /// The space the note is in (§7.7), and the synced one while `dirty`.
     public var spaceId: String = Spaces.defaultId
     public var baseSpaceId: String?
+    /// The account that last changed it (§7.9): another member's, or this account's own.
+    public var updatedBy: Int64?
 
     public var locked: Bool { LockedNotes.isLocked(content) }
 }
 
 let noteColumns =
     "id, title, content, created_at, updated_at, deleted_at, conflict_of, server_revision, dirty, base_title, base_content, "
-    + "space_id, base_space_id"
+    + "space_id, base_space_id, updated_by"
 
 func noteRow(_ r: Row) -> Note {
     Note(
@@ -45,7 +47,8 @@ func noteRow(_ r: Row) -> Note {
         baseTitle: r.textOrNil(9),
         baseContent: r.textOrNil(10),
         spaceId: r.text(11),
-        baseSpaceId: r.textOrNil(12)
+        baseSpaceId: r.textOrNil(12),
+        updatedBy: r.int64OrNil(13)
     )
 }
 
@@ -159,8 +162,36 @@ extension Sql {
         ) { ($0.text(0), $0.text(1), try Payload.decode($0.text(2))) }
     }
 
+    /// The feed a space's notes download in (§7.9): a shared space's own, else the account's ("").
+    func feedOf(_ spaceId: String?) throws -> String {
+        guard let spaceId else { return "" }
+        let shared = try one("SELECT shared IS NOT NULL FROM spaces WHERE id = ?", spaceId) { $0.int64(0) == 1 }
+        return shared == true ? spaceId : ""
+    }
+
+    /// Whether any of `noteId`'s queued changes has gone out unanswered.
+    func sentAny(_ noteId: String) throws -> Bool {
+        try int64("SELECT count(*) FROM sync_outbox WHERE note_id = ? AND sent = 1", noteId) > 0
+    }
+
+    /// Whether this device has the space, so its notes can follow a note moved there.
+    func reaches(_ spaceId: String) throws -> Bool {
+        try int64("SELECT count(*) FROM spaces WHERE id = ? AND pending_delete = 0", spaceId) > 0
+    }
+
+    /// The space the server holds `note` in: the one it last synced in, else what a create that went out named.
+    /// Nil if the server never had it.
+    func serverSpace(_ note: Note) throws -> String? {
+        if note.serverRevision != nil { return note.baseSpaceId ?? note.spaceId }
+        return try one(
+            "SELECT payload_json FROM sync_outbox WHERE note_id = ? AND sent = 1 AND operation_type = ? LIMIT 1",
+            note.id, createOp
+        ) { try Payload.decode($0.text(0)).spaceId ?? Spaces.defaultId }
+    }
+
     /// Makes sure the server will receive `title`/`content` in `spaceId` for `noteId`: rewrites the
-    /// unsent create or update, or queues a new update (a sent payload is never changed).
+    /// unsent create or update, or queues a new update (a sent payload is never changed). Moving into or out of a
+    /// shared space is the same update: the server moves the note between files (§7.9).
     func queueText(_ noteId: String, title: String, content: String, spaceId: String, now: Int64) throws {
         if let pending = try unsentOp(noteId), pending.type != deleteOp {
             var payload = pending.payload
@@ -188,8 +219,8 @@ extension Sql {
         try rememberImages(id, content: content, imageIds: imageIds ?? lockedImageIds(content))
         try exec(
             """
-            INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+            INSERT INTO notes (id, title, content, created_at, updated_at, conflict_of, space_id, dirty, updated_by)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 1, (SELECT user_id FROM sync_state WHERE id = 1))
             """,
             id, title, content, now, now, conflictOf, spaceId
         )

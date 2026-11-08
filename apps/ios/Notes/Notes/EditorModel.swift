@@ -89,6 +89,9 @@ final class EditorModel {
     private var deleted = false
     /// The note's space (§7.7): where a new note is created, or where it is once read or moved.
     private(set) var spaceId: String
+    /// Who made the last edit stored, and when (§7.9).
+    private(set) var updatedBy: Int64?
+    private(set) var updatedAt: Int64 = 0
     @ObservationIgnored private var unhook: (@Sendable () -> Void)?
 
     /// `initial`: the note as already read, so the screen opens with its text;
@@ -365,6 +368,8 @@ final class EditorModel {
 
     private func show(_ note: Note) {
         if edits == saved { status = .saved }
+        updatedBy = note.updatedBy
+        updatedAt = note.updatedAt
         guard let originalId = note.conflictOf, original?.id != originalId else { return }
         Task {
             if let o = try? await store.get(originalId), o.deletedAt == nil {

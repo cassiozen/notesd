@@ -275,6 +275,189 @@ final class FlowTests: XCTestCase {
         XCTAssertFalse(app.buttons["Delete Space"].isEnabled)
     }
 
+    /// As another account would, from its own device: a JSON call with `token`'s session.
+    private func call(
+        _ method: String, _ path: String, token: String, _ body: [String: Any]? = nil
+    ) async throws -> [String: Any] {
+        let server = try XCTUnwrap(env["NOTESD_URL"], "run through scripts/with-server.sh")
+        var request = URLRequest(url: URL(string: server)!.appending(path: path))
+        request.httpMethod = method
+        if let body { request.httpBody = try JSONSerialization.data(withJSONObject: body) }
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !token.isEmpty { request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let (data, response) = try await URLSession.shared.data(for: request)
+        let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+        XCTAssertTrue((200..<300).contains(code), "\(method) \(path): \(code) \(String(decoding: data, as: UTF8.self))")
+        return (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] ?? [:]
+    }
+
+    /// Another account on the test server, made by the owner (an admin), signed in: its token.
+    private func account(_ username: String) async throws -> String {
+        let password = env["NOTESD_PASSWORD"] ?? "correct horse"
+        let made = try await call("POST", "api/v1/users", token: token ?? "", ["username": username])
+        let link = try XCTUnwrap((made["link"] as? [String: Any])?["token"] as? String)
+        _ = try await call("POST", "api/v1/auth/setup-link/use", token: "", ["token": link, "password": password])
+        let session = try await call(
+            "POST", "api/v1/auth/login", token: "",
+            ["username": username, "password": password, "client": "device", "deviceName": "ui test"])
+        return try XCTUnwrap(session["accessToken"] as? String)
+    }
+
+    private func newId() -> String { UUID().uuidString.lowercased() }
+
+    /// Pull to refresh: a sync now, not at the next 30-second one.
+    private func refreshList() {
+        let list = app.collectionViews.firstMatch
+        XCTAssertTrue(list.waitForExistence(timeout: 5))
+        list.swipeDown(velocity: .slow)
+        sleep(2)
+    }
+
+    /// Shared spaces (§7.9) between this app's account and Ana's, who works through the API: an invitation in
+    /// the switcher, sharing from Space info, what Ana changed, who edited, and the checks on moving out and locking.
+    func testSharedSpaces() async throws {
+        // The app signs in as Sam, new here: the owner's spaces are the other flows'.
+        _ = try await api("GET", "api/v1/auth/session")
+        let sam = try await account("Sam")
+        let ana = try await account("Ana")
+        _ = try await account("Ben")
+        let people = try await call("GET", "api/v1/people", token: ana)["people"] as? [[String: Any]] ?? []
+        let samId = try XCTUnwrap(people.first { $0["username"] as? String == "Sam" }?["id"])
+        // Sam's Family, with a note in it, made on the web.
+        let family = newId()
+        _ = try await call("PUT", "api/v1/spaces/\(family)", token: sam, ["name": "Family", "icon": "cookbook"])
+        let groceries = newId()
+        _ = try await call(
+            "POST", "api/v1/notes", token: sam,
+            ["operationId": newId(), "id": groceries, "title": "Groceries", "content": "Milk\n", "spaceId": family])
+        // Ana's Book club, and Sam invited to it.
+        let club = newId()
+        _ = try await call("PUT", "api/v1/spaces/\(club)", token: ana, ["name": "Book club", "icon": "journal"])
+        _ = try await call("POST", "api/v1/spaces/\(club)/invites", token: ana, ["userId": samId])
+
+        try signIn(as: "Sam")
+        app.buttons["Tags"].tap()
+        let switcher = app.buttons["Space: Notes"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        switcher.tap()
+        let join = app.buttons["Join Book club"]
+        XCTAssertTrue(join.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Decline Book club"].exists)
+        sleep(1)
+        screenshot("ios-shared-switcher-invitation")
+        try audit("switcher with an invitation", [.sufficientElementDescription, .hitRegion])
+
+        // Joining switches to the space.
+        join.tap()
+        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 15))
+
+        // Family, shared from its Space info: the people picker leaves out the account itself.
+        app.buttons["Tags"].tap()
+        XCTAssertTrue(app.buttons["Space: Book club"].waitForExistence(timeout: 5))
+        app.buttons["Space: Book club"].tap()
+        let familyRow = app.buttons["Family, only you"]
+        XCTAssertTrue(familyRow.waitForExistence(timeout: 5))
+        familyRow.press(forDuration: 1)
+        let turnOn = app.buttons["Turn On Shared"]
+        XCTAssertTrue(turnOn.waitForExistence(timeout: 5))
+        turnOn.tap()
+        let anaRow = app.buttons["Ana"]
+        XCTAssertTrue(anaRow.waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Ben"].exists)
+        XCTAssertFalse(app.buttons["Sam"].exists)
+        screenshot("ios-shared-people-picker")
+        anaRow.tap()
+        let sharedRow = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Shared")).firstMatch
+        XCTAssertTrue(sharedRow.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Invited Ana"].waitForExistence(timeout: 10))
+
+        // Ana joins, edits the note and adds one.
+        let invites = try await call("GET", "api/v1/invites", token: ana)["invites"] as? [[String: Any]] ?? []
+        let invite = try XCTUnwrap(invites.first { $0["spaceId"] as? String == family }?["id"] as? String)
+        _ = try await call("POST", "api/v1/invites/\(invite)/accept", token: ana, [:])
+        let note = try await call("GET", "api/v1/notes/\(groceries)", token: ana)
+        _ = try await call(
+            "PUT", "api/v1/notes/\(groceries)", token: ana,
+            [
+                "operationId": newId(), "baseRevision": note["revision"] ?? 0, "title": "Groceries",
+                "content": "Milk, eggs, bread\n",
+            ])
+        _ = try await call(
+            "POST", "api/v1/notes", token: ana,
+            [
+                "operationId": newId(), "id": newId(), "title": "Birthday ideas", "content": "A kite\n",
+                "spaceId": family,
+            ])
+
+        // Back on Book club's list: a sync brings what Ana did; the switcher says so.
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 5))
+        refreshList()
+        app.buttons["Tags"].tap()
+        app.buttons["Space: Book club"].tap()
+        let news = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Family, Ana edited 2 notes"))
+            .firstMatch
+        XCTAssertTrue(news.waitForExistence(timeout: 40), app.debugDescription)
+        sleep(1)
+        screenshot("ios-shared-switcher-news")
+
+        // Space info, then the Shared page.
+        news.press(forDuration: 1)
+        let withAna = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Shared, With Ana")).firstMatch
+        XCTAssertTrue(withAna.waitForExistence(timeout: 10))
+        screenshot("ios-shared-space-info")
+        withAna.tap()
+        XCTAssertTrue(app.staticTexts["Ana"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Invite Someone…"].exists)
+        XCTAssertTrue(app.buttons["Stop Sharing"].exists)
+        screenshot("ios-shared-manage")
+        try audit("shared", [.sufficientElementDescription, .hitRegion])
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+
+        // Family's list says who edited; having shown it, what changed there is no longer news.
+        app.buttons["Tags"].tap()
+        app.buttons["Space: Book club"].tap()
+        XCTAssertTrue(news.waitForExistence(timeout: 5))
+        news.tap()
+        let edited = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Ana · ")).firstMatch
+        XCTAssertTrue(edited.waitForExistence(timeout: 10))
+        screenshot("ios-shared-note-row")
+        app.buttons["Tags"].tap()
+        app.buttons["Space: Family"].tap()
+        let bookClub = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Book club,")).firstMatch
+        XCTAssertTrue(bookClub.waitForExistence(timeout: 5))
+        bookClub.tap()
+        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 5))
+        app.buttons["Tags"].tap()
+        app.buttons["Space: Book club"].tap()
+        let seen = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Family,")).firstMatch
+        XCTAssertTrue(seen.waitForExistence(timeout: 5))
+        XCTAssertFalse(seen.label.contains("edited"), seen.label)
+        seen.tap()
+
+        // The editor says who edited; Lock explains; moving out asks.
+        let row = app.staticTexts["Groceries"]
+        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        row.tap()
+        let editedBy = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Edited by Ana · "))
+            .firstMatch
+        XCTAssertTrue(editedBy.waitForExistence(timeout: 10))
+        screenshot("ios-shared-editor")
+        app.buttons["More"].tap()
+        app.buttons["Lock note"].tap()
+        XCTAssertTrue(app.alerts["Locked notes can’t be in a shared space."].waitForExistence(timeout: 5))
+        app.alerts.buttons["OK"].tap()
+        app.buttons["More"].tap()
+        app.buttons["Move to Space"].tap()
+        app.buttons["Notes"].tap()
+        let moveOut = app.alerts["Move “Groceries” to Notes?"]
+        XCTAssertTrue(moveOut.waitForExistence(timeout: 5))
+        XCTAssertTrue(moveOut.staticTexts["It will no longer be:\nVisible to Ana"].exists, moveOut.debugDescription)
+        screenshot("ios-shared-move-out")
+        moveOut.buttons["Cancel"].tap()
+    }
+
     /// Wide (an unfolded iPhone Duo), a note opens beside the list, and another one takes its place.
     func testNotesOpenBesideTheListWhenWide() throws {
         app.launch()
@@ -315,7 +498,8 @@ final class FlowTests: XCTestCase {
     }
 
     /// Launches and signs in to the test server.
-    private func signIn(screenshotted: Bool = false) throws {
+    /// As the owner, or (`user`) another account `account(_:)` made.
+    private func signIn(screenshotted: Bool = false, as user: String? = nil) throws {
         let server = try XCTUnwrap(env["NOTESD_URL"], "run through scripts/with-server.sh")
         app.launch()
         let connect = app.buttons["Connect to a server"]
@@ -330,7 +514,7 @@ final class FlowTests: XCTestCase {
         tap(app.buttons["Continue"], until: username, timeout: 10)
 
         focus(username)
-        username.typeText(env["NOTESD_USERNAME"] ?? "owner")
+        username.typeText(user ?? env["NOTESD_USERNAME"] ?? "owner")
         let password = app.secureTextFields["Password"]
         focus(password)
         password.typeText(env["NOTESD_PASSWORD"] ?? "")
