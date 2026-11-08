@@ -179,6 +179,7 @@ Accounts after the first are added by an admin, from [People](#people) or with
 ```json
 {
   "session": { "id": "…", "kind": "device", "name": "Pixel 9", "createdAt": 1767225600000, "lastUsedAt": 1767225600000 },
+  "userId": 2,
   "username": "sam",
   "isAdmin": false,
   "accessToken": "…",
@@ -189,7 +190,8 @@ Accounts after the first are added by an admin, from [People](#people) or with
 }
 ```
 
-Browsers get `csrfToken` instead of the four token fields, and the cookie.
+Browsers get `csrfToken` instead of the four token fields, and the cookie. `userId` is the
+account's id, as notes' `updatedBy` and shared spaces' members name it.
 
 ### Notes
 

@@ -352,3 +352,10 @@ func TestDecliningAndCancelling(t *testing.T) {
 		t.Fatalf("people: %s", people.raw)
 	}
 }
+
+func TestSessionNamesTheAccount(t *testing.T) {
+	s := newSharedEnv(t)
+	if r := s.kid.do("GET", "/api/v1/auth/session", nil); r.body["userId"] != float64(s.kidID) {
+		t.Fatalf("session: %s", r.raw)
+	}
+}
