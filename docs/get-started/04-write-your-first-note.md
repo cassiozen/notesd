@@ -26,7 +26,7 @@ Some tag forms:
 | `#home/garden` | A tag nested under `#home` |
 | `#to read#` | A tag with spaces, closed with a second `#` |
 
-The sidebar lists every tag you use (if it's hidden, click **Show sidebar** at the bottom of the list; in the Mac app, beside the window buttons).
+The sidebar lists every tag you use (if it's hidden, click **Show sidebar** at the bottom of the list; in the Mac app, beside the window buttons, except in full screen).
 Click one to show only its notes. A parent tag such as `#home` also shows the notes tagged
 `#home/garden`.
 

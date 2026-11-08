@@ -186,6 +186,9 @@ extension Font {
     /// The space's name atop the sidebar: sans, as the switcher names spaces. A thin serif looked lighter than the
     /// traits' pill beside it.
     static let notesSpaceName = Font.custom("InstrumentSans-Regular", size: 26, relativeTo: .title).weight(.semibold)
+    /// The list's title in its bar, once the large one has scrolled away: in the space name's face, as the large one.
+    static let notesListBarTitle = Font.custom("InstrumentSans-Regular", size: 18, relativeTo: .headline)
+        .weight(.semibold)
     static let notesMono = Font.custom("JetBrainsMono-Regular", size: 14, relativeTo: .body)
     /// The wordmark: lowercase and monospaced, like the daemon it's named after.
     static let notesBrand = Font.custom("JetBrainsMono-Regular", size: 20, relativeTo: .title3).weight(.medium)

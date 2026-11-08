@@ -507,7 +507,7 @@ private fun TopBar(collapsed: Boolean, title: String, onTags: (() -> Unit)?, mod
         ) {
             Text(
                 title,
-                style = Type.title.copy(fontSize = 20.sp),
+                style = Type.space.copy(fontSize = 18.sp, lineHeight = 22.sp),
                 color = t.ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -553,7 +553,8 @@ private fun Header(
         }
         Text(
             scope ?: "All Notes",
-            style = Type.display,
+            // As the sidebar's space name.
+            style = Type.space,
             color = t.ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,

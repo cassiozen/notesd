@@ -93,7 +93,7 @@
   grid-column: 2;
 }
 
-/* Sans, as the switcher's card and rows name spaces; the list's serif title names what's listed. */
+/* Sans, as the switcher's card and rows name spaces, and as the list's title. */
 .title {
   flex: 1;
   min-width: 0;
