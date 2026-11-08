@@ -32,6 +32,7 @@ const FAILURES: Record<string, string> = {
   interrupted: 'the server stopped',
   queue_full: 'too many runs were waiting',
   unknown_trigger: 'this server doesn’t know the trigger',
+  editor_disconnected: 'the note was closed while the agent changed it',
 }
 
 const OUTCOMES: Record<string, string> = {
@@ -48,6 +49,7 @@ const BLOCKED: Record<UndoBlock, string> = {
   deleted: 'The note was deleted since.',
   locked: 'The note was locked since.',
   changed: 'The note changed since, so undoing would lose those changes.',
+  not_saved: 'The change was made in the open note and hasn’t been saved on its own. Use Undo in the note.',
 }
 
 /** Why a run failed or was skipped, in a few words. */

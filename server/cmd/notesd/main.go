@@ -64,6 +64,7 @@ import (
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
 	"notes/server/internal/database"
+	"notes/server/internal/editors"
 	"notes/server/internal/images"
 	"notes/server/internal/llm"
 	"notes/server/internal/locks"
@@ -633,6 +634,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			return fmt.Errorf("%s: %w", u.Username, err)
 		}
 	}
+	hub := editors.NewHub()
 	runner := agent.NewRunner(agent.RunnerConfig{
 		Accounts: func(ctx context.Context) ([]int64, error) {
 			list, err := authSvc.ListUsers(ctx)
@@ -654,14 +656,16 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			if err != nil {
 				return agent.Account{}, err
 			}
-			return agentAccount(d, userID), nil
+			a := agentAccount(d, userID)
+			a.Editors = hub.For(userID)
+			return a, nil
 		},
 		Settings: func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) },
 		Provider: llm.NewClient(),
 		Log:      log,
 	})
 	users.OnAgentScheduled(runner.Wake)
-	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: runner.WakeAll}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: runner.WakeAll, Editors: hub}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}

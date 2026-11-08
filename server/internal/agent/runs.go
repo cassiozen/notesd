@@ -2,7 +2,9 @@ package agent
 
 import (
 	"context"
+	"crypto/sha256"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"time"
@@ -35,6 +37,7 @@ const (
 	FailInterrupted  = "interrupted" // the server stopped during the run
 	FailQueueFull    = "queue_full"
 	FailUnknownEvent = "unknown_trigger"
+	FailEditorGone   = "editor_disconnected" // the editor went away while the run changed the note in it
 )
 
 // queuedRun is a run as the runner takes it from the queue.
@@ -46,6 +49,8 @@ type queuedRun struct {
 	NoteID    string
 	Event     Event
 	Attempts  int
+	// ConnectionID is the editor that asked for the run, if one did.
+	ConnectionID string
 	// What earlier attempts used, counted against this one's caps.
 	PriorToolCalls int
 	PriorTokens    int64
@@ -223,6 +228,68 @@ func recordEdit(ctx context.Context, tx *sql.Tx, ev notes.Event, now int64) erro
 			after_title = excluded.after_title, after_content = excluded.after_content, written_at = excluded.written_at`,
 		ev.Agent.RunID, ev.NoteID, kind, beforeRev, beforeTitle, beforeContent, ev.After.Revision, ev.After.Title, ev.After.Content, now)
 	return err
+}
+
+// recordEditorEdit notes a change a run made in an editor, from before to
+// after. The editor saves it later: linkEditorEdit fills in after_revision
+// then. beforeRev is nil when the editor had unsaved changes.
+func (s *Store) recordEditorEdit(ctx context.Context, runID, noteID string, beforeRev *int64, before, after Fields) error {
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		_, err := tx.ExecContext(ctx, `
+			INSERT INTO agent_run_edits (run_id, note_id, kind, before_revision, before_title, before_content,
+			                             after_revision, after_title, after_content, written_at, applied_from)
+			VALUES (?, ?, 'edit', ?, ?, ?, NULL, ?, ?, ?, ?)
+			ON CONFLICT(run_id, note_id) DO UPDATE SET after_revision = NULL, after_title = excluded.after_title,
+				after_content = excluded.after_content, written_at = excluded.written_at,
+				-- Changes the editor hasn't saved yet go out in one save: from the first of them.
+				applied_from = CASE WHEN agent_run_edits.after_revision IS NULL THEN agent_run_edits.applied_from
+					ELSE excluded.applied_from END`,
+			runID, noteID, beforeRev, before.Title, before.Content, after.Title, after.Content, s.now().UnixMilli(),
+			fieldsHash(before.Title, before.Content))
+		return err
+	})
+}
+
+// fieldsHash stands for a note's text where keeping the text itself would
+// outlive locking or deleting the note.
+func fieldsHash(title, content string) string {
+	h := sha256.New()
+	h.Write([]byte(title))
+	h.Write([]byte{0})
+	h.Write([]byte(content))
+	return hex.EncodeToString(h.Sum(nil))
+}
+
+// linkEditorEdit matches a save to a run's change made in an editor that
+// hadn't been saved: the same title and content. A save holding more than
+// that isn't linked, so undo never takes the user's typing. agentOnly: the
+// server had exactly what the editor showed before the change, so the save
+// adds nothing of the user's.
+func linkEditorEdit(ctx context.Context, tx *sql.Tx, ev notes.Event) (agentOnly bool, err error) {
+	rows, err := tx.QueryContext(ctx, `UPDATE agent_run_edits SET after_revision = ?
+		WHERE note_id = ? AND after_revision IS NULL AND after_title = ? AND after_content = ?
+		RETURNING applied_from`,
+		ev.After.Revision, ev.NoteID, ev.After.Title, ev.After.Content)
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	// Hashed only for a save that holds a run's change, which few do.
+	prior := ""
+	for rows.Next() {
+		var from sql.NullString
+		if err := rows.Scan(&from); err != nil {
+			return false, err
+		}
+		if prior == "" {
+			prior = fieldsHash("", "")
+			if ev.Before != nil {
+				prior = fieldsHash(ev.Before.Title, ev.Before.Content)
+			}
+		}
+		agentOnly = agentOnly || from.String == prior
+	}
+	return agentOnly, rows.Err()
 }
 
 // edited reports what a run changed: notes it edited, and notes it created.
