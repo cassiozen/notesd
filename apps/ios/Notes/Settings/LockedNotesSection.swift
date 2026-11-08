@@ -111,6 +111,8 @@ struct KeyringSheet<Fields: View>: View {
     let action: String
     var destructive = false
     let busy: Bool
+    /// Not ready to submit yet, though not busy submitting.
+    var waiting = false
     let footer: String
     let formError: String?
     let submit: () -> Void
@@ -141,6 +143,7 @@ struct KeyringSheet<Fields: View>: View {
                         ProgressView()
                     } else {
                         Button(action, systemImage: destructive ? "trash" : "checkmark", action: submit)
+                            .disabled(waiting)
                             .buttonStyle(.glassProminent)
                             .tint(destructive ? Color.danger : Color(Palette.link))
                     }

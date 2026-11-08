@@ -89,10 +89,13 @@ nonisolated final class AccountStore: Credentials, Sendable {
         }
     }
 
-    /// The name or photo changed, here or on another device.
-    func profileChanged(_ profile: Profile) {
+    /// `username` at `server`'s name or photo changed, here or on another device. Asked before an await: dropped if
+    /// someone else has signed in by the time it arrives.
+    func profileChanged(_ profile: Profile, server: String, username: String) {
         write { saved in
-            guard var saved, saved.profile != profile else { return saved }
+            guard var saved, saved.server == server, saved.username == username, saved.profile != profile else {
+                return saved
+            }
             saved.userId = profile.userId
             saved.displayName = profile.displayName
             saved.avatar = profile.avatar

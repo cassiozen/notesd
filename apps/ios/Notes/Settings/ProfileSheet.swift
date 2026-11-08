@@ -34,10 +34,14 @@ struct AvatarView: View {
 
 /// Name and photo: optional, edited from Server and never asked for anywhere else once signed in.
 struct ProfileSheet: View {
+    let server: String
     let username: String
     @Environment(AppGraph.self) private var graph
     @Environment(\.dismiss) private var dismiss
     @State private var name = ""
+    /// What the draft started from: a refresh while open mustn't turn an untouched name into a change.
+    @State private var startName = ""
+    @State private var preparing = false
     @State private var picked: PhotosPickerItem?
     @State private var photo: Photo?
     @State private var nameError: String?
@@ -54,7 +58,7 @@ struct ProfileSheet: View {
     var body: some View {
         let profile = graph.profile
         KeyringSheet(
-            title: "Name and Photo", action: "Save", busy: busy,
+            title: "Name and Photo", action: "Save", busy: busy, waiting: preparing,
             footer: "Both are optional. Admins on this server see them when they manage people. Your username, "
                 + "\(username), is still what you sign in with.",
             formError: formError, submit: { save(profile) }
@@ -75,7 +79,7 @@ struct ProfileSheet: View {
                 }
                 // Each its own target: in a Form row, any tap would otherwise press them all.
                 .buttonStyle(.borderless)
-                .disabled(busy)
+                .disabled(busy || preparing)
             }
             .padding(.vertical, 4)
             if let photoError { Text(photoError).font(.notesSmall).foregroundStyle(Color.errInk) }
@@ -85,12 +89,17 @@ struct ProfileSheet: View {
                 .accessibilityLabel("Name")
             if let nameError { Text(nameError).font(.notesSmall).foregroundStyle(Color.errInk) }
         }
-        .onAppear { name = graph.profile.displayName }
+        .onAppear {
+            startName = graph.profile.displayName
+            name = startName
+        }
         .onChange(of: picked) { _, item in
             guard let item else { return }
             picked = nil
             photoError = nil
+            preparing = true
             Task {
+                defer { preparing = false }
                 do throws(ImageError) {
                     guard let data = try? await item.loadTransferable(type: Data.self) else {
                         throw ImageError("That picture couldn’t be read.")
@@ -122,7 +131,7 @@ struct ProfileSheet: View {
     }
 
     private func save(_ before: Profile) {
-        guard !busy, let client = graph.accounts.client() else { return }
+        guard !busy, !preparing, let client = graph.accounts.client() else { return }
         busy = true
         nameError = nil
         photoError = nil
@@ -136,17 +145,19 @@ struct ProfileSheet: View {
             func step(_ result: ApiResult<Profile>) {
                 if case .ok(let profile) = result { saved = profile } else { failed = result }
             }
-            if trimmed != before.displayName { step(await client.setDisplayName(trimmed)) }
+            if trimmed != startName { step(await client.setDisplayName(trimmed)) }
             if failed == nil {
                 switch photo {
                 case .chosen(let jpeg, _):
                     step(await client.setAvatar(jpeg))
-                    if failed == nil, let saved { graph.avatars.put(jpeg, for: saved) }
-                case .remove: step(await client.removeAvatar())
+                    if failed == nil, let saved { await graph.avatars.put(jpeg, for: saved) }
+                case .remove:
+                    step(await client.removeAvatar())
+                    if failed == nil { await graph.avatars.forget(before.userId) }
                 case nil: break
                 }
             }
-            if let saved { graph.accounts.profileChanged(saved) }
+            if let saved { graph.accounts.profileChanged(saved, server: server, username: username) }
             busy = false
             switch failed {
             case nil: dismiss()

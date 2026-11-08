@@ -211,7 +211,7 @@ struct SettingsSectionView: View {
                 }
                 .foregroundStyle(Color.ink)
                 // On the row, not the section: a sheet on a Form's section doesn't present.
-                .sheet(isPresented: $editingProfile) { ProfileSheet(username: username) }
+                .sheet(isPresented: $editingProfile) { ProfileSheet(server: server, username: username) }
                 Button("Change Password") {
                     passwordChanged = false
                     changingPassword = true

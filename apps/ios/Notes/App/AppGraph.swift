@@ -291,8 +291,10 @@ final class AppGraph {
 
     /// Whose account this is as of now: the name or photo may have changed elsewhere. Quiet when offline.
     func refreshAccount() async {
-        guard case .signedIn = account, let now = await accounts.client()?.session().value else { return }
-        accounts.profileChanged(now.profile)
+        guard case .signedIn(let server, let username) = account,
+            let now = await accounts.client()?.session().value
+        else { return }
+        accounts.profileChanged(now.profile, server: server, username: username)
     }
 
     /// How this phone appears in the server's list of signed-in devices.
