@@ -1,0 +1,52 @@
+apps/ios/NotesCore/Sources/NotesCore/DB/NoteStore.swift
+  s_bfcd6b4ecf53cb::t_71319dab7dbba6 437,493,499
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_bfcd6b4ecf53cb::t_cf7d52d1fa001b 87,120-121,181,186,191,227-228,235
+  s_bfcd6b4ecf53cb::t_09abdf9878963e 374
+  s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 494
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_bfcd6b4ecf53cb::t_97e76f91cc9e63 80,85-86,89,135,141,143
+apps/ios/NotesCore/Tests/NotesCoreTests/SharedSpacesTests.swift
+  s_bfcd6b4ecf53cb::t_97e76f91cc9e63 34,39-41,44,48,114,119-160
+  s_bfcd6b4ecf53cb::t_dd63e52e4b102a 161
+apps/ios/NotesTests/SharingTests.swift
+  s_bfcd6b4ecf53cb::t_a19c554c16947f 9-10
+  s_bfcd6b4ecf53cb::t_510c29c7cca9e1 57
+apps/ios/NotesCore/Sources/NotesCore/Images/ImageStore.swift
+  s_bfcd6b4ecf53cb::t_a4255d6361cc10 182
+apps/ios/Notes/Notes/Sharing.swift
+  s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 59,62-63,65,72,113
+  s_bfcd6b4ecf53cb::t_a19c554c16947f 41,46-47
+  s_bfcd6b4ecf53cb::t_d8a7c981b449a5 48-49
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_bfcd6b4ecf53cb::t_649116dda503ad 61,66,125-130,132-133,140-151,155,220,323-327,329-341,343-349,351,361-362,443
+apps/ios/Notes/Account/OnboardingModel.swift
+  s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 171
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 176,186,239-240,244,312,352-353,391,412
+  s_bfcd6b4ecf53cb::t_8eb01dac1b26fc 325-327
+  s_bfcd6b4ecf53cb::t_05a95ee90438da 328
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 6-7,24
+apps/ios/NotesCore/Sources/NotesCore/DB/Rows.swift
+  s_bfcd6b4ecf53cb::t_970483316bef20 142,147-148,150,155,158,162,165,177-178,187-189,191-200,203
+apps/ios/NotesCore/Sources/NotesCore/Sync/NoteMailer.swift
+  s_bfcd6b4ecf53cb::t_7b9a9c17d942b1 43
+  s_bfcd6b4ecf53cb::t_a4255d6361cc10 41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3cfc8fe16b2c996e0483ddb0312f6851047b7aba",
+  "prompts": {},
+  "sessions": {
+    "s_bfcd6b4ecf53cb": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "31b52478-a5e2-4747-9061-63358b92a553",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
