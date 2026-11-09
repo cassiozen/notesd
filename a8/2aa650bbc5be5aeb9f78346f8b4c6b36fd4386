@@ -1,0 +1,21 @@
+apps/web/src/notes/space-menu.module.css
+  s_0f3b4cc888440f::t_20f819252bc06a 1-2
+apps/web/src/notes/space-identity.module.css
+  s_0f3b4cc888440f::t_ec963b7c5c9529 35-36,40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a82aa650bbc5be5aeb9f78346f8b4c6b36fd4386",
+  "prompts": {},
+  "sessions": {
+    "s_0f3b4cc888440f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "adf8ed39-7b31-487d-9d09-d21474461a9c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
