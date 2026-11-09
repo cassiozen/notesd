@@ -8,6 +8,7 @@ import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
@@ -664,6 +665,10 @@ class ScreenshotTest {
         compose.waitUntilExactlyOneExists(hasContentDescription("Cancel dee's invitation"), 10_000)
         compose.waitUntilExactlyOneExists(hasText("Stop sharing…") and isEnabled(), 10_000)
         shoot("space-info-invited-$suffix")
+        compose.onNode(hasText("Publish") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasText("Change address") and isEnabled(), 10_000)
+        compose.onNode(hasText("Stop publishing…")).performScrollTo()
+        shoot("space-info-published-$suffix")
     }
 
     @Test fun spaceInfoLight() = spaceInfo("light", null)

@@ -83,6 +83,7 @@ import notes.app.notes.describeTraits
 import notes.app.notes.name
 import notes.app.notes.traitRows
 import notes.app.sharing.PeopleSection
+import notes.app.sharing.PublishedSection
 import notes.app.ui.Icons
 import notes.app.ui.InlineConfirm
 import notes.app.ui.LocalReduceMotion
@@ -159,16 +160,23 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
 }
 
 /**
- * The app's traits with sharing's section, People (§7.9): inviting someone is what shares a space, so it's
- * there to use for the account's own spaces but the default, and for a shared one its owner stopped sharing.
+ * The app's traits with their sections: People (§7.9), where inviting someone shares a space, and Published
+ * (§7.10), where its owner publishes it. Both are there for the account's own spaces but the default, and for a
+ * shared space its owner's.
  */
 internal fun spaceInfoRegistry(graph: AppGraph): List<TraitEntry> = SpaceTraits.entries.map {
-    if (it.key != "shared") return@map it
-    it.with(
-        section = { space -> PeopleSection(graph, space) },
-        canTurnOn = { space -> space.id != Spaces.DEFAULT && space.shared?.isOwner != false }
-    )
+    when (it.key) {
+        "shared" -> it.with(section = { space -> PeopleSection(graph, space) }, canTurnOn = ::canExpose)
+        "published" -> it.with(section = { space -> PublishedSection(graph, space) }, canTurnOn = ::canExpose)
+        else -> it
+    }
 }
+
+/**
+ * Never the default space: everyone keeps a private one, where a locked note refused elsewhere is kept (§7.8). For
+ * a shared space, only its owner.
+ */
+private fun canExpose(space: Space) = space.id != Spaces.DEFAULT && space.shared?.isOwner != false
 
 /**
  * The page itself: icon, name and note count with the trait glyphs (the owner changes the name and icon right

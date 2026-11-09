@@ -16,6 +16,7 @@ import mockwebserver3.Dispatcher
 import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
+import okhttp3.HttpUrl.Companion.toHttpUrl
 
 class ApiClientTest {
     private val server = MockWebServer().apply { start() }
@@ -377,5 +378,36 @@ class ApiClientTest {
             ),
             paths
         )
+    }
+
+    @Test
+    fun `publishing sends only what changes, and the app's own origin`() = runBlocking<Unit> {
+        val settings = """{"handle":"garden","url":"https://n.example/@garden/","origin":"https://n.example",""" +
+            """"published":true,"css":""}"""
+        server.enqueue(json(200, settings))
+        val on = assertIs<ApiResult.Ok<PublishSettings>>(api.publish("garden", origin = "https://n.example"))
+        assertEquals("garden", on.value.handle)
+        val put = server.takeRequest()
+        assertEquals("PUT", put.method)
+        assertEquals("/api/v1/spaces/garden/publish", put.url.encodedPath)
+        assertEquals("""{"origin":"https://n.example"}""", put.body!!.utf8())
+
+        server.enqueue(json(409, """{"error":"handle_taken","message":"another space has that address"}"""))
+        assertEquals("handle_taken", assertIs<ApiResult.Conflict>(api.publish("s", handle = "taken")).code)
+        assertEquals("""{"handle":"taken"}""", server.takeRequest().body!!.utf8())
+
+        server.enqueue(MockResponse.Builder().code(204).build())
+        assertEquals(ApiResult.Ok(Unit), api.unpublish("s"))
+        assertEquals("DELETE", server.takeRequest().method)
+
+        server.enqueue(json(404, """{"error":"not_published","message":"the space isn't published"}"""))
+        assertEquals("not_published", assertIs<ApiResult.Rejected>(api.publishSettings("s")).error)
+    }
+
+    @Test
+    fun `the origin is the address the app reaches the server at`() {
+        assertEquals("http://127.0.0.1:8080", ApiClient("http://127.0.0.1:8080/".toHttpUrl()).origin)
+        assertEquals("https://notes.example", ApiClient("https://notes.example/".toHttpUrl()).origin)
+        assertEquals("http://[fd7a::1]:8080", ApiClient("http://[fd7a::1]:8080/".toHttpUrl()).origin)
     }
 }

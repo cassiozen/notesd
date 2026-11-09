@@ -22,7 +22,7 @@ setting.
 
 ## Publish a space
 
-In the web or Mac app:
+In the web, Mac or Android app:
 
 1. Choose the space's name at the top of the sidebar, then **Info**.
 2. Under **Published**, choose **Publish**.
@@ -45,12 +45,13 @@ publish it again.
   Your first space, "Notes", can't be published.
 - **Sharing and publishing are separate.** A shared space can be published too, by its owner, and
   then every member's notes in it are public.
-- **Custom CSS.** Under **Published → Custom CSS**, add CSS of your own. It's added after the
-  site's styles, so it wins without `!important`, and most changes are a variable, such as
-  `:root { --accent: teal }`. The variables are `--bg`, `--surface`, `--text`, `--muted`,
+- **Custom CSS.** Under **Published → Custom CSS** in the web app, add CSS of your own. It's
+  added after the site's styles, so it wins without `!important`, and most changes are a
+  variable, such as `:root { --accent: teal }`. The variables are `--bg`, `--surface`, `--text`, `--muted`,
   `--border`, `--accent`, `--link`, `--font-body`, `--font-heading`, `--font-mono` and
   `--measure`.
-- **For now, publishing is set up in the web or Mac app.** The Android and iPhone apps show that
-  a space is published, but don't publish one yet.
+- **Custom CSS is set in the web or Mac app.** The Android app publishes, changes the address
+  and stops publishing. For now the iPhone app shows that a space is published, but doesn't
+  publish one.
 
 For who can see what, see the [security model](../../concepts/security-model.md).

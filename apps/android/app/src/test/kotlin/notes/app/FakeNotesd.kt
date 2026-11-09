@@ -13,6 +13,7 @@ import mockwebserver3.RecordedRequest
 import notes.app.notes.names
 import notes.core.api.Invitee
 import notes.core.api.Member
+import notes.core.api.PublishSettings
 import notes.core.api.RemoteInvite
 import notes.core.api.RemoteNote
 import notes.core.api.RemoteSpace
@@ -43,6 +44,12 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
 
     /** Spaces an invitation joins: what accepting it makes the space. */
     val invited = HashMap<String, RemoteSpace>()
+
+    /** Published spaces' addresses, by space id; kept when the site is taken down, as the server keeps them. */
+    val published = LinkedHashMap<String, PublishSettings>()
+
+    /** Spaces the server holds locked notes in: publishing them is refused. */
+    val lockedIn = HashSet<String>()
 
     /** Requests, as [requests] names them, answered with a 500. */
     val failing = HashSet<String>()
@@ -182,6 +189,44 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
                 MockResponse.Builder().code(204).build()
             }
 
+            r.method == "GET" && parts.size == 3 && parts[0] == "spaces" && parts[2] == "publish" ->
+                published[parts[1]]?.let { ok(json.encodeToString(PublishSettings.serializer(), it)) }
+                    ?: error(404, "not_published")
+
+            r.method == "PUT" && parts.size == 3 && parts[0] == "spaces" && parts[2] == "publish" -> {
+                val space = spaces[parts[1]] ?: return error(404, "not_found")
+                val body = Json.parseToJsonElement(r.body!!.utf8()).jsonObject
+                val before = published[space.id]
+                val handle = body["handle"]?.jsonPrimitive?.content
+                    ?: before?.handle
+                    ?: space.name.lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+                val origin = body["origin"]?.jsonPrimitive?.content ?: before?.origin
+                when {
+                    space.id == Spaces.DEFAULT -> return error(409, "space_default")
+
+                    space.id in lockedIn -> return error(409, "space_has_locked")
+
+                    !Regex("^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$").matches(handle) ->
+                        return error(400, "invalid_request", field = "handle")
+
+                    published.any { (id, p) -> id != space.id && p.handle == handle } ->
+                        return error(409, "handle_taken", field = "handle")
+
+                    origin == null -> return error(400, "invalid_request", field = "origin")
+                }
+                val settings = PublishSettings(handle, "$origin/@$handle/", origin, published = true)
+                published[space.id] = settings
+                spaces[space.id] = withPublished(space, settings)
+                ok(json.encodeToString(PublishSettings.serializer(), settings))
+            }
+
+            r.method == "DELETE" && parts.size == 3 && parts[0] == "spaces" && parts[2] == "publish" -> {
+                val settings = published[parts[1]] ?: return error(404, "not_published")
+                published[parts[1]] = settings.copy(published = false)
+                spaces[parts[1]] = withPublished(spaces.getValue(parts[1]), null)
+                MockResponse.Builder().code(204).build()
+            }
+
             r.method == "POST" && path.endsWith("/email") -> ok("""{"id":"e1"}""")
 
             r.method == "GET" && path == "/settings/email" ->
@@ -209,14 +254,26 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
         val on = others.isNotEmpty() || pending.isNotEmpty()
         val trait = SpaceTrait("shared", "Shared", summary, exposure = "Visible to ${names(others + pending)}")
         val seen = if (people.isOwner) people else people.copy(invites = emptyList())
-        return space.copy(shared = seen, traits = if (on) listOf(trait) else emptyList())
+        val rest = space.traits.filter { it.key != "shared" }
+        return space.copy(shared = seen, traits = listOfNotNull(trait.takeIf { on }) + rest)
+    }
+
+    /** [space] with its `published` trait for [settings], or without one, after its other traits (§7.8's order). */
+    fun withPublished(space: RemoteSpace, settings: PublishSettings?): RemoteSpace {
+        val at = settings?.let { "${it.origin.substringAfter("://")}/@${it.handle}" }
+        val trait = at?.let {
+            SpaceTrait("published", "Published", "At $it", exposure = "Public at $it", audience = listOf("public"))
+        }
+        return space.copy(traits = space.traits.filter { it.key != "published" } + listOfNotNull(trait))
     }
 
     private fun ok(body: String) =
         MockResponse.Builder().code(200).addHeader("Content-Type", "application/json").body(body).build()
 
-    private fun error(code: Int, error: String) = MockResponse.Builder().code(code)
-        .addHeader("Content-Type", "application/json").body("""{"error":"$error","message":"$error"}""").build()
+    private fun error(code: Int, error: String, field: String? = null) = MockResponse.Builder().code(code)
+        .addHeader("Content-Type", "application/json")
+        .body("""{"error":"$error","message":"$error"${field?.let { ""","field":"$it"""" }.orEmpty()}}""")
+        .build()
 
     override fun close() = server.close()
 }

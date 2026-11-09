@@ -42,6 +42,7 @@ import notes.app.notes.TagTreeState
 import notes.app.notes.changeLine
 import notes.app.notes.memberId
 import notes.app.settings.Appearance
+import notes.app.sharing.Publishing
 import notes.app.sharing.Sharing
 import notes.app.sync.SyncScheduler
 import notes.app.ui.SpaceThemes
@@ -135,6 +136,9 @@ class AppGraph(
 
     /** Who's in shared spaces (§7.9): invitations, members, leaving. */
     val sharing = Sharing({ api() }, sync, store, scope)
+
+    /** Spaces as public websites (§7.10). */
+    val publishing = Publishing({ api() }, sync, store, scope)
 
     /** The space switcher is open: only then are its invitations and "what changed" lines kept current. */
     val switcherShown = MutableStateFlow(false)
