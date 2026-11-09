@@ -13,10 +13,8 @@ foldables.
 ## Install
 
 Get notesd on
-[Google Play](https://play.google.com/store/apps/details?id=app.notesd). It's
-in early access: if the store doesn't show it, join the test at
-[play.google.com/apps/testing/app.notesd](https://play.google.com/apps/testing/app.notesd)
-first. Play keeps it up to date.
+[Google Play](https://play.google.com/store/apps/details?id=app.notesd). Play
+keeps it up to date.
 
 ### Without Google Play
 

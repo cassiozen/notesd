@@ -163,7 +163,7 @@ jobs:
 
           | App | Get it |
           | --- | --- |
-          | **Android** | [Google Play](https://play.google.com/store/apps/details?id=app.notesd) (early access), or `notesd-*.apk` below |
+          | **Android** | [Google Play](https://play.google.com/store/apps/details?id=app.notesd), or `notesd-*.apk` below |
           | **Mac** | `notesd-mac.dmg` below (macOS 14+, Apple silicon) |
           | **iPhone** | Coming soon to the App Store. [Build it with Xcode](https://notesd.app/docs/guides/apps/iphone.html#install) |
           | **Server** | `ghcr.io/cassiozen/notesd`, or a `notesd-linux-*` / `notesd-darwin-arm64` binary below |

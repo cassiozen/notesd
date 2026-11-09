@@ -16,9 +16,8 @@ The server address is your HTTPS address from [step 3](03-set-up-https.md), such
 **Android** (Android 9 or later):
 
 1. Install notesd from
-   [Google Play](https://play.google.com/store/apps/details?id=app.notesd). It's in early access:
-   if the store doesn't show it, [join the test](https://play.google.com/apps/testing/app.notesd)
-   first. Without Google Play, install the APK instead:
+   [Google Play](https://play.google.com/store/apps/details?id=app.notesd). Without Google
+   Play, install the APK instead:
    [Without Google Play](../guides/apps/android.md#without-google-play).
 2. Open notesd, enter the server address, and sign in with the username and password from
    [step 2](02-create-your-account.md).
