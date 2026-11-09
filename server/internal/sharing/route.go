@@ -35,17 +35,17 @@ const attempts = 3
 
 // Files lists every notes file userID reaches: their own first, then each shared space they're in, each
 // held (see Open) until release is called.
-func (s *Service) Files(ctx context.Context, userID int64) (_ []File, release func(), err error) {
+func (s *Service) Files(ctx context.Context, userID int64) (_ []File, _ func(), err error) {
 	var releases []func()
-	release = func() {
+	// Not a named result: `return nil, nil, err` would nil it before the deferred call.
+	releaseAll := func() {
 		for _, r := range releases {
 			r()
 		}
 	}
 	defer func() {
 		if err != nil {
-			release()
-			release = func() {}
+			releaseAll()
 		}
 	}()
 	own, err := s.files.Open(ctx, userID)
@@ -67,7 +67,7 @@ func (s *Service) Files(ctx context.Context, userID int64) (_ []File, release fu
 		releases = append(releases, r)
 		out = append(out, File{Data: d, SpaceID: id})
 	}
-	return out, release, nil
+	return out, releaseAll, nil
 }
 
 // ForSpace is the file a space's notes are in for userID: the shared space's if it is one they're in,

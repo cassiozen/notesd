@@ -242,6 +242,38 @@ func TestAskingForSpacesThatDontExistKeepsNothing(t *testing.T) {
 	}
 }
 
+func TestListingFilesCutShortFails(t *testing.T) {
+	e := newEnv(t)
+	ctx, cancel := context.WithCancel(e.ctx)
+	cancel()
+	if _, _, err := e.s.Files(ctx, 1); err == nil {
+		t.Fatal("listed with a cancelled context")
+	}
+	if n := e.s.Holds(); n != 0 {
+		t.Fatalf("locks kept: %d", n)
+	}
+}
+
+func TestListingFilesLetsGoOfThoseOpenedBeforeOneFails(t *testing.T) {
+	e := newEnv(t)
+	e.copyToSpace()
+	// Spaces open in id order: fam is held by the time zz fails.
+	for _, id := range []string{"fam", "zz"} {
+		e.exec(`INSERT INTO shared_spaces (id, owner_id, created_at) VALUES (?, 1, 0)`, id)
+		e.exec(`INSERT INTO space_members (space_id, user_id, joined_at) VALUES (?, 1, 0)`, id)
+	}
+	// A directory where zz's database goes: it can't open.
+	if err := os.MkdirAll(userdata.SpacePath(e.dir, "zz"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := e.s.Files(e.ctx, 1); err == nil {
+		t.Fatal("listed with a space that can't open")
+	}
+	if n := e.s.Holds(); n != 0 {
+		t.Fatalf("locks kept: %d", n)
+	}
+}
+
 func TestOpeningASpaceFileIfItExistsDoesntMakeOne(t *testing.T) {
 	e := newEnv(t)
 	if d, err := e.files.OpenSpaceIfExists(e.ctx, "gone"); err != nil || d != nil {
