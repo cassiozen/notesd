@@ -1,0 +1,22 @@
+apps/web/test/locks.test.tsx
+  s_41cfe107c3af78::t_4c2de0b3817d50 648-655
+apps/web/src/notes/note-pane.tsx
+  s_41cfe107c3af78::t_287175aa3c3fdd 82-83
+  s_41cfe107c3af78::t_34961986d40bc3 84
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "25888b9cc7219447888fbe673022094c0dfb5fbc",
+  "prompts": {},
+  "sessions": {
+    "s_41cfe107c3af78": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5fbfa8bd-efa0-42bf-9af1-6ff73386b875",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
