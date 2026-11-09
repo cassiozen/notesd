@@ -6,7 +6,9 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.yield
 import notes.core.api.ApiResult
@@ -36,15 +38,23 @@ class AccountCacheTest {
 
     @Test
     fun `an answer for an account that's gone is ignored`() = runBlocking {
-        val gate = CompletableDeferred<ApiResult<String>>()
+        val gates = List(2) { CompletableDeferred<ApiResult<String>>() }
         var fetches = 0
-        val slow = AccountCache { if (++fetches == 1) gate.await() else ApiResult.Ok("new") }
+        val slow = AccountCache { gates[fetches++].await() }
+        val seen = ArrayList<String?>()
+        val watching = launch(start = CoroutineStart.UNDISPATCHED) { slow.value.collect { seen += it } }
         val fetch = async { slow.refresh() }
         yield()
         slow.forget()
-        gate.complete(ApiResult.Ok("old"))
+        gates[0].complete(ApiResult.Ok("old"))
+        yield()
+        // Asked again for the account there now, the old answer never shown meanwhile.
+        assertEquals(2, fetches)
+        gates[1].complete(ApiResult.Ok("new"))
         fetch.await()
-        assertEquals("new", slow.value.value)
+        yield()
+        assertEquals(listOf(null, "new"), seen)
+        watching.cancel()
 
         slow.forget()
         val save = CompletableDeferred<ApiResult<String>>()
@@ -54,6 +64,18 @@ class AccountCacheTest {
         save.complete(ApiResult.Ok("old"))
         assertEquals(ApiResult.Ok("old"), saving.await())
         assertNull(slow.value.value)
+    }
+
+    @Test
+    fun `a fetch sent before a save doesn't undo it`() = runBlocking {
+        val gate = CompletableDeferred<ApiResult<String>>()
+        val slow = AccountCache { gate.await() }
+        val fetch = async { slow.refresh() }
+        yield()
+        slow.change({ ApiResult.Ok("saved") }) { _, saved -> saved }
+        gate.complete(ApiResult.Ok("from before"))
+        fetch.await()
+        assertEquals("saved", slow.value.value)
     }
 
     @Test

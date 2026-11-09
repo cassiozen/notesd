@@ -20,15 +20,21 @@ class AccountCache<T : Any>(private val fetch: suspend () -> ApiResult<T>?) {
     /** Moves on with each [forget]: an answer to a request made before it is for an account that's gone. */
     @Volatile private var generation = 0
 
+    /** Moves on with each save [change] applies: a fetch sent before it may hold what the save replaced. */
+    @Volatile private var saves = 0
+
     /** Fetches it again; a failure keeps what was known. */
     suspend fun refresh() {
         var asked: Int
+        var saved: Int
         var r: ApiResult<T>?
         // An answer for an account that's gone: ask again, for the one there now.
         do {
             asked = generation
+            saved = saves
             r = fetch()
         } while (asked != generation)
+        if (saved != saves) return
         if (r is ApiResult.Ok) {
             _value.value = r.value
             _failed.value = false
@@ -47,6 +53,7 @@ class AccountCache<T : Any>(private val fetch: suspend () -> ApiResult<T>?) {
         val asked = generation
         val r = call() ?: ApiResult.Unauthenticated
         if (r is ApiResult.Ok && asked == generation) {
+            saves++
             _value.value = next(_value.value, r.value)
             _failed.value = false
         }
