@@ -1,0 +1,36 @@
+apps/web/src/locks/locks.module.css
+  s_3bff4e58468cc8::t_e6031c89aec1a8 55
+apps/web/src/notes/share.module.css
+  s_3bff4e58468cc8::t_e6031c89aec1a8 68
+apps/web/src/ui/modality.test.ts
+  s_3bff4e58468cc8::t_de4cc61d7d155d 1-52
+apps/web/src/styles/base.css
+  s_3bff4e58468cc8::t_a283898166c477 49
+  s_3bff4e58468cc8::t_e6031c89aec1a8 50-52
+apps/web/src/ui/modality.ts
+  s_3bff4e58468cc8::t_de4cc61d7d155d 1-23
+apps/web/src/settings/settings.module.css
+  s_3bff4e58468cc8::t_e6031c89aec1a8 419
+apps/web/src/main.tsx
+  s_3bff4e58468cc8::t_a283898166c477 7,18
+apps/web/src/notes/space-icon.module.css
+  s_3bff4e58468cc8::t_e6031c89aec1a8 61,65
+apps/web/src/notes/space-menu.module.css
+  s_3bff4e58468cc8::t_e6031c89aec1a8 130,240,298,303,330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5161ef02b078a4bd7c4bf0a02d1c43f5307ba444",
+  "prompts": {},
+  "sessions": {
+    "s_3bff4e58468cc8": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "47e5378c-6e1c-4abd-96e5-39c3dae0d486",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
