@@ -335,9 +335,9 @@ anyone else).
 - Renaming, changing the icon and deleting a shared space (`PUT`/`DELETE /spaces/{id}`) are for
   its owner (`403 not_space_owner`). Names may match one of a member's own spaces; ids may not:
   a space of your own with a shared space's id is refused (`409 space_exists`).
-- Sharing refuses `default` (`409 space_default`) and a space holding locked notes
-  (`409 space_has_locked`, with `count`). A shared space refuses locked notes
-  (`422 locked_in_shared_space`).
+- Sharing refuses `default` (`409 space_default`). Any invitation, the first one too, refuses a
+  space holding locked notes (`409 space_has_locked`, with `count`). While anyone else is in it or
+  invited, a shared space refuses locked notes (`422 locked_in_exposed_space`).
 - The owner can't leave (`409 owner_cannot_leave`): hand the space on, or remove every member.
 - A note another member moved into a space of their own is deleted as far as you can tell: `GET`
   answers `410`, an update `409 note_deleted` (its tombstone without `movedTo`), a delete
@@ -513,7 +513,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
-| `space_has_locked` | 409 | A space holding locked notes can't be shared; see `count` |
+| `space_has_locked` | 409 | A space holding locked notes can't be shared or exposed otherwise; see `count` |
 | `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
 | `already_member` | 409 | That account is already in the space |
 | `space_exists` | 409 | A shared space has this id |
@@ -536,7 +536,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `image_too_large` | 413 | Images can be up to 10 MiB; a profile photo up to 1 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
-| `locked_in_shared_space` | 422 | Locked notes can't be in a shared space |
+| `locked_in_exposed_space` | 422 | Locked notes can't be in a space others can read (shared with someone) |
 | `upgrade_required` | 426 | This app is older than the server accepts; see `minVersion` and [Compatibility](#compatibility) |
 | `rate_limited` | 429 | Too many failed attempts; see `Retry-After` |
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |

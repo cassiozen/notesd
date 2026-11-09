@@ -88,8 +88,6 @@ enum Sharing {
         return [owner, you].compactMap { $0 }.joined(separator: " · ")
     }
 
-    static let lockedInShared = "Locked notes can’t be in a shared space."
-
     /// A membership call's failure in words. `locked`: the space's locked notes here, for a refused share; 0 when
     /// this iPhone has none yet (locked on another device), so no count.
     static func message<T>(_ result: ApiResult<T>, locked: Int = 0) -> String? {

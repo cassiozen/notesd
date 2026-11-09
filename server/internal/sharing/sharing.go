@@ -305,23 +305,28 @@ func (s *Service) Invite(ctx context.Context, ownerID int64, spaceID string, inv
 			return spaces.Invitee{}, err
 		}
 	}
+	d, release, err := s.Open(ctx, ownerID, spaceID)
+	if err != nil {
+		return spaces.Invitee{}, err
+	}
+	defer release()
 	in := spaces.Invitee{ID: newID(), UserID: inviteeID, Username: username}
-	err = s.system.WriteTx(ctx, func(tx *sql.Tx) error {
-		var member bool
-		if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM space_members WHERE space_id = ? AND user_id = ?)`,
-			spaceID, inviteeID).Scan(&member); err != nil {
-			return err
-		}
-		if member {
-			return ErrAlreadyMember
-		}
-		// Inviting again keeps the first invitation.
-		if err := tx.QueryRowContext(ctx, `INSERT INTO space_invites (id, space_id, user_id, invited_by, created_at)
+	// An invitation exposes the space: recorded while no note can be locked in it.
+	err = d.Notes.WithoutLocked(ctx, spaceID, func() error {
+		return s.system.WriteTx(ctx, func(tx *sql.Tx) error {
+			var member bool
+			if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM space_members WHERE space_id = ? AND user_id = ?)`,
+				spaceID, inviteeID).Scan(&member); err != nil {
+				return err
+			}
+			if member {
+				return ErrAlreadyMember
+			}
+			// Inviting again keeps the first invitation.
+			return tx.QueryRowContext(ctx, `INSERT INTO space_invites (id, space_id, user_id, invited_by, created_at)
 			VALUES (?, ?, ?, ?, ?) ON CONFLICT (space_id, user_id) DO UPDATE SET id = id RETURNING id`,
-			in.ID, spaceID, inviteeID, ownerID, s.now().UnixMilli()).Scan(&in.ID); err != nil {
-			return err
-		}
-		return nil
+				in.ID, spaceID, inviteeID, ownerID, s.now().UnixMilli()).Scan(&in.ID)
+		})
 	})
 	if err != nil {
 		return spaces.Invitee{}, err
@@ -847,12 +852,23 @@ func SortSpaces(list []spaces.Space) {
 }
 
 // Install sets up every notes file as it opens: writes naming a space in
-// another file are refused, and accounts get the shared trait.
+// another file are refused, accounts get the shared trait, and a shared
+// space's file refuses locked notes while others are in it or invited.
 func (s *Service) Install() {
 	s.files.OnOpen(func(userID int64, d *userdata.Data) {
 		d.Notes.SetElsewhere(s.Elsewhere)
 		d.Spaces.AddTrait("shared", s.Trait(userID))
 	}, func(spaceID string, d *userdata.Data) {
 		d.Notes.SetElsewhere(s.Elsewhere)
+		d.Spaces.AddExposure("shared", s.exposes)
 	})
+}
+
+// exposes reports whether anyone but one account reaches a shared space: a second member, or an
+// invitation. The trait is on exactly then (Trait).
+func (s *Service) exposes(ctx context.Context, spaceID string) (bool, error) {
+	var on bool
+	err := s.system.R.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM space_members WHERE space_id = ?) > 1
+		OR EXISTS (SELECT 1 FROM space_invites WHERE space_id = ?)`, spaceID, spaceID).Scan(&on)
+	return on, err
 }

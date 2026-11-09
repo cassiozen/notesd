@@ -360,8 +360,8 @@ class SyncEngine(
                     pushed = true
                 }
 
-                // Locked offline, then the space was shared from another device (§7.9): kept as a copy.
-                is ApiResult.Rejected if result.error == LOCKED_IN_SHARED_SPACE -> {
+                // Locked offline, then another device let others read the space (§7.8): kept as a copy.
+                is ApiResult.Rejected if result.error == LOCKED_IN_EXPOSED_SPACE -> {
                     store.lockedOut(op)?.let { emit(listOf(it)) }
                     pushed = true
                 }
@@ -495,7 +495,7 @@ class SyncEngine(
 
     private companion object {
         const val OPERATION_ID_REUSED = "operation_id_reused"
-        const val LOCKED_IN_SHARED_SPACE = "locked_in_shared_space"
+        const val LOCKED_IN_EXPOSED_SPACE = "locked_in_exposed_space"
         val json = Json { ignoreUnknownKeys = true }
 
         fun decodeNote(s: String): RemoteNote? = try {

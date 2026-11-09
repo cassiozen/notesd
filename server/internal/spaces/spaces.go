@@ -109,10 +109,11 @@ var (
 
 // Store persists spaces.
 type Store struct {
-	db       *database.DB
-	now      func() time.Time
-	onCommit func()
-	traits   map[string]TraitSource
+	db        *database.DB
+	now       func() time.Time
+	onCommit  func()
+	traits    map[string]TraitSource
+	exposures map[string]ExposureSource
 }
 
 // NewStore returns a Store using the system clock.

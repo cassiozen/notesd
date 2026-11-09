@@ -359,9 +359,9 @@ public final class SyncStore: Sendable {
         }
     }
 
-    /// The server refused `op` because it would put a locked body in a shared space (§7.9): locked offline, then
-    /// shared from another device. The locked version becomes a recovered copy in the default space, where it can
-    /// be locked, and the note goes back to the server's version, as the space's members have it.
+    /// The server refused `op` because it would put a locked body in a space others can read (§7.8): locked
+    /// offline, then shared or published from another device. The locked version becomes a recovered copy in the
+    /// default space, where it can be locked, and the note goes back to the server's version, as others have it.
     public func lockedOut(_ op: Operation) async throws -> SyncEvent? {
         let now = clock()
         return try await db.write { sql in

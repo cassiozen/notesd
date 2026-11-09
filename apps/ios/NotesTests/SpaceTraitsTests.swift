@@ -92,4 +92,15 @@ struct SpaceTraitsTests {
         #expect(Traits.newExposure(from: [anaBen], to: [with("Visible to Ana", ["user:2"])]).isEmpty, "fewer people")
         #expect(Traits.newExposure(from: [anaBen], to: [anaCy]) == [anaCy])
     }
+
+    @Test func lockedNotesCantBeWhereATraitLetsOthersReadSaidByTheFirstSuchTrait() {
+        #expect(Traits.exposing([]) == nil)
+        #expect(Traits.exposing([agent]) == nil)
+        #expect(Traits.exposing([agent, published, shared]) == published)
+        #expect(Traits.lockedRefusal(shared) == "Locked notes can’t be in a shared space.")
+        #expect(Traits.lockedRefusal(published) == "Locked notes can’t be in a published space.")
+        #expect(
+            LockRefusal(trait: shared, space: "Family").message
+                == "Only you can read a locked note, and Family is visible to Ana.")
+    }
 }

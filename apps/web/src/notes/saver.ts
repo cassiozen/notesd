@@ -102,7 +102,7 @@ const PERMANENT = new Set([
   'image_too_large',
   'unsupported_image',
   'space_default',
-  'locked_in_shared_space',
+  'locked_in_exposed_space',
 ])
 
 /** How many bytes a keepalive request may carry (browsers cap the total at 64 KB). */

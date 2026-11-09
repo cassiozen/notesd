@@ -49,8 +49,9 @@ description: What the server can read, how accounts and sessions are protected, 
 - **Every account can see the usernames on the server,** and the names and photos people chose, so
   an owner can pick who to invite.
   They can't see anyone's spaces or notes.
-- **No locked notes.** Locked notes are encrypted with a key only one account has, so a shared
-  space can't hold them. Its notes are as readable on the server as any regular note.
+- **No locked notes.** Locked notes are encrypted with a key only one account has, so a space
+  others can read can't hold them. A shared space's notes are as readable on the server as any
+  regular note.
 - **Removing someone works from then on.** Their devices drop the space's notes the next time they
   sync. A copy they already have stays with them: an export, or a device that never syncs again.
 

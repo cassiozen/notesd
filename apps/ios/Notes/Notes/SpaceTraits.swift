@@ -70,6 +70,17 @@ enum Traits {
         return known + unknown
     }
 
+    /// The first trait that lets others read a space's notes: a locked note, only yours to read, can't be there
+    /// (§7.8).
+    static func exposing(_ traits: [SpaceTrait]) -> SpaceTrait? {
+        traits.first { $0.exposure != nil }
+    }
+
+    /// "Locked notes can’t be in a shared space."
+    static func lockedRefusal(_ trait: SpaceTrait) -> String {
+        "Locked notes can’t be in a \(label(trait).lowercased()) space."
+    }
+
     /// What moving a note from `current` into `destination` would newly expose it to: the destination's traits
     /// reaching someone the current space doesn't, once per sentence. Empty: the move needn't ask.
     static func newExposure(from current: [SpaceTrait], to destination: [SpaceTrait]) -> [SpaceTrait] {

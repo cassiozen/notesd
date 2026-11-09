@@ -30,9 +30,11 @@ import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.setShared
+import notes.app.setTraits
 import notes.app.shutDown
 import notes.core.api.Member
 import notes.core.api.SharedSpace
+import notes.core.api.SpaceTrait
 import notes.core.crypto.Keyring
 import notes.core.crypto.LockSession
 import notes.core.crypto.LockedNotes
@@ -323,6 +325,8 @@ class LockedNoteFlowTest {
         onMain {
             graph.sync.spaces.create("Family", id = "fam")
             graph.setShared("fam", SharedSpace("member", listOf(Member(2, "ana"), Member(1, "me"))))
+            // What refuses the lock is the trait that exposes the space (§7.8), as the server sends it.
+            graph.setTraits("fam", SpaceTrait("shared", "Shared", "With ana", exposure = "Visible to ana"))
         }
         openBank()
         unlock(PASSWORD)

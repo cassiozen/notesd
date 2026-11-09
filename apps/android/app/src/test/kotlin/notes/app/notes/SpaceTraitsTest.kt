@@ -103,4 +103,13 @@ class SpaceTraitsTest {
         assertEquals(listOf(TraitRow.Off(canShare)), traitRows(space().copy(id = "w"), listOf(canShare)))
         assertEquals(emptyList(), traitRows(space().copy(id = "default"), listOf(canShare)))
     }
+
+    @Test
+    fun `locked notes can't be where a trait lets others read, said by the first such trait`() {
+        assertEquals(null, exposingTrait(space()))
+        assertEquals(null, exposingTrait(space(agent)))
+        assertEquals(published, exposingTrait(space(agent, published, shared)))
+        assertEquals("Locked notes can't be in a shared space.", lockedRefusal(shared))
+        assertEquals("Locked notes can't be in a published space.", lockedRefusal(published))
+    }
 }

@@ -18,7 +18,8 @@ struct NoteScreen: View {
     /// A move that would show the note to more people, or fewer, waiting for a yes.
     @State private var confirmMove: MoveCheck?
     /// Lock note was chosen in a shared space: it says why not.
-    @State private var lockRefused = false
+    /// Why the note can't be locked, or moved locked, into a space: its first trait letting others read it.
+    @State private var lockRefused: LockRefusal?
     @State private var emailing = false
     @State private var picked: PhotosPickerItem?
     /// Lock note was chosen, and the session needs a password created or entered first.
@@ -189,10 +190,14 @@ struct NoteScreen: View {
         } message: { check in
             Text(check.message)
         }
-        .alert(Sharing.lockedInShared, isPresented: $lockRefused) {
+        .alert(
+            lockRefused.map { Traits.lockedRefusal($0.trait) } ?? "",
+            isPresented: Binding(get: { lockRefused != nil }, set: { if !$0 { lockRefused = nil } }),
+            presenting: lockRefused
+        ) { _ in
             Button("OK", role: .cancel) {}
-        } message: {
-            Text("Everyone in a shared space can read its notes.")
+        } message: { refusal in
+            Text(refusal.message)
         }
         .confirmationDialog("Delete this note?", isPresented: $confirmDelete, titleVisibility: .visible) {
             Button("Delete", role: .destructive) {
@@ -341,9 +346,11 @@ struct NoteScreen: View {
     /// again encrypted, or plain, before the note is. Applied only once all
     /// have moved: a failure partway leaves the note as it was.
     private func setLocked(_ on: Bool) {
-        // Locking means only you can read it (§7.9): the server refuses one in a shared space's file.
-        if on && graph.spaces.first(where: { $0.id == model.spaceId })?.shared != nil {
-            lockRefused = true
+        // Locking means only you can read it (§7.8): the server refuses one where a trait lets others read.
+        if on, let here = graph.spaces.first(where: { $0.id == model.spaceId }),
+            let trait = Traits.exposing(here.traits)
+        {
+            lockRefused = LockRefusal(trait: trait, space: here.name)
             return
         }
         // The session itself, not the observed state: right after the sheet unlocks, that lags.
@@ -385,8 +392,8 @@ struct NoteScreen: View {
     /// Moves the note, first asking when `space` would show it to people its own space doesn't (§7.8), or no
     /// longer to people its own space does (moving out of a shared space, §7.9).
     private func askToMove(to space: Space) {
-        if model.locked && space.shared != nil {
-            lockRefused = true
+        if model.locked, let trait = Traits.exposing(space.traits) {
+            lockRefused = LockRefusal(trait: trait, space: space.name)
             return
         }
         let current = graph.spaces.first { $0.id == model.spaceId }?.traits ?? []
@@ -484,5 +491,18 @@ private struct LinkSheet: View {
             .onAppear { href = controller.linkSheet?.href ?? "" }
         }
         .presentationDetents([.medium])
+    }
+}
+
+/// A locked note refused by a space others can read (§7.8).
+struct LockRefusal {
+    let trait: SpaceTrait
+    let space: String
+
+    /// "Only you can read a locked note, and Family is visible to Ana."
+    var message: String {
+        let exposure = trait.exposure ?? ""
+        let midSentence = exposure.prefix(1).lowercased() + exposure.dropFirst()
+        return "Only you can read a locked note, and \(space) is \(midSentence)."
     }
 }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Space, SpaceTrait } from '../api/types'
-import { newExposure, TRAITS, traitEntry, traitGlyph, traitRows, traitsLabel, UnknownGlyph } from './traits'
+import { exposingTrait, lockedRefusal, newExposure, TRAITS, traitEntry, traitGlyph, traitRows, traitsLabel, UnknownGlyph } from './traits'
 
 const shared: SpaceTrait = { key: 'shared', label: 'Shared', summary: 'With Ana and Ben', exposure: 'Visible to Ana and Ben' }
 const published: SpaceTrait = { key: 'published', label: 'Published', summary: 'At notes.example', exposure: 'Public at notes.example' }
@@ -96,5 +96,15 @@ describe('newExposure', () => {
 
   it('treats a current space not loaded yet as exposing nothing', () => {
     expect(newExposure(undefined, space(shared))).toEqual([shared])
+  })
+})
+
+describe('locked notes', () => {
+  it('can’t be where a trait lets others read: the first such trait says why', () => {
+    expect(exposingTrait(space())).toBeUndefined()
+    expect(exposingTrait(space(agent))).toBeUndefined()
+    expect(exposingTrait(space(published, shared))).toBe(published)
+    expect(lockedRefusal(shared)).toBe('Locked notes can’t be in a shared space.')
+    expect(lockedRefusal(published)).toBe('Locked notes can’t be in a published space.')
   })
 })

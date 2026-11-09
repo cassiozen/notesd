@@ -75,6 +75,12 @@ fun newExposures(from: Space?, to: Space): List<SpaceTrait> {
     }.distinctBy { it.exposure }
 }
 
+/** The first trait that lets others read [space]'s notes: a locked note, only yours to read, can't be there (§7.8). */
+fun exposingTrait(space: Space?): SpaceTrait? = space?.traits?.firstOrNull { it.exposure != null }
+
+/** "Locked notes can't be in a shared space." */
+fun lockedRefusal(trait: SpaceTrait): String = "Locked notes can't be in a ${trait.label.lowercase()} space."
+
 /** A trait's place in Space info: its section, or a row. */
 sealed interface TraitRow {
     data class On(val entry: TraitEntry, val trait: SpaceTrait) : TraitRow

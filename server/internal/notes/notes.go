@@ -222,8 +222,9 @@ type ElsewhereError struct{ SpaceID string }
 
 func (e *ElsewhereError) Error() string { return "space " + e.SpaceID + " is in another file" }
 
-// ErrLockedInShared refuses a locked body in a shared space's file (§7.9).
-var ErrLockedInShared = errors.New("locked notes can't be in a shared space")
+// ErrLockedInExposed refuses a locked body in a space a trait lets others read (§7.8): locking means
+// only you can read it.
+var ErrLockedInExposed = errors.New("locked notes can't be in a space others can read")
 
 // Store persists notes.
 type Store struct {
@@ -234,8 +235,10 @@ type Store struct {
 	// have: the default space in an account's file, the space itself in a
 	// shared space's (§7.9).
 	home string
-	// shared refuses locked bodies (§7.9).
+	// shared: this file is a shared space's, holding only that space.
 	shared bool
+	// exposed reports whether a trait lets others read a space's notes.
+	exposed func(ctx context.Context, spaceID string) (bool, error)
 	// elsewhere reports whether a space this file doesn't have is in another
 	// file userID reaches.
 	elsewhere func(ctx context.Context, userID int64, spaceID string) (bool, error)
@@ -247,7 +250,7 @@ func NewStore(db *database.DB) *Store {
 }
 
 // ServeShared makes the store a shared space's (§7.9): notes without a space
-// go to spaceID, and locked bodies are refused.
+// go to spaceID.
 func (s *Store) ServeShared(spaceID string) {
 	s.home = spaceID
 	s.shared = true
@@ -258,6 +261,46 @@ func (s *Store) ServeShared(spaceID string) {
 // ElsewhereError rather than filed in the home space.
 func (s *Store) SetElsewhere(fn func(ctx context.Context, userID int64, spaceID string) (bool, error)) {
 	s.elsewhere = fn
+}
+
+// SetExposed has fn tell whether a trait lets others read a space's notes, so locked bodies are refused
+// there.
+func (s *Store) SetExposed(fn func(ctx context.Context, spaceID string) (bool, error)) {
+	s.exposed = fn
+}
+
+// refuseLocked is ErrLockedInExposed for a locked body bound for an exposed space. Run in the write
+// transaction: a trait turning on holds this file's writer while it checks (WithoutLocked).
+func (s *Store) refuseLocked(ctx context.Context, spaceID, content string) error {
+	if s.exposed == nil || !locks.IsLocked(content) {
+		return nil
+	}
+	if on, err := s.exposed(ctx, spaceID); err != nil {
+		return err
+	} else if on {
+		return ErrLockedInExposed
+	}
+	return nil
+}
+
+// WithoutLocked runs fn, which records a trait that exposes spaceID (§7.8), while no note can be written
+// here, once the space holds no locked notes: LockedInSpaceError if it does.
+func (s *Store) WithoutLocked(ctx context.Context, spaceID string, fn func() error) error {
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		if n, err := countLocked(ctx, tx, spaceID); err != nil {
+			return err
+		} else if n > 0 {
+			return &LockedInSpaceError{Count: n}
+		}
+		return fn()
+	})
+}
+
+func countLocked(ctx context.Context, tx *sql.Tx, spaceID string) (int, error) {
+	var n int
+	err := tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL
+		AND substr(content, 1, ?) = ?`, spaceID, len(locks.Family), locks.Family).Scan(&n)
+	return n, err
 }
 
 // Home is the space notes without one go to.
@@ -344,7 +387,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 	if err := validateID("id", in.ID); err != nil {
 		return Result{}, err
 	}
-	if err := s.validateText(in.Title, in.Content); err != nil {
+	if err := validateText(in.Title, in.Content); err != nil {
 		return Result{}, err
 	}
 	if in.ConflictOf != nil {
@@ -373,6 +416,9 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		}
 		space, err := s.resolveSpace(ctx, tx, in.SpaceID, s.home, in.UpdatedBy)
 		if err != nil {
+			return Result{}, err
+		}
+		if err := s.refuseLocked(ctx, space, in.Content); err != nil {
 			return Result{}, err
 		}
 		seq, err := nextChangeSeq(ctx, tx)
@@ -415,7 +461,7 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	if in.BaseRevision < 1 {
 		return Result{}, &ValidationError{"baseRevision", "must be a positive revision"}
 	}
-	if err := s.validateText(in.Title, in.Content); err != nil {
+	if err := validateText(in.Title, in.Content); err != nil {
 		return Result{}, err
 	}
 	if err := validateImageIDs(in.ImageIDs); err != nil {
@@ -441,6 +487,9 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 		}
 		space, err := s.resolveSpace(ctx, tx, in.SpaceID, cur.SpaceID, in.UpdatedBy)
 		if err != nil {
+			return Result{}, err
+		}
+		if err := s.refuseLocked(ctx, space, in.Content); err != nil {
 			return Result{}, err
 		}
 		if cur.Title == in.Title && cur.Content == in.Content && cur.SpaceID == space {
@@ -884,15 +933,6 @@ func validateID(field, id string) error {
 		return &ValidationError{field, "must be 1-64 characters of [A-Za-z0-9_-]"}
 	}
 	return nil
-}
-
-// validateText checks a note's text, refusing a locked body in a shared
-// space's file.
-func (s *Store) validateText(title, content string) error {
-	if s.shared && locks.IsLocked(content) {
-		return ErrLockedInShared
-	}
-	return validateText(title, content)
 }
 
 func validateText(title, content string) error {

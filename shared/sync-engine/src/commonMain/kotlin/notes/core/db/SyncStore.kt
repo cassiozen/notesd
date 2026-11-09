@@ -361,9 +361,9 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
     }
 
     /**
-     * The server refused [op] because it would put a locked body in a shared space (§7.9): locked offline, then
-     * shared from another device. The locked version becomes a recovered copy in the default space, where it
-     * can be locked, and the note goes back to the server's version, as the space's members have it.
+     * The server refused [op] because it would put a locked body in a space others can read (§7.8): locked
+     * offline, then shared or published from another device. The locked version becomes a recovered copy in the
+     * default space, where it can be locked, and the note goes back to the server's version, as others have it.
      */
     suspend fun lockedOut(op: Operation): SyncEvent? = db.write { sql ->
         val note = sql.note(op.noteId) ?: return@write null
