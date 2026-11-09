@@ -1,0 +1,23 @@
+website/download/index.html
+  s_b025ba0cf03f3f::t_1ee3b3c7e326cb 37,135
+website/index.html
+  s_b025ba0cf03f3f::t_1ee3b3c7e326cb 37,294
+website/src/main.css
+  s_b025ba0cf03f3f::t_1ee3b3c7e326cb 1145,1151-1152
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bdc3581ae6812747f48bf0704a88b4a8fdc0ac17",
+  "prompts": {},
+  "sessions": {
+    "s_b025ba0cf03f3f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "351e1db0-7304-4e7d-a6ef-8cd02847d4ee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
