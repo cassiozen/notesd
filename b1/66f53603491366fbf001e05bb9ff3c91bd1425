@@ -1,0 +1,57 @@
+apps/android/app/src/main/kotlin/notes/app/agent/Runs.kt
+  s_cc6cacc0a6fc01::t_4e889a3300753c 74,77
+  s_cc6cacc0a6fc01::t_cb986e8bd7f894 1-47,62-73,75-76,78-98
+  s_cc6cacc0a6fc01::t_97c83adc3527b5 48-61
+apps/android/app/src/main/kotlin/notes/app/settings/SpaceInfo.kt
+  s_cc6cacc0a6fc01::t_4e889a3300753c 196-201,203-204,206,208
+  s_cc6cacc0a6fc01::t_71f6ad659b497c 108-115,127,192-195
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_cc6cacc0a6fc01::t_71f6ad659b497c 364-367,393-404
+apps/android/app/src/test/kotlin/notes/app/FakeNotesd.kt
+  s_cc6cacc0a6fc01::t_4e889a3300753c 273-276
+  s_cc6cacc0a6fc01::t_f0da1b4c622742 15,21,27-28,67-73,248-267,269-272,277-289
+  s_cc6cacc0a6fc01::t_22cd7722b50aaa 268
+  s_cc6cacc0a6fc01::t_32419c2a0d6708 290
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_cc6cacc0a6fc01::t_37c7aaf7a14547 496-562
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_cc6cacc0a6fc01::t_d2170c1fa91d55 458-460
+  s_cc6cacc0a6fc01::t_31f99e65e06095 53-55,98-105,231-235,500-514,517
+  s_cc6cacc0a6fc01::t_9e9280df37551c 236-237
+apps/android/app/src/main/kotlin/notes/app/agent/AgentSection.kt
+  s_cc6cacc0a6fc01::t_71f6ad659b497c 91,171-182
+apps/android/app/src/test/kotlin/notes/app/agent/RunsTest.kt
+  s_cc6cacc0a6fc01::t_4e889a3300753c 1-44
+apps/android/app/src/main/kotlin/notes/app/agent/Activity.kt
+  s_cc6cacc0a6fc01::t_a52bfbd4b6427c 1-6,8,10-17,19-43,45-139,144-315,317-318,320-430,433-437,453-469,471-520
+  s_cc6cacc0a6fc01::t_a08872a680c531 7,9,18,44,431-432,438-452,470
+  s_cc6cacc0a6fc01::t_4e889a3300753c 140-143,316,319
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_cc6cacc0a6fc01::t_4e889a3300753c 94-95
+  s_cc6cacc0a6fc01::t_71f6ad659b497c 128,169-173,453-461
+  s_cc6cacc0a6fc01::t_b00dff2c7f5947 462-463
+apps/android/app/src/test/kotlin/notes/app/agent/ActivityTest.kt
+  s_cc6cacc0a6fc01::t_4e889a3300753c 90-91
+  s_cc6cacc0a6fc01::t_312f5221dd46d3 1-89,92-119,121-131,134-223
+  s_cc6cacc0a6fc01::t_ae45d6b46f51d2 120,132-133
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_de6c373f33497c 9-11
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_27a8dc48ede6fc 72-73,79
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b166f53603491366fbf001e05bb9ff3c91bd1425",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "unknown"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
