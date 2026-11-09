@@ -1,0 +1,26 @@
+apps/web/src/settings/published-space.tsx
+  s_c4b534f44e1767::t_ec4185aebb014c 56,59-60,83
+  s_c4b534f44e1767::t_838a8361e7500f 57-58,110,121,124,146,160
+docs/guides/using/publishing.md
+  s_c4b534f44e1767::t_838a8361e7500f 39-41
+apps/web/test/publishing.test.tsx
+  s_c4b534f44e1767::t_564f6bacb66162 2,75-77,84
+  s_c4b534f44e1767::t_a355fc83079262 3,71-74,78-83,85-99
+  s_c4b534f44e1767::t_0b9c201d09fc11 100
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "186607e460964e1466f9d4a3ebf28f2f762f5ae0",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
