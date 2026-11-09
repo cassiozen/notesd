@@ -372,6 +372,33 @@ class SharedSpacesFlowTest {
     }
 
     @Test
+    fun `someone who chose a name is called by it, in what changed and on the note`() {
+        notesd.memberOf("fam", "Family", ana.copy(displayName = "Ana Lima"), ben)
+        notesd.feeds["fam"] = listOf(note("f1", "Picnic", "fam", by = 2, ago = 2 * hour))
+        launch("All Notes") { graph.lastShown("fam", System.currentTimeMillis() - 3 * hour) }
+        until { graph.sync.store.userId() == 1L }
+        openSwitcher("Notes")
+        compose.waitUntilExactlyOneExists(hasText("Ana Lima edited a note · 2h"), 5_000)
+        compose.onNodeWithText("Ana Lima edited a note · 2h").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Ana Lima · 2h"))
+        compose.onNodeWithText("Picnic").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Edited by Ana Lima · 2h"))
+    }
+
+    @Test
+    fun `People names someone by the name they chose, with their username beside it`() {
+        val named = ana.copy(displayName = "Ana Lima")
+        notesd.owned("fam", "Family", listOf(named), invitees = listOf(cy.copy(displayName = "Cy")))
+        launch("All Notes")
+        openSpaceInfo("Family")
+        compose.onNodeWithText("Ana Lima").assertExists()
+        compose.onNodeWithText("ana").assertExists()
+        compose.onNodeWithText("cy · Invited").assertExists()
+        described("Remove Ana Lima").assertExists()
+        described("Cancel Cy's invitation").assertExists()
+    }
+
+    @Test
     fun `your own change looks as before`() {
         notesd.memberOf("fam", "Family", ana)
         notesd.feeds["fam"] = listOf(note("f1", "Picnic", "fam", by = 1, ago = 2 * hour))

@@ -69,7 +69,7 @@ fun byLine(name: String, at: Long, now: Long = System.currentTimeMillis()): Stri
 fun editedBy(space: Space?, updatedBy: Long?, me: Long?): String? {
     val shared = space?.shared ?: return null
     if (updatedBy == null || me == null || updatedBy == me) return null
-    return shared.members.firstOrNull { it.id == updatedBy }?.username
+    return shared.members.firstOrNull { it.id == updatedBy }?.name
 }
 
 /** This account's id in a space's members, found by its username, which the server keeps unique. */

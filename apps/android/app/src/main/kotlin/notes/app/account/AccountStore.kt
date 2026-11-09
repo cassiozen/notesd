@@ -13,6 +13,12 @@ import notes.core.api.Credentials
 import notes.core.api.SignIn
 import notes.core.api.Tokens
 
+/** An account's name and photo, as the server last said; [userId] 0 until it has (signed in before the app kept it). */
+data class Profile(val userId: Long = 0, val displayName: String = "", val avatar: String = "") {
+    /** How the apps name someone: their chosen name, or else their username. */
+    fun name(username: String) = displayName.ifEmpty { username }
+}
+
 sealed interface Account {
     /** Never connected (or all data removed): notes live on this device only. */
     data object None : Account
@@ -25,14 +31,15 @@ sealed interface Account {
         val server: String,
         val username: String,
         val isAdmin: Boolean? = false,
-        val userId: Long? = null
+        val userId: Long? = null,
+        val profile: Profile = Profile()
     ) : Account
 
     /**
      * Connected once, no session now (signed out, or the session was revoked).
      * The server stays fixed: these notes belong to it.
      */
-    data class SignedOut(val server: String, val username: String) : Account
+    data class SignedOut(val server: String, val username: String, val profile: Profile = Profile()) : Account
 }
 
 /**
@@ -51,8 +58,12 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         val refresh: String? = null,
         // Absent from files written before the app kept it: unknown, not "no".
         val isAdmin: Boolean? = null,
-        val userId: Long? = null
-    )
+        val userId: Long? = null,
+        val displayName: String = "",
+        val avatar: String = ""
+    ) {
+        val profile get() = Profile(userId ?: 0, displayName, avatar)
+    }
 
     private val lock = Mutex()
     private var saved: Saved? = load()
@@ -68,7 +79,9 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
             signIn.refreshToken,
             signIn.isAdmin,
             // 0 from a server older than shared spaces.
-            signIn.userId.takeIf { it > 0 }
+            signIn.userId.takeIf { it > 0 },
+            signIn.displayName,
+            signIn.avatar
         )
     }
 
@@ -81,11 +94,33 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
         it.copy(userId = id)
     }
 
+    /** [username] at [server]'s name or photo changed, here or on another device. */
+    suspend fun profileChanged(server: String, username: String, profile: Profile) =
+        sessionRead(server, username, profile, isAdmin = null)
+
+    /**
+     * What the server says of [username] at [server] now. Asked before an await: dropped if someone else has
+     * signed in by the time it arrives.
+     */
+    suspend fun sessionRead(server: String, username: String, profile: Profile, isAdmin: Boolean?) {
+        fun Saved.next() = copy(
+            userId = profile.userId.takeIf { it > 0 } ?: userId,
+            displayName = profile.displayName,
+            avatar = profile.avatar,
+            isAdmin = isAdmin ?: this.isAdmin
+        )
+        val current = lock.withLock { saved }
+        if (current == null || !current.isOf(server, username) || current.next() == current) return
+        write { if (it?.isOf(server, username) == true) it.next() else it }
+    }
+
     /** What the server last said: another admin can change it at any time. */
     suspend fun adminChanged(isAdmin: Boolean) {
         if ((account.value as? Account.SignedIn)?.isAdmin == isAdmin) return
         write { it?.copy(isAdmin = isAdmin) }
     }
+
+    private fun Saved.isOf(server: String, username: String) = this.server == server && this.username == username
 
     /** Forgets the tokens, keeps the server and username. */
     suspend fun signOut() = write { it?.copy(access = null, accessExpiresAt = 0, refresh = null) }
@@ -134,8 +169,11 @@ class AccountStore(private val file: File, private val sealer: Sealer) : Credent
 
         fun accountOf(s: Saved?): Account = when {
             s == null -> Account.None
-            s.access != null && s.refresh != null -> Account.SignedIn(s.server, s.username, s.isAdmin, s.userId)
-            else -> Account.SignedOut(s.server, s.username)
+
+            s.access != null && s.refresh != null ->
+                Account.SignedIn(s.server, s.username, s.isAdmin, s.userId, s.profile)
+
+            else -> Account.SignedOut(s.server, s.username, s.profile)
         }
     }
 }

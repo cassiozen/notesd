@@ -8,6 +8,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -44,6 +46,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -62,10 +65,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
 import notes.app.account.Account
+import notes.app.account.Avatars
 import notes.app.settings.Action
 import notes.app.settings.Card
 import notes.app.settings.Divider
 import notes.app.settings.initial
+import notes.app.settings.rememberPhoto
 import notes.app.ui.ButtonKind
 import notes.app.ui.EaseOut
 import notes.app.ui.Icons
@@ -178,6 +183,7 @@ fun PeopleSection(graph: AppGraph, space: Space) {
                     if (i > 0) Divider()
                     key("m${m.id}") {
                         MemberRow(
+                            graph.avatars,
                             space,
                             m,
                             role = listOfNotNull("Owner".takeIf { i == 0 }, "You".takeIf { m.id == me })
@@ -200,6 +206,7 @@ fun PeopleSection(graph: AppGraph, space: Space) {
                         Divider()
                         key("i${invite.id}") {
                             InvitedRow(
+                                graph.avatars,
                                 invite,
                                 arriving = invite.userId == fresh,
                                 cancelling = busy == "cancel:${invite.id}",
@@ -218,6 +225,7 @@ fun PeopleSection(graph: AppGraph, space: Space) {
             }
             if (owner) {
                 Invite(
+                    graph.avatars,
                     people,
                     candidates,
                     shared,
@@ -299,6 +307,7 @@ internal fun leaveText(name: String, unsynced: Int): String {
 /** A member: who, their role, and for the owner Make owner and Remove, each confirmed under the row. */
 @Composable
 private fun MemberRow(
+    avatars: Avatars,
     space: Space,
     member: Member,
     role: String,
@@ -310,12 +319,12 @@ private fun MemberRow(
     onCancel: () -> Unit,
     onConfirm: (Confirm) -> Unit
 ) {
-    val name = member.username
+    val name = member.name
     val asking = (confirm as? Confirm.Remove)?.member?.id == member.id ||
         (confirm as? Confirm.MakeOwner)?.member?.id == member.id
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp)) {
         PersonLine(
-            identity = { Who(name, role) },
+            identity = { Who(avatars, member, role) },
             actions = if (!manage) {
                 null
             } else {
@@ -370,6 +379,7 @@ private fun MemberRow(
 /** Someone invited who hasn't joined: an outlined avatar, and Cancel, which needs no asking. */
 @Composable
 private fun InvitedRow(
+    avatars: Avatars,
     invite: Invitee,
     arriving: Boolean,
     cancelling: Boolean,
@@ -389,12 +399,15 @@ private fun InvitedRow(
                 .padding(horizontal = 16.dp, vertical = 8.dp)
         ) {
             PersonLine(
-                identity = { Who(invite.username, "Invited", pending = true) },
+                identity = {
+                    val person = Member(invite.userId, invite.username, invite.displayName, invite.avatar)
+                    Who(avatars, person, "Invited", pending = true)
+                },
                 actions = {
                     NotesButton(
                         "Cancel",
                         onCancel,
-                        Modifier.semantics { contentDescription = "Cancel ${invite.username}'s invitation" },
+                        Modifier.semantics { contentDescription = "Cancel ${invite.name}'s invitation" },
                         kind = ButtonKind.Ghost,
                         enabled = enabled,
                         busy = cancelling,
@@ -412,6 +425,7 @@ private fun InvitedRow(
  */
 @Composable
 private fun Invite(
+    avatars: Avatars,
     people: People,
     candidates: List<Member>,
     shared: Boolean,
@@ -445,7 +459,7 @@ private fun Invite(
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         for (p in candidates) {
                             key(p.id) {
-                                InviteChip(p.username, inviting = busy == "invite:${p.id}", enabled = busy == null) {
+                                InviteChip(avatars, p, inviting = busy == "invite:${p.id}", enabled = busy == null) {
                                     onInvite(p)
                                 }
                             }
@@ -467,8 +481,9 @@ private fun Invite(
 }
 
 @Composable
-private fun InviteChip(name: String, inviting: Boolean, enabled: Boolean, onClick: () -> Unit) {
+private fun InviteChip(avatars: Avatars, person: Member, inviting: Boolean, enabled: Boolean, onClick: () -> Unit) {
     val t = LocalTokens.current
+    val name = person.name
     val shape = RoundedCornerShape(999.dp)
     Row(
         Modifier
@@ -482,7 +497,7 @@ private fun InviteChip(name: String, inviting: Boolean, enabled: Boolean, onClic
             .padding(start = 5.dp, end = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Avatar(name, base = 30.dp)
+        Avatar(avatars, person, base = 30.dp)
         Spacer(Modifier.width(8.dp))
         Text(
             name,
@@ -500,12 +515,15 @@ private fun InviteChip(name: String, inviting: Boolean, enabled: Boolean, onClic
     }
 }
 
-/** Avatar, name and role, read as one. */
+/** Avatar, name and role, read as one; the username beside the role when they chose a name, which may repeat. */
 @Composable
-private fun Who(name: String, role: String, pending: Boolean = false) {
+private fun Who(avatars: Avatars, person: Member, role: String, pending: Boolean = false) {
     val t = LocalTokens.current
+    val name = person.name
+    val line = listOfNotNull(person.username.takeIf { person.displayName.isNotEmpty() }, role.ifEmpty { null })
+        .joinToString(" · ")
     Row(Modifier.semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-        Avatar(name, pending = pending)
+        Avatar(avatars, person, pending = pending)
         Spacer(Modifier.width(AVATAR_GAP))
         Column {
             Text(
@@ -515,7 +533,7 @@ private fun Who(name: String, role: String, pending: Boolean = false) {
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-            if (role.isNotEmpty()) Text(role, style = Type.small, color = t.ink3)
+            if (line.isNotEmpty()) Text(line, style = Type.small, color = t.ink3)
         }
     }
 }
@@ -523,10 +541,11 @@ private fun Who(name: String, role: String, pending: Boolean = false) {
 private val AVATAR = 36.dp
 private val AVATAR_GAP = 12.dp
 
-/** Someone's initial in a circle; [pending] (invited, not in yet) an outline instead of a fill. */
+/** Someone's photo, or their initial, in a circle; [pending] (invited, not in yet) an outline instead of a fill. */
 @Composable
-private fun Avatar(name: String, base: Dp = AVATAR, pending: Boolean = false) {
+private fun Avatar(avatars: Avatars, person: Member, base: Dp = AVATAR, pending: Boolean = false) {
     val t = LocalTokens.current
+    val photo = rememberPhoto(avatars, person.id, person.avatar)
     // Grows a little with large text, so it doesn't shrink beside the name; not fully, or it'd crowd the row.
     val size = base * LocalDensity.current.fontScale.coerceIn(1f, 1.4f)
     Box(
@@ -552,13 +571,17 @@ private fun Avatar(name: String, base: Dp = AVATAR, pending: Boolean = false) {
             ),
         contentAlignment = Alignment.Center
     ) {
-        // Sized by the circle, not the text setting: a larger letter would only spill out of it.
-        val letter = with(LocalDensity.current) { (size * 0.4f).toSp() }
-        Text(
-            initial(name),
-            style = Type.label.copy(fontSize = letter, lineHeight = letter, fontWeight = FontWeight.SemiBold),
-            color = t.ink2
-        )
+        if (photo != null) {
+            Image(photo, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
+        } else {
+            // Sized by the circle, not the text setting: a larger letter would only spill out of it.
+            val letter = with(LocalDensity.current) { (size * 0.4f).toSp() }
+            Text(
+                initial(person.name),
+                style = Type.label.copy(fontSize = letter, lineHeight = letter, fontWeight = FontWeight.SemiBold),
+                color = t.ink2
+            )
+        }
     }
 }
 

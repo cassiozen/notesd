@@ -97,6 +97,34 @@ class ApiClient(
         )
     }) { }
 
+    /** This session, with whose it is as of now: name, photo, admin. */
+    suspend fun session(): ApiResult<SignIn> =
+        authed({ request("GET", url("api/v1/auth/session"), null, it) }) { json.decodeFromString(it) }
+
+    /** "" goes back to the username. Answers with the account as it is now, as the two below do. */
+    suspend fun setDisplayName(name: String): ApiResult<Person> =
+        authed({ request("PATCH", url("api/v1/profile"), buildJsonObject { put("displayName", name) }, it) }) {
+            json.decodeFromString(it)
+        }
+
+    /** A square JPEG of at most 512 px a side. */
+    suspend fun setAvatar(jpeg: ByteArray): ApiResult<Person> = authed({ access ->
+        Request.Builder()
+            .url(url("api/v1/profile/avatar"))
+            .put(jpeg.toRequestBody("image/jpeg".toMediaType()))
+            .header("Authorization", "Bearer $access")
+            .build()
+    }) { json.decodeFromString(it) }
+
+    suspend fun removeAvatar(): ApiResult<Person> =
+        authed({ request("DELETE", url("api/v1/profile/avatar"), null, it) }) { json.decodeFromString(it) }
+
+    /** Someone's photo at [version]; 404 for one this account may not see, or that's gone. */
+    suspend fun avatar(userId: Long, version: String): ApiResult<ByteArray> = authedReply({ access ->
+        val avatarUrl = userUrl(userId).newBuilder().addPathSegment("avatar").addQueryParameter("v", version).build()
+        Request.Builder().url(avatarUrl).header("Authorization", "Bearer $access").build()
+    }) { it.bytes }
+
     /** Ends this device's session on the server. */
     suspend fun logout(): ApiResult<Unit> = authed({ post("api/v1/auth/logout", JsonObject(emptyMap()), it) }) { }
 
@@ -271,10 +299,14 @@ class ApiClient(
     suspend fun people(): ApiResult<List<Person>> =
         authed({ request("GET", url("api/v1/users"), null, it) }) { json.decodeFromString<People>(it).users }
 
-    suspend fun invite(username: String): ApiResult<IssuedLink> =
-        authed({ post("api/v1/users", buildJsonObject { put("username", username) }, it) }) {
-            json.decodeFromString(it)
+    /** [displayName]: a suggestion, which they can change on the link's page. */
+    suspend fun invite(username: String, displayName: String = ""): ApiResult<IssuedLink> = authed({
+        val body = buildJsonObject {
+            put("username", username)
+            if (displayName.isNotEmpty()) put("displayName", displayName)
         }
+        post("api/v1/users", body, it)
+    }) { json.decodeFromString(it) }
 
     /** Replaces the account's link; its password keeps working until the new one is used. */
     suspend fun newSetupLink(id: Long): ApiResult<IssuedLink> = authed({

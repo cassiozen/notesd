@@ -201,6 +201,42 @@ class ApiClientTest {
     }
 
     @Test
+    fun `a name and photo are set, removed and read`() = runBlocking<Unit> {
+        val me = """{"id":1,"username":"me","isAdmin":true,"createdAt":1,"pending":false,""" +
+            """"displayName":"Maria","avatar":"v1"}"""
+        server.enqueue(
+            json(
+                200,
+                """{"session":{"id":"s","kind":"device","name":"P","createdAt":1,"lastUsedAt":1},"userId":1,"username":"me","isAdmin":true,"displayName":"Maria","avatar":"v1"}"""
+            )
+        )
+        val session = assertIs<ApiResult.Ok<SignIn>>(api.session()).value
+        assertEquals(Triple(1L, "Maria", "v1"), Triple(session.userId, session.displayName, session.avatar))
+        server.enqueue(json(200, me))
+        assertEquals("Maria", assertIs<ApiResult.Ok<Person>>(api.setDisplayName("Maria")).value.displayName)
+        server.enqueue(json(200, me))
+        assertEquals("v1", assertIs<ApiResult.Ok<Person>>(api.setAvatar(byteArrayOf(1, 2))).value.avatar)
+        server.enqueue(json(200, me.replace("v1", "")))
+        assertEquals("", assertIs<ApiResult.Ok<Person>>(api.removeAvatar()).value.avatar)
+        server.enqueue(MockResponse.Builder().code(200).body(okio.Buffer().write(byteArrayOf(9, 8))).build())
+        assertEquals(listOf<Byte>(9, 8), assertIs<ApiResult.Ok<ByteArray>>(api.avatar(1, "v1")).value.toList())
+        server.enqueue(json(201, """{"user":$me,"link":{"token":"tok","expiresAt":9}}"""))
+        assertIs<ApiResult.Ok<IssuedLink>>(api.invite("mum", "Mum"))
+
+        val sent = List(6) { server.takeRequest() }.map {
+            val query = it.url.encodedQuery?.let { q -> "?$q" }.orEmpty()
+            listOf(it.method, it.url.encodedPath + query, it.headers["Content-Type"], it.body?.utf8().orEmpty())
+        }
+        assertEquals(listOf("GET", "/api/v1/auth/session"), sent[0].take(2))
+        assertEquals(listOf("PATCH", "/api/v1/profile"), sent[1].take(2))
+        assertEquals("""{"displayName":"Maria"}""", sent[1][3])
+        assertEquals(listOf("PUT", "/api/v1/profile/avatar", "image/jpeg"), sent[2].take(3))
+        assertEquals(listOf("DELETE", "/api/v1/profile/avatar"), sent[3].take(2))
+        assertEquals(listOf("GET", "/api/v1/users/1/avatar?v=v1"), sent[4].take(2))
+        assertEquals("""{"username":"mum","displayName":"Mum"}""", sent[5][3])
+    }
+
+    @Test
     fun `managing people is refused to non-admins, and the last admin is kept`() = runBlocking<Unit> {
         server.enqueue(json(403, """{"error":"admin_only","message":"only an admin can do this"}"""))
         assertEquals(ApiResult.Rejected(403, "admin_only", "only an admin can do this", null), api.people())

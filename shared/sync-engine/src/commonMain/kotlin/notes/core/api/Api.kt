@@ -82,6 +82,10 @@ data class SignIn(
     val refreshExpiresAt: Long = 0,
     /** May change server-wide settings and manage accounts. */
     val isAdmin: Boolean = false,
+    /** The name chosen to show instead of the username; "" for none. */
+    val displayName: String = "",
+    /** The photo's version, for [ApiClient.avatar]; "" for none. */
+    val avatar: String = "",
     /** The account's id, as notes' updatedBy and shared spaces' members name it (§7.9). 0 from older servers. */
     val userId: Long = 0
 ) {
@@ -97,7 +101,10 @@ data class Person(
     val createdAt: Long = 0,
     val pending: Boolean = false,
     /** When its setup link stops working; null without one. */
-    val linkExpiresAt: Long? = null
+    val linkExpiresAt: Long? = null,
+    /** As on [SignIn]. */
+    val displayName: String = "",
+    val avatar: String = ""
 )
 
 /** A one-time link's secret; the app builds the URL around it. Shown once: the server keeps only a hash. */
