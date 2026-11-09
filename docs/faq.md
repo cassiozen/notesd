@@ -184,8 +184,8 @@ are listed in each [app's guide](README.md#apps).
 ### Are the apps in the Play Store or App Store?
 
 The Android app is on
-[Google Play](https://play.google.com/store/apps/details?id=app.notesd), in
-early access. The iPhone app is coming to the App Store. All the apps are
+[Google Play](https://play.google.com/store/apps/details?id=app.notesd). The
+iPhone app is coming to the App Store. All the apps are
 listed at [notesd.app/download](https://notesd.app/download/).
 
 ### Why do I need Xcode for the iPhone app?

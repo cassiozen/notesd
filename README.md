@@ -46,8 +46,8 @@ and connecting your phone. To run it without Docker, see
 - **A few accounts per server,** for family or friends, each with its own notes.
 
 The server runs on 64-bit Linux (x86-64 or ARM64) and Apple silicon Macs. The Android app needs
-Android 9 or later and is on [Google Play](https://play.google.com/store/apps/details?id=app.notesd)
-(early access); the Mac app needs macOS 14 or later on Apple silicon; the iPhone app needs iOS 26
+Android 9 or later and is on [Google Play](https://play.google.com/store/apps/details?id=app.notesd);
+the Mac app needs macOS 14 or later on Apple silicon; the iPhone app needs iOS 26
 or later and, until it reaches the App Store, is built with Xcode. All downloads:
 [notesd.app/download](https://notesd.app/download/).
 
