@@ -90,6 +90,22 @@ struct ApiClientTests {
             ])
     }
 
+    @Test func anIdInAPathIsOneSegmentWhateverItHolds() async throws {
+        let stub = StubTransport { _ in (204, "", [:]) }
+        let api = api(stub)
+        let id = "a b/c%d?e"
+        _ = await api.cancelInvite(id, inviteId: id)
+        _ = await api.removeMember(id, userId: 2)
+        _ = await api.deleteSpace(id)
+        _ = await api.inSpace(id).sync(since: 0, limit: 10, generation: nil)
+        let once = "a%20b%2Fc%25d%3Fe"
+        #expect(
+            stub.requests.map(\.path) == [
+                "/api/v1/spaces/\(once)/invites/\(once)", "/api/v1/spaces/\(once)/members/2", "/api/v1/spaces/\(once)",
+                "/api/v1/spaces/\(once)/sync",
+            ])
+    }
+
     @Test func membershipCalls() async throws {
         let stub = StubTransport { request in
             switch (request.method, request.path) {
