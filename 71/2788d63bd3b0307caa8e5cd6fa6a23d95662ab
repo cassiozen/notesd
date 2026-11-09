@@ -1,0 +1,21 @@
+shared/sync-engine/src/jvmTest/kotlin/notes/core/agent/AgentSocketTest.kt
+  s_cc6cacc0a6fc01::t_f0b65e5186c9f2 166-172
+shared/sync-engine/src/jvmMain/kotlin/notes/core/agent/AgentSocket.kt
+  s_cc6cacc0a6fc01::t_f0b65e5186c9f2 111-112,114,118
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "712788d63bd3b0307caa8e5cd6fa6a23d95662ab",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
