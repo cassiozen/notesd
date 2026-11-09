@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -47,6 +48,16 @@ func (e *env) eventually(path, want string) page {
 }
 
 const origin = "https://notes.example"
+
+// css is the stylesheet a site's page links to.
+func css(s *sharedEnv, page string) string {
+	s.t.Helper()
+	m := regexp.MustCompile(`<link rel="stylesheet" href="\./(style\.[0-9a-f]+\.css)">`).FindStringSubmatch(page)
+	if m == nil {
+		s.t.Fatalf("no stylesheet in %s", page)
+	}
+	return s.visit("/@family/" + m[1]).body
+}
 
 func (s *sharedEnv) publish(c *client, space string, body map[string]any) resp {
 	s.t.Helper()
@@ -95,6 +106,22 @@ func TestPublishingASpace(t *testing.T) {
 	pic := s.visit("/@family/img/" + s.image + ".png")
 	if pic.status != 200 || pic.header.Get("Content-Type") != "image/png" || !strings.Contains(pic.header.Get("Cache-Control"), "immutable") {
 		t.Fatalf("picture: %d %v", pic.status, pic.header)
+	}
+	// So do its fonts and favicon, named by their content too.
+	links := regexp.MustCompile(`(?:href="\./|url\()(fonts/[^)]+\.woff2|icon\.[0-9a-f]+\.svg)`).FindAllStringSubmatch(home.body+css(s, home.body), -1)
+	if len(links) != 5 {
+		t.Fatalf("4 fonts and the favicon: %v", links)
+	}
+	for _, link := range links {
+		r := s.visit("/@family/" + link[1])
+		want := map[bool]string{true: "font/woff2", false: "image/svg+xml"}[strings.HasSuffix(link[1], ".woff2")]
+		if r.status != 200 || r.header.Get("Content-Type") != want || !strings.Contains(r.header.Get("Cache-Control"), "immutable") {
+			t.Fatalf("%s: %d %v", link[1], r.status, r.header)
+		}
+		// The favicon's colours are its own inline style; nothing else is let in.
+		if want == "image/svg+xml" && r.header.Get("Content-Security-Policy") != "default-src 'none'; style-src 'unsafe-inline'" {
+			t.Fatalf("favicon CSP: %v", r.header)
+		}
 	}
 	// Only what the manifest names is served: never a file name built from the address.
 	other := strings.Repeat("c", 64)

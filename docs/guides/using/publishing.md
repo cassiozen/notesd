@@ -16,7 +16,9 @@ The site has:
 - a page for each tag, and a list of every tag;
 - a search, and a feed for feed readers.
 
-It uses the colour of the space's icon, and follows the reader's light or dark setting.
+It looks like notesd: titles in the same serif as the apps, and the colour of the space's icon
+along the top, in each tab's icon and in small details. It follows the reader's light or dark
+setting.
 
 ## Publish a space
 

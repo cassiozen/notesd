@@ -3,7 +3,8 @@
 
 :root {
   --font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  --font-heading: var(--font-body);
+  /* The face the apps title notes with, served with the site (look.go); others' scripts fall back. */
+  --font-heading: 'Instrument Serif', ui-serif, Georgia, serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --measure: 42rem;
   color-scheme: light;
@@ -23,6 +24,20 @@
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+html {
+  /* A section linked to lands below the sticky bar, not under it. */
+  scroll-padding-top: 5rem;
+}
+
+/* Pages cross-fade into each other where the browser can. */
+@view-transition {
+  navigation: auto;
+}
+
+::selection {
+  background: color-mix(in oklab, var(--accent) 32%, transparent);
 }
 
 body {
@@ -56,19 +71,63 @@ main,
   padding: 0 1.25rem;
 }
 
+/* notesd's bar: the accent along its top, the page blurred as it scrolls under. Full width, its content in
+   the page's column. */
 .site-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
-  gap: 0.5rem 1.5rem;
-  padding-top: 2rem;
-  padding-bottom: 2.5rem;
+  gap: 0.25rem 1.5rem;
+  max-width: none;
+  margin-bottom: 3.5rem;
+  padding: 0.8rem max(1.25rem, calc((100% - var(--measure)) / 2 + 1.25rem));
+  border-top: 3px solid var(--accent);
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in oklab, var(--bg) 82%, transparent);
+  -webkit-backdrop-filter: blur(14px) saturate(1.5);
+  backdrop-filter: blur(14px) saturate(1.5);
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .site-header {
+    background: var(--bg);
+  }
+}
+
+/* On a post, how far it's been read, along the bar's bottom edge. */
+@supports (animation-timeline: scroll()) {
+  .page-post .site-header::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: -1px;
+    left: 0;
+    height: 2px;
+    background: var(--accent);
+    transform-origin: 0 50%;
+    animation: read-progress linear both;
+    animation-timeline: scroll(root);
+  }
+
+  @keyframes read-progress {
+    from {
+      transform: scaleX(0);
+    }
+
+    to {
+      transform: scaleX(1);
+    }
+  }
 }
 
 .site-title {
   color: var(--text);
-  font: 700 1.25rem/1.3 var(--font-heading);
+  font: 400 1.75rem/1.1 var(--font-heading);
+  letter-spacing: -0.01em;
   text-decoration: none;
 }
 
@@ -153,10 +212,49 @@ h6 {
   margin: 2em 0 0.6em;
 }
 
+/* The serif's one weight, large: bold would be faked. */
+.page-title,
+.post-title,
+.post-body h2,
+.post-body h3 {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
 .page-title,
 .post-title {
-  font-size: 2rem;
-  margin: 0 0 0.5rem;
+  font-size: 2.75rem;
+  line-height: 1.1;
+  margin: 0 0 0.75rem;
+}
+
+.post-body h2 {
+  font-size: 1.85rem;
+}
+
+.post-body h3 {
+  font-size: 1.45rem;
+}
+
+.heading-anchor {
+  margin-left: 0.3em;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 0.6em;
+  text-decoration: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+:hover > .heading-anchor,
+.heading-anchor:focus-visible {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .heading-anchor {
+    opacity: 0.5;
+  }
 }
 
 .page-intro,
@@ -169,6 +267,14 @@ h6 {
   font-size: 0.9375rem;
 }
 
+/* Dates and the like: small capitals in the mono, above what they're about. */
+.post-meta,
+.post-item .post-date {
+  font: 500 0.75rem/1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .page-intro {
   margin: 0 0 2rem;
 }
@@ -179,8 +285,11 @@ h6 {
   padding: 0;
 }
 
+/* The date reads first, as an eyebrow, though the title comes first in the page. */
 .post-item {
-  padding: 1.25rem 0;
+  display: flex;
+  flex-direction: column;
+  padding: 1.75rem 0;
   border-top: 1px solid var(--border);
 }
 
@@ -190,23 +299,27 @@ h6 {
 }
 
 .post-link {
-  font: 600 1.25rem/1.35 var(--font-heading);
+  font: 400 1.75rem/1.15 var(--font-heading);
+  letter-spacing: -0.01em;
   color: var(--text);
   text-decoration: none;
 }
 
 .post-link:hover {
-  color: var(--link);
   text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.18em;
 }
 
 .post-item .post-date {
-  display: block;
-  margin-top: 0.15rem;
+  order: -1;
+  margin-bottom: 0.4rem;
 }
 
 .excerpt {
-  margin: 0.4rem 0 0;
+  margin: 0.5rem 0 0;
+  color: var(--muted);
 }
 
 .excerpt mark,
@@ -224,8 +337,22 @@ h6 {
   margin: 0;
 }
 
-.post-updated::before {
+.post-updated::before,
+.reading-time::before {
   content: ' · ';
+}
+
+.post-body a {
+  text-decoration-color: color-mix(in oklab, var(--accent) 55%, transparent);
+  text-decoration-thickness: 1.5px;
+}
+
+.post-body a:hover {
+  text-decoration-color: var(--accent);
+}
+
+.post-body li::marker {
+  color: var(--accent);
 }
 
 .post-body > :first-child {
@@ -238,11 +365,13 @@ h6 {
   border-radius: 0.375rem;
 }
 
+/* A quote reads as a pull quote. */
 .post-body blockquote {
-  margin: 1.5em 0;
-  padding-left: 1rem;
-  border-left: 3px solid var(--accent);
-  color: var(--muted);
+  margin: 1.75em 0;
+  padding-left: 1.25rem;
+  border-left: 2px solid var(--accent);
+  color: var(--text);
+  font: italic 400 1.5rem/1.35 var(--font-heading);
 }
 
 .post-body code {
@@ -299,6 +428,23 @@ h6 {
 
 .tag:hover {
   text-decoration: underline;
+}
+
+/* Listed apart from the text, a tag is a pill. */
+.tag-list .tag,
+.tag-tree .tag {
+  display: inline-block;
+  padding: 0.1em 0.7em;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 0.875rem;
+  transition: border-color 0.15s;
+}
+
+.tag-list .tag:hover,
+.tag-tree .tag:hover {
+  border-color: var(--accent);
+  text-decoration: none;
 }
 
 .post-footer {
@@ -380,9 +526,20 @@ h6 {
   margin-top: 4rem;
   padding-top: 1.5rem;
   padding-bottom: 3rem;
-  border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 0.875rem;
+  text-align: center;
+}
+
+/* The bar's accent, once more, to close the page. */
+.site-footer::before {
+  content: '';
+  display: block;
+  width: 2rem;
+  height: 3px;
+  margin: 0 auto 1.25rem;
+  border-radius: 3px;
+  background: var(--accent);
 }
 
 .site-footer a {
@@ -396,4 +553,39 @@ h6 {
   overflow: hidden;
   clip-path: inset(50%);
   white-space: nowrap;
+}
+
+/* A phone: the name and the links share the bar's line while they fit. */
+@media (max-width: 30rem) {
+  .site-header {
+    gap: 0.25rem 1rem;
+    margin-bottom: 2.5rem;
+    padding-top: 0.6rem;
+    padding-bottom: 0.6rem;
+  }
+
+  .site-title {
+    font-size: 1.4rem;
+  }
+
+  .site-nav {
+    gap: 0.9rem;
+    font-size: 0.9375rem;
+  }
+
+  .page-title,
+  .post-title {
+    font-size: 2.25rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition {
+    navigation: none;
+  }
+
+  .heading-anchor,
+  .tag {
+    transition: none;
+  }
 }

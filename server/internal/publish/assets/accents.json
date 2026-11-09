@@ -1,0 +1,252 @@
+{
+  "": {
+    "dark": {
+      "accent": "oklch(0.72 0.15 72)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.64 0.15 72)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "astronaut": {
+    "dark": {
+      "accent": "oklch(0.62 0.14 226)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.62 0.14 226)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "butterfly": {
+    "dark": {
+      "accent": "oklch(0.58 0.19 51)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.58 0.19 51)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "castle": {
+    "dark": {
+      "accent": "oklch(0.58 0.16 34)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.48 0.16 34)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "comet": {
+    "dark": {
+      "accent": "oklch(0.62 0.2 41)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.62 0.2 41)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "diary": {
+    "dark": {
+      "accent": "oklch(0.62 0.17 26)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.62 0.17 26)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "dragon": {
+    "dark": {
+      "accent": "oklch(0.58 0.18 341)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.37 0.18 341)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "duck": {
+    "dark": {
+      "accent": "oklch(0.58 0.14 151)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.44 0.14 151)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "flamingo": {
+    "dark": {
+      "accent": "oklch(0.64 0.15 14)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.64 0.15 14)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "idea": {
+    "dark": {
+      "accent": "oklch(0.82 0.18 98)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.64 0.18 98)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "leather-journal": {
+    "dark": {
+      "accent": "oklch(0.58 0.11 46)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.47 0.11 46)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "melting-clock": {
+    "dark": {
+      "accent": "oklch(0.58 0.17 271)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.44 0.17 271)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "monster": {
+    "dark": {
+      "accent": "oklch(0.64 0.17 114)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.63 0.17 114)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "open-book": {
+    "dark": {
+      "accent": "oklch(0.58 0.11 156)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.4 0.11 156)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "portrait": {
+    "dark": {
+      "accent": "oklch(0.66 0.14 168)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.62 0.14 168)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "quill": {
+    "dark": {
+      "accent": "oklch(0.58 0.21 289)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.4 0.21 289)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "reading-unicorn": {
+    "dark": {
+      "accent": "oklch(0.6 0.14 311)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.6 0.14 311)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "ring": {
+    "dark": {
+      "accent": "oklch(0.68 0.17 88)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.64 0.17 88)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "robot": {
+    "dark": {
+      "accent": "oklch(0.66 0.14 78)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.64 0.14 78)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "scoreboard": {
+    "dark": {
+      "accent": "oklch(0.58 0.2 248)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.54 0.2 248)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "sugar-skull": {
+    "dark": {
+      "accent": "oklch(0.58 0.25 331)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.48 0.25 331)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "sunset": {
+    "dark": {
+      "accent": "oklch(0.58 0.24 356)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.56 0.24 356)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "theatre": {
+    "dark": {
+      "accent": "oklch(0.72 0.16 81)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.64 0.16 81)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "treasure-map": {
+    "dark": {
+      "accent": "oklch(0.58 0.11 201)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.46 0.11 201)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  },
+  "unicorn": {
+    "dark": {
+      "accent": "oklch(0.58 0.23 1)",
+      "bg": "oklch(0.225 0.005 250)"
+    },
+    "light": {
+      "accent": "oklch(0.58 0.23 1)",
+      "bg": "oklch(0.988 0.002 80)"
+    }
+  }
+}

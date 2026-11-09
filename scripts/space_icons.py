@@ -15,7 +15,8 @@ under their keys; then, always:
            mark at the same size (menus draw images as they come),
            SpaceIcons.swift, and UI/SpaceThemes.swift, every theme's colours
   server:  publish/assets/theme.css, a published space's colours: the app
-           icon's neutrals with each theme's accent (§7.10)
+           icon's neutrals with each theme's accent (§7.10), and
+           accents.json, each accent and background for its favicon
 
 A key is stored with the space and never changes. '' is the app's own icon,
 the default space's to begin with; an app shows it for a key it doesn't have
@@ -57,6 +58,7 @@ APP_ICON_SCALE = 0.84
 SWIFT = ROOT / "apps/ios/Notes/Notes/SpaceIcons.swift"
 SWIFT_THEMES = ROOT / "apps/ios/Notes/UI/SpaceThemes.swift"
 BLOG_CSS = ROOT / "server/internal/publish/assets/theme.css"
+BLOG_ACCENTS = ROOT / "server/internal/publish/assets/accents.json"
 
 
 class Theme(NamedTuple):
@@ -476,8 +478,11 @@ def blog_themes():
     accents = ("accent", "link")
     themes = [("", DEFAULT_THEME), *((k, t) for k, _, _, t in ICONS)]
     light, os_dark, dark = [], [], []
+    # For what CSS can't colour: the site's favicon, its accent with the page's background on it.
+    marks = {}
     for key, theme in themes:
         lt, dt = blog_tokens(key, theme, "light"), blog_tokens(key, theme, "dark")
+        marks[key] = {mode: {"accent": t["accent"], "bg": t["bg"]} for mode, t in (("light", lt), ("dark", dt))}
         if key == "":
             light.append(block(":root", lt, ""))
             os_dark.append(block(":root:not([data-theme='light'])", dt, "  "))
@@ -496,6 +501,7 @@ def blog_themes():
         + "@media (prefers-color-scheme: dark) {\n" + "\n".join(os_dark) + "}\n\n"
         + "\n".join(dark)
     )
+    BLOG_ACCENTS.write_text(json.dumps(marks, indent=2, sort_keys=True) + "\n")
 
 
 def tidy(svg: str) -> str:

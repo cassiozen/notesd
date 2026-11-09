@@ -51,6 +51,7 @@ type manifest struct {
 	Accent  string `json:"accent"`
 	Style   string `json:"style"`
 	Script  string `json:"script"`
+	Icon    string `json:"icon"`
 	SpaceID string `json:"spaceId"`
 	// Routes maps a path below the site's root ("", "tags/home/", "a-post-1a2b3c4d") to its file.
 	Routes map[string]string `json:"routes"`
@@ -178,7 +179,7 @@ func slug(title string) string {
 
 // siteInfo is what every page shows of the site.
 type siteInfo struct {
-	Name, Accent, Style, Script string
+	Name, Accent, Style, Script, Icon string
 }
 
 // listItem is a post in a list.
@@ -195,6 +196,7 @@ type tagLink struct {
 // postView is a post's page.
 type postView struct {
 	Title, Date, Datetime, Updated, UpdatedDatetime string
+	ReadingTime                                     string
 	Body                                            template.HTML
 	Tags                                            []tagLink
 }
@@ -270,9 +272,16 @@ func build(src *source, accent string) (*site, error) {
 		return nil, err
 	}
 	m.Script = "theme." + hash(script)[:10] + ".js"
+	icon := favicon(src.Name, accent)
+	m.Icon = "icon." + hash(icon)[:10] + ".svg"
 	s.add(m.Style, m.Style, style)
 	s.add(m.Script, m.Script, script)
-	info := siteInfo{Name: src.Name, Accent: accent, Style: m.Style, Script: m.Script}
+	s.add(m.Icon, m.Icon, icon)
+	files, _ := fonts()
+	for _, f := range files {
+		s.add(f.name, f.name, f.data)
+	}
+	info := siteInfo{Name: src.Name, Accent: accent, Style: m.Style, Script: m.Script, Icon: m.Icon}
 	for name, data := range src.ImageData {
 		s.add(name, name, data)
 	}
@@ -309,7 +318,7 @@ func build(src *source, accent string) (*site, error) {
 	for n := 1; n <= pagesN; n++ {
 		route := listRoute(n)
 		root := rootFor(route)
-		p := page{Kind: "home", Description: src.Name}
+		p := page{Kind: "home", Description: "Posts from " + src.Name}
 		if n > 1 {
 			p.Title = "Page " + strconv.Itoa(n)
 			p.Newer = root + listRoute(n-1)
@@ -336,7 +345,8 @@ func build(src *source, accent string) (*site, error) {
 		if err != nil {
 			return nil, err
 		}
-		v := &postView{Title: post.Title, Date: date(post.Created), Datetime: datetime(post.Created), Body: html}
+		v := &postView{Title: post.Title, Date: date(post.Created), Datetime: datetime(post.Created), Body: html,
+			ReadingTime: readingTime(post.Content)}
 		if date(post.Updated) != v.Date && post.Updated.After(post.Created) {
 			v.Updated, v.UpdatedDatetime = date(post.Updated), datetime(post.Updated)
 		}
@@ -406,7 +416,7 @@ func (s *site) add(route, name string, data []byte) {
 	s.manifest.Routes[route] = name
 	s.manifest.ETags[name] = `"` + hash(data)[:20] + `"`
 	switch path.Ext(name) {
-	case ".html", ".css", ".js", ".xml":
+	case ".html", ".css", ".js", ".xml", ".svg":
 		var b bytes.Buffer
 		w, _ := gzip.NewWriterLevel(&b, gzip.BestCompression)
 		_, _ = w.Write(data)
@@ -508,6 +518,8 @@ func stylesheet(custom string) ([]byte, error) {
 	for _, i := range imports {
 		b.WriteString(i + "\n")
 	}
+	_, faces := fonts()
+	b.WriteString(faces)
 	b.WriteString("@layer notesd {\n")
 	b.Write(theme)
 	b.WriteString("\n")
