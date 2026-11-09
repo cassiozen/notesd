@@ -1,0 +1,42 @@
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_09c452c7e300af 527
+apps/ios/NotesTests/SpaceTraitsTests.swift
+  s_c4b534f44e1767::t_d35e2b53e0f031 103-109
+docs/reference/api.md
+  s_c4b534f44e1767::t_09c452c7e300af 539
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_c4b534f44e1767::t_d35e2b53e0f031 352,395,500-501,503,507-509
+docs/concepts/security-model.md
+  s_c4b534f44e1767::t_09c452c7e300af 52-55
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_c4b534f44e1767::t_fed4419ea7d476 338-340
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceTraitsTest.kt
+  s_c4b534f44e1767::t_f674cc4b58aed4 114-122
+apps/web/src/notes/traits.tsx
+  s_c4b534f44e1767::t_c297adfde85157 118-124
+apps/web/src/notes/share.tsx
+  s_c4b534f44e1767::t_c297adfde85157 18,72-73,275
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceTraits.kt
+  s_c4b534f44e1767::t_f674cc4b58aed4 82-89
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_c4b534f44e1767::t_f674cc4b58aed4 562-563,601
+apps/web/src/notes/traits.test.tsx
+  s_c4b534f44e1767::t_c297adfde85157 3,109,111-112
+  s_c4b534f44e1767::t_0463b6c4993620 110
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d406d3411f9b0df6c52b270bfa08376f4d67a5e8",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
