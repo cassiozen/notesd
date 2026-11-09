@@ -11,7 +11,8 @@ const sw = self as unknown as ServiceWorkerGlobalScope
 const CACHE = `shell-${VERSION}`
 const precached = new Set(PRECACHE)
 const engine = new Set(ENGINE)
-const NETWORK_ONLY = ['/api/', '/healthz', '/readyz']
+// /@: published spaces' sites (§7.10), pages of their own on this origin, never the app.
+const NETWORK_ONLY = ['/api/', '/healthz', '/readyz', '/@']
 
 sw.addEventListener('install', (event) => {
   // no-cache: index.html and the root files may sit stale in the HTTP cache.

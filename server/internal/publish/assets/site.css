@@ -1,0 +1,399 @@
+/* In the notesd layer with theme.css, so a space's unlayered custom CSS wins without !important (§7.10).
+   Most changes are a variable: theme.css's colours, and these. */
+
+:root {
+  --font-body: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --font-heading: var(--font-body);
+  --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+  --measure: 42rem;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 1.0625rem/1.7 var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.skip-link {
+  position: absolute;
+  left: 1rem;
+  top: -3rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 0.375rem;
+}
+
+.skip-link:focus {
+  top: 1rem;
+}
+
+.site-header,
+main,
+.site-footer {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 1.25rem;
+}
+
+.site-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1.5rem;
+  padding-top: 2rem;
+  padding-bottom: 2.5rem;
+}
+
+.site-title {
+  color: var(--text);
+  font: 700 1.25rem/1.3 var(--font-heading);
+  text-decoration: none;
+}
+
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.site-nav a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.site-nav a:hover,
+.site-nav a[aria-current='page'] {
+  color: var(--text);
+  text-decoration: underline;
+  text-decoration-color: var(--accent);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 0.3em;
+}
+
+.theme-toggle {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.theme-toggle:hover {
+  color: var(--text);
+}
+
+.theme-toggle[hidden] {
+  display: none;
+}
+
+.theme-toggle .moon,
+:root[data-theme='dark'] .theme-toggle .sun {
+  display: none;
+}
+
+:root[data-theme='dark'] .theme-toggle .moon {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) .theme-toggle .sun {
+    display: none;
+  }
+
+  :root:not([data-theme='light']) .theme-toggle .moon {
+    display: block;
+  }
+}
+
+a {
+  color: var(--link);
+  text-underline-offset: 0.15em;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-heading);
+  line-height: 1.25;
+  margin: 2em 0 0.6em;
+}
+
+.page-title,
+.post-title {
+  font-size: 2rem;
+  margin: 0 0 0.5rem;
+}
+
+.page-intro,
+.post-meta,
+.post-date,
+.post-updated,
+.tag-count,
+.search-summary {
+  color: var(--muted);
+  font-size: 0.9375rem;
+}
+
+.page-intro {
+  margin: 0 0 2rem;
+}
+
+.post-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.post-item {
+  padding: 1.25rem 0;
+  border-top: 1px solid var(--border);
+}
+
+.post-item:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.post-link {
+  font: 600 1.25rem/1.35 var(--font-heading);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.post-link:hover {
+  color: var(--link);
+  text-decoration: underline;
+}
+
+.post-item .post-date {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.excerpt {
+  margin: 0.4rem 0 0;
+}
+
+.excerpt mark,
+.post-body mark {
+  background: color-mix(in oklab, var(--accent) 30%, transparent);
+  color: inherit;
+  border-radius: 0.15em;
+}
+
+.post-header {
+  margin-bottom: 2rem;
+}
+
+.post-meta {
+  margin: 0;
+}
+
+.post-updated::before {
+  content: ' · ';
+}
+
+.post-body > :first-child {
+  margin-top: 0;
+}
+
+.post-body img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.375rem;
+}
+
+.post-body blockquote {
+  margin: 1.5em 0;
+  padding-left: 1rem;
+  border-left: 3px solid var(--accent);
+  color: var(--muted);
+}
+
+.post-body code {
+  font: 0.9em var(--font-mono);
+  background: var(--surface);
+  padding: 0.1em 0.35em;
+  border-radius: 0.25rem;
+}
+
+.post-body pre {
+  overflow-x: auto;
+  padding: 1rem;
+  background: var(--surface);
+  border-radius: 0.5rem;
+  line-height: 1.5;
+}
+
+.post-body pre code {
+  padding: 0;
+  background: none;
+}
+
+.post-body hr {
+  border: 0;
+  border-top: 1px solid var(--border);
+  margin: 2.5em 0;
+}
+
+.post-body table {
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+}
+
+.post-body th,
+.post-body td {
+  border: 1px solid var(--border);
+  padding: 0.4em 0.75em;
+}
+
+.post-body li:has(> input[type='checkbox']) {
+  list-style: none;
+}
+
+.post-body li > input[type='checkbox'] {
+  margin: 0 0.5em 0 -1.4em;
+  accent-color: var(--accent);
+}
+
+.tag {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.tag:hover {
+  text-decoration: underline;
+}
+
+.post-footer {
+  margin-top: 3rem;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag-tree,
+.tag-tree ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag-tree ul {
+  padding-left: 1.25rem;
+}
+
+.tag-tree li {
+  margin: 0.35rem 0;
+}
+
+.tag-count {
+  margin-left: 0.4rem;
+}
+
+.post-nav,
+.pager {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 3rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.post-nav [rel='next'],
+.pager [rel='next'] {
+  margin-left: auto;
+  text-align: right;
+}
+
+.search-form {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 2rem;
+}
+
+.search-form input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 0.5rem;
+  background: var(--bg);
+  color: var(--text);
+  font: inherit;
+}
+
+.search-form button {
+  padding: 0.55rem 1rem;
+  border: 0;
+  border-radius: 0.5rem;
+  background: var(--text);
+  color: var(--bg);
+  font: inherit;
+  cursor: pointer;
+}
+
+.site-footer {
+  margin-top: 4rem;
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.site-footer a {
+  color: inherit;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}

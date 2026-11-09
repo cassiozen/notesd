@@ -78,12 +78,18 @@ func (s *Server) deleteSpace(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userID := sessionFrom(r.Context()).UserID
 	role, err := s.sharing.Role(r.Context(), userID, id)
+	file := sharing.UserRef(userID)
 	if err == nil {
 		if role != "" {
+			file = sharing.SpaceRef(id)
 			err = s.sharing.Delete(r.Context(), userID, id)
 		} else {
 			err = u.Spaces.Delete(r.Context(), id)
 		}
+	}
+	if err == nil {
+		// Its address is free again. Missed here (a stop), the publisher finds the space gone.
+		err = s.publish.Forget(r.Context(), file, id)
 	}
 	if err != nil {
 		s.writeErr(w, r, err)

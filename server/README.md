@@ -49,7 +49,8 @@ working on them:
 - `serve --mirror-dir` (`internal/mirror`) follows the sync feed to keep
   Markdown files up to date. The notes, spaces and images stores report each
   commit through `OnCommit`, which `userdata.Registry.OnChange` wires to the
-  mirror. `export` and the mirror share `internal/mdexport`.
+  mirror and the publisher (each feature adds its own listener). `export` and
+  the mirror share `internal/mdexport`.
 - Passwords for the account commands (`create-owner`, `add-user`,
   `reset-password`) come from `NOTESD_PASSWORD`, a hidden prompt (typed
   twice) at a terminal, or else the first line of stdin. `export
@@ -84,6 +85,7 @@ internal/search    Markdown → plain text and tags, FTS5 query building, search
 internal/locks     locked-note envelopes, keyring
 internal/spaces    the list of spaces, traits
 internal/sharing   shared spaces: members, invitations, moving notes between files, crash recovery
+internal/publish   published spaces: settings, rendering sites to data/public, the public handler, search limits
 internal/images    image blobs: validation, storage, references, collection, integrity check
 internal/mail      email settings, note Markdown → HTML email, Resend client
 internal/auth      Argon2id, accounts, sessions, login rate limiting

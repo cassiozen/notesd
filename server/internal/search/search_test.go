@@ -200,3 +200,20 @@ func TestTagKey(t *testing.T) {
 		}
 	}
 }
+
+func TestTagSpansGiveWhereEachTagIs(t *testing.T) {
+	text := "Café #home/garden and #multi word# end"
+	spans := TagSpans(text, true)
+	if len(spans) != 2 {
+		t.Fatalf("%+v", spans)
+	}
+	if text[spans[0].Start:spans[0].End] != "#home/garden" || spans[0].Name != "home/garden" {
+		t.Errorf("%+v", spans[0])
+	}
+	if text[spans[1].Start:spans[1].End] != "#multi word#" || spans[1].Name != "multi word" {
+		t.Errorf("%+v", spans[1])
+	}
+	if got := TagSpans("#mid", false); len(got) != 0 {
+		t.Errorf("a run that doesn't start after a space can't open a tag at once: %+v", got)
+	}
+}

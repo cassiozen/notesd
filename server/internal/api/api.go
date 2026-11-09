@@ -6,6 +6,7 @@ package api
 import (
 	"compress/gzip"
 	"context"
+	"database/sql"
 	"errors"
 	"log/slog"
 	"net"
@@ -21,6 +22,7 @@ import (
 	"notes/server/internal/database"
 	"notes/server/internal/mail"
 	"notes/server/internal/notes"
+	"notes/server/internal/publish"
 	"notes/server/internal/sharing"
 	"notes/server/internal/userdata"
 	"notes/server/internal/web"
@@ -38,6 +40,10 @@ type Config struct {
 	UpdateRequest string
 	// ReleasesURL overrides where releases are listed (tests).
 	ReleasesURL string
+	// DataDir holds the notes files and, in public/, the published spaces' sites (§7.10).
+	DataDir string
+	// Publish paces re-rendering published sites; zero values are the defaults.
+	Publish publish.Config
 	// MinClient is the oldest app version, X.Y.Z, this server syncs with,
 	// by platform (android, ios, web). Raised only when a server change
 	// would break older apps; empty means every version is accepted.
@@ -55,21 +61,39 @@ type Server struct {
 	cfg      Config
 	releases *releases
 	sharing  *sharing.Service
+	publish  *publish.Service
 }
 
 // New returns a server over the system database and users' notes databases.
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
 	share := sharing.New(system, users)
 	share.Install()
-	authSvc.BeforeRemove(sharing.HandOff)
+	pcfg := cfg.Publish
+	pcfg.DataDir, pcfg.Log = cfg.DataDir, log
+	pub := publish.New(system, users, share, pcfg)
+	pub.Install()
+	authSvc.BeforeRemove(RemoveAccount)
 	return &Server{
 		system: system, users: users, auth: authSvc, log: log, cfg: cfg,
 		limiter:  auth.NewLimiter(10, 15*time.Minute),
 		mailer:   mail.NewClient(cfg.ResendURL),
 		releases: newReleases(cfg.ReleasesURL),
 		sharing:  share,
+		publish:  pub,
 	}
 }
+
+// RemoveAccount is what removing an account changes elsewhere in system.db: the shared spaces it owns
+// pass to a member, and its own spaces' sites come down.
+func RemoveAccount(ctx context.Context, tx *sql.Tx, userID int64) error {
+	if err := sharing.HandOff(ctx, tx, userID); err != nil {
+		return err
+	}
+	return publish.RemoveAccount(ctx, tx, userID)
+}
+
+// Publish is the server's published spaces: Run keeps their sites up to date.
+func (s *Server) Publish() *publish.Service { return s.publish }
 
 // Recover finishes or undoes moves of notes between files that a stop cut
 // short (§7.9). Run it before serving.
@@ -141,6 +165,9 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/invites/{invite}/accept", s.authed(s.acceptInvite))
 	mux.Handle("POST /api/v1/invites/{invite}/decline", s.authed(s.declineInvite))
 	mux.Handle("GET /api/v1/people", s.authed(s.listPeople))
+	mux.Handle("GET /api/v1/spaces/{id}/publish", s.authed(s.getPublish))
+	mux.Handle("PUT /api/v1/spaces/{id}/publish", s.authed(s.putPublish))
+	mux.Handle("DELETE /api/v1/spaces/{id}/publish", s.authed(s.deletePublish))
 
 	// A shared space's change feed (§7.9): each file has its own sequence, so its own cursor. Every
 	// other request is at the account's address, and the server finds the file.
@@ -158,7 +185,14 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("/api/", func(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "no_such_endpoint", "no such endpoint")
 	})
-	mux.Handle("/", web.Handler())
+	app := web.Handler()
+	mux.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if publish.IsPublic(r) {
+			s.publish.ServeHTTP(w, r)
+			return
+		}
+		app.ServeHTTP(w, r)
+	}))
 
 	return s.serverHeader(s.recoverer(s.logRequests(s.checkClient(mux))))
 }

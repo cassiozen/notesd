@@ -97,6 +97,8 @@ func (s *Server) removeUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.log.Info("user removed", "username", u.Username, "by", sessionFrom(r.Context()).Username)
+	// Their own spaces' sites came down with the account (RemoveAccount): stop serving them now.
+	s.publish.Reload(r.Context())
 	w.WriteHeader(http.StatusNoContent)
 }
 

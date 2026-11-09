@@ -1,0 +1,204 @@
+package publish
+
+import (
+	"fmt"
+	"strings"
+	"testing"
+	"time"
+
+	"notes/server/internal/search"
+)
+
+func mustBody(t *testing.T, md string, images map[string]imageFile) string {
+	t.Helper()
+	html, err := body(md, "../", images)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(html)
+}
+
+func TestBodyHeadingsStepDownUnderTheTitle(t *testing.T) {
+	got := mustBody(t, "# One\n\n## Two\n\n###### Six", nil)
+	for _, want := range []string{"<h2>One</h2>", "<h3>Two</h3>", "<h6>Six</h6>"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s not in %s", want, got)
+		}
+	}
+}
+
+func TestBodyEscapesRawHTML(t *testing.T) {
+	got := mustBody(t, "Hi <script>alert(1)</script>\n\n<div onclick=x>block</div>\n\n[x](javascript:alert(1))", nil)
+	if strings.Contains(got, "<script") || strings.Contains(got, "<div") || strings.Contains(got, "javascript:") {
+		t.Fatalf("raw HTML or a script URL got through: %s", got)
+	}
+}
+
+func TestBodyImages(t *testing.T) {
+	id := strings.Repeat("a", 64)
+	other := strings.Repeat("b", 64)
+	md := fmt.Sprintf("![A cat](notesd:image/%s?w=640&h=480)\n\n![Gone](notesd:image/%s?w=1&h=1) and ![web](https://x/y.png)", id, other)
+	got := mustBody(t, md, map[string]imageFile{id: {Name: "img/" + id + ".jpg"}})
+	if !strings.Contains(got, `<img src="../img/`+id+`.jpg" alt="A cat" width="640" height="480" loading="lazy" decoding="async">`) {
+		t.Errorf("the site's copy, sized: %s", got)
+	}
+	if strings.Contains(got, other) || !strings.Contains(got, "Gone and") {
+		t.Errorf("a missing image is its alt text: %s", got)
+	}
+	if strings.Contains(got, "x/y.png") || !strings.Contains(got, "web") {
+		t.Errorf("an image from elsewhere isn't loaded, its alt text shown: %s", got)
+	}
+}
+
+func TestBodyLinksTagsByTheAppsRules(t *testing.T) {
+	got := mustBody(t, "Plants #home/garden and #multi word tag# here.\n\n"+
+		"Not C#, not `#code`, not [#link](https://x), not a#b.\n\n*#emph* and (#paren)", nil)
+	for _, want := range []string{
+		`<a href="../tags/home/garden/" class="tag">#home/garden</a> and`,
+		`<a href="../tags/multi%20word%20tag/" class="tag">#multi word tag#</a> here.`,
+		`<em><a href="../tags/emph/" class="tag">#emph</a></em>`,
+		`(<a href="../tags/paren/" class="tag">#paren</a>)`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s not in %s", want, got)
+		}
+	}
+	if strings.Count(got, `class="tag"`) != 4 {
+		t.Errorf("only those are tags: %s", got)
+	}
+}
+
+func TestTagPathsRefuseDotLevels(t *testing.T) {
+	if p, ok := tagPath("a/b c"); !ok || p != "tags/a/b%20c/" {
+		t.Fatalf("%q %v", p, ok)
+	}
+	for _, k := range []string{"..", "a/../b", "."} {
+		if _, ok := tagPath(k); ok {
+			t.Errorf("%q has a page", k)
+		}
+	}
+}
+
+func TestSlugsAndShortIDs(t *testing.T) {
+	for title, want := range map[string]string{
+		"What I run on my $10 OpenStick": "what-i-run-on-my-10-openstick",
+		"Família & Café":                 "familia-cafe",
+		"日本語":                            "post",
+	} {
+		if got := slug(title); got != want {
+			t.Errorf("slug(%q) = %q, want %q", title, got, want)
+		}
+	}
+	taken := map[string]bool{}
+	a := shortID("note-1", taken)
+	if len(a) != 8 || shortID("note-1", taken) == a {
+		t.Fatalf("8 hex digits, longer when taken: %s", a)
+	}
+}
+
+func TestExcerptIsPlainAndCutAtAWord(t *testing.T) {
+	if got := excerpt("# Head\n\nSome **bold** [link](https://x) text."); got != "Head Some bold link text." {
+		t.Fatalf("%q", got)
+	}
+	long := strings.Repeat("word ", 100)
+	got := excerpt(long)
+	if !strings.HasSuffix(got, "word…") || len([]rune(got)) > excerptLen+1 {
+		t.Fatalf("%q", got)
+	}
+}
+
+func TestStylesheetLetsTheSpacesCSSWin(t *testing.T) {
+	css, err := stylesheet("@import url(https://fonts.example/a.css);\nbody { color: red }\n")
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := string(css)
+	imp, layer, own := strings.Index(s, "@import"), strings.Index(s, "@layer notesd {"), strings.Index(s, "body { color: red }")
+	if imp != 0 || layer < imp || own < layer || strings.Count(s, "@import") != 1 {
+		t.Fatalf("imports first, then the site in its layer, then the space's own unlayered:\n%s", s[:200])
+	}
+}
+
+func posts(n int) []post {
+	var out []post
+	base := time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := n; i >= 1; i-- {
+		id := fmt.Sprintf("n%d", i)
+		content := fmt.Sprintf("Body %d #all", i)
+		if i%2 == 0 {
+			content += " #home/garden"
+		}
+		p := post{ID: id, Title: fmt.Sprintf("Post %d", i), Content: content,
+			Created: base.Add(time.Duration(i) * time.Hour), Updated: base.Add(time.Duration(i) * time.Hour)}
+		p.Short = shortID(id, map[string]bool{})
+		p.Path = slug(p.Title) + "-" + p.Short
+		p.Tags = search.Tags(p.Title, p.Content)
+		out = append(out, p)
+	}
+	return out
+}
+
+func TestBuildLaysOutTheSite(t *testing.T) {
+	src := &source{Name: "Garden", Base: "https://notes.example/@garden/", BasePath: "/@garden/",
+		Posts: posts(31), Images: map[string]imageFile{}, ImageData: map[string][]byte{}}
+	s, err := build(src, "duck")
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := s.manifest
+	page := func(route string) string {
+		t.Helper()
+		name, ok := m.Routes[route]
+		if !ok {
+			t.Fatalf("no %q in %v", route, m.Routes)
+		}
+		return string(s.files[name])
+	}
+
+	home := page("")
+	if strings.Count(home, `class="post-item"`) != pageSize || !strings.Contains(home, "Post 31") || strings.Contains(home, ">Post 1<") {
+		t.Errorf("the first page holds the newest 30")
+	}
+	if !strings.Contains(home, `<a rel="next" href="./page/2/">Older posts</a>`) || !strings.Contains(home, `data-accent="duck"`) {
+		t.Errorf("home: %s", home)
+	}
+	if p2 := page("page/2/"); !strings.Contains(p2, ">Post 1<") || !strings.Contains(p2, `<a rel="prev" href="../../">Newer posts</a>`) {
+		t.Errorf("page 2: %s", p2)
+	}
+
+	first := src.Posts[0]
+	post := page(first.Path)
+	for _, want := range []string{
+		`<h1 class="post-title">Post 31</h1>`, `<a rel="next" href="./` + src.Posts[1].Path + `">`,
+		`<link rel="canonical" href="https://notes.example/@garden/` + first.Path + `">`,
+		`<link rel="stylesheet" href="./` + m.Style + `">`, `href="./tags/all/"`,
+	} {
+		if !strings.Contains(post, want) {
+			t.Errorf("%s not in the post's page", want)
+		}
+	}
+	if m.Posts[first.Short] != first.Path || m.Notes[first.ID] != first.Path {
+		t.Errorf("addresses: %v %v", m.Posts, m.Notes)
+	}
+
+	tags := page("tags/")
+	if !strings.Contains(tags, `href="../tags/home/"`) || !strings.Contains(tags, `href="../tags/home/garden/"`) {
+		t.Errorf("tags: %s", tags)
+	}
+	if home := page("tags/home/"); strings.Count(home, `class="post-item"`) != 15 || !strings.Contains(home, "15 posts") {
+		t.Errorf("a parent tag holds its nested tags' posts: %s", home)
+	}
+	if nf := string(s.files["404.html"]); !strings.Contains(nf, `href="/@garden/"`) {
+		t.Errorf("the 404 page links from the root, served at any depth: %s", nf)
+	}
+	if _, ok := m.Routes["404"]; ok {
+		t.Error("404 isn't an address")
+	}
+	feed := page("feed.xml")
+	if strings.Count(feed, "<entry>") != 31 || !strings.Contains(feed, "<id>https://notes.example/@garden/"+first.Path+"</id>") {
+		t.Errorf("feed: %s", feed[:300])
+	}
+	if !m.Gzipped[m.Routes[""]] || s.files[m.Routes[""]+".gz"] == nil {
+		t.Error("pages are stored compressed too")
+	}
+}

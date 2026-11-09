@@ -52,14 +52,16 @@ func SpacePath(dataDir, spaceID string) string {
 // Registry opens users' and shared spaces' databases on first use and keeps
 // them open. There are only ever a few, so nothing is closed until Close.
 type Registry struct {
-	dir           string
-	mu            sync.Mutex
-	open          map[int64]*Data
-	spaces        map[string]*Data
-	onChange      func(userID int64)
-	onSpaceChange func(spaceID string)
-	onOpenUser    func(userID int64, d *Data)
-	onOpenSpace   func(spaceID string, d *Data)
+	dir    string
+	mu     sync.Mutex
+	open   map[int64]*Data
+	spaces map[string]*Data
+	// Read on every commit, so a feature installed after a file opened still hears it.
+	hooks         sync.RWMutex
+	onChange      []func(userID int64)
+	onSpaceChange []func(spaceID string)
+	onOpenUser    []func(userID int64, d *Data)
+	onOpenSpace   []func(spaceID string, d *Data)
 }
 
 // NewRegistry returns a registry for the users and shared spaces in dataDir.
@@ -68,11 +70,13 @@ func NewRegistry(dataDir string) *Registry {
 }
 
 // OnOpen has users' and spaces' stores set up by fn, those open already and
-// those that open later: what depends on more than one file.
+// those that open later: what depends on more than one file. Each feature
+// adds its own.
 func (r *Registry) OnOpen(user func(userID int64, d *Data), space func(spaceID string, d *Data)) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.onOpenUser, r.onOpenSpace = user, space
+	r.onOpenUser = append(r.onOpenUser, user)
+	r.onOpenSpace = append(r.onOpenSpace, space)
 	for id, d := range r.open {
 		user(id, d)
 	}
@@ -83,17 +87,33 @@ func (r *Registry) OnOpen(user func(userID int64, d *Data), space func(spaceID s
 
 // OnSpaceChange is OnChange for shared spaces' files.
 func (r *Registry) OnSpaceChange(fn func(spaceID string)) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.onSpaceChange = fn
+	r.hooks.Lock()
+	defer r.hooks.Unlock()
+	r.onSpaceChange = append(r.onSpaceChange, fn)
 }
 
 // OnChange has fn called after a write to a user's notes, spaces or images
-// commits, for databases opened from now on. fn must not block.
+// commits. fn must not block. Each feature adds its own.
 func (r *Registry) OnChange(fn func(userID int64)) {
-	r.mu.Lock()
-	defer r.mu.Unlock()
-	r.onChange = fn
+	r.hooks.Lock()
+	defer r.hooks.Unlock()
+	r.onChange = append(r.onChange, fn)
+}
+
+func (r *Registry) changed(userID int64) {
+	r.hooks.RLock()
+	defer r.hooks.RUnlock()
+	for _, fn := range r.onChange {
+		fn(userID)
+	}
+}
+
+func (r *Registry) spaceChanged(spaceID string) {
+	r.hooks.RLock()
+	defer r.hooks.RUnlock()
+	for _, fn := range r.onSpaceChange {
+		fn(spaceID)
+	}
 }
 
 // Open returns a user's data, opening (and creating, for a new user) their
@@ -116,10 +136,8 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 		return nil, fmt.Errorf("rebuild search index of %s: %w", path, err)
 	}
 	d := New(db)
-	if fn := r.onChange; fn != nil {
-		d.onCommit(func() { fn(userID) })
-	}
-	if fn := r.onOpenUser; fn != nil {
+	d.onCommit(func() { r.changed(userID) })
+	for _, fn := range r.onOpenUser {
 		fn(userID, d)
 	}
 	r.open[userID] = d
@@ -158,10 +176,8 @@ func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error)
 	}
 	d := New(db)
 	d.Notes.ServeShared(spaceID)
-	if fn := r.onSpaceChange; fn != nil {
-		d.onCommit(func() { fn(spaceID) })
-	}
-	if fn := r.onOpenSpace; fn != nil {
+	d.onCommit(func() { r.spaceChanged(spaceID) })
+	for _, fn := range r.onOpenSpace {
 		fn(spaceID, d)
 	}
 	r.spaces[spaceID] = d

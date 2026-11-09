@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+	"unicode/utf8"
 
 	"notes/server/internal/database"
 	"notes/server/internal/locks"
@@ -51,6 +52,47 @@ const object = '\uFFFC'
 // stands for code, links and anything else tags can't be part of.
 func scanTags(r []rune) []string {
 	var names []string
+	for _, sp := range tagSpans(r) {
+		names = append(names, sp.Name)
+	}
+	return names
+}
+
+// TagSpan is a tag in a run of text: Text[Start:End] is the tag as written,
+// # marks included (byte offsets).
+type TagSpan struct {
+	Start, End int
+	Name       string
+}
+
+// TagSpans finds the tags in text, part of one line of visible text (no code
+// or links in it), by the rules of Tags. afterOpener says whether what comes
+// before text on its line lets a tag start right at its beginning: the
+// line's start, a space or an opening bracket.
+func TagSpans(text string, afterOpener bool) []TagSpan {
+	r := []rune(text)
+	shift := 0
+	if !afterOpener {
+		r = append([]rune{'x'}, r...)
+		shift = 1
+	}
+	spans := tagSpans(r)
+	// Rune offsets to byte offsets.
+	bytes := make([]int, len(r)+1)
+	for i, c := range r {
+		bytes[i+1] = bytes[i] + utf8.RuneLen(c)
+	}
+	base := bytes[shift]
+	for i := range spans {
+		spans[i].Start = bytes[spans[i].Start] - base
+		spans[i].End = bytes[spans[i].End] - base
+	}
+	return spans
+}
+
+// tagSpans is scanTags with each tag's rune offsets.
+func tagSpans(r []rune) []TagSpan {
+	var spans []TagSpan
 	for i := 0; i < len(r); i++ {
 		if r[i] != '#' || i > 0 && !opensTag(r[i-1]) {
 			continue
@@ -60,7 +102,7 @@ func scanTags(r []rune) []string {
 		}
 		if end := closingHash(r, i); end > 0 {
 			if name := normalizeTag(r[i+1 : end]); name != "" {
-				names = append(names, name)
+				spans = append(spans, TagSpan{Start: i, End: end + 1, Name: name})
 			}
 			i = end
 			continue
@@ -70,11 +112,11 @@ func scanTags(r []rune) []string {
 			end++
 		}
 		if name := normalizeTag(r[i+1 : end]); name != "" && !numeric(name) {
-			names = append(names, name)
+			spans = append(spans, TagSpan{Start: i, End: end, Name: name})
 		}
 		i = end - 1
 	}
-	return names
+	return spans
 }
 
 // closingHash finds the # closing a multi-word tag opened at r[open]: the
