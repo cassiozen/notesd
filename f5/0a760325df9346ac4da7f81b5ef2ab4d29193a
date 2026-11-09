@@ -1,0 +1,241 @@
+apps/web/src/notes/traits.tsx
+  s_c4b534f44e1767::t_f53afeaa7d379e 112-121
+  s_c4b534f44e1767::t_c297adfde85157 122-128
+  s_c4b534f44e1767::t_18d34bdf9b28fb 3,67-71,75-76
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_457cb10267a3f6 519-523,550
+  s_c4b534f44e1767::t_09c452c7e300af 527
+  s_c4b534f44e1767::t_2b4da94fa93da0 553-558,561-562,564,566-567,569,639-640,730
+  s_c4b534f44e1767::t_69a656f493da11 559-560,563,565
+  s_c4b534f44e1767::t_abf1bb8b4d3248 568
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_c4b534f44e1767::t_142048ce0a25b4 33,328-329
+  s_c4b534f44e1767::t_9f26db0198a261 37
+  s_c4b534f44e1767::t_fed4419ea7d476 338-340
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_c4b534f44e1767::t_9f26db0198a261 349-351,506
+  s_c4b534f44e1767::t_bfe5d4328a3a57 20-21,192-196,198-199,348,394,495-499,502,504-505
+  s_c4b534f44e1767::t_86ad55a1f305b7 510-511
+  s_c4b534f44e1767::t_d35e2b53e0f031 352,395,500-501,503,507-509
+server/internal/spaces/traits.go
+  s_c4b534f44e1767::t_849ae24cba64a7 47-75
+server/internal/sharing/sharing.go
+  s_c4b534f44e1767::t_93987c7949c879 316-320,322,324-334,336-337,873-874,881,884-891
+  s_c4b534f44e1767::t_ca45679300423c 892
+  s_c4b534f44e1767::t_8bde6a412beaa9 45,65-71,396-405
+  s_c4b534f44e1767::t_5a9dee0c6485ba 372,850-854
+  s_c4b534f44e1767::t_d518b6f1b6c97b 323
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_c4b534f44e1767::t_9f26db0198a261 251
+apps/web/src/notes/traits.test.tsx
+  s_c4b534f44e1767::t_93c9f45fed01ce 108-111,113-115,120-121
+  s_c4b534f44e1767::t_b2ce2f5bd48a97 112
+  s_c4b534f44e1767::t_c297adfde85157 3,116,118-119
+  s_c4b534f44e1767::t_0463b6c4993620 117
+  s_c4b534f44e1767::t_ebca33ccd05a1e 24-25,28-31,48,55-58
+apps/ios/NotesTests/SpaceTraitsTests.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 95-102,110
+  s_c4b534f44e1767::t_d35e2b53e0f031 103-109
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 332-333
+apps/web/src/notes/saver.ts
+  s_c4b534f44e1767::t_f53afeaa7d379e 105
+server/internal/userdata/userdata.go
+  s_c4b534f44e1767::t_93987c7949c879 37-39
+  s_c4b534f44e1767::t_88077806eccc93 61-64,73-74,78-79,92,100,140,180
+  s_c4b534f44e1767::t_8a91f7701e6656 55-58
+  s_c4b534f44e1767::t_3bdebb7587b96a 59-60,90-91,96,98-99,101-116,139,179
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 176
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_c4b534f44e1767::t_0e3bb7bd142fca 557,561,564-566,599-600
+  s_c4b534f44e1767::t_f674cc4b58aed4 562-563,601
+apps/ios/Notes/Notes/SpaceTraits.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 73-83
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 364-366
+server/internal/api/shared_test.go
+  s_c4b534f44e1767::t_e4e9579387b1a6 451-487
+  s_c4b534f44e1767::t_79851055ff5e60 352
+server/internal/api/respond.go
+  s_c4b534f44e1767::t_71cd10c381bed1 181-182
+  s_c4b534f44e1767::t_3ef793792a220f 104,106-115
+  s_c4b534f44e1767::t_5faca64e7e4768 18
+server/internal/notes/notes.go
+  s_c4b534f44e1767::t_03dd40451b5338 225-227,238,240-241,253,266-285,290-295,297-306,391,422-424,465,493,495
+  s_c4b534f44e1767::t_4163af0c3aadd6 494
+  s_c4b534f44e1767::t_5a9dee0c6485ba 286-289,296
+docs/reference/api.md
+  s_c4b534f44e1767::t_457cb10267a3f6 338-340
+  s_c4b534f44e1767::t_09c452c7e300af 564
+  s_c4b534f44e1767::t_2b4da94fa93da0 347-356,358-369,536,540,550-551
+  s_c4b534f44e1767::t_34eab9f5f88d5a 357
+apps/web/src/notes/share.tsx
+  s_c4b534f44e1767::t_f53afeaa7d379e 21,22,71,208,273-274
+  s_c4b534f44e1767::t_c297adfde85157 18,72-73,275
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 363-364,498
+apps/web/test/sharing.test.tsx
+  s_c4b534f44e1767::t_93c9f45fed01ce 418
+server/internal/notes/notes_test.go
+  s_c4b534f44e1767::t_db18ac147b6cac 775-801,803-806,808-810
+  s_c4b534f44e1767::t_d5b7c467eca1da 802,807
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceTraitsTest.kt
+  s_c4b534f44e1767::t_93386186b258d0 106-113,123
+  s_c4b534f44e1767::t_f674cc4b58aed4 114-122
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 362-364
+server/internal/notes/move.go
+  s_c4b534f44e1767::t_2f1d3f357e856e 40
+  s_c4b534f44e1767::t_03dd40451b5338 142,152-154,209-210
+  s_c4b534f44e1767::t_cb88b1f9fba9bc 23-24,30-37,201-208,245-249
+  s_c4b534f44e1767::t_7c0ac60b09c4d5 250
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceTraits.kt
+  s_c4b534f44e1767::t_0e3bb7bd142fca 78-81,90
+  s_c4b534f44e1767::t_f674cc4b58aed4 82-89
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 44
+server/internal/spaces/spaces.go
+  s_c4b534f44e1767::t_849ae24cba64a7 112-116
+docs/concepts/security-model.md
+  s_c4b534f44e1767::t_09c452c7e300af 52
+  s_c4b534f44e1767::t_399d1abae5a931 53-55
+server/internal/publish/publish.go
+  s_c4b534f44e1767::t_a7c8122876c0cd 1-2,579,595,631,672-687
+  s_c4b534f44e1767::t_84b825121da743 3-5,7-40,43-385,390-421,434,440-475,476,482-501,504-506,508-529,533,538-544,546-578,580-594,596-630,632-671,688-748
+  s_c4b534f44e1767::t_48ae83698b4077 386-389
+  s_c4b534f44e1767::t_3196ce6a9fdcca 6,41-42,422-433,435-439,477-481,502-503,507,530-532,534-537,545
+server/internal/publish/handler.go
+  s_c4b534f44e1767::t_4903569979668f 1-31,33-201,208-209,212-221,223,225-228,229,232-251,252-254,273,275-341
+  s_c4b534f44e1767::t_16d053441e453e 32,202-207,210-211,222,224,230-231,255-272,274
+server/README.md
+  s_c4b534f44e1767::t_503bb3c6e027f1 52-53,88
+server/internal/publish/assets/theme.css
+  s_c4b534f44e1767::t_20604d4e31e650 1-395
+server/internal/sharing/trait.go
+  s_c4b534f44e1767::t_5a9dee0c6485ba 33,39
+server/internal/publish/site.go
+  s_c4b534f44e1767::t_e8992f0e4e7662 1-12,14-78,80-279,282-283,287-292,298-363,366-423,494-506,508,510-515,517-683
+  s_c4b534f44e1767::t_469530a7ac30f1 684-688
+  s_c4b534f44e1767::t_60ef58fe83a9bf 13,79,280-281,284-286,293-297
+  s_c4b534f44e1767::t_4890eb6ba7e056 364-365
+  s_c4b534f44e1767::t_c7338e5684f0dd 424-493,507,509,516
+apps/web/src/sw.ts
+  s_c4b534f44e1767::t_64aa42222afa1f 14-15
+server/internal/api/publish_test.go
+  s_c4b534f44e1767::t_48ae83698b4077 257-259,263-264
+  s_c4b534f44e1767::t_cd525bc09ffc7a 99-100
+  s_c4b534f44e1767::t_82bf9bc43a0a50 1-98,101-109,115-150,158-256,260-262,265-296
+  s_c4b534f44e1767::t_5245c43d6cdfcf 110-114
+  s_c4b534f44e1767::t_d0aa39c3988f29 297-317
+  s_c4b534f44e1767::t_e71e0daa1d6b74 151-157
+server/cmd/notesd/main.go
+  s_c4b534f44e1767::t_003260e7a9abf4 181,635,672-683
+server/internal/search/tags.go
+  s_c4b534f44e1767::t_83d7ed5661a1c8 8,55-95,105,115,119
+server/internal/api/api.go
+  s_c4b534f44e1767::t_3ef793792a220f 9,25,43-46,64,71-75,82,86-97,168-170,188-195
+server/internal/api/publish_handlers.go
+  s_c4b534f44e1767::t_3ef793792a220f 1-81
+server/internal/publish/assets/site.css
+  s_c4b534f44e1767::t_b45bf2432efa12 12-13,125-128,130-131
+  s_c4b534f44e1767::t_26212e9926f493 3-11,14-124,129,132-399
+  s_c4b534f44e1767::t_570d28088744b4 1-2
+server/internal/publish/assets/theme.js
+  s_c4b534f44e1767::t_8af1cdbc75b235 1-2
+  s_c4b534f44e1767::t_5a4f2b1b89ed2c 3-32
+server/internal/publish/handler_test.go
+  s_c4b534f44e1767::t_3a7dd88a8d9bc6 1-35
+  s_c4b534f44e1767::t_10d54d439c0ab5 36-48
+apps/web/test/sw.test.ts
+  s_c4b534f44e1767::t_64aa42222afa1f 117-118
+docs/guides/self-hosting/backups.md
+  s_c4b534f44e1767::t_2b4da94fa93da0 12-14
+server/migrations/system/0006_published_spaces.sql
+  s_c4b534f44e1767::t_1dc2a3aaaff203 1-8,10,12-14
+  s_c4b534f44e1767::t_041d59c566daab 9,11
+server/internal/publish/render.go
+  s_c4b534f44e1767::t_3975bc28f2ee8c 36,38,48,60-62,87,93,134-137,139-145,150-166
+  s_c4b534f44e1767::t_94bcc8c593cd36 1-35,37,39-47,49-59,63-86,88-92,94-122,125,128-129,130-133,138,146-149,167-207
+  s_c4b534f44e1767::t_2b717345351d5f 123-124,126-127
+server/internal/publish/assets/site.html
+  s_c4b534f44e1767::t_60ef58fe83a9bf 103,105-106,108-109
+  s_c4b534f44e1767::t_7cafb55dc9b97d 1-54,56,58-102,104,107,110-153
+  s_c4b534f44e1767::t_d0249695cdfb4d 55,57
+server/internal/api/api_test.go
+  s_c4b534f44e1767::t_3497f2f62d5023 18,36
+  s_c4b534f44e1767::t_063710ab3d2186 57-75
+server/internal/search/search_test.go
+  s_c4b534f44e1767::t_3a7dd88a8d9bc6 203-219
+server/internal/sharing/route.go
+  s_c4b534f44e1767::t_5a9dee0c6485ba 25,27
+server/internal/api/space_handlers.go
+  s_c4b534f44e1767::t_003260e7a9abf4 81,84,90-92
+  s_c4b534f44e1767::t_705604f5728873 93
+server/migrations/0014_space_publish.sql
+  s_c4b534f44e1767::t_1dc2a3aaaff203 1-8
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_28233493252180 1-70,78-211
+  s_c4b534f44e1767::t_694a64d962d7c0 71-77
+  s_c4b534f44e1767::t_a9503a06ded9e3 212-235
+server/internal/api/user_handlers.go
+  s_c4b534f44e1767::t_48ae83698b4077 100-101
+docs/concepts/where-data-lives.md
+  s_c4b534f44e1767::t_2b4da94fa93da0 19
+server/internal/database/database.go
+  s_c4b534f44e1767::t_d6c962e6f137da 100-122,157-159
+scripts/space_icons.py
+  s_c4b534f44e1767::t_3d2176f2cb1eaf 17-18,59,300-301,303,400-420,468-500,776
+server/internal/auth/limiter.go
+  s_c4b534f44e1767::t_914e1afab99c07 36-49,55-59
+server/internal/auth/limiter_test.go
+  s_c4b534f44e1767::t_59aa6821a1c1a5 1-33
+server/internal/publish/publish_test.go
+  s_c4b534f44e1767::t_e560fac19c9e9d 1-57
+apps/web/src/api/spaces.ts
+  s_c4b534f44e1767::t_474bef8520abdd 48-64
+apps/web/test/publishing.test.tsx
+  s_c4b534f44e1767::t_b39174417dc002 1-103,105-167
+  s_c4b534f44e1767::t_b47db0cbdb8139 104
+apps/web/e2e/publishing.spec.ts
+  s_c4b534f44e1767::t_fcf69107acfffb 38
+  s_c4b534f44e1767::t_af8c6f31aca9d5 1-16,18-20,23-37,39-40,42-49,52-57,61
+  s_c4b534f44e1767::t_1096f66f87ce77 17,21-22
+  s_c4b534f44e1767::t_e08b816731fe0e 50-51
+  s_c4b534f44e1767::t_e2651726b338dc 41,58
+  s_c4b534f44e1767::t_6d7bd79ec61be4 59-60
+apps/web/vite.config.ts
+  s_c4b534f44e1767::t_af8c6f31aca9d5 93,95
+apps/web/src/settings/published-space.module.css
+  s_c4b534f44e1767::t_5d5e714ebdd77d 119-120,123-142,191-196
+  s_c4b534f44e1767::t_ab906cff5ba7b9 102,165
+  s_c4b534f44e1767::t_ebca33ccd05a1e 18-24
+  s_c4b534f44e1767::t_553187b069a2a1 1-17,25-101,103-118,121-122,143-164,166-190,197
+apps/web/src/settings/published-space.tsx
+  s_c4b534f44e1767::t_710b4d9e79b0ad 2-63,66-102,104-267,269-300
+  s_c4b534f44e1767::t_ebca33ccd05a1e 64-65,103
+  s_c4b534f44e1767::t_18d34bdf9b28fb 1,268
+docs/guides/using/publishing.md
+  s_c4b534f44e1767::t_a160087223c7ca 1-22,24-49,52-53
+  s_c4b534f44e1767::t_abf1bb8b4d3248 23,50-51
+apps/web/test/spaces.test.tsx
+  s_c4b534f44e1767::t_ebca33ccd05a1e 301,303,305
+docs/README.md
+  s_c4b534f44e1767::t_a160087223c7ca 19,42
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f50a760325df9346ac4da7f81b5ef2ab4d29193a",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,95 @@
+apps/web/src/api/spaces.ts
+  s_c4b534f44e1767::t_474bef8520abdd 48-64
+apps/web/test/publishing.test.tsx
+  s_c4b534f44e1767::t_b39174417dc002 1,4-70,101-133,135-197
+  s_c4b534f44e1767::t_b47db0cbdb8139 134
+  s_c4b534f44e1767::t_564f6bacb66162 2,75-77,84
+  s_c4b534f44e1767::t_a355fc83079262 3,71-74,78-83,85-99
+  s_c4b534f44e1767::t_0b9c201d09fc11 100
+apps/web/e2e/publishing.spec.ts
+  s_c4b534f44e1767::t_fcf69107acfffb 38
+  s_c4b534f44e1767::t_af8c6f31aca9d5 1-16,18-20,23-37,39-40,42-49,53-58,62
+  s_c4b534f44e1767::t_1096f66f87ce77 17,21-22
+  s_c4b534f44e1767::t_e08b816731fe0e 50
+  s_c4b534f44e1767::t_e2651726b338dc 41,59
+  s_c4b534f44e1767::t_6d7bd79ec61be4 60-61
+  s_c4b534f44e1767::t_25043dc1aa5b2d 51-52
+apps/web/vite.config.ts
+  s_c4b534f44e1767::t_af8c6f31aca9d5 93,95
+apps/web/src/notes/traits.test.tsx
+  s_c4b534f44e1767::t_ebca33ccd05a1e 24-25,28-31,48,55-58
+apps/web/src/settings/published-space.module.css
+  s_c4b534f44e1767::t_5d5e714ebdd77d 119-120,123-142,191-196
+  s_c4b534f44e1767::t_ab906cff5ba7b9 102,165
+  s_c4b534f44e1767::t_ebca33ccd05a1e 18-24
+  s_c4b534f44e1767::t_553187b069a2a1 1-17,25-101,103-118,121-122,143-164,166-190,197
+apps/web/src/settings/published-space.tsx
+  s_c4b534f44e1767::t_710b4d9e79b0ad 2-55,61-68,71-82,84-108,111-120,122-123,125-145,147-159,161-273,275-306
+  s_c4b534f44e1767::t_ebca33ccd05a1e 69-70,109
+  s_c4b534f44e1767::t_18d34bdf9b28fb 1,274
+  s_c4b534f44e1767::t_ec4185aebb014c 56,59-60,83
+  s_c4b534f44e1767::t_838a8361e7500f 57-58,110,121,124,146,160
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_abf1bb8b4d3248 568
+  s_c4b534f44e1767::t_95cf0ad2cb9953 564
+docs/guides/using/publishing.md
+  s_c4b534f44e1767::t_a160087223c7ca 1-18,22-24,26-40,44-52,55-56
+  s_c4b534f44e1767::t_abf1bb8b4d3248 25,53-54
+  s_c4b534f44e1767::t_838a8361e7500f 41-43
+  s_c4b534f44e1767::t_f1e187dfbad4ff 19-21
+apps/web/test/spaces.test.tsx
+  s_c4b534f44e1767::t_ebca33ccd05a1e 301,303,305
+apps/web/src/notes/traits.tsx
+  s_c4b534f44e1767::t_18d34bdf9b28fb 3,67-71,75-76
+docs/README.md
+  s_c4b534f44e1767::t_a160087223c7ca 19,42
+server/internal/publish/assets/site.css
+  s_c4b534f44e1767::t_01a5ffbc9744de 6-7,29-42,74-75,77-79,82,84-124,129-130,215-223,226-257,270-277,288,290-292,302-303,310-312,316-317,321-322,340-341,345-357,368,370-374,433-449,531-542,557,582-590
+  s_c4b534f44e1767::t_82bb82787964cf 558-581,591
+server/internal/publish/assets/fonts/OFL.txt
+  s_c4b534f44e1767::t_cee155bb889924 1-93
+server/internal/publish/handler.go
+  s_c4b534f44e1767::t_82bb82787964cf 140-143
+  s_c4b534f44e1767::t_e7124e12e7a363 131,200-203,261
+server/internal/publish/render.go
+  s_c4b534f44e1767::t_e7124e12e7a363 245
+  s_c4b534f44e1767::t_f1b540439a32bc 8
+  s_c4b534f44e1767::t_c953011b99e7ce 40,49,69,193-238
+  s_c4b534f44e1767::t_1d17fd867db38e 239
+server/internal/publish/look.go
+  s_c4b534f44e1767::t_c180c45fdfb1b9 1-84
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_0bb0ffe9e98654 31
+  s_c4b534f44e1767::t_3fb575cbff9208 23,30,32-69,251-270
+server/internal/publish/assets/accents.json
+  s_c4b534f44e1767::t_c4f16d8ef1f141 1-252
+scripts/space_icons.py
+  s_c4b534f44e1767::t_8a16bc68c2098d 61,481-482,485,504
+  s_c4b534f44e1767::t_b474eae85609ec 18-19
+server/internal/publish/assets/site.html
+  s_c4b534f44e1767::t_f9807d5478196a 17-30,81,102-103
+server/internal/api/publish_test.go
+  s_c4b534f44e1767::t_761b826ab28607 111
+  s_c4b534f44e1767::t_843119b4089e5f 7,52-61,110,116-120
+  s_c4b534f44e1767::t_95cf0ad2cb9953 121-124
+  s_c4b534f44e1767::t_cf58b37cc925a8 112-115,125
+server/internal/publish/site.go
+  s_c4b534f44e1767::t_01a5ffbc9744de 321
+  s_c4b534f44e1767::t_e7124e12e7a363 54,182,199,275-276,279-284,348-349,419,521-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9f592bc2bbf119bdfc60c415b1d055b314fc698",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
