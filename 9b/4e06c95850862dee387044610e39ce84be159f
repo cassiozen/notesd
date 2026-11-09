@@ -1,0 +1,31 @@
+server/internal/publish/assets/site.css
+  s_c4b534f44e1767::t_3fe3f46acf6c01 52,55,195-198,567-569
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_1d131983ced4ed 179-181,252-253
+  s_c4b534f44e1767::t_8be746b7beb380 14
+  s_c4b534f44e1767::t_f656bf1d156139 47-50,254
+server/internal/publish/render.go
+  s_c4b534f44e1767::t_8be746b7beb380 35,70-73
+  s_c4b534f44e1767::t_3fe3f46acf6c01 33-34
+  s_c4b534f44e1767::t_14ce1977046bc7 223-229,231,245-246
+server/internal/publish/site.go
+  s_c4b534f44e1767::t_8be746b7beb380 344,637
+server/internal/search/extract.go
+  s_c4b534f44e1767::t_14ce1977046bc7 20-24,30
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "9b4e06c95850862dee387044610e39ce84be159f",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
