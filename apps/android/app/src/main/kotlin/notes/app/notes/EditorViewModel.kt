@@ -78,7 +78,9 @@ class EditorViewModel(
     private val startTag: String? = null,
     private val images: ImageStore? = null,
     /** Where a new note is created: the space the list showed (§7.7). */
-    spaceId: String = Spaces.DEFAULT
+    spaceId: String = Spaces.DEFAULT,
+    /** Asks for a sync now rather than after the usual pause. */
+    private val requestSync: () -> Unit = {}
 ) : ViewModel() {
     /** The note's space: where it's created, or where it is once loaded or moved. */
     private var noteSpace = spaceId
@@ -315,6 +317,14 @@ class EditorViewModel(
             } finally {
                 saving--
             }
+        }
+    }
+
+    /** Saves [doc] and syncs it without the usual pauses: an agent's change, which its run waits to see saved. */
+    fun saveNow(doc: Document) {
+        save(doc)
+        appScope.launch {
+            if (saved()) requestSync()
         }
     }
 

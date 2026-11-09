@@ -232,7 +232,8 @@ fun EditorScreen(
         emailing = true
         onEmailRequestHandled()
     }
-    LaunchedEffect(vm) { vm.incoming.collect { editor?.setDocument(it, keepSelection = true) } }
+    // An undo step of its own: undoing it shows it, rather than an undo of typing quietly taking it back too.
+    LaunchedEffect(vm) { vm.incoming.collect { doc -> editor?.applyOutside(byAgent = false) { doc } } }
     LaunchedEffect(edits) {
         if (edits == 0) return@LaunchedEffect
         delay(SAVE_DELAY_MS)
@@ -515,9 +516,10 @@ fun EditorScreen(
                         hint = "Title"
                         imageSource = images
                         setDocument(doc)
-                        onChange = {
+                        onChange = { byUser ->
                             vm.edited()
-                            edits++
+                            // An agent's change is saved and synced at once, so the server links it to its run.
+                            if (byUser) edits++ else vm.saveNow(document())
                         }
                         onFormatState = { state = it }
                         onFindState = { findState = it }

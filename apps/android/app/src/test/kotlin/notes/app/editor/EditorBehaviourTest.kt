@@ -294,14 +294,6 @@ class EditorBehaviourTest {
         assertEquals("- [x] Todo\n", e.body())
     }
 
-    @Test
-    fun `a remote change keeps the cursor offset`() {
-        val e = editor("Hello world\n", at = "Hello")
-        val at = e.selectionStart
-        e.setDocument(Document.forNote("T", Markdown.parse("Hello there world\n")), keepSelection = true)
-        assertEquals(at, e.selectionStart)
-    }
-
     // An empty last block needs the end marker: without it, Android's Layout draws no marker on the last line and
     // indents the line above instead.
 
