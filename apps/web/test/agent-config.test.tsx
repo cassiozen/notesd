@@ -261,6 +261,16 @@ describe('a space’s agent', () => {
     await saved(page)
   })
 
+  it('says when it couldn’t load, and tries again, in a space it was never set up in', async () => {
+    const list = vi.spyOn(agent, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
+    const { user } = await signedIn({ seed: withAI })
+    const { page } = await agentPage(user)
+    expect(await within(page).findByText('Couldn’t load the agent.')).toBeTruthy()
+    list.mockRestore()
+    await user.click(within(page).getByRole('button', { name: 'Try again' }))
+    expect(await within(page).findByRole('checkbox', { name: 'Agent' })).toBeTruthy()
+  })
+
   it('says when it couldn’t load, and tries again', async () => {
     const list = vi.spyOn(agent, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
     const { user } = await signedIn({

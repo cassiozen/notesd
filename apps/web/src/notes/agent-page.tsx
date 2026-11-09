@@ -45,11 +45,24 @@ type Change = (p: Partial<AgentDraft>) => void
 /** What to focus once a rule renders: its prompt (after it's added) or its moment (after it moved). */
 type FocusOn = { key: AgentTrigger; what: 'prompt' | 'moment' }
 
-/** Whether Space info offers to turn the space's agent on: once AI is set up, or to resume one paused. */
+/**
+ * Whether Space info offers to turn the space's agent on: once AI is set up, or to resume one paused. When
+ * either couldn't load, it's offered too: the section says so, with Try again, rather than hiding.
+ */
 export function useAgentOffered(): (space: Space) => boolean {
   const configs = useAgentConfigs()
+  const configsFailed = useAgentConfigsFailed()
   const ai = useAiSettings()
-  return (space) => configs !== null && ai !== null && (ai.configured || configs.has(space.id))
+  const aiFailed = useAiSettingsFailed()
+  const loaded = configs !== null && ai !== null
+  // Kept from a failure until both load: Try again clears it while asking, and the section would go meanwhile.
+  const [unsure, setUnsure] = useState(false)
+  if ((configsFailed || aiFailed) && !unsure) setUnsure(true)
+  else if (loaded && unsure) setUnsure(false)
+  return (space) => {
+    if (configs === null || ai === null) return unsure || configsFailed || aiFailed
+    return ai.configured || configs.has(space.id)
+  }
 }
 
 /**

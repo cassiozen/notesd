@@ -69,7 +69,7 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
     /** Whether the server's AI is set up. */
     var aiConfigured = true
 
-    /** Each space's agent, by space id. A save turns its space's `agent` trait on, as the server does. */
+    /** Each space's agent, by space id. A save sets its space's `agent` trait, as the server does. */
     val agents = LinkedHashMap<String, AgentConfig>()
 
     /** The body of each agent save. */
@@ -290,8 +290,12 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
                 )
                     .copy(updatedAt = System.currentTimeMillis())
                 agents[space.id] = config
-                val trait = SpaceTrait("agent", "Agent", if (config.enabled) "On" else "Off")
-                spaces[space.id] = space.copy(traits = space.traits.filter { it.key != "agent" } + trait)
+                // As the server: only an agent that's on and has something to do is a trait.
+                val on = config.enabled && config.triggers.values.any(String::isNotBlank)
+                spaces[space.id] = space.copy(
+                    traits = space.traits.filter { it.key != "agent" } +
+                        listOfNotNull(SpaceTrait("agent", "Agent", "On").takeIf { on })
+                )
                 ok(json.encodeToString(AgentConfig.serializer(), config))
             }
 

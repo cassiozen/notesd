@@ -26,6 +26,7 @@ import notes.app.TestNotesApp
 import notes.app.shutDown
 import notes.core.api.AgentConfig
 import notes.core.api.RemoteNote
+import notes.core.crypto.LockedEnvelope
 import notes.core.db.Spaces
 import notes.core.sync.SyncOutcome
 import org.junit.After
@@ -191,6 +192,46 @@ class AgentSectionTest {
         open(until = "Delete space…")
         compose.waitForIdle()
         compose.onNodeWithText("Agent").assertDoesNotExist()
+    }
+
+    @Test
+    fun `when it couldn't load, it says so in any space, and Try again brings it`() {
+        notesd.failing += "GET /api/v1/agent/spaces"
+        open(until = "Couldn't load the agent.")
+        synchronized(notesd) { notesd.failing.clear() }
+        button("Try again").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Turn it on", substring = true), 5_000)
+    }
+
+    @Test
+    fun `a locked note's title is there to read, though never offered`() {
+        notesd.feeds[""] = listOf(
+            RemoteNote(
+                "n1",
+                "Digest",
+                "${LockedEnvelope.FAMILY}AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+                revision = 1,
+                changeSeq = 1,
+                createdAt = 1,
+                updatedAt = 1
+            )
+        )
+        notesd.agents[Spaces.DEFAULT] = AgentConfig(
+            Spaces.DEFAULT,
+            true,
+            "Journal.",
+            "",
+            mapOf("editDone" to "Fix my spelling."),
+            referenceNotes = listOf("Digest", "Ideas")
+        )
+        open()
+        compose.waitUntilExactlyOneExists(hasText("Ideas"))
+        // Only the one with no note at all.
+        compose.waitUntilExactlyOneExists(hasText("not here yet"))
+        described("Stop reading Digest").performClick()
+        field("Note title").performTextInput("dig")
+        compose.waitForIdle()
+        compose.onNode(hasText("Digest") and hasClickAction()).assertDoesNotExist()
     }
 
     @Test

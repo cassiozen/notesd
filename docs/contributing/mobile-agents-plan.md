@@ -6,8 +6,10 @@ description: "What the web app does for space agents, what the phone apps must r
 # Space agents on Android and iOS
 
 The space agent (PRs #94–#100, #124, #136, GitHub stack #101) is complete on the server and the web
-app. The Mac app wraps the web app and has all of it. Android and iOS have none of it, beyond
-sending `X-Notesd-Time-Zone`. This is the inventory of what to replicate and the plan to build it.
+app. The Mac app wraps the web app and has all of it. Android has part of phase 1 (agent level 0): AI
+and the time zone in Settings, and the agent's section in Space info; Activity and everything in the
+editor are still to do. iOS has none of it, beyond sending `X-Notesd-Time-Zone`. This is the
+inventory of what to replicate and the plan to build it.
 The protocol is in [Agent clients](agent-clients.md); this doesn't repeat it.
 
 ## Findings that change the plan

@@ -641,12 +641,22 @@ private fun Rule(
     }
 }
 
-/** Notes in the space by title, as the agent looks them up; null while they load. */
+/**
+ * The space's note titles, as the agent looks them up: [all] of them, and those it can [read]. A locked note's
+ * title is there but its note never sent, so it's no "not here yet", and no suggestion either.
+ */
+private class SpaceTitles(val all: Set<String>, val read: Set<String>)
+
+/** Null while they load. */
 @Composable
-private fun spaceTitles(graph: AppGraph, spaceId: String): Set<String>? {
-    val titles by produceState<Set<String>?>(null, spaceId) {
+private fun spaceTitles(graph: AppGraph, spaceId: String): SpaceTitles? {
+    val titles by produceState<SpaceTitles?>(null, spaceId) {
         graph.store.changes.onSubscription { emit(Unit) }.collect {
-            value = graph.store.list(space = spaceId).filter { !it.locked }.mapTo(LinkedHashSet()) { it.title }
+            val notes = graph.store.list(space = spaceId)
+            value = SpaceTitles(
+                notes.mapTo(HashSet()) { it.title },
+                notes.filter { !it.locked }.mapTo(LinkedHashSet()) { it.title }
+            )
         }
     }
     return titles
@@ -674,10 +684,11 @@ private fun References(
     val matches = if (typed.isEmpty()) {
         emptyList()
     } else {
-        titles.orEmpty().filter { it.isNotEmpty() && it == titleOf(it) && typed in it.lowercase() && it !in refs }
+        titles?.read.orEmpty()
+            .filter { it.isNotEmpty() && it == titleOf(it) && typed in it.lowercase() && it !in refs }
             .take(MAX_MATCHES)
     }
-    val missing = titles?.let { have -> refs.filter { it !in have } }.orEmpty()
+    val missing = titles?.let { have -> refs.filter { it !in have.all } }.orEmpty()
 
     fun add(typed: String) {
         val r = titleOf(typed)

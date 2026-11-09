@@ -110,15 +110,20 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
     val spaces by graph.spaces.collectAsStateWithLifecycle()
     val account by graph.accounts.account.collectAsStateWithLifecycle()
     val agents by graph.agents.cache.value.collectAsStateWithLifecycle()
+    val agentsFailed by graph.agents.cache.failed.collectAsStateWithLifecycle()
     val ai by graph.ai.cache.value.collectAsStateWithLifecycle()
+    val aiFailed by graph.ai.cache.failed.collectAsStateWithLifecycle()
     // Fresh as the page opens: another device may have set one up, or an admin connected AI.
     LaunchedEffect(account) {
         if (account !is Account.SignedIn) return@LaunchedEffect
         launch { graph.ai.cache.refresh() }
         graph.agents.cache.refresh()
     }
-    val registry = remember(graph, agents, ai) {
+    val registry = remember(graph, account, agents, ai, agentsFailed, aiFailed) {
         spaceInfoRegistry(graph) { space ->
+            // Signed in but couldn't tell: the section says so, with Try again, rather than hiding.
+            val unsure = (agents == null && agentsFailed) || (ai == null && aiFailed)
+            if (unsure && account is Account.SignedIn) return@spaceInfoRegistry true
             val configs = agents ?: return@spaceInfoRegistry false
             val provider = ai ?: return@spaceInfoRegistry false
             provider.configured || space.id in configs
