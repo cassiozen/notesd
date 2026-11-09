@@ -337,8 +337,6 @@ final class FlowTests: XCTestCase {
         sleep(2)
     }
 
-    /// Shared spaces (§7.9) between this app's account and Ana's, who works through the API: an invitation in
-    /// the switcher, sharing from Space info, what Ana changed, who edited, and the checks on moving out and locking.
     /// Publishing (§7.10) from Space info: on from the address the app reaches the server by, moved to another
     /// handle once asked, then off.
     func testPublishing() async throws {
@@ -401,6 +399,8 @@ final class FlowTests: XCTestCase {
         return false
     }
 
+    /// Shared spaces (§7.9) between this app's account and Ana's, who works through the API: an invitation in
+    /// the switcher, sharing from Space info, what Ana changed, who edited, and the checks on moving out and locking.
     func testSharedSpaces() async throws {
         // The app signs in as Sam, new here: the owner's spaces are the other flows'.
         _ = try await api("GET", "api/v1/auth/session")
