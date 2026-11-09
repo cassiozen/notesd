@@ -58,11 +58,11 @@
   box-shadow: inset 0 0 0 2px var(--ink-2);
 }
 
-.choice:has(.radio:focus-visible) {
+:global(:where(:root[data-keyboard])) .choice:has(.radio:focus-visible) {
   box-shadow: 0 0 0 3px var(--focus);
 }
 
-.choice:has(.radio:checked:focus-visible) {
+:global(:where(:root[data-keyboard])) .choice:has(.radio:checked:focus-visible) {
   box-shadow:
     inset 0 0 0 2px var(--ink-2),
     0 0 0 3px var(--focus);

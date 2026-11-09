@@ -4,6 +4,7 @@ import { App } from './app'
 import { applyFont, readFont } from './font'
 import { captureInstallPrompt } from './install'
 import { applyTheme, readTheme } from './theme'
+import { trackModality } from './ui/modality'
 import './styles/fonts.css'
 import './styles/tokens.css'
 import './styles/space-themes.css'
@@ -14,6 +15,7 @@ import './styles/boot.css'
 applyTheme(readTheme())
 applyFont(readFont())
 captureInstallPrompt()
+trackModality()
 
 const root = document.getElementById('root')
 if (!root) throw new Error('#root missing from index.html')

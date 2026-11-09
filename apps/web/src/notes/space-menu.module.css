@@ -127,7 +127,7 @@
 }
 
 .info:hover,
-.info:focus-visible {
+:global(:where(:root[data-keyboard])) .info:focus-visible {
   background: var(--on);
   color: var(--ink);
 }
@@ -237,7 +237,7 @@
 }
 
 .row:hover .rowMain,
-.rowMain:focus-visible {
+:global(:where(:root[data-keyboard])) .rowMain:focus-visible {
   background: var(--hover);
 }
 
@@ -295,12 +295,12 @@
 
 /* Not on a click's focus (the first row's, as it opens): only when the keyboard is moving. */
 .row:hover .rowInfo,
-.row:has(:focus-visible) .rowInfo {
+:global(:where(:root[data-keyboard])) .row:has(:focus-visible) .rowInfo {
   opacity: 1;
 }
 
 .rowInfo:hover,
-.rowInfo:focus-visible {
+:global(:where(:root[data-keyboard])) .rowInfo:focus-visible {
   background: var(--on);
   color: var(--ink);
 }
@@ -327,7 +327,7 @@
 }
 
 .create:hover,
-.create:focus-visible {
+:global(:where(:root[data-keyboard])) .create:focus-visible {
   background: var(--hover);
 }
 

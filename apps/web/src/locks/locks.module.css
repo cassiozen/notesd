@@ -52,7 +52,7 @@
 }
 
 .link:hover,
-.link:focus-visible {
+:global(:where(:root[data-keyboard])) .link:focus-visible {
   color: var(--ink-2);
   text-decoration-color: currentColor;
 }
