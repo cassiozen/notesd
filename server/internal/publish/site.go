@@ -77,7 +77,6 @@ type post struct {
 type source struct {
 	Name, Icon, CSS string
 	Base            string // the site's absolute URL, for the feed and sitemap
-	BasePath        string // its path, /@<handle>/: the 404 page's root, served at any depth
 	Posts           []post // newest first
 	Images          map[string]imageFile
 	ImageData       map[string][]byte
@@ -229,6 +228,10 @@ type page struct {
 	Query        string
 }
 
+// missingRoot stands for the 404 page's root: it's served at any depth, so the handler puts in the one
+// for each request (rootFor), keeping the site free of its own path for a proxy to map it elsewhere.
+const missingRoot = "__notesd_root__/"
+
 // rootFor is the site's root as seen from a path below it.
 func rootFor(route string) string {
 	if n := strings.Count(route, "/"); n > 0 {
@@ -291,7 +294,7 @@ func build(src *source, accent string) (*site, error) {
 	render := func(route, file string, p page) error {
 		p.Site, p.Root = info, rootFor(route)
 		if p.Kind == "missing" {
-			p.Root = src.BasePath
+			p.Root = missingRoot
 		} else if !p.NoIndex {
 			p.Canonical = src.Base + route
 		}

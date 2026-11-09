@@ -41,6 +41,10 @@ async function journal() {
   return (await loadedSpaces())?.find((sp) => sp.name === 'Journal')
 }
 
+/** One of the section's disclosures, by its summary: each has a Save of its own. */
+const disclosure = (info: HTMLElement, name: string) =>
+  within(section(info)).getByText(name, { selector: 'summary' }).closest('details') as HTMLElement
+
 async function seedJournal(server: TestServer) {
   await server.api('PUT', '/spaces/journal', { name: 'Journal' })
   const res = await server.api('POST', '/notes', { operationId: op(), id: crypto.randomUUID(), title: 'Hello', content: 'World', spaceId: 'journal' })
@@ -232,15 +236,29 @@ describe('publishing a space', () => {
 
   it('saves custom CSS when Save is pressed', async () => {
     const { server, user, info } = await publishedInfo()
-    const published = section(info)
-    await user.click(within(published).getByText('Custom CSS', { selector: 'summary' }))
-    const save = within(published).getByRole('button', { name: 'Save' })
+    await user.click(within(section(info)).getByText('Custom CSS', { selector: 'summary' }))
+    const save = within(disclosure(info, 'Custom CSS')).getByRole('button', { name: 'Save' })
     expect(save).toHaveProperty('disabled', true)
-    await user.click(within(published).getByRole('textbox', { name: 'Custom CSS' }))
+    await user.click(within(section(info)).getByRole('textbox', { name: 'Custom CSS' }))
     await user.paste(':root { --accent: teal }')
     await user.click(save)
     await waitFor(async () => expect((await settings(server)).css).toBe(':root { --accent: teal }'))
-    await waitFor(() => expect(within(section(info)).getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true))
+    await waitFor(() => expect(within(disclosure(info, 'Custom CSS')).getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true))
+  })
+
+  it('puts the site on a domain of its own, with the proxy block to add', async () => {
+    const { server, user, info } = await publishedInfo()
+    await user.click(within(section(info)).getByText('Your own domain', { selector: 'summary' }))
+    const field = within(section(info)).getByRole('textbox', { name: 'Domain' })
+    await user.type(field, 'not a domain{Enter}')
+    expect((await within(info).findByRole('alert')).textContent).toBe('Use a domain name, such as blog.example.com.')
+    await user.clear(field)
+    await user.type(field, 'Blog.Example.com')
+    await user.click(within(disclosure(info, 'Your own domain')).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => expect(await settings(server)).toMatchObject({ domain: 'blog.example.com', url: 'https://blog.example.com/' }))
+    const block = await within(section(info)).findByText(/rewrite \* \/@journal\{uri\}/)
+    expect(block.textContent).toBe('blog.example.com {\n    rewrite * /@journal{uri}\n    reverse_proxy 127.0.0.1:8080\n}')
+    expect(within(section(info)).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('https://blog.example.com/')
   })
 
   it('stops publishing once asked; the address stays the space’s', async () => {

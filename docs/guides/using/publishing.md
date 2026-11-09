@@ -36,6 +36,47 @@ The address comes from the space's name. To change it, edit it where it's shown 
 To take the site down, choose **Stop publishing**. The address stays the space's, for when you
 publish it again.
 
+## Use your own domain
+
+A site can have a domain of its own, such as `blog.example.com`. notesd can't serve a domain by
+itself, so the reverse proxy in front of it does, the same one that serves the app's address.
+
+1. Point the domain's DNS at your server, as you did for the app's address: an `A` (and `AAAA`)
+   record, or a `CNAME` to the app's domain.
+2. Under **Published → Your own domain** in the web app, enter the domain and choose **Save**. The
+   site's feed, sitemap and links now use it.
+3. Add a block for it to your proxy, with notesd's address as in your app's own block. The web app
+   shows the one for Caddy, with your site's handle filled in:
+
+   ```caddyfile
+   blog.example.com {
+       rewrite * /@garden{uri}
+       reverse_proxy 127.0.0.1:8080
+   }
+   ```
+
+   With nginx, and a certificate for the domain from certbot:
+
+   ```nginx
+   server {
+       listen 443 ssl;
+       server_name blog.example.com;
+       ssl_certificate     /etc/letsencrypt/live/blog.example.com/fullchain.pem;
+       ssl_certificate_key /etc/letsencrypt/live/blog.example.com/privkey.pem;
+       location / {
+           proxy_pass http://127.0.0.1:8080/@garden/;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       }
+   }
+   ```
+
+4. Reload the proxy. Caddy gets the domain's certificate by itself.
+
+Only the site is reachable on its domain, never the app. The site still answers at its address on
+the app's domain too; search engines are told the domain is the real one. To stop using the domain,
+empty the field and save, then remove the proxy's block. With Tailscale alone, a site can't have a
+domain of its own.
+
 ## Good to know
 
 - **It's live.** A note you save shows on the site about 10 seconds after you stop editing, or

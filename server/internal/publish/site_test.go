@@ -193,7 +193,7 @@ func posts(n int) []post {
 }
 
 func TestBuildLaysOutTheSite(t *testing.T) {
-	src := &source{Name: "Garden", Base: "https://notes.example/@garden/", BasePath: "/@garden/",
+	src := &source{Name: "Garden", Base: "https://notes.example/@garden/",
 		Posts: posts(31), Images: map[string]imageFile{}, ImageData: map[string][]byte{}}
 	s, err := build(src, "duck")
 	if err != nil {
@@ -242,8 +242,8 @@ func TestBuildLaysOutTheSite(t *testing.T) {
 	if home := page("tags/home/"); strings.Count(home, `class="post-item"`) != 15 || !strings.Contains(home, "15 posts") {
 		t.Errorf("a parent tag holds its nested tags' posts: %s", home)
 	}
-	if nf := string(s.files["404.html"]); !strings.Contains(nf, `href="/@garden/"`) {
-		t.Errorf("the 404 page links from the root, served at any depth: %s", nf)
+	if nf := string(s.files["404.html"]); !strings.Contains(nf, `href="`+missingRoot+`"`) || strings.Contains(nf, "@garden") {
+		t.Errorf("the 404 page's root is filled in for each request, the site's own path nowhere: %s", nf)
 	}
 	if _, ok := m.Routes["404"]; ok {
 		t.Error("404 isn't an address")
@@ -301,5 +301,15 @@ func TestImportsEndOutsideStringsAndBrackets(t *testing.T) {
 	}
 	if strings.Contains(rest, "display=swap") || strings.Contains(rest, "a;b.css") {
 		t.Errorf("an import left behind: %q", rest)
+	}
+}
+
+func TestTheMissingPagesRootIsFilledInOnlyInItsLinks(t *testing.T) {
+	page := []byte(`<title>` + missingRoot + `x</title><a href="` + missingRoot + `tags/">` +
+		`<link href="` + missingRoot + `style.css"><script src="` + missingRoot + `t.js"></script>`)
+	got := string(fillRoot(page, "../../"))
+	want := `<title>` + missingRoot + `x</title><a href="../../tags/"><link href="../../style.css"><script src="../../t.js"></script>`
+	if got != want {
+		t.Fatalf("a space named like the placeholder keeps its name:\n%s", got)
 	}
 }

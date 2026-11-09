@@ -352,14 +352,15 @@ title and a body, a list of posts, tags, a feed and a search.
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `GET` | `/spaces/{id}/publish` | → `{handle, url, origin, published, css}`; `404 not_published` if it never was |
-| `PUT` | `/spaces/{id}/publish` | `{handle?, origin?, css?}` → the same. Publishes the space, or changes how; a field left out stays as it is |
+| `GET` | `/spaces/{id}/publish` | → `{handle, url, origin, domain, published, css}`; `404 not_published` if it never was. `url` is on `domain` when it's set |
+| `PUT` | `/spaces/{id}/publish` | `{handle?, origin?, domain?, css?}` → the same. Publishes the space, or changes how; a field left out stays as it is. `domain`: the site's own (`blog.example.com`), `""` to drop it |
 | `DELETE` | `/spaces/{id}/publish` | → `204`. Takes the site down; the handle stays the space's. `404 not_published` if it never was |
 
 - Your own spaces, and shared ones you own (`403 not_space_owner` for members). Never `default`
   (`409 space_default`).
 - `origin` is the app's own address, such as `https://notes.example.com`: required the first time
-  (`400`, `field: origin`), it makes the feed's absolute links.
+  (`400`, `field: origin`). Without a `domain`, the site's absolute links (the feed's, the
+  sitemap's) are made from it; with one, from `https://<domain>/`.
 - `handle` is 1–64 characters of `[a-z0-9-]`, not starting or ending with `-`. Left out the first
   time, it's made from the space's name. One another space has: `409 handle_taken`.
 - `css` is the owner's own stylesheet, up to 64 KB, after the site's.
