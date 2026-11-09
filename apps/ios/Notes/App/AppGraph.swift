@@ -41,7 +41,15 @@ final class AppGraph {
     }
 
     /// Every space (§7.7), the default first, kept current with every write.
+    /// Every space as shown: the list with what this iPhone is turning on or off (`expected`) already done.
     private(set) var spaces: [Space] = []
+    /// The list as the engine last read it.
+    private var listed: [Space] = []
+    /// Published or not, by space id, as this iPhone just asked: shown at once (the glyph, the lock rules), until
+    /// the list agrees or the call fails.
+    var expected: [String: Bool] = [:] {
+        didSet { showSpaces() }
+    }
     /// Invitations into other people's spaces (§7.9), as the last sync brought them.
     private(set) var invites: [RemoteInvite] = []
     /// What others changed in each shared space since this iPhone last showed it, by space id.
@@ -241,13 +249,22 @@ final class AppGraph {
                 }
             }
         #endif
-        spaces = list
+        listed = list
+        // What the list says now too needs no showing: a later change from elsewhere shows as it is.
+        let agreed = expected.filter { id, on in
+            list.first { $0.id == id }.map { $0.traits.contains { $0.key == Publishing.key } == on } ?? true
+        }
+        if agreed.isEmpty { showSpaces() } else { expected = expected.filter { agreed[$0.key] == nil } }
         if let home = list.first(where: { $0.id == Spaces.defaultId }) {
             Self.defaults.set(SpaceThemes.key(home.icon), forKey: Self.defaultSpaceThemeKey)
         }
         // The space shown was deleted, here or on another device, or left: back to the default.
         if !list.isEmpty && !list.contains(where: { $0.id == space }) { switchSpace(Spaces.defaultId) }
         visitShown()
+    }
+
+    private func showSpaces() {
+        spaces = listed.map { Publishing.shown($0, expected[$0.id]) }
     }
 
     /// The space's name, or the default's while the list loads.

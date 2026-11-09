@@ -37,6 +37,9 @@ public struct Space: Hashable, Sendable, Identifiable {
     public var traits: [SpaceTrait] = []
     /// Who's in it, when it's shared (§7.9); nil for the account's own.
     public var shared: SharedSpace? = nil
+    /// The app's alone, never stored: traits being turned off on this device, gone from `traits` before the
+    /// server confirms but still exposing the space to the lock rules (§7.8) until it has.
+    public var leaving: [SpaceTrait] = []
 }
 
 /// What other members changed in a shared space since this device last showed it (§7.9): `count` notes,

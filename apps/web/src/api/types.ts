@@ -68,6 +68,11 @@ export type Space = {
   traits: SpaceTrait[]
   /** Who's in it, when it's shared (§7.9); absent for the account's own. */
   shared?: SharedSpace
+  /**
+   * This app's alone: traits being turned off here, gone from `traits` before the server confirms, but still
+   * exposing the space to the lock rules (§7.8) until it has.
+   */
+  leaving?: SpaceTrait[]
 }
 
 /** An account as others see it: its username, and the name and photo (avatar: its version, '' for none) it chose. */

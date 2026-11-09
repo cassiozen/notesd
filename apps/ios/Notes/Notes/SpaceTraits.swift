@@ -76,6 +76,11 @@ enum Traits {
         traits.first { $0.exposure != nil }
     }
 
+    /// As `exposing(_:)`, counting a trait still being turned off here: it exposes the space until the server says.
+    static func exposing(_ space: Space) -> SpaceTrait? {
+        exposing(space.traits) ?? exposing(space.leaving)
+    }
+
     /// "Locked notes can’t be in a shared space."
     static func lockedRefusal(_ trait: SpaceTrait) -> String {
         "Locked notes can’t be in a \(label(trait).lowercased()) space."

@@ -1,8 +1,8 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
-import { spaces as spacesApi, type PublishSettings } from '../src/api/spaces'
+import { publishing as publishingApi, spaces as spacesApi, type PublishSettings } from '../src/api/spaces'
 import { encryptBody } from '../src/locks/crypto'
-import { reloadSpaces } from '../src/notes/spaces'
+import { loadedSpaces, reloadSpaces } from '../src/notes/spaces'
 import { op, signedIn } from './helpers'
 import type { Client, TestServer } from './server'
 
@@ -21,6 +21,17 @@ async function spaceInfo(user: User, name: string) {
   await user.click(switcher())
   await user.click(within(popover()).getByRole('button', { name: 'Space info' }))
   return screen.findByRole('dialog', { name })
+}
+
+/** A promise and what settles it: a server answer held back until the test lets it go. */
+const nothing = () => {}
+
+function gate() {
+  let release: () => void = nothing
+  const held = new Promise<void>((resolve) => {
+    release = resolve
+  })
+  return { held, release }
 }
 
 const section = (info: HTMLElement) => within(info).getByRole('region', { name: 'Published' })
@@ -91,11 +102,58 @@ describe('publishing a space', () => {
     server.setOffline(true)
     await user.click(within(confirm).getByRole('button', { name: 'Stop publishing' }))
     expect(await within(info).findByRole('alert')).toBeTruthy()
-    expect(within(info).getByRole('group', { name: 'Stop publishing Journal?' })).toBeTruthy()
+    // Shown unpublished while the call was out, then put back: the confirmation is there again, to retry.
+    const again = within(info).getByRole('group', { name: 'Stop publishing Journal?' })
+    expect(within(info).getByRole('img', { name: 'Published' })).toBeTruthy()
     server.setOffline(false)
-    await user.click(within(confirm).getByRole('button', { name: 'Stop publishing' }))
+    await user.click(within(again).getByRole('button', { name: 'Stop publishing' }))
     await waitFor(() => expect(within(info).queryByRole('group', { name: 'Stop publishing Journal?' })).toBeNull())
     expect(await settings(server)).toMatchObject({ published: false })
+  })
+
+  it('shows the space published, and not, at once: the glyph doesn’t wait for the server', async () => {
+    const { server, user } = await signedIn({ seed: seedJournal })
+    await act(() => reloadSpaces())
+    const info = await spaceInfo(user, 'Journal')
+    // The server holds the answer until the glyph has been looked for.
+    const { held, release } = gate()
+    const put = publishingApi.put
+    const slow = vi.spyOn(publishingApi, 'put').mockImplementation(async (...args) => {
+      await held
+      return put(...args)
+    })
+    onTestFinished(() => slow.mockRestore())
+    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
+    expect(within(info).getByRole('img', { name: 'Published' })).toBeTruthy()
+    expect(within(section(info)).getByText('Publishing…')).toBeTruthy()
+    release()
+    await within(section(info)).findByRole('textbox', { name: 'Address' })
+    expect((await settings(server)).published).toBe(true)
+  })
+
+  it('with notes kept on this device, the real trait arrives with the sync that follows, not the next one', async () => {
+    const { user } = await signedIn({ seed: seedJournal, onDevice: true })
+    await act(() => reloadSpaces())
+    const info = await spaceInfo(user, 'Journal')
+    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
+    await within(section(info)).findByRole('textbox', { name: 'Address' })
+    // The device's own copy of the list has the server's trait, address and all.
+    await waitFor(async () => {
+      const journal = (await loadedSpaces())?.find((sp) => sp.name === 'Journal')
+      expect(journal?.traits.find((t) => t.key === 'published')?.summary).toMatch(/^At .*@journal$/)
+    })
+  })
+
+  it('puts the glyph back when publishing fails', async () => {
+    const { user } = await signedIn({ seed: seedJournal })
+    await act(() => reloadSpaces())
+    const info = await spaceInfo(user, 'Journal')
+    const failing = vi.spyOn(publishingApi, 'put').mockRejectedValue(new TypeError('Failed to fetch'))
+    onTestFinished(() => failing.mockRestore())
+    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
+    expect(await within(info).findByRole('alert')).toBeTruthy()
+    expect(within(info).queryByRole('img', { name: 'Published' })).toBeNull()
+    expect(within(section(info)).getByRole('button', { name: 'Publish' })).toBeTruthy()
   })
 
   it('says why a space with locked notes can’t be published', async () => {

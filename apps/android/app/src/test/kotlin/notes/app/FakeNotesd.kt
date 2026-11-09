@@ -1,5 +1,7 @@
 package notes.app
 
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -51,6 +53,12 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
     /** Spaces the server holds locked notes in: publishing them is refused. */
     val lockedIn = HashSet<String>()
 
+    /** Requests, as [requests] names them, held unanswered until [release]: what a slow server looks like. */
+    val held = HashSet<String>()
+    private val gate = CountDownLatch(1)
+
+    fun release() = gate.countDown()
+
     /** Requests, as [requests] names them, answered with a 500. */
     val failing = HashSet<String>()
 
@@ -58,10 +66,14 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
 
     fun start() {
         server.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse = synchronized(this@FakeNotesd) {
+            override fun dispatch(request: RecordedRequest): MockResponse {
                 val name = "${request.method} ${request.url.encodedPath}"
-                requests += name
-                if (name in failing) error(500, "internal") else answer(request)
+                // Outside the lock: every other request goes on meanwhile.
+                if (name in held) gate.await(10, TimeUnit.SECONDS)
+                return synchronized(this@FakeNotesd) {
+                    requests += name
+                    if (name in failing) error(500, "internal") else answer(request)
+                }
             }
         }
         server.start()
