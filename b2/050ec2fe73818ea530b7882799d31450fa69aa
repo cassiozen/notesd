@@ -1,0 +1,40 @@
+apps/web/src/notes/tags-panel.module.css
+  s_0f3b4cc888440f::t_ed6a05222493e8 102
+apps/android/app/src/main/kotlin/notes/app/notes/Spaces.kt
+  s_0f3b4cc888440f::t_3a8e3abe946695 253,264,270
+apps/android/app/src/main/kotlin/notes/app/notes/TagTree.kt
+  s_0f3b4cc888440f::t_3a8e3abe946695 212-213
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceSwitcher.kt
+  s_0f3b4cc888440f::t_3a8e3abe946695 94
+apps/ios/Notes/Notes/SpaceTraits.swift
+  s_0f3b4cc888440f::t_3a8e3abe946695 131-132,135
+apps/web/src/notes/space-identity.tsx
+  s_0f3b4cc888440f::t_3a8e3abe946695 66
+apps/web/src/notes/space-identity.module.css
+  s_0f3b4cc888440f::t_ed6a05222493e8 30-31,47
+  s_0f3b4cc888440f::t_3a8e3abe946695 43
+  s_0f3b4cc888440f::t_4433f906d47302 35-41
+  s_0f3b4cc888440f::t_c983ce6ce4e879 18-19,21,23,27,29
+apps/web/src/notes/space-menu.module.css
+  s_0f3b4cc888440f::t_ed6a05222493e8 19
+apps/web/src/notes/note-list.module.css
+  s_0f3b4cc888440f::t_35c38c931a2103 27
+apps/android/app/src/main/kotlin/notes/app/notes/NotesListScreen.kt
+  s_0f3b4cc888440f::t_3a8e3abe946695 551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b2050ec2fe73818ea530b7882799d31450fa69aa",
+  "prompts": {},
+  "sessions": {
+    "s_0f3b4cc888440f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "adf8ed39-7b31-487d-9d09-d21474461a9c",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
