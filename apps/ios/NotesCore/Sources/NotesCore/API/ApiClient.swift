@@ -280,7 +280,7 @@ public final class ApiClient: Sendable {
     /// How a space is published; `404 not_published` if it never was (§7.10).
     public func publishSettings(_ spaceId: String) async -> ApiResult<PublishSettings> {
         await authed(
-            { self.request("GET", "api/v1/spaces/\(spaceId)/publish", access: $0) },
+            { self.request("GET", ["api", "v1", "spaces", spaceId, "publish"], access: $0) },
             decode: json(PublishSettings.self))
     }
 
@@ -295,7 +295,8 @@ public final class ApiClient: Sendable {
         return await authed(
             {
                 self.request(
-                    "PUT", "api/v1/spaces/\(spaceId)/publish", body: Body(handle: handle, origin: origin), access: $0)
+                    "PUT", ["api", "v1", "spaces", spaceId, "publish"], body: Body(handle: handle, origin: origin),
+                    access: $0)
             },
             decode: json(PublishSettings.self))
     }
@@ -303,7 +304,7 @@ public final class ApiClient: Sendable {
     /// Takes the space's site down; its handle stays its own.
     public func unpublish(_ spaceId: String) async -> ApiResult<Void> {
         await authed(
-            { self.request("DELETE", "api/v1/spaces/\(spaceId)/publish", access: $0) },
+            { self.request("DELETE", ["api", "v1", "spaces", spaceId, "publish"], access: $0) },
             decode: Self.noContent)
     }
 

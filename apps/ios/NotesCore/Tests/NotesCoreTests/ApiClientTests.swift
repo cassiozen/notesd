@@ -98,11 +98,15 @@ struct ApiClientTests {
         _ = await api.removeMember(id, userId: 2)
         _ = await api.deleteSpace(id)
         _ = await api.inSpace(id).sync(since: 0, limit: 10, generation: nil)
+        _ = await api.publishSettings(id)
+        _ = await api.publish(id, handle: "h")
+        _ = await api.unpublish(id)
         let once = "a%20b%2Fc%25d%3Fe"
         #expect(
             stub.requests.map(\.path) == [
                 "/api/v1/spaces/\(once)/invites/\(once)", "/api/v1/spaces/\(once)/members/2", "/api/v1/spaces/\(once)",
-                "/api/v1/spaces/\(once)/sync",
+                "/api/v1/spaces/\(once)/sync", "/api/v1/spaces/\(once)/publish", "/api/v1/spaces/\(once)/publish",
+                "/api/v1/spaces/\(once)/publish",
             ])
     }
 
