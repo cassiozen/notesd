@@ -413,6 +413,53 @@ class ScreenshotTest {
         }
     }
 
+    /** Integrations with AI connected and Resend to connect, and Server's time zone, as an admin. */
+    @Test
+    fun settingsIntegrations() {
+        val server = MockWebServer()
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest): MockResponse = MockResponse.Builder()
+                .addHeader("Content-Type", "application/json")
+                .body(
+                    when ("${request.method} ${request.url.encodedPath}") {
+                        "GET /api/v1/settings/ai" ->
+                            """{"configured":true,"baseUrl":"https://api.openai.com/v1","model":"gpt-4.1-mini",""" +
+                                """"keyHint":"4f2a","dailyTokenCap":1000000,"editable":true}"""
+
+                        "GET /api/v1/settings/email" -> """{"configured":false,"editable":true}"""
+
+                        "GET /api/v1/settings/account" -> """{"timeZone":"America/Sao_Paulo","timeZoneSource":"auto"}"""
+
+                        else -> """{"users":[]}"""
+                    }
+                )
+                .build()
+        }
+        server.start()
+        try {
+            runBlocking {
+                graph.accounts.signedIn(
+                    server.url("/").toString(),
+                    SignIn(Session("s", "device", "P", 1, 1), "cassio", "a", Long.MAX_VALUE, "r", Long.MAX_VALUE, true)
+                )
+            }
+            launch()
+            compose.onNode(hasContentDescription("Sidebar")).performClick()
+            compose.onNode(hasContentDescription("Settings")).performClick()
+            compose.waitUntilAtLeastOneExists(hasText("Integrations"))
+            compose.onNode(hasText("Integrations")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("gpt-4.1-mini at api.openai.com"))
+            shoot("settings-integrations-ai")
+            compose.onNode(hasContentDescription("Back")).performClick()
+            compose.waitUntilAtLeastOneExists(hasText("cassio"))
+            compose.onNode(hasText("cassio")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("America/Sao Paulo"))
+            shoot("settings-server-time-zone")
+        } finally {
+            server.close()
+        }
+    }
+
     @Test
     fun wide() {
         graph.setOnboardingDismissed(true)

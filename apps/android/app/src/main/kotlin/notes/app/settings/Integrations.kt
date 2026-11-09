@@ -33,7 +33,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -50,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
+import notes.app.R
+import notes.app.agent.providerHost
 import notes.app.ui.ButtonKind
 import notes.app.ui.ConfirmDialog
 import notes.app.ui.Icons
@@ -58,54 +63,100 @@ import notes.app.ui.NotesButton
 import notes.app.ui.NotesDialog
 import notes.app.ui.NotesField
 import notes.app.ui.Type
+import notes.core.api.AiSettings
 import notes.core.api.ApiResult
 import notes.core.api.EmailSettings
 
 private const val API_KEYS = "https://resend.com/api-keys"
 
-/** The Integrations row's value in the list: off, or what's connected. */
-internal fun integrationsValue(email: EmailSettings?): String = when {
-    email == null -> ""
-    email.configured -> "Resend"
-    else -> "Off"
+/** One integration as Integrations lists it. Null [on]: still loading or failed. */
+private class Integration(
+    val name: String,
+    val icon: Painter,
+    /** What connecting it lets you do, in a line. */
+    val pitch: String,
+    /** Null while unknown; else whether it's connected, with what it shows then. */
+    val on: String?,
+    val known: Boolean,
+    /** Whether this account may connect, change or disconnect it (server-wide ones are admins'). */
+    val editable: Boolean,
+    val open: () -> Unit
+)
+
+/** The Integrations row's value in the list: off, the one connected by name, or how many are. */
+internal fun integrationsValue(email: EmailSettings?, ai: AiSettings?): String {
+    if (email == null || ai == null) return ""
+    val on = listOfNotNull("Resend".takeIf { email.configured }, "AI".takeIf { ai.configured })
+    return when (on.size) {
+        0 -> "Off"
+        1 -> on[0]
+        else -> "${on.size}"
+    }
 }
 
-/** What's connected, then what can be; each connects in its own dialog. Resend is the only one so far. */
+/** What's connected, then what can be; each connects in its own dialog. */
 @Composable
 internal fun IntegrationsPage(graph: AppGraph) {
     val t = LocalTokens.current
-    val saved by graph.email.settings.collectAsStateWithLifecycle()
+    val email by graph.email.settings.collectAsStateWithLifecycle()
+    val ai by graph.ai.cache.value.collectAsStateWithLifecycle()
+    val aiFailed by graph.ai.cache.failed.collectAsStateWithLifecycle()
     var attempt by remember { mutableIntStateOf(0) }
-    var failed by remember { mutableStateOf(false) }
-    var connecting by remember { mutableStateOf(false) }
-    var managing by remember { mutableStateOf(false) }
+    var emailFailed by remember { mutableStateOf(false) }
+    var open by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(attempt) {
-        failed = false
-        failed = !graph.email.refresh() && graph.email.settings.value == null
+        launch { graph.ai.cache.refresh() }
+        emailFailed = false
+        emailFailed = !graph.email.refresh() && graph.email.settings.value == null
     }
 
-    val email = saved
-    when {
-        email == null && failed -> Card {
+    val mail = email
+    val provider = ai
+    val integrations = listOf(
+        Integration(
+            "Resend",
+            rememberVectorPainter(Icons.Mail),
+            "Email notes to anyone, from an address on your own domain.",
+            mail?.takeIf { it.configured }?.let { "Sending as ${it.from}" },
+            known = mail != null,
+            editable = mail?.editable == true
+        ) { open = if (mail?.configured == true) "resend" else "resend-connect" },
+        Integration(
+            "AI",
+            painterResource(R.drawable.trait_agent),
+            "Give spaces an agent that tags, titles and tidies notes, through any OpenAI-compatible API.",
+            provider?.takeIf { it.configured }?.let { "${it.model} at ${providerHost(it.baseUrl)}" },
+            known = provider != null,
+            editable = provider?.editable == true
+        ) { open = if (provider?.configured == true) "ai" else "ai-connect" }
+    )
+    val connected = integrations.filter { it.known && it.on != null }
+    val available = integrations.filter { it.known && it.on == null }
+
+    if ((mail == null && emailFailed) || (provider == null && aiFailed)) {
+        Card {
             Info("Couldn't load integrations.", "Check the connection to the server.")
             Divider()
             Action("Try again", t.link, enabled = true) { attempt++ }
         }
-
-        email == null -> Card {
+        Spacer(Modifier.height(16.dp))
+    } else if (connected.isEmpty() && available.isEmpty()) {
+        Card {
             Text("Loading…", style = Type.rowMeta, color = t.ink3, modifier = Modifier.padding(16.dp))
         }
-
-        email.configured -> {
-            GroupLabel("Connected")
-            Card {
-                IntegrationRow("Resend", "Sending as ${email.from}") {
-                    if (email.editable) {
+    }
+    if (connected.isNotEmpty()) {
+        GroupLabel("Connected")
+        Card {
+            connected.forEachIndexed { i, it ->
+                if (i > 0) Divider()
+                IntegrationRow(it.icon, it.name, it.on.orEmpty()) {
+                    if (it.editable) {
                         NotesButton(
                             "Manage",
-                            { managing = true },
-                            Modifier.semantics { contentDescription = "Manage Resend" },
+                            it.open,
+                            Modifier.semantics { contentDescription = "Manage ${it.name}" },
                             kind = ButtonKind.Chip,
                             small = true
                         )
@@ -115,20 +166,19 @@ internal fun IntegrationsPage(graph: AppGraph) {
                 }
             }
         }
-
-        else -> {
-            GroupLabel("Available")
-            Card {
-                IntegrationRow(
-                    "Resend",
-                    "Email notes to anyone, from an address on your own domain." +
-                        if (email.editable) "" else " An admin can connect it."
-                ) {
-                    if (email.editable) {
+        Spacer(Modifier.height(16.dp))
+    }
+    if (available.isNotEmpty()) {
+        GroupLabel(if (connected.isEmpty()) "Available" else "More to connect")
+        Card {
+            available.forEachIndexed { i, it ->
+                if (i > 0) Divider()
+                IntegrationRow(it.icon, it.name, it.pitch + if (it.editable) "" else " An admin can connect it.") {
+                    if (it.editable) {
                         NotesButton(
                             "Connect",
-                            { connecting = true },
-                            Modifier.semantics { contentDescription = "Connect Resend" },
+                            it.open,
+                            Modifier.semantics { contentDescription = "Connect ${it.name}" },
                             small = true
                         )
                     }
@@ -137,12 +187,18 @@ internal fun IntegrationsPage(graph: AppGraph) {
         }
     }
 
-    if (connecting) ResendConnectDialog(graph) { connecting = false }
-    if (managing && email != null) ResendManageDialog(graph, email) { managing = false }
+    // As opened: connecting changes what's saved, and the dialog stays until it's done.
+    val close = { open = null }
+    when (open) {
+        "resend-connect" -> ResendConnectDialog(graph, close)
+        "resend" -> mail?.let { ResendManageDialog(graph, it, close) }
+        "ai-connect" -> AiDialog(graph, null, close)
+        "ai" -> provider?.let { AiDialog(graph, it, close) }
+    }
 }
 
 @Composable
-private fun GroupLabel(text: String) {
+internal fun GroupLabel(text: String) {
     Text(
         text,
         style = Type.label,
@@ -152,7 +208,7 @@ private fun GroupLabel(text: String) {
 }
 
 @Composable
-private fun IntegrationRow(name: String, detail: String, trailing: @Composable () -> Unit) {
+private fun IntegrationRow(icon: Painter, name: String, detail: String, trailing: @Composable () -> Unit) {
     val t = LocalTokens.current
     Row(
         Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(start = 16.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
@@ -162,7 +218,7 @@ private fun IntegrationRow(name: String, detail: String, trailing: @Composable (
             Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(t.ink),
             contentAlignment = Alignment.Center
         ) {
-            Icon(Icons.Mail, null, Modifier.size(20.dp), tint = t.bg)
+            Icon(icon, null, Modifier.size(20.dp), tint = t.bg)
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
@@ -206,14 +262,17 @@ internal object Sender {
     }
 }
 
-/** The server's refusal, on the field it's about: "apiKey" or "from"; anything else is the form's. */
-private fun refusal(r: ApiResult<*>): Pair<String, String> {
+/** The server's refusal, on the field it's about when it's one of [fields]; anything else is the form's. */
+internal fun refusal(r: ApiResult<*>, fields: Set<String> = setOf("apiKey", "from")): Pair<String, String> {
     val field = (r as? ApiResult.Rejected)?.takeIf { it.status == 400 }?.field
-    if (r is ApiResult.Rejected && (field == "apiKey" || field == "from")) {
-        val text = r.message.replaceFirstChar { it.uppercase() }
-        return field to if (text.endsWith('.')) text else "$text."
-    }
+    if (r is ApiResult.Rejected && field in fields) return field!! to sentence(r.message)
     return "form" to if (r is ApiResult.Unreachable) "Can't reach the server." else "Something went wrong. Try again."
+}
+
+/** A server message as a sentence: capitalised, with its full stop. */
+internal fun sentence(message: String): String {
+    val text = message.replaceFirstChar { it.uppercase() }
+    return if (text.endsWith('.')) text else "$text."
 }
 
 private enum class Step { Key, Sender, Done }
@@ -503,17 +562,19 @@ private fun SenderFields(
 }
 
 @Composable
-private fun DialogButtons(
+internal fun DialogButtons(
     back: String,
     onBack: () -> Unit,
     action: String,
     onAction: () -> Unit,
-    busy: Boolean = false
+    busy: Boolean = false,
+    /** False while something else in the dialog is busy. */
+    enabled: Boolean = !busy
 ) {
     Spacer(Modifier.height(20.dp))
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        NotesButton(back, onBack, Modifier.weight(1f), kind = ButtonKind.Chip, enabled = !busy)
-        NotesButton(action, onAction, Modifier.weight(1f), busy = busy)
+        NotesButton(back, onBack, Modifier.weight(1f), kind = ButtonKind.Chip, enabled = enabled)
+        NotesButton(action, onAction, Modifier.weight(1f), enabled = enabled || busy, busy = busy)
     }
 }
 
