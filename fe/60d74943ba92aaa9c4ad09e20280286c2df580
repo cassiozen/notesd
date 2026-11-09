@@ -1,0 +1,187 @@
+apps/web/src/notes/traits.tsx
+  s_c4b534f44e1767::t_f53afeaa7d379e 108-117
+  s_c4b534f44e1767::t_c297adfde85157 118-124
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_457cb10267a3f6 519-523,550
+  s_c4b534f44e1767::t_09c452c7e300af 527
+  s_c4b534f44e1767::t_2b4da94fa93da0 553-568,638-639,729
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_c4b534f44e1767::t_142048ce0a25b4 33,328-329
+  s_c4b534f44e1767::t_9f26db0198a261 37
+  s_c4b534f44e1767::t_fed4419ea7d476 338-340
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_c4b534f44e1767::t_9f26db0198a261 349-351,506
+  s_c4b534f44e1767::t_bfe5d4328a3a57 20-21,192-196,198-199,348,394,495-499,502,504-505
+  s_c4b534f44e1767::t_86ad55a1f305b7 510-511
+  s_c4b534f44e1767::t_d35e2b53e0f031 352,395,500-501,503,507-509
+server/internal/spaces/traits.go
+  s_c4b534f44e1767::t_849ae24cba64a7 47-75
+server/internal/sharing/sharing.go
+  s_c4b534f44e1767::t_93987c7949c879 316-320,322,324-334,336-337,873-874,881,884-891
+  s_c4b534f44e1767::t_ca45679300423c 892
+  s_c4b534f44e1767::t_8bde6a412beaa9 45,65-71,396-405
+  s_c4b534f44e1767::t_5a9dee0c6485ba 372,850-854
+  s_c4b534f44e1767::t_d518b6f1b6c97b 323
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_c4b534f44e1767::t_9f26db0198a261 251
+apps/web/src/notes/traits.test.tsx
+  s_c4b534f44e1767::t_93c9f45fed01ce 101-104,106-108,113-114
+  s_c4b534f44e1767::t_b2ce2f5bd48a97 105
+  s_c4b534f44e1767::t_c297adfde85157 3,109,111-112
+  s_c4b534f44e1767::t_0463b6c4993620 110
+apps/ios/NotesTests/SpaceTraitsTests.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 95-102,110
+  s_c4b534f44e1767::t_d35e2b53e0f031 103-109
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 332-333
+apps/web/src/notes/saver.ts
+  s_c4b534f44e1767::t_f53afeaa7d379e 105
+server/internal/userdata/userdata.go
+  s_c4b534f44e1767::t_93987c7949c879 37-39
+  s_c4b534f44e1767::t_88077806eccc93 61-64,73-74,78-79,92,100,140,180
+  s_c4b534f44e1767::t_8a91f7701e6656 55-58
+  s_c4b534f44e1767::t_3bdebb7587b96a 59-60,90-91,96,98-99,101-116,139,179
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 176
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_c4b534f44e1767::t_0e3bb7bd142fca 557,561,564-566,599-600
+  s_c4b534f44e1767::t_f674cc4b58aed4 562-563,601
+apps/ios/Notes/Notes/SpaceTraits.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 73-83
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 364-366
+server/internal/api/shared_test.go
+  s_c4b534f44e1767::t_e4e9579387b1a6 451-487
+  s_c4b534f44e1767::t_79851055ff5e60 352
+server/internal/api/respond.go
+  s_c4b534f44e1767::t_71cd10c381bed1 181-182
+  s_c4b534f44e1767::t_3ef793792a220f 104,106-115
+  s_c4b534f44e1767::t_5faca64e7e4768 18
+server/internal/notes/notes.go
+  s_c4b534f44e1767::t_03dd40451b5338 225-227,238,240-241,253,266-285,290-295,297-306,391,422-424,465,493,495
+  s_c4b534f44e1767::t_4163af0c3aadd6 494
+  s_c4b534f44e1767::t_5a9dee0c6485ba 286-289,296
+docs/reference/api.md
+  s_c4b534f44e1767::t_457cb10267a3f6 338-340
+  s_c4b534f44e1767::t_09c452c7e300af 564
+  s_c4b534f44e1767::t_2b4da94fa93da0 347-369,536,540,550-551
+apps/web/src/notes/share.tsx
+  s_c4b534f44e1767::t_f53afeaa7d379e 21,22,71,208,273-274
+  s_c4b534f44e1767::t_c297adfde85157 18,72-73,275
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 363-364,498
+apps/web/test/sharing.test.tsx
+  s_c4b534f44e1767::t_93c9f45fed01ce 418
+server/internal/notes/notes_test.go
+  s_c4b534f44e1767::t_db18ac147b6cac 775-801,803-806,808-810
+  s_c4b534f44e1767::t_d5b7c467eca1da 802,807
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceTraitsTest.kt
+  s_c4b534f44e1767::t_93386186b258d0 106-113,123
+  s_c4b534f44e1767::t_f674cc4b58aed4 114-122
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 362-364
+server/internal/notes/move.go
+  s_c4b534f44e1767::t_2f1d3f357e856e 40
+  s_c4b534f44e1767::t_03dd40451b5338 142,152-154,209-210
+  s_c4b534f44e1767::t_cb88b1f9fba9bc 23-24,30-37,201-208,245-249
+  s_c4b534f44e1767::t_7c0ac60b09c4d5 250
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceTraits.kt
+  s_c4b534f44e1767::t_0e3bb7bd142fca 78-81,90
+  s_c4b534f44e1767::t_f674cc4b58aed4 82-89
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 44
+server/internal/spaces/spaces.go
+  s_c4b534f44e1767::t_849ae24cba64a7 112-116
+docs/concepts/security-model.md
+  s_c4b534f44e1767::t_09c452c7e300af 52-55
+server/internal/publish/publish.go
+  s_c4b534f44e1767::t_a7c8122876c0cd 1-2,553,569,605,646-661
+  s_c4b534f44e1767::t_84b825121da743 3-382,387-552,554-568,570-604,606-645,662-722
+  s_c4b534f44e1767::t_48ae83698b4077 383-386
+server/internal/publish/handler.go
+  s_c4b534f44e1767::t_4903569979668f 1-329
+server/README.md
+  s_c4b534f44e1767::t_503bb3c6e027f1 52-53,88
+server/internal/publish/assets/theme.css
+  s_c4b534f44e1767::t_20604d4e31e650 1-395
+server/internal/sharing/trait.go
+  s_c4b534f44e1767::t_5a9dee0c6485ba 33,39
+server/internal/publish/site.go
+  s_c4b534f44e1767::t_e8992f0e4e7662 1-12,14-78,80-279,282-283,287-292,298-614
+  s_c4b534f44e1767::t_469530a7ac30f1 615-619
+  s_c4b534f44e1767::t_60ef58fe83a9bf 13,79,280-281,284-286,293-297
+apps/web/src/sw.ts
+  s_c4b534f44e1767::t_64aa42222afa1f 14-15
+server/internal/api/publish_test.go
+  s_c4b534f44e1767::t_48ae83698b4077 252-254,258-259
+  s_c4b534f44e1767::t_cd525bc09ffc7a 99-100
+  s_c4b534f44e1767::t_82bf9bc43a0a50 1-98,101-109,115-251,255-257,260-291
+  s_c4b534f44e1767::t_5245c43d6cdfcf 110-114
+server/cmd/notesd/main.go
+  s_c4b534f44e1767::t_003260e7a9abf4 181,635,672-683
+server/internal/search/tags.go
+  s_c4b534f44e1767::t_83d7ed5661a1c8 8,55-95,105,115,119
+server/internal/api/api.go
+  s_c4b534f44e1767::t_3ef793792a220f 9,25,43-46,64,71-75,82,86-97,168-170,188-195
+server/internal/api/publish_handlers.go
+  s_c4b534f44e1767::t_3ef793792a220f 1-81
+server/internal/publish/assets/site.css
+  s_c4b534f44e1767::t_b45bf2432efa12 12-13,125-128,130-131
+  s_c4b534f44e1767::t_26212e9926f493 3-11,14-124,129,132-399
+  s_c4b534f44e1767::t_570d28088744b4 1-2
+server/internal/publish/assets/theme.js
+  s_c4b534f44e1767::t_8af1cdbc75b235 1-2
+  s_c4b534f44e1767::t_5a4f2b1b89ed2c 3-32
+server/internal/publish/handler_test.go
+  s_c4b534f44e1767::t_3a7dd88a8d9bc6 1-35
+apps/web/test/sw.test.ts
+  s_c4b534f44e1767::t_64aa42222afa1f 117-118
+docs/guides/self-hosting/backups.md
+  s_c4b534f44e1767::t_2b4da94fa93da0 12-14
+server/migrations/system/0006_published_spaces.sql
+  s_c4b534f44e1767::t_1dc2a3aaaff203 1-14
+server/internal/publish/render.go
+  s_c4b534f44e1767::t_3975bc28f2ee8c 36,38,48,60-62,87,93,136-139,141-147,152-168
+  s_c4b534f44e1767::t_94bcc8c593cd36 1-35,37,39-47,49-59,63-86,88-92,94-135,140,148-151,169-209
+server/internal/publish/assets/site.html
+  s_c4b534f44e1767::t_60ef58fe83a9bf 101,103-104,106-107
+  s_c4b534f44e1767::t_7cafb55dc9b97d 1-100,102,105,108-151
+server/internal/api/api_test.go
+  s_c4b534f44e1767::t_3497f2f62d5023 18,36
+  s_c4b534f44e1767::t_063710ab3d2186 57-75
+server/internal/search/search_test.go
+  s_c4b534f44e1767::t_3a7dd88a8d9bc6 203-219
+server/internal/sharing/route.go
+  s_c4b534f44e1767::t_5a9dee0c6485ba 25,27
+server/internal/api/space_handlers.go
+  s_c4b534f44e1767::t_003260e7a9abf4 81,84,90-92
+  s_c4b534f44e1767::t_705604f5728873 93
+server/migrations/0014_space_publish.sql
+  s_c4b534f44e1767::t_1dc2a3aaaff203 1-8
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_28233493252180 1-204
+server/internal/api/user_handlers.go
+  s_c4b534f44e1767::t_48ae83698b4077 100-101
+docs/concepts/where-data-lives.md
+  s_c4b534f44e1767::t_2b4da94fa93da0 19
+server/internal/database/database.go
+  s_c4b534f44e1767::t_d6c962e6f137da 100-122,157-159
+scripts/space_icons.py
+  s_c4b534f44e1767::t_3d2176f2cb1eaf 17-18,59,300-301,303,400-420,468-500,776
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe60d74943ba92aaa9c4ad09e20280286c2df580",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
