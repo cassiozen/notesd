@@ -1,0 +1,22 @@
+server/internal/sharing/sharing_test.go
+  s_8ffe96124240de::t_27f2a090f819ba 245-276
+server/internal/sharing/route.go
+  s_8ffe96124240de::t_459ec064f8d7ab 70
+  s_8ffe96124240de::t_f2aa497d6f585c 38,40-41,48
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "786ffbe712ee6f148063ec3e69348203cd4d029a",
+  "prompts": {},
+  "sessions": {
+    "s_8ffe96124240de": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9c10f665-65e2-4960-82de-a1a2d9e06ec3",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
