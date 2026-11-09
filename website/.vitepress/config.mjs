@@ -124,6 +124,7 @@ export default defineConfig({
           { text: "Writing and Markdown", link: "/guides/using/writing-and-markdown" },
           { text: "Tags, spaces and search", link: "/guides/using/organize-and-find" },
           { text: "Sharing with others", link: "/guides/using/sharing" },
+          { text: "Publishing a space", link: "/guides/using/publishing" },
           { text: "Locked notes", link: "/guides/using/locked-notes" },
           { text: "Emailing notes", link: "/guides/using/email" },
           { text: "Offline and sync", link: "/guides/using/offline-and-sync" },
