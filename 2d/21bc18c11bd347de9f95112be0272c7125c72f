@@ -1,0 +1,31 @@
+docs/faq.md
+  s_bfdb0893ee7c09::t_e59db83650e42b 187-188
+docs/guides/apps/android.md
+  s_bfdb0893ee7c09::t_e59db83650e42b 16-17
+README.md
+  s_bfdb0893ee7c09::t_e59db83650e42b 49-50
+website/download/index.html
+  s_bfdb0893ee7c09::t_e59db83650e42b 56
+website/index.html
+  s_bfdb0893ee7c09::t_e59db83650e42b 255
+docs/get-started/05-add-your-phone.md
+  s_bfdb0893ee7c09::t_e59db83650e42b 19-20
+.github/workflows/release.yml
+  s_bfdb0893ee7c09::t_e59db83650e42b 166
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2d21bc18c11bd347de9f95112be0272c7125c72f",
+  "prompts": {},
+  "sessions": {
+    "s_bfdb0893ee7c09": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "6a723466-2f8a-4b84-b363-5600ea52a442",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
