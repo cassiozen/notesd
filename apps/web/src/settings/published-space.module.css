@@ -204,7 +204,8 @@
   border-radius: 10px;
   background: var(--bg);
   color: var(--ink);
-  font: 14px var(--font-mono);
+  /* 16px: iOS Safari zooms into a smaller field. */
+  font: 16px var(--font-mono);
 }
 
 .domain:focus-visible {

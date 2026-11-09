@@ -112,11 +112,11 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusMovedPermanently)
 		return
 	}
-	s.serveMissing(w, r, handle, rest)
+	s.serveMissing(w, r, handle)
 }
 
 // serveMissing answers with the site's 404 page, its links made relative to where it was asked for.
-func (s *Service) serveMissing(w http.ResponseWriter, r *http.Request, handle, rest string) {
+func (s *Service) serveMissing(w http.ResponseWriter, r *http.Request, handle string) {
 	page, err := os.ReadFile(filepath.Join(s.dir, handle, "404.html"))
 	if err != nil {
 		w.Header().Set("Retry-After", "5")
@@ -128,8 +128,18 @@ func (s *Service) serveMissing(w http.ResponseWriter, r *http.Request, handle, r
 	h.Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusNotFound)
 	if r.Method != http.MethodHead {
-		_, _ = w.Write(bytes.ReplaceAll(page, []byte(missingRoot), []byte(rootFor(rest))))
+		// Its depth as the browser sees it: an escaped / (no%2Fsuch) is part of one segment.
+		_, _ = w.Write(fillRoot(page, rootFor(strings.TrimPrefix(r.URL.EscapedPath(), "/@"+handle+"/"))))
 	}
+}
+
+// fillRoot puts root where the 404 page's links start. Only there: the placeholder opens an attribute's
+// value, after a quote, which text from a space (its name) can't end with, as a quote in it is escaped.
+func fillRoot(page []byte, root string) []byte {
+	for _, attr := range []string{`href="`, `src="`, `action="`} {
+		page = bytes.ReplaceAll(page, []byte(attr+missingRoot), []byte(attr+root))
+	}
+	return page
 }
 
 var postPath = regexp.MustCompile(`^[a-z0-9-]*-([0-9a-f]{8,64})$`)

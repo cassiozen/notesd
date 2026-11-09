@@ -349,8 +349,10 @@ func TestPublicSearchLooksPastNotesTheSiteDoesntShow(t *testing.T) {
 func TestASiteOnItsOwnDomain(t *testing.T) {
 	s := newSharedEnv(t)
 	s.publish(s.owner, "fam", nil)
-	if r := s.publish(s.owner, "fam", map[string]any{"domain": "not a domain"}); r.status != 400 || r.body["field"] != "domain" {
-		t.Fatalf("an invalid domain: %d %s", r.status, r.raw)
+	for _, bad := range []string{"not a domain", "."} {
+		if r := s.publish(s.owner, "fam", map[string]any{"domain": bad}); r.status != 400 || r.body["field"] != "domain" {
+			t.Fatalf("an invalid domain %q: %d %s", bad, r.status, r.raw)
+		}
 	}
 	r := s.publish(s.owner, "fam", map[string]any{"domain": " Blog.Example.com. "})
 	if r.status != 200 || r.body["domain"] != "blog.example.com" || r.body["url"] != "https://blog.example.com/" {
@@ -398,6 +400,10 @@ func TestASiteOnItsOwnDomain(t *testing.T) {
 	// Missing, at any depth: its links lead back to the site's root from where it was asked for.
 	if r := get("/no/such/page"); r.status != 404 || !strings.Contains(r.body, `<a href="../../">See every post</a>`) {
 		t.Fatalf("missing: %d %s", r.status, r.body)
+	}
+	// An escaped / is part of one segment, as the browser resolves links from it.
+	if r := s.visit("/@family/no%2Fsuch"); r.status != 404 || !strings.Contains(r.body, `<a href="./">See every post</a>`) {
+		t.Fatalf("missing, escaped: %d %s", r.status, r.body)
 	}
 
 	if r := s.publish(s.owner, "fam", map[string]any{"domain": ""}); r.status != 200 || r.body["url"] != origin+"/@family/" {

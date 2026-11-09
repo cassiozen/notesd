@@ -306,7 +306,7 @@ function OwnDomain({
           value={draft}
           onChange={(e) => setDraft(e.target.value.toLowerCase())}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && draft.trim() !== settings.domain) void onSave(draft.trim())
+            if (e.key === 'Enter' && busy === null && draft.trim() !== settings.domain) void onSave(draft.trim())
           }}
         />
         <p id={hintId} className={styles.hint}>

@@ -359,7 +359,8 @@ title and a body, a list of posts, tags, a feed and a search.
 - Your own spaces, and shared ones you own (`403 not_space_owner` for members). Never `default`
   (`409 space_default`).
 - `origin` is the app's own address, such as `https://notes.example.com`: required the first time
-  (`400`, `field: origin`), it makes the feed's absolute links.
+  (`400`, `field: origin`). Without a `domain`, the site's absolute links (the feed's, the
+  sitemap's) are made from it; with one, from `https://<domain>/`.
 - `handle` is 1–64 characters of `[a-z0-9-]`, not starting or ending with `-`. Left out the first
   time, it's made from the space's name. One another space has: `409 handle_taken`.
 - `css` is the owner's own stylesheet, up to 64 KB, after the site's.

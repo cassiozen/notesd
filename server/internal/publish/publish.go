@@ -377,10 +377,11 @@ var domainPattern = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?
 // cleanDomain is a site's own domain, lowercased; "" for none. A host alone: the proxy in front
 // serves it over HTTPS.
 func cleanDomain(raw string) (string, error) {
-	d := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(raw)), ".")
+	d := strings.ToLower(strings.TrimSpace(raw))
 	if d == "" {
 		return "", nil
 	}
+	d = strings.TrimSuffix(d, ".")
 	if len(d) > 253 || !domainPattern.MatchString(d) {
 		return "", &InputError{"domain", "must be a domain name, such as blog.example.com"}
 	}
