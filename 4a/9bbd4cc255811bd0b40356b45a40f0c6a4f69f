@@ -1,0 +1,66 @@
+apps/android/app/src/test/kotlin/notes/app/AccountCacheTest.kt
+  s_cc6cacc0a6fc01::t_5497f12fea3a16 1-39,42-46,48,50,52-65
+  s_cc6cacc0a6fc01::t_56d4bd46c29100 40-41,47,49,51
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_20dc7b8a420919 52-56,63-65
+docs/contributing/settings-guidelines.md
+  s_cc6cacc0a6fc01::t_20dc7b8a420919 73,81
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_cc6cacc0a6fc01::t_d82f05660a5494 62,228-234,468-472,474,497-505,515-522
+  s_cc6cacc0a6fc01::t_52c7d1ed6a2c2d 219-221,293-297
+  s_cc6cacc0a6fc01::t_6b72fb6b702594 61
+  s_cc6cacc0a6fc01::t_04cf0af366130d 211-218,222-227,235-292,298-311,398-409,418,421,462-467
+  s_cc6cacc0a6fc01::t_b2591839bc13a0 523
+apps/android/app/src/main/kotlin/notes/app/settings/TimeZone.kt
+  s_cc6cacc0a6fc01::t_3c925471bb2d69 7,88,142
+  s_cc6cacc0a6fc01::t_f9470271e7d568 1-6,8-51,54-87,89-141,143-164
+  s_cc6cacc0a6fc01::t_52c7d1ed6a2c2d 52-53
+apps/android/app/src/main/kotlin/notes/app/settings/AiIntegration.kt
+  s_cc6cacc0a6fc01::t_f438375aa66222 1-224
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_cc6cacc0a6fc01::t_ab30404b8efdf3 415-461
+apps/android/app/src/main/kotlin/notes/app/settings/Integrations.kt
+  s_cc6cacc0a6fc01::t_93d5e5f52f68b2 124,132,190-191,193-196
+  s_cc6cacc0a6fc01::t_b9acc1fb1d4cfa 570-572,576-577
+  s_cc6cacc0a6fc01::t_aab91d2ce7d50c 36-37,39,56-57,66,72-94,97,101-103,105-106,109-111,114-123,125-131,133-138,143-145,148-155,158-159,169-177,180-181,192,197,201,211,221,265-266,268,272-277,565
+apps/android/app/src/main/kotlin/notes/app/agent/Agents.kt
+  s_cc6cacc0a6fc01::t_f2c37c1d29b21d 11
+  s_cc6cacc0a6fc01::t_db9d376fe3d465 1-10,12-47
+  s_cc6cacc0a6fc01::t_d0a9f4ed18e691 48-52
+shared/sync-engine/src/jvmTest/kotlin/notes/core/api/AgentApiTest.kt
+  s_cc6cacc0a6fc01::t_c5eb61cd2ebffe 1-101
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_cc6cacc0a6fc01::t_3c925471bb2d69 90,93-97,117,202-204
+  s_cc6cacc0a6fc01::t_b36b7b8b5696f1 205
+apps/android/app/src/test/kotlin/notes/app/settings/AiSettingsTest.kt
+  s_cc6cacc0a6fc01::t_52c7d1ed6a2c2d 198-202,204
+  s_cc6cacc0a6fc01::t_20cc13e507a000 127
+  s_cc6cacc0a6fc01::t_0b6c4356726ebc 96,214
+  s_cc6cacc0a6fc01::t_703c8713ee4536 3,5,70-73,98
+  s_cc6cacc0a6fc01::t_4e5007d116768d 1-2,4,6-69,74-95,97,99-126,128-197,203,205-213,215-263
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_cc6cacc0a6fc01::t_52c7d1ed6a2c2d 35-36
+  s_cc6cacc0a6fc01::t_5f9181251d1335 23,62,106-111,273-288
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_cc6cacc0a6fc01::t_6997a57b8448ac 201-327
+  s_cc6cacc0a6fc01::t_f2c37c1d29b21d 35-46
+apps/android/app/src/main/kotlin/notes/app/AccountCache.kt
+  s_cc6cacc0a6fc01::t_6ac717b5860cdc 1-24,32-61
+  s_cc6cacc0a6fc01::t_56d4bd46c29100 25-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "4a9bbd4cc255811bd0b40356b45a40f0c6a4f69f",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
