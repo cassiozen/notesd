@@ -93,7 +93,7 @@ class SpacesFlowTest {
         compose.onNodeWithText("Name").performTextInput("Work\u0007")
         compose.onNode(hasText("Create") and hasClickAction()).performScrollTo().performClick()
         compose.waitUntilExactlyOneExists(hasText("Remove the special characters from the name."))
-        assertEquals(1, runBlocking { graph.sync.spaces.list() }.size)
+        assertEquals(1, compose.runOffMain { graph.sync.spaces.list() }.size)
     }
 
     @Test
@@ -189,7 +189,7 @@ class SpacesFlowTest {
         // Gone: back to the list of spaces.
         compose.waitUntilExactlyOneExists(hasText("New space"))
         compose.onNode(hasText("Work") and hasClickAction()).assertDoesNotExist()
-        assertEquals(listOf("Notes"), runBlocking { graph.sync.spaces.list() }.map { it.name })
+        assertEquals(listOf("Notes"), compose.runOffMain { graph.sync.spaces.list() }.map { it.name })
     }
 
     @Test

@@ -5,6 +5,10 @@ import { owner, test } from './profile'
 
 // The engine alone: each page imports it from src/ and drives it directly.
 
+// Whichever test runs first loads the app, the engine's worker and sqlite-wasm cold from the dev server: on a busy
+// machine that alone can take most of the default 30 s.
+test.describe.configure({ timeout: 60_000 })
+
 declare global {
   interface Window {
     connectEngine: typeof connectEngine

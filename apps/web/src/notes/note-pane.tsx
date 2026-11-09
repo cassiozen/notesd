@@ -79,8 +79,9 @@ export function NotePane({ id, draft, mobile, onBack, onNew, onCreated, onOpenDr
     setLoad(draft ? lockedDraft(draft) : { kind: 'loading' })
   }
 
-  // The locked new note reached the server and is opened by id now.
-  if (load.kind === 'locked' && load.draft && !draft) setLoad({ kind: 'loading' })
+  // The locked new note reached the server and is opened by id now. Still locked: staying on the
+  // placeholder, not passing through loading, keeps a password half typed into it.
+  if (load.kind === 'locked' && load.draft && !draft) setLoad({ kind: 'locked', title: load.title, keyFailed: false })
 
   // Unlocked elsewhere (another note, Settings, a password change): try again.
   if (load.kind === 'locked' && !load.keyFailed && lockStatus === 'unlocked') {
