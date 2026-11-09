@@ -1,0 +1,56 @@
+server/internal/publish/assets/site.css
+  s_c4b534f44e1767::t_01a5ffbc9744de 6-7,29-42,74-75,77-79,82,84-124,129-130,215-223,226-257,270-277,288,290-292,302-303,310-312,316-317,321-322,340-341,345-357,368,370-374,433-449,531-542,557,582-590
+  s_c4b534f44e1767::t_82bb82787964cf 558-581,591
+server/internal/publish/assets/fonts/OFL.txt
+  s_c4b534f44e1767::t_cee155bb889924 1-93
+server/internal/publish/handler.go
+  s_c4b534f44e1767::t_82bb82787964cf 140-143
+  s_c4b534f44e1767::t_e7124e12e7a363 131,200-203,261
+docs/guides/using/publishing.md
+  s_c4b534f44e1767::t_f1e187dfbad4ff 19-21
+server/internal/publish/render.go
+  s_c4b534f44e1767::t_e7124e12e7a363 245
+  s_c4b534f44e1767::t_f1b540439a32bc 8
+  s_c4b534f44e1767::t_c953011b99e7ce 40,49,69,193-238
+  s_c4b534f44e1767::t_1d17fd867db38e 239
+server/internal/publish/look.go
+  s_c4b534f44e1767::t_c180c45fdfb1b9 1-84
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_0bb0ffe9e98654 31
+  s_c4b534f44e1767::t_3fb575cbff9208 23,30,32-69,251-270
+server/internal/publish/assets/accents.json
+  s_c4b534f44e1767::t_c4f16d8ef1f141 1-252
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_95cf0ad2cb9953 564
+scripts/space_icons.py
+  s_c4b534f44e1767::t_8a16bc68c2098d 61,481-482,485,504
+  s_c4b534f44e1767::t_b474eae85609ec 18-19
+server/internal/publish/assets/site.html
+  s_c4b534f44e1767::t_f9807d5478196a 17-30,81,102-103
+server/internal/api/publish_test.go
+  s_c4b534f44e1767::t_761b826ab28607 111
+  s_c4b534f44e1767::t_843119b4089e5f 7,52-61,110,116-120
+  s_c4b534f44e1767::t_95cf0ad2cb9953 121-124
+  s_c4b534f44e1767::t_cf58b37cc925a8 112-115,125
+apps/web/e2e/publishing.spec.ts
+  s_c4b534f44e1767::t_25043dc1aa5b2d 51-52
+server/internal/publish/site.go
+  s_c4b534f44e1767::t_01a5ffbc9744de 321
+  s_c4b534f44e1767::t_e7124e12e7a363 54,182,199,275-276,279-284,348-349,419,521-522
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5e83723a7e469d7f5d185d21021e5b7601716b73",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
