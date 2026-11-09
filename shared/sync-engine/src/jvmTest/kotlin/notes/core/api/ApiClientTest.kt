@@ -344,4 +344,38 @@ class ApiClientTest {
         assertEquals(ApiResult.Unauthenticated, ApiClient(server.url("/")).logout())
         assertEquals(0, server.requestCount)
     }
+
+    @Test
+    fun `an id in a path is encoded once, whatever it holds`() = runBlocking<Unit> {
+        server.dispatcher = object : Dispatcher() {
+            override fun dispatch(request: RecordedRequest) = when {
+                request.url.encodedPath.endsWith("/sync") -> json(200, """{"notes":[],"cursor":0,"hasMore":false}""")
+                request.url.encodedPath.endsWith("/invites") -> json(201, """{"id":"i","userId":2,"username":"b"}""")
+                request.url.encodedPath.endsWith("/accept") -> json(200, """{"id":"s","name":"S"}""")
+                else -> MockResponse.Builder().code(204).build()
+            }
+        }
+        val id = "a b/c%d"
+        api.inviteToSpace(id, 2)
+        api.cancelInvite(id, id)
+        api.acceptInvite(id)
+        api.declineInvite(id)
+        api.removeMember(id, 2)
+        api.transferSpace(id, 2)
+        api.inSpace(id).sync(0, 10, null)
+        val paths = List(7) { server.takeRequest().url.encodedPath }
+        val once = "a%20b%2Fc%25d"
+        assertEquals(
+            listOf(
+                "/api/v1/spaces/$once/invites",
+                "/api/v1/spaces/$once/invites/$once",
+                "/api/v1/invites/$once/accept",
+                "/api/v1/invites/$once/decline",
+                "/api/v1/spaces/$once/members/2",
+                "/api/v1/spaces/$once/owner",
+                "/api/v1/spaces/$once/sync"
+            ),
+            paths
+        )
+    }
 }

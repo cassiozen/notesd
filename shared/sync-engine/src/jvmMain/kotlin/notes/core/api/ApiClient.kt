@@ -178,6 +178,7 @@ class ApiClient(
         request("PUT", url("api/v1/spaces/${seg(spaceId)}/owner"), buildJsonObject { put("userId", userId) }, it)
     }) { require(it.code == 204) { "Not a handover" } }
 
+    /** An id as one path segment: a `/`, `%` or space in it encoded. */
     private fun seg(s: String) =
         HttpUrl.Builder().scheme("http").host("x").addPathSegment(s).build().encodedPath.drop(1)
 
@@ -393,7 +394,8 @@ class ApiClient(
         apiResult(reply.code, reply.retryAfter, { reply.text }) { decode(reply) }
     }
 
-    private fun url(path: String) = baseUrl.newBuilder().addPathSegments(path).build()
+    /** [path] as written: its ids already through [seg], which a second encoding would turn `%20` into `%2520`. */
+    private fun url(path: String) = baseUrl.newBuilder().addEncodedPathSegments(path).build()
 
     private fun get(path: String) = Request.Builder().url(url(path)).build()
 

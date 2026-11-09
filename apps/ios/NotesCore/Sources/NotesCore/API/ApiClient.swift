@@ -85,7 +85,7 @@ public final class ApiClient: Sendable {
     private let clock: Clock
     private let refreshLock: AsyncLock
     /// Where the change feed is: the account's, or a shared space's (`inSpace`, §7.9).
-    private let file: String
+    private let file: [String]
 
     private static let refreshEarlyMs: Int64 = 60_000
     private static let defaultRetryAfter: Int64 = 60
@@ -104,7 +104,7 @@ public final class ApiClient: Sendable {
         file = Self.accountFile
     }
 
-    private init(_ parent: ApiClient, file: String) {
+    private init(_ parent: ApiClient, file: [String]) {
         baseURL = parent.baseURL
         version = parent.version
         credentials = parent.credentials
@@ -115,12 +115,12 @@ public final class ApiClient: Sendable {
         self.file = file
     }
 
-    private static let accountFile = "api/v1"
+    private static let accountFile = ["api", "v1"]
 
     /// The same client for a shared space's change feed (§7.9): only `sync` is per file; every other call is at the
     /// account's address, which finds a note in whichever file it is.
     public func inSpace(_ spaceId: String) -> ApiClient {
-        ApiClient(self, file: "\(Self.accountFile)/spaces/\(spaceId)")
+        ApiClient(self, file: Self.accountFile + ["spaces", spaceId])
     }
 
     /// `/healthz`: is a server answering at this address at all.
@@ -183,12 +183,14 @@ public final class ApiClient: Sendable {
 
     public func updateNote(_ id: String, _ body: NoteRequest) async -> ApiResult<MutationResult> {
         await authed(
-            { self.request("PUT", "api/v1/notes/\(id)", body: body, access: $0) }, decode: json(MutationResult.self))
+            { self.request("PUT", ["api", "v1", "notes", id], body: body, access: $0) },
+            decode: json(MutationResult.self))
     }
 
     public func deleteNote(_ id: String, _ body: NoteRequest) async -> ApiResult<MutationResult> {
         await authed(
-            { self.request("DELETE", "api/v1/notes/\(id)", body: body, access: $0) }, decode: json(MutationResult.self))
+            { self.request("DELETE", ["api", "v1", "notes", id], body: body, access: $0) },
+            decode: json(MutationResult.self))
     }
 
     /// Changes after `since`. `generation` is the one stored from the last page, nil before the first sync.
@@ -199,7 +201,7 @@ public final class ApiClient: Sendable {
         if let generation { query.append(URLQueryItem(name: "generation", value: generation)) }
         let items = query
         return await authed(
-            { self.request("GET", "\(self.file)/sync", query: items, access: $0) }, decode: json(SyncPage.self))
+            { self.request("GET", self.file + ["sync"], query: items, access: $0) }, decode: json(SyncPage.self))
     }
 
     // MARK: email
@@ -232,7 +234,7 @@ public final class ApiClient: Sendable {
         }
         let body = Body(to: to, revision: revision)
         return await authed(
-            { self.request("POST", "api/v1/notes/\(id)/email", body: body, access: $0) }, decode: { _ in () })
+            { self.request("POST", ["api", "v1", "notes", id, "email"], body: body, access: $0) }, decode: { _ in () })
     }
 
     // MARK: locked notes
@@ -262,14 +264,14 @@ public final class ApiClient: Sendable {
             var icon: String
         }
         return await authed(
-            { self.request("PUT", "api/v1/spaces/\(id)", body: Body(name: name, icon: icon), access: $0) },
+            { self.request("PUT", ["api", "v1", "spaces", id], body: Body(name: name, icon: icon), access: $0) },
             decode: json(RemoteSpace.self))
     }
 
     /// Deletes an empty space: a conflict (space_not_empty) while it holds notes.
     public func deleteSpace(_ id: String) async -> ApiResult<Void> {
         await authed(
-            { self.request("DELETE", "api/v1/spaces/\(id)", access: $0) },
+            { self.request("DELETE", ["api", "v1", "spaces", id], access: $0) },
             decode: { reply in
                 // Any other success came from something that isn't notesd: the space may still be there.
                 guard reply.code == 204 else { throw URLError(.cannotParseResponse) }
@@ -291,7 +293,7 @@ public final class ApiClient: Sendable {
             kind: key.kind, credentialId: key.credentialId, salt: key.salt, iterations: key.iterations,
             wrapped: key.wrapped, verifier: verifier, kdf: key.kdf)
         return await authed(
-            { self.request("PUT", "api/v1/locks/keys/\(key.id)", body: body, access: $0) },
+            { self.request("PUT", ["api", "v1", "locks", "keys", key.id], body: body, access: $0) },
             decode: json(LockKey.self))
     }
 
@@ -323,40 +325,48 @@ public final class ApiClient: Sendable {
     /// Invites an account into a space this account owns, sharing it the first time.
     public func inviteToSpace(_ spaceId: String, userId: Int64) async -> ApiResult<Invitee> {
         await authed(
-            { self.request("POST", "api/v1/spaces/\(spaceId)/invites", body: ["userId": userId], access: $0) },
+            {
+                self.request("POST", ["api", "v1", "spaces", spaceId, "invites"], body: ["userId": userId], access: $0)
+            },
             decode: json(Invitee.self))
     }
 
     public func cancelInvite(_ spaceId: String, inviteId: String) async -> ApiResult<Void> {
         await authed(
-            { self.request("DELETE", "api/v1/spaces/\(spaceId)/invites/\(inviteId)", access: $0) },
+            { self.request("DELETE", ["api", "v1", "spaces", spaceId, "invites", inviteId], access: $0) },
             decode: Self.noContent)
     }
 
     /// Joins the space; the answer is the space as this account now sees it.
     public func acceptInvite(_ inviteId: String) async -> ApiResult<RemoteSpace> {
         await authed(
-            { self.request("POST", "api/v1/invites/\(inviteId)/accept", body: [String: String](), access: $0) },
+            {
+                self.request(
+                    "POST", ["api", "v1", "invites", inviteId, "accept"], body: [String: String](), access: $0)
+            },
             decode: json(RemoteSpace.self))
     }
 
     public func declineInvite(_ inviteId: String) async -> ApiResult<Void> {
         await authed(
-            { self.request("POST", "api/v1/invites/\(inviteId)/decline", body: [String: String](), access: $0) },
+            {
+                self.request(
+                    "POST", ["api", "v1", "invites", inviteId, "decline"], body: [String: String](), access: $0)
+            },
             decode: Self.noContent)
     }
 
     /// The owner removes a member, or (`userId` this account's) a member leaves.
     public func removeMember(_ spaceId: String, userId: Int64) async -> ApiResult<Void> {
         await authed(
-            { self.request("DELETE", "api/v1/spaces/\(spaceId)/members/\(userId)", access: $0) },
+            { self.request("DELETE", ["api", "v1", "spaces", spaceId, "members", String(userId)], access: $0) },
             decode: Self.noContent)
     }
 
     /// The owner hands the space to another member.
     public func transferSpace(_ spaceId: String, userId: Int64) async -> ApiResult<Void> {
         await authed(
-            { self.request("PUT", "api/v1/spaces/\(spaceId)/owner", body: ["userId": userId], access: $0) },
+            { self.request("PUT", ["api", "v1", "spaces", spaceId, "owner"], body: ["userId": userId], access: $0) },
             decode: Self.noContent)
     }
 
@@ -407,7 +417,7 @@ public final class ApiClient: Sendable {
     public func putImage(_ id: String, bytes: Data, type: String) async -> ApiResult<Void> {
         await authed(
             { access in
-                var r = self.request("PUT", "api/v1/images/\(id)", access: access)
+                var r = self.request("PUT", ["api", "v1", "images", id], access: access)
                 r.httpBody = bytes
                 r.setValue(type, forHTTPHeaderField: "Content-Type")
                 return r
@@ -423,7 +433,7 @@ public final class ApiClient: Sendable {
     /// Downloads an image with the type it is stored as.
     public func getImage(_ id: String) async -> ApiResult<ImageFile> {
         await authed(
-            { self.request("GET", "api/v1/images/\(id)", access: $0) },
+            { self.request("GET", ["api", "v1", "images", id], access: $0) },
             decode: { ImageFile(type: $0.type ?? "application/octet-stream", bytes: $0.data) })
     }
 
@@ -537,7 +547,16 @@ public final class ApiClient: Sendable {
         _ method: String, _ path: String, query: [URLQueryItem] = [], body: (any Encodable)? = nil,
         access: String? = nil
     ) -> URLRequest {
-        var url = baseURL.appending(path: path)
+        request(method, path.split(separator: "/").map(String.init), query: query, body: body, access: access)
+    }
+
+    /// One segment each: an id is encoded whole, a `/` in it included, which `appending(path:)` would split on.
+    private func request(
+        _ method: String, _ segments: [String], query: [URLQueryItem] = [], body: (any Encodable)? = nil,
+        access: String? = nil
+    ) -> URLRequest {
+        var url = baseURL
+        for segment in segments { url.append(component: segment) }
         if !query.isEmpty { url.append(queryItems: query) }
         var request = URLRequest(url: url)
         request.httpMethod = method
