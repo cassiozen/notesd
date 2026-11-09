@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
+	"net/http/httputil"
+	"net/url"
 	"regexp"
 	"strings"
 	"testing"
@@ -182,7 +185,7 @@ func TestPublishedSitesFollowTheirNotes(t *testing.T) {
 			break
 		}
 	}
-	if r.status != 301 || !strings.HasPrefix(r.header.Get("Location"), "/@family/road-trip-") {
+	if r.status != 301 || !strings.HasPrefix(r.header.Get("Location"), "./road-trip-") {
 		t.Fatalf("old slug: %d %v", r.status, r.header)
 	}
 	if r := s.visit("/@family/no-such-post"); r.status != 404 || !strings.Contains(r.body, "Not found") {
@@ -341,4 +344,72 @@ func TestPublicSearchLooksPastNotesTheSiteDoesntShow(t *testing.T) {
 	if r := s.visit("/@family/search?q=pear"); !strings.Contains(r.body, `value="pear"`) {
 		t.Fatalf("cached across spellings: %s", r.body)
 	}
+}
+
+func TestASiteOnItsOwnDomain(t *testing.T) {
+	s := newSharedEnv(t)
+	s.publish(s.owner, "fam", nil)
+	if r := s.publish(s.owner, "fam", map[string]any{"domain": "not a domain"}); r.status != 400 || r.body["field"] != "domain" {
+		t.Fatalf("an invalid domain: %d %s", r.status, r.raw)
+	}
+	r := s.publish(s.owner, "fam", map[string]any{"domain": " Blog.Example.com. "})
+	if r.status != 200 || r.body["domain"] != "blog.example.com" || r.body["url"] != "https://blog.example.com/" {
+		t.Fatalf("domain: %d %s", r.status, r.raw)
+	}
+	trait := spaceByID(t, s.owner, "fam")["traits"].([]any)[0].(map[string]any)
+	if trait["summary"] != "At blog.example.com" {
+		t.Fatalf("its trait: %v", trait)
+	}
+	// Its absolute links are the domain's; served at /@family/ too, it names the domain as the real address.
+	home := s.eventually("/@family/", `<link rel="canonical" href="https://blog.example.com/">`)
+	if !strings.Contains(s.visit("/@family/feed.xml").body, "<id>https://blog.example.com/groceries-") {
+		t.Fatalf("feed links: %s", home.body)
+	}
+
+	// The owner's proxy maps the domain onto /@family/: everything in the site works from there.
+	proxy := httptest.NewServer(&httputil.ReverseProxy{Rewrite: func(pr *httputil.ProxyRequest) {
+		pr.SetURL(mustParse(t, s.srv.URL))
+		pr.Out.URL.Path = "/@family" + pr.In.URL.Path
+		pr.Out.URL.RawPath = ""
+	}})
+	t.Cleanup(proxy.Close)
+	get := func(path string) page {
+		t.Helper()
+		hc := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+		res, err := hc.Get(proxy.URL + path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer res.Body.Close()
+		b, _ := io.ReadAll(res.Body)
+		return page{status: res.StatusCode, header: res.Header, body: string(b)}
+	}
+	root := get("/")
+	post := root.body[strings.Index(root.body, `href="./groceries-`)+8:]
+	post = post[:strings.Index(post, `"`)]
+	if root.status != 200 || get("/"+post).status != 200 {
+		t.Fatalf("home and a post through the proxy: %d", root.status)
+	}
+	// A post's old address redirects within the domain, not to the app's /@family/.
+	short := post[strings.LastIndex(post, "-"):]
+	if r := get("/old-title" + short); r.status != 301 || r.header.Get("Location") != "./"+post {
+		t.Fatalf("old slug: %d %v", r.status, r.header)
+	}
+	// Missing, at any depth: its links lead back to the site's root from where it was asked for.
+	if r := get("/no/such/page"); r.status != 404 || !strings.Contains(r.body, `<a href="../../">See every post</a>`) {
+		t.Fatalf("missing: %d %s", r.status, r.body)
+	}
+
+	if r := s.publish(s.owner, "fam", map[string]any{"domain": ""}); r.status != 200 || r.body["url"] != origin+"/@family/" {
+		t.Fatalf("domain dropped: %d %s", r.status, r.raw)
+	}
+}
+
+func mustParse(t *testing.T, raw string) *url.URL {
+	t.Helper()
+	u, err := url.Parse(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return u
 }

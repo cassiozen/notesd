@@ -49,18 +49,29 @@ func (e *InputError) Error() string { return e.Field + ": " + e.Message }
 
 // Site is a published space's address, as system.db has it.
 type Site struct {
-	File      string // the notes file it's in: user:<id> or space:<id>
-	SpaceID   string
-	Handle    string
-	Origin    string
+	File    string // the notes file it's in: user:<id> or space:<id>
+	SpaceID string
+	Handle  string
+	Origin  string
+	// Domain is the site's own (blog.example.com), '' for none: the owner's proxy maps it onto
+	// /@<handle>/, so its absolute links are built from it.
+	Domain    string
 	Published bool
 }
 
-// URL is the site's address.
-func (s Site) URL() string { return s.Origin + "/@" + s.Handle + "/" }
+// URL is the site's address: its own domain's, else its path on the app's.
+func (s Site) URL() string {
+	if s.Domain != "" {
+		return "https://" + s.Domain + "/"
+	}
+	return s.Origin + "/@" + s.Handle + "/"
+}
 
 // where is the site's address without its scheme, as the apps show it.
 func (s Site) where() string {
+	if s.Domain != "" {
+		return s.Domain
+	}
 	u, err := url.Parse(s.Origin)
 	if err != nil {
 		return s.Origin + "/@" + s.Handle
@@ -73,6 +84,7 @@ type Settings struct {
 	Handle    string `json:"handle"`
 	URL       string `json:"url"`
 	Origin    string `json:"origin"`
+	Domain    string `json:"domain"`
 	Published bool   `json:"published"`
 	CSS       string `json:"css"`
 }
@@ -83,6 +95,8 @@ type Input struct {
 	// Origin is the app's own address (scheme://host), which the server can't know (§10): the site's
 	// absolute URLs (the feed) are built from it.
 	Origin *string `json:"origin"`
+	// Domain is the site's own, "" to drop it.
+	Domain *string `json:"domain"`
 	CSS    *string `json:"css"`
 }
 
@@ -214,8 +228,8 @@ type querier interface {
 func (s *Service) lookup(ctx context.Context, q querier, spaceID string, files ...string) (Site, error) {
 	for _, f := range files {
 		site := Site{File: f, SpaceID: spaceID}
-		err := q.QueryRowContext(ctx, `SELECT handle, origin, published FROM published_spaces
-			WHERE file = ? AND space_id = ?`, f, spaceID).Scan(&site.Handle, &site.Origin, &site.Published)
+		err := q.QueryRowContext(ctx, `SELECT handle, origin, domain, published FROM published_spaces
+			WHERE file = ? AND space_id = ?`, f, spaceID).Scan(&site.Handle, &site.Origin, &site.Domain, &site.Published)
 		if err == nil {
 			return site, nil
 		} else if !errors.Is(err, sql.ErrNoRows) {
@@ -236,7 +250,8 @@ func (s *Service) Get(ctx context.Context, file string, d *userdata.Data, spaceI
 		spaceID).Scan(&css); err != nil {
 		return Settings{}, err
 	}
-	return Settings{Handle: site.Handle, URL: site.URL(), Origin: site.Origin, Published: site.Published, CSS: css}, nil
+	return Settings{Handle: site.Handle, URL: site.URL(), Origin: site.Origin, Domain: site.Domain,
+		Published: site.Published, CSS: css}, nil
 }
 
 var handlePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`)
@@ -260,6 +275,12 @@ func (s *Service) Publish(ctx context.Context, file string, d *userdata.Data, sp
 			return Settings{}, err
 		}
 	}
+	var domain string
+	if in.Domain != nil {
+		if domain, err = cleanDomain(*in.Domain); err != nil {
+			return Settings{}, err
+		}
+	}
 	if in.CSS != nil && len(*in.CSS) > MaxCSS {
 		return Settings{}, &InputError{"css", fmt.Sprintf("must be at most %d KB", MaxCSS>>10)}
 	}
@@ -276,9 +297,12 @@ func (s *Service) Publish(ctx context.Context, file string, d *userdata.Data, sp
 			if err != nil && !errors.Is(err, ErrNotPublished) {
 				return err
 			}
-			site = Site{File: file, SpaceID: spaceID, Handle: old.Handle, Origin: old.Origin, Published: true}
+			site = Site{File: file, SpaceID: spaceID, Handle: old.Handle, Origin: old.Origin, Domain: old.Domain, Published: true}
 			if origin != "" {
 				site.Origin = origin
+			}
+			if in.Domain != nil {
+				site.Domain = domain
 			}
 			if site.Origin == "" {
 				return &InputError{"origin", "is required: the app's address, such as https://notes.example.com"}
@@ -296,11 +320,11 @@ func (s *Service) Publish(ctx context.Context, file string, d *userdata.Data, sp
 					return err
 				}
 			}
-			_, err = stx.ExecContext(ctx, `INSERT INTO published_spaces (file, space_id, handle, origin, published, updated_at)
-				VALUES (?, ?, ?, ?, 1, ?)
+			_, err = stx.ExecContext(ctx, `INSERT INTO published_spaces (file, space_id, handle, origin, domain, published, updated_at)
+				VALUES (?, ?, ?, ?, ?, 1, ?)
 				ON CONFLICT (file, space_id) DO UPDATE SET handle = excluded.handle, origin = excluded.origin,
-					published = 1, updated_at = excluded.updated_at`,
-				file, spaceID, site.Handle, site.Origin, now)
+					domain = excluded.domain, published = 1, updated_at = excluded.updated_at`,
+				file, spaceID, site.Handle, site.Origin, site.Domain, now)
 			return err
 		})
 	})
@@ -348,6 +372,21 @@ func (s *Service) Forget(ctx context.Context, file, spaceID string) error {
 	return err
 }
 
+var domainPattern = regexp.MustCompile(`^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{0,61}[a-z0-9]$`)
+
+// cleanDomain is a site's own domain, lowercased; "" for none. A host alone: the proxy in front
+// serves it over HTTPS.
+func cleanDomain(raw string) (string, error) {
+	d := strings.TrimSuffix(strings.ToLower(strings.TrimSpace(raw)), ".")
+	if d == "" {
+		return "", nil
+	}
+	if len(d) > 253 || !domainPattern.MatchString(d) {
+		return "", &InputError{"domain", "must be a domain name, such as blog.example.com"}
+	}
+	return d, nil
+}
+
 // cleanOrigin is an app's address as scheme://host[:port].
 func cleanOrigin(raw string) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
@@ -389,7 +428,7 @@ func (s *Service) Reload(ctx context.Context) { s.reload(ctx) }
 
 // reload reads every published space's address, and takes down the sites of those no longer published.
 func (s *Service) reload(ctx context.Context) {
-	rows, err := s.system.R.QueryContext(ctx, `SELECT file, space_id, handle, origin FROM published_spaces WHERE published = 1`)
+	rows, err := s.system.R.QueryContext(ctx, `SELECT file, space_id, handle, origin, domain FROM published_spaces WHERE published = 1`)
 	if err != nil {
 		s.log.Error("published spaces", "err", err)
 		return
@@ -397,7 +436,7 @@ func (s *Service) reload(ctx context.Context) {
 	sites := map[string]Site{}
 	for rows.Next() {
 		site := Site{Published: true}
-		if err := rows.Scan(&site.File, &site.SpaceID, &site.Handle, &site.Origin); err != nil {
+		if err := rows.Scan(&site.File, &site.SpaceID, &site.Handle, &site.Origin, &site.Domain); err != nil {
 			rows.Close()
 			s.log.Error("published spaces", "err", err)
 			return
@@ -508,7 +547,6 @@ func (s *Service) renderLocked(ctx context.Context, site Site) error {
 	} else if err != nil {
 		return err
 	}
-	src.BasePath = "/@" + site.Handle + "/"
 	built, err := build(src, src.Icon)
 	if err != nil {
 		return err

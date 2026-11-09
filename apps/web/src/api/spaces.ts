@@ -47,7 +47,8 @@ export const sharing = {
 }
 
 /** How a space is published (§7.10): its address and its own stylesheet. */
-export type PublishSettings = { handle: string; url: string; origin: string; published: boolean; css: string }
+/** `domain` is the site's own, '' for none: the owner's proxy maps it onto `/@handle/`, and `url` is then on it. */
+export type PublishSettings = { handle: string; url: string; origin: string; domain: string; published: boolean; css: string }
 
 /**
  * Publishing a space (§7.10), by its owner (403 not_space_owner). The first publish needs origin, this app's own
@@ -57,7 +58,7 @@ export const publishing = {
   /** 404 not_published if it never was. */
   get: (space: string) => request<PublishSettings>('GET', `${path(space)}/publish`),
   /** Publishes, or changes how; a field left out stays (409 space_default, space_has_locked, handle_taken). */
-  put: (space: string, change: { handle?: string; origin?: string; css?: string }) =>
+  put: (space: string, change: { handle?: string; origin?: string; domain?: string; css?: string }) =>
     request<PublishSettings>('PUT', `${path(space)}/publish`, change),
   /** Takes the site down; the handle stays the space's. */
   remove: (space: string) => request<undefined>('DELETE', `${path(space)}/publish`),

@@ -102,14 +102,34 @@ func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if name, ok := m.Routes[rest]; ok {
-		s.serveFile(w, r, handle, m, name, http.StatusOK)
+		s.serveFile(w, r, handle, m, name)
 		return
 	}
 	if to, ok := renamed(m, rest); ok {
-		http.Redirect(w, r, "/@"+handle+"/"+to, http.StatusMovedPermanently)
+		// Relative, as every link in a site is: a proxy may serve it at another path (its own domain).
+		// Set by hand: http.Redirect would make it absolute.
+		w.Header().Set("Location", "./"+to)
+		w.WriteHeader(http.StatusMovedPermanently)
 		return
 	}
-	s.serveFile(w, r, handle, m, "404.html", http.StatusNotFound)
+	s.serveMissing(w, r, handle, rest)
+}
+
+// serveMissing answers with the site's 404 page, its links made relative to where it was asked for.
+func (s *Service) serveMissing(w http.ResponseWriter, r *http.Request, handle, rest string) {
+	page, err := os.ReadFile(filepath.Join(s.dir, handle, "404.html"))
+	if err != nil {
+		w.Header().Set("Retry-After", "5")
+		http.Error(w, "this site is being published; try again in a moment", http.StatusServiceUnavailable)
+		return
+	}
+	h := w.Header()
+	h.Set("Cache-Control", "public, max-age=60")
+	h.Set("Content-Type", "text/html; charset=utf-8")
+	w.WriteHeader(http.StatusNotFound)
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(bytes.ReplaceAll(page, []byte(missingRoot), []byte(rootFor(rest))))
+	}
 }
 
 var postPath = regexp.MustCompile(`^[a-z0-9-]*-([0-9a-f]{8,64})$`)
@@ -125,14 +145,12 @@ func renamed(m *manifest, rest string) (string, bool) {
 }
 
 // serveFile answers with one of a site's files, compressed when the browser takes it.
-func (s *Service) serveFile(w http.ResponseWriter, r *http.Request, handle string, m *manifest, name string, status int) {
+func (s *Service) serveFile(w http.ResponseWriter, r *http.Request, handle string, m *manifest, name string) {
 	h := w.Header()
 	switch {
 	case strings.HasPrefix(name, "img/") || strings.HasPrefix(name, "fonts/") || name == m.Style || name == m.Script || name == m.Icon:
 		// Named by their content: a change is a new name.
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
-	case status == http.StatusNotFound:
-		h.Set("Cache-Control", "public, max-age=60")
 	default:
 		h.Set("Cache-Control", "public, max-age=60, stale-while-revalidate=86400")
 	}
@@ -160,13 +178,6 @@ func (s *Service) serveFile(w http.ResponseWriter, r *http.Request, handle strin
 		return
 	}
 	defer f.Close()
-	if status != http.StatusOK {
-		w.WriteHeader(status)
-		if r.Method != http.MethodHead {
-			_, _ = f.WriteTo(w)
-		}
-		return
-	}
 	h.Set("ETag", etag)
 	info, err := f.Stat()
 	if err != nil {

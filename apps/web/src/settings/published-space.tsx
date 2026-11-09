@@ -13,7 +13,7 @@ import styles from './published-space.module.css'
 // Publishing a space (architecture §7.10), as Space info's Published section: its address, its own stylesheet,
 // and turning it on and off, all in place.
 
-type Failure = { field?: 'handle' | 'css'; message: string }
+type Failure = { field?: 'handle' | 'css' | 'domain'; message: string }
 
 /** What went wrong, in words, and which field it was about. */
 export function publishError(err: unknown): Failure {
@@ -33,6 +33,7 @@ export function publishError(err: unknown): Failure {
           return { field: 'handle', message: 'Use 1–64 lowercase letters, digits and hyphens, not starting or ending with a hyphen.' }
         }
         if (err.field === 'css') return { field: 'css', message: `Custom CSS ${err.message}.` }
+        if (err.field === 'domain') return { field: 'domain', message: 'Use a domain name, such as blog.example.com.' }
     }
   }
   return { message: genericMessage(err) }
@@ -50,7 +51,7 @@ export function PublishedSection({ space }: { space: Space }) {
   const trait = space.traits.find((t) => t.key === 'published')
   const owner = space.shared?.role !== 'member'
   const [settings, setSettings] = useState<PublishSettings | null>(null)
-  const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'stop' | null>(null)
+  const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'domain' | 'stop' | null>(null)
   const [failure, setFailure] = useState<Failure>()
   const [stopping, setStopping] = useState(false)
   // Turned on or off here, the list shows it at once (expectPublished): the trait is the section's state.
@@ -132,11 +133,18 @@ export function PublishedSection({ space }: { space: Space }) {
             />
             {error('handle')}
             <Stylesheet
-              key={settings.css}
+              key={`css:${settings.css}`}
               css={settings.css}
               busy={busy}
               onSave={(css) => run('css', () => publishing.put(space.id, { css }))}
               error={error('css')}
+            />
+            <OwnDomain
+              key={`domain:${settings.domain}`}
+              settings={settings}
+              busy={busy}
+              onSave={(domain) => run('domain', () => publishing.put(space.id, { domain }))}
+              error={error('domain')}
             />
           </>
         )}
@@ -261,6 +269,73 @@ function Address({
         </InlineConfirm>
       )}
     </div>
+  )
+}
+
+/**
+ * The site on a domain of its own: the owner points the domain at this server and adds a block to the proxy in
+ * front of notesd that maps it onto the site's path; notesd only builds the site's absolute links from it.
+ */
+function OwnDomain({
+  settings,
+  busy,
+  onSave,
+  error,
+}: {
+  settings: PublishSettings
+  busy: string | null
+  onSave: (domain: string) => Promise<boolean>
+  error: ReactNode
+}) {
+  const hintId = useId()
+  const [draft, setDraft] = useState(settings.domain)
+  const [copied, copy] = useCopy()
+  const block = `${settings.domain} {\n    rewrite * /@${settings.handle}{uri}\n    reverse_proxy 127.0.0.1:8080\n}`
+  return (
+    <details className={styles.row} open={settings.domain !== '' || undefined}>
+      <summary className={styles.summary}>Your own domain</summary>
+      <div className={styles.css}>
+        <input
+          className={styles.domain}
+          aria-label="Domain"
+          aria-describedby={hintId}
+          placeholder="blog.example.com"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value.toLowerCase())}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && draft.trim() !== settings.domain) void onSave(draft.trim())
+          }}
+        />
+        <p id={hintId} className={styles.hint}>
+          The site’s feed and links use it. It also needs your proxy: notesd can’t serve a domain by itself.
+        </p>
+        {error}
+        <div className={styles.save}>
+          <Button size="sm" busy={busy === 'domain'} disabled={busy !== null || draft.trim() === settings.domain} onClick={() => void onSave(draft.trim())}>
+            Save
+          </Button>
+        </div>
+        {settings.domain && (
+          <div className={styles.steps}>
+            <p className={styles.hint}>
+              Point {settings.domain}’s DNS at this server, as you did for the app’s address. Then add this to your Caddyfile, with notesd’s
+              address as in your app’s block, and reload Caddy:
+            </p>
+            <pre className={styles.snippet}>
+              <code>{block}</code>
+            </pre>
+            <div className={styles.save}>
+              <Button size="sm" variant="ghost" onClick={() => void copy(block)}>
+                {copied ? 'Copied' : 'Copy'}
+              </Button>
+            </div>
+          </div>
+        )}
+      </div>
+    </details>
   )
 }
 
