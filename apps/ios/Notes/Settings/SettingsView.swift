@@ -10,7 +10,9 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                NavigationLink(value: Route.settingsSection(.server)) { AccountRow(account: graph.account) }
+                NavigationLink(value: Route.settingsSection(.server)) {
+                    AccountRow(account: graph.account, profile: graph.profile)
+                }
             }
             Section {
                 // With no lock password, creating one needs the server: signed out, there's nothing to offer.
@@ -35,7 +37,11 @@ struct SettingsView: View {
         .settingsForm(title: "Settings")
         .navigationBarTitleDisplayMode(.large)
         .task(id: graph.syncStatus) { pendingNotes = (try? await graph.store.pendingNotes()) ?? 0 }
-        .task(id: graph.account) { if graph.account.isSignedIn { await graph.email.refresh() } }
+        .task(id: graph.account) {
+            guard graph.account.isSignedIn else { return }
+            await graph.email.refresh()
+            await graph.refreshAccount()
+        }
     }
 
     private func row(_ section: SettingsSection, _ value: String) -> some View {
@@ -74,22 +80,23 @@ struct SettingsView: View {
     }
 }
 
-/// The account at the top of Settings: an initial, the username and the server.
+/// The account at the top of Settings: its photo (or initial), its name (or username) and the server.
 private struct AccountRow: View {
     let account: Account
+    let profile: Profile
 
     var body: some View {
         HStack(spacing: 14) {
-            ZStack {
-                Circle().fill(Color.on)
-                if let name {
-                    Text(name.prefix(1).uppercased()).font(.notesRowTitle).foregroundStyle(Color.ink)
-                } else {
+            if let name {
+                AvatarView(profile: profile, name: name)
+            } else {
+                ZStack {
+                    Circle().fill(Color.on)
                     Image(systemName: "icloud.slash").foregroundStyle(Color.ink)
                 }
+                .frame(width: 44, height: 44)
+                .accessibilityHidden(true)
             }
-            .frame(width: 44, height: 44)
-            .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 2) {
                 Text(name ?? "Not connected").font(.notesRowTitle).foregroundStyle(Color.ink)
                 Text(detail).font(.notesSmall).foregroundStyle(Color.ink2).lineLimit(1)
@@ -101,7 +108,7 @@ private struct AccountRow: View {
 
     private var name: String? {
         switch account {
-        case .signedIn(_, let username), .signedOut(_, let username): username
+        case .signedIn(_, let username), .signedOut(_, let username): profile.name(username)
         case .none: nil
         }
     }
@@ -124,6 +131,7 @@ struct SettingsSectionView: View {
     @Environment(AppGraph.self) private var graph
     @State private var connecting = false
     @State private var changingPassword = false
+    @State private var editingProfile = false
     @State private var passwordChanged = false
     @State private var confirmSignOut = false
     @State private var confirmRemove = false
@@ -194,6 +202,16 @@ struct SettingsSectionView: View {
             case .signedIn(let server, let username):
                 LabeledContent("Server") { Text(server).font(.notesMono).lineLimit(1) }
                 LabeledContent("Signed in as", value: username)
+                Button {
+                    editingProfile = true
+                } label: {
+                    LabeledContent("Name and Photo") {
+                        Text(graph.profile.displayName.isEmpty ? "Optional" : graph.profile.displayName)
+                    }
+                }
+                .foregroundStyle(Color.ink)
+                // On the row, not the section: a sheet on a Form's section doesn't present.
+                .sheet(isPresented: $editingProfile) { ProfileSheet(server: server, username: username) }
                 Button("Change Password") {
                     passwordChanged = false
                     changingPassword = true

@@ -41,16 +41,16 @@ enum Sharing {
 
     /// The switcher's line for a space others changed: "Ben edited 3 notes · 2h".
     static func newsLine(_ news: SpaceNews, now: Int64 = systemNow()) -> String {
-        let who = news.usernames.isEmpty ? "Someone" : names(news.usernames)
+        let who = news.names.isEmpty ? "Someone" : names(news.names)
         let what = news.count == 1 ? "a note" : "\(news.count) notes"
         return "\(who) edited \(what) · \(ago(news.latestAt, now: now))"
     }
 
-    /// Who last edited a note, by username, when it was another member of `space`; nil for this account's own
+    /// Who last edited a note, by the name they chose, when it was another member of `space`; nil for this account's own
     /// edits, a space that isn't shared, or someone no longer in it.
     static func editor(_ updatedBy: Int64?, in space: Space?, me: Int64?) -> String? {
         guard let updatedBy, updatedBy != me, let members = space?.shared?.members else { return nil }
-        return members.first { $0.id == updatedBy }?.username
+        return members.first { $0.id == updatedBy }?.name
     }
 
     /// A note row's time: another member's name and how long ago when they made the last edit ("Ana · 2h").

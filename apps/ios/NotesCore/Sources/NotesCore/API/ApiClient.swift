@@ -155,7 +155,7 @@ public final class ApiClient: Sendable {
         }
     }
 
-    /// This session, with the account's id (§7.9).
+    /// This session, with whose it is as of now: id (§7.9), name and photo.
     public func session() async -> ApiResult<SignIn> {
         await authed({ self.request("GET", "api/v1/auth/session", access: $0) }, decode: json(SignIn.self))
     }
@@ -363,6 +363,42 @@ public final class ApiClient: Sendable {
     /// Any other success came from something that isn't notesd: nothing may have happened.
     private static let noContent: @Sendable (Reply) throws -> Void = { reply in
         guard reply.code == 204 else { throw URLError(.cannotParseResponse) }
+    }
+
+    // MARK: profile
+
+    /// "" goes back to the username. Answers with the profile as it is now, as the two below do.
+    public func setDisplayName(_ name: String) async -> ApiResult<Profile> {
+        await authed(
+            { self.request("PATCH", "api/v1/profile", body: ["displayName": name], access: $0) },
+            decode: json(Profile.self))
+    }
+
+    /// A square JPEG of at most 512 px a side.
+    public func setAvatar(_ jpeg: Data) async -> ApiResult<Profile> {
+        await authed(
+            { access in
+                var r = self.request("PUT", "api/v1/profile/avatar", access: access)
+                r.httpBody = jpeg
+                r.setValue("image/jpeg", forHTTPHeaderField: "Content-Type")
+                return r
+            },
+            decode: json(Profile.self))
+    }
+
+    public func removeAvatar() async -> ApiResult<Profile> {
+        await authed({ self.request("DELETE", "api/v1/profile/avatar", access: $0) }, decode: json(Profile.self))
+    }
+
+    /// Someone's photo at `version`; 404 for one this account may not see, or that's gone.
+    public func avatar(userId: Int64, version: String) async -> ApiResult<Data> {
+        await authed(
+            {
+                self.request(
+                    "GET", "api/v1/users/\(userId)/avatar", query: [URLQueryItem(name: "v", value: version)],
+                    access: $0)
+            },
+            decode: { $0.data })
     }
 
     // MARK: images

@@ -196,7 +196,7 @@ private struct MemberRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Person(name: member.username, role: role)
+            Person(person: member, role: role)
             Spacer(minLength: 0)
             if let manage {
                 Menu {
@@ -213,7 +213,7 @@ private struct MemberRow: View {
                         .contentShape(.rect)
                 }
                 .disabled(busy)
-                .accessibilityLabel("Options for \(member.username)")
+                .accessibilityLabel("Options for \(member.name)")
                 .confirmationDialog(
                     asking.map(title) ?? "",
                     isPresented: Binding(get: { asking != nil }, set: { if !$0 { asking = nil } }),
@@ -240,16 +240,16 @@ private struct MemberRow: View {
 
     private func title(_ change: Change) -> String {
         switch change {
-        case .remove: "Remove \(member.username) from “\(spaceName)”?"
-        case .owner: "Make \(member.username) the owner of “\(spaceName)”?"
+        case .remove: "Remove \(member.name) from “\(spaceName)”?"
+        case .owner: "Make \(member.name) the owner of “\(spaceName)”?"
         }
     }
 
     private func message(_ change: Change) -> String {
         switch change {
-        case .remove: "Its notes will be removed from \(member.username)’s devices."
+        case .remove: "Its notes will be removed from \(member.name)’s devices."
         case .owner:
-            "\(member.username) will manage who’s in it, rename it or delete it. You stay a member and can leave."
+            "\(member.name) will manage who’s in it, rename it or delete it. You stay a member and can leave."
         }
     }
 }
@@ -274,7 +274,7 @@ private struct InviteRow: View {
 
     var body: some View {
         HStack(spacing: 12) {
-            Person(name: invite.username, role: "Invited", pending: true)
+            Person(person: invite.person, role: "Invited", pending: true)
             Spacer(minLength: 0)
             if busy {
                 ProgressView()
@@ -284,7 +284,7 @@ private struct InviteRow: View {
                     .font(.notesLabel)
                     .frame(minHeight: 44)
                     .disabled(disabled)
-                    .accessibilityLabel("Cancel invitation for \(invite.username)")
+                    .accessibilityLabel("Cancel invitation for \(invite.person.name)")
             }
         }
         .listRowBackground(
@@ -308,8 +308,8 @@ private struct CandidateRow: View {
     var body: some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Avatar(name: person.username)
-                Text(person.username).font(.notesRowTitle).foregroundStyle(Color.ink)
+                Avatar(person: person)
+                Text(person.name).font(.notesRowTitle).foregroundStyle(Color.ink)
                 Spacer(minLength: 0)
                 if busy {
                     ProgressView()
@@ -319,22 +319,25 @@ private struct CandidateRow: View {
             }
             .contentShape(.rect)
         }
-        .accessibilityLabel("Invite \(person.username)")
+        .accessibilityLabel("Invite \(person.name)")
     }
 }
 
-/// An initial, a name and, under it, their part: "Owner", "You", "Invited".
+/// A photo or initial, a name and, under it, their part: "Owner", "You", "Invited". The username goes beside the
+/// part when they chose a name, which may repeat.
 private struct Person: View {
-    let name: String
+    let person: Member
     let role: String
     var pending = false
 
     var body: some View {
+        let line = [person.displayName.isEmpty ? "" : person.username, role].filter { !$0.isEmpty }
+            .joined(separator: " · ")
         HStack(spacing: 12) {
-            Avatar(name: name, pending: pending)
+            Avatar(person: person, pending: pending)
             VStack(alignment: .leading, spacing: 1) {
-                Text(name).font(.notesRowTitle).foregroundStyle(Color.ink)
-                if !role.isEmpty { Text(role).font(.notesSmall).foregroundStyle(Color.ink2) }
+                Text(person.name).font(.notesRowTitle).foregroundStyle(Color.ink)
+                if !line.isEmpty { Text(line).font(.notesSmall).foregroundStyle(Color.ink2) }
             }
         }
         .padding(.vertical, 2)
@@ -342,24 +345,34 @@ private struct Person: View {
     }
 }
 
-/// Not in yet: an outline, not a fill.
+/// Their photo, or initial; not in yet, an outline, not a fill.
 private struct Avatar: View {
-    let name: String
+    let person: Member
     var pending = false
     @ScaledMetric(relativeTo: .body) private var size: CGFloat = 32
+    @Environment(AppGraph.self) private var graph
+    @State private var photo: UIImage?
 
     var body: some View {
-        Text(name.prefix(1).uppercased())
-            .font(.notesLabel.weight(.semibold))
-            .foregroundStyle(Color.ink2)
-            .frame(width: size, height: size)
-            .background {
-                if pending {
-                    Circle().strokeBorder(Color.ink3, style: StrokeStyle(lineWidth: 1, dash: [3, 2.5]))
-                } else {
-                    Circle().fill(Color.on)
-                }
+        let profile = Profile(userId: person.id, displayName: person.displayName, avatar: person.avatar)
+        ZStack {
+            if let image = photo ?? graph.avatars.cached(profile) {
+                Image(uiImage: image).resizable().scaledToFill().clipShape(Circle())
+            } else {
+                Text(person.name.prefix(1).uppercased())
+                    .font(.notesLabel.weight(.semibold))
+                    .foregroundStyle(Color.ink2)
             }
-            .accessibilityHidden(true)
+        }
+        .frame(width: size, height: size)
+        .background {
+            if pending {
+                Circle().strokeBorder(Color.ink3, style: StrokeStyle(lineWidth: 1, dash: [3, 2.5]))
+            } else {
+                Circle().fill(Color.on)
+            }
+        }
+        .accessibilityHidden(true)
+        .task(id: profile) { photo = await graph.avatars.load(profile) }
     }
 }

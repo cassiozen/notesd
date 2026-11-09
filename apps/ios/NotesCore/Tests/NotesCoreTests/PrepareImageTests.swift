@@ -16,6 +16,30 @@ struct PrepareImageTests {
         return ctx.makeImage()!
     }
 
+    /// Red, green and blue bands across, the green one `h` wide and centred: the middle square is all green.
+    private func bands(_ w: Int, _ h: Int) -> CGImage {
+        let ctx = CGContext(
+            data: nil, width: w, height: h, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        let side = (w - h) / 2
+        for (x, width, color) in [(0, side, (1.0, 0.0, 0.0)), (side, h, (0, 1, 0)), (side + h, side, (0, 0, 1))] {
+            ctx.setFillColor(CGColor(red: color.0, green: color.1, blue: color.2, alpha: 1))
+            ctx.fill(CGRect(x: x, y: 0, width: width, height: h))
+        }
+        return ctx.makeImage()!
+    }
+
+    /// The RGB at (x, y) of a decoded picture.
+    private func pixel(_ data: Data, _ x: Int, _ y: Int) -> [UInt8] {
+        let image = CGImageSourceCreateImageAtIndex(CGImageSourceCreateWithData(data as CFData, nil)!, 0, nil)!
+        var rgba = [UInt8](repeating: 0, count: 4)
+        let ctx = CGContext(
+            data: &rgba, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+        ctx.draw(image, in: CGRect(x: -x, y: y - image.height + 1, width: image.width, height: image.height))
+        return Array(rgba.prefix(3))
+    }
+
     private func encode(_ image: CGImage, _ type: UTType, _ props: [CFString: Any] = [:]) -> Data {
         let out = NSMutableData()
         let dest = CGImageDestinationCreateWithData(out, type.identifier as CFString, 1, nil)!
@@ -27,6 +51,30 @@ struct PrepareImageTests {
     private func properties(_ data: Data) -> [CFString: Any] {
         let source = CGImageSourceCreateWithData(data as CFData, nil)!
         return CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as! [CFString: Any]
+    }
+
+    @Test func aProfilePhotoIsTheMiddleSquareAtMost512AndStripped() throws {
+        let photo = encode(
+            bands(1200, 800), .jpeg,
+            [kCGImagePropertyGPSDictionary: [kCGImagePropertyGPSLatitude: 52.5, kCGImagePropertyGPSLatitudeRef: "N"]])
+        let square = try PrepareImage.photo(photo)
+        let props = properties(square)
+        #expect(props[kCGImagePropertyPixelWidth] as? Int == 512)
+        #expect(props[kCGImagePropertyPixelHeight] as? Int == 512)
+        // Green from edge to edge: the middle, not a side.
+        for x in [2, 509] {
+            let rgb = pixel(square, x, 256)
+            #expect(rgb[0] < 40 && rgb[1] > 200 && rgb[2] < 40, "\(x): \(rgb)")
+        }
+        #expect(props[kCGImagePropertyGPSDictionary] == nil)
+        let source = CGImageSourceCreateWithData(square as CFData, nil)!
+        #expect(CGImageSourceGetType(source).flatMap { UTType($0 as String) } == .jpeg)
+
+        // A small one stays its size: only cropped.
+        let small = properties(try PrepareImage.photo(encode(image(100, 60, alpha: true), .png)))
+        #expect(small[kCGImagePropertyPixelWidth] as? Int == 60)
+        #expect(small[kCGImagePropertyPixelHeight] as? Int == 60)
+        #expect(throws: ImageError.self) { try PrepareImage.photo(Data("not a picture".utf8)) }
     }
 
     @Test func aLargePhotoIsCappedTurnedUprightAndStripped() throws {

@@ -882,6 +882,38 @@ final class FlowTests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Signed in as"].waitForExistence(timeout: 5))
     }
 
+    /// The tests share the owner: the name keeps "owner" in it, so the others still find the account row if this
+    /// one stops halfway, and it's cleared again at the end.
+    func testANameIsSetFromServer() throws {
+        try signIn()
+        app.buttons["Tags"].tap()
+        app.buttons["Settings"].tap()
+        let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
+        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        account.firstMatch.tap()
+
+        func edit(_ name: String) {
+            let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Name and Photo")).firstMatch
+            XCTAssertTrue(row.waitForExistence(timeout: 5), app.debugDescription)
+            row.tap()
+            let field = app.textFields["Name"]
+            XCTAssertTrue(field.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(app.buttons["Choose Photo…"].exists)
+            field.tap()
+            if let old = field.value as? String, !old.isEmpty, old != "Name" {
+                field.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: old.count))
+            }
+            field.typeText(name)
+            app.buttons["Save"].tap()
+            XCTAssertTrue(app.staticTexts["Signed in as"].waitForExistence(timeout: 10))
+        }
+
+        edit("The owner")
+        XCTAssertTrue(app.buttons["Name and Photo, The owner"].waitForExistence(timeout: 10), app.debugDescription)
+        edit("")
+        XCTAssertTrue(app.buttons["Name and Photo, Optional"].waitForExistence(timeout: 10), app.debugDescription)
+    }
+
     /// Signed out, the notes stay, so only their owner may sign in again: anyone else's first sync would take them.
     func testSignInAgainKeepsTheUsername() throws {
         try signIn()

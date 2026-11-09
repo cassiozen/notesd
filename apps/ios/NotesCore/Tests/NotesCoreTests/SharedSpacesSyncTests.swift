@@ -74,19 +74,21 @@ final class SharedSpacesSyncTests {
     @Test func editsGoBothWaysAndNameWhoMadeThem() async throws {
         let (o, b, family) = try await shared()
         let benId = try await benId(o)
+        // Named by the name they chose, once the space's members are read again.
+        guard case .ok = await b.api.setDisplayName("Ben B") else { throw CancellationError() }
         try await b.notes.save("n", title: "Groceries", content: "Milk, eggs\n")
         await syncAll(b, o)
         let n = try #require(try await o.note("n"))
         #expect(n.content == "Milk, eggs\n" && n.updatedBy == benId)
         let news = try #require(try await o.engine.spaces.news()[family])
-        #expect(news.count == 1 && news.usernames == ["ben"])
+        #expect(news.count == 1 && news.names == ["Ben B"])
         try await o.engine.spaces.visit(family)
         #expect(try await o.engine.spaces.news().isEmpty)
 
         try await o.notes.save("m", title: "Chores", content: "Dishes\n", spaceId: family)
         await syncAll(o, b)
         #expect(try await b.note("m")?.title == "Chores")
-        #expect(try await b.engine.spaces.news()[family]?.usernames == ["owner"])
+        #expect(try await b.engine.spaces.news()[family]?.names == ["owner"])
     }
 
     @Test func notesMoveInAndOutOfASharedSpace() async throws {
