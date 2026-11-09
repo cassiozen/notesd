@@ -1,0 +1,67 @@
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_cc6cacc0a6fc01::t_86ff64af1431d5 297-298,309
+apps/android/app/src/main/kotlin/notes/app/settings/Unsaved.kt
+  s_cc6cacc0a6fc01::t_86ff64af1431d5 1-28
+apps/web/src/notes/agent-config.ts
+  s_cc6cacc0a6fc01::t_5cf3cdd09e83b1 26-29
+apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
+  s_cc6cacc0a6fc01::t_86ff64af1431d5 247-250,274-275
+  s_cc6cacc0a6fc01::t_374b3ff767fc44 315-320
+apps/android/app/src/main/kotlin/notes/app/settings/SpaceInfo.kt
+  s_cc6cacc0a6fc01::t_374b3ff767fc44 3,79-80,271-299,301-303
+  s_cc6cacc0a6fc01::t_15e85afb74e28d 37,110-125,181-183,185-198,244-249,252-267,269-270
+apps/android/app/src/test/kotlin/notes/app/agent/AgentRulesTest.kt
+  s_cc6cacc0a6fc01::t_d2a404bf06dbfc 66
+  s_cc6cacc0a6fc01::t_374b3ff767fc44 56-61,64-65,67
+  s_cc6cacc0a6fc01::t_ae75781fc3a0bb 1-55,62-63,68-74
+apps/android/app/src/main/kotlin/notes/app/agent/AgentRules.kt
+  s_cc6cacc0a6fc01::t_d1854cca0819d7 1-37,44-161,164-278
+  s_cc6cacc0a6fc01::t_8679b47ca46f24 162-163
+  s_cc6cacc0a6fc01::t_374b3ff767fc44 38-43
+apps/android/app/src/test/kotlin/notes/app/agent/AgentSectionTest.kt
+  s_cc6cacc0a6fc01::t_5e791965a7cb23 1-86,88-122,124-174,178,180-188,190-205,207-220
+  s_cc6cacc0a6fc01::t_d9e81d4818883e 87,123,175-177,179
+  s_cc6cacc0a6fc01::t_2b4b606bae03c0 189,206
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_cda4ddb0dbe931 265,274
+  s_cc6cacc0a6fc01::t_3549a3ca6ddf44 246-264,266-273,275-278
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_eaeb9282eac717 36,39,66-71
+  s_cc6cacc0a6fc01::t_5ee8f4f981a4b8 227
+  s_cc6cacc0a6fc01::t_36e8b8c8accc1d 226
+apps/web/src/notes/agent-rules.ts
+  s_cc6cacc0a6fc01::t_5cf3cdd09e83b1 21,24,28-30
+  s_cc6cacc0a6fc01::t_1d9ba8baea7754 31-32
+apps/android/app/src/main/kotlin/notes/app/agent/AgentSection.kt
+  s_cc6cacc0a6fc01::t_a4f4598e3deca0 20,25,511
+  s_cc6cacc0a6fc01::t_95b7464b7ef46b 1-19,21-24,26-243,245-247,249-510,512-745,749-796
+  s_cc6cacc0a6fc01::t_374b3ff767fc44 244,248,746-748
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_cc6cacc0a6fc01::t_01b4a7f5c73e0e 11
+  s_cc6cacc0a6fc01::t_64d54309c5e560 463-495
+apps/android/app/src/test/kotlin/notes/app/FakeNotesd.kt
+  s_cc6cacc0a6fc01::t_18173d6eaae29d 230
+  s_cc6cacc0a6fc01::t_d253c313a3cfa9 14,51-62,200-209,216-225,231-235
+  s_cc6cacc0a6fc01::t_374b3ff767fc44 210-215,226-229
+  s_cc6cacc0a6fc01::t_339fbba55a7197 236
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_64d54309c5e560 9-10
+apps/web/src/notes/agent-page.tsx
+  s_cc6cacc0a6fc01::t_d9835902a9bf43 11,30,36,62,64,84-88,146-169
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b6a60e512a5336003c2eb4d6078b5ac2181433e3",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
