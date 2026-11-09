@@ -159,6 +159,37 @@ class ApiClient(
         request("DELETE", url("api/v1/spaces/${seg(spaceId)}/invites/${seg(inviteId)}"), null, it)
     }) { require(it.code == 204) { "Not a delete" } }
 
+    /**
+     * This server's origin, as the app reaches it: a published space's absolute links (its feed) are made from it,
+     * since the server can't know its own public address (§7.10).
+     */
+    val origin: String
+        get() {
+            val host = if (':' in baseUrl.host) "[${baseUrl.host}]" else baseUrl.host
+            val port = if (baseUrl.port == HttpUrl.defaultPort(baseUrl.scheme)) "" else ":${baseUrl.port}"
+            return "${baseUrl.scheme}://$host$port"
+        }
+
+    /** How a space is published; `404 not_published` if it never was (§7.10). */
+    suspend fun publishSettings(spaceId: String): ApiResult<PublishSettings> = authed({
+        request("GET", url("api/v1/spaces/${seg(spaceId)}/publish"), null, it)
+    }) { json.decodeFromString(it) }
+
+    /** Publishes the space, or changes its [handle]; a null field stays as it is. The first time needs [origin]. */
+    suspend fun publish(spaceId: String, handle: String? = null, origin: String? = null): ApiResult<PublishSettings> =
+        authed({
+            val body = buildJsonObject {
+                handle?.let { h -> put("handle", h) }
+                origin?.let { o -> put("origin", o) }
+            }
+            request("PUT", url("api/v1/spaces/${seg(spaceId)}/publish"), body, it)
+        }) { json.decodeFromString(it) }
+
+    /** Takes the space's site down; its handle stays its own. */
+    suspend fun unpublish(spaceId: String): ApiResult<Unit> = authedReply({
+        request("DELETE", url("api/v1/spaces/${seg(spaceId)}/publish"), null, it)
+    }) { require(it.code == 204) { "Not a delete" } }
+
     /** Joins the space; the answer is the space as this account now sees it. */
     suspend fun acceptInvite(inviteId: String): ApiResult<RemoteSpace> = authed({
         post("api/v1/invites/${seg(inviteId)}/accept", JsonObject(emptyMap()), it)

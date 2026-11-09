@@ -306,6 +306,19 @@ internal data class RemoteInvites(val invites: List<RemoteInvite> = emptyList())
 internal data class RemotePeople(val people: List<Member> = emptyList())
 
 /**
+ * How a space is published (§7.10): its address ([url], from [origin] and [handle]) and whether the site is up.
+ * Its custom CSS is the web app's to change.
+ */
+@Serializable
+data class PublishSettings(
+    val handle: String,
+    val url: String,
+    val origin: String,
+    val published: Boolean,
+    val css: String = ""
+)
+
+/**
  * A feature on for a whole space (§7.8), worked out by the server. [exposure] is the sentence a move
  * into the space asks with, null when the trait keeps notes to the account; [audience] is who it reaches
  * ("user:3", "public"), what a move compares; [problem] is set when it needs attention.
