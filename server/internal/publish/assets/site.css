@@ -98,32 +98,6 @@ main,
   }
 }
 
-/* On a post, how far it's been read, along the bar's bottom edge. */
-@supports (animation-timeline: scroll()) {
-  .page-post .site-header::after {
-    content: '';
-    position: absolute;
-    right: 0;
-    bottom: -1px;
-    left: 0;
-    height: 2px;
-    background: var(--accent);
-    transform-origin: 0 50%;
-    animation: read-progress linear both;
-    animation-timeline: scroll(root);
-  }
-
-  @keyframes read-progress {
-    from {
-      transform: scaleX(0);
-    }
-
-    to {
-      transform: scaleX(1);
-    }
-  }
-}
-
 .site-title {
   color: var(--text);
   font: 400 1.75rem/1.1 var(--font-heading);
