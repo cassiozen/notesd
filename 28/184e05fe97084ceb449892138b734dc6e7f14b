@@ -1,0 +1,23 @@
+apps/android/app/src/test/kotlin/notes/app/notes/PublishingFlowTest.kt
+  s_c4b534f44e1767::t_488648bc925d97 3,21-24,34,41,144-168
+  s_c4b534f44e1767::t_8653fe9e999a33 192-197
+  s_c4b534f44e1767::t_e25b0de090d204 169
+apps/android/app/src/main/kotlin/notes/app/sharing/PublishedSection.kt
+  s_c4b534f44e1767::t_488648bc925d97 157-158,252,285
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "28184e05fe97084ceb449892138b734dc6e7f14b",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
