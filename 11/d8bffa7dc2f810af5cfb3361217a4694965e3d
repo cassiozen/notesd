@@ -37,15 +37,23 @@ apps/web/src/agent/socket.ts
 docs/contributing/architecture.md
   h_506d0d833c777f 66
 server/internal/editors/hub.go
-  s_cc6cacc0a6fc01::t_8a87d9ebd02e5b 35,59,64,74-75,108,121,145-146,148,154-155,161,182-183,188-189,194-199,201,203,205-209,214-216,227,236,244,258,262,269,275-276,297,302
+  s_cc6cacc0a6fc01::t_8a87d9ebd02e5b 35,59,64,74-75,94,101,108,121,124,136,145-146,148,154-155,161,165-170,182-183,188-189,192,194-199,201,203,205-209,214-216,227,236,244,258,262,269,275-276,297,302
 server/internal/api/agent_socket.go
   s_cc6cacc0a6fc01::t_42e2451ef8eaa3 16-36,42-54,56-58,59,61-64,72-107
 apps/web/src/notes/note-pane.tsx
   s_66be3861a6f5cd::t_c7a47fc75f68c4 163-167,400
 apps/web/test/agent-socket.test.tsx
-  s_cc6cacc0a6fc01::t_146a1568d9aa14 127,134,137-147,155-158,167-177,180-211,214,228
+  s_cc6cacc0a6fc01::t_146a1568d9aa14 127,134,137-147,149-211,214,228,238
 server/internal/api/agent_socket_test.go
   s_cc6cacc0a6fc01::t_25123dab8e8561 25,31,34,42,49,58,63,67,73,76,100,107,114,117,122,128,132,137,146,151-234
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_add1296845f87f 1041
+server/internal/agent/request.go
+  s_cc6cacc0a6fc01::t_f9da594c6755d0 53,58,70,74,80
+server/internal/agent/runner.go
+  s_cc6cacc0a6fc01::t_c886440649b1d1 168,176,245
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_f84d63d93799b0 14
 ---
 {
   "schema_version": "authorship/3.0.0",
