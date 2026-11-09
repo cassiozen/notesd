@@ -146,6 +146,19 @@ func TestSharingASpace(t *testing.T) {
 		t.Fatalf("owner's trait: %v", got)
 	}
 
+	// A chosen name stands in for the username, in the trait and beside the member.
+	if r := s.owner.do("PATCH", "/api/v1/profile", map[string]string{"displayName": "Maria"}); r.status != 200 {
+		t.Fatalf("name: %d %s", r.status, r.raw)
+	}
+	sp = spaceByID(t, s.kid, "fam")
+	if got := sp["traits"].([]any)[0].(map[string]any)["summary"]; got != "With Maria" {
+		t.Fatalf("Kid's trait, named: %v", got)
+	}
+	members := sp["shared"].(map[string]any)["members"].([]any)
+	if m := members[0].(map[string]any); m["username"] != "owner" || m["displayName"] != "Maria" || m["avatar"] != "" {
+		t.Fatalf("the owner as a member: %v", m)
+	}
+
 	// Kid edits at their own address; the server finds the file. The owner sees who did.
 	r := s.kid.do("PUT", "/api/v1/notes/groceries", map[string]any{
 		"operationId": "kid-1", "baseRevision": 1, "title": "Groceries", "content": "- Milk\n- Eggs",

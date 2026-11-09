@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -7,10 +8,12 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
 import { ApiError } from '../api/client'
+import { nameOf } from '../api/profile'
 import type { Person, SetupLink } from '../api/types'
 import { users } from '../api/users'
-import { useAuth } from '../auth/auth-context'
+import { useAccount, useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
+import { Avatar } from '../ui/avatar'
 import { Banner } from '../ui/banner'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
@@ -40,24 +43,36 @@ type Open =
   | { kind: 'remove'; person: Person }
 
 function People({ username }: { username: string }) {
+  const me = useAccount().profile
+  const { profileChanged } = useAuth()
   const [load, setLoad] = useState<Load>({ status: 'loading' })
   const [open, setOpen] = useState<Open | null>(null)
   const [busy, setBusy] = useState<number | null>(null)
   const [error, setError] = useState<string>()
 
+  // The list is fresher than the session: your name or photo may have changed on another device since.
+  const loaded = useCallback(
+    (next: Load) => {
+      const self = next.status === 'ready' ? next.people.find((p) => p.username === username) : undefined
+      if (self) profileChanged(self)
+      setLoad(next)
+    },
+    [profileChanged, username],
+  )
+
   useEffect(() => {
     let cancelled = false
     void fetchPeople().then((next) => {
-      if (!cancelled) setLoad(next)
+      if (!cancelled) loaded(next)
     })
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [loaded])
 
   function retry() {
     setLoad({ status: 'loading' })
-    void fetchPeople().then(setLoad)
+    void fetchPeople().then(loaded)
   }
 
   const updatePeople = (change: (people: Person[]) => Person[]) =>
@@ -92,7 +107,7 @@ function People({ username }: { username: string }) {
   const confirmRemove = (p: Person) =>
     act(p, async () => {
       const { users: latest } = await users.list()
-      setLoad({ status: 'ready', people: latest })
+      loaded({ status: 'ready', people: latest })
       const fresh = latest.find((x) => x.id === p.id)
       if (fresh) setOpen({ kind: 'remove', person: fresh })
     })
@@ -141,16 +156,16 @@ function People({ username }: { username: string }) {
       )}
       {n > 1 && (
         <ul className={styles.deviceList} aria-label="People">
-          {people.map((p) => {
-            const you = p.username === username
+          {people.map((listed) => {
+            const you = listed.username === username
+            // Yours as just edited in this page's Name and photo, not as the list was loaded.
+            const p = you && me ? { ...listed, displayName: me.displayName, avatar: me.avatar } : listed
             return (
               <li key={p.id} className={styles.device} aria-busy={busy === p.id || undefined}>
-                <span className={[styles.badge, styles.initial].join(' ')} aria-hidden="true">
-                  {initial(p.username)}
-                </span>
+                <Avatar userId={p.id} version={p.avatar} name={nameOf(p)} className={[styles.badge, styles.initial].join(' ')} />
                 <span className={styles.deviceText}>
-                  <span className={styles.deviceName}>{p.username}</span>
-                  <span className={styles.muted}>{describe(p)}</span>
+                  <span className={styles.deviceName}>{nameOf(p)}</span>
+                  <span className={styles.muted}>{p.displayName ? `${p.username} · ${describe(p)}` : describe(p)}</span>
                 </span>
                 {you ? (
                   <span className={styles.here}>You</span>
@@ -182,7 +197,7 @@ function People({ username }: { username: string }) {
       {open?.kind === 'link' && <LinkDialog person={open.person} link={open.link} onClose={() => setOpen(null)} />}
       {open?.kind === 'reset' && (
         <Confirm
-          title={`Reset ${open.person.username}’s password?`}
+          title={`Reset ${nameOf(open.person)}’s password?`}
           text="You’ll get a link to send them, where they choose a new one. Nothing changes until they use it."
           action="Get link"
           onCancel={() => setOpen(null)}
@@ -196,13 +211,13 @@ function People({ username }: { username: string }) {
         <Confirm
           {...(open.person.pending
             ? {
-                title: `Cancel ${open.person.username}’s invitation?`,
+                title: `Cancel ${nameOf(open.person)}’s invitation?`,
                 text: 'Their link stops working, and the username is free again.',
                 action: 'Cancel invitation',
                 cancel: 'Keep',
               }
             : {
-                title: `Remove ${open.person.username}?`,
+                title: `Remove ${nameOf(open.person)}?`,
                 text: 'They’re signed out on every device and can’t sign in again. Their notes stay on the server’s disk, but no app can open them.',
                 action: 'Remove',
               })}
@@ -230,10 +245,6 @@ async function fetchPeople(): Promise<Load> {
 /** You first, then everyone in the order they were added. */
 function sortPeople(people: Person[], you: string): Person[] {
   return people.toSorted((a, b) => (a.username === you ? -1 : b.username === you ? 1 : a.id - b.id))
-}
-
-function initial(name: string): string {
-  return (Array.from(name.trim())[0] ?? '?').toUpperCase()
 }
 
 function describe(p: Person): string {
@@ -310,7 +321,7 @@ function PersonMenu({
     }
   }
 
-  const label = `Actions for ${person.username}`
+  const label = `Actions for ${nameOf(person)}`
   return (
     <span ref={anchor} className={menu.anchor}>
       <button
@@ -368,28 +379,32 @@ function InviteDialog({
   onForbidden: () => void
 }) {
   const titleId = useId()
+  const [username, setUsername] = useState('')
   const [name, setName] = useState('')
   const [error, setError] = useState<string>()
+  const [nameError, setNameError] = useState<string>()
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
     setFormError(undefined)
-    if (!name.trim()) {
+    setNameError(undefined)
+    if (!username.trim()) {
       setError('Enter the username they’ll sign in with.')
       return
     }
     setError(undefined)
     setBusy(true)
     try {
-      const { user, link } = await users.invite(name.trim())
+      const { user, link } = await users.invite(username.trim(), name.trim())
       onInvited(user, link)
     } catch (err) {
       setBusy(false)
       if (isAdminOnly(err)) onForbidden()
       else if (err instanceof ApiError && err.code === 'username_taken') setError('Someone already has that username.')
       else if (err instanceof ApiError && err.field === 'username') setError('Use 1 to 64 characters, on one line.')
+      else if (err instanceof ApiError && err.field === 'displayName') setNameError('Use at most 64 characters, on one line.')
       else setFormError(genericMessage(err))
     }
   }
@@ -410,12 +425,21 @@ function InviteDialog({
           autoCapitalize="none"
           spellCheck={false}
           maxLength={64}
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
           error={error}
           hint="What they’ll sign in with."
           readOnly={busy}
           autoFocus
+        />
+        <Field
+          label="Name (optional)"
+          autoComplete="off"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          error={nameError}
+          hint="Shown instead of their username. They can change it when they open the link."
+          readOnly={busy}
         />
         {formError && (
           <p role="alert" className={styles.error}>
@@ -446,7 +470,7 @@ function LinkDialog({ person, link, onClose }: { person: Person; link: SetupLink
     <Dialog labelledBy={titleId} onClose={onClose}>
       <div className={styles.dialog}>
         <h2 id={titleId} className={styles.dialogTitle}>
-          Send {person.username} this link
+          Send {nameOf(person)} this link
         </h2>
         <p className={styles.dialogText}>
           {person.pending

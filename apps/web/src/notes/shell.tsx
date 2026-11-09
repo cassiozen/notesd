@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { nameOf } from '../api/profile'
 import { useAuth } from '../auth/auth-context'
 import { dragRegion } from '../desktop'
 import { TouchIdOffer } from '../locks/unlock'
@@ -220,7 +221,7 @@ function ShellView({ username }: { username: string }) {
   const minutes = useMinutes(Object.keys(news).length > 0)
   const sharing = useMemo(
     () => ({
-      invites: invites.map((i) => ({ id: i.id, spaceName: i.spaceName, spaceIcon: i.spaceIcon, from: i.from.username })),
+      invites: invites.map((i) => ({ id: i.id, spaceName: i.spaceName, spaceIcon: i.spaceIcon, from: nameOf(i.from) })),
       changes: Object.fromEntries(Object.values(news).map((n) => [n.spaceId, newsLine(n)])),
       onJoin: (id: string) => {
         join(id).then(switchSpace, (err: unknown) => setNotice({ id, text: sharingError(err), undo: false }))

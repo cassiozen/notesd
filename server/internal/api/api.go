@@ -115,6 +115,11 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("POST /api/v1/users/{id}/link", s.authed(adminOnly(s.newSetupLink)))
 	mux.Handle("PATCH /api/v1/users/{id}", s.authed(adminOnly(s.updateUser)))
 	mux.Handle("DELETE /api/v1/users/{id}", s.authed(adminOnly(s.removeUser)))
+	mux.Handle("GET /api/v1/users/{id}/avatar", s.authed(s.getAvatar))
+
+	mux.Handle("PATCH /api/v1/profile", s.authed(s.updateProfile))
+	mux.Handle("PUT /api/v1/profile/avatar", s.authed(s.putAvatar))
+	mux.Handle("DELETE /api/v1/profile/avatar", s.authed(s.deleteAvatar))
 
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
 	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))

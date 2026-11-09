@@ -61,7 +61,10 @@ type Session struct {
 	UserID     int64  `json:"-"`
 	Username   string `json:"-"`
 	IsAdmin    bool   `json:"-"`
-	CSRFToken  string `json:"-"`
+	// DisplayName and Avatar: the account's profile, as on User.
+	DisplayName string `json:"-"`
+	Avatar      string `json:"-"`
+	CSRFToken   string `json:"-"`
 	// Renewed is set by Authenticate when it extended a web session's
 	// expiry to ExpiresAt, so the cookie should be re-issued.
 	Renewed   bool  `json:"-"`
@@ -74,6 +77,11 @@ type User struct {
 	Username  string `json:"username"`
 	IsAdmin   bool   `json:"isAdmin"`
 	CreatedAt int64  `json:"createdAt"`
+	// DisplayName is the name the person chose, '' for none: apps show the
+	// username instead.
+	DisplayName string `json:"displayName"`
+	// Avatar is the photo's version, '' for none: apps show an initial.
+	Avatar string `json:"avatar"`
 	// Pending: invited, no password chosen yet, so it can't sign in.
 	Pending bool `json:"pending"`
 	// LinkExpiresAt is when its setup link stops working; 0 without one.
@@ -148,16 +156,20 @@ func (s *Service) create(ctx context.Context, username, password string, admin, 
 	}
 	var u User
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
-		u, err = s.insert(ctx, tx, username, hash, admin, first)
+		u, err = s.insert(ctx, tx, username, "", hash, admin, first)
 		return err
 	})
 	return u, err
 }
 
 // insert adds an account; hash ” makes it an invited one.
-func (s *Service) insert(ctx context.Context, tx *sql.Tx, username, hash string, admin, first bool) (User, error) {
+func (s *Service) insert(ctx context.Context, tx *sql.Tx, username, displayName, hash string, admin, first bool) (User, error) {
 	username = strings.TrimSpace(username)
 	if err := validateUsername(username); err != nil {
+		return User{}, err
+	}
+	displayName, err := cleanDisplayName(displayName)
+	if err != nil {
 		return User{}, err
 	}
 	var n, taken int
@@ -176,11 +188,11 @@ func (s *Service) insert(ctx context.Context, tx *sql.Tx, username, hash string,
 	if taken > 0 {
 		return User{}, ErrUsernameTaken
 	}
-	u := User{Username: username, IsAdmin: admin, CreatedAt: s.now().UnixMilli(), Pending: hash == ""}
-	err := tx.QueryRowContext(ctx, `
-		INSERT INTO users (username, username_key, password_hash, is_admin, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?) RETURNING id`,
-		username, usernameKey(username), hash, admin, u.CreatedAt, u.CreatedAt).Scan(&u.ID)
+	u := User{Username: username, DisplayName: displayName, IsAdmin: admin, CreatedAt: s.now().UnixMilli(), Pending: hash == ""}
+	err = tx.QueryRowContext(ctx, `
+		INSERT INTO users (username, username_key, display_name, password_hash, is_admin, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?) RETURNING id`,
+		username, usernameKey(username), displayName, hash, admin, u.CreatedAt, u.CreatedAt).Scan(&u.ID)
 	return u, err
 }
 
@@ -265,7 +277,7 @@ func (s *Service) User(ctx context.Context, id int64) (User, error) {
 // ListUsers returns every account, oldest first.
 func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	rows, err := s.db.R.QueryContext(ctx, `
-		SELECT u.id, u.username, u.is_admin, u.created_at, u.password_hash = '', coalesce(l.expires_at, 0)
+		SELECT u.id, u.username, u.display_name, u.avatar, u.is_admin, u.created_at, u.password_hash = '', coalesce(l.expires_at, 0)
 		FROM users u LEFT JOIN setup_links l ON l.user_id = u.id ORDER BY u.id`)
 	if err != nil {
 		return nil, err
@@ -274,7 +286,7 @@ func (s *Service) ListUsers(ctx context.Context) ([]User, error) {
 	var out []User
 	for rows.Next() {
 		var u User
-		if err := rows.Scan(&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &u.Pending, &u.LinkExpiresAt); err != nil {
+		if err := rows.Scan(&u.ID, &u.Username, &u.DisplayName, &u.Avatar, &u.IsAdmin, &u.CreatedAt, &u.Pending, &u.LinkExpiresAt); err != nil {
 			return nil, err
 		}
 		out = append(out, u)
@@ -352,8 +364,8 @@ func (s *Service) user(ctx context.Context, where string, arg any) (User, string
 
 func scanUser(ctx context.Context, q querier, where string, arg any) (u User, hash string, err error) {
 	err = q.QueryRowContext(ctx,
-		`SELECT id, username, is_admin, created_at, password_hash FROM users WHERE `+where, arg).Scan(
-		&u.ID, &u.Username, &u.IsAdmin, &u.CreatedAt, &hash)
+		`SELECT id, username, display_name, avatar, is_admin, created_at, password_hash FROM users WHERE `+where, arg).Scan(
+		&u.ID, &u.Username, &u.DisplayName, &u.Avatar, &u.IsAdmin, &u.CreatedAt, &hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		err = ErrNoUser
 	}
@@ -390,7 +402,7 @@ func (s *Service) Login(ctx context.Context, username, password, kind, name stri
 		Session: Session{
 			ID: NewToken()[:22], Kind: kind, Name: truncate(name, maxSessionNameLen),
 			CreatedAt: now.UnixMilli(), LastUsedAt: now.UnixMilli(),
-			UserID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin,
+			UserID: u.ID, Username: u.Username, IsAdmin: u.IsAdmin, DisplayName: u.DisplayName, Avatar: u.Avatar,
 		},
 		AccessToken: NewToken(),
 	}
@@ -444,11 +456,11 @@ func (s *Service) Authenticate(ctx context.Context, accessToken, kind string) (S
 	var csrf sql.NullString
 	err := s.db.R.QueryRowContext(ctx, `
 		SELECT s.id, s.kind, s.name, s.created_at, s.last_used_at, s.access_expires_at, s.csrf_token,
-		       u.id, u.username, u.is_admin
+		       u.id, u.username, u.is_admin, u.display_name, u.avatar
 		FROM sessions s JOIN users u ON u.id = s.user_id
 		WHERE s.access_hash = ?`, HashToken(accessToken)).Scan(
 		&sess.ID, &sess.Kind, &sess.Name, &sess.CreatedAt, &sess.LastUsedAt, &exp, &csrf,
-		&sess.UserID, &sess.Username, &sess.IsAdmin)
+		&sess.UserID, &sess.Username, &sess.IsAdmin, &sess.DisplayName, &sess.Avatar)
 	if errors.Is(err, sql.ErrNoRows) {
 		return Session{}, ErrUnauthenticated
 	}
@@ -507,8 +519,8 @@ func (s *Service) Refresh(ctx context.Context, refreshToken string) (Credentials
 		if err != nil {
 			return err
 		}
-		return tx.QueryRowContext(ctx, `SELECT username, is_admin FROM users WHERE id = ?`, c.Session.UserID).Scan(
-			&c.Session.Username, &c.Session.IsAdmin)
+		return tx.QueryRowContext(ctx, `SELECT username, is_admin, display_name, avatar FROM users WHERE id = ?`, c.Session.UserID).Scan(
+			&c.Session.Username, &c.Session.IsAdmin, &c.Session.DisplayName, &c.Session.Avatar)
 	})
 	if err != nil {
 		return Credentials{}, err

@@ -4,6 +4,7 @@ import { settings } from '../api/settings'
 import { ApiError } from '../api/client'
 import type { Session, UpdateStatus } from '../api/types'
 import { platformBadge, sessionName } from '../api/user-agent'
+import { useAccount } from '../auth/auth-context'
 import { genericMessage, newPasswordErrors, sentence } from '../auth/errors'
 import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
@@ -11,6 +12,7 @@ import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
 import { navigate } from '../router'
 import { applyTheme, readTheme, type ThemeChoice } from '../theme'
+import { Avatar } from '../ui/avatar'
 import { Button } from '../ui/button'
 import { Command } from '../ui/code'
 import { Dialog } from '../ui/dialog'
@@ -24,6 +26,7 @@ import { DeviceCard, InstallCard, SignOutItem, syncSummary, useKeptHere, useSync
 import { IntegrationsPage, integrationsValue, useIntegrationStatuses } from './integrations'
 import { LockedNotesCard } from './locked-notes'
 import { PeopleCard } from './people'
+import { ProfileItem } from './profile'
 import { SECTIONS, type SettingsSection } from './sections'
 import { SpacesCard } from './spaces'
 import styles from './settings.module.css'
@@ -88,7 +91,7 @@ export function SettingsSheet({
 
       <div className={styles.layout} ref={layout}>
         {!(phone && shown) && (
-          <SettingsNav shown={shown} username={username} values={values} replace={!phone} />
+          <SettingsNav shown={shown} values={values} replace={!phone} />
         )}
         {shown && (
           <div className={styles.page}>
@@ -126,16 +129,15 @@ const ICONS: Partial<Record<SettingsSection, ReactNode>> = {
  */
 function SettingsNav({
   shown,
-  username,
   values,
   replace,
 }: {
   shown: SettingsSection | null
-  username: string
   values: Record<SettingsSection, string>
   /** Beside the page, moving between categories needn't stack up in the history. */
   replace: boolean
 }) {
+  const { name, profile } = useAccount()
   const link = (key: SettingsSection) => ({
     href: `/settings/${key}`,
     'aria-current': shown === key ? ('page' as const) : undefined,
@@ -151,13 +153,11 @@ function SettingsNav({
       <a
         {...link('server')}
         className={[styles.navItem, styles.account].join(' ')}
-        aria-label={`Server: ${username} on ${window.location.host}`}
+        aria-label={`Server: ${name} on ${window.location.host}`}
       >
-        <span className={styles.avatar} aria-hidden="true">
-          {username.charAt(0).toUpperCase()}
-        </span>
+        <Avatar userId={profile?.userId} version={profile?.avatar} name={name} className={styles.avatar} />
         <span className={styles.accountText}>
-          <span className={styles.navTitle}>{username}</span>
+          <span className={styles.navTitle}>{name}</span>
           <span className={styles.navValue}>{window.location.host}</span>
         </span>
         <span className={styles.chevron}>
@@ -367,6 +367,7 @@ function SettingsPage({
               <ServerVersion />
             </div>
             <ul className={styles.items}>
+              <ProfileItem />
               <PasswordItem />
               <SignOutItem />
             </ul>

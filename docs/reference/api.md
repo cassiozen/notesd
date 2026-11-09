@@ -182,6 +182,8 @@ Accounts after the first are added by an admin, from [People](#people) or with
   "userId": 2,
   "username": "sam",
   "isAdmin": false,
+  "displayName": "Sam Smith",
+  "avatar": "3f9a1c0e7b2d4a65",
   "accessToken": "…",
   "accessExpiresAt": 1767229200000,
   "refreshToken": "…",
@@ -191,7 +193,8 @@ Accounts after the first are added by an admin, from [People](#people) or with
 ```
 
 Browsers get `csrfToken` instead of the four token fields, and the cookie. `userId` is the
-account's id, as notes' `updatedBy` and shared spaces' members name it.
+account's id, as notes' `updatedBy` and shared spaces' members name it. `displayName` and
+`avatar` are the account's [profile](#profile).
 
 ### Notes
 
@@ -315,19 +318,20 @@ anyone else).
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `POST` | `/spaces/{id}/invites` | `{userId}` → `201 {id, userId, username}`. Owner only. The first invitation shares the space, moving its notes to its own file |
+| `POST` | `/spaces/{id}/invites` | `{userId}` → `201 {id, userId, username, displayName, avatar}`. Owner only. The first invitation shares the space, moving its notes to its own file |
 | `DELETE` | `/spaces/{id}/invites/{invite}` | → `204`. Owner only |
 | `DELETE` | `/spaces/{id}/members/{userId}` | → `204`. The owner removes a member, or a member leaves |
 | `PUT` | `/spaces/{id}/owner` | `{userId}` → `204`. The owner hands the space to another member |
-| `GET` | `/invites` | → `{invites: [{id, spaceId, spaceName, spaceIcon, from: {id, username}, createdAt}]}`: waiting for you |
+| `GET` | `/invites` | → `{invites: [{id, spaceId, spaceName, spaceIcon, from: {id, username, displayName, avatar}, createdAt}]}`: waiting for you |
 | `POST` | `/invites/{invite}/accept` | → the space. Joins it |
 | `POST` | `/invites/{invite}/decline` | → `204` |
-| `GET` | `/people` | → `{people: [{id, username}]}`: every account, to invite |
+| `GET` | `/people` | → `{people: [{id, username, displayName, avatar}]}`: every account, to invite |
 
 - `GET /spaces` lists shared spaces you're in with your own. A shared one adds
-  `shared: {role, members: [{id, username}], invites?}`: `role` is `owner` or `member`, members
-  start with the owner, and `invites` (`[{id, userId, username}]`) is there for the owner only.
-  Its `shared` trait names everyone else from your side.
+  `shared: {role, members: [{id, username, displayName, avatar}], invites?}`: `role` is `owner` or
+  `member`, members start with the owner, and `invites` (`[{id, userId, username, displayName,
+  avatar}]`) is there for the owner only. `displayName` and `avatar` are each account's
+  [profile](#profile). Its `shared` trait names everyone else from your side, by their chosen name.
 - Renaming, changing the icon and deleting a shared space (`PUT`/`DELETE /spaces/{id}`) are for
   its owner (`403 not_space_owner`). Names may match one of a member's own spaces; ids may not:
   a space of your own with a shared space's id is refused (`409 space_exists`).
@@ -424,17 +428,36 @@ account. `apiKey` starts with `re_`, and can be left out to keep the saved one. 
 returned: `keyHint` is its last 4 characters. `editable` says whether this account is an admin;
 other accounts get `403 admin_only` when they change it.
 
+### Profile
+
+An account's name and photo, both optional. Without them, the apps show the username and its
+initial.
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `PATCH` | `/profile` | `{displayName}` → the account. `""` goes back to the username |
+| `PUT` | `/profile/avatar` | A square JPEG of at most 512 px a side, at most 1 MiB, as the body (`Content-Type: image/jpeg`) → the account |
+| `DELETE` | `/profile/avatar` | → the account, without a photo |
+| `GET` | `/users/{id}/avatar?v={avatar}` | → the JPEG, to anyone signed in, as accounts see each other's usernames to share spaces; `404 not_found` for an account without one |
+
+A name is at most 64 characters, trimmed, without control characters, and needn't be unique; it
+never replaces the username for signing in. `avatar` on an account is the photo's version, `""`
+without one. The server encodes the photo again, so nothing but its pixels is kept (no EXIF).
+With `v` the current version, the photo is cached for good; a new photo has a new version.
+A photo that isn't `image/jpeg` is `415 unsupported_image`; over 1 MiB, `413 image_too_large`;
+not square, over 512 px or not a readable JPEG, `400 invalid_request` with `field: avatar`.
+
 ### People
 
 | Method | Path | Body → response |
 | --- | --- | --- |
-| `GET` | `/users` | → `{users: [{id, username, isAdmin, createdAt, pending, linkExpiresAt?}]}`, oldest first. Admins only |
-| `POST` | `/users` | `{username}` → `201 {user, link: {token, expiresAt}}`. Invites someone. Admins only |
+| `GET` | `/users` | → `{users: [{id, username, displayName, avatar, isAdmin, createdAt, pending, linkExpiresAt?}]}`, oldest first. Admins only |
+| `POST` | `/users` | `{username, displayName?}` → `201 {user, link: {token, expiresAt}}`. Invites someone; `displayName` is a suggestion they can change when they use the link. Admins only |
 | `POST` | `/users/{id}/link` | → `{user, link: {token, expiresAt}}`, a new setup link replacing the account's last, and the account as it is now. Admins only |
 | `PATCH` | `/users/{id}` | `{isAdmin}` → the account. Admins only |
 | `DELETE` | `/users/{id}` | → `204`. Removes the account and signs it out. Admins only |
-| `POST` | `/auth/setup-link` | `{token}` → `{username, pending}`: whose the link is. No session needed |
-| `POST` | `/auth/setup-link/use` | `{token, password}` → `204`. Sets the password and signs the account out everywhere; sign in after. No session needed |
+| `POST` | `/auth/setup-link` | `{token}` → `{username, pending, displayName?}`: whose the link is, and for an invitation the suggested name. No session needed |
+| `POST` | `/auth/setup-link/use` | `{token, password, displayName?}` → `204`. Sets the password, and an invitation's name when given (a reset ignores it), and signs the account out everywhere; sign in after. No session needed |
 
 **Invited** accounts (`pending`) have no password until their setup link is used, so they can't
 sign in. A **setup link** works once, for 7 days, and an account has at most one: a new one, or
@@ -485,7 +508,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `admin_only` | 403 | Only an admin can do this |
 | `not_space_owner` | 403 | Only the shared space's owner can do this |
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
-| `not_found` | 404 | No such note, session, lock key, image or account |
+| `not_found` | 404 | No such note, session, lock key, image, account or profile photo |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
@@ -510,7 +533,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |
 | `link_invalid` | 410 | The setup link was used, replaced or has expired |
-| `image_too_large` | 413 | Images can be up to 10 MiB |
+| `image_too_large` | 413 | Images can be up to 10 MiB; a profile photo up to 1 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
 | `locked_in_shared_space` | 422 | Locked notes can't be in a shared space |

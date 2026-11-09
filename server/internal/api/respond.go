@@ -131,6 +131,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: err.Error(), Field: "id"})
 	case errors.Is(err, images.ErrNotFound):
 		writeError(w, http.StatusNotFound, "not_found", "image not found")
+	case errors.Is(err, auth.ErrNoAvatar):
+		writeError(w, http.StatusNotFound, "not_found", "photo not found")
 	case errors.Is(err, mail.ErrNotConfigured):
 		writeError(w, http.StatusConflict, "email_not_configured", "add a Resend API key in Settings to send email")
 	case errors.As(err, &send):

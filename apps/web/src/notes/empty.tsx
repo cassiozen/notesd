@@ -1,4 +1,4 @@
-import { useAuth } from '../auth/auth-context'
+import { useAccount, useAuth } from '../auth/auth-context'
 import { Button } from '../ui/button'
 import { Kicker } from '../ui/kicker'
 import styles from './empty.module.css'
@@ -7,8 +7,8 @@ import styles from './empty.module.css'
 export function EmptyPane({ hasNotes, onNew }: { hasNotes: boolean; onNew: () => void }) {
   const { state } = useAuth()
   const firstRun = state.status === 'signed-in' && state.firstRun === true
-  const username = state.status === 'signed-in' || state.status === 'expired' ? state.username : ''
-  const kicker = hasNotes ? 'Nothing selected' : firstRun ? `You’re all set, ${username}` : 'No notes yet'
+  const { name } = useAccount()
+  const kicker = hasNotes ? 'Nothing selected' : firstRun ? `You’re all set, ${name}` : 'No notes yet'
   return (
     <section className={styles.pane} aria-labelledby="empty-title">
       <div className={styles.text}>

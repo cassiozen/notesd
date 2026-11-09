@@ -12,7 +12,7 @@ private. To write notes together, share a space: everyone in it can read and edi
 
 Admins do this in **Settings → Server → People**, in the web, Mac or Android app:
 
-1. Choose **Invite someone…** and enter a username.
+1. Choose **Invite someone…** and enter a username, and the name they'll be shown by if you like.
 2. Send them the link. It works once, for 7 days.
 3. They open it and choose a password.
 
@@ -37,6 +37,8 @@ space and its notes stay with you.
 
 ## Good to know
 
+- People show by the name and photo they chose in **Settings → Server → Name and photo**, or else
+  by their username.
 - Locked notes can't be in a shared space. Your first space, "Notes", is never shared.
 - Moving a note into or out of a shared space changes who can see it, so the app asks first.
 - Leaving a space, or being removed, takes its notes off your devices. Edits that haven't synced

@@ -27,6 +27,9 @@ description: What the server can read, how accounts and sessions are protected, 
   that account's password, so it should be sent privately.
 - **Admins** can change settings that apply to the whole server (email), manage accounts, and
   update the server from Settings. The first account is one. Admins can't see other accounts' notes.
+- **Name and photo** are optional. They're stored unencrypted with the account, not with its notes,
+  and everyone with an account on the server sees them. The photo is encoded again on the server,
+  so its EXIF data (such as where it was taken) is never stored.
 - **The first account** is created by whoever opens the server first. Until then, anyone who can
   reach it could claim it. That's why the guides run notesd on the machine's loopback interface,
   and create the account before putting HTTPS in front. On a hosting platform, create it right
@@ -43,7 +46,8 @@ description: What the server can read, how accounts and sessions are protected, 
 - **Moving a note into a shared space shares it.** The apps ask first, naming who will see it.
 - **Each shared space is its own database file.** The server opens it only for its members.
   Accounts without an invitation or membership get "not found" for space data; invitees can see the invitation, not the notes.
-- **Every account can see the usernames on the server,** so an owner can pick who to invite.
+- **Every account can see the usernames on the server,** and the names and photos people chose, so
+  an owner can pick who to invite.
   They can't see anyone's spaces or notes.
 - **No locked notes.** Locked notes are encrypted with a key only one account has, so a shared
   space can't hold them. Its notes are as readable on the server as any regular note.

@@ -1,4 +1,5 @@
 import { notes } from '../api/notes'
+import { nameOf } from '../api/profile'
 import type { Space, SpaceNews } from '../api/types'
 
 // Nothing kept here: what others changed in a shared space (§7.9) is read from its list, newest
@@ -56,9 +57,9 @@ export async function feedNews(spaces: readonly Space[], me: number): Promise<Sp
         }
         const [latest] = changed
         if (!latest) return null
-        const names = new Map(space.shared?.members.map((m) => [m.id, m.username]))
-        const usernames = [...new Set(changed.map((c) => names.get(c.by)).filter((n) => n !== undefined))]
-        const news: SpaceNews = { spaceId: space.id, count: changed.length, usernames, latestAt: latest.at }
+        const named = new Map(space.shared?.members.map((m) => [m.id, nameOf(m)]))
+        const names = [...new Set(changed.map((c) => named.get(c.by)).filter((n) => n !== undefined))]
+        const news: SpaceNews = { spaceId: space.id, count: changed.length, names, latestAt: latest.at }
         if (atLeast) news.atLeast = true
         return news
       }),

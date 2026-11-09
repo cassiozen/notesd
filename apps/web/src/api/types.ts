@@ -70,8 +70,8 @@ export type Space = {
   shared?: SharedSpace
 }
 
-/** An account, as sharing names it: by username only. */
-export type Account = { id: number; username: string }
+/** An account as others see it: its username, and the name and photo (avatar: its version, '' for none) it chose. */
+export type Account = { id: number; username: string; displayName: string; avatar: string }
 
 /** A shared space's people as this account sees them (§7.9). */
 export type SharedSpace = {
@@ -79,7 +79,7 @@ export type SharedSpace = {
   /** The owner first. */
   members: Account[]
   /** Waiting invitations; the owner's only, absent for members. */
-  invites?: { id: string; userId: number; username: string }[]
+  invites?: ({ userId: number } & Omit<Account, 'id'> & { id: string })[]
 }
 
 /** An invitation into someone else's space, waiting for this account (§7.9). */
@@ -99,8 +99,8 @@ export type SpaceNews = {
   count: number
   /** count is a floor: online, only the list's first pages are read, and more remained. */
   atLeast?: boolean
-  /** Who changed them, latest first. */
-  usernames: string[]
+  /** Who changed them (their chosen name, or else username), latest first. */
+  names: string[]
   latestAt: number
 }
 
@@ -141,6 +141,10 @@ export type SessionInfo = {
   /** The account's id, as notes' updatedBy and shared spaces' members name it; absent from servers before sharing. */
   userId?: number
   username: string
+  /** The name chosen to show instead of the username; '' for none. */
+  displayName: string
+  /** The photo's version, for avatarURL; '' for none. */
+  avatar: string
   /** May change server-wide settings and manage accounts. */
   isAdmin: boolean
   csrfToken: string
@@ -152,6 +156,9 @@ export type SessionInfo = {
 export type Person = {
   id: number
   username: string
+  /** As on SessionInfo. */
+  displayName: string
+  avatar: string
   isAdmin: boolean
   createdAt: number
   /** Invited: no password chosen yet. */

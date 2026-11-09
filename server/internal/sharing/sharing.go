@@ -218,13 +218,13 @@ func (s *Service) Space(ctx context.Context, userID int64, spaceID string) (spac
 // members lists a shared space's members, the owner first, then by when
 // they joined.
 func (s *Service) members(ctx context.Context, spaceID string) ([]spaces.Person, error) {
-	return people(s.system.R.QueryContext(ctx, `SELECT u.id, u.username FROM space_members m
+	return people(s.system.R.QueryContext(ctx, `SELECT u.id, u.username, u.display_name, u.avatar FROM space_members m
 		JOIN users u ON u.id = m.user_id JOIN shared_spaces ss ON ss.id = m.space_id
 		WHERE m.space_id = ? ORDER BY u.id != ss.owner_id, m.joined_at, u.id`, spaceID))
 }
 
 func (s *Service) invitees(ctx context.Context, spaceID string) ([]spaces.Invitee, error) {
-	rows, err := s.system.R.QueryContext(ctx, `SELECT i.id, u.id, u.username FROM space_invites i
+	rows, err := s.system.R.QueryContext(ctx, `SELECT i.id, u.id, u.username, u.display_name, u.avatar FROM space_invites i
 		JOIN users u ON u.id = i.user_id WHERE i.space_id = ? ORDER BY i.created_at, i.id`, spaceID)
 	if err != nil {
 		return nil, err
@@ -233,7 +233,7 @@ func (s *Service) invitees(ctx context.Context, spaceID string) ([]spaces.Invite
 	out := []spaces.Invitee{}
 	for rows.Next() {
 		var in spaces.Invitee
-		if err := rows.Scan(&in.ID, &in.UserID, &in.Username); err != nil {
+		if err := rows.Scan(&in.ID, &in.UserID, &in.Username, &in.DisplayName, &in.Avatar); err != nil {
 			return nil, err
 		}
 		out = append(out, in)
@@ -241,10 +241,10 @@ func (s *Service) invitees(ctx context.Context, spaceID string) ([]spaces.Invite
 	return out, rows.Err()
 }
 
-// People lists every account, to invite: id and username, as any account
-// may see them.
+// People lists every account, to invite, as any account may see them.
 func (s *Service) People(ctx context.Context) ([]spaces.Person, error) {
-	return people(s.system.R.QueryContext(ctx, `SELECT id, username FROM users ORDER BY username_key`))
+	return people(s.system.R.QueryContext(ctx,
+		`SELECT id, username, display_name, avatar FROM users ORDER BY username_key`))
 }
 
 func people(rows *sql.Rows, err error) ([]spaces.Person, error) {
@@ -255,7 +255,7 @@ func people(rows *sql.Rows, err error) ([]spaces.Person, error) {
 	out := []spaces.Person{}
 	for rows.Next() {
 		var p spaces.Person
-		if err := rows.Scan(&p.ID, &p.Username); err != nil {
+		if err := rows.Scan(&p.ID, &p.Username, &p.DisplayName, &p.Avatar); err != nil {
 			return nil, err
 		}
 		out = append(out, p)
@@ -521,8 +521,8 @@ func (s *Service) openRef(ctx context.Context, ref string) (*userdata.Data, erro
 
 // Invitations lists the invitations waiting for userID.
 func (s *Service) Invitations(ctx context.Context, userID int64) ([]Invitation, error) {
-	rows, err := s.system.R.QueryContext(ctx, `SELECT i.id, i.space_id, u.id, u.username, i.created_at
-		FROM space_invites i JOIN users u ON u.id = i.invited_by
+	rows, err := s.system.R.QueryContext(ctx, `SELECT i.id, i.space_id, u.id, u.username, u.display_name, u.avatar,
+		i.created_at FROM space_invites i JOIN users u ON u.id = i.invited_by
 		WHERE i.user_id = ? ORDER BY i.created_at, i.id`, userID)
 	if err != nil {
 		return nil, err
@@ -530,7 +530,8 @@ func (s *Service) Invitations(ctx context.Context, userID int64) ([]Invitation, 
 	var all []Invitation
 	for rows.Next() {
 		var in Invitation
-		if err := rows.Scan(&in.ID, &in.SpaceID, &in.From.ID, &in.From.Username, &in.CreatedAt); err != nil {
+		if err := rows.Scan(&in.ID, &in.SpaceID, &in.From.ID, &in.From.Username, &in.From.DisplayName,
+			&in.From.Avatar, &in.CreatedAt); err != nil {
 			rows.Close()
 			return nil, err
 		}

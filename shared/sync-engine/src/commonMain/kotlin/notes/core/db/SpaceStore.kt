@@ -52,9 +52,9 @@ data class Space(
 
 /**
  * What other members changed in a shared space since this device last showed it (§7.9): [count] notes,
- * [usernames] of who changed them (latest first), the latest at [latestAt].
+ * the [names] of who changed them (latest first), the latest at [latestAt].
  */
-data class SpaceNews(val count: Int, val usernames: List<String>, val latestAt: Long)
+data class SpaceNews(val count: Int, val names: List<String>, val latestAt: Long)
 
 private val traitsJson = Json { ignoreUnknownKeys = true }
 private val traitsSerializer = ListSerializer(SpaceTrait.serializer())
@@ -104,14 +104,17 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
     /** The invitations waiting for this account, as last synced (§7.9). */
     suspend fun invites(): List<RemoteInvite> = db.read { sql ->
         sql.query(
-            "SELECT id, space_id, space_name, space_icon, from_id, from_username, created_at FROM invites ORDER BY created_at, id"
+            """
+            SELECT id, space_id, space_name, space_icon, from_id, from_username, created_at, from_display_name, from_avatar
+            FROM invites ORDER BY created_at, id
+            """
         ) {
             RemoteInvite(
                 it.getText(0),
                 it.getText(1),
                 it.getText(2),
                 it.getText(3),
-                notes.core.api.Member(it.getLong(4), it.getText(5)),
+                notes.core.api.Member(it.getLong(4), it.getText(5), it.getText(7), it.getText(8)),
                 it.getLong(6)
             )
         }
@@ -151,7 +154,7 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                     since
                 ) { it.getLong(0) to it.getLong(1) }
                 if (changed.isEmpty()) continue
-                val names = shared?.members.orEmpty().associate { it.id to it.username }
+                val names = shared?.members.orEmpty().associate { it.id to it.name }
                 val who = changed.map { it.first }.distinct().mapNotNull { names[it] }
                 put(id, SpaceNews(changed.size, who, changed.first().second))
             }
@@ -301,8 +304,9 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
             for (i in remote) {
                 sql.exec(
                     """
-                    INSERT INTO invites (id, space_id, space_name, space_icon, from_id, from_username, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO invites (id, space_id, space_name, space_icon, from_id, from_username, created_at,
+                        from_display_name, from_avatar)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     i.id,
                     i.spaceId,
@@ -310,7 +314,9 @@ class SpaceStore(private val db: Database, private val clock: () -> Long = ::now
                     i.spaceIcon,
                     i.from.id,
                     i.from.username,
-                    i.createdAt
+                    i.createdAt,
+                    i.from.displayName,
+                    i.from.avatar
                 )
             }
         }

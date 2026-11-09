@@ -6,7 +6,9 @@ const path = (id: number) => `/users/${id}`
 /** Admins only: everyone else gets 403 admin_only. */
 export const users = {
   list: () => request<{ users: Person[] }>('GET', '/users'),
-  invite: (username: string) => request<{ user: Person; link: SetupLink }>('POST', '/users', { username }),
+  /** displayName: a suggestion, which they can change on the link's page. */
+  invite: (username: string, displayName: string) =>
+    request<{ user: Person; link: SetupLink }>('POST', '/users', { username, displayName }),
   /** Replaces the account's link; its password keeps working until the new one is used. With the account as it is now. */
   newLink: (id: number) => request<{ user: Person; link: SetupLink }>('POST', `${path(id)}/link`),
   setAdmin: (id: number, isAdmin: boolean) => request<Person>('PATCH', path(id), { isAdmin }),
@@ -15,8 +17,10 @@ export const users = {
 
 /** The page a setup link opens, before anyone is signed in. */
 export const setupLinks = {
-  /** 410 link_invalid once used, replaced or expired. */
-  peek: (token: string) => request<{ username: string; pending: boolean }>('POST', '/auth/setup-link', { token }),
-  /** Signs the account out everywhere; sign in with the new password after. */
-  use: (token: string, password: string) => request<undefined>('POST', '/auth/setup-link/use', { token, password }),
+  /** 410 link_invalid once used, replaced or expired. displayName: an invitation's suggested name only. */
+  peek: (token: string) =>
+    request<{ username: string; pending: boolean; displayName?: string }>('POST', '/auth/setup-link', { token }),
+  /** Signs the account out everywhere; sign in with the new password after. displayName: invitations only. */
+  use: (token: string, password: string, displayName?: string) =>
+    request<undefined>('POST', '/auth/setup-link/use', { token, password, displayName }),
 }

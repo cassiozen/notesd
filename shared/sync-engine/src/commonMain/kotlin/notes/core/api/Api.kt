@@ -262,13 +262,24 @@ data class SharedSpace(
     val isOwner: Boolean get() = role == "owner"
 }
 
-/** An account as other accounts see it. */
+/** An account as other accounts see it: with the name and photo ([avatar], its version) it chose, if any. */
 @Serializable
-data class Member(val id: Long, val username: String)
+data class Member(val id: Long, val username: String, val displayName: String = "", val avatar: String = "") {
+    /** How the apps name someone: their chosen name, or else their username. */
+    val name: String get() = displayName.ifEmpty { username }
+}
 
 /** A pending invitation into a shared space, as its owner sees it. */
 @Serializable
-data class Invitee(val id: String, val userId: Long, val username: String)
+data class Invitee(
+    val id: String,
+    val userId: Long,
+    val username: String,
+    val displayName: String = "",
+    val avatar: String = ""
+) {
+    val name: String get() = displayName.ifEmpty { username }
+}
 
 /** An invitation waiting for this account (§7.9). */
 @Serializable
