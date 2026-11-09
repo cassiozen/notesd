@@ -175,9 +175,10 @@ tasks.named<Test>("jvmTest") {
     systemProperty("notes.serverBin", serverBin.get().asFile.absolutePath)
     // More seeds for RandomSyncTest: ./gradlew jvmTest -Pnotes.seeds=1,2,3
     providers.gradleProperty("notes.seeds").orNull?.let { systemProperty("notes.seeds", it) }
-    // Crypto fixtures shared with the web app; the Markdown ones are compiled in (generateFixtures).
+    // Crypto and agent fixtures shared with the web app; the Markdown ones are compiled in (generateFixtures).
     systemProperty("notes.sharedDir", file("..").absolutePath)
     inputs.dir(file("../crypto-fixtures"))
+    inputs.dir(file("../agent-fixtures"))
 }
 
 // Node comes from mise (the web app's), not a download: settings only allow declared repositories.

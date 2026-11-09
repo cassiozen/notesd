@@ -3,6 +3,8 @@ import { TextSelection } from '@tiptap/pm/state'
 import { afterEach, describe, expect, it } from 'vitest'
 import { applyForAgent, madeTo, readForAgent, type AgentOp } from './agent-edit'
 import { editorExtensions } from './extensions'
+import cursorCases from '../../../../shared/agent-fixtures/cursor.json'
+import madeToCases from '../../../../shared/agent-fixtures/made-to.json'
 import { noteContent, noteFields } from './note-doc'
 
 let editor: Editor
@@ -50,6 +52,24 @@ describe('readForAgent', () => {
   })
 })
 
+describe('readForAgent (shared cases)', () => {
+  const CARET = '\uE001'
+  it.each(cursorCases.cases)('$name', (c) => {
+    editor = new Editor({
+      extensions: editorExtensions,
+      content: noteContent({ title: c.title, content: c.content }),
+    })
+    let at = -1
+    editor.state.doc.descendants((node, pos) => {
+      const i = node.isText ? (node.text ?? '').indexOf(CARET) : -1
+      if (at < 0 && i >= 0) at = pos + i
+    })
+    const tr = editor.state.tr.delete(at, at + 1)
+    editor.view.dispatch(tr.setSelection(TextSelection.create(tr.doc, at)))
+    expect(readForAgent(editor.state).cursor).toBe(c.cursor)
+  })
+})
+
 describe('applyForAgent', () => {
   it('changes only what differs, keeping the cursor, as one undoable step', () => {
     open('First\n\nSecond', 'Sec')
@@ -70,37 +90,9 @@ describe('applyForAgent', () => {
   })
 })
 
-describe('madeTo', () => {
-  const before = { title: 'T', content: 'Milk\n' }
-  const change = (op?: AgentOp) => ({ before, after: { title: 'T', content: 'Milk\n\n#tag\n' }, op })
-
-  it('is after while the editor still shows before', () => {
-    expect(madeTo(change(), before, null)).toEqual({ title: 'T', content: 'Milk\n\n#tag\n' })
-  })
-
-  it('makes the op to what the user typed meanwhile, as the server would', () => {
-    const now = { title: 'T', content: 'Milk\nTea\n' }
-    expect(madeTo(change({ kind: 'insert', at: 'end', text: '#tag' }), now, null)?.content).toBe('Milk\nTea\n\n#tag\n')
-    expect(madeTo(change({ kind: 'insert', at: 'start', text: '# List' }), now, null)?.content).toBe('# List\n\nMilk\nTea\n')
-    expect(madeTo(change({ kind: 'insert', at: 'end', text: 'First' }), { title: 'T', content: '\n' }, null)?.content).toBe('First\n')
-    expect(madeTo(change({ kind: 'insert', at: 'cursor', text: '🍵 ' }), { title: 'T', content: '🥛 Milk\nTea\n' }, 7)?.content).toBe(
-      '🥛 Milk\n🍵 Tea\n',
-    )
-    expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: 'Green tea' }), now, null)?.content).toBe('Milk\nGreen tea\n')
-    expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: '$&$&' }), now, null)?.content).toBe('Milk\n$&$&\n')
-    expect(madeTo(change({ kind: 'title', title: 'Shopping' }), now, null)).toEqual({ title: 'Shopping', content: 'Milk\nTea\n' })
-  })
-
-  it('is null where the op no longer fits', () => {
-    const now = { title: 'T', content: 'Tea\nTea\n' }
-    expect(madeTo(change({ kind: 'replace', find: 'Milk', replace: 'Oat milk' }), now, null)).toBeNull()
-    expect(madeTo(change({ kind: 'replace', find: 'Tea', replace: 'Coffee' }), now, null)).toBeNull()
-    // Overlapping, "aa" is in "aaa" twice.
-    expect(madeTo(change({ kind: 'replace', find: 'aa', replace: 'b' }), { title: 'T', content: 'aaa\n' }, null)).toBeNull()
-    expect(madeTo(change({ kind: 'insert', at: 'cursor', text: 'x' }), now, null)).toBeNull()
-    expect(madeTo(change(), now, null)).toBeNull()
-    // The whole content, made again, would wipe out the typing.
-    expect(madeTo(change({ kind: 'content', text: 'Rewritten\n' }), now, null)).toBeNull()
-    expect(madeTo(change({ kind: 'content', text: 'Rewritten\n' }), before, null)?.content).toBe('Milk\n\n#tag\n')
+describe('madeTo (shared cases)', () => {
+  it.each(madeToCases.cases)('$name', (c) => {
+    const change = { before: c.before, after: c.after, op: c.op as AgentOp }
+    expect(madeTo(change, c.now, c.cursor)).toEqual(c.want)
   })
 })
