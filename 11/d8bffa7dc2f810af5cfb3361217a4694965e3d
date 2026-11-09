@@ -1,0 +1,73 @@
+apps/web/src/api/spaces.ts
+  s_cc6cacc0a6fc01::t_653a6edb77bb41 34
+apps/web/src/notes/sharing.ts
+  s_cc6cacc0a6fc01::t_b7e267b21ee2b4 246-247
+apps/web/src/notes/traits.test.tsx
+  s_cc6cacc0a6fc01::t_ae731c0803b329 12,26-27,32-37,57-63
+apps/web/src/notes/traits.tsx
+  s_cc6cacc0a6fc01::t_24248aae4c2868 3,74-75,110-117,127,131
+apps/web/src/settings/agent-section.tsx
+  s_cc6cacc0a6fc01::t_6faa37aa82b27a 1,4,6-10,17,145,240-263,265-318,320,337-342
+apps/web/src/settings/settings.module.css
+  s_cc6cacc0a6fc01::t_dd39d0eeecf239 883-892
+apps/web/src/settings/space-info.tsx
+  s_cc6cacc0a6fc01::t_0e819f524a3a47 8,34,100,140
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_e9639a211440e1 17-21,23-24,27-29,33,40,43,45-54,56,59-61,64-72,75-82,87-88,91-92,94-97,99,104-106,107,116,127-149
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_883be3995cb279 337-339,478-484,615
+server/internal/agent/trait.go
+  s_cc6cacc0a6fc01::t_0d322541cb6d2a 1-86
+server/internal/api/agent_trait_test.go
+  s_cc6cacc0a6fc01::t_b3304b95738770 1-68
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_08ebc193ac5d25 76-78
+server/internal/api/image_test.go
+  s_cc6cacc0a6fc01::t_1317e0c3c81769 257-259
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_62ac4a1f1b25a3 225-226
+server/internal/notes/notes.go
+  s_cc6cacc0a6fc01::t_0391adb249e0a4 228
+server/internal/sharing/sharing.go
+  s_cc6cacc0a6fc01::t_6f236d46da6b04 34-35,350-354
+server/internal/userdata/userdata.go
+  s_cc6cacc0a6fc01::t_1fc0282eb2087b 70-71,84-86,90-94,96-100,162,204
+apps/web/src/agent/socket.ts
+  s_cc6cacc0a6fc01::t_fbfc65a07da4b4 58-75,77-87,91-93,102,104-110
+docs/contributing/architecture.md
+  h_506d0d833c777f 66
+server/internal/editors/hub.go
+  s_cc6cacc0a6fc01::t_8a87d9ebd02e5b 35,59,64,74-75,108,121,145-146,148,154-155,161,182-183,188-189,194-199,201,203,205-209,214-216,227,236,244,258,262,269,275-276,297,302
+server/internal/api/agent_socket.go
+  s_cc6cacc0a6fc01::t_42e2451ef8eaa3 16-36,42-54,56-58,59,61-64,72-107
+apps/web/src/notes/note-pane.tsx
+  s_66be3861a6f5cd::t_c7a47fc75f68c4 163-167,400
+apps/web/test/agent-socket.test.tsx
+  s_cc6cacc0a6fc01::t_146a1568d9aa14 127,134,137-147,155-158,167-177,180-211,214,228
+server/internal/api/agent_socket_test.go
+  s_cc6cacc0a6fc01::t_25123dab8e8561 25,31,34,42,49,58,63,67,73,76,100,107,114,117,122,128,132,137,146,151-234
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "11d8bffa7dc2f810af5cfb3361217a4694965e3d",
+  "prompts": {},
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
