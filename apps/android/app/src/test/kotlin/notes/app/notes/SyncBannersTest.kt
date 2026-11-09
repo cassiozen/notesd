@@ -22,6 +22,7 @@ import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
 import notes.app.account.Account
+import notes.app.runOffMain
 import notes.app.settings.shownStatus
 import notes.app.settings.syncSummary
 import notes.app.shutDown
@@ -90,7 +91,7 @@ class SyncBannersTest {
         compose.waitUntilExactlyOneExists(hasText("1 change couldn’t sync. It’s kept on this device."))
         compose.onNode(hasText("Retry") and hasClickAction()).performClick()
         compose.waitUntilDoesNotExist(hasText("1 change couldn’t sync. It’s kept on this device."))
-        assertEquals(0, runBlocking { graph.sync.parked() })
+        assertEquals(0, compose.runOffMain { graph.sync.parked() })
         // Every request named the app.
         assertEquals(
             setOf("android/${BuildConfig.VERSION_NAME}"),
@@ -110,7 +111,7 @@ class SyncBannersTest {
         }
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntilExactlyOneExists(hasText(UPGRADE_REQUIRED_MESSAGE))
-        assertEquals(1, runBlocking { graph.store.pendingNotes() })
+        assertEquals(1, compose.runOffMain { graph.store.pendingNotes() })
     }
 
     @Test

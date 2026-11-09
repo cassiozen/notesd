@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import notes.app.MainActivity
 import notes.app.NotesApp
 import notes.app.TestNotesApp
+import notes.app.runOffMain
 import notes.app.shutDown
 import org.junit.After
 import org.junit.Before
@@ -61,7 +62,7 @@ class MergeUndoFlowTest {
         val undone = "Merge undone. The other version was kept as “Plan (Conflicted copy)”."
         compose.waitUntilExactlyOneExists(hasText(undone))
         compose.waitUntilDoesNotExist(hasText("Merged with changes from another device."))
-        val notes = runBlocking { graph.store.list().map { graph.store.get(it.id)!! } }
+        val notes = compose.runOffMain { graph.store.list().map { graph.store.get(it.id)!! } }
         assertEquals("One\n\nTwo, here\n", notes.single { it.id == "n" }.content)
         assertEquals("One, elsewhere\n\nTwo\n", notes.single { it.id != "n" }.content)
     }

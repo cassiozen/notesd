@@ -119,7 +119,7 @@ class TagsFlowTest {
         toTags()
         compose.onNodeWithText("Locked").assertDoesNotExist()
 
-        runBlocking { graph.store.save("e", "Bank", LockedNotes.encrypt(LockedNotes.newKey(), "PIN\n")) }
+        compose.runOffMain { graph.store.save("e", "Bank", LockedNotes.encrypt(LockedNotes.newKey(), "PIN\n")) }
         compose.waitUntilExactlyOneExists(hasText("Locked"))
         compose.onNodeWithText("Locked").performClick()
         compose.waitUntilExactlyOneExists(hasText("Bank"))

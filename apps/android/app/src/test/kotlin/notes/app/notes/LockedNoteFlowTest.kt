@@ -276,7 +276,9 @@ class LockedNoteFlowTest {
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntilExactlyOneExists(hasText("Locked"))
         onMain { graph.locks.unlock(PASSWORD) }
-        scenario!!.onActivity { activity -> runBlocking { graph.fingerprint.enable(activity) } }
+        lateinit var activity: MainActivity
+        scenario!!.onActivity { activity = it }
+        onMain { graph.fingerprint.enable(activity) }
         assertTrue(graph.fingerprint.enabled.value)
         onMain {
             graph.locks.lock()
