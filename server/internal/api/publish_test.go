@@ -148,8 +148,13 @@ func TestPublishedSitesFollowTheirNotes(t *testing.T) {
 	post := home.body[strings.Index(home.body, `href="./trip-`)+8:]
 	post = post[:strings.Index(post, `"`)]
 	s.owner.do("PUT", "/api/v1/notes/trip", map[string]any{"operationId": "op-4", "baseRevision": 1, "title": "Road trip", "content": "To the #coast"})
-	s.eventually("/@family/", "Road trip")
-	r := s.visit("/@family/" + post)
+	// The page shows the new title a moment before the manifest that redirects is in place.
+	var r page
+	for deadline := time.Now().Add(5 * time.Second); time.Now().Before(deadline); time.Sleep(20 * time.Millisecond) {
+		if r = s.visit("/@family/" + post); r.status == 301 {
+			break
+		}
+	}
 	if r.status != 301 || !strings.HasPrefix(r.header.Get("Location"), "/@family/road-trip-") {
 		t.Fatalf("old slug: %d %v", r.status, r.header)
 	}
