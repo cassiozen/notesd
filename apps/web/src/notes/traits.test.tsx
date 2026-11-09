@@ -21,11 +21,14 @@ describe('the registry', () => {
     expect(traitGlyph('shared')).not.toBe(UnknownGlyph)
   })
 
-  it('offers sharing for a space of the account’s own, never the default, nor to a member', () => {
-    expect(canTurnOn(space())).toEqual(['shared'])
+  it('offers sharing and publishing for a space of the account’s own, never the default, nor to a member', () => {
+    expect(canTurnOn(space())).toEqual(['shared', 'published'])
     expect(canTurnOn({ ...space(), id: 'default' })).toEqual([])
     // Shared once, no one left in it: its owner can share it again.
-    expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [{ id: 1, username: 'me', displayName: '', avatar: '' }] } })).toEqual(['shared'])
+    expect(canTurnOn({ ...space(), shared: { role: 'owner', members: [{ id: 1, username: 'me', displayName: '', avatar: '' }] } })).toEqual([
+      'shared',
+      'published',
+    ])
     expect(canTurnOn({ ...space(), shared: { role: 'member', members: [] } })).toEqual([])
   })
 })
@@ -42,13 +45,17 @@ describe('traitRows', () => {
     const rows = traitRows(space(calendar, agent, shared))
     expect(rows.map((r) => [r.kind, r.kind === 'off' ? r.entry.key : r.trait.key])).toEqual([
       ['on', 'shared'],
+      ['off', 'published'],
       ['on', 'agent'],
       ['unknown', 'calendar'],
     ])
   })
 
   it('lists only what can be turned on for a space with none', () => {
-    expect(traitRows(space()).map((r) => [r.kind, r.kind === 'off' ? r.entry.key : r.trait.key])).toEqual([['off', 'shared']])
+    expect(traitRows(space()).map((r) => [r.kind, r.kind === 'off' ? r.entry.key : r.trait.key])).toEqual([
+      ['off', 'shared'],
+      ['off', 'published'],
+    ])
     expect(traitRows({ ...space(), id: 'default' })).toEqual([])
   })
 })

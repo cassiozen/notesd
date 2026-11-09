@@ -1,0 +1,197 @@
+.off {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px 12px;
+}
+
+.lead {
+  margin: 0;
+  padding: 10px 12px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
+.problem {
+  margin: 0;
+  padding: 10px 12px 0;
+  font-size: 13px;
+  color: var(--danger);
+}
+
+.off > .lead {
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 8px 12px;
+}
+
+.row + .row {
+  border-top: 1px solid var(--hair);
+}
+
+.line {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* The whole address reads as one line; only the handle is a field. */
+.address {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  font: 500 14px/1.4 var(--font-mono);
+  overflow: hidden;
+}
+
+.prefix {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-3);
+}
+
+/* Reads as part of the address until hovered or focused, like the space's name above. */
+.handle {
+  min-width: 2ch;
+  max-width: 100%;
+  margin: -2px 0 -2px -2px;
+  padding: 2px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  transition: background 0.15s;
+}
+
+.handle:hover {
+  background: var(--hover);
+}
+
+.handle:focus {
+  outline: none;
+  background: var(--field);
+  box-shadow: inset 0 0 0 1.5px var(--focus);
+}
+
+.actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.open {
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+  text-decoration: none;
+}
+
+.open:hover {
+  background: var(--hover);
+}
+
+.open:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.summary {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  list-style: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+/* Flex drops the built-in marker: a chevron says it opens. */
+.summary::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  margin: 0 2px;
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: rotate(-45deg);
+  transition: transform 0.15s;
+}
+
+[open] > .summary::before {
+  transform: rotate(45deg);
+}
+
+.summary:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.css {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
+.code {
+  width: 100%;
+  min-height: 140px;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid var(--hair);
+  border-radius: 10px;
+  background: var(--bg);
+  color: var(--ink);
+  font: 13px/1.5 var(--font-mono);
+  tab-size: 2;
+}
+
+.code:focus-visible {
+  outline: none;
+  border-color: var(--ink-3);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+.hint {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-3);
+}
+
+.hint code {
+  font: 12px var(--font-mono);
+}
+
+.save {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .summary::before {
+    transition: none;
+  }
+}
