@@ -548,7 +548,7 @@ private fun Header(
         // No name here to follow, so the traits follow the icon.
         if (traits.isNotEmpty()) {
             // The switcher's trait button on the phone's tags screen, the same size here.
-            TraitGroup(traits, onTraits, Modifier.height(40.dp), glyphSize = 18.dp)
+            TraitGroup(traits, onTraits, Modifier.height(40.dp), glyphSize = 15.dp)
             Spacer(Modifier.width(8.dp))
         }
         Text(

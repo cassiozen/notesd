@@ -209,8 +209,8 @@ fun TagsPane(
                         // glyphs and Settings beside it is cut short.
                         style = if (docked) Type.space.copy(fontSize = 20.sp, lineHeight = 24.sp) else Type.space,
                         iconSize = if (docked) 26.dp else 30.dp,
-                        // At 26sp, 16dp glyphs look lost.
-                        glyphSize = if (docked) 16.dp else 18.dp,
+                        // Scaled with the name: at 26sp, 13dp glyphs look lost.
+                        glyphSize = if (docked) 13.dp else 15.dp,
                         onInfo = onSpaceInfo,
                         // Docked, a sheet from the bottom would land far from the sidebar's top corner.
                         popup = docked,

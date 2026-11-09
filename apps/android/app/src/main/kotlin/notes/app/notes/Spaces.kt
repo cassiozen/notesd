@@ -250,7 +250,7 @@ fun TraitGlyphs(traits: List<SpaceTrait>, size: Dp, modifier: Modifier = Modifie
  * as tall as [modifier] makes it. Nothing without traits.
  */
 @Composable
-fun TraitGroup(traits: List<SpaceTrait>, onClick: () -> Unit, modifier: Modifier = Modifier, glyphSize: Dp = 16.dp) {
+fun TraitGroup(traits: List<SpaceTrait>, onClick: () -> Unit, modifier: Modifier = Modifier, glyphSize: Dp = 13.dp) {
     if (traits.isEmpty()) return
     val t = LocalTokens.current
     val interaction = remember { MutableInteractionSource() }
@@ -261,13 +261,13 @@ fun TraitGroup(traits: List<SpaceTrait>, onClick: () -> Unit, modifier: Modifier
     Glyphs(
         traits,
         glyphSize,
-        9.dp,
+        5.dp,
         modifier
             .clip(RoundedCornerShape(10.dp))
             .background(if (pressed) t.on else t.hover)
             .clickable(interaction, ripple(), role = Role.Button, onClick = onClick)
             .semantics { contentDescription = description }
-            .padding(horizontal = 9.dp)
+            .padding(horizontal = 6.dp)
     )
 }
 

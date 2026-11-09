@@ -91,7 +91,7 @@ fun SpaceSwitcher(
     modifier: Modifier = Modifier,
     style: TextStyle = Type.space,
     iconSize: Dp = 30.dp,
-    glyphSize: Dp = 16.dp,
+    glyphSize: Dp = 13.dp,
     onInfo: (String) -> Unit = {},
     popup: Boolean = false,
     invites: List<SpaceInvite> = emptyList(),

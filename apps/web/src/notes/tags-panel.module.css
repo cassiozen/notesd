@@ -99,7 +99,7 @@
   min-width: 0;
   display: flex;
   margin: 0;
-  font: 600 20px/1 var(--font-sans);
+  font: 600 18px/1 var(--font-sans);
   letter-spacing: -0.015em;
   --switcher-icon: 26px;
 }

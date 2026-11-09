@@ -15,25 +15,34 @@
   color: var(--danger);
 }
 
-/* Filled at rest: it reads as one group, and as something to press. At least as tall as the
-   switcher's highlight, which it stretches to beside the switcher. */
+/* Filled at rest: it reads as one group, and as something to press. Hugs its glyphs, centred
+   on the row rather than stretched to the switcher's highlight, so it stays secondary to the name. */
 .group {
+  position: relative;
   flex: none;
+  align-self: center;
   display: grid;
   place-items: center;
-  min-height: 32px;
   margin: 0;
-  padding: 0 9px;
+  padding: 5px;
   border: 0;
-  border-radius: 10px;
-  background: var(--hover);
+  border-radius: 7px;
+  /* Fainter than a hover: it shouldn't outweigh the space's name beside it. */
+  background: color-mix(in oklab, var(--hover) 60%, transparent);
   cursor: pointer;
 }
 
+/* Drawn short, but still a finger's height to tap. */
+.group::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
+}
+
 .group .glyphs {
-  gap: 9px;
+  gap: 5px;
 }
 
 .group:hover {
-  background: var(--on);
+  background: var(--hover);
 }
