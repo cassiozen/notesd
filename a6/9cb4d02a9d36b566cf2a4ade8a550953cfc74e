@@ -1,0 +1,19 @@
+server/internal/api/agent_trait_test.go
+  s_cc6cacc0a6fc01::t_def09901dcc681 55,59,60,64
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a69cb4d02a9d36b566cf2a4ade8a550953cfc74e",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,26 @@
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SpaceStore.kt
+  s_82799bf566b6e4::t_15b6384ac20226 107-110,117,307-309
+  s_82799bf566b6e4::t_00b72846f39fc0 317-319
+shared/sync-engine/src/commonMain/migrations/0015_invite_profiles.sql
+  s_82799bf566b6e4::t_15b6384ac20226 1-4
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_82799bf566b6e4::t_734de8b46b3042 7
+  s_82799bf566b6e4::t_c36f7344918ac8 269-275
+  s_82799bf566b6e4::t_5b19f33b148e4b 276
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "88d1a89bf18ea010215d67a53cea6e90d398bdfc",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

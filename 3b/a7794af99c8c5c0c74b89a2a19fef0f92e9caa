@@ -1,0 +1,21 @@
+docs/concepts/security-model.md
+  s_82799bf566b6e4::t_44ba8875712866 31-32,49-50
+docs/guides/using/sharing.md
+  s_82799bf566b6e4::t_c0dd902f3fd1ea 15,40-41
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ba7794af99c8c5c0c74b89a2a19fef0f92e9caa",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

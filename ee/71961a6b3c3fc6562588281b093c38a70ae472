@@ -1,0 +1,33 @@
+apps/ios/Notes/App/AppGraph.swift
+  s_82799bf566b6e4::t_00e5430550c59c 294-297
+apps/ios/Notes/Account/Avatars.swift
+  s_82799bf566b6e4::t_00e5430550c59c 38,46,69-70,77-78
+  s_82799bf566b6e4::t_69050bf5de914d 11-14,22-24,30-37,39,43-45,47-53,57,62-64,67-68,71-76,79,81-93
+  s_82799bf566b6e4::t_1c06ae422bd7fd 80
+apps/ios/Notes/Account/AccountStore.swift
+  s_82799bf566b6e4::t_00e5430550c59c 92-94,96-98
+apps/ios/Notes/Settings/SettingsView.swift
+  s_82799bf566b6e4::t_25c6ca44098316 214
+apps/ios/NotesCore/Tests/NotesCoreTests/PrepareImageTests.swift
+  s_82799bf566b6e4::t_897746c843ed98 19-42,58,64-68
+apps/ios/Notes/Settings/LockedNotesSection.swift
+  s_82799bf566b6e4::t_25c6ca44098316 114-115,146
+apps/ios/Notes/Settings/ProfileSheet.swift
+  s_82799bf566b6e4::t_25c6ca44098316 37,42-44,61,82,92-95,100,102,134,148,153-156,160
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "ee71961a6b3c3fc6562588281b093c38a70ae472",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

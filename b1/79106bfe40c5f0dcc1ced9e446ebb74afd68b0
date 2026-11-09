@@ -1,0 +1,41 @@
+server/internal/api/profile_test.go
+  s_82799bf566b6e4::t_c3555e2dfeb834 11-12
+  s_82799bf566b6e4::t_1004e067f77680 65-68,171
+apps/web/src/auth/auth-context.tsx
+  s_82799bf566b6e4::t_9bbc019f4e8c6f 23,68,213
+apps/web/e2e/people.spec.ts
+  s_82799bf566b6e4::t_0ac392d5e35a76 97-102,107-109,111-122,126-128
+  s_82799bf566b6e4::t_3c620164c5487c 103-106,123-125,129
+  s_82799bf566b6e4::t_269a3345fddc01 110
+  s_82799bf566b6e4::t_cead40d2a506b6 72
+apps/web/src/settings/people.tsx
+  s_82799bf566b6e4::t_84bce69ab27401 2,52-61,70
+  s_82799bf566b6e4::t_8d3e41791ae71d 46,65,74,109
+server/internal/auth/users.go
+  s_82799bf566b6e4::t_c139c0ebe233b3 94-97
+apps/web/test/profile.test.tsx
+  s_82799bf566b6e4::t_269a3345fddc01 68-71,75
+  s_82799bf566b6e4::t_259be8caa2363d 14-16,65-67,72-74,76-94
+  s_82799bf566b6e4::t_ee03f575d61a7b 95
+docs/reference/api.md
+  s_82799bf566b6e4::t_c139c0ebe233b3 510,535
+  s_82799bf566b6e4::t_6eac636f691942 446-447
+apps/web/src/settings/profile.tsx
+  s_82799bf566b6e4::t_9bbc019f4e8c6f 44-46,52,59,65-66,72,80,112,157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b179106bfe40c5f0dcc1ced9e446ebb74afd68b0",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
