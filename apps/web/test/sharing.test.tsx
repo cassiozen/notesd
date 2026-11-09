@@ -141,7 +141,11 @@ describe('sharing a space', () => {
     ])
 
     await user.click(within(info).getByRole('button', { name: 'Cancel ben’s invitation' }))
-    await waitFor(() => expect(within(people).queryByText('ben')).toBeNull())
+    // The row goes with the spaces list; the page's buttons wait for the invitations list too.
+    await waitFor(() => {
+      expect(within(people).queryByText('ben')).toBeNull()
+      expect(within(info).getByRole('button', { name: 'Remove ana' }).hasAttribute('disabled')).toBe(false)
+    })
     // Back among the people to invite.
     expect(within(info).getByRole('button', { name: 'Invite ben' })).toBeTruthy()
 
