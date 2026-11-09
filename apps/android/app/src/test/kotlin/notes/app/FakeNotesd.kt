@@ -14,6 +14,7 @@ import mockwebserver3.MockResponse
 import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import notes.app.notes.names
+import notes.core.api.AgentConfig
 import notes.core.api.Invitee
 import notes.core.api.Member
 import notes.core.api.PublishSettings
@@ -64,6 +65,18 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
 
     /** Requests, as [requests] names them, answered with a 500. */
     val failing = HashSet<String>()
+
+    /** Whether the server's AI is set up. */
+    var aiConfigured = true
+
+    /** Each space's agent, by space id. A save turns its space's `agent` trait on, as the server does. */
+    val agents = LinkedHashMap<String, AgentConfig>()
+
+    /** The body of each agent save. */
+    val agentSaves = ArrayList<String>()
+
+    /** The next agent save's answer instead: status, error code, field and message. */
+    var refuseAgentSave: List<String>? = null
 
     private val json = Json { encodeDefaults = false }
 
@@ -244,6 +257,43 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
             }
 
             r.method == "POST" && path.endsWith("/email") -> ok("""{"id":"e1"}""")
+
+            r.method == "GET" && path == "/settings/ai" -> ok(
+                if (aiConfigured) {
+                    """{"configured":true,"baseUrl":"https://ai.example.com/v1","model":"m","keyHint":"1234",""" +
+                        """"dailyTokenCap":1000000,"editable":true}"""
+                } else {
+                    """{"configured":false,"baseUrl":"","model":"","keyHint":"","dailyTokenCap":1000000}"""
+                }
+            )
+
+            r.method == "GET" && path == "/agent/spaces" ->
+                ok(
+                    """{"spaces":${json.encodeToString(
+                        ListSerializer(AgentConfig.serializer()),
+                        agents.values.toList()
+                    )}}"""
+                )
+
+            r.method == "PUT" && parts.size == 3 && parts[0] == "agent" && parts[1] == "spaces" -> {
+                val body = r.body!!.utf8()
+                agentSaves += body
+                refuseAgentSave?.let { (code, error, field, message) ->
+                    refuseAgentSave = null
+                    return MockResponse.Builder().code(code.toInt()).addHeader("Content-Type", "application/json")
+                        .body("""{"error":"$error","field":"$field","message":"$message"}""").build()
+                }
+                val space = spaces[parts[2]] ?: return error(404, "not_found")
+                val config = Json.decodeFromString(
+                    AgentConfig.serializer(),
+                    """{"spaceId":"${space.id}",""" + body.drop(1)
+                )
+                    .copy(updatedAt = System.currentTimeMillis())
+                agents[space.id] = config
+                val trait = SpaceTrait("agent", "Agent", if (config.enabled) "On" else "Off")
+                spaces[space.id] = space.copy(traits = space.traits.filter { it.key != "agent" } + trait)
+                ok(json.encodeToString(AgentConfig.serializer(), config))
+            }
 
             r.method == "GET" && path == "/settings/email" ->
                 ok("""{"configured":true,"from":"Me <notes@example.com>","keyHint":"6789","editable":true}""")

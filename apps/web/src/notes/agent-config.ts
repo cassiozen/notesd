@@ -23,4 +23,8 @@ export async function saveAgentConfig(spaceId: string, input: AgentConfigInput):
   return stored
 }
 
+/** Whether loading them failed (offline), with nothing loaded; retry asks again. */
+export const useAgentConfigsFailed = store.useFailed
+export const retryAgentConfigs = store.retry
+
 export const forgetAgentConfigs = store.forget

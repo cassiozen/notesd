@@ -8,7 +8,7 @@ import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
 import field from '../ui/field.module.css'
-import { saveAgentConfig, useAgentConfigs } from './agent-config'
+import { retryAgentConfigs, saveAgentConfig, useAgentConfigs, useAgentConfigsFailed } from './agent-config'
 import {
   EXAMPLES,
   hasExample,
@@ -27,12 +27,13 @@ import {
   TRIGGERS,
   agentFieldError,
   draftOf,
+  emptyRules,
   rulesOf,
   sameAgent,
   type AgentDraft,
   type AgentErrors,
 } from './agent-rules'
-import { providerHost, useAiSettings } from './ai-settings'
+import { providerHost, retryAiSettings, useAiSettings, useAiSettingsFailed } from './ai-settings'
 import { titleOf, useFoundTitles, useTitleMatches } from './note-titles'
 import { notesSource } from './source'
 import { reloadSpaces } from './spaces'
@@ -58,7 +59,9 @@ export function useAgentOffered(): (space: Space) => boolean {
 export function AgentSection({ space }: { space: Space }) {
   const spaceId = space.id
   const configs = useAgentConfigs()
+  const configsFailed = useAgentConfigsFailed()
   const ai = useAiSettings()
+  const aiFailed = useAiSettingsFailed()
   const saved = configs?.get(spaceId)
   const [edited, setEdited] = useState<AgentDraft | null>(null)
   const [errors, setErrors] = useState<AgentErrors>({})
@@ -78,6 +81,11 @@ export function AgentSection({ space }: { space: Space }) {
 
   async function save(e?: FormEvent) {
     e?.preventDefault()
+    const empty = emptyRules(draft)
+    if (empty.length > 0) {
+      setErrors(Object.fromEntries(empty.map((k) => [`triggers.${k}`, 'Say what the agent does then, or remove the rule.'])))
+      return
+    }
     setErrors({})
     setFormError(undefined)
     setBusy(true)
@@ -135,6 +143,30 @@ export function AgentSection({ space }: { space: Space }) {
         <p role="status" className="visually-hidden">
           {savedNote ? 'Saved' : ''}
         </p>
+        {(configs === null || ai === null) && (
+          <div className={styles.card}>
+            {configsFailed || aiFailed ? (
+              <>
+                <p role="alert" className={info.error}>
+                  Couldn’t load the agent.
+                </p>
+                <div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (configsFailed) retryAgentConfigs()
+                      if (aiFailed) retryAiSettings()
+                    }}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <span className={styles.muted}>Loading…</span>
+            )}
+          </div>
+        )}
         {configs !== null && ai !== null && (
           <>
             <OnOff draft={draft} provider={ai.configured ? providerHost(ai.baseUrl) : null} onChange={change} />

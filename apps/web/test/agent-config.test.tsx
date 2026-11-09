@@ -243,6 +243,39 @@ describe('a space’s agent', () => {
     }
   })
 
+  it('counts an empty rule as a change, and won’t save it until it says something or goes', async () => {
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await withAI(s)
+        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'Tags.', triggers: { newNoteDone: 'Tag it.' } })
+      },
+    })
+    const { page } = await agentPage(user)
+    await user.click(await within(page).findByRole('button', { name: '+ Add rule' }))
+    await user.click(within(page).getByRole('button', { name: /^When you ask, from the note’s menu/ }))
+    await user.click(within(page).getByRole('button', { name: 'Save' }))
+    expect(await within(page).findByText('Say what the agent does then, or remove the rule.')).toBeTruthy()
+    expect((await configs(server))[0]?.triggers).toEqual({ newNoteDone: 'Tag it.' })
+
+    await user.click(within(page).getByRole('button', { name: 'Remove rule: When you ask, from the note’s menu' }))
+    await saved(page)
+  })
+
+  it('says when it couldn’t load, and tries again', async () => {
+    const list = vi.spyOn(agent, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
+    const { user } = await signedIn({
+      seed: async (s) => {
+        await withAI(s)
+        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'Tags.', triggers: { newNoteDone: 'Tag it.' } })
+      },
+    })
+    const { page } = await agentPage(user)
+    expect(await within(page).findByText('Couldn’t load the agent.')).toBeTruthy()
+    list.mockRestore()
+    await user.click(within(page).getByRole('button', { name: 'Try again' }))
+    expect(await within(page).findByLabelText('What this space is for')).toBeTruthy()
+  })
+
   it('shows as paused when AI is removed', async () => {
     const { user } = await signedIn({
       seed: async (s) => {
