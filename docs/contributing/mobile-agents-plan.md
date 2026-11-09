@@ -71,14 +71,14 @@ Status: ✓ done, – not needed, ☐ to do.
 | S7 | Agent page: notes it always reads (5; title lookup in the space; "not here yet"; offers for notes a rule needs; no-room message) | ✓ | ✓ | ☐ |
 | S8 | Agent page: Save keeps typing done meanwhile; field errors; "hasn't reached the server yet"; discard confirmation | ✓ | ✓ | ☐ |
 | S9 | Ways in: the `agent` trait's section in Space info (architecture §7.8), on or off: offered once AI is set up (or to resume a paused agent), in any space, by any member; going back with changes not saved asks first. The glyph, summary, problem and move check already show on all three apps, from main's traits | ✓ | ✓ | ☐ |
-| S10 | Activity: space filter, today's usage, runs (paginated), status and failure text, overlay counts | ✓ | ☐ | ☐ |
-| S11 | Activity → run: summary, model's message, per-note line diffs, Undo with result, "Can't undo: …" | ✓ | ☐ | ☐ |
+| S10 | Activity: space filter, today's usage, runs (paginated), status and failure text, overlay counts | ✓ | ✓ | ☐ |
+| S11 | Activity → run: summary, model's message, per-note line diffs, Undo with result, "Can't undo: …" | ✓ | ✓ | ☐ |
 
 ### In a note
 
 | # | Feature | Web | Android | iOS |
 | --- | --- | --- | --- | --- |
-| N1 | Failed-run notice: latest run failed and not dismissed; Dismiss remembered; Activity opens the run | ✓ | ☐ | ☐ |
+| N1 | Failed-run notice: latest run failed and not dismissed; Dismiss remembered; Activity opens the run | ✓ | ✓ | ☐ |
 | N2 | The space's menu command in the note's menu (agent on, menu prompt, not locked) | ✓ | ☐ | ☐ |
 | N3 | Socket: open while AI is set up and the shown space's agent is on, and the app is in the foreground; same socket across agent spaces; backoff only while online; closes 5 s after the last `editor.closed`; closes at once on sign-out | ✓ | ☐ | ☐ |
 | N4 | `editor.opened` / `editor.closed` per note, counted; close after the last save and push, with its revision | ✓ | ☐ | ☐ |

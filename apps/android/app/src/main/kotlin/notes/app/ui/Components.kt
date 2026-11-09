@@ -361,7 +361,10 @@ fun Banner(
     kind: BannerKind,
     modifier: Modifier = Modifier,
     action: String? = null,
-    onAction: (() -> Unit)? = null
+    onAction: (() -> Unit)? = null,
+    /** Before [action], the lesser one: Dismiss beside Open. */
+    secondary: String? = null,
+    onSecondary: (() -> Unit)? = null
 ) {
     val t = LocalTokens.current
     val (bg, edge, ink) = when (kind) {
@@ -387,6 +390,18 @@ fun Banner(
             color = ink,
             modifier = Modifier.weight(1f).padding(vertical = 12.dp)
         )
+        if (secondary != null && onSecondary != null) {
+            Text(
+                secondary,
+                style = Type.label.copy(fontSize = 14.sp),
+                color = ink,
+                modifier = Modifier
+                    .heightIn(min = 48.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable(role = Role.Button, onClick = onSecondary)
+                    .padding(horizontal = 12.dp, vertical = 15.dp)
+            )
+        }
         if (action != null && onAction != null) {
             Text(
                 action,

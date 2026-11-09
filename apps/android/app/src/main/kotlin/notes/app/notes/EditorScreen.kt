@@ -91,6 +91,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import notes.app.MainActivity
 import notes.app.R
+import notes.app.agent.FailedRun
+import notes.app.agent.failureText
 import notes.app.editor.FindState
 import notes.app.editor.FormatState
 import notes.app.editor.FormattingBar
@@ -123,6 +125,7 @@ import notes.app.ui.hairline
 import notes.app.ui.pressScale
 import notes.app.ui.springPop
 import notes.app.ui.windowInsetsController
+import notes.core.api.AgentRun
 import notes.core.crypto.LockSession
 import notes.core.db.Space
 import notes.core.doc.Document
@@ -160,7 +163,11 @@ fun EditorScreen(
     /** The note went to another space: leave it. */
     onMoved: (String) -> Unit = {},
     /** This account's id: another member's last change is named (§7.9). */
-    me: Long? = null
+    me: Long? = null,
+    /** The agent's latest run on the note, when it failed and wasn't dismissed. */
+    failedRun: FailedRun? = null,
+    /** Activity, open on a run. */
+    onRun: (AgentRun) -> Unit = {}
 ) {
     val context = LocalContext.current
     val t = LocalTokens.current
@@ -438,6 +445,17 @@ fun EditorScreen(
                 "This note couldn't be saved, so locked notes are still unlocked. Try Lock now again.",
                 BannerKind.Error,
                 Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+        }
+        failedRun?.let { f ->
+            Banner(
+                "The agent's last run on this note failed: ${failureText(f.run)}.",
+                BannerKind.Warn,
+                Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                action = "Activity",
+                onAction = { onRun(f.run) },
+                secondary = "Dismiss",
+                onSecondary = f.dismiss
             )
         }
         original?.let { o ->
