@@ -378,5 +378,7 @@ way, but should show the same things.
   editor triggers), `src/editor/agent-edit.ts` (reading, `madeTo`, applying), `src/notes/note-pane.tsx`
   (when triggers fire, and the editor's answers), `src/editor/agent-presence.ts` (the agent at work),
   `src/editor/agent-overlays.ts` (cards beside the note).
+- Kotlin engine: `notes.core.agent.AgentSocket` (the socket's life and messages; the app answers through
+  `AgentEditors`), `ApiClient.agentSocket` (the authenticated upgrade), `notes.core.agent.madeTo`.
 - Server overlays: `internal/agent/overlays.go` (storing and answering them),
   `internal/agent/overlay_tools.go` (`show_card`, `suggest`).

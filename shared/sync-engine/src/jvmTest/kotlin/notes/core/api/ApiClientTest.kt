@@ -423,4 +423,35 @@ class ApiClientTest {
         assertEquals("https://notes.example", ApiClient("https://notes.example/".toHttpUrl()).origin)
         assertEquals("http://[fd7a::1]:8080", ApiClient("http://[fd7a::1]:8080/".toHttpUrl()).origin)
     }
+
+    @Test
+    fun `the agent socket sends the bearer token, refreshed after an upgrade refused it`() = runBlocking<Unit> {
+        val failed = java.util.concurrent.CompletableFuture<Int?>()
+        val listener = object : okhttp3.WebSocketListener() {
+            override fun onFailure(webSocket: okhttp3.WebSocket, t: Throwable, response: okhttp3.Response?) {
+                failed.complete(response?.code)
+            }
+        }
+        server.enqueue(unauthenticated)
+        assertIs<ApiResult.Ok<okhttp3.WebSocket>>(api.agentSocket(listener))
+        assertEquals(401, failed.get(5, java.util.concurrent.TimeUnit.SECONDS))
+        val first = server.takeRequest()
+        assertEquals("/api/v1/agent/socket" to "Bearer a1", first.url.encodedPath to first.headers["Authorization"])
+        assertNull(first.headers["Origin"])
+
+        server.enqueue(refreshed("a2"))
+        server.enqueue(MockResponse.Builder().webSocketUpgrade(object : okhttp3.WebSocketListener() {}).build())
+        val opened = java.util.concurrent.CompletableFuture<Unit>()
+        val socket = assertIs<ApiResult.Ok<okhttp3.WebSocket>>(
+            api.agentSocket(object : okhttp3.WebSocketListener() {
+                override fun onOpen(webSocket: okhttp3.WebSocket, response: okhttp3.Response) {
+                    opened.complete(Unit)
+                }
+            })
+        ).value
+        opened.get(5, java.util.concurrent.TimeUnit.SECONDS)
+        assertEquals("/api/v1/auth/refresh", server.takeRequest().url.encodedPath)
+        assertEquals("Bearer a2", server.takeRequest().headers["Authorization"])
+        socket.cancel()
+    }
 }
