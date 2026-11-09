@@ -141,7 +141,7 @@ class AppGraph(
 
     /** For the space switcher: invitations into others' spaces, as of the last sync (§7.9). */
     val spaceInvites: StateFlow<List<SpaceInvite>> = whileSwitcherShown {
-        sync.spaces.invites().map { SpaceInvite(it.id, it.spaceName, it.spaceIcon, it.from.username) }
+        sync.spaces.invites().map { SpaceInvite(it.id, it.spaceName, it.spaceIcon, it.from.name) }
     }.stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
 
     /** For the space switcher: by space id, what other members changed there since this phone last showed it. */

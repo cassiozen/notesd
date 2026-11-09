@@ -87,7 +87,7 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
     /** A space of [me]'s, shared with [members] and with [invitees] invited. */
     fun owned(id: String, name: String, members: List<Member>, invitees: List<Member> = emptyList()) =
         synchronized(this) {
-            val pending = invitees.map { Invitee("inv-${it.id}", it.id, it.username) }
+            val pending = invitees.map { Invitee("inv-${it.id}", it.id, it.username, it.displayName, it.avatar) }
             spaces[id] = shared(RemoteSpace(id, name), SharedSpace("owner", listOf(me) + members, pending))
         }
 

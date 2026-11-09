@@ -75,9 +75,7 @@ internal fun Avatar(
     textColor: Color,
     preview: ImageBitmap? = null
 ) {
-    val photo by produceState(avatars.cached(userId, version), userId, version) {
-        value = avatars.load(userId, version)
-    }
+    val photo = rememberPhoto(avatars, userId, version)
     Box(modifier, contentAlignment = Alignment.Center) {
         val shown = preview ?: photo
         if (shown != null) {
@@ -86,6 +84,15 @@ internal fun Avatar(
             Text(initial(name), style = textStyle, color = textColor)
         }
     }
+}
+
+/** [userId]'s photo at [version]: at once if in memory, else once read or downloaded; null without one. */
+@Composable
+internal fun rememberPhoto(avatars: Avatars, userId: Long, version: String): ImageBitmap? {
+    val photo by produceState(avatars.cached(userId, version), userId, version) {
+        value = avatars.load(userId, version)
+    }
+    return photo
 }
 
 /** An avatar's circle: [fill] behind the letter, and an [edge] if given. */
@@ -221,7 +228,7 @@ private fun ProfileDialog(graph: AppGraph, account: Account.SignedIn, onDismiss:
     NotesDialog({ if (!busy) onDismiss() }, "Name and photo") {
         ScrollingBody {
             Text(
-                "Both are optional. Admins on this server see them when they manage people.",
+                "Both are optional. Everyone on this server sees them.",
                 style = Type.body,
                 color = t.ink2
             )
