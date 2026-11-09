@@ -1,0 +1,42 @@
+apps/ios/Notes/Notes/Publishing.swift
+  s_c4b534f44e1767::t_276bede0feb6bc 1-87
+apps/ios/NotesUITests/FlowTests.swift
+  s_c4b534f44e1767::t_ab0ed9c3a7cb8b 342-403
+apps/ios/NotesTests/PublishingTests.swift
+  s_c4b534f44e1767::t_28b03070d75755 1-27
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_c4b534f44e1767::t_55cdeaac686792 272-275
+  s_c4b534f44e1767::t_e0e69d5534736c 269-271,276-307
+apps/ios/NotesCore/Tests/NotesCoreTests/PublishingTests.swift
+  s_c4b534f44e1767::t_0593bc14d7d661 1-20,25-50
+  s_c4b534f44e1767::t_e678d75cc9730a 21-24
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_c4b534f44e1767::t_e0e69d5534736c 344-359
+apps/ios/Notes/Settings/PublishedSection.swift
+  s_c4b534f44e1767::t_85eaa5000369c2 1-3,6-41,46-91,94,96-165,168-172
+  s_c4b534f44e1767::t_5e3baf7bca2b72 4-5,166-167
+  s_c4b534f44e1767::t_46bc431069f84c 92-93,95
+  s_c4b534f44e1767::t_e678d75cc9730a 42-45
+apps/ios/Notes/Settings/SpaceInfoView.swift
+  s_c4b534f44e1767::t_5e3baf7bca2b72 234,237-244,280-282,288
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_ca5b97b0cb8603 568
+docs/guides/using/publishing.md
+  s_c4b534f44e1767::t_ca5b97b0cb8603 25,53-54
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "de2feeac3745fd2a121b19ed6c15c44455fe336c",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
