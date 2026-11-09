@@ -341,7 +341,7 @@ func build(src *source, accent string) (*site, error) {
 	// A page per post.
 	for i, post := range src.Posts {
 		root := rootFor(post.Path)
-		html, err := body(post.Content, root, src.Images)
+		html, err := body(post.Content, root, src.Images, true)
 		if err != nil {
 			return nil, err
 		}
@@ -634,7 +634,7 @@ func atom(src *source) ([]byte, error) {
 	f := atomFeed{Title: src.Name, ID: src.Base, Links: []atomLink{{Href: src.Base}, {Rel: "self", Href: src.Base + "feed.xml"}}}
 	var newest time.Time
 	for _, p := range src.Posts[:min(feedSize, len(src.Posts))] {
-		html, err := body(p.Content, src.Base, src.Images)
+		html, err := body(p.Content, src.Base, src.Images, false)
 		if err != nil {
 			return nil, err
 		}

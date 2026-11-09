@@ -30,8 +30,9 @@ type imageFile struct {
 }
 
 // body renders a note's Markdown for a page whose links to the site's root
-// start with root ("../", or the site's URL in the feed).
-func body(content, root string, images map[string]imageFile) (template.HTML, error) {
+// start with root ("../", or the site's URL in the feed); anchors gives its
+// headings links to themselves.
+func body(content, root string, images map[string]imageFile, anchors bool) (template.HTML, error) {
 	src := []byte(content)
 	doc := markdown.Parser().Parse(text.NewReader(src))
 	// Changed after the walk: replacing a node during it would cut its siblings off.
@@ -66,7 +67,10 @@ func body(content, root string, images map[string]imageFile) (template.HTML, err
 	for _, t := range tags {
 		linkTags(t, src, root)
 	}
-	anchorHeadings(heads, src)
+	// A page's only: a feed reader has no stylesheet to hide the anchor's words, and wants links absolute.
+	if anchors {
+		anchorHeadings(heads, src)
+	}
 	var out bytes.Buffer
 	if err := markdown.Renderer().Render(&out, src, doc); err != nil {
 		return "", err
@@ -216,19 +220,15 @@ func anchorHeadings(heads []*ast.Heading, src []byte) {
 	}
 }
 
-// withoutTags is plain text without its #tags: an excerpt's are noise, the post's page lists them.
-func withoutTags(text string) string {
-	lines := strings.Split(text, "\n")
-	for i, line := range lines {
-		var b strings.Builder
-		at := 0
-		for _, sp := range search.TagSpans(line, true) {
-			b.WriteString(line[at:sp.Start])
-			at = sp.End
-		}
-		lines[i] = b.String() + line[at:]
+// withoutTags is a line of prose without its #tags: an excerpt's are noise, the post's page lists them.
+func withoutTags(line string) string {
+	var b strings.Builder
+	at := 0
+	for _, sp := range search.TagSpans(line, true) {
+		b.WriteString(line[at:sp.Start])
+		at = sp.End
 	}
-	return strings.Join(lines, "\n")
+	return b.String() + line[at:]
 }
 
 // readingTime is how long a post takes to read, at 230 words a minute.
@@ -242,7 +242,8 @@ const excerptLen = 200
 
 // excerpt is the start of a note's text, as plain text, cut at a word.
 func excerpt(content string) string {
-	s := strings.Join(strings.Fields(withoutTags(search.PlainText(content))), " ")
+	// Prose only: #include in a code block isn't a tag.
+	s := strings.Join(strings.Fields(search.PlainTextWith(content, withoutTags)), " ")
 	if utf8.RuneCountInString(s) <= excerptLen {
 		return s
 	}

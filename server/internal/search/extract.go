@@ -17,12 +17,17 @@ import (
 // The rules are pinned by shared/markdown-fixtures/plaintext.json, which the
 // iOS and Android extractors must also pass.
 func PlainText(md string) string {
+	return PlainTextWith(md, func(line string) string { return line })
+}
+
+// PlainTextWith is PlainText with prose applied to each line of text outside code fences.
+func PlainTextWith(md string, prose func(line string) string) string {
 	var out []string
 	eachLine(md, func(text string, code bool) {
 		if code {
 			out = append(out, strings.TrimRight(text, " \t"))
 		} else {
-			out = append(out, strings.TrimSpace(inline(text, false)))
+			out = append(out, prose(strings.TrimSpace(inline(text, false))))
 		}
 	})
 	return collapseBlankLines(out)

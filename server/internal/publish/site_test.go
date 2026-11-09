@@ -11,7 +11,7 @@ import (
 
 func mustBody(t *testing.T, md string, images map[string]imageFile) string {
 	t.Helper()
-	html, err := body(md, "../", images)
+	html, err := body(md, "../", images, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,6 +42,10 @@ func TestHeadingsLinkToThemselves(t *testing.T) {
 
 func TestExcerptsLeaveTagsOut(t *testing.T) {
 	if got := excerpt("Tomatoes at last. #veg #summer\n\nMore #home/garden soon."); got != "Tomatoes at last. More soon." {
+		t.Fatalf("%q", got)
+	}
+	// Code isn't prose: its # stays.
+	if got := excerpt("C at last. #c\n\n```\n#include <stdio.h>\n```"); got != "C at last. #include <stdio.h>" {
 		t.Fatalf("%q", got)
 	}
 }
@@ -172,6 +176,9 @@ func posts(n int) []post {
 	for i := n; i >= 1; i-- {
 		id := fmt.Sprintf("n%d", i)
 		content := fmt.Sprintf("Body %d #all", i)
+		if i == n {
+			content += "\n\n# Part"
+		}
 		if i%2 == 0 {
 			content += " #home/garden"
 		}
@@ -242,6 +249,9 @@ func TestBuildLaysOutTheSite(t *testing.T) {
 		t.Error("404 isn't an address")
 	}
 	feed := page("feed.xml")
+	if !strings.Contains(post, `class="heading-anchor"`) || !strings.Contains(feed, "Part") || strings.Contains(feed, "heading-anchor") {
+		t.Error("a heading's anchor on its page, not in the feed: a reader has no stylesheet to hide it")
+	}
 	if strings.Count(feed, "<entry>") != 31 || !strings.Contains(feed, "<id>https://notes.example/@garden/"+first.Path+"</id>") {
 		t.Errorf("feed: %s", feed[:300])
 	}
