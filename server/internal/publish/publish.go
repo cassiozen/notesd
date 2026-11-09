@@ -3,6 +3,7 @@
 package publish
 
 import (
+	"bytes"
 	"context"
 	"database/sql"
 	"encoding/json"
@@ -37,6 +38,8 @@ var (
 	// ErrDefault: every account keeps one space no trait exposes, where a locked note refused elsewhere
 	// is kept (§7.8).
 	ErrDefault = errors.New("the default space can't be published")
+
+	errGone = errors.New("the published space was deleted")
 )
 
 // InputError reports an invalid setting.
@@ -416,7 +419,24 @@ func (s *Service) reload(ctx context.Context) {
 		}
 	}
 	s.sites = sites
+	inUse := map[string]bool{}
+	for _, site := range sites {
+		inUse[site.File] = true
+	}
+	var stale []*database.DB
+	for file, db := range s.readers {
+		// A deleted shared space's file can come back under the same name, as another file.
+		if !inUse[file] {
+			stale = append(stale, db)
+			delete(s.readers, file)
+		}
+	}
 	s.mu.Unlock()
+	for _, db := range stale {
+		if err := db.Close(); err != nil {
+			s.log.Error("close public reader", "err", err)
+		}
+	}
 	for _, h := range gone {
 		s.takeDown(h)
 	}
@@ -453,8 +473,12 @@ func (s *Service) open(ctx context.Context, file string) (*userdata.Data, error)
 // render builds a site from its space's notes and writes it.
 func (s *Service) render(ctx context.Context, site Site) error {
 	s.renderMu.Lock()
-	defer s.renderMu.Unlock()
 	err := s.renderLocked(ctx, site)
+	s.renderMu.Unlock()
+	if errors.Is(err, errGone) {
+		// Its address goes with it. Not under renderMu: taking the site down takes that.
+		return s.Forget(ctx, site.File, site.SpaceID)
+	}
 	s.mu.Lock()
 	if _, ok := s.sites[site.Handle]; ok {
 		s.failed[site.Handle] = err != nil
@@ -475,12 +499,12 @@ func (s *Service) renderLocked(ctx context.Context, site Site) error {
 		return err
 	}
 	if d == nil {
-		return fmt.Errorf("%s is gone", site.File)
+		// A shared space's file is deleted before its address is: a crash in between leaves the address.
+		return errGone
 	}
 	src, err := load(ctx, d, site.SpaceID, site.URL())
 	if errors.Is(err, spaces.ErrNotFound) {
-		// The space was deleted: its address goes with it.
-		return s.Forget(ctx, site.File, site.SpaceID)
+		return errGone
 	} else if err != nil {
 		return err
 	}
@@ -503,12 +527,14 @@ func (s *Service) renderLocked(ctx context.Context, site Site) error {
 // manifest, then away with files it no longer has.
 func (s *Service) write(handle string, built *site) error {
 	dir := filepath.Join(s.dir, handle)
-	for name, data := range built.files {
-		p := filepath.Join(dir, filepath.FromSlash(name))
-		if old, err := os.ReadFile(p); err == nil && string(old) == string(data) {
-			continue
+	writeChanged := func(p string, data []byte) error {
+		if old, err := os.ReadFile(p); err == nil && bytes.Equal(old, data) {
+			return nil
 		}
-		if err := writeFile(p, data); err != nil {
+		return writeFile(p, data)
+	}
+	for name, data := range built.files {
+		if err := writeChanged(filepath.Join(dir, filepath.FromSlash(name)), data); err != nil {
 			return err
 		}
 	}
@@ -516,7 +542,7 @@ func (s *Service) write(handle string, built *site) error {
 	if err != nil {
 		return err
 	}
-	if err := writeFile(filepath.Join(dir, "manifest.json"), m); err != nil {
+	if err := writeChanged(filepath.Join(dir, "manifest.json"), m); err != nil {
 		return err
 	}
 	return filepath.WalkDir(dir, func(p string, e os.DirEntry, err error) error {

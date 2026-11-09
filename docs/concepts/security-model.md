@@ -50,9 +50,9 @@ description: What the server can read, how accounts and sessions are protected, 
   an owner can pick who to invite.
   They can't see anyone's spaces or notes.
 - **No locked notes where others can read.** Locked notes are encrypted with a key only one
-  account has, so a space with another member or a pending invitation can't hold them. Its notes
-  are as readable on the server as any regular note. A shared space with nobody else in it and no
-  invitation is private again and can hold locked notes.
+  account has, so a published space, or one with another member or a pending invitation, can't
+  hold them. Its notes are as readable on the server as any regular note. A shared space with
+  nobody else in it and no invitation is private again and can hold locked notes.
 - **Removing someone works from then on.** Their devices drop the space's notes the next time they
   sync. A copy they already have stays with them: an export, or a device that never syncs again.
 

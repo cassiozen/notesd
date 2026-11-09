@@ -361,7 +361,8 @@ func build(src *source, accent string) (*site, error) {
 		m.Notes[post.ID] = post.Path
 	}
 
-	// Tags: the tree, and a page per tag with its nested tags' posts.
+	// Tags: the tree, and a page per tag with its nested tags' posts, all on one: a tag's page/2/ would be the
+	// address of a tag nested in it.
 	tree, byKey := tagTree(src.Posts)
 	if err := render("tags/", "tags.html", page{Kind: "tags", Title: "Tags", Tags: hrefs(tree, "../")}); err != nil {
 		return nil, err

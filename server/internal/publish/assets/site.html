@@ -52,7 +52,9 @@
 {{- range .}}
 <li class="post-item">
 <a class="post-link" href="{{.Href}}">{{.Title}}</a>
+{{- if .Datetime}}
 <time class="post-date" datetime="{{.Datetime}}">{{.Date}}</time>
+{{- end}}
 {{- if .Excerpt}}
 <p class="excerpt">{{.Excerpt}}</p>
 {{- end}}

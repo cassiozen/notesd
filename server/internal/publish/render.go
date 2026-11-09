@@ -120,14 +120,12 @@ func linkTags(t *ast.Text, src []byte, root string) {
 	if at == 0 {
 		return
 	}
-	if at < len(value) {
+	// The line's break belongs after its last piece, a text: an empty one when a tag ends the line.
+	if at < len(value) || t.SoftLineBreak() || t.HardLineBreak() {
 		rest := ast.NewTextSegment(text.NewSegment(start+at, t.Segment.Stop))
+		rest.SetSoftLineBreak(t.SoftLineBreak())
+		rest.SetHardLineBreak(t.HardLineBreak())
 		insert(rest)
-	}
-	// The line's break belongs after its last piece.
-	if l, ok := last.(*ast.Text); ok {
-		l.SetSoftLineBreak(t.SoftLineBreak())
-		l.SetHardLineBreak(t.HardLineBreak())
 	}
 	parent.RemoveChild(parent, t)
 }

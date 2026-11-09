@@ -354,7 +354,7 @@ title and a body, a list of posts, tags, a feed and a search.
 | --- | --- | --- |
 | `GET` | `/spaces/{id}/publish` | → `{handle, url, origin, published, css}`; `404 not_published` if it never was |
 | `PUT` | `/spaces/{id}/publish` | `{handle?, origin?, css?}` → the same. Publishes the space, or changes how; a field left out stays as it is |
-| `DELETE` | `/spaces/{id}/publish` | → `204`. Takes the site down; the handle stays the space's |
+| `DELETE` | `/spaces/{id}/publish` | → `204`. Takes the site down; the handle stays the space's. `404 not_published` if it never was |
 
 - Your own spaces, and shared ones you own (`403 not_space_owner` for members). Never `default`
   (`409 space_default`).

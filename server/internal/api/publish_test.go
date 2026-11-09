@@ -289,3 +289,24 @@ func TestPublicSearch(t *testing.T) {
 		t.Fatalf("another visitor: %d", r.status)
 	}
 }
+
+func TestPublicSearchLooksPastNotesTheSiteDoesntShow(t *testing.T) {
+	s := newSharedEnv(t)
+	s.publish(s.owner, "fam", nil)
+	s.owner.do("POST", "/api/v1/notes", map[string]any{"operationId": "p", "id": "tart", "title": "Tart", "spaceId": "fam",
+		"content": "A long story about baking, butter, flour, sugar, ovens and patience, with one pear somewhere in it."})
+	// More untitled matches than one batch, each a better match than the post.
+	for i := range 60 {
+		s.owner.do("POST", "/api/v1/notes", map[string]any{"operationId": fmt.Sprint("u", i), "id": fmt.Sprint("u", i),
+			"title": "", "spaceId": "fam", "content": "pear pear pear"})
+	}
+	s.eventually("/@family/", ">Tart<")
+	if r := s.visit("/@family/search?q=Pear"); r.status != 200 || !strings.Contains(r.body, ">Tart<") ||
+		!strings.Contains(r.body, `value="Pear"`) {
+		t.Fatalf("search: %d %s", r.status, r.body)
+	}
+	// Another spelling is its own answer: the page shows the query as typed.
+	if r := s.visit("/@family/search?q=pear"); !strings.Contains(r.body, `value="pear"`) {
+		t.Fatalf("cached across spellings: %s", r.body)
+	}
+}

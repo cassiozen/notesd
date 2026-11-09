@@ -68,6 +68,13 @@ func TestBodyLinksTagsByTheAppsRules(t *testing.T) {
 	}
 }
 
+func TestBodyKeepsTheBreakAfterALineEndingInATag(t *testing.T) {
+	got := mustBody(t, "Plants #garden\nmore here", nil)
+	if !strings.Contains(got, "#garden</a>\nmore here") {
+		t.Fatalf("the words run together: %s", got)
+	}
+}
+
 func TestTagPathsRefuseDotLevels(t *testing.T) {
 	if p, ok := tagPath("a/b c"); !ok || p != "tags/a/b%20c/" {
 		t.Fatalf("%q %v", p, ok)

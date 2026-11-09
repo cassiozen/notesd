@@ -29,6 +29,7 @@ const (
 	cacheFor       = time.Minute
 	maxQuery       = 200
 	searchResults  = 30
+	searchBatches  = 4
 )
 
 // limits keep the public's work from crowding out the apps (§7.10): a few searches at a time, each
@@ -198,10 +199,16 @@ func contentType(name string) string {
 
 func acceptsGzip(r *http.Request) bool {
 	for _, part := range strings.Split(r.Header.Get("Accept-Encoding"), ",") {
-		enc, q, _ := strings.Cut(strings.TrimSpace(part), ";")
-		if strings.EqualFold(strings.TrimSpace(enc), "gzip") && strings.TrimSpace(q) != "q=0" {
+		enc, params, _ := strings.Cut(strings.TrimSpace(part), ";")
+		if !strings.EqualFold(strings.TrimSpace(enc), "gzip") {
+			continue
+		}
+		q, ok := strings.CutPrefix(strings.TrimSpace(params), "q=")
+		if !ok {
 			return true
 		}
+		weight, err := strconv.ParseFloat(strings.TrimSpace(q), 64)
+		return err == nil && weight > 0
 	}
 	return false
 }
@@ -212,17 +219,16 @@ func (s *Service) search(w http.ResponseWriter, r *http.Request, site Site, m *m
 	h.Set("X-Robots-Tag", "noindex")
 	q := strings.Join(strings.Fields(r.URL.Query().Get("q")), " ")
 	if len(q) > maxQuery {
-		q = q[:maxQuery]
+		q = strings.ToValidUTF8(q[:maxQuery], "")
 	}
-	visitor := visitorKey(r)
-	if ok, wait := s.limits.visitor.Allow(visitor); !ok {
+	if ok, wait := s.limits.visitor.Take(visitorKey(r)); !ok {
 		h.Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
 		http.Error(w, "too many searches; try again in a minute", http.StatusTooManyRequests)
 		return
 	}
-	s.limits.visitor.Fail(visitor)
 
-	key := site.Handle + "\x00" + strings.ToLower(q)
+	// As typed: the page shows the query.
+	key := site.Handle + "\x00" + q
 	if page, ok := s.limits.get(key, s.now()); ok {
 		writeSearch(w, page)
 		return
@@ -243,23 +249,29 @@ func (s *Service) search(w http.ResponseWriter, r *http.Request, site Site, m *m
 		http.Error(w, "search is unavailable", http.StatusServiceUnavailable)
 		return
 	}
-	results, err := search.Search(ctx, db, q, search.Filter{Space: m.SpaceID}, search.MaxLimit, 0)
-	if err != nil {
-		s.log.Error("public search", "handle", site.Handle, "err", err)
-		http.Error(w, "search is unavailable", http.StatusServiceUnavailable)
-		return
-	}
 	root := rootFor("search")
 	p := page{Site: siteInfo{Name: m.Name, Accent: m.Accent, Style: m.Style, Script: m.Script},
 		Kind: "search", Root: root, Title: q + " · Search", NoIndex: true, Query: q}
-	for _, res := range results {
-		// Only what the site shows: titled notes with a body.
-		to, ok := m.Notes[res.ID]
-		if !ok {
-			continue
+	// The index has the space's notes the site doesn't show (untitled, empty), so matches come in batches until
+	// enough are posts. Bounded: one search must stay cheap.
+	for batch := 0; batch < searchBatches && len(p.Posts) < searchResults; batch++ {
+		results, err := search.Search(ctx, db, q, search.Filter{Space: m.SpaceID}, search.MaxLimit, batch*search.MaxLimit)
+		if err != nil {
+			s.log.Error("public search", "handle", site.Handle, "err", err)
+			http.Error(w, "search is unavailable", http.StatusServiceUnavailable)
+			return
 		}
-		p.Posts = append(p.Posts, listItem{Href: root + to, Title: res.Title, Excerpt: excerptHTML(res.Excerpt)})
-		if len(p.Posts) == searchResults {
+		for _, res := range results {
+			to, ok := m.Notes[res.ID]
+			if !ok {
+				continue
+			}
+			p.Posts = append(p.Posts, listItem{Href: root + to, Title: res.Title, Excerpt: excerptHTML(res.Excerpt)})
+			if len(p.Posts) == searchResults {
+				break
+			}
+		}
+		if len(results) < search.MaxLimit {
 			break
 		}
 	}

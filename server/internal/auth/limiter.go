@@ -33,12 +33,30 @@ func (l *Limiter) Allow(key string) (bool, time.Duration) {
 	return false, h[0].Add(l.window).Sub(now)
 }
 
+// Take records an attempt if key may make one now, checking and recording at once so concurrent attempts
+// can't all pass; if not, how long to wait.
+func (l *Limiter) Take(key string) (bool, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.now()
+	h := l.prune(key, now)
+	if len(h) >= l.max {
+		return false, h[0].Add(l.window).Sub(now)
+	}
+	l.record(key, h, now)
+	return true, 0
+}
+
 // Fail records a failed attempt.
 func (l *Limiter) Fail(key string) {
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	now := l.now()
-	l.hits[key] = append(l.prune(key, now), now)
+	l.record(key, l.prune(key, now), now)
+}
+
+func (l *Limiter) record(key string, h []time.Time, now time.Time) {
+	l.hits[key] = append(h, now)
 	if len(l.hits) > 10_000 {
 		for k := range l.hits {
 			if len(l.prune(k, now)) == 0 {

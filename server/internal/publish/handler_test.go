@@ -33,3 +33,16 @@ func TestVisitorsBehindAProxyAreToldApart(t *testing.T) {
 		t.Fatalf("the connection's: %q", got)
 	}
 }
+
+func TestGzipOnlyWhenTheBrowserTakesIt(t *testing.T) {
+	for enc, want := range map[string]bool{
+		"gzip": true, "br, gzip;q=0.5": true, "GZIP; q=1": true,
+		"": false, "br": false, "gzip;q=0": false, "gzip;q=0.0": false, "gzip; q=0.000": false, "gzip;q=x": false,
+	} {
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("Accept-Encoding", enc)
+		if got := acceptsGzip(r); got != want {
+			t.Errorf("%q: %v", enc, got)
+		}
+	}
+}

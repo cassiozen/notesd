@@ -6,9 +6,9 @@
 CREATE TABLE published_spaces (
     file       TEXT    NOT NULL,
     space_id   TEXT    NOT NULL,
-    handle     TEXT    NOT NULL UNIQUE,  -- [a-z0-9-], the space's address: /@<handle>/
+    handle     TEXT    NOT NULL UNIQUE,  -- the space's address: /@<handle>/
     origin     TEXT    NOT NULL,         -- scheme://host the owner published from, for absolute URLs
-    published  INTEGER NOT NULL,
+    published  INTEGER NOT NULL CHECK (published IN (0, 1)),
     updated_at INTEGER NOT NULL,
     PRIMARY KEY (file, space_id)
 ) WITHOUT ROWID;
