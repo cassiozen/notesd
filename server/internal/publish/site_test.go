@@ -209,3 +209,27 @@ func TestBuildLaysOutTheSite(t *testing.T) {
 		t.Error("pages are stored compressed too")
 	}
 }
+
+func TestImportsEndOutsideStringsAndBrackets(t *testing.T) {
+	css := "@import url(https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap);\n" +
+		"@IMPORT \"a;b.css\" screen;\n" +
+		"/* @import url(c.css); */\n" +
+		"@media print { @import url(d.css); }\n" +
+		"h1 { font-family: 'Instrument Serif' }\n"
+	rules, rest := splitImports(css)
+	want := []string{
+		"@import url(https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap);",
+		"@IMPORT \"a;b.css\" screen;",
+	}
+	if strings.Join(rules, "\n") != strings.Join(want, "\n") {
+		t.Fatalf("rules: %q", rules)
+	}
+	for _, kept := range []string{"/* @import url(c.css); */", "@media print { @import url(d.css); }", "h1 { font-family: 'Instrument Serif' }"} {
+		if !strings.Contains(rest, kept) {
+			t.Errorf("%q not left in place: %q", kept, rest)
+		}
+	}
+	if strings.Contains(rest, "display=swap") || strings.Contains(rest, "a;b.css") {
+		t.Errorf("an import left behind: %q", rest)
+	}
+}

@@ -421,8 +421,76 @@ func hash(b []byte) string {
 	return hex.EncodeToString(sum[:])
 }
 
-// importRule is an @import, which only counts at the top of a stylesheet.
-var importRule = regexp.MustCompile(`(?m)^\s*@import\s[^;]*;\s*`)
+// splitImports takes the @import rules out of custom CSS: they only count at the top of a stylesheet. A rule
+// ends at the first ; outside strings, comments and brackets, since a font's address can hold one
+// (family=X:ital@0;1); one inside a block or a comment is left where it is.
+func splitImports(css string) (rules []string, rest string) {
+	var b strings.Builder
+	depth, parens := 0, 0
+	for i := 0; i < len(css); {
+		if depth == 0 && parens == 0 && len(css)-i >= 7 && strings.EqualFold(css[i:i+7], "@import") {
+			end := statementEnd(css, i)
+			rules = append(rules, strings.TrimSpace(css[i:end]))
+			i = end
+			continue
+		}
+		switch css[i] {
+		case '{':
+			depth++
+		case '}':
+			depth = max(0, depth-1)
+		case '(':
+			parens++
+		case ')':
+			parens = max(0, parens-1)
+		}
+		next := tokenEnd(css, i)
+		b.WriteString(css[i:next])
+		i = next
+	}
+	return rules, b.String()
+}
+
+// tokenEnd is where the token at i ends: past a string or a comment, else the next byte.
+func tokenEnd(css string, i int) int {
+	switch {
+	case css[i] == '"' || css[i] == '\'':
+		for j := i + 1; j < len(css); j++ {
+			switch css[j] {
+			case '\\':
+				j++
+			case css[i], '\n':
+				return j + 1
+			}
+		}
+		return len(css)
+	case strings.HasPrefix(css[i:], "/*"):
+		if j := strings.Index(css[i+2:], "*/"); j >= 0 {
+			return i + 4 + j
+		}
+		return len(css)
+	}
+	return i + 1
+}
+
+// statementEnd is past the ; ending the rule at i, outside strings, comments and brackets; the end without one.
+func statementEnd(css string, i int) int {
+	parens := 0
+	for i < len(css) {
+		switch css[i] {
+		case '(':
+			parens++
+		case ')':
+			parens--
+		case ';':
+			if parens <= 0 {
+				return i + 1
+			}
+		}
+		i = tokenEnd(css, i)
+	}
+	return len(css)
+}
 
 // stylesheet is the site's styles in the notesd layer, then the space's own custom CSS unlayered, which
 // wins over them without !important. Its @imports (web fonts) go first, where CSS reads them.
@@ -436,16 +504,16 @@ func stylesheet(custom string) ([]byte, error) {
 		return nil, err
 	}
 	var b bytes.Buffer
-	imports := importRule.FindAllString(custom, -1)
+	imports, rest := splitImports(custom)
 	for _, i := range imports {
-		b.WriteString(strings.TrimSpace(i) + "\n")
+		b.WriteString(i + "\n")
 	}
 	b.WriteString("@layer notesd {\n")
 	b.Write(theme)
 	b.WriteString("\n")
 	b.Write(base)
 	b.WriteString("}\n")
-	if rest := strings.TrimSpace(importRule.ReplaceAllString(custom, "")); rest != "" {
+	if rest := strings.TrimSpace(rest); rest != "" {
 		b.WriteString("\n/* This space's own */\n")
 		b.WriteString(rest + "\n")
 	}
