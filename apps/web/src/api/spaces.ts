@@ -45,3 +45,20 @@ export const sharing = {
   accept: async (invite: string) => readSpace(await request<WireSpace>('POST', `/invites/${encodeURIComponent(invite)}/accept`)),
   decline: (invite: string) => request<undefined>('POST', `/invites/${encodeURIComponent(invite)}/decline`),
 }
+
+/** How a space is published (§7.10): its address and its own stylesheet. */
+export type PublishSettings = { handle: string; url: string; origin: string; published: boolean; css: string }
+
+/**
+ * Publishing a space (§7.10), by its owner (403 not_space_owner). The first publish needs origin, this app's own
+ * address: the server can't know it, and the site's feed links are built from it.
+ */
+export const publishing = {
+  /** 404 not_published if it never was. */
+  get: (space: string) => request<PublishSettings>('GET', `${path(space)}/publish`),
+  /** Publishes, or changes how; a field left out stays (409 space_default, space_has_locked, handle_taken). */
+  put: (space: string, change: { handle?: string; origin?: string; css?: string }) =>
+    request<PublishSettings>('PUT', `${path(space)}/publish`, change),
+  /** Takes the site down; the handle stays the space's. */
+  remove: (space: string) => request<undefined>('DELETE', `${path(space)}/publish`),
+}

@@ -298,10 +298,11 @@ describe('traits', () => {
     const glyphs = await within(panel()).findByRole('button', { name: 'Space info: Shared, Published (Publishing failed), Calendar' })
     await user.click(glyphs)
     const info = await screen.findByRole('dialog', { name: 'Work' })
-    // Sharing is a section of its own; the rest, without settings here, are rows.
+    // Sharing and publishing are sections of their own, a problem said in its section; the rest are rows.
     expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
+    expect(within(within(info).getByRole('region', { name: 'Published' })).getByText('Publishing failed')).toBeTruthy()
     const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
-    expect(rows.map((r) => r.textContent)).toEqual(['PublishedPublishing failed', 'CalendarSynced with iCloudUpdate the app to change this.'])
+    expect(rows.map((r) => r.textContent)).toEqual(['CalendarSynced with iCloudUpdate the app to change this.'])
   })
 
   it('asks before moving a note where more people see it', async () => {

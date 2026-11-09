@@ -16,6 +16,7 @@ account, put HTTPS in front, write a note and sync your phone, in about fifteen 
 - **Keep a note private, even from the server:** [Locked notes](guides/using/locked-notes.md)
 - **Back up, or restore:** [Backups](guides/self-hosting/backups.md)
 - **Write notes with family or friends:** [Sharing with others](guides/using/sharing.md)
+- **Put a space on the web:** [Publishing a space](guides/using/publishing.md)
 - **Add someone, or reset a password:** [Accounts](guides/self-hosting/users.md)
 - **Get my notes out as Markdown:** [Markdown mirror and export](guides/self-hosting/markdown-mirror-and-export.md)
 - **Bring notes in from another app:** [Import notes from Markdown](guides/self-hosting/import-markdown.md)
@@ -38,6 +39,7 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 - [Writing and Markdown](guides/using/writing-and-markdown.md): formatting, pictures, deleting, and how notes are stored as Markdown
 - [Tags, spaces and search](guides/using/organize-and-find.md)
 - [Sharing with others](guides/using/sharing.md): add people to your server, and share spaces with them
+- [Publishing a space](guides/using/publishing.md): a space as a small public website
 - [Locked notes](guides/using/locked-notes.md): end-to-end encrypted notes
 - [Emailing notes](guides/using/email.md)
 - [Offline and sync](guides/using/offline-and-sync.md): what works offline, conflicts, lost devices

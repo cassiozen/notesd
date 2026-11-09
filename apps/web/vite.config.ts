@@ -90,8 +90,9 @@ export default defineConfig({
     // changeOrigin must stay false (the string shorthand turns it on): the
     // server rejects mutations whose Origin host differs from Host, and the
     // browser's Origin is the Vite dev server.
+    // Published spaces too (/@<handle>/), but not Vite's own /@vite/, /@fs/, /@id/ and /@react-refresh.
     proxy: Object.fromEntries(
-      ['/api', '/healthz', '/readyz'].map((path) => [path, { target: server, changeOrigin: false }]),
+      ['/api', '/healthz', '/readyz', '^/@(?!vite/|fs/|id/|react-refresh)'].map((path) => [path, { target: server, changeOrigin: false }]),
     ),
   },
   test: {
