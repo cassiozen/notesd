@@ -32,11 +32,12 @@
   cursor: pointer;
 }
 
-/* Drawn short, but still a finger's height to tap. */
+/* Drawn small, tapped big: 44px tall. Sideways only half the gap to its neighbours (the switcher,
+   the list's title), so it never takes their taps. */
 .group::after {
   content: '';
   position: absolute;
-  inset: -6px 0;
+  inset: -11px -3px;
 }
 
 .group .glyphs {
