@@ -15,11 +15,10 @@ import { useEmailSettings } from './email-settings'
 import type { Saver } from './source'
 import { SpaceIdentity } from './space-identity'
 import { loadedSpaces, useSpaces } from './spaces'
-import { exposingTrait, lockedRefusal, newExposure, traitGlyph } from './traits'
+import { exposingTrait, lockedReason, lockedRefusal, newExposure, traitGlyph } from './traits'
 import styles from './share.module.css'
 
 /** "Visible to Ana" as it reads mid-sentence. */
-const lowerFirst = (s: string) => s.charAt(0).toLowerCase() + s.slice(1)
 
 /** The note as one Markdown file: the title as a heading, then the body. */
 function exportMarkdown(saver: Saver): string {
@@ -70,11 +69,8 @@ export function NoteMenu({
   const lock = (list: Space[] | null) => {
     const here = list?.find((sp) => sp.id === saver.spaceId())
     const exposing = exposingTrait(here)
-    if (here && exposing?.exposure) {
-      setExplaining({
-        title: lockedRefusal(exposing),
-        text: `Only you can read a locked note, and ${here.name} is ${lowerFirst(exposing.exposure)}. Move it to a space of your own to lock it.`,
-      })
+    if (here && exposing) {
+      setExplaining({ title: lockedRefusal(exposing), text: lockedReason(exposing, here.name, false) })
     } else if (lockSession.key()) void saver.changeLock(true)
     else {
       // Until the keyring is fetched, 'unknown' can't tell a first lock from a later one.
@@ -276,7 +272,7 @@ export function NoteMenu({
             setMoving(false)
             const exposing = exposingTrait(to)
             if (locked && exposing) {
-              setExplaining({ title: lockedRefusal(exposing), text: `Remove this note’s lock to move it to ${to.name}.` })
+              setExplaining({ title: lockedRefusal(exposing), text: lockedReason(exposing, to.name, true) })
               return
             }
             const from = spaces.find((sp) => sp.id === saver.spaceId())

@@ -559,9 +559,8 @@ fun EditorScreen(
                 SheetItem(Icons.Lock, if (locked) "Remove lock" else "Lock note", {
                     menu = false
                     val exposing = exposingTrait(here)
-                    if (!locked && exposing != null) {
-                        refused = "Can't lock this note" to
-                            "${lockedRefusal(exposing)} Move it to a space of your own to lock it."
+                    if (!locked && here != null && exposing != null) {
+                        refused = lockedRefusal(exposing) to lockedReason(exposing, here.name, moving = false)
                     } else {
                         setLocked(!locked)
                     }
@@ -599,8 +598,7 @@ fun EditorScreen(
             val to = spaces.firstOrNull { it.id == id }
             val exposing = exposingTrait(to)
             if (locked && to != null && exposing != null) {
-                refused = "Can't move this note" to
-                    "${lockedRefusal(exposing)} Remove this note's lock to move it to ${to.name}."
+                refused = lockedRefusal(exposing) to lockedReason(exposing, to.name, moving = true)
             } else if (to != null && (newExposures(here, to).isNotEmpty() || lostExposures(here, to).isNotEmpty())) {
                 crossing = to
             } else {

@@ -100,7 +100,12 @@ struct SpaceTraitsTests {
         #expect(Traits.lockedRefusal(shared) == "Locked notes can’t be in a shared space.")
         #expect(Traits.lockedRefusal(published) == "Locked notes can’t be in a published space.")
         #expect(
-            LockRefusal(trait: shared, space: "Family").message
-                == "Only you can read a locked note, and Family is visible to Ana.")
+            LockRefusal(trait: shared, space: "Family", moving: false).message
+                == "Only you can read a locked note, and Family is visible to Ana. "
+                + "Move it to a space of your own to lock it.")
+        #expect(
+            LockRefusal(trait: shared, space: "Family", moving: true).message
+                == "Only you can read a locked note, and Family is visible to Ana. "
+                + "Remove this note’s lock to move it there.")
     }
 }

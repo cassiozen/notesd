@@ -536,7 +536,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `image_too_large` | 413 | Images can be up to 10 MiB; a profile photo up to 1 MiB |
 | `unsupported_image` | 415 | Not JPEG, PNG, WebP, GIF or an encrypted image, or an image's bytes don't match its type |
 | `operation_id_reused` | 422 | This `operationId` was used for a different write |
-| `locked_in_exposed_space` | 422 | Locked notes can't be in a space others can read (shared with someone) |
+| `locked_in_exposed_space` | 422 | Locked notes can't be in a space others can read (a trait exposes it) |
 | `upgrade_required` | 426 | This app is older than the server accepts; see `minVersion` and [Compatibility](#compatibility) |
 | `rate_limited` | 429 | Too many failed attempts; see `Retry-After` |
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |

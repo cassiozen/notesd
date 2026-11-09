@@ -17,7 +17,6 @@ struct NoteScreen: View {
     @State private var confirmDelete = false
     /// A move that would show the note to more people, or fewer, waiting for a yes.
     @State private var confirmMove: MoveCheck?
-    /// Lock note was chosen in a shared space: it says why not.
     /// Why the note can't be locked, or moved locked, into a space: its first trait letting others read it.
     @State private var lockRefused: LockRefusal?
     @State private var emailing = false
@@ -350,7 +349,7 @@ struct NoteScreen: View {
         if on, let here = graph.spaces.first(where: { $0.id == model.spaceId }),
             let trait = Traits.exposing(here.traits)
         {
-            lockRefused = LockRefusal(trait: trait, space: here.name)
+            lockRefused = LockRefusal(trait: trait, space: here.name, moving: false)
             return
         }
         // The session itself, not the observed state: right after the sheet unlocks, that lags.
@@ -393,7 +392,7 @@ struct NoteScreen: View {
     /// longer to people its own space does (moving out of a shared space, §7.9).
     private func askToMove(to space: Space) {
         if model.locked, let trait = Traits.exposing(space.traits) {
-            lockRefused = LockRefusal(trait: trait, space: space.name)
+            lockRefused = LockRefusal(trait: trait, space: space.name, moving: true)
             return
         }
         let current = graph.spaces.first { $0.id == model.spaceId }?.traits ?? []
@@ -498,11 +497,15 @@ private struct LinkSheet: View {
 struct LockRefusal {
     let trait: SpaceTrait
     let space: String
+    /// Moving the locked note into `space`, rather than locking it there.
+    let moving: Bool
 
-    /// "Only you can read a locked note, and Family is visible to Ana."
+    /// Why, and what to do instead: lock it elsewhere, or unlock it to move it.
     var message: String {
         let exposure = trait.exposure ?? ""
         let midSentence = exposure.prefix(1).lowercased() + exposure.dropFirst()
-        return "Only you can read a locked note, and \(space) is \(midSentence)."
+        let next =
+            moving ? "Remove this note’s lock to move it there." : "Move it to a space of your own to lock it."
+        return "Only you can read a locked note, and \(space) is \(midSentence). \(next)"
     }
 }

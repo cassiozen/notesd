@@ -111,5 +111,14 @@ class SpaceTraitsTest {
         assertEquals(published, exposingTrait(space(agent, published, shared)))
         assertEquals("Locked notes can't be in a shared space.", lockedRefusal(shared))
         assertEquals("Locked notes can't be in a published space.", lockedRefusal(published))
+        assertEquals("Locked notes can't be in a shared space.", lockedRefusal(shared.copy(label = "")))
+        assertEquals(
+            "Only you can read a locked note, and Family is visible to Ana and Ben. Move it to a space of your own to lock it.",
+            lockedReason(shared, "Family", moving = false)
+        )
+        assertEquals(
+            "Only you can read a locked note, and Family is visible to Ana and Ben. Remove this note's lock to move it there.",
+            lockedReason(shared, "Family", moving = true)
+        )
     }
 }

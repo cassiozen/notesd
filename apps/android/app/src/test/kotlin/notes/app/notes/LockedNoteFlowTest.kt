@@ -335,7 +335,9 @@ class LockedNoteFlowTest {
         compose.onNodeWithText("Move to space…").performClick()
         compose.waitUntilExactlyOneExists(hasText("Move to space"))
         compose.onNode(hasText("Family") and hasClickAction()).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Remove this note's lock to move it to Family", substring = true))
+        compose.waitUntilExactlyOneExists(
+            hasText("Family is visible to ana. Remove this note's lock to move it there.", substring = true)
+        )
         compose.onNode(hasText("OK") and hasClickAction()).performClick()
         assertEquals(Spaces.DEFAULT, read { graph.store.spaceOf("n") })
     }
