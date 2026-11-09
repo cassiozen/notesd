@@ -22,7 +22,7 @@ setting.
 
 ## Publish a space
 
-In the web, Mac or Android app:
+In any of the apps:
 
 1. Choose the space's name at the top of the sidebar, then **Info**.
 2. Under **Published**, choose **Publish**.
@@ -50,8 +50,7 @@ publish it again.
   variable, such as `:root { --accent: teal }`. The variables are `--bg`, `--surface`, `--text`, `--muted`,
   `--border`, `--accent`, `--link`, `--font-body`, `--font-heading`, `--font-mono` and
   `--measure`.
-- **Custom CSS is set in the web or Mac app.** The Android app publishes, changes the address
-  and stops publishing. For now the iPhone app shows that a space is published, but doesn't
-  publish one.
+- **Custom CSS is set in the web or Mac app.** The Android and iPhone apps publish, change the
+  address and stop publishing.
 
 For who can see what, see the [security model](../../concepts/security-model.md).

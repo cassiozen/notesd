@@ -231,14 +231,17 @@ struct SpaceInfoView: View {
 
     private func shownIcon(_ space: Space) -> String { pendingIcon ?? space.icon }
 
-    /// The traits this app knows, with what Space info can do about sharing here (§7.9).
+    /// The traits this app knows, with their sections: People (§7.9) and Published (§7.10).
     private func registry(_ space: Space) -> [TraitKind] {
         Traits.registry.map { kind in
-            guard kind.key == "shared" else { return kind }
-            var shared = kind
-            shared.section = { [people] in AnyView(PeopleSection(space: $0, people: people)) }
-            shared.canTurnOn = canShare(space)
-            return shared
+            var kind = kind
+            switch kind.key {
+            case "shared": kind.section = { [people] in AnyView(PeopleSection(space: $0, people: people)) }
+            case "published": kind.section = { AnyView(PublishedSection(space: $0)) }
+            default: return kind
+            }
+            kind.canTurnOn = canExpose(space)
+            return kind
         }
     }
 
@@ -274,14 +277,15 @@ struct SpaceInfoView: View {
         return blocks
     }
 
-    /// The owner shares; never the default space, and only through a server.
-    private func canShare(_ space: Space) -> Bool {
+    /// The owner shares or publishes; never the default space (where a refused locked note is kept, §7.8), and only
+    /// through a server.
+    private func canExpose(_ space: Space) -> Bool {
         space.id != Spaces.defaultId && owns(space) && graph.account.isSignedIn
     }
 
     /// Whether People will list who to invite: for the owner of a space shared or that can be.
     private func wantsPeople(_ space: Space) -> Bool {
-        space.shared?.isOwner ?? canShare(space)
+        space.shared?.isOwner ?? canExpose(space)
     }
 
     /// Only a shared space's owner renames it, changes its icon or deletes it.

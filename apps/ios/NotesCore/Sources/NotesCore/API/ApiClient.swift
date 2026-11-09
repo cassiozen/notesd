@@ -268,6 +268,46 @@ public final class ApiClient: Sendable {
             decode: json(RemoteSpace.self))
     }
 
+    /// This server's origin, as the app reaches it: a published space's absolute links (its feed) are made from it,
+    /// since the server can't know its own public address (§7.10).
+    public var origin: String {
+        let host = baseURL.host(percentEncoded: false) ?? ""
+        let shown = host.contains(":") ? "[\(host)]" : host
+        let port = baseURL.port.map { ":\($0)" } ?? ""
+        return "\(baseURL.scheme ?? "http")://\(shown)\(port)"
+    }
+
+    /// How a space is published; `404 not_published` if it never was (§7.10).
+    public func publishSettings(_ spaceId: String) async -> ApiResult<PublishSettings> {
+        await authed(
+            { self.request("GET", ["api", "v1", "spaces", spaceId, "publish"], access: $0) },
+            decode: json(PublishSettings.self))
+    }
+
+    /// Publishes the space, or changes its `handle`; a nil field stays as it is. The first time needs `origin`.
+    public func publish(_ spaceId: String, handle: String? = nil, origin: String? = nil) async
+        -> ApiResult<PublishSettings>
+    {
+        struct Body: Encodable {
+            var handle: String?
+            var origin: String?
+        }
+        return await authed(
+            {
+                self.request(
+                    "PUT", ["api", "v1", "spaces", spaceId, "publish"], body: Body(handle: handle, origin: origin),
+                    access: $0)
+            },
+            decode: json(PublishSettings.self))
+    }
+
+    /// Takes the space's site down; its handle stays its own.
+    public func unpublish(_ spaceId: String) async -> ApiResult<Void> {
+        await authed(
+            { self.request("DELETE", ["api", "v1", "spaces", spaceId, "publish"], access: $0) },
+            decode: Self.noContent)
+    }
+
     /// Deletes an empty space: a conflict (space_not_empty) while it holds notes.
     public func deleteSpace(_ id: String) async -> ApiResult<Void> {
         await authed(
