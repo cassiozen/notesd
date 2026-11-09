@@ -1,8 +1,6 @@
 package notes.app.sync
 
 import android.content.Context
-import android.net.ConnectivityManager
-import android.net.Network
 import android.os.SystemClock
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
@@ -47,6 +45,7 @@ class SyncScheduler(
     private val engine: SyncEngine,
     private val store: NoteStore,
     private val accounts: AccountStore,
+    private val connectivity: Connectivity,
     private val scope: CoroutineScope
 ) {
     private val requests = Channel<Unit>(Channel.CONFLATED)
@@ -127,11 +126,7 @@ class SyncScheduler(
                 }
             }
         )
-        context.getSystemService(ConnectivityManager::class.java)?.registerDefaultNetworkCallback(
-            object : ConnectivityManager.NetworkCallback() {
-                override fun onAvailable(network: Network) = request()
-            }
-        )
+        scope.launch { connectivity.available.collect { request() } }
         WorkManager.getInstance(context).enqueueUniquePeriodicWork(
             PERIODIC,
             ExistingPeriodicWorkPolicy.KEEP,

@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import notes.app.editor.NoteEditText
 import notes.app.images.ImageException
 import notes.app.images.Prepared
@@ -83,7 +84,9 @@ class EditorViewModel(
     /** Asks for a sync now rather than after the usual pause. */
     private val requestSync: () -> Unit = {},
     /** Where the note counts as open while this lives. */
-    private val openNotes: OpenNotes? = null
+    private val openNotes: OpenNotes? = null,
+    /** Syncs now and returns once that cycle ended. */
+    private val push: suspend () -> Unit = {}
 ) : ViewModel() {
     private val _view = MutableStateFlow<NoteEditText?>(null)
 
@@ -363,6 +366,18 @@ class EditorViewModel(
     }
 
     /**
+     * Once the editor is gone: waits for its last save to reach the server, then the server's revision of what
+     * it last showed, as [shownRevision]. Null when that save or its push didn't go through in time.
+     */
+    suspend fun closingRevision(): Long? {
+        if (!saved()) return null
+        val doc = _document.value ?: return null
+        val shows = Fields(doc.title.orEmpty(), withContext(Dispatchers.Default) { Markdown.serialize(doc) })
+        if (store.get(id)?.dirty == true) withTimeoutOrNull(PUSH_WAIT_MS) { push() }
+        return shownRevision(shows)
+    }
+
+    /**
      * Moves the note to another space, after the saves started so far. A new note not stored yet
      * is created there instead.
      */
@@ -514,5 +529,10 @@ class EditorViewModel(
                 null
             }
         }
+    }
+
+    private companion object {
+        /** Within the agent socket's 5 s wait for the close that ends the note's writing session. */
+        const val PUSH_WAIT_MS = 4_000L
     }
 }

@@ -35,6 +35,7 @@ import notes.app.account.KeystoreSealer
 import notes.app.account.Profile
 import notes.app.account.Sealer
 import notes.app.agent.AgentConfigs
+import notes.app.agent.AgentLink
 import notes.app.agent.AiSetup
 import notes.app.images.ImageLoader
 import notes.app.locks.Biometrics
@@ -49,8 +50,12 @@ import notes.app.notes.memberId
 import notes.app.settings.Appearance
 import notes.app.sharing.Publishing
 import notes.app.sharing.Sharing
+import notes.app.sync.Connectivity
 import notes.app.sync.SyncScheduler
 import notes.app.ui.SpaceThemes
+import notes.core.agent.AgentChange
+import notes.core.agent.AgentEditors
+import notes.core.agent.EditorReply
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 import notes.core.api.ClientInfo
@@ -94,9 +99,18 @@ class AppGraph(
     /** Profile photos, the account's and those People lists. */
     val avatars = Avatars(File(context.filesDir, "avatars")) { api() }
 
+    /** Whether the phone has a network. Started with sync. */
+    val connectivity = Connectivity()
+
+    /** The app is on screen. Kept by [watchForeground]; tests set it. */
+    val foreground = MutableStateFlow(false)
+
     /** Null server while never connected; signed out, its requests come back Unauthenticated. */
     val sync = SyncEngine(database, { api() }, images = images)
-    val scheduler = SyncScheduler(context.applicationContext, sync, store, accounts, scope)
+    val scheduler = SyncScheduler(context.applicationContext, sync, store, accounts, connectivity, scope)
+
+    /** Syncs now and returns once that cycle ended. Tests, which don't start the scheduler, sync directly. */
+    var push: suspend () -> Unit = { scheduler.syncNow() }
 
     /** The locked-notes key (§10.1), unlocked against the keyring sync keeps. */
     val locks = LockSession(sync.lockKeys, { api() }, scope)
@@ -118,7 +132,7 @@ class AppGraph(
     val agents = AgentConfigs { api() }
 
     /** The notes open in an editor here. */
-    val openNotes = OpenNotes()
+    val openNotes = OpenNotes(scope)
 
     private val prefs = context.getSharedPreferences("app", Context.MODE_PRIVATE)
 
@@ -156,6 +170,20 @@ class AppGraph(
 
     /** The space the list, tags and search show: this phone's own, never synced, the default at a cold start. */
     val space: StateFlow<String> = _space
+
+    /** The agent socket, open while the space shown has its agent on. Started with sync. */
+    val agentLink = AgentLink(
+        accounts,
+        ai,
+        agents,
+        space,
+        foreground,
+        connectivity.online,
+        openNotes,
+        NoEditors,
+        { api() },
+        scope
+    )
 
     /** Who's in shared spaces (§7.9): invitations, members, leaving. */
     val sharing = Sharing({ api() }, sync, store, scope)
@@ -319,6 +347,21 @@ class AppGraph(
         scope.launch { locks.state.collect { if (it != LockSession.State.Unlocked) imageLoader.forgetLocked() } }
     }
 
+    /** Keeps [foreground]. Started with sync. */
+    fun watchForeground() {
+        ProcessLifecycleOwner.get().lifecycle.addObserver(
+            object : DefaultLifecycleObserver {
+                override fun onStart(owner: LifecycleOwner) {
+                    foreground.value = true
+                }
+
+                override fun onStop(owner: LifecycleOwner) {
+                    foreground.value = false
+                }
+            }
+        )
+    }
+
     /** Back after [SPACE_RESET_MS] away with no note open, the list starts over in the default space. Started with sync. */
     fun watchSpaces() {
         ProcessLifecycleOwner.get().lifecycle.addObserver(
@@ -408,4 +451,11 @@ internal fun decodeFilter(s: String?): NoteFilter? = when {
         NoteFilter.Tag(s.substring(4).substringBefore('\n'), s.substringAfter('\n'))
 
     else -> null
+}
+
+/** Until the editor answers runs: every note is read from the server's copy. */
+private object NoEditors : AgentEditors {
+    override suspend fun read(noteId: String) = EditorReply.Refused("not_open")
+
+    override suspend fun apply(noteId: String, runId: String, change: AgentChange) = EditorReply.Refused("not_open")
 }
