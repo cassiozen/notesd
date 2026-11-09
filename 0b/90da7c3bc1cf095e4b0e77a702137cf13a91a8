@@ -1,0 +1,21 @@
+apps/ios/NotesCore/Tests/NotesCoreTests/ApiClientTests.swift
+  s_c4b534f44e1767::t_b364deac452893 101-103,108-109
+apps/ios/NotesCore/Sources/NotesCore/API/ApiClient.swift
+  s_c4b534f44e1767::t_951a767df55f79 283,298-299,307
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0b90da7c3bc1cf095e4b0e77a702137cf13a91a8",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
