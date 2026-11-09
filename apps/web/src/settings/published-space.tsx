@@ -75,12 +75,12 @@ export function PublishedSection({ space }: { space: Space }) {
   async function run(key: NonNullable<typeof busy>, work: () => Promise<PublishSettings | undefined>, turning?: boolean): Promise<boolean> {
     setBusy(key)
     setFailure(undefined)
-    if (turning !== undefined) expectPublished(space.id, turning)
+    const call = turning === undefined ? undefined : expectPublished(space.id, turning)
     try {
       const next = await work()
       setSettings(next ?? null)
     } catch (err) {
-      unexpectPublished(space.id)
+      if (call !== undefined) unexpectPublished(space.id, call)
       setFailure(publishError(err))
       setBusy(null)
       return false

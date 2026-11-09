@@ -130,10 +130,12 @@ class SpaceTraitsTest {
         val on = Publishing.shown(space(shared, agent), true)
         assertEquals(listOf("shared", "published", "agent"), on.traits.map { it.key })
         assertEquals("Publishing…", on.traits[1].summary)
-        assertEquals(published, exposingTrait(space(published)))
+        // Shared exposes it first either way; alone, the expected trait refuses locked notes at once.
+        assertEquals(Publishing.PUBLISHING, exposingTrait(Publishing.shown(space(), true)))
         val off = Publishing.shown(space(shared, published), false)
         assertEquals(listOf(shared), off.traits)
         assertEquals(listOf(published), off.leaving)
+        assertEquals(published, exposingTrait(Publishing.shown(space(published), false)))
         // What the list says already wins.
         assertEquals(space(published), Publishing.shown(space(published), true))
         assertEquals(space(), Publishing.shown(space(), false))

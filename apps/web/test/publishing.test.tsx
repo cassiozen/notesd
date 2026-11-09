@@ -2,7 +2,7 @@ import { act, screen, waitFor, within } from '@testing-library/react'
 import { describe, expect, it, onTestFinished, vi } from 'vitest'
 import { publishing as publishingApi, spaces as spacesApi, type PublishSettings } from '../src/api/spaces'
 import { encryptBody } from '../src/locks/crypto'
-import { loadedSpaces, reloadSpaces } from '../src/notes/spaces'
+import { expectPublished, loadedSpaces, reloadSpaces, unexpectPublished } from '../src/notes/spaces'
 import { op, signedIn } from './helpers'
 import type { Client, TestServer } from './server'
 
@@ -35,6 +35,11 @@ function gate() {
 }
 
 const section = (info: HTMLElement) => within(info).getByRole('region', { name: 'Published' })
+
+/** Journal as the space list shows it now. */
+async function journal() {
+  return (await loadedSpaces())?.find((sp) => sp.name === 'Journal')
+}
 
 async function seedJournal(server: TestServer) {
   await server.api('PUT', '/spaces/journal', { name: 'Journal' })
@@ -139,9 +144,24 @@ describe('publishing a space', () => {
     await within(section(info)).findByRole('textbox', { name: 'Address' })
     // The device's own copy of the list has the server's trait, address and all.
     await waitFor(async () => {
-      const journal = (await loadedSpaces())?.find((sp) => sp.name === 'Journal')
-      expect(journal?.traits.find((t) => t.key === 'published')?.summary).toMatch(/^At .*@journal$/)
+      expect((await journal())?.traits.find((t) => t.key === 'published')?.summary).toMatch(/^At .*@journal$/)
     })
+  })
+
+  it('a call that fails clears only what it expected, not a newer call’s', async () => {
+    await signedIn({ seed: seedJournal })
+    await act(() => reloadSpaces())
+    const id = (await journal())?.id ?? ''
+    let older = 0
+    let newer = 0
+    act(() => {
+      older = expectPublished(id, false)
+      newer = expectPublished(id, true)
+    })
+    act(() => unexpectPublished(id, older))
+    expect((await journal())?.traits.map((t) => t.summary)).toEqual(['Publishing…'])
+    act(() => unexpectPublished(id, newer))
+    expect((await journal())?.traits).toEqual([])
   })
 
   it('puts the glyph back when publishing fails', async () => {

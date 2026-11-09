@@ -50,6 +50,9 @@ final class AppGraph {
     var expected: [String: Bool] = [:] {
         didSet { showSpaces() }
     }
+    /// Which call set each of `expected`, and how many have.
+    var expectedBy: [String: Int] = [:]
+    var expectations = 0
     /// Invitations into other people's spaces (§7.9), as the last sync brought them.
     private(set) var invites: [RemoteInvite] = []
     /// What others changed in each shared space since this iPhone last showed it, by space id.
@@ -325,6 +328,8 @@ final class AppGraph {
         }
         accounts.signOut()
         email.forget()
+        // What was expected was this session's.
+        expected = [:]
         await locks.forget()
         biometrics.disable()
     }

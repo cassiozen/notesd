@@ -79,9 +79,9 @@ extension AppGraph {
         // Said here with the count: the server only knows the notes that reached it.
         let locked = (try? await store.lockedCount(space: space.id)) ?? 0
         if locked > 0 { return .failure(SharingError(Publishing.locked(locked))) }
-        expected[space.id] = true
+        let call = expect(space.id, true)
         let result = await changed(client.publish(space.id, origin: client.origin))
-        if case .failure = result { expected[space.id] = nil }
+        if case .failure = result { unexpect(space.id, call) }
         return result
     }
 
@@ -94,13 +94,27 @@ extension AppGraph {
     /// Takes the site down; its address stays the space's.
     func stopPublishing(_ spaceId: String) async -> String? {
         guard let client = accounts.client() else { return Self.signInToPublish }
-        expected[spaceId] = false
+        let call = expect(spaceId, false)
         if let problem = Publishing.message(await client.unpublish(spaceId)) {
-            expected[spaceId] = nil
+            unexpect(spaceId, call)
             return problem
         }
         await scheduler.syncNow()
         return nil
+    }
+
+    /// Expects `on` for the space, as the call it returns: a call that fails clears only its own, not a newer one's.
+    private func expect(_ spaceId: String, _ on: Bool) -> Int {
+        expectations += 1
+        expectedBy[spaceId] = expectations
+        expected[spaceId] = on
+        return expectations
+    }
+
+    private func unexpect(_ spaceId: String, _ call: Int) {
+        guard expectedBy[spaceId] == call else { return }
+        expectedBy[spaceId] = nil
+        expected[spaceId] = nil
     }
 
     private func changed(_ result: ApiResult<PublishSettings>) async -> Result<PublishSettings, SharingError> {

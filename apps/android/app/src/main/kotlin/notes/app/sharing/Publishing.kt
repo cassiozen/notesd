@@ -43,6 +43,7 @@ class Publishing(
                 space.traits.any { it.key == KEY } != on
             }
         }
+        callOf.keys.retainAll(_expected.value.keys)
     }
 
     /** Its address and whether it's up; a [Shared.Failed] with [NOT_PUBLISHED] if it never was. */
@@ -57,9 +58,9 @@ class Publishing(
         // Said here with the count: the server only knows the notes that reached it.
         lockedCount(space.id).takeIf { it > 0 }?.let { return@background Shared.Failed(publishLocked(it)) }
         val client = api() ?: return@background Shared.Failed(NOT_CONNECTED)
-        expect(space.id, true)
+        val call = expect(space.id, true)
         val r = client.publish(space.id, origin = client.origin)
-        if (r !is ApiResult.Ok) unexpect(space.id)
+        if (r !is ApiResult.Ok) unexpect(space.id, call)
         if (r is ApiResult.Conflict && r.code == "space_has_locked") {
             return@background Shared.Failed(publishLocked(lockedCount(space.id)))
         }
@@ -74,15 +75,34 @@ class Publishing(
     /** Takes the site down; its address stays the space's. */
     suspend fun stop(spaceId: String): Shared<Unit> = background {
         val client = api() ?: return@background Shared.Failed(NOT_CONNECTED)
-        expect(spaceId, false)
+        val call = expect(spaceId, false)
         val r = client.unpublish(spaceId)
-        if (r !is ApiResult.Ok) unexpect(spaceId)
+        if (r !is ApiResult.Ok) unexpect(spaceId, call)
         after(r)
     }
 
-    private fun expect(spaceId: String, on: Boolean) = _expected.update { it + (spaceId to on) }
+    // Which call each expectation is: a call that fails clears only its own, not a newer one's.
+    private var calls = 0
+    private val callOf = HashMap<String, Int>()
 
-    private fun unexpect(spaceId: String) = _expected.update { it - spaceId }
+    /** Called on [scope], so one at a time. */
+    private fun expect(spaceId: String, on: Boolean): Int {
+        callOf[spaceId] = ++calls
+        _expected.update { it + (spaceId to on) }
+        return calls
+    }
+
+    private fun unexpect(spaceId: String, call: Int) {
+        if (callOf[spaceId] != call) return
+        callOf -= spaceId
+        _expected.update { it - spaceId }
+    }
+
+    /** Signed out: what was expected was another session's. */
+    fun forget() {
+        callOf.clear()
+        _expected.value = emptyMap()
+    }
 
     private suspend fun lockedCount(spaceId: String) = store.lockedCount(spaceId)
 

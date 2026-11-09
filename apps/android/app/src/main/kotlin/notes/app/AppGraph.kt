@@ -240,6 +240,7 @@ class AppGraph(
     suspend fun signOut() {
         withTimeoutOrNull(LOGOUT_WAIT_MS) { api()?.logout() }
         accounts.signOut()
+        publishing.forget()
         locks.lock(force = true)
         fingerprint.disable()
     }
@@ -250,6 +251,7 @@ class AppGraph(
         store.wipe()
         images.wipe()
         avatars.wipe()
+        publishing.forget()
         locks.forget()
         fingerprint.disable()
         accounts.clear()
