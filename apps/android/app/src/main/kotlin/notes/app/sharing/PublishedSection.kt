@@ -154,6 +154,8 @@ fun PublishedSection(graph: AppGraph, space: Space) {
                         draft = null
                         asking = null
                     },
+                    // Only the question: the handle stays as typed, to change or save again.
+                    onKeep = { asking = null },
                     onConfirm = { handle ->
                         act("handle", { changeHandle(space.id, handle) }, settled = { asking = null }) {
                             settings = it
@@ -247,6 +249,7 @@ private fun HandleEditor(
     onType: (String) -> Unit,
     onSave: (String) -> Unit,
     onCancel: () -> Unit,
+    onKeep: () -> Unit,
     onConfirm: (String) -> Unit
 ) {
     Divider()
@@ -279,7 +282,7 @@ private fun HandleEditor(
             action = "Change address",
             busy = working,
             onConfirm = { asking?.let(onConfirm) },
-            onCancel = onCancel,
+            onCancel = onKeep,
             modifier = Modifier.padding(top = 8.dp)
         )
     }

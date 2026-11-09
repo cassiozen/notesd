@@ -1,5 +1,6 @@
 package notes.app.notes
 
+import android.os.Looper
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasAnySibling
 import androidx.compose.ui.test.hasClickAction
@@ -17,6 +18,10 @@ import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
 import notes.app.FakeNotesd
 import notes.app.MainActivity
@@ -26,12 +31,14 @@ import notes.app.shutDown
 import notes.core.api.Member
 import notes.core.api.PublishSettings
 import notes.core.api.RemoteSpace
+import notes.core.crypto.LockedNotes
 import notes.core.sync.SyncOutcome
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
 /** Publishing a space (§7.10) from Space info, against a fake notesd: on, its address, a new handle, off. */
@@ -135,6 +142,32 @@ class PublishingFlowTest {
     }
 
     @Test
+    fun `a locked note on this phone refuses publishing before asking the server`() {
+        family()
+        launch()
+        offMain {
+            graph.store.save("diary", "Diary", LockedNotes.encrypt(ByteArray(32), "Dear diary\n"), spaceId = "fam")
+        }
+        openSpaceInfo("Family")
+        press("Publish")
+        compose.waitUntilExactlyOneExists(hasText("Unlock its locked note to publish it."), 10_000)
+        assertFalse(synchronized(notesd) { notesd.requests.any { it.endsWith("/publish") } })
+    }
+
+    /** [block] off the screen's thread, which writes to the database release locks on. */
+    private fun <T> offMain(block: suspend () -> T): T {
+        val result = CoroutineScope(Dispatchers.IO).async { block() }
+        val looper = shadowOf(Looper.getMainLooper())
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!result.isCompleted) {
+            check(System.currentTimeMillis() < deadline) { "still waiting" }
+            looper.idle()
+            Thread.sleep(5)
+        }
+        return runBlocking { result.await() }
+    }
+
+    @Test
     fun `the default space can't be published`() {
         launch()
         openSpaceInfo("Notes", until = "Delete space…")
@@ -155,6 +188,12 @@ class PublishingFlowTest {
         press("Save")
         confirm("Move the site to $host/@taken?", "Change address")
         compose.waitUntilExactlyOneExists(hasText("Another space has that address. Try another."), 10_000)
+
+        // Cancelled, only the question goes: the handle stays as typed.
+        compose.onNode(addressField).performTextReplacement("keep-me")
+        press("Save")
+        confirm("Move the site to $host/@keep-me?", "Cancel")
+        compose.waitUntilExactlyOneExists(addressField and hasText("keep-me"))
 
         compose.onNode(addressField).performTextReplacement("Our-Days")
         press("Save")
