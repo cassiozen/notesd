@@ -339,6 +339,68 @@ final class FlowTests: XCTestCase {
 
     /// Shared spaces (§7.9) between this app's account and Ana's, who works through the API: an invitation in
     /// the switcher, sharing from Space info, what Ana changed, who edited, and the checks on moving out and locking.
+    /// Publishing (§7.10) from Space info: on from the address the app reaches the server by, moved to another
+    /// handle once asked, then off.
+    func testPublishing() async throws {
+        _ = try await api("GET", "api/v1/auth/session")
+        let pam = try await account("Pam")
+        let garden = newId()
+        _ = try await call("PUT", "api/v1/spaces/\(garden)", token: pam, ["name": "Garden", "icon": "open-book"])
+        _ = try await call(
+            "POST", "api/v1/notes", token: pam,
+            ["operationId": newId(), "id": newId(), "title": "Tomatoes", "content": "Red at last\n", "spaceId": garden])
+
+        try signIn(as: "Pam")
+        app.buttons["Tags"].tap()
+        let switcher = app.buttons["Space: Notes"]
+        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        switcher.tap()
+        let row = app.buttons["Garden"]
+        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        row.press(forDuration: 1)
+        let publish = app.buttons["Publish"]
+        XCTAssertTrue(publish.waitForExistence(timeout: 10))
+        publish.tap()
+
+        let address = app.textFields["Address"]
+        XCTAssertTrue(address.waitForExistence(timeout: 15))
+        XCTAssertEqual(address.value as? String, "garden")
+        XCTAssertTrue(app.buttons["Stop Publishing…"].exists)
+        XCTAssertTrue(app.links["Open"].exists || app.buttons["Open"].exists)
+        screenshot("ios-published")
+
+        // A new handle asks first: links to the old address stop working.
+        address.tap()
+        address.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "garden".count))
+        address.typeText("our-plot\n")
+        let change = app.buttons["Change Address"]
+        XCTAssertTrue(change.waitForExistence(timeout: 5))
+        change.tap()
+        let moved = try await waitFor {
+            let s = try await self.call("GET", "api/v1/spaces/\(garden)/publish", token: pam)
+            return s["handle"] as? String == "our-plot"
+        }
+        XCTAssertTrue(moved)
+
+        app.buttons["Stop Publishing…"].tap()
+        let stop = app.buttons["Stop Publishing"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 5))
+        stop.tap()
+        XCTAssertTrue(app.buttons["Publish"].waitForExistence(timeout: 15))
+        let settings = try await call("GET", "api/v1/spaces/\(garden)/publish", token: pam)
+        XCTAssertEqual(settings["published"] as? Bool, false)
+        XCTAssertEqual(settings["handle"] as? String, "our-plot")
+    }
+
+    /// Polls `check` for up to 10 s.
+    private func waitFor(_ check: @escaping () async throws -> Bool) async throws -> Bool {
+        for _ in 0..<50 {
+            if try await check() { return true }
+            try await Task.sleep(for: .milliseconds(200))
+        }
+        return false
+    }
+
     func testSharedSpaces() async throws {
         // The app signs in as Sam, new here: the owner's spaces are the other flows'.
         _ = try await api("GET", "api/v1/auth/session")

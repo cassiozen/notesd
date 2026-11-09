@@ -341,6 +341,22 @@ public struct Member: Codable, Sendable, Hashable, Identifiable {
 }
 
 /// A pending invitation into a shared space, as its owner sees it.
+/// How a space is published (§7.10): its address (`url`, from `origin` and `handle`) and whether the site is up.
+/// Its custom CSS is the web app's to change.
+public struct PublishSettings: Codable, Sendable, Hashable {
+    public var handle: String
+    public var url: String
+    public var origin: String
+    public var published: Bool
+
+    public init(handle: String, url: String, origin: String, published: Bool) {
+        self.handle = handle
+        self.url = url
+        self.origin = origin
+        self.published = published
+    }
+}
+
 public struct Invitee: Codable, Sendable, Hashable, Identifiable {
     public var id: String
     public var userId: Int64
