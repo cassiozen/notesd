@@ -1,0 +1,87 @@
+apps/web/src/notes/traits.tsx
+  s_c4b534f44e1767::t_f53afeaa7d379e 108-117
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_457cb10267a3f6 519-523,550
+apps/android/app/src/test/kotlin/notes/app/notes/LockedNoteFlowTest.kt
+  s_c4b534f44e1767::t_142048ce0a25b4 33,328-329
+  s_c4b534f44e1767::t_9f26db0198a261 37
+apps/ios/Notes/Notes/NoteScreen.swift
+  s_c4b534f44e1767::t_9f26db0198a261 350-352,505-506
+  s_c4b534f44e1767::t_bfe5d4328a3a57 21-22,193-197,199-200,349,353,395-396,496-504
+  s_c4b534f44e1767::t_86ad55a1f305b7 507-508
+server/internal/spaces/traits.go
+  s_c4b534f44e1767::t_849ae24cba64a7 47-75
+server/internal/sharing/sharing.go
+  s_c4b534f44e1767::t_93987c7949c879 308-312,314-326,328-329,855-856,863,866-873
+  s_c4b534f44e1767::t_ca45679300423c 874
+shared/sync-engine/src/commonTest/kotlin/notes/core/db/SharedSpacesTest.kt
+  s_c4b534f44e1767::t_9f26db0198a261 251
+apps/web/src/notes/traits.test.tsx
+  s_c4b534f44e1767::t_93c9f45fed01ce 101-104,106-110
+  s_c4b534f44e1767::t_b2ce2f5bd48a97 3,105
+apps/ios/NotesTests/SpaceTraitsTests.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 95-105
+apps/ios/NotesCore/Sources/NotesCore/Sync/SyncEngine.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 332-333
+apps/web/src/notes/saver.ts
+  s_c4b534f44e1767::t_f53afeaa7d379e 105
+server/internal/userdata/userdata.go
+  s_c4b534f44e1767::t_93987c7949c879 37-39
+shared/sync-engine/src/commonMain/kotlin/notes/core/api/Api.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 176
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_c4b534f44e1767::t_0e3bb7bd142fca 557,561-567,600-603
+apps/ios/Notes/Notes/SpaceTraits.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 73-83
+shared/sync-engine/src/commonMain/kotlin/notes/core/db/SyncStore.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 364-366
+server/internal/api/shared_test.go
+  s_c4b534f44e1767::t_e4e9579387b1a6 451-487
+  s_c4b534f44e1767::t_79851055ff5e60 352
+server/internal/api/respond.go
+  s_c4b534f44e1767::t_71cd10c381bed1 169-170
+server/internal/notes/notes.go
+  s_c4b534f44e1767::t_03dd40451b5338 225-227,238,240-241,253,266-305,390,421-423,464,492,494
+  s_c4b534f44e1767::t_4163af0c3aadd6 493
+docs/reference/api.md
+  s_c4b534f44e1767::t_457cb10267a3f6 338-340,516,539
+apps/web/src/notes/share.tsx
+  s_c4b534f44e1767::t_f53afeaa7d379e 18,21-23,72-73,75-76,212,277-279
+shared/sync-engine/src/commonMain/kotlin/notes/core/sync/SyncEngine.kt
+  s_c4b534f44e1767::t_1144b40f4a288e 363-364,498
+apps/web/test/sharing.test.tsx
+  s_c4b534f44e1767::t_93c9f45fed01ce 418
+docs/concepts/security-model.md
+  s_c4b534f44e1767::t_457cb10267a3f6 52-54
+server/internal/notes/notes_test.go
+  s_c4b534f44e1767::t_db18ac147b6cac 775-810
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceTraitsTest.kt
+  s_c4b534f44e1767::t_93386186b258d0 106-114
+apps/ios/NotesCore/Sources/NotesCore/DB/SyncStore.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 362-364
+server/internal/notes/move.go
+  s_c4b534f44e1767::t_2f1d3f357e856e 31
+  s_c4b534f44e1767::t_03dd40451b5338 133,143-145,192-193
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceTraits.kt
+  s_c4b534f44e1767::t_0e3bb7bd142fca 78-83
+apps/ios/NotesCore/Sources/NotesCore/API/Api.swift
+  s_c4b534f44e1767::t_bfe5d4328a3a57 44
+server/internal/spaces/spaces.go
+  s_c4b534f44e1767::t_849ae24cba64a7 112-116
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b3624ac3971670d057320d24f0b17cc7eece280c",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
