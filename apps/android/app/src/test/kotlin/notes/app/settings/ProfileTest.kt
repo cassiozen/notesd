@@ -120,6 +120,8 @@ class ProfileTest {
         compose.onNode(hasContentDescription("Settings")).performClick()
         compose.waitUntilAtLeastOneExists(hasText("me"))
         compose.onNode(hasText("me")).performClick()
+        // Only there once the people list has loaded from the server.
+        compose.waitUntilExactlyOneExists(hasText("Invite someone") and hasClickAction())
         compose.onNode(hasText("Invite someone") and hasClickAction()).performScrollTo().performClick()
         compose.onNode(hasSetTextAction() and hasText("Username")).performTextInput("mum")
         compose.onNode(hasSetTextAction() and hasText("Name (optional)")).performTextInput("Mum")
