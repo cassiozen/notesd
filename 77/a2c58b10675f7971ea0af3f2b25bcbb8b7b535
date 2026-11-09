@@ -1,0 +1,24 @@
+apps/web/src/settings/profile.tsx
+  s_82799bf566b6e4::t_d1d67c880ac30b 44-46,80,86-89
+apps/web/test/profile.test.tsx
+  s_82799bf566b6e4::t_1b52dc54148ca4 16-17,66-86
+  s_82799bf566b6e4::t_993e56937e16b5 87-88
+server/migrations/system/0004_profiles.sql
+  s_82799bf566b6e4::t_8dc8b4e0e0b20f 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "77a2c58b10675f7971ea0af3f2b25bcbb8b7b535",
+  "prompts": {},
+  "sessions": {
+    "s_82799bf566b6e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "32731bad-6898-4338-b917-6654ab1f72b4",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
