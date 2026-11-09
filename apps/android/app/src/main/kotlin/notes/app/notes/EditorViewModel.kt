@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import notes.app.images.ImageException
 import notes.app.images.Prepared
 import notes.app.images.prepareImage
+import notes.core.agent.Fields
 import notes.core.api.LOCKED_IMAGE
 import notes.core.crypto.LockSession
 import notes.core.crypto.LockedEnvelope
@@ -319,6 +320,21 @@ class EditorViewModel(
 
     /** The space the note is in, or will be created in. */
     fun spaceId(): String = noteSpace
+
+    /**
+     * The server's revision of exactly what the editor [shows], or null: something's unsaved or saving, the
+     * note has changes the server hasn't got, or it differs from what's stored. Compared as Markdown, so a
+     * note written in another client's style still counts.
+     */
+    suspend fun shownRevision(shows: Fields): Long? {
+        if (edits != saved || saving > 0) return null
+        val note = store.get(id) ?: return null
+        if (note.dirty || note.title != shows.title) return null
+        // What the editor shows is canonical already: it's what it saves.
+        val same = note.content == shows.content ||
+            withContext(Dispatchers.Default) { Markdown.canonical(note.content) } == shows.content
+        return note.serverRevision.takeIf { same }
+    }
 
     /**
      * Moves the note to another space, after the saves started so far. A new note not stored yet

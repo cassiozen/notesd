@@ -175,6 +175,9 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     /** The note as a document: title line first. Cheap enough per save, not per keystroke. */
     fun document(): Document = SpanCodec.toDocument(text!!)
 
+    /** The note and the caret as an agent reads them. */
+    fun readForAgent(): AgentRead = AgentReading.read(text!!, selectionStart, selectionEnd)
+
     // Coloured as they draw: the theme can change between draws.
     private val tagPaint = Paint(Paint.ANTI_ALIAS_FLAG)
     private val findPaint = Paint(Paint.ANTI_ALIAS_FLAG)
