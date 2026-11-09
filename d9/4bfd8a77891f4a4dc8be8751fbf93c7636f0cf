@@ -1,0 +1,47 @@
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_cc6cacc0a6fc01::t_807873eaab181a 36,50,53-55,95-100,103,159-172,324-338,429-434
+  s_cc6cacc0a6fc01::t_94b8bf81fdd25c 105-106
+  s_cc6cacc0a6fc01::t_a5a2d2a492b774 128
+  s_cc6cacc0a6fc01::t_afe1c41e4b710d 104,435
+apps/android/app/src/main/kotlin/notes/app/notes/OpenNotes.kt
+  s_cc6cacc0a6fc01::t_a5a2d2a492b774 3,9,19-29,46,53
+apps/android/app/src/main/kotlin/notes/app/NotesApp.kt
+  s_cc6cacc0a6fc01::t_807873eaab181a 20-22
+apps/android/app/src/test/kotlin/notes/app/agent/AgentLinkTest.kt
+  s_cc6cacc0a6fc01::t_c75f243a2f7fe3 1-3,5-31,33-63,66-163
+  s_cc6cacc0a6fc01::t_3029b24c4bef96 4,32
+  s_cc6cacc0a6fc01::t_52416bc6436efe 64-65
+apps/android/app/src/test/kotlin/notes/app/FakeNotesd.kt
+  s_cc6cacc0a6fc01::t_a5c40ca8167bf7 357-359
+  s_cc6cacc0a6fc01::t_3f34209822eb33 3,7,32-34,81-119,339-356,360
+  s_cc6cacc0a6fc01::t_058a1d0ccfcf2c 361
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_cc6cacc0a6fc01::t_a2bc8455141eb8 533-536
+  s_cc6cacc0a6fc01::t_0e9b23c2bf2836 26,87-89,368-377
+  s_cc6cacc0a6fc01::t_432762383ea7d3 378-379,537
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_cc6cacc0a6fc01::t_94b8bf81fdd25c 437
+  s_cc6cacc0a6fc01::t_807873eaab181a 436
+apps/android/app/src/main/kotlin/notes/app/sync/SyncScheduler.kt
+  s_cc6cacc0a6fc01::t_7efa63c3a538f9 48,129
+apps/android/app/src/main/kotlin/notes/app/sync/Connectivity.kt
+  s_cc6cacc0a6fc01::t_7efa63c3a538f9 1-37
+apps/android/app/src/main/kotlin/notes/app/agent/AgentLink.kt
+  s_cc6cacc0a6fc01::t_c3ebf4739e93bd 1-81
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d94bfd8a77891f4a4dc8be8751fbf93c7636f0cf",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
