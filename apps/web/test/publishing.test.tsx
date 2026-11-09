@@ -1,6 +1,6 @@
 import { act, screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
-import type { PublishSettings } from '../src/api/spaces'
+import { describe, expect, it, onTestFinished, vi } from 'vitest'
+import { spaces as spacesApi, type PublishSettings } from '../src/api/spaces'
 import { encryptBody } from '../src/locks/crypto'
 import { reloadSpaces } from '../src/notes/spaces'
 import { op, signedIn } from './helpers'
@@ -66,6 +66,36 @@ describe('publishing a space', () => {
     // The trait came with the list: its glyph in the header, and Stop publishing under the section.
     expect(within(info).getByRole('img', { name: 'Published' })).toBeTruthy()
     expect(within(info).getByRole('button', { name: 'Stop publishing…' })).toBeTruthy()
+  })
+
+  it('shows what the server answered when the space list can’t be read again', async () => {
+    const { user } = await signedIn({ seed: seedJournal })
+    await act(() => reloadSpaces())
+    const info = await spaceInfo(user, 'Journal')
+    const failing = vi.spyOn(spacesApi, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
+    onTestFinished(() => failing.mockRestore())
+    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
+    // Published on the server: the section says so, though the list (and the header's glyph) can't yet.
+    expect(await within(section(info)).findByRole('textbox', { name: 'Address' })).toBeTruthy()
+    expect(within(info).getByRole('button', { name: 'Stop publishing…' })).toBeTruthy()
+
+    await user.click(within(info).getByRole('button', { name: 'Stop publishing…' }))
+    await user.click(within(await within(info).findByRole('group', { name: 'Stop publishing Journal?' })).getByRole('button', { name: 'Stop publishing' }))
+    expect(await within(section(info)).findByRole('button', { name: 'Publish' })).toBeTruthy()
+  })
+
+  it('keeps Stop publishing open to try again when it fails', async () => {
+    const { server, user, info } = await publishedInfo()
+    await user.click(within(info).getByRole('button', { name: 'Stop publishing…' }))
+    const confirm = await within(info).findByRole('group', { name: 'Stop publishing Journal?' })
+    server.setOffline(true)
+    await user.click(within(confirm).getByRole('button', { name: 'Stop publishing' }))
+    expect(await within(info).findByRole('alert')).toBeTruthy()
+    expect(within(info).getByRole('group', { name: 'Stop publishing Journal?' })).toBeTruthy()
+    server.setOffline(false)
+    await user.click(within(confirm).getByRole('button', { name: 'Stop publishing' }))
+    await waitFor(() => expect(within(info).queryByRole('group', { name: 'Stop publishing Journal?' })).toBeNull())
+    expect(await settings(server)).toMatchObject({ published: false })
   })
 
   it('says why a space with locked notes can’t be published', async () => {

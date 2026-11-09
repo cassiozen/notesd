@@ -53,6 +53,11 @@ export function PublishedSection({ space }: { space: Space }) {
   const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'stop' | null>(null)
   const [failure, setFailure] = useState<Failure>()
   const [stopping, setStopping] = useState(false)
+  // Published or not, as this page's last action left it, until the list changes: a list that couldn't be read
+  // again mustn't show the section as it was before.
+  const listed = trait !== undefined
+  const [answered, setAnswered] = useState<{ on: boolean; listed: boolean } | null>(null)
+  const on = answered && answered.listed === listed ? answered.on : listed
 
   // Read again when the trait changes: published, moved or taken down here or on another device.
   const summary = trait?.summary
@@ -75,6 +80,7 @@ export function PublishedSection({ space }: { space: Space }) {
     try {
       const next = await work()
       setSettings(next ?? null)
+      setAnswered({ on: next !== undefined, listed })
       // The trait, its glyph and the lock rules (§7.8) come with the list.
       await reloadSpaces()
       return true
@@ -101,7 +107,7 @@ export function PublishedSection({ space }: { space: Space }) {
       </h3>
       <div className={info.group}>
         {trait?.problem && <p className={styles.problem}>{trait.problem}</p>}
-        {!trait ? (
+        {!on ? (
           <div className={styles.off}>
             <p className={styles.lead}>
               Publish {space.name} as a website anyone can read: each note with a title and some text is a post, with pages for its tags and a search.
@@ -112,10 +118,10 @@ export function PublishedSection({ space }: { space: Space }) {
             </Button>
           </div>
         ) : !owner ? (
-          <p className={styles.lead}>{trait.summary}</p>
+          <p className={styles.lead}>{trait?.summary}</p>
         ) : !settings ? (
           <p className={styles.lead} aria-busy="true">
-            {trait.summary}
+            {trait?.summary}
           </p>
         ) : (
           <>
@@ -137,7 +143,7 @@ export function PublishedSection({ space }: { space: Space }) {
         )}
       </div>
       {error()}
-      {trait && owner && (
+      {on && owner && (
         <div className={info.footer}>
           <Button size="sm" variant="danger-text" disabled={busy !== null} aria-expanded={stopping} onClick={() => setStopping(true)}>
             Stop publishing…
@@ -151,7 +157,7 @@ export function PublishedSection({ space }: { space: Space }) {
                 void run('stop', async () => {
                   await publishing.remove(space.id)
                   return undefined
-                }).then(() => setStopping(false))
+                }).then((ok) => ok && setStopping(false))
               }
               onCancel={() => setStopping(false)}
             >

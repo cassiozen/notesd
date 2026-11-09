@@ -36,8 +36,9 @@ publish it again.
 
 ## Good to know
 
-- **It's live.** A note you save shows on the site within a few seconds. Write drafts in another
-  space and move them in when they're ready.
+- **It's live.** A note you save shows on the site about 10 seconds after you stop editing, or
+  within 2 minutes if you keep going. Write drafts in another space and move them in when they're
+  ready.
 - **Locked notes can't be in a published space.** Unlock them, or move them out, to publish it.
   Your first space, "Notes", can't be published.
 - **Sharing and publishing are separate.** A shared space can be published too, by its owner, and
