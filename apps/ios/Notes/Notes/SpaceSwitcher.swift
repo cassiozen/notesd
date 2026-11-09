@@ -15,7 +15,7 @@ extension SpaceInvite {
     init(_ remote: RemoteInvite) {
         self.init(
             id: remote.id, spaceId: remote.spaceId, spaceName: remote.spaceName, spaceIcon: remote.spaceIcon,
-            from: remote.from.username)
+            from: remote.from.name)
     }
 }
 

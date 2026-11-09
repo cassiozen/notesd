@@ -10,7 +10,12 @@ struct SharedSpacesTests {
     let sync: SyncStore
     let family = RemoteSpace(
         id: "fam", name: "Family",
-        shared: SharedSpace(role: "owner", members: [Member(id: 1, username: "owner"), Member(id: 2, username: "kid")]))
+        shared: SharedSpace(
+            role: "owner",
+            members: [
+                Member(id: 1, username: "owner"),
+                Member(id: 2, username: "kid", displayName: "Kiddo", avatar: "v1"),
+            ]))
 
     init() {
         let clock = fixture.clock
@@ -248,6 +253,15 @@ struct SharedSpacesTests {
         #expect(try await sync.state().cursor == 0)
     }
 
+    @Test func anInvitationKeepsWhoSentItByTheNameAndPhotoTheyChose() async throws {
+        try await setUp()
+        let invite = RemoteInvite(
+            id: "i1", spaceId: "club", spaceName: "Book club", spaceIcon: "open-book",
+            from: Member(id: 3, username: "ben", displayName: "Ben B", avatar: "v9"), createdAt: 5)
+        try await spaces.replaceInvites([invite])
+        #expect(try await spaces.invites() == [invite])
+    }
+
     @Test func whatOthersChangedSinceTheSpaceWasLastShown() async throws {
         try await setUp()
         try await sync.setUserId(1)
@@ -261,7 +275,7 @@ struct SharedSpacesTests {
                 ],
                 nextCursor: 1, hasMore: false, generation: "h"),
             feed: "fam")
-        #expect(try await spaces.news()["fam"] == SpaceNews(count: 1, usernames: ["kid"], latestAt: 3_000))
+        #expect(try await spaces.news()["fam"] == SpaceNews(count: 1, names: ["Kiddo"], latestAt: 3_000))
         fixture.now = 4_000
         try await spaces.visit("fam")
         #expect(try await spaces.news().isEmpty)

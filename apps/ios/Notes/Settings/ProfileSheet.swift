@@ -59,7 +59,7 @@ struct ProfileSheet: View {
         let profile = graph.profile
         KeyringSheet(
             title: "Name and Photo", action: "Save", busy: busy, waiting: preparing,
-            footer: "Both are optional. Admins on this server see them when they manage people. Your username, "
+            footer: "Both are optional. Everyone on this server sees them. Your username, "
                 + "\(username), is still what you sign in with.",
             formError: formError, submit: { save(profile) }
         ) {

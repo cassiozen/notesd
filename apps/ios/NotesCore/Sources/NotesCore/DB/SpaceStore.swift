@@ -40,15 +40,15 @@ public struct Space: Hashable, Sendable, Identifiable {
 }
 
 /// What other members changed in a shared space since this device last showed it (§7.9): `count` notes,
-/// `usernames` of who changed them (latest first), the latest at `latestAt`.
+/// the `names` of who changed them (latest first), the latest at `latestAt`.
 public struct SpaceNews: Hashable, Sendable {
     public var count: Int
-    public var usernames: [String]
+    public var names: [String]
     public var latestAt: Int64
 
-    public init(count: Int, usernames: [String], latestAt: Int64) {
+    public init(count: Int, names: [String], latestAt: Int64) {
         self.count = count
-        self.usernames = usernames
+        self.names = names
         self.latestAt = latestAt
     }
 }
@@ -119,13 +119,15 @@ public final class SpaceStore: Sendable {
         try await db.read { sql in
             try sql.query(
                 """
-                SELECT id, space_id, space_name, space_icon, from_id, from_username, created_at FROM invites
-                ORDER BY created_at, id
+                SELECT id, space_id, space_name, space_icon, from_id, from_username, created_at, from_display_name,
+                    from_avatar
+                FROM invites ORDER BY created_at, id
                 """
             ) {
                 RemoteInvite(
                     id: $0.text(0), spaceId: $0.text(1), spaceName: $0.text(2), spaceIcon: $0.text(3),
-                    from: Member(id: $0.int64(4), username: $0.text(5)), createdAt: $0.int64(6))
+                    from: Member(id: $0.int64(4), username: $0.text(5), displayName: $0.text(7), avatar: $0.text(8)),
+                    createdAt: $0.int64(6))
             }
         }
     }
@@ -164,10 +166,10 @@ public final class SpaceStore: Sendable {
                     id, me, since
                 ) { ($0.int64(0), $0.int64(1)) }
                 guard let latest = changed.first else { continue }
-                let names = Dictionary((shared?.members ?? []).map { ($0.id, $0.username) }) { a, _ in a }
+                let names = Dictionary((shared?.members ?? []).map { ($0.id, $0.name) }) { a, _ in a }
                 var seen = Set<Int64>()
                 let who = changed.compactMap { seen.insert($0.0).inserted ? names[$0.0] : nil }
-                news[id] = SpaceNews(count: changed.count, usernames: who, latestAt: latest.1)
+                news[id] = SpaceNews(count: changed.count, names: who, latestAt: latest.1)
             }
             return news
         }
@@ -309,10 +311,12 @@ public final class SpaceStore: Sendable {
             for i in remote {
                 try sql.exec(
                     """
-                    INSERT INTO invites (id, space_id, space_name, space_icon, from_id, from_username, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO invites (id, space_id, space_name, space_icon, from_id, from_username, created_at,
+                        from_display_name, from_avatar)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
-                    i.id, i.spaceId, i.spaceName, i.spaceIcon, i.from.id, i.from.username, i.createdAt)
+                    i.id, i.spaceId, i.spaceName, i.spaceIcon, i.from.id, i.from.username, i.createdAt,
+                    i.from.displayName, i.from.avatar)
             }
         }
     }

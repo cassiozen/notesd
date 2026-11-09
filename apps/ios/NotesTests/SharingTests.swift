@@ -39,13 +39,13 @@ struct SharingTests {
         let at = now - 2 * 3_600_000
         let time = "2h"
         #expect(
-            Sharing.newsLine(SpaceNews(count: 3, usernames: ["Ben"], latestAt: at), now: now)
+            Sharing.newsLine(SpaceNews(count: 3, names: ["Ben"], latestAt: at), now: now)
                 == "Ben edited 3 notes · \(time)")
         #expect(
-            Sharing.newsLine(SpaceNews(count: 1, usernames: ["Ben", "Ana"], latestAt: at), now: now)
+            Sharing.newsLine(SpaceNews(count: 1, names: ["Ben", "Ana"], latestAt: at), now: now)
                 == "Ben and Ana edited a note · \(time)")
         #expect(
-            Sharing.newsLine(SpaceNews(count: 2, usernames: [], latestAt: at), now: now)
+            Sharing.newsLine(SpaceNews(count: 2, names: [], latestAt: at), now: now)
                 == "Someone edited 2 notes · \(time)")
     }
 
@@ -55,6 +55,12 @@ struct SharingTests {
         #expect(Sharing.editor(nil, in: family, me: 2) == nil, "from before it was recorded")
         #expect(Sharing.editor(9, in: family, me: 2) == nil, "no longer in the space")
         #expect(Sharing.editor(1, in: Space(id: "w", name: "Work", noteCount: 0), me: 2) == nil, "not shared")
+    }
+
+    @Test func someoneWhoChoseANameIsCalledByIt() {
+        var named = family
+        named.shared?.members[0].displayName = "Ana Lima"
+        #expect(Sharing.editor(1, in: named, me: 2) == "Ana Lima")
     }
 
     @Test func rowsAndTheEditorSayWho() {

@@ -317,10 +317,26 @@ public struct SharedSpace: Codable, Sendable, Hashable {
 public struct Member: Codable, Sendable, Hashable, Identifiable {
     public var id: Int64
     public var username: String
+    /// The name and photo (`avatar`, its version) they chose; "" for none, and from servers before profiles.
+    public var displayName: String
+    public var avatar: String
 
-    public init(id: Int64, username: String) {
+    /// How the apps name someone: their chosen name, or else their username.
+    public var name: String { displayName.isEmpty ? username : displayName }
+
+    public init(id: Int64, username: String, displayName: String = "", avatar: String = "") {
         self.id = id
         self.username = username
+        self.displayName = displayName
+        self.avatar = avatar
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(Int64.self, forKey: .id)
+        username = try c.decode(String.self, forKey: .username)
+        displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        avatar = try c.decodeIfPresent(String.self, forKey: .avatar) ?? ""
     }
 }
 
@@ -329,11 +345,27 @@ public struct Invitee: Codable, Sendable, Hashable, Identifiable {
     public var id: String
     public var userId: Int64
     public var username: String
+    public var displayName: String
+    public var avatar: String
 
-    public init(id: String, userId: Int64, username: String) {
+    /// Whom it's for, as a member would be.
+    public var person: Member { Member(id: userId, username: username, displayName: displayName, avatar: avatar) }
+
+    public init(id: String, userId: Int64, username: String, displayName: String = "", avatar: String = "") {
         self.id = id
         self.userId = userId
         self.username = username
+        self.displayName = displayName
+        self.avatar = avatar
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        id = try c.decode(String.self, forKey: .id)
+        userId = try c.decode(Int64.self, forKey: .userId)
+        username = try c.decode(String.self, forKey: .username)
+        displayName = try c.decodeIfPresent(String.self, forKey: .displayName) ?? ""
+        avatar = try c.decodeIfPresent(String.self, forKey: .avatar) ?? ""
     }
 }
 
