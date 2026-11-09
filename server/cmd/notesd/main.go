@@ -67,7 +67,6 @@ import (
 	"notes/server/internal/locks"
 	"notes/server/internal/mirror"
 	"notes/server/internal/search"
-	"notes/server/internal/sharing"
 	"notes/server/internal/spaces"
 	"notes/server/internal/userdata"
 )
@@ -179,7 +178,7 @@ func run(args []string) error {
 		return fmt.Errorf("upgrade data directory: %w", err)
 	}
 	authSvc := auth.NewService(system)
-	authSvc.BeforeRemove(sharing.HandOff)
+	authSvc.BeforeRemove(api.RemoveAccount)
 
 	switch cmd {
 	case "serve":
@@ -633,7 +632,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			return fmt.Errorf("%s: %w", u.Username, err)
 		}
 	}
-	cfg := api.Config{ResendURL: o.resendURL, Version: version}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
@@ -670,6 +669,18 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	errc := make(chan error, 1)
 	go func() { errc <- srv.Serve(ln) }()
 	go collectImages(ctx, system, authSvc, users, log)
+	publishCtx, stopPublishing := context.WithCancel(ctx)
+	published := make(chan struct{})
+	go func() {
+		defer close(published)
+		server.Publish().Run(publishCtx)
+	}()
+	// The publisher reads the databases the caller closes next.
+	defer func() {
+		stopPublishing()
+		<-published
+		_ = server.Publish().Close()
+	}()
 	if mirr != nil {
 		mirrorCtx, stopMirror := context.WithCancel(ctx)
 		done := make(chan struct{})

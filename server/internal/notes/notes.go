@@ -283,16 +283,17 @@ func (s *Store) refuseLocked(ctx context.Context, spaceID, content string) error
 	return nil
 }
 
-// WithoutLocked runs fn, which records a trait that exposes spaceID (§7.8), while no note can be written
-// here, once the space holds no locked notes: LockedInSpaceError if it does.
-func (s *Store) WithoutLocked(ctx context.Context, spaceID string, fn func() error) error {
+// WithoutLocked runs fn, which records a trait that exposes spaceID (§7.8), in this file's write
+// transaction, so no note can be written here meanwhile, once the space holds no locked notes:
+// LockedInSpaceError if it does. fn may write the space's settings here with tx.
+func (s *Store) WithoutLocked(ctx context.Context, spaceID string, fn func(tx *sql.Tx) error) error {
 	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if n, err := countLocked(ctx, tx, spaceID); err != nil {
 			return err
 		} else if n > 0 {
 			return &LockedInSpaceError{Count: n}
 		}
-		return fn()
+		return fn(tx)
 	})
 }
 

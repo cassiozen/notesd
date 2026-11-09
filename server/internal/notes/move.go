@@ -20,12 +20,21 @@ type Carried struct {
 	Images []images.Blob
 }
 
-// SpaceRow is a space as a shared space's file records it.
+// SpaceRow is a space as a shared space's file records it, with the settings
+// of its traits kept in the same file (§7.8).
 type SpaceRow struct {
 	ID        string
 	Name      string
 	Icon      string
 	CreatedAt int64
+	// Publish is its publishing settings (§7.10), nil when it has none.
+	Publish *PublishRow
+}
+
+// PublishRow is a space's row of space_publish.
+type PublishRow struct {
+	CSS       string
+	UpdatedAt int64
 }
 
 // LockedInSpaceError refuses a trait that would expose a space holding locked notes (§7.8).
@@ -189,6 +198,14 @@ func (s *Store) ShareOut(ctx context.Context, spaceID string, by int64, write fu
 		} else if err != nil {
 			return err
 		}
+		var pub PublishRow
+		err = tx.QueryRowContext(ctx, `SELECT css, updated_at FROM space_publish WHERE space_id = ?`, spaceID).
+			Scan(&pub.CSS, &pub.UpdatedAt)
+		if err == nil {
+			row.Publish = &pub
+		} else if !errors.Is(err, sql.ErrNoRows) {
+			return err
+		}
 		locked, err := countLocked(ctx, tx, spaceID)
 		if err != nil {
 			return err
@@ -224,6 +241,12 @@ func (s *Store) ShareIn(ctx context.Context, space SpaceRow, notes []Carried) er
 		if _, err := tx.ExecContext(ctx, `INSERT INTO spaces (id, name, name_key, icon, created_at) VALUES (?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO NOTHING`, space.ID, space.Name, spaces.Key(space.Name), space.Icon, space.CreatedAt); err != nil {
 			return err
+		}
+		if p := space.Publish; p != nil {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO space_publish (space_id, css, updated_at) VALUES (?, ?, ?)
+				ON CONFLICT (space_id) DO NOTHING`, space.ID, p.CSS, p.UpdatedAt); err != nil {
+				return err
+			}
 		}
 		for _, c := range notes {
 			if _, err := s.store(ctx, tx, c, space.ID, c.Note.Revision, 0); err != nil {

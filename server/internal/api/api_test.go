@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"notes/server/internal/api"
 	"notes/server/internal/auth"
@@ -32,6 +33,7 @@ type env struct {
 	srv   *httptest.Server
 	auth  *auth.Service
 	users *userdata.Registry
+	dir   string
 }
 
 func newEnv(t *testing.T) *env {
@@ -52,9 +54,25 @@ func newEnvWith(t *testing.T, cfg api.Config) *env {
 	t.Cleanup(func() { users.Close() })
 	a := auth.NewService(system)
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	srv := httptest.NewServer(api.New(system, users, a, log, cfg).Handler())
-	t.Cleanup(srv.Close)
-	return &env{t: t, srv: srv, auth: a, users: users}
+	cfg.DataDir = dir
+	if cfg.Publish.Quiet == 0 {
+		cfg.Publish.Quiet, cfg.Publish.MaxWait = 20*time.Millisecond, 200*time.Millisecond
+	}
+	server := api.New(system, users, a, log, cfg)
+	srv := httptest.NewServer(server.Handler())
+	ctx, stop := context.WithCancel(ctx)
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		server.Publish().Run(ctx)
+	}()
+	t.Cleanup(func() {
+		srv.Close()
+		stop()
+		<-done
+		server.Publish().Close()
+	})
+	return &env{t: t, srv: srv, auth: a, users: users, dir: dir}
 }
 
 // userDB is a user's notes database; the owner is user 1.

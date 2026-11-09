@@ -114,6 +114,8 @@ describe('service worker', () => {
     expect(await request('/api/v1/notes')).toBeNull()
     expect(await request('/api/v1/images/abc')).toBeNull()
     expect(await request('/api/v1/auth/session', { mode: 'navigate' })).toBeNull()
+    expect(await request('/@garden/', { mode: 'navigate' })).toBeNull()
+    expect(await request('/@garden/a-post-1a2b3c4d', { mode: 'navigate' })).toBeNull()
     expect(await request('/healthz')).toBeNull()
     expect(await request('/readyz', { mode: 'navigate' })).toBeNull()
     expect(await request('/assets/unknown.js')).toBeNull()

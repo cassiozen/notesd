@@ -15,6 +15,7 @@ import (
 	"notes/server/internal/locks"
 	"notes/server/internal/mail"
 	"notes/server/internal/notes"
+	"notes/server/internal/publish"
 	"notes/server/internal/search"
 	"notes/server/internal/sharing"
 	"notes/server/internal/spaces"
@@ -100,7 +101,18 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 	var serr *spaces.InputError
 	var full *spaces.NotEmptyError
 	var lockedIn *notes.LockedInSpaceError
+	var perr *publish.InputError
 	switch {
+	case errors.As(err, &perr):
+		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: perr.Message, Field: perr.Field})
+	case errors.Is(err, publish.ErrNotPublished):
+		writeError(w, http.StatusNotFound, "not_published", err.Error())
+	case errors.Is(err, publish.ErrHandleTaken):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "handle_taken", Message: err.Error(), Field: "handle"})
+	case errors.Is(err, publish.ErrDefault):
+		writeError(w, http.StatusConflict, "space_default", err.Error())
+	case errors.Is(err, spaces.ErrNotFound):
+		writeError(w, http.StatusNotFound, "not_found", "space not found")
 	case errors.As(err, &verr):
 		writeJSON(w, http.StatusBadRequest, errorBody{Error: "invalid_request", Message: verr.Message, Field: verr.Field})
 	case errors.As(err, &aerr):

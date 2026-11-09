@@ -799,12 +799,12 @@ func TestLockedNotesStayOutOfExposedSpaces(t *testing.T) {
 
 	// Turning on what exposes a space counts its locked notes first.
 	ran := false
-	err := s.WithoutLocked(ctx, spaces.Default, func() error { ran = true; return nil })
+	err := s.WithoutLocked(ctx, spaces.Default, func(*sql.Tx) error { ran = true; return nil })
 	var held *notes.LockedInSpaceError
 	if !errors.As(err, &held) || held.Count != 1 || ran {
 		t.Fatalf("the default space holds c: %v %v", err, ran)
 	}
-	if err := s.WithoutLocked(ctx, "pub", func() error { ran = true; return nil }); err != nil || !ran {
+	if err := s.WithoutLocked(ctx, "pub", func(*sql.Tx) error { ran = true; return nil }); err != nil || !ran {
 		t.Fatalf("pub holds none: %v %v", err, ran)
 	}
 }

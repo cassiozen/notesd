@@ -9,6 +9,9 @@ Everything notesd stores is in its [data directory](../../concepts/where-data-li
 accounts, every note, and every picture. Back up that whole directory, and keep a copy off the
 machine.
 
+`public/` holds published spaces' websites, which the server makes again from the databases when
+it starts: a backup can leave it out.
+
 The copies on your phones and browsers aren't a backup. They can help after a restore, with the
 notes they hold, including edits that hadn't reached the server yet.
 

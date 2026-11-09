@@ -22,9 +22,9 @@ type File struct {
 
 func (f File) ref(userID int64) string {
 	if f.SpaceID != "" {
-		return spaceRef(f.SpaceID)
+		return SpaceRef(f.SpaceID)
 	}
-	return userRef(userID)
+	return UserRef(userID)
 }
 
 // ErrKeptMoving is a write that kept meeting a note or space moving under it.

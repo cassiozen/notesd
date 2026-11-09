@@ -42,6 +42,7 @@ type Service struct {
 	// file's writer while waiting for the other's.
 	moving   sync.Mutex
 	onChange func(userID int64)
+	onShare  []ShareHook
 
 	// A space's file is held for reading by each request using it, and for writing by Delete, so a note
 	// can't land in a file that's being removed.
@@ -60,6 +61,13 @@ type hold struct {
 func New(system *database.DB, files *userdata.Registry) *Service {
 	return &Service{system: system, files: files, now: time.Now, holds: map[string]*hold{}}
 }
+
+// A ShareHook runs in the system.db transaction that records spaceID as shared, its notes now in its own
+// file: for a feature whose rows there name the owner's file (§7.8), which must name the space's from then on.
+type ShareHook func(ctx context.Context, tx *sql.Tx, ownerID int64, spaceID string) error
+
+// OnShare adds a ShareHook.
+func (s *Service) OnShare(fn ShareHook) { s.onShare = append(s.onShare, fn) }
 
 // SetClock overrides the clock, for tests.
 func (s *Service) SetClock(now func() time.Time) { s.now = now }
@@ -312,7 +320,7 @@ func (s *Service) Invite(ctx context.Context, ownerID int64, spaceID string, inv
 	defer release()
 	in := spaces.Invitee{ID: newID(), UserID: inviteeID, Username: username}
 	// An invitation exposes the space: recorded while no note can be locked in it.
-	err = d.Notes.WithoutLocked(ctx, spaceID, func() error {
+	err = d.Notes.WithoutLocked(ctx, spaceID, func(*sql.Tx) error {
 		return s.system.WriteTx(ctx, func(tx *sql.Tx) error {
 			var member bool
 			if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM space_members WHERE space_id = ? AND user_id = ?)`,
@@ -361,7 +369,7 @@ func (s *Service) share(ctx context.Context, ownerID int64, spaceID string) erro
 			return ErrIDTaken
 		}
 		_, err := tx.ExecContext(ctx, `INSERT INTO space_moves (id, kind, space_id, source, dest, created_at)
-			VALUES (?, 'space', ?, ?, ?, ?)`, moveID, spaceID, userRef(ownerID), spaceRef(spaceID), s.now().UnixMilli())
+			VALUES (?, 'space', ?, ?, ?, ?)`, moveID, spaceID, UserRef(ownerID), SpaceRef(spaceID), s.now().UnixMilli())
 		return err
 	})
 	if err != nil {
@@ -385,9 +393,16 @@ func (s *Service) share(ctx context.Context, ownerID int64, spaceID string) erro
 				VALUES (?, ?, ?)`, spaceID, ownerID, row.CreatedAt); err != nil {
 				return err
 			}
-			_, err := tx.ExecContext(ctx, `INSERT INTO space_members (space_id, user_id, joined_at) VALUES (?, ?, ?)`,
-				spaceID, ownerID, now)
-			return err
+			if _, err := tx.ExecContext(ctx, `INSERT INTO space_members (space_id, user_id, joined_at) VALUES (?, ?, ?)`,
+				spaceID, ownerID, now); err != nil {
+				return err
+			}
+			for _, fn := range s.onShare {
+				if err := fn(ctx, tx, ownerID, spaceID); err != nil {
+					return err
+				}
+			}
+			return nil
 		})
 	})
 	if err != nil {
@@ -832,8 +847,11 @@ func (s *Service) Members(ctx context.Context, spaceID string) ([]int64, error) 
 // deleteWait is how long Delete tries for a space no request is using.
 const deleteWait = 5 * time.Second
 
-func userRef(id int64) string   { return fmt.Sprintf("user:%d", id) }
-func spaceRef(id string) string { return "space:" + id }
+// UserRef names an account's notes file, or the account, in system.db rows ("user:3").
+func UserRef(id int64) string { return fmt.Sprintf("user:%d", id) }
+
+// SpaceRef names a shared space's notes file in system.db rows ("space:<id>").
+func SpaceRef(id string) string { return "space:" + id }
 
 func newID() string {
 	var b [16]byte

@@ -97,6 +97,29 @@ func open(ctx context.Context, path string, schema fs.FS, steps ...Step) (*DB, e
 	return db, nil
 }
 
+// OpenReader opens a pool of at most conns read-only connections to an
+// existing database another DB has migrated: for readers that must not take
+// the connections its own pool serves (the public's, §7.10). It has no
+// writer: W is nil.
+func OpenReader(ctx context.Context, path string, conns int) (*DB, error) {
+	if _, err := os.Stat(path); err != nil {
+		return nil, err
+	}
+	r, err := sql.Open("sqlite", dsn(path, true))
+	if err != nil {
+		return nil, err
+	}
+	r.SetMaxOpenConns(conns)
+	r.SetMaxIdleConns(conns)
+	db := &DB{R: r, Path: path}
+	var one int
+	if err := r.QueryRowContext(ctx, "SELECT 1").Scan(&one); err != nil {
+		r.Close()
+		return nil, err
+	}
+	return db, nil
+}
+
 func dsn(path string, readOnly bool) string {
 	q := url.Values{}
 	q.Add("_pragma", "busy_timeout(5000)")
@@ -131,6 +154,9 @@ func (db *DB) Ping(ctx context.Context) error {
 // Close optimizes query planner statistics and closes both pools. Closing the
 // last connection checkpoints the WAL.
 func (db *DB) Close() error {
+	if db.W == nil {
+		return db.R.Close()
+	}
 	_, _ = db.W.Exec("PRAGMA optimize")
 	return errors.Join(db.R.Close(), db.W.Close())
 }

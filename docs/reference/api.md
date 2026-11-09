@@ -344,6 +344,29 @@ anyone else).
   `already_deleted`.
 - A write that keeps meeting a share or move running under it answers `503 busy`: retry.
 
+### Published spaces
+
+A space can be published as a small public website at `/@{handle}/`
+([architecture §7.10](../contributing/architecture.md#710-published-spaces)): a page per note with a
+title and a body, a list of posts, tags, a feed and a search.
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `GET` | `/spaces/{id}/publish` | → `{handle, url, origin, published, css}`; `404 not_published` if it never was |
+| `PUT` | `/spaces/{id}/publish` | `{handle?, origin?, css?}` → the same. Publishes the space, or changes how; a field left out stays as it is |
+| `DELETE` | `/spaces/{id}/publish` | → `204`. Takes the site down; the handle stays the space's. `404 not_published` if it never was |
+
+- Your own spaces, and shared ones you own (`403 not_space_owner` for members). Never `default`
+  (`409 space_default`).
+- `origin` is the app's own address, such as `https://notes.example.com`: required the first time
+  (`400`, `field: origin`), it makes the feed's absolute links.
+- `handle` is 1–64 characters of `[a-z0-9-]`, not starting or ending with `-`. Left out the first
+  time, it's made from the space's name. One another space has: `409 handle_taken`.
+- `css` is the owner's own stylesheet, up to 64 KB, after the site's.
+- Refused while the space holds locked notes (`409 space_has_locked`, with `count`); while it's
+  published, it refuses locked notes (`422 locked_in_exposed_space`).
+- The space's `published` trait says where: `summary` "At notes.example/@garden".
+
 ### Images
 
 | Method | Path | Body → response |
@@ -510,10 +533,11 @@ Outside `/api/v1`, need no session, and expose no data:
 | `bad_verifier` | 403 | The keyring changed elsewhere; unlock again first |
 | `not_found` | 404 | No such note, session, lock key, image, account or profile photo |
 | `no_such_endpoint` | 404 | No such path under `/api/`: usually an app newer than its server |
+| `not_published` | 404 | The space has never been published |
 | `note_deleted` | 409, 410 | The note was deleted; `current` has the tombstone |
 | `revision_conflict` | 409 | The note changed since `baseRevision`; `current` has it |
 | `note_exists` | 409 | A note with this ID exists or existed |
-| `space_has_locked` | 409 | A space holding locked notes can't be shared or exposed otherwise; see `count` |
+| `space_has_locked` | 409 | A space holding locked notes can't be shared or published; see `count` |
 | `owner_cannot_leave` | 409 | The owner must hand the space on, or remove every member |
 | `already_member` | 409 | That account is already in the space |
 | `space_exists` | 409 | A shared space has this id |
@@ -523,7 +547,8 @@ Outside `/api/v1`, need no session, and expose no data:
 | `cannot_change_self` | 409 | An admin can't change, remove or make a setup link for their own account from People |
 | `last_admin` | 409 | That would leave no admin who can sign in |
 | `space_not_empty` | 409 | The space still holds notes; see `count` |
-| `space_default` | 409 | The default space can't be deleted or shared |
+| `space_default` | 409 | The default space can't be deleted, shared or published |
+| `handle_taken` | 409 | Another published space has that address |
 | `no_lock_password` | 409 | The keyring's first entry must be the password |
 | `password_key_required` | 409 | The password entry can't be deleted |
 | `stale_revision` | 409 | The note changed since the revision you sent; sync first |

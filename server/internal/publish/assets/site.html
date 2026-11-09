@@ -1,0 +1,153 @@
+{{define "page"}}<!doctype html>
+<html lang="en" data-accent="{{.Site.Accent}}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{if .Title}}{{.Title}} · {{end}}{{.Site.Name}}</title>
+{{- if .Description}}
+<meta name="description" content="{{.Description}}">
+{{- end}}
+{{- if .Canonical}}
+<link rel="canonical" href="{{.Canonical}}">
+{{- end}}
+{{- if .NoIndex}}
+<meta name="robots" content="noindex">
+{{- end}}
+<meta name="generator" content="notesd">
+<link rel="alternate" type="application/atom+xml" title="{{.Site.Name}}" href="{{.Root}}feed.xml">
+<link rel="stylesheet" href="{{.Root}}{{.Site.Style}}">
+<script src="{{.Root}}{{.Site.Script}}"></script>
+</head>
+<body class="page page-{{.Kind}}">
+<a class="skip-link" href="#main">Skip to content</a>
+<header class="site-header">
+<a class="site-title" href="{{.Root}}">{{.Site.Name}}</a>
+<nav class="site-nav" aria-label="Site">
+<a href="{{.Root}}"{{if eq .Kind "home"}} aria-current="page"{{end}}>Posts</a>
+<a href="{{.Root}}tags/"{{if eq .Kind "tags"}} aria-current="page"{{end}}>Tags</a>
+<a href="{{.Root}}search"{{if eq .Kind "search"}} aria-current="page"{{end}}>Search</a>
+<button class="theme-toggle" type="button" aria-label="Use the dark theme" hidden>
+<svg class="sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+<svg class="moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+</button>
+</nav>
+</header>
+<main id="main">
+{{- if eq .Kind "home"}}{{template "home" .}}
+{{- else if eq .Kind "post"}}{{template "post" .}}
+{{- else if eq .Kind "tags"}}{{template "tags" .}}
+{{- else if eq .Kind "tag"}}{{template "tag" .}}
+{{- else if eq .Kind "search"}}{{template "search" .}}
+{{- else}}{{template "missing" .}}{{end}}
+</main>
+<footer class="site-footer">
+<a href="{{.Root}}feed.xml">RSS</a> · Published with <a href="https://notesd.app">notesd</a>
+</footer>
+</body>
+</html>
+{{end}}
+
+{{define "list"}}
+<ol class="post-list">
+{{- range .}}
+<li class="post-item">
+<a class="post-link" href="{{.Href}}">{{.Title}}</a>
+{{- if .Datetime}}
+<time class="post-date" datetime="{{.Datetime}}">{{.Date}}</time>
+{{- end}}
+{{- if .Excerpt}}
+<p class="excerpt">{{.Excerpt}}</p>
+{{- end}}
+</li>
+{{- end}}
+</ol>
+{{end}}
+
+{{define "home"}}
+<h1 class="page-title">Posts</h1>
+{{- if .Posts}}{{template "list" .Posts}}{{else}}
+<p class="page-intro">Nothing here yet.</p>
+{{- end}}
+{{- if or .Newer .Older}}
+<nav class="pager" aria-label="Pages">
+{{- if .Newer}}
+<a rel="prev" href="{{.Newer}}">Newer posts</a>
+{{- end}}
+{{- if .Older}}
+<a rel="next" href="{{.Older}}">Older posts</a>
+{{- end}}
+</nav>
+{{- end}}
+{{end}}
+
+{{define "post"}}
+<article class="post">
+<header class="post-header">
+<h1 class="post-title">{{.Post.Title}}</h1>
+<p class="post-meta"><time class="post-date" datetime="{{.Post.Datetime}}">{{.Post.Date}}</time>
+{{- if .Post.Updated}}<time class="post-updated" datetime="{{.Post.UpdatedDatetime}}">Updated {{.Post.Updated}}</time>{{end}}</p>
+</header>
+<div class="post-body">
+{{.Post.Body}}
+</div>
+{{- if .Post.Tags}}
+<footer class="post-footer">
+<ul class="tag-list" aria-label="Tags">
+{{- range .Post.Tags}}
+<li><a class="tag" href="{{.Href}}">#{{.Name}}</a></li>
+{{- end}}
+</ul>
+</footer>
+{{- end}}
+</article>
+{{- if or .PostNewer .PostOlder}}
+<nav class="post-nav" aria-label="More posts">
+{{- if .PostNewer}}
+<a rel="prev" href="{{.PostNewer.Href}}">← {{.PostNewer.Title}}</a>
+{{- end}}
+{{- if .PostOlder}}
+<a rel="next" href="{{.PostOlder.Href}}">{{.PostOlder.Title}} →</a>
+{{- end}}
+</nav>
+{{- end}}
+{{end}}
+
+{{define "tree"}}
+<ul class="tag-tree">
+{{- range .}}
+<li><a class="tag" href="{{.Href}}">#{{.Name}}</a><span class="tag-count">{{.Count}}</span>
+{{- if .Children}}{{template "tree" .Children}}{{end}}</li>
+{{- end}}
+</ul>
+{{end}}
+
+{{define "tags"}}
+<h1 class="page-title">Tags</h1>
+{{- if .Tags}}{{template "tree" .Tags}}{{else}}
+<p class="page-intro">No tags yet.</p>
+{{- end}}
+{{end}}
+
+{{define "tag"}}
+<h1 class="page-title">#{{.Tag}}</h1>
+<p class="page-intro">{{.Count}}</p>
+{{template "list" .Posts}}
+{{end}}
+
+{{define "search"}}
+<h1 class="page-title">Search</h1>
+<form class="search-form" action="{{.Root}}search" method="get" role="search">
+<label class="visually-hidden" for="q">Search posts</label>
+<input id="q" name="q" type="search" value="{{.Query}}" placeholder="Search posts" autocomplete="off">
+<button type="submit">Search</button>
+</form>
+{{- if .Query}}
+<p class="search-summary">{{.Count}}</p>
+{{template "list" .Posts}}
+{{- end}}
+{{end}}
+
+{{define "missing"}}
+<h1 class="page-title">Not found</h1>
+<p class="page-intro">There's nothing here. <a href="{{.Root}}">See every post</a>.</p>
+{{end}}
