@@ -107,7 +107,7 @@
   background: var(--hover);
 }
 
-.open:focus-visible {
+:global(:where(:root[data-keyboard])) .open:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus);
 }
@@ -142,7 +142,7 @@
   transform: rotate(45deg);
 }
 
-.summary:focus-visible {
+:global(:where(:root[data-keyboard])) .summary:focus-visible {
   outline: none;
   border-radius: 6px;
   box-shadow: 0 0 0 3px var(--focus);

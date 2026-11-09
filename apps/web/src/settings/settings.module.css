@@ -416,7 +416,7 @@
 }
 
 /* The radio itself is hidden; its ring goes on the tile. */
-.fontOption:has(:focus-visible) {
+:global(:where(:root[data-keyboard])) .fontOption:has(:focus-visible) {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }

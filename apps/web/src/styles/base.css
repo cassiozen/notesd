@@ -46,7 +46,10 @@ code {
   font-family: var(--font-mono);
 }
 
-:focus-visible {
+/* Gated on data-keyboard (ui/modality.ts), not :focus-visible alone, which also
+   matches script-moved focus after a click. Non-text-input focus styles need the same gate;
+   :where() keeps specificity as if ungated. */
+:where(:root[data-keyboard]) :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
 }

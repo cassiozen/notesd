@@ -65,7 +65,7 @@
 }
 
 .item:hover,
-.item:focus-visible {
+:global(:where(:root[data-keyboard])) .item:focus-visible {
   background: var(--hover);
 }
 
