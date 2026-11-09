@@ -128,11 +128,11 @@ struct TraitGroup: View {
                     // A line of the space's name, unseen: the pill stands as tall as the switcher's highlight beside
                     // it, at any text size.
                     Text(verbatim: " ").font(.notesSpaceName).hidden()
-                    TraitGlyphs(traits: traits, spacing: 9, scale: .medium)
-                        .font(.custom("InstrumentSans-Regular", size: 16, relativeTo: .title))
+                    TraitGlyphs(traits: traits, spacing: 5, scale: .medium)
+                        .font(.custom("InstrumentSans-Regular", size: 13, relativeTo: .title))
                 }
                 .padding(.vertical, 4)
-                .padding(.horizontal, 9)
+                .padding(.horizontal, 6)
                 .background(Color.hover, in: .rect(cornerRadius: 10, style: .continuous))
                 // Drawn smaller than a finger: the tap area keeps the full height.
                 .frame(minHeight: 44)

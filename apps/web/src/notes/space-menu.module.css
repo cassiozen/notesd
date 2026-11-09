@@ -1,4 +1,5 @@
-/* Pulled left so the icon, not the highlight, sits on the header's edge, as the list's title does; on the anchor, not the button, whose
+/* Pulled left so the highlight hangs past the header's edge. 2px more than the button's left padding: the
+   icon's artwork is inset, so its box just past the edge looks on it. On the anchor, not the button, whose
    max-width: 100% would otherwise come out short by the margin and cut the name. The gap keeps
    the button's highlight off the trait group's fill: two buttons, two targets. */
 .anchor {
@@ -16,7 +17,7 @@
   align-items: center;
   gap: 8px;
   margin: 0;
-  padding: 4px 8px 4px 6px;
+  padding: 4px 6px 4px 4px;
   border: 0;
   border-radius: 10px;
   background: transparent;
