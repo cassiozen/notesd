@@ -1,0 +1,47 @@
+docs/concepts/security-model.md
+  s_c4b534f44e1767::t_399d1abae5a931 53-55
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_69a656f493da11 559-560,563,565
+docs/reference/api.md
+  s_c4b534f44e1767::t_34eab9f5f88d5a 357
+server/internal/api/publish_test.go
+  s_c4b534f44e1767::t_d0aa39c3988f29 292-312
+server/internal/auth/limiter.go
+  s_c4b534f44e1767::t_914e1afab99c07 36-49,55-59
+server/internal/auth/limiter_test.go
+  s_c4b534f44e1767::t_59aa6821a1c1a5 1-33
+server/internal/publish/assets/site.html
+  s_c4b534f44e1767::t_d0249695cdfb4d 55,57
+server/internal/publish/handler.go
+  s_c4b534f44e1767::t_16d053441e453e 32,202-207,210-211,222,224,230-231,255-272,274
+server/internal/publish/handler_test.go
+  s_c4b534f44e1767::t_10d54d439c0ab5 36-48
+server/internal/publish/publish.go
+  s_c4b534f44e1767::t_3196ce6a9fdcca 6,41-42,422-433,435-439,477-481,502-503,507,530-532,534-537,545
+server/internal/publish/publish_test.go
+  s_c4b534f44e1767::t_e560fac19c9e9d 1-57
+server/internal/publish/render.go
+  s_c4b534f44e1767::t_2b717345351d5f 123-124,126-127
+server/internal/publish/site.go
+  s_c4b534f44e1767::t_4890eb6ba7e056 364-365
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_694a64d962d7c0 71-77
+server/migrations/system/0006_published_spaces.sql
+  s_c4b534f44e1767::t_041d59c566daab 9,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f88ac529595d1357091e119cc02f1f0f43f3e44e",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
