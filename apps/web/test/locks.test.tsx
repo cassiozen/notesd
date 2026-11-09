@@ -645,7 +645,14 @@ describe('locked notes, when things happen meanwhile', () => {
     } finally {
       spy.mockRestore()
     }
-    await s.user.type(screen.getByLabelText('Lock password'), `${LOCK_PASSWORD}{Enter}`)
+    // The held save goes through while the password is half typed, and the note opens by id: still locked,
+    // and what's typed stays.
+    await s.user.type(screen.getByLabelText('Lock password'), LOCK_PASSWORD.slice(0, 3))
+    await waitFor(async () => {
+      const diary = (await listNotes(s.server)).find((n) => n.title === 'Diary')
+      expect(window.location.pathname).toBe(`/notes/${diary?.id}`)
+    })
+    await s.user.type(screen.getByLabelText('Lock password'), `${LOCK_PASSWORD.slice(3)}{Enter}`)
     await waitFor(() => expect(bodyText()).toBe('secret words'))
   })
 
