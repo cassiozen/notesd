@@ -59,6 +59,7 @@ docs/concepts/security-model.md
   s_82799bf566b6e4::t_7cbb30ea8c574e 31
 server/internal/sharing/sharing.go
   s_82799bf566b6e4::t_3d336e8192efa9 221,227,236,244,246-247,258
+  s_82799bf566b6e4::t_8a72c14c66f478 524-525,533-534
 docs/reference/api.md
   s_82799bf566b6e4::t_7cbb30ea8c574e 321,325,328,331-334,441
 apps/web/src/settings/people.tsx
