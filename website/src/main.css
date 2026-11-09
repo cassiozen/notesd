@@ -1142,13 +1142,14 @@ a:hover .arrow {
   }
 }
 
-/* Six links don't fit beside the logo; in-page anchors are the least needed on a page you just scroll */
+/* Seven links don't fit beside the logo; in-page anchors are the least needed on a page you just scroll, and Blog stays reachable from the footer */
 @media (max-width: 640px) {
   .nav {
     gap: 20px;
   }
 
-  .nav .nav-section {
+  .nav .nav-section,
+  .nav .nav-blog {
     display: none;
   }
 }
