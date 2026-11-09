@@ -1,0 +1,26 @@
+apps/android/app/src/main/kotlin/notes/app/agent/Activity.kt
+  s_cc6cacc0a6fc01::t_6abc4c67d82f59 31,57-58,73,81-84,87-89,92-95,97-113,115,155-157,335-337,531,542-550
+apps/android/app/src/test/kotlin/notes/app/agent/ActivityTest.kt
+  s_cc6cacc0a6fc01::t_c81dd6142c9175 53,90-91,98-101,104,107-111,235-272
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_84ac1c613088a9 9-12
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_84ac1c613088a9 9-12,85-88,255-258
+  s_cc6cacc0a6fc01::t_d10452ed91578c 259
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "6934230fed950be48d21cd046b93577544c3ac43",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
