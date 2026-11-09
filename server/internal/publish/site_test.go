@@ -11,7 +11,7 @@ import (
 
 func mustBody(t *testing.T, md string, images map[string]imageFile) string {
 	t.Helper()
-	html, err := body(md, "../", images)
+	html, err := body(md, "../", images, true)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -20,10 +20,54 @@ func mustBody(t *testing.T, md string, images map[string]imageFile) string {
 
 func TestBodyHeadingsStepDownUnderTheTitle(t *testing.T) {
 	got := mustBody(t, "# One\n\n## Two\n\n###### Six", nil)
-	for _, want := range []string{"<h2>One</h2>", "<h3>Two</h3>", "<h6>Six</h6>"} {
+	for _, want := range []string{`<h2 id="one">One`, `<h3 id="two">Two`, `<h6 id="six">Six`} {
 		if !strings.Contains(got, want) {
 			t.Errorf("%s not in %s", want, got)
 		}
+	}
+}
+
+func TestHeadingsLinkToThemselves(t *testing.T) {
+	got := mustBody(t, "# Main\n\n# Plan\n\n# Plan\n\n# 日本語", nil)
+	for _, want := range []string{
+		// The page's own id stays its own.
+		`<h2 id="main-2">Main<a href="#main-2" class="heading-anchor"><span aria-hidden="true">#</span><span class="visually-hidden">Link to this section</span></a></h2>`,
+		`<h2 id="plan">`, `<h2 id="plan-2">`, `<h2 id="section">`,
+	} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s not in %s", want, got)
+		}
+	}
+}
+
+func TestExcerptsLeaveTagsOut(t *testing.T) {
+	if got := excerpt("Tomatoes at last. #veg #summer\n\nMore #home/garden soon."); got != "Tomatoes at last. More soon." {
+		t.Fatalf("%q", got)
+	}
+	// Code isn't prose: its # stays.
+	if got := excerpt("C at last. #c\n\n```\n#include <stdio.h>\n```"); got != "C at last. #include <stdio.h>" {
+		t.Fatalf("%q", got)
+	}
+}
+
+func TestReadingTime(t *testing.T) {
+	for words, want := range map[int]string{1: "1 min read", 300: "1 min read", 460: "2 min read", 1000: "4 min read"} {
+		if got := readingTime(strings.Repeat("word ", words)); got != want {
+			t.Errorf("%d words: %q", words, got)
+		}
+	}
+}
+
+func TestFaviconIsTheNamesLetterOnTheAccent(t *testing.T) {
+	got := string(favicon("  garden notes", "open-book"))
+	marks := accents()["open-book"]
+	for _, want := range []string{">G</text>", "rect{fill:" + marks["light"].Accent + "}", "rect{fill:" + marks["dark"].Accent + "}"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("%s not in %s", want, got)
+		}
+	}
+	if got := string(favicon("<&>", "no-such")); strings.Contains(got, "<&>") || !strings.Contains(got, accents()[""]["light"].Accent) {
+		t.Errorf("no letter, and the default accent: %s", got)
 	}
 }
 
@@ -132,6 +176,9 @@ func posts(n int) []post {
 	for i := n; i >= 1; i-- {
 		id := fmt.Sprintf("n%d", i)
 		content := fmt.Sprintf("Body %d #all", i)
+		if i == n {
+			content += "\n\n# Part"
+		}
 		if i%2 == 0 {
 			content += " #home/garden"
 		}
@@ -202,11 +249,34 @@ func TestBuildLaysOutTheSite(t *testing.T) {
 		t.Error("404 isn't an address")
 	}
 	feed := page("feed.xml")
+	if !strings.Contains(post, `class="heading-anchor"`) || !strings.Contains(feed, "Part") || strings.Contains(feed, "heading-anchor") {
+		t.Error("a heading's anchor on its page, not in the feed: a reader has no stylesheet to hide it")
+	}
 	if strings.Count(feed, "<entry>") != 31 || !strings.Contains(feed, "<id>https://notes.example/@garden/"+first.Path+"</id>") {
 		t.Errorf("feed: %s", feed[:300])
 	}
 	if !m.Gzipped[m.Routes[""]] || s.files[m.Routes[""]+".gz"] == nil {
 		t.Error("pages are stored compressed too")
+	}
+	// The look: the serif served with the site and named by its content, a favicon, and link previews.
+	css := string(s.files[m.Style])
+	files, _ := fonts()
+	for _, f := range files {
+		if m.Routes[f.name] != f.name || !strings.Contains(css, "url("+f.name+")") || m.Gzipped[f.name] {
+			t.Errorf("%s: served, named in the stylesheet, not compressed again", f.name)
+		}
+	}
+	for _, want := range []string{
+		`<link rel="icon" href="./` + m.Icon + `" type="image/svg+xml">`,
+		`<meta property="og:title" content="Post 31">`, `<meta property="og:type" content="article">`,
+		`<span class="reading-time">1 min read</span>`,
+	} {
+		if !strings.Contains(post, want) {
+			t.Errorf("%s not in the post's page", want)
+		}
+	}
+	if m.Routes[m.Icon] != m.Icon || !strings.Contains(home, `<h1 class="page-title visually-hidden">Posts</h1>`) {
+		t.Errorf("icon %q; home: %s", m.Icon, home)
 	}
 }
 

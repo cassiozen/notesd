@@ -48,7 +48,8 @@ test('a published space: on from Space info, its site readable, then off', async
   const visitor = await (await browser.newContext()).newPage()
   await visitor.goto(url ?? '')
   await expect(visitor.getByRole('link', { name, exact: true })).toBeVisible()
-  await expect(visitor.getByRole('heading', { name: 'Posts', level: 1 })).toBeVisible()
+  // Named for screen readers; the bar already says where you are.
+  await expect(visitor.getByRole('heading', { name: 'Posts', level: 1 })).toBeAttached()
   await visitor.getByRole('link', { name: 'Tomatoes' }).click()
   await expect(visitor.getByRole('heading', { name: 'Tomatoes', level: 1 })).toBeVisible()
   await expect(visitor.getByRole('link', { name: '#veg' }).first()).toBeVisible()

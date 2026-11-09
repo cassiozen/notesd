@@ -128,7 +128,7 @@ func renamed(m *manifest, rest string) (string, bool) {
 func (s *Service) serveFile(w http.ResponseWriter, r *http.Request, handle string, m *manifest, name string, status int) {
 	h := w.Header()
 	switch {
-	case strings.HasPrefix(name, "img/") || name == m.Style || name == m.Script:
+	case strings.HasPrefix(name, "img/") || strings.HasPrefix(name, "fonts/") || name == m.Style || name == m.Script || name == m.Icon:
 		// Named by their content: a change is a new name.
 		h.Set("Cache-Control", "public, max-age=31536000, immutable")
 	case status == http.StatusNotFound:
@@ -137,6 +137,10 @@ func (s *Service) serveFile(w http.ResponseWriter, r *http.Request, handle strin
 		h.Set("Cache-Control", "public, max-age=60, stale-while-revalidate=86400")
 	}
 	h.Set("Content-Type", contentType(name))
+	if name == m.Icon {
+		// Its light and dark colours are an inline <style>, the server's own (look.go).
+		h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'")
+	}
 	etag := m.ETags[name]
 	file := name
 	if m.Gzipped[name] {
@@ -193,6 +197,10 @@ func contentType(name string) string {
 		return "image/webp"
 	case ".gif":
 		return "image/gif"
+	case ".svg":
+		return "image/svg+xml"
+	case ".woff2":
+		return "font/woff2"
 	}
 	return "application/octet-stream"
 }
@@ -250,7 +258,7 @@ func (s *Service) search(w http.ResponseWriter, r *http.Request, site Site, m *m
 		return
 	}
 	root := rootFor("search")
-	p := page{Site: siteInfo{Name: m.Name, Accent: m.Accent, Style: m.Style, Script: m.Script},
+	p := page{Site: siteInfo{Name: m.Name, Accent: m.Accent, Style: m.Style, Script: m.Script, Icon: m.Icon},
 		Kind: "search", Root: root, Title: q + " · Search", NoIndex: true, Query: q}
 	// The index has the space's notes the site doesn't show (untitled, empty), so matches come in batches until
 	// enough are posts. Bounded: one search must stay cheap.

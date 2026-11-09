@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -29,13 +30,15 @@ type imageFile struct {
 }
 
 // body renders a note's Markdown for a page whose links to the site's root
-// start with root ("../", or the site's URL in the feed).
-func body(content, root string, images map[string]imageFile) (template.HTML, error) {
+// start with root ("../", or the site's URL in the feed); anchors gives its
+// headings links to themselves.
+func body(content, root string, images map[string]imageFile, anchors bool) (template.HTML, error) {
 	src := []byte(content)
 	doc := markdown.Parser().Parse(text.NewReader(src))
 	// Changed after the walk: replacing a node during it would cut its siblings off.
 	var tags []*ast.Text
 	var imgs []*ast.Image
+	var heads []*ast.Heading
 	err := ast.Walk(doc, func(n ast.Node, entering bool) (ast.WalkStatus, error) {
 		if !entering {
 			return ast.WalkContinue, nil
@@ -44,6 +47,7 @@ func body(content, root string, images map[string]imageFile) (template.HTML, err
 		case *ast.Heading:
 			// The note's title is the page's only <h1>.
 			n.Level = min(n.Level+1, 6)
+			heads = append(heads, n)
 		case *ast.Image:
 			imgs = append(imgs, n)
 			return ast.WalkSkipChildren, nil
@@ -62,6 +66,10 @@ func body(content, root string, images map[string]imageFile) (template.HTML, err
 	}
 	for _, t := range tags {
 		linkTags(t, src, root)
+	}
+	// A page's only: a feed reader has no stylesheet to hide the anchor's words, and wants links absolute.
+	if anchors {
+		anchorHeadings(heads, src)
 	}
 	var out bytes.Buffer
 	if err := markdown.Renderer().Render(&out, src, doc); err != nil {
@@ -186,12 +194,56 @@ func tagPath(key string) (string, bool) {
 	return "tags/" + strings.Join(levels, "/") + "/", true
 }
 
+// anchorHeadings gives each heading an id from its words, and a link to itself to share that section by.
+func anchorHeadings(heads []*ast.Heading, src []byte) {
+	// The page's own ids.
+	taken := map[string]bool{"main": true}
+	for _, h := range heads {
+		base := slug(string(altText(h, src)))
+		if base == "post" {
+			base = "section"
+		}
+		id := base
+		for n := 2; taken[id]; n++ {
+			id = base + "-" + strconv.Itoa(n)
+		}
+		taken[id] = true
+		h.SetAttributeString("id", []byte(id))
+		link := ast.NewLink()
+		link.Destination = []byte("#" + id)
+		link.SetAttributeString("class", []byte("heading-anchor"))
+		// Raw: goldmark renders no aria-label, so the words a screen reader says are hidden text.
+		mark := ast.NewString([]byte(`<span aria-hidden="true">#</span><span class="visually-hidden">Link to this section</span>`))
+		mark.SetCode(true)
+		link.AppendChild(link, mark)
+		h.AppendChild(h, link)
+	}
+}
+
+// withoutTags is a line of prose without its #tags: an excerpt's are noise, the post's page lists them.
+func withoutTags(line string) string {
+	var b strings.Builder
+	at := 0
+	for _, sp := range search.TagSpans(line, true) {
+		b.WriteString(line[at:sp.Start])
+		at = sp.End
+	}
+	return b.String() + line[at:]
+}
+
+// readingTime is how long a post takes to read, at 230 words a minute.
+func readingTime(content string) string {
+	words := len(strings.Fields(search.PlainText(content)))
+	return strconv.Itoa(max(1, (words+115)/230)) + " min read"
+}
+
 // excerptLen is how much of a post's text the lists show.
 const excerptLen = 200
 
 // excerpt is the start of a note's text, as plain text, cut at a word.
 func excerpt(content string) string {
-	s := strings.Join(strings.Fields(search.PlainText(content)), " ")
+	// Prose only: #include in a code block isn't a tag.
+	s := strings.Join(strings.Fields(search.PlainTextWith(content, withoutTags)), " ")
 	if utf8.RuneCountInString(s) <= excerptLen {
 		return s
 	}
