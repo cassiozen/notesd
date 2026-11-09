@@ -132,6 +132,58 @@ class PublishingFlowTest {
     }
 
     @Test
+    fun `the glyph shows at once, before the server answers, and the address once it has`() {
+        family()
+        notesd.held += "PUT /api/v1/spaces/fam/publish"
+        launch()
+        openSpaceInfo("Family")
+        press("Publish")
+        // The server hasn't answered: the space shows published, its address to come.
+        compose.waitUntilExactlyOneExists(hasContentDescription("Published"), 2_000)
+        compose.onNodeWithText("Publishing…").assertExists()
+        notesd.release()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Address: $host/@family"), 10_000)
+        compose.waitUntilDoesNotExist(hasText("Publishing…"), 10_000)
+    }
+
+    @Test
+    fun `stopping hides the glyph at once`() {
+        family(handle = "family")
+        notesd.held += "DELETE /api/v1/spaces/fam/publish"
+        launch()
+        openSpaceInfo("Family")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Published"))
+        press("Stop publishing…")
+        confirm("Stop publishing Family?", "Stop publishing")
+        compose.waitUntilDoesNotExist(hasContentDescription("Published"), 2_000)
+        notesd.release()
+        until { notesd.published.getValue("fam").published.not() }
+        compose.onNode(hasContentDescription("Published")).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a refusal puts the glyph back`() {
+        family()
+        notesd.lockedIn += "fam"
+        launch()
+        openSpaceInfo("Family")
+        press("Publish")
+        compose.waitUntilExactlyOneExists(hasText("Unlock its locked notes to publish it."), 10_000)
+        compose.onNode(hasContentDescription("Published")).assertDoesNotExist()
+        compose.onNode(hasText("Publish") and hasClickAction()).assertExists()
+    }
+
+    /** Waits for [condition], checked off the screen's thread. */
+    private fun until(condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 10_000
+        while (!synchronized(notesd) { condition() }) {
+            check(System.currentTimeMillis() < deadline) { "never came true" }
+            compose.waitForIdle()
+            Thread.sleep(20)
+        }
+    }
+
+    @Test
     fun `says why a space with locked notes can't be published`() {
         family()
         notesd.lockedIn += "fam"

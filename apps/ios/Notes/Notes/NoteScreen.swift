@@ -347,7 +347,7 @@ struct NoteScreen: View {
     private func setLocked(_ on: Bool) {
         // Locking means only you can read it (§7.8): the server refuses one where a trait lets others read.
         if on, let here = graph.spaces.first(where: { $0.id == model.spaceId }),
-            let trait = Traits.exposing(here.traits)
+            let trait = Traits.exposing(here)
         {
             lockRefused = LockRefusal(trait: trait, space: here.name, moving: false)
             return
@@ -391,7 +391,7 @@ struct NoteScreen: View {
     /// Moves the note, first asking when `space` would show it to people its own space doesn't (§7.8), or no
     /// longer to people its own space does (moving out of a shared space, §7.9).
     private func askToMove(to space: Space) {
-        if model.locked, let trait = Traits.exposing(space.traits) {
+        if model.locked, let trait = Traits.exposing(space) {
             lockRefused = LockRefusal(trait: trait, space: space.name, moving: true)
             return
         }

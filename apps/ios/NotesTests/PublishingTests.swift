@@ -1,7 +1,7 @@
-import NotesCore
 import Testing
 
 @testable import Notes
+@testable import NotesCore
 
 /// What publishing's refusals say (§7.10), the web's words.
 struct PublishingTests {
@@ -23,5 +23,27 @@ struct PublishingTests {
         let s = PublishSettings(
             handle: "garden", url: "https://n.example:8443/@garden/", origin: "https://n.example:8443", published: true)
         #expect(Publishing.shown(s) == "n.example:8443/@garden")
+    }
+
+    @Test func turningOnShowsAtOnceInTheServersOrderAndOffKeepsTheLockRules() {
+        let shared = SpaceTrait(key: "shared", label: "Shared", summary: "With Ana", exposure: "Visible to Ana")
+        let agent = SpaceTrait(key: "agent", label: "Agent", summary: "On this device")
+        let published = SpaceTrait(key: "published", label: "Published", summary: "At n.example/@g", exposure: "Public")
+        func space(_ traits: SpaceTrait...) -> Space { Space(id: "s", name: "Garden", noteCount: 0, traits: traits) }
+
+        let on = Publishing.shown(space(shared, agent), true)
+        #expect(on.traits.map(\.key) == ["shared", "published", "agent"])
+        #expect(on.traits[1].summary == "Publishing…")
+        #expect(Traits.exposing(Publishing.shown(space(), true))?.key == "published")
+
+        let off = Publishing.shown(space(shared, published), false)
+        #expect(off.traits == [shared])
+        #expect(off.leaving == [published])
+        #expect(Traits.exposing(Publishing.shown(space(published), false)) == published)
+
+        // What the list says already wins.
+        #expect(Publishing.shown(space(published), true) == space(published))
+        #expect(Publishing.shown(space(), false) == space())
+        #expect(Publishing.shown(space(published), nil) == space(published))
     }
 }

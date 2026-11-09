@@ -2,6 +2,27 @@ import NotesCore
 
 /// A space as a public website (§7.10): what the calls' refusals say.
 enum Publishing {
+    static let key = "published"
+
+    /// Until the server says, a published space has no address: only that it's public.
+    static let publishing = SpaceTrait(
+        key: key, label: "Published", summary: "Publishing…", exposure: "Public", audience: ["public"])
+
+    /// `space` as `on` (expected; nil for nothing) shows it.
+    static func shown(_ space: Space, _ on: Bool?) -> Space {
+        let published = space.traits.first { $0.key == key }
+        var shown = space
+        if on == true, published == nil {
+            // After sharing, before the rest: the server's order (spaces.TraitOrder).
+            let at = space.traits.firstIndex { $0.key != "shared" } ?? space.traits.count
+            shown.traits.insert(publishing, at: at)
+        } else if on == false, let published {
+            shown.traits.removeAll { $0.key == key }
+            shown.leaving.append(published)
+        }
+        return shown
+    }
+
     static let handleTaken = "Another space has that address. Try another."
     static let handleRules = "Use 1–64 lowercase letters, digits and hyphens, not starting or ending with a hyphen."
 
@@ -58,7 +79,10 @@ extension AppGraph {
         // Said here with the count: the server only knows the notes that reached it.
         let locked = (try? await store.lockedCount(space: space.id)) ?? 0
         if locked > 0 { return .failure(SharingError(Publishing.locked(locked))) }
-        return await changed(client.publish(space.id, origin: client.origin))
+        let call = expect(space.id, true)
+        let result = await changed(client.publish(space.id, origin: client.origin))
+        if case .failure = result { unexpect(space.id, call) }
+        return result
     }
 
     /// Moves the site to `handle`; the old address stops working.
@@ -70,9 +94,27 @@ extension AppGraph {
     /// Takes the site down; its address stays the space's.
     func stopPublishing(_ spaceId: String) async -> String? {
         guard let client = accounts.client() else { return Self.signInToPublish }
-        if let problem = Publishing.message(await client.unpublish(spaceId)) { return problem }
+        let call = expect(spaceId, false)
+        if let problem = Publishing.message(await client.unpublish(spaceId)) {
+            unexpect(spaceId, call)
+            return problem
+        }
         await scheduler.syncNow()
         return nil
+    }
+
+    /// Expects `on` for the space, as the call it returns: a call that fails clears only its own, not a newer one's.
+    private func expect(_ spaceId: String, _ on: Bool) -> Int {
+        expectations += 1
+        expectedBy[spaceId] = expectations
+        expected[spaceId] = on
+        return expectations
+    }
+
+    private func unexpect(_ spaceId: String, _ call: Int) {
+        guard expectedBy[spaceId] == call else { return }
+        expectedBy[spaceId] = nil
+        expected[spaceId] = nil
     }
 
     private func changed(_ result: ApiResult<PublishSettings>) async -> Result<PublishSettings, SharingError> {

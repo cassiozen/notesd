@@ -3,7 +3,7 @@ import { ApiError } from '../api/client'
 import { publishing, type PublishSettings } from '../api/spaces'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
-import { reloadSpaces } from '../notes/spaces'
+import { catchUpSpaces, expectPublished, unexpectPublished } from '../notes/spaces'
 import { Button } from '../ui/button'
 import { useCopy } from '../ui/copy'
 import { InlineConfirm } from '../ui/inline-confirm'
@@ -53,11 +53,8 @@ export function PublishedSection({ space }: { space: Space }) {
   const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'stop' | null>(null)
   const [failure, setFailure] = useState<Failure>()
   const [stopping, setStopping] = useState(false)
-  // Published or not, as this page's last action left it, until the list changes: a list that couldn't be read
-  // again mustn't show the section as it was before.
-  const listed = trait !== undefined
-  const [answered, setAnswered] = useState<{ on: boolean; listed: boolean } | null>(null)
-  const on = answered && answered.listed === listed ? answered.on : listed
+  // Turned on or off here, the list shows it at once (expectPublished): the trait is the section's state.
+  const on = trait !== undefined
 
   // Read again when the trait changes: published, moved or taken down here or on another device.
   const summary = trait?.summary
@@ -74,22 +71,24 @@ export function PublishedSection({ space }: { space: Space }) {
     }
   }, [space.id, summary, owner])
 
-  async function run(key: NonNullable<typeof busy>, work: () => Promise<PublishSettings | undefined>): Promise<boolean> {
+  /** One call; `turning` on or off shows the space so at once, everywhere, put back if the call fails. */
+  async function run(key: NonNullable<typeof busy>, work: () => Promise<PublishSettings | undefined>, turning?: boolean): Promise<boolean> {
     setBusy(key)
     setFailure(undefined)
+    const call = turning === undefined ? undefined : expectPublished(space.id, turning)
     try {
       const next = await work()
       setSettings(next ?? null)
-      setAnswered({ on: next !== undefined, listed })
-      // The trait, its glyph and the lock rules (§7.8) come with the list.
-      await reloadSpaces()
-      return true
     } catch (err) {
+      if (call !== undefined) unexpectPublished(space.id, call)
       setFailure(publishError(err))
-      return false
-    } finally {
       setBusy(null)
+      return false
     }
+    // The real trait, with its address, replaces the expected one once the list has it.
+    await catchUpSpaces()
+    setBusy(null)
+    return true
   }
 
   const error = (field?: Failure['field']) =>
@@ -113,7 +112,7 @@ export function PublishedSection({ space }: { space: Space }) {
               Publish {space.name} as a website anyone can read: each note with a title and some text is a post, with pages for its tags and a search.
               Its address comes from the space’s name, and you can change it after.
             </p>
-            <Button size="sm" variant="accent" busy={busy === 'publish'} disabled={busy !== null} onClick={() => void run('publish', () => publishing.put(space.id, { origin: location.origin }))}>
+            <Button size="sm" variant="accent" busy={busy === 'publish'} disabled={busy !== null} onClick={() => void run('publish', () => publishing.put(space.id, { origin: location.origin }), true)}>
               Publish
             </Button>
           </div>
@@ -154,10 +153,14 @@ export function PublishedSection({ space }: { space: Space }) {
               action="Stop publishing"
               busy={busy === 'stop'}
               onConfirm={() =>
-                void run('stop', async () => {
-                  await publishing.remove(space.id)
-                  return undefined
-                }).then((ok) => ok && setStopping(false))
+                void run(
+                  'stop',
+                  async () => {
+                    await publishing.remove(space.id)
+                    return undefined
+                  },
+                  false,
+                ).then((ok) => ok && setStopping(false))
               }
               onCancel={() => setStopping(false)}
             >

@@ -110,8 +110,8 @@ export function newExposure(from: Pick<Space, 'traits'> | undefined, to: Pick<Sp
 }
 
 /** The first trait that lets others read the space's notes: a locked note, only yours to read, can't be there (§7.8). */
-export function exposingTrait(space: Pick<Space, 'traits'> | undefined): SpaceTrait | undefined {
-  return space?.traits.find((t) => t.exposure)
+export function exposingTrait(space: Pick<Space, 'traits' | 'leaving'> | undefined): SpaceTrait | undefined {
+  return space?.traits.find((t) => t.exposure) ?? space?.leaving?.find((t) => t.exposure)
 }
 
 /** "Locked notes can’t be in a shared space." */

@@ -4,6 +4,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 import notes.app.R
+import notes.app.sharing.Publishing
 import notes.core.api.SpaceTrait
 import notes.core.db.Space
 
@@ -111,6 +112,8 @@ class SpaceTraitsTest {
         assertEquals(published, exposingTrait(space(agent, published, shared)))
         assertEquals("Locked notes can't be in a shared space.", lockedRefusal(shared))
         assertEquals("Locked notes can't be in a published space.", lockedRefusal(published))
+        // Being turned off on this phone: gone from view, still refusing locked notes until the server confirms.
+        assertEquals(published, exposingTrait(space().copy(leaving = listOf(published))))
         assertEquals("Locked notes can't be in a shared space.", lockedRefusal(shared.copy(label = "")))
         assertEquals(
             "Only you can read a locked note, and Family is visible to Ana and Ben. Move it to a space of your own to lock it.",
@@ -120,5 +123,21 @@ class SpaceTraitsTest {
             "Only you can read a locked note, and Family is visible to Ana and Ben. Remove this note's lock to move it there.",
             lockedReason(shared, "Family", moving = true)
         )
+    }
+
+    @Test
+    fun `publishing shows at once, in the server's order, and turning off keeps the lock rules`() {
+        val on = Publishing.shown(space(shared, agent), true)
+        assertEquals(listOf("shared", "published", "agent"), on.traits.map { it.key })
+        assertEquals("Publishing…", on.traits[1].summary)
+        // Shared exposes it first either way; alone, the expected trait refuses locked notes at once.
+        assertEquals(Publishing.PUBLISHING, exposingTrait(Publishing.shown(space(), true)))
+        val off = Publishing.shown(space(shared, published), false)
+        assertEquals(listOf(shared), off.traits)
+        assertEquals(listOf(published), off.leaving)
+        assertEquals(published, exposingTrait(Publishing.shown(space(published), false)))
+        // What the list says already wins.
+        assertEquals(space(published), Publishing.shown(space(published), true))
+        assertEquals(space(), Publishing.shown(space(), false))
     }
 }

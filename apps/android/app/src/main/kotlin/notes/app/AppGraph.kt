@@ -121,6 +121,9 @@ class AppGraph(
 
     private val _space = MutableStateFlow(Spaces.DEFAULT)
 
+    /** Spaces as public websites (§7.10); before [spaces], which shows what it's turning on or off. */
+    val publishing = Publishing({ api() }, sync, store, scope)
+
     /**
      * Every space (§7.7), the default first, kept current with every write while the UI watches.
      * The space shown was deleted, here or on another device: back to the default. Checked only as a
@@ -128,7 +131,12 @@ class AppGraph(
      * Lazy: opening the database with the graph breaks Robolectric tests run in another sandbox.
      */
     val spaces: StateFlow<List<Space>> = store.changes.onSubscription { emit(Unit) }.map { sync.spaces.list() }
-        .onEach { list -> if (list.none { it.id == _space.value }) switchSpace(Spaces.DEFAULT) }
+        .onEach { list ->
+            publishing.settle(list)
+            if (list.none { it.id == _space.value }) switchSpace(Spaces.DEFAULT)
+        }
+        // What this phone just turned on or off shows at once, before the server and a sync confirm it.
+        .combine(publishing.expected) { list, expected -> list.map { Publishing.shown(it, expected[it.id]) } }
         .stateIn(scope, SharingStarted.WhileSubscribed(), emptyList())
 
     /** The space the list, tags and search show: this phone's own, never synced, the default at a cold start. */
@@ -136,9 +144,6 @@ class AppGraph(
 
     /** Who's in shared spaces (§7.9): invitations, members, leaving. */
     val sharing = Sharing({ api() }, sync, store, scope)
-
-    /** Spaces as public websites (§7.10). */
-    val publishing = Publishing({ api() }, sync, store, scope)
 
     /** The space switcher is open: only then are its invitations and "what changed" lines kept current. */
     val switcherShown = MutableStateFlow(false)
@@ -235,6 +240,7 @@ class AppGraph(
     suspend fun signOut() {
         withTimeoutOrNull(LOGOUT_WAIT_MS) { api()?.logout() }
         accounts.signOut()
+        publishing.forget()
         locks.lock(force = true)
         fingerprint.disable()
     }
@@ -245,6 +251,7 @@ class AppGraph(
         store.wipe()
         images.wipe()
         avatars.wipe()
+        publishing.forget()
         locks.forget()
         fingerprint.disable()
         accounts.clear()

@@ -2,9 +2,13 @@ package notes.app.sharing
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 import notes.core.api.PublishSettings
+import notes.core.api.SpaceTrait
 import notes.core.api.UPGRADE_REQUIRED_MESSAGE
 import notes.core.api.unexpectedMessage
 import notes.core.db.NoteStore
@@ -23,6 +27,25 @@ class Publishing(
     private val store: NoteStore,
     private val scope: CoroutineScope
 ) {
+    private val _expected = MutableStateFlow<Map<String, Boolean>>(emptyMap())
+
+    /**
+     * Published or not, by space id, as this phone just asked: shown at once (the glyph, the lock rules), until
+     * the space list agrees ([settle]) or the call fails.
+     */
+    val expected: StateFlow<Map<String, Boolean>> = _expected
+
+    /** Drops what [list] now says too, so a later change from elsewhere shows as it is. */
+    fun settle(list: List<Space>) {
+        _expected.update { expected ->
+            expected.filter { (id, on) ->
+                val space = list.firstOrNull { it.id == id } ?: return@filter false
+                space.traits.any { it.key == KEY } != on
+            }
+        }
+        callOf.keys.retainAll(_expected.value.keys)
+    }
+
     /** Its address and whether it's up; a [Shared.Failed] with [NOT_PUBLISHED] if it never was. */
     suspend fun settings(spaceId: String): Shared<PublishSettings> {
         val r = api()?.publishSettings(spaceId) ?: return Shared.Failed(NOT_CONNECTED)
@@ -35,7 +58,9 @@ class Publishing(
         // Said here with the count: the server only knows the notes that reached it.
         lockedCount(space.id).takeIf { it > 0 }?.let { return@background Shared.Failed(publishLocked(it)) }
         val client = api() ?: return@background Shared.Failed(NOT_CONNECTED)
+        val call = expect(space.id, true)
         val r = client.publish(space.id, origin = client.origin)
+        if (r !is ApiResult.Ok) unexpect(space.id, call)
         if (r is ApiResult.Conflict && r.code == "space_has_locked") {
             return@background Shared.Failed(publishLocked(lockedCount(space.id)))
         }
@@ -49,7 +74,34 @@ class Publishing(
 
     /** Takes the site down; its address stays the space's. */
     suspend fun stop(spaceId: String): Shared<Unit> = background {
-        after(api()?.unpublish(spaceId) ?: return@background Shared.Failed(NOT_CONNECTED))
+        val client = api() ?: return@background Shared.Failed(NOT_CONNECTED)
+        val call = expect(spaceId, false)
+        val r = client.unpublish(spaceId)
+        if (r !is ApiResult.Ok) unexpect(spaceId, call)
+        after(r)
+    }
+
+    // Which call each expectation is: a call that fails clears only its own, not a newer one's.
+    private var calls = 0
+    private val callOf = HashMap<String, Int>()
+
+    /** Called on [scope], so one at a time. */
+    private fun expect(spaceId: String, on: Boolean): Int {
+        callOf[spaceId] = ++calls
+        _expected.update { it + (spaceId to on) }
+        return calls
+    }
+
+    private fun unexpect(spaceId: String, call: Int) {
+        if (callOf[spaceId] != call) return
+        callOf -= spaceId
+        _expected.update { it - spaceId }
+    }
+
+    /** Signed out: what was expected was another session's. */
+    fun forget() {
+        callOf.clear()
+        _expected.value = emptyMap()
     }
 
     private suspend fun lockedCount(spaceId: String) = store.lockedCount(spaceId)
@@ -63,6 +115,36 @@ class Publishing(
     private suspend fun <T> background(block: suspend () -> Shared<T>): Shared<T> = scope.async { block() }.await()
 
     companion object {
+        const val KEY = "published"
+
+        /** Until the server says, a published space has no address: only that it's public. */
+        val PUBLISHING = SpaceTrait(KEY, "Published", "Publishing…", exposure = "Public", audience = listOf("public"))
+
+        /** [space] as [on] (expected, null for nothing) shows it. */
+        fun shown(space: Space, on: Boolean?): Space {
+            val published = space.traits.firstOrNull { it.key == KEY }
+            return when {
+                on == true && published == null -> {
+                    // After sharing, before the rest: the server's order (spaces.TraitOrder).
+                    val at = space.traits.indexOfFirst { it.key != "shared" }.let {
+                        if (it <
+                            0
+                        ) {
+                            space.traits.size
+                        } else {
+                            it
+                        }
+                    }
+                    space.copy(traits = space.traits.toMutableList().apply { add(at, PUBLISHING) })
+                }
+
+                on == false && published != null ->
+                    space.copy(traits = space.traits - published, leaving = space.leaving + published)
+
+                else -> space
+            }
+        }
+
         const val NOT_CONNECTED = "Connect to a notesd server to publish spaces."
         const val NOT_PUBLISHED = "This space isn't published."
         const val HANDLE_TAKEN = "Another space has that address. Try another."

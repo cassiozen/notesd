@@ -1,5 +1,8 @@
 package notes.app
 
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
@@ -30,7 +33,9 @@ import notes.core.db.Spaces
  */
 class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
     val server = MockWebServer()
-    val requests = ArrayList<String>()
+
+    /** Every request, as `METHOD /path`: a test reads it while the server's thread adds to it. */
+    val requests = CopyOnWriteArrayList<String>()
 
     /** By id; the default space is always there. */
     val spaces = LinkedHashMap<String, RemoteSpace>().apply {
@@ -51,6 +56,12 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
     /** Spaces the server holds locked notes in: publishing them is refused. */
     val lockedIn = HashSet<String>()
 
+    /** Requests, as [requests] names them, held unanswered until [release]: what a slow server looks like. */
+    val held = HashSet<String>()
+    private val gate = CountDownLatch(1)
+
+    fun release() = gate.countDown()
+
     /** Requests, as [requests] names them, answered with a 500. */
     val failing = HashSet<String>()
 
@@ -58,10 +69,15 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
 
     fun start() {
         server.dispatcher = object : Dispatcher() {
-            override fun dispatch(request: RecordedRequest): MockResponse = synchronized(this@FakeNotesd) {
+            override fun dispatch(request: RecordedRequest): MockResponse {
                 val name = "${request.method} ${request.url.encodedPath}"
+                // Seen as soon as it arrives, held or not.
                 requests += name
-                if (name in failing) error(500, "internal") else answer(request)
+                // Outside the lock: every other request goes on meanwhile.
+                if (name in held) gate.await(10, TimeUnit.SECONDS)
+                return synchronized(this@FakeNotesd) {
+                    if (name in failing) error(500, "internal") else answer(request)
+                }
             }
         }
         server.start()

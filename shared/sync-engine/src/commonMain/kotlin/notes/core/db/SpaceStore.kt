@@ -47,7 +47,12 @@ data class Space(
     val createdAt: Long = 0,
     val traits: List<SpaceTrait> = emptyList(),
     /** Who's in it, when it's shared (§7.9); null for the account's own. */
-    val shared: SharedSpace? = null
+    val shared: SharedSpace? = null,
+    /**
+     * The app's alone, never stored: traits being turned off on this device, gone from [traits] before the server
+     * confirms but still exposing the space to the lock rules (§7.8) until it has.
+     */
+    val leaving: List<SpaceTrait> = emptyList()
 )
 
 /**
