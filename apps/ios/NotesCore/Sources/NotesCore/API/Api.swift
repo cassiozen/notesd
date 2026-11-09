@@ -41,7 +41,7 @@ public enum ApiResult<T: Sendable>: Sendable {
 /// notesd error codes that mean a queued change can never succeed as sent: it's dropped, and the user told.
 let permanentErrors: Set<String> = [
     "invalid_request", "hash_mismatch", "image_too_large", "unsupported_image", "space_default", "not_space_owner",
-    "space_exists", "locked_in_shared_space",
+    "space_exists", "locked_in_exposed_space",
 ]
 
 /// Device tokens. `accessExpiresAt` is Unix ms.

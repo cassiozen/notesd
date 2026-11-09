@@ -349,7 +349,7 @@ func TestSharingRefusals(t *testing.T) {
 	s.share()
 	// No locked notes in it afterwards either.
 	r = s.kid.do("POST", "/api/v1/notes", map[string]any{"operationId": "k-l", "id": "k", "title": "K", "content": locked, "spaceId": "fam"})
-	if r.status != 422 || r.body["error"] != "locked_in_shared_space" {
+	if r.status != 422 || r.body["error"] != "locked_in_exposed_space" {
 		t.Fatalf("locked note in a shared space: %d %s", r.status, r.raw)
 	}
 	if r := s.owner.do("POST", "/api/v1/spaces/fam/invites", map[string]any{"userId": s.kidID}); r.status != 409 || r.body["error"] != "already_member" {
@@ -446,5 +446,42 @@ func TestSessionNamesTheAccount(t *testing.T) {
 	s := newSharedEnv(t)
 	if r := s.kid.do("GET", "/api/v1/auth/session", nil); r.body["userId"] != float64(s.kidID) {
 		t.Fatalf("session: %s", r.raw)
+	}
+}
+
+func TestLockedNotesFollowWhetherOthersReachTheSpace(t *testing.T) {
+	s := newSharedEnv(t)
+	s.share()
+	locked := "notesd:locked:v1:" + strings.Repeat("A", 40)
+	// Moving a locked note into the shared space is refused like creating one there.
+	s.owner.do("POST", "/api/v1/notes", map[string]any{"operationId": "op-l", "id": "secret", "title": "Secret", "content": locked})
+	r := s.owner.do("PUT", "/api/v1/notes/secret", map[string]any{
+		"operationId": "op-m", "baseRevision": 1, "title": "Secret", "content": locked, "spaceId": "fam"})
+	if r.status != 422 || r.body["error"] != "locked_in_exposed_space" {
+		t.Fatalf("move a locked note in: %d %s", r.status, r.raw)
+	}
+
+	// Kid leaves: no one else reaches the space, so it takes locked notes again.
+	if r := s.kid.do("DELETE", fmt.Sprintf("/api/v1/spaces/fam/members/%d", s.kidID), nil); r.status != 204 {
+		t.Fatalf("leave: %d %s", r.status, r.raw)
+	}
+	if r := s.owner.do("POST", "/api/v1/notes", map[string]any{"operationId": "op-l2", "id": "secret2", "title": "S", "content": locked, "spaceId": "fam"}); r.status != 201 {
+		t.Fatalf("lock in a space only its owner reaches: %d %s", r.status, r.raw)
+	}
+	// Inviting again exposes it: refused while it holds them.
+	r = s.owner.do("POST", "/api/v1/spaces/fam/invites", map[string]any{"userId": s.kidID})
+	if r.status != 409 || r.body["error"] != "space_has_locked" || r.body["count"] != 1.0 {
+		t.Fatalf("invite with a locked note: %d %s", r.status, r.raw)
+	}
+	if r := s.owner.do("DELETE", "/api/v1/notes/secret2", map[string]any{"operationId": "op-d", "baseRevision": 1}); r.status != 200 {
+		t.Fatalf("delete: %d %s", r.status, r.raw)
+	}
+	// A pending invitation is enough to expose it.
+	if r := s.owner.do("POST", "/api/v1/spaces/fam/invites", map[string]any{"userId": s.kidID}); r.status != 201 {
+		t.Fatalf("invite: %d %s", r.status, r.raw)
+	}
+	r = s.owner.do("POST", "/api/v1/notes", map[string]any{"operationId": "op-l3", "id": "secret3", "title": "S", "content": locked, "spaceId": "fam"})
+	if r.status != 422 || r.body["error"] != "locked_in_exposed_space" {
+		t.Fatalf("lock with an invitation pending: %d %s", r.status, r.raw)
 	}
 }

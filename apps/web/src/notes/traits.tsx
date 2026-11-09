@@ -105,6 +105,23 @@ export function newExposure(from: Pick<Space, 'traits'> | undefined, to: Pick<Sp
   })
 }
 
+/** The first trait that lets others read the space's notes: a locked note, only yours to read, can't be there (§7.8). */
+export function exposingTrait(space: Pick<Space, 'traits'> | undefined): SpaceTrait | undefined {
+  return space?.traits.find((t) => t.exposure)
+}
+
+/** "Locked notes can’t be in a shared space." */
+export function lockedRefusal(trait: SpaceTrait): string {
+  return `Locked notes can’t be in a ${trait.label.toLowerCase()} space.`
+}
+
+/** Why, and what to do instead: lock it elsewhere, or unlock it to move it here. */
+export function lockedReason(trait: SpaceTrait, space: string, moving: boolean): string {
+  const exposure = trait.exposure ?? ''
+  const next = moving ? 'Remove this note’s lock to move it there.' : 'Move it to a space of your own to lock it.'
+  return `Only you can read a locked note, and ${space} is ${exposure.charAt(0).toLowerCase()}${exposure.slice(1)}. ${next}`
+}
+
 export type TraitRow =
   | { kind: 'on'; entry: TraitEntry; trait: SpaceTrait }
   | { kind: 'off'; entry: TraitEntry }

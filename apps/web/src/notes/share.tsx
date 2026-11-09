@@ -15,8 +15,10 @@ import { useEmailSettings } from './email-settings'
 import type { Saver } from './source'
 import { SpaceIdentity } from './space-identity'
 import { loadedSpaces, useSpaces } from './spaces'
-import { newExposure, traitGlyph } from './traits'
+import { exposingTrait, lockedReason, lockedRefusal, newExposure, traitGlyph } from './traits'
 import styles from './share.module.css'
+
+/** "Visible to Ana" as it reads mid-sentence. */
 
 /** The note as one Markdown file: the title as a heading, then the body. */
 function exportMarkdown(saver: Saver): string {
@@ -66,11 +68,9 @@ export function NoteMenu({
 
   const lock = (list: Space[] | null) => {
     const here = list?.find((sp) => sp.id === saver.spaceId())
-    if (here?.shared) {
-      setExplaining({
-        title: 'Locked notes can’t be in a shared space.',
-        text: `Only you can read a locked note, and everyone in ${here.name} can read this one. Move it to a space of your own to lock it.`,
-      })
+    const exposing = exposingTrait(here)
+    if (here && exposing) {
+      setExplaining({ title: lockedRefusal(exposing), text: lockedReason(exposing, here.name, false) })
     } else if (lockSession.key()) void saver.changeLock(true)
     else {
       // Until the keyring is fetched, 'unknown' can't tell a first lock from a later one.
@@ -205,7 +205,7 @@ export function NoteMenu({
                 void saver.changeLock(false)
                 return
               }
-              // Until the list loads, a shared space can't be told apart, and the server would refuse the lock.
+              // Until the list loads, a space others can read can't be told apart, and the server would refuse the lock.
               if (spaces) lock(spaces)
               else void loadedSpaces().then(lock)
             }}
@@ -270,11 +270,9 @@ export function NoteMenu({
           onClose={() => setMoving(false)}
           onMove={(to) => {
             setMoving(false)
-            if (locked && to.shared) {
-              setExplaining({
-                title: 'Locked notes can’t be in a shared space.',
-                text: `Remove this note’s lock to move it to ${to.name}.`,
-              })
+            const exposing = exposingTrait(to)
+            if (locked && exposing) {
+              setExplaining({ title: lockedRefusal(exposing), text: lockedReason(exposing, to.name, true) })
               return
             }
             const from = spaces.find((sp) => sp.id === saver.spaceId())

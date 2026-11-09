@@ -415,6 +415,7 @@ describe('notes in a shared space', () => {
     await user.click(await screen.findByRole('button', { name: 'More' }))
     await user.click(screen.getByRole('menuitem', { name: 'Lock note' }))
     const dialog = await screen.findByRole('dialog', { name: 'Locked notes can’t be in a shared space.' })
+    expect(within(dialog).getByText(/Work is visible to ana\./)).toBeTruthy()
     await user.click(within(dialog).getByRole('button', { name: 'OK' }))
     expect(screen.queryByRole('dialog', { name: /Lock/ })).toBeNull()
   })

@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"notes/server/internal/images"
-	"notes/server/internal/locks"
 	"notes/server/internal/search"
 	"notes/server/internal/spaces"
 )
@@ -29,7 +28,7 @@ type SpaceRow struct {
 	CreatedAt int64
 }
 
-// LockedInSpaceError refuses to share a space that holds locked notes.
+// LockedInSpaceError refuses a trait that would expose a space holding locked notes (§7.8).
 type LockedInSpaceError struct{ Count int }
 
 func (e *LockedInSpaceError) Error() string {
@@ -131,7 +130,7 @@ func (s *Store) Edited(c Carried, in UpdateInput) (Carried, error) {
 // MoveIn stores a note moved here into space. Revisions only grow: past a tombstone an earlier move left.
 // A note already live here (a move finished after a crash) is answered as it is.
 func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, error) {
-	if err := s.validateText(c.Note.Title, c.Note.Content); err != nil {
+	if err := validateText(c.Note.Title, c.Note.Content); err != nil {
 		return Result{}, err
 	}
 	var out Result
@@ -140,6 +139,9 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 			return err
 		} else if got != space || (s.shared && space != s.home) {
 			return &ValidationError{"spaceId", "no such space"}
+		}
+		if err := s.refuseLocked(ctx, space, c.Note.Content); err != nil {
+			return err
 		}
 		rev := c.Note.Revision
 		cur, err := loadForUpdate(ctx, tx, c.Note.ID)
@@ -187,9 +189,8 @@ func (s *Store) ShareOut(ctx context.Context, spaceID string, by int64, write fu
 		} else if err != nil {
 			return err
 		}
-		var locked int
-		if err := tx.QueryRowContext(ctx, `SELECT count(*) FROM notes WHERE space_id = ? AND deleted_at IS NULL
-			AND substr(content, 1, ?) = ?`, spaceID, len(locks.Family), locks.Family).Scan(&locked); err != nil {
+		locked, err := countLocked(ctx, tx, spaceID)
+		if err != nil {
 			return err
 		}
 		if locked > 0 {

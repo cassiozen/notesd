@@ -44,6 +44,35 @@ func (s *Store) AddTrait(key string, src TraitSource) {
 	s.traits[key] = src
 }
 
+// An ExposureSource reports whether key's trait lets anyone but the space's own account read spaceID's
+// notes, whoever asks: the rule behind refusing locked notes there (§7.8).
+type ExposureSource func(ctx context.Context, spaceID string) (bool, error)
+
+// AddExposure has the store ask src whether key's trait exposes a space. key must be in TraitOrder.
+func (s *Store) AddExposure(key string, src ExposureSource) {
+	if !slices.Contains(TraitOrder, key) {
+		panic(fmt.Sprintf("spaces: trait %q isn't in TraitOrder", key))
+	}
+	if s.exposures == nil {
+		s.exposures = map[string]ExposureSource{}
+	}
+	s.exposures[key] = src
+}
+
+// Exposed reports whether any trait exposes spaceID.
+func (s *Store) Exposed(ctx context.Context, spaceID string) (bool, error) {
+	for _, key := range TraitOrder {
+		src := s.exposures[key]
+		if src == nil {
+			continue
+		}
+		if on, err := src(ctx, spaceID); err != nil || on {
+			return on, err
+		}
+	}
+	return false, nil
+}
+
 // WithTraits sets each space's traits, in TraitOrder: also shared spaces,
 // which another file holds, listed with this account's.
 func (s *Store) WithTraits(ctx context.Context, list []Space) error {

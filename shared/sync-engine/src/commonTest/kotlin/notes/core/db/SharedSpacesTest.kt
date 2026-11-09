@@ -248,7 +248,7 @@ class SharedSpacesTest {
     }
 
     @Test
-    fun `a locked edit refused by a space shared since becomes a locked copy, the note back as the server has it`() =
+    fun `a locked edit refused by a space exposed since becomes a locked copy, the note back as the server has it`() =
         storeTest {
             val sync = setUp()
             sync.applyPage(

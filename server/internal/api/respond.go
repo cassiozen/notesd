@@ -166,8 +166,8 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusConflict, "cannot_change_self", err.Error())
 	case errors.As(err, &lockedIn):
 		writeJSON(w, http.StatusConflict, errorBody{Error: "space_has_locked", Message: err.Error(), Count: &lockedIn.Count})
-	case errors.Is(err, notes.ErrLockedInShared):
-		writeError(w, http.StatusUnprocessableEntity, "locked_in_shared_space", err.Error())
+	case errors.Is(err, notes.ErrLockedInExposed):
+		writeError(w, http.StatusUnprocessableEntity, "locked_in_exposed_space", err.Error())
 	case errors.Is(err, sharing.ErrKeptMoving):
 		writeError(w, http.StatusServiceUnavailable, "busy", err.Error())
 	case errors.Is(err, sharing.ErrNotOwner):

@@ -173,7 +173,7 @@ val PERMANENT_ERRORS = setOf(
     "space_default",
     "not_space_owner",
     "space_exists",
-    "locked_in_shared_space"
+    "locked_in_exposed_space"
 )
 
 /**

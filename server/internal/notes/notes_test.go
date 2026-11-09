@@ -772,3 +772,39 @@ func TestLaterLockVersion(t *testing.T) {
 		}
 	}
 }
+
+func TestLockedNotesStayOutOfExposedSpaces(t *testing.T) {
+	db, s := setup(t)
+	sp := spaces.NewStore(db)
+	if _, err := sp.Put(ctx, "pub", "Public", nil); err != nil {
+		t.Fatal(err)
+	}
+	s.SetExposed(func(_ context.Context, id string) (bool, error) { return id == "pub", nil })
+	locked := locks.Family + "v2:c2VjcmV0c2VjcmV0"
+	pub := "pub"
+
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op-1", ID: "a", Title: "A", Content: locked, SpaceID: &pub}); !errors.Is(err, notes.ErrLockedInExposed) {
+		t.Fatalf("create locked there: %v", err)
+	}
+	if _, err := s.Create(ctx, notes.CreateInput{OperationID: "op-2", ID: "b", Title: "B", Content: "plain", SpaceID: &pub}); err != nil {
+		t.Fatalf("a plain note goes there: %v", err)
+	}
+	create(t, s, "c", "C", locked)
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "op-3", ID: "c", BaseRevision: 1, Title: "C", Content: locked, SpaceID: &pub}); !errors.Is(err, notes.ErrLockedInExposed) {
+		t.Fatalf("move a locked note there: %v", err)
+	}
+	if _, err := s.Update(ctx, notes.UpdateInput{OperationID: "op-4", ID: "b", BaseRevision: 1, Title: "B", Content: locked}); !errors.Is(err, notes.ErrLockedInExposed) {
+		t.Fatalf("lock a note there: %v", err)
+	}
+
+	// Turning on what exposes a space counts its locked notes first.
+	ran := false
+	err := s.WithoutLocked(ctx, spaces.Default, func() error { ran = true; return nil })
+	var held *notes.LockedInSpaceError
+	if !errors.As(err, &held) || held.Count != 1 || ran {
+		t.Fatalf("the default space holds c: %v %v", err, ran)
+	}
+	if err := s.WithoutLocked(ctx, "pub", func() error { ran = true; return nil }); err != nil || !ran {
+		t.Fatalf("pub holds none: %v %v", err, ran)
+	}
+}

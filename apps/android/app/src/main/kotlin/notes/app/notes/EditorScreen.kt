@@ -131,9 +131,6 @@ import notes.core.sync.EmailOutcome
 
 private const val SAVE_DELAY_MS = 700L
 
-private val LOCK_REFUSED =
-    "Can't lock this note" to "Locked notes can't be in a shared space. Move it to a space of your own to lock it."
-
 /**
  * A note. Saves locally shortly after typing stops, and at once on leaving or
  * backgrounding. [showBack] is false beside the list (two panes), where
@@ -557,11 +554,16 @@ fun EditorScreen(
                 }
             })
             // A blank new note has nothing to lock yet. Nor does one whose space isn't known yet (the list still
-            // loading): it may be shared.
+            // loading): others may read it.
             if (status != SaveStatus.Blank && (locked || here != null)) {
                 SheetItem(Icons.Lock, if (locked) "Remove lock" else "Lock note", {
                     menu = false
-                    if (!locked && here?.shared != null) refused = LOCK_REFUSED else setLocked(!locked)
+                    val exposing = exposingTrait(here)
+                    if (!locked && here != null && exposing != null) {
+                        refused = lockedRefusal(exposing) to lockedReason(exposing, here.name, moving = false)
+                    } else {
+                        setLocked(!locked)
+                    }
                 })
             }
             // Nor anything to move: a new note goes to the space it was written in.
@@ -594,9 +596,9 @@ fun EditorScreen(
         ) { id ->
             moving = false
             val to = spaces.firstOrNull { it.id == id }
-            if (locked && to?.shared != null) {
-                refused = "Can't move this note" to "Locked notes can't be in a shared space. Remove this note's " +
-                    "lock to move it to ${to.name}."
+            val exposing = exposingTrait(to)
+            if (locked && to != null && exposing != null) {
+                refused = lockedRefusal(exposing) to lockedReason(exposing, to.name, moving = true)
             } else if (to != null && (newExposures(here, to).isNotEmpty() || lostExposures(here, to).isNotEmpty())) {
                 crossing = to
             } else {

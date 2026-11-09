@@ -329,8 +329,8 @@ public final class SyncEngine: Sendable {
                 case .rejected(_, "not_found", _, _) where op.type == deleteOp:
                     try await store.gone(op)
                     pushed = true
-                // Locked offline, then the space was shared from another device (§7.9): kept as a copy.
-                case .rejected(_, "locked_in_shared_space", _, _):
+                // Locked offline, then another device let others read the space (§7.8): kept as a copy.
+                case .rejected(_, "locked_in_exposed_space", _, _):
                     if let event = try await store.lockedOut(op) { emit([event], into: &events) }
                     pushed = true
                 case .rejected(_, let error, let message, _) where permanentErrors.contains(error):
