@@ -1,0 +1,35 @@
+apps/web/src/settings/published-space.module.css
+  s_c4b534f44e1767::t_3314e98f6b4e3a 207-208
+server/internal/publish/handler.go
+  s_c4b534f44e1767::t_ec222b569467a9 115,119,131-132,136-142
+  s_c4b534f44e1767::t_38803935536bd5 143-144
+server/internal/api/publish_test.go
+  s_c4b534f44e1767::t_988de7745cd392 352-355,404-406
+  s_c4b534f44e1767::t_3915456228a33f 407
+apps/web/src/settings/published-space.tsx
+  s_c4b534f44e1767::t_3314e98f6b4e3a 309
+server/internal/publish/publish.go
+  s_c4b534f44e1767::t_ec222b569467a9 380,384
+docs/contributing/architecture.md
+  s_c4b534f44e1767::t_d4bf53b85b9ee8 560-561
+docs/reference/api.md
+  s_c4b534f44e1767::t_d4bf53b85b9ee8 362-363
+server/internal/publish/site_test.go
+  s_c4b534f44e1767::t_988de7745cd392 306-315
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e7ad77f230c4c65170b241d916f74e159a53683a",
+  "prompts": {},
+  "sessions": {
+    "s_c4b534f44e1767": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "4ac7bbdc-1e4f-4475-a224-d1cba37f7bee",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
