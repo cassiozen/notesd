@@ -1,0 +1,19 @@
+server/internal/publish/publish_test.go
+  s_c2ad4aa2cf2b8b::t_3c006ae484a2fd 7,80-81,84-87,89-103,105-107,109
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "db4addf1c4c880349cd001710770d34aea38657d",
+  "prompts": {},
+  "sessions": {
+    "s_c2ad4aa2cf2b8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc7056c0-2689-4f18-b55d-6a667411926e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
