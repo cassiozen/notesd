@@ -10,8 +10,6 @@ import android.text.NoCopySpan
 import android.text.Spannable
 import android.text.Spanned
 import android.text.TextPaint
-import android.text.style.LineHeightSpan
-import android.text.style.UpdateLayout
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withTranslation
 
@@ -24,33 +22,11 @@ internal class AgentPresence(private val view: NoteEditText, private val style: 
     /** Where the marker sits; edits carry it along. */
     private class Anchor : NoCopySpan
 
-    /** Room under the anchor's line for the marker, laid out again as it comes and goes. */
-    private inner class Room(private val anchor: Anchor) :
-        LineHeightSpan,
-        UpdateLayout,
-        NoCopySpan {
-        override fun chooseHeight(
-            text: CharSequence,
-            start: Int,
-            end: Int,
-            spanstartv: Int,
-            lineHeight: Int,
-            fm: Paint.FontMetricsInt
-        ) {
-            val at = (text as? Spanned)?.getSpanStart(anchor) ?: return
-            if (at in start until end || (at == end && end == text.length)) {
-                fm.descent += room
-                fm.bottom += room
-            }
-        }
-    }
-
     /** What the agent's last change put in. */
     private class Landed : NoCopySpan
 
     private var label: String? = null
     private var anchor: Anchor? = null
-    private var roomSpan: Room? = null
     private var landed: Landed? = null
     private var landedAt = 0L
     private var still = false
@@ -76,6 +52,7 @@ internal class AgentPresence(private val view: NoteEditText, private val style: 
         if (label == this.label) return
         this.label = label
         if (label == null) unmark() else mark()
+        view.reflow()
         view.invalidate()
     }
 
@@ -84,6 +61,7 @@ internal class AgentPresence(private val view: NoteEditText, private val style: 
         if (label == null) return
         unmark()
         mark()
+        view.reflow()
     }
 
     /** Put back if a change took it away with the text it was in. */
@@ -97,20 +75,20 @@ internal class AgentPresence(private val view: NoteEditText, private val style: 
         val at = likelySpot(t, view.selectionStart, view.selectionEnd)
         val a = Anchor()
         t.setSpan(a, at, at, Spanned.SPAN_POINT_POINT)
-        val from = t.lastIndexOf('\n', at - 1) + 1
-        val to = t.indexOf('\n', at).let { if (it < 0) t.length else it + 1 }
-        val r = Room(a)
-        t.setSpan(r, from, to, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
         anchor = a
-        roomSpan = r
     }
 
     private fun unmark() {
         val t = view.text ?: return
         anchor?.let(t::removeSpan)
-        roomSpan?.let(t::removeSpan)
         anchor = null
-        roomSpan = null
+    }
+
+    /** Room under the line holding the marker, for it ([EditorStyle.roomBelow]). */
+    fun roomBelow(text: Spanned, start: Int, end: Int): Int {
+        val at = anchor?.let { text.getSpanStart(it) } ?: return 0
+        if (label == null || at < 0) return 0
+        return if (at in start until end || (at == end && end == text.length)) room else 0
     }
 
     /** The agent's change made [before] into the text now: the part that differs is what it put in. */

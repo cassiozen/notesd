@@ -367,6 +367,13 @@ class LeafStyleSpan(
             fm.descent += extra
             fm.bottom += extra
         }
+        // Last, so it's exactly the room asked for: layout spaces every line but the text's last by m.
+        val room = style.roomBelow?.invoke(spanned, start, end) ?: 0
+        if (room > 0) {
+            val add = if (end >= text.length) room else (room / m).roundToInt()
+            fm.descent += add
+            fm.bottom += add
+        }
     }
 }
 

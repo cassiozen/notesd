@@ -13,6 +13,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.Window
 import android.view.WindowManager
+import android.widget.FrameLayout
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -135,6 +136,7 @@ import notes.app.ui.hairline
 import notes.app.ui.pressScale
 import notes.app.ui.springPop
 import notes.app.ui.windowInsetsController
+import notes.core.agent.Overlay
 import notes.core.api.AgentRun
 import notes.core.crypto.LockSession
 import notes.core.db.Space
@@ -185,7 +187,11 @@ fun EditorScreen(
     /** Said briefly over the note: why the agent command didn't run. */
     notices: Flow<String> = emptyFlow(),
     /** A run of the space's agent is going on the note, and its change isn't in yet. */
-    agentWriting: Boolean = false
+    agentWriting: Boolean = false,
+    /** What runs show beside the note. */
+    overlays: List<Overlay> = emptyList(),
+    /** The user answered one: `dismiss`, `accept` or `reject`. */
+    onOverlayAnswer: (Overlay, String) -> Unit = { _, _ -> }
 ) {
     val context = LocalContext.current
     val t = LocalTokens.current
@@ -250,6 +256,11 @@ fun EditorScreen(
     }
     val agentName = "${here?.name ?: "Space"} agent"
     LaunchedEffect(editor, agentWriting, agentName) { editor?.showAgent(if (agentWriting) agentName else null) }
+    // None on a locked note: a run never sees one, and the server has dropped them.
+    LaunchedEffect(editor, overlays, locked, unsupported, agentName) {
+        editor?.showOverlays(if (locked || unsupported) emptyList() else overlays, agentName)
+    }
+    LaunchedEffect(editor, onOverlayAnswer) { editor?.onOverlayAnswer = onOverlayAnswer }
 
     /** The agent's change is the latest: Undo is offered until the user types, or it times out. */
     var agentLanded by remember { mutableStateOf(false) }
@@ -573,13 +584,19 @@ fun EditorScreen(
                                 windowInsetsController()?.show(WindowInsetsCompat.Type.ime())
                             }
                         }
-                        scroller.addView(this, ViewGroup.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+                        // The cards beside the note go in a layer over it, scrolling with it.
+                        val frame = FrameLayout(ctx)
+                        frame.addView(this, ViewGroup.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+                        val cardLayer = FrameLayout(ctx)
+                        frame.addView(cardLayer, ViewGroup.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+                        attachCardLayer(cardLayer)
+                        scroller.addView(frame, ViewGroup.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
                         scroller.keepCursorInView(this)
                     }
                     scroller
                 },
                 // The space's theme, as it changes too: the view's spans read the colours as they draw.
-                update = { (it.getChildAt(0) as? NoteEditText)?.applyTokens(t) },
+                update = { ((it.getChildAt(0) as? ViewGroup)?.getChildAt(0) as? NoteEditText)?.applyTokens(t) },
                 onRelease = {
                     editor = null
                     agentLanded = false
