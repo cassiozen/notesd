@@ -17,9 +17,10 @@ done) and on deletes and moves.
 
 Once an admin has [set up AI](#set-it-up-admins), every space that has synced to the server can
 have an agent. Open the space's **Space info** (**Info** in the space switcher, or the
-space's row in Settings → Spaces): the agent has its own part there, **Agent**. Turning it on says
-where your notes will be sent ([locked notes](locked-notes.md) never are) and opens the rest in
-place: what the space is for, its rules and the notes it always reads, saved with **Save**. A space
+space's row in Settings → Spaces): the agent has its own part there, **Agent**. On the web, its row
+opens the agent's page; on Android, it's all in that part. Turning it on says where your notes will
+be sent ([locked notes](locked-notes.md) never are) and opens the rest: what the space is for, its
+rules and the notes it always reads, saved with **Save**. A space
 with an agent shows the agent's glyph after its name, and moving a note into it asks first, since its
 notes go to the AI provider.
 

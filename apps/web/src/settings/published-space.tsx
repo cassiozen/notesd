@@ -152,14 +152,14 @@ export function PublishedSection({ space, page }: { space: Space; page: TraitPag
               onEdit={() => failure?.field === 'handle' && setFailure(undefined)}
             />
             {error('handle')}
-            <button type="button" className={styles.customize} aria-describedby={summaryId} onClick={page.show}>
-              <span className={styles.customizeText}>
-                <span className={styles.customizeLabel}>Customize site</span>
-                <span id={summaryId} className={styles.customizeSummary}>
+            <button type="button" className={info.pageRow} aria-describedby={summaryId} onClick={page.show}>
+              <span className={info.pageRowText}>
+                <span className={info.pageRowLabel}>Customize site</span>
+                <span id={summaryId} className={info.pageRowSummary}>
                   {customized(settings)}
                 </span>
               </span>
-              <span className={styles.chevron} aria-hidden="true" />
+              <span className={info.pageRowChevron} aria-hidden="true" />
             </button>
           </>
         )}
@@ -168,9 +168,9 @@ export function PublishedSection({ space, page }: { space: Space; page: TraitPag
       {customizable &&
         page.slot &&
         createPortal(
-          <div className={styles.page} hidden={!page.open}>
-            <div className={styles.pageHead}>
-              <h2 id={page.headingId} tabIndex={-1} className={styles.pageTitle}>
+          <div className={info.traitPage} hidden={!page.open}>
+            <div className={info.pageHead}>
+              <h2 id={page.headingId} tabIndex={-1} className={info.pageTitle}>
                 Customize site
               </h2>
               <span className={styles.pageAddress}>{settings.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>

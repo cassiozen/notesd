@@ -173,91 +173,6 @@
   box-shadow: 0 0 0 3px var(--focus);
 }
 
-/* Opens the section's page: a row of the group, its summary saying what's set there. */
-.customize {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 0;
-  border-top: 1px solid var(--hair);
-  border-radius: 0 0 13px 13px;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.customize:hover {
-  background: var(--hover);
-}
-
-:global(:where(:root[data-keyboard])) .customize:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--focus);
-}
-
-.customizeText {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.customizeLabel {
-  font-size: 14.5px;
-  font-weight: 600;
-}
-
-.customizeSummary {
-  font-size: 13px;
-  color: var(--ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.chevron {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  margin-right: 4px;
-  border-right: 1.5px solid var(--ink-3);
-  border-bottom: 1.5px solid var(--ink-3);
-  transform: rotate(-45deg);
-}
-
-/* Customize site: Space info's page column, its sections as the main page's. */
-.page {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.page[hidden] {
-  display: none;
-}
-
-.pageHead {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.pageTitle {
-  margin: 0;
-  font: 400 30px/1.15 var(--font-serif);
-}
-
-/* Focused when the page opens, so a screen reader starts there; not something to press. */
-.pageTitle:focus {
-  outline: none;
-}
-
 .pageAddress {
   font: 500 13px var(--font-mono);
   color: var(--ink-3);
@@ -281,10 +196,4 @@
   font-size: 13px;
   font-weight: 500;
   color: var(--link);
-}
-
-@media (max-width: 600px) {
-  .pageTitle {
-    font-size: 26px;
-  }
 }
