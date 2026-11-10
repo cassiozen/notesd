@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"notes/server/internal/database"
 	"notes/server/internal/userdata"
@@ -53,5 +54,45 @@ func TestADeletedSpacesAddressGoesWithIt(t *testing.T) {
 	}
 	if len(s.sites) != 0 {
 		t.Fatalf("still served: %v", s.sites)
+	}
+}
+
+func TestAReloadThatReadBeforeAForgetDoesNotBringTheSiteBack(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	system, err := database.OpenSystem(ctx, filepath.Join(dir, "system.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { system.Close() })
+	files := userdata.NewRegistry(dir)
+	t.Cleanup(func() { files.Close() })
+	s := New(system, files, nil, Config{DataDir: dir})
+	t.Cleanup(func() { s.Close() })
+	if _, err := system.W.ExecContext(ctx, `INSERT INTO published_spaces
+		(file, space_id, handle, origin, published, updated_at) VALUES ('user:1', 'fam', 'family', 'https://x', 1, 0)`); err != nil {
+		t.Fatal(err)
+	}
+	s.reload(ctx)
+
+	// The publisher's own reload (a change woke it) reads the site, then the space is deleted before it swaps.
+	forgot := make(chan error, 1)
+	s.reloaded = func() {
+		s.reloaded = nil
+		go func() { forgot <- s.Forget(ctx, "user:1", "fam") }()
+		select {
+		case err := <-forgot:
+			forgot <- err
+		case <-time.After(200 * time.Millisecond): // Forget waits its turn
+		}
+	}
+	s.reload(ctx)
+	if err := <-forgot; err != nil {
+		t.Fatal(err)
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if _, ok := s.sites["family"]; ok {
+		t.Fatal("a deleted space's site is served again")
 	}
 }
