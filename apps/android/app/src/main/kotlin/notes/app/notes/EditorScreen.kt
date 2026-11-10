@@ -51,6 +51,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -67,8 +69,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -88,6 +92,8 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.util.WeakHashMap
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import notes.app.MainActivity
 import notes.app.R
@@ -120,6 +126,7 @@ import notes.app.ui.NotesDialog
 import notes.app.ui.Reveal
 import notes.app.ui.Sheet
 import notes.app.ui.SheetItem
+import notes.app.ui.ToastHost
 import notes.app.ui.Type
 import notes.app.ui.hairline
 import notes.app.ui.pressScale
@@ -167,7 +174,13 @@ fun EditorScreen(
     /** The agent's latest run on the note, when it failed and wasn't dismissed. */
     failedRun: FailedRun? = null,
     /** Activity, open on a run. */
-    onRun: (AgentRun) -> Unit = {}
+    onRun: (AgentRun) -> Unit = {},
+    /** The command the menu offers for the agent of the note's space, given the space; null offers none. */
+    agentCommand: (String) -> String? = { null },
+    /** The agent command was picked, for the note in the given space. */
+    onAgentCommand: (String) -> Unit = {},
+    /** Said briefly over the note: why the agent command didn't run. */
+    notices: Flow<String> = emptyFlow()
 ) {
     val context = LocalContext.current
     val t = LocalTokens.current
@@ -224,6 +237,11 @@ fun EditorScreen(
 
     fun save() {
         editor?.let { vm.save(it.document()) }
+    }
+
+    val toasts = remember { SnackbarHostState() }
+    LaunchedEffect(notices) {
+        notices.collect { toasts.showSnackbar(it, withDismissAction = true, duration = SnackbarDuration.Long) }
     }
 
     LaunchedEffect(gone) { if (gone) onBack() }
@@ -518,6 +536,7 @@ fun EditorScreen(
                         setDocument(doc)
                         onChange = { byUser ->
                             vm.edited()
+                            if (byUser) vm.typed()
                             // An agent's change is saved and synced at once, so the server links it to its run.
                             if (byUser) edits++ else vm.saveNow(document())
                         }
@@ -552,6 +571,7 @@ fun EditorScreen(
                 // Compose doesn't clip a native view: the edge stretch would draw the text over the top bar.
                 modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()
             )
+            ToastHost(toasts, Modifier.align(Alignment.CenterHorizontally))
             if (keyboardBar != null) Spacer(Modifier.height(keyboardBar.height)) else toolbars()
             if (!typing) Spacer(Modifier.navigationBarsPadding())
         }
@@ -567,6 +587,14 @@ fun EditorScreen(
                 SheetItem(Icons.Replace, "Find and replace", {
                     menu = false
                     openFind(FindMode.Replace)
+                })
+            }
+            // Never for a locked note: its text never reaches the model.
+            val command = if (locked || unsupported) null else agentCommand(vm.spaceId())
+            if (command != null) {
+                SheetItem(ImageVector.vectorResource(R.drawable.trait_agent), command, {
+                    menu = false
+                    onAgentCommand(vm.spaceId())
                 })
             }
             SheetItem(Icons.Share, "Share", {

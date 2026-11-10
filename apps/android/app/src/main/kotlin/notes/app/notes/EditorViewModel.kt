@@ -2,6 +2,7 @@ package notes.app.notes
 
 import android.content.ContentResolver
 import android.net.Uri
+import android.os.SystemClock
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineScope
@@ -86,7 +87,9 @@ class EditorViewModel(
     /** Where the note counts as open while this lives. */
     private val openNotes: OpenNotes? = null,
     /** Syncs now and returns once that cycle ended. */
-    private val push: suspend () -> Unit = {}
+    private val push: suspend () -> Unit = {},
+    /** Asks for an editor trigger's run on the note: trigger, note, space. */
+    private val requestRun: (String, String, String) -> Unit = { _, _, _ -> }
 ) : ViewModel() {
     private val _view = MutableStateFlow<NoteEditText?>(null)
 
@@ -274,6 +277,8 @@ class EditorViewModel(
                 else -> Document.forNote("", Markdown.parse(blankContent))
             }
             if (note != null) show(note)
+            // Once: this outlives the screen being shown again.
+            if (isNew) requestRun(NOTE_CREATED, id, noteSpace)
             launch { locks.state.collect { lockChanged(it) } }
             store.changes.conflate().collect { refresh() }
         }
@@ -321,6 +326,18 @@ class EditorViewModel(
     fun edited() {
         edits++
         _status.value = SaveStatus.Unsaved
+    }
+
+    /** When the user last changed the note, on the uptime clock; null before the first change. */
+    private var lastTyped: Long? = null
+
+    /** The user changed the text (not an agent): starting to edit, the first time or after a pause. */
+    fun typed() {
+        val now = SystemClock.uptimeMillis()
+        val last = lastTyped
+        lastTyped = now
+        // Opened new: noteCreated is its trigger.
+        if (!isNew && (last == null || now - last > editIdleMs)) requestRun(EDIT_STARTED, id, noteSpace)
     }
 
     /** Stores [doc] if anything changed since the last save. Call with the editor's current document. */
@@ -534,5 +551,10 @@ class EditorViewModel(
     private companion object {
         /** Within the agent socket's 5 s wait for the close that ends the note's writing session. */
         const val PUSH_WAIT_MS = 4_000L
+        const val NOTE_CREATED = "noteCreated"
+        const val EDIT_STARTED = "editStarted"
     }
 }
+
+/** How long without a change before the next one counts as starting to edit again. */
+internal var editIdleMs = 3 * 60_000L
