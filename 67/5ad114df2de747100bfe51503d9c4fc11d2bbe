@@ -1,0 +1,49 @@
+docs/contributing/architecture.md
+  s_38136e79c5d4c7::t_1099d7cd0098fe 509
+  s_38136e79c5d4c7::t_f6a611d8bb32f6 569
+apps/web/e2e/publishing.spec.ts
+  s_38136e79c5d4c7::t_c82c674034fd8c 47-59
+apps/web/src/settings/space-info.module.css
+  s_38136e79c5d4c7::t_b302fc7518709c 245-268
+apps/web/src/notes/traits.tsx
+  s_38136e79c5d4c7::t_97b564a7cd8324 20,25-35
+  s_38136e79c5d4c7::t_eff570f1cafd72 36-37
+apps/web/src/settings/published-space.tsx
+  s_38136e79c5d4c7::t_eab466225bdaae 2,8,15-16,47-55,58,60,68,71-75,78,155-177,192-194,319-321,334,337,339-347,349-387,389-391,393-394,396-400,402-407,409,413,425,429-461,464
+  s_38136e79c5d4c7::t_5a4eecca924f11 76-77,392,401
+apps/web/src/settings/space-info.tsx
+  s_38136e79c5d4c7::t_b302fc7518709c 2,9,21,34-40,59-61,64-83,122-123,228-242,245-251
+  s_38136e79c5d4c7::t_3f8023716a96ce 63
+  s_38136e79c5d4c7::t_c366a958245765 328
+  s_38136e79c5d4c7::t_fe5a631c6bea51 124-149,151-160,162-171,173-181,183-201,203-207,209-211,213-217
+  s_38136e79c5d4c7::t_f446be6a8d408f 212
+  s_38136e79c5d4c7::t_d033fbb88c11af 243-244
+  s_38136e79c5d4c7::t_c88c5ea35a5808 62
+  s_38136e79c5d4c7::t_0286a30a356755 252-254
+apps/web/src/settings/published-space.module.css
+  s_38136e79c5d4c7::t_8159bf342da28f 154
+  s_38136e79c5d4c7::t_5a4eecca924f11 176-177,179-183,185-213,216-251,253-272,275-287
+apps/web/test/publishing.test.tsx
+  s_38136e79c5d4c7::t_63ce4599f80a7b 313-314
+  s_38136e79c5d4c7::t_f446be6a8d408f 44-53,244-265,267-268,270,272-277,279-289,291-292,295,297-299,301,304,306,309-312,315-316,318-333,335-343
+  s_38136e79c5d4c7::t_e3c33b0b6aaa34 290,307-308,334
+docs/guides/using/publishing.md
+  s_38136e79c5d4c7::t_4d5409795fcc36 42-56,60,69-74,78,82-83,88,91-107,123-124
+  s_38136e79c5d4c7::t_1099d7cd0098fe 89,118-119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "675ad114df2de747100bfe51503d9c4fc11d2bbe",
+  "prompts": {},
+  "sessions": {
+    "s_38136e79c5d4c7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "168f4d8d-86a0-4479-b355-f3e4e49ad825",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
