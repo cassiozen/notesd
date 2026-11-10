@@ -14,14 +14,17 @@ apps/web/src/notes/note-pane.tsx
   s_cc6cacc0a6fc01::t_6e3b3747cea448 165
 apps/web/src/notes/traits.test.tsx
   s_cc6cacc0a6fc01::t_fb9addf2c28b6f 37,40
+  s_cc6cacc0a6fc01::t_d500ae0b68daac 32,34
 apps/web/src/notes/traits.tsx
   s_cc6cacc0a6fc01::t_8e3b30f75aac5d 89
+  s_cc6cacc0a6fc01::t_54fc45613755e2 90
 apps/web/src/settings/ai.tsx
   s_cc6cacc0a6fc01::t_3a7c31286d6967 195
 apps/web/test/activity.test.tsx
   s_cc6cacc0a6fc01::t_11ff283a2f0c6b 58
 apps/web/test/agent-config.test.tsx
   s_cc6cacc0a6fc01::t_cb9293f433d281 283-300,302-305,313-325
+  s_cc6cacc0a6fc01::t_54fc45613755e2 301,307-312
 apps/web/test/agent-socket.test.tsx
   s_cc6cacc0a6fc01::t_146a1568d9aa14 137,141-142,145-146,149-150,154,183,197,206,211,228,248,290,330,342,361,372,383,405,409
 apps/web/test/ai-settings.test.tsx
@@ -30,14 +33,18 @@ docs/contributing/agent-clients.md
   s_cc6cacc0a6fc01::t_aa02ad3c253db0 121-122
 docs/contributing/architecture.md
   s_cc6cacc0a6fc01::t_48cf03944c2924 169-171,636,642,688,690,693,717,723-732,849
+  s_cc6cacc0a6fc01::t_54fc45613755e2 716,718-722
 docs/contributing/mobile-agents-plan.md
   s_cc6cacc0a6fc01::t_835d479cc5ebd6 71,227
 docs/guides/using/agents.md
   s_cc6cacc0a6fc01::t_3fc26f142a7400 18-19,26-29,107-108,146
 docs/reference/api.md
   s_cc6cacc0a6fc01::t_e0e7e0b36b2215 516,529-530,545-546,554-557,591,593,595,630
+  s_cc6cacc0a6fc01::t_5a1479ce774baf 342-344
 server/cmd/notesd/main.go
   s_cc6cacc0a6fc01::t_3b56c7ec6a60b7 58,641-653,655,657-662,666-668,670-671,674-679,685-692,698,714,1045,1048-1050,1065-1077,1079-1088,1090,1092,1097,1099-1105
+  s_cc6cacc0a6fc01::t_86e01e69cbd037 75
+  s_cc6cacc0a6fc01::t_54fc45613755e2 56,663-665,672-673,1078,1089,1091,1093-1096,1098
 server/internal/agent/activity.go
   s_cc6cacc0a6fc01::t_c2d79baa895503 4,10-11,42-45,107,110,118,120,124-126,137,148,210,212,272-276,278,280-300,302-315,317,320,327-331,367-373
 server/internal/agent/activity_test.go
@@ -68,6 +75,7 @@ server/internal/api/agent_handlers.go
   s_cc6cacc0a6fc01::t_557bf63b2a9ec3 4,7,11-12,15-33,35,40-48,56-62,82-88,98-104,140-141,149-150,155-169,173-174,176-192,210-221,236-247,254-298
 server/internal/api/agent_socket.go
   s_cc6cacc0a6fc01::t_42e2451ef8eaa3 16-17,62,106-111,133,148,153,208,223-252,254
+  s_cc6cacc0a6fc01::t_54fc45613755e2 253
 server/internal/api/agent_socket_test.go
   s_cc6cacc0a6fc01::t_25123dab8e8561 8,10,154,244,386-454
 server/internal/api/agent_trait_test.go
@@ -86,10 +94,15 @@ server/internal/sharing/route.go
   s_cc6cacc0a6fc01::t_d673d39ca3580f 347-358
 server/internal/sharing/sharing.go
   s_cc6cacc0a6fc01::t_fbafe1dfd06d32 17,388-393,890,903-906,908,911-912,914-916
+  s_cc6cacc0a6fc01::t_5a1479ce774baf 899
+  s_cc6cacc0a6fc01::t_54fc45613755e2 900-902,907,909-910,913
 server/internal/sharing/sharing_test.go
   s_cc6cacc0a6fc01::t_9dd4c725cdfa72 11,13,288,356-401
+  s_cc6cacc0a6fc01::t_54fc45613755e2 355
 server/internal/userdata/userdata.go
   s_cc6cacc0a6fc01::t_187d3e46e0599c 34,37,39-40,43,129,132,138,142,168,206,209
+  s_cc6cacc0a6fc01::t_1e234db6233bda 68
+  s_cc6cacc0a6fc01::t_54fc45613755e2 42
 server/internal/userdata/userdata_test.go
   s_cc6cacc0a6fc01::t_12a993e5053a11 24-25,36,41-42,45-48,52-65
 server/migrations/0021_agent_shared_spaces.sql
