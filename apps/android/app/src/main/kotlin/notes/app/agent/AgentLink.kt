@@ -77,13 +77,7 @@ class AgentLink(
     /** Why the menu command, asked for on [noteId], didn't run: the one run asked for by hand. */
     fun menuDropped(noteId: String): Flow<String> = socket.dropped
         .filter { it.trigger == MENU && it.noteId == noteId }
-        .map {
-            when {
-                it.why == DroppedRun.Why.Off -> "The agent didn't run: it isn't on for this space."
-                online.value -> "The agent didn't run: the server can't be reached."
-                else -> "The agent didn't run: you're offline."
-            }
-        }
+        .map { whyNot(it.why, online.value) }
 
     fun start() {
         openNotes.listener = object : OpenNotes.Listener {
@@ -129,5 +123,12 @@ class AgentLink(
 
     companion object {
         const val MENU = "menu"
+
+        /** Why a run asked for by hand didn't go, as the web app says it. */
+        fun whyNot(why: DroppedRun.Why, online: Boolean): String = when {
+            why == DroppedRun.Why.Off -> "The agent didn't run: it isn't on for this space."
+            online -> "The agent didn't run: the server can't be reached."
+            else -> "The agent didn't run: you're offline."
+        }
     }
 }
