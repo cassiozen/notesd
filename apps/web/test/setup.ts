@@ -1,5 +1,6 @@
 import { cleanup, configure } from '@testing-library/react'
 import { afterEach } from 'vitest'
+import { agentSocket } from '../src/agent/socket'
 import { forgetFind } from '../src/editor/find-bar'
 import { forgetAgentConfigs } from '../src/notes/agent-config'
 import { forgetAiSettings } from '../src/notes/ai-settings'
@@ -87,6 +88,7 @@ afterEach(() => {
   forgetEmailSettings()
   forgetAiSettings()
   forgetAgentConfigs()
+  agentSocket.reset()
   forgetSpaces()
   forgetFind()
   versionState.reset()

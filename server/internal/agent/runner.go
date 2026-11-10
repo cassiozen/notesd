@@ -33,8 +33,10 @@ const MaxConcurrentCalls = 4
 // for AI coming back, or an error clearing.
 var idleCheck = time.Minute
 
-// Runner runs every account's queued agent runs: one at a time per
-// account, which is also one at a time per note.
+// Runner runs every account's queued agent runs, one at a time per note.
+// Each account has two slots: one runs any run, one after another; the
+// other starts each run an open editor asked for at once, beside the rest,
+// so someone in a note never waits behind others.
 type Runner struct {
 	accounts func(ctx context.Context) ([]int64, error)
 	exists   func(ctx context.Context, userID int64) (bool, error)
@@ -47,7 +49,7 @@ type Runner struct {
 
 	mu      sync.Mutex
 	ctx     context.Context // set by Run
-	workers map[int64]chan struct{}
+	workers map[int64]*worker
 	wg      sync.WaitGroup
 }
 
@@ -55,7 +57,7 @@ type Runner struct {
 func NewRunner(c RunnerConfig) *Runner {
 	r := &Runner{
 		accounts: c.Accounts, exists: c.Exists, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
-		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[int64]chan struct{}{},
+		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[int64]*worker{},
 	}
 	if r.now == nil {
 		r.now = time.Now
@@ -93,6 +95,9 @@ func (rn *Runner) Run(ctx context.Context) {
 	}
 }
 
+// worker is an account's two slots' wake-ups.
+type worker struct{ any, editor chan struct{} }
+
 // Wake has an account's worker look at its queue, starting the worker if
 // there's none yet. It never blocks.
 func (rn *Runner) Wake(userID int64) {
@@ -101,19 +106,21 @@ func (rn *Runner) Wake(userID int64) {
 	if rn.ctx == nil || rn.ctx.Err() != nil {
 		return
 	}
-	wake, ok := rn.workers[userID]
+	w, ok := rn.workers[userID]
 	if !ok {
-		wake = make(chan struct{}, 1)
-		rn.workers[userID] = wake
+		w = &worker{any: make(chan struct{}, 1), editor: make(chan struct{}, 1)}
+		rn.workers[userID] = w
 		rn.wg.Add(1)
 		go func() {
 			defer rn.wg.Done()
-			rn.work(rn.ctx, userID, wake)
+			rn.work(rn.ctx, userID, w)
 		}()
 	}
-	select {
-	case wake <- struct{}{}:
-	default:
+	for _, c := range []chan struct{}{w.any, w.editor} {
+		select {
+		case c <- struct{}{}:
+		default:
+		}
 	}
 }
 
@@ -130,7 +137,7 @@ func (rn *Runner) WakeAll() {
 	}
 }
 
-func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) {
+func (rn *Runner) work(ctx context.Context, userID int64, w *worker) {
 	acct, err := rn.open(ctx, userID)
 	if err != nil {
 		rn.log.Error("agent runner: open account", "user", userID, "err", err)
@@ -157,8 +164,19 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 		case <-t.C:
 		}
 	}
+	rn.wg.Add(1)
+	go func() {
+		defer rn.wg.Done()
+		rn.slot(ctx, userID, acct, true, w.editor)
+	}()
+	rn.slot(ctx, userID, acct, false, w.any)
+}
+
+// slot runs an account's runs one after another; editorOnly, it starts
+// each one an open editor asked for, without waiting for it to end.
+func (rn *Runner) slot(ctx context.Context, userID int64, acct Account, editorOnly bool, wake <-chan struct{}) {
 	for ctx.Err() == nil {
-		if rn.step(ctx, userID, acct) {
+		if rn.step(ctx, userID, acct, editorOnly) {
 			continue
 		}
 		// With nothing queued and no one writing, only a wake brings work.
@@ -183,9 +201,10 @@ func (rn *Runner) work(ctx context.Context, userID int64, wake <-chan struct{}) 
 	}
 }
 
-// step ends the writing sessions gone idle, then runs the next due run if
-// AI is set up and there is one, and reports whether it did.
-func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
+// step ends the writing sessions gone idle (the slot for any run only),
+// then runs the next due run if AI is set up and there is one, and reports
+// whether it did.
+func (rn *Runner) step(ctx context.Context, userID int64, acct Account, editorOnly bool) bool {
 	// remove-user runs beside the server and keeps the account's data, queue
 	// included: none of it may reach the provider after.
 	if ok, err := rn.exists(ctx, userID); err != nil || !ok {
@@ -195,8 +214,10 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 		return false
 	}
 	// Before AI is checked: while it's paused, the "done" runs still queue.
-	if _, err := acct.Agent.CloseIdleSessions(ctx); err != nil && ctx.Err() == nil {
-		rn.log.Error("agent runner: end writing sessions", "user", userID, "err", err)
+	if !editorOnly {
+		if _, err := acct.Agent.CloseIdleSessions(ctx); err != nil && ctx.Err() == nil {
+			rn.log.Error("agent runner: end writing sessions", "user", userID, "err", err)
+		}
 	}
 	st, err := rn.settings(ctx)
 	if errors.Is(err, llm.ErrNotConfigured) {
@@ -206,7 +227,7 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 		rn.log.Error("agent runner: AI settings", "err", err)
 		return false
 	}
-	r, ok, err := acct.Agent.claim(ctx)
+	r, ok, err := acct.Agent.claim(ctx, editorOnly)
 	if err != nil {
 		if ctx.Err() == nil {
 			rn.log.Error("agent runner: claim", "user", userID, "err", err)
@@ -216,7 +237,23 @@ func (rn *Runner) step(ctx context.Context, userID int64, acct Account) bool {
 	if !ok {
 		return false
 	}
-	rn.execute(ctx, acct, st, r)
+	run := func() {
+		acct.notify(RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: StatusRunning})
+		rn.execute(ctx, acct, st, r)
+		// The other slot may have passed over a run on this note.
+		rn.Wake(userID)
+	}
+	if !editorOnly {
+		run()
+		return true
+	}
+	// Someone is in the note, waiting: each note's run starts at once, beside
+	// the others' (claim takes one per note at a time).
+	rn.wg.Add(1)
+	go func() {
+		defer rn.wg.Done()
+		run()
+	}()
 	return true
 }
 

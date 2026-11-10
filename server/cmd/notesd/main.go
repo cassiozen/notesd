@@ -658,6 +658,7 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 			}
 			a := agentAccount(d, userID)
 			a.Editors = hub.For(userID)
+			a.OnRun = func(u agent.RunUpdate) { hub.Broadcast(userID, runMessage{Type: "run", RunUpdate: u}) }
 			return a, nil
 		},
 		Settings: func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) },
@@ -995,6 +996,12 @@ func humanBytes(n int64) string {
 }
 
 // agentAccount is what agents need of an account's data.
+// runMessage tells the user's editors a run started or ended (the agent socket's "run").
+type runMessage struct {
+	Type string `json:"type"`
+	agent.RunUpdate
+}
+
 func agentAccount(d *userdata.Data, userID int64) agent.Account {
 	return agent.Account{
 		UserID: userID,

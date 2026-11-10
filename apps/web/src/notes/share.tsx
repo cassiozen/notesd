@@ -11,6 +11,9 @@ import { copyText } from '../ui/copy'
 import { MoreIcon, ShareIcon } from '../ui/icons'
 import { lockSession, useLockStatus } from '../locks/session'
 import { LockNoteDialog, SetupDialog } from '../locks/unlock'
+import { requestRun } from '../agent/triggers'
+import { useAgentConfigs } from './agent-config'
+import { useAiSettings } from './ai-settings'
 import { useEmailSettings } from './email-settings'
 import type { Saver } from './source'
 import { SpaceIdentity } from './space-identity'
@@ -27,7 +30,7 @@ function exportMarkdown(saver: Saver): string {
 }
 
 /**
- * The note's menu: Email (when Settings has a Resend key), the browser's share
+ * The note's menu: the space agent's command, if it has one; Email (when Settings has a Resend key), the browser's share
  * sheet where there is one, and Copy as Markdown. Browsers can't add our own
  * action to their share sheet, hence a menu. With [onDelete] it's the desktop's
  * one "More" menu and ends with Delete; phones keep Delete as its own button.
@@ -52,6 +55,10 @@ export function NoteMenu({
   const name = onDelete ? 'More' : 'Share'
   const email = useEmailSettings()
   const spaces = useSpaces()
+  const agentConfig = useAgentConfigs()?.get(saver.spaceId())
+  // With AI paused there's no socket to ask on: the command would do nothing.
+  const aiOn = Boolean(useAiSettings()?.configured)
+  const command = aiOn && agentConfig?.enabled && agentConfig.triggers.menu ? agentConfig.menuLabel : ''
   const [open, setOpen] = useState(false)
   const [emailing, setEmailing] = useState(false)
   const [moving, setMoving] = useState(false)
@@ -155,6 +162,19 @@ export function NoteMenu({
               </button>
               <div role="separator" className={styles.separator} />
             </>
+          )}
+          {command && !locked && (
+            <button
+              type="button"
+              role="menuitem"
+              className={styles.item}
+              onClick={() => {
+                setOpen(false)
+                requestRun('menu', saver.id, saver.spaceId())
+              }}
+            >
+              {command}
+            </button>
           )}
           {email?.configured && !locked && (
             <button

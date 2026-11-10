@@ -32,6 +32,24 @@ type Account struct {
 	// Editors are the account's open note editors; nil reads and writes
 	// only the store.
 	Editors Editors
+	// OnRun hears of each run starting and ending, for the user's editors.
+	OnRun func(RunUpdate)
+}
+
+// RunUpdate is a run starting or ending.
+type RunUpdate struct {
+	RunID   string  `json:"runId"`
+	NoteID  string  `json:"noteId"`
+	Trigger Trigger `json:"trigger"`
+	Status  string  `json:"status"`
+	Failure string  `json:"failure,omitempty"`
+	Outcome string  `json:"outcome,omitempty"`
+}
+
+func (a Account) notify(u RunUpdate) {
+	if a.OnRun != nil {
+		a.OnRun(u)
+	}
 }
 
 // Provider is the model: llm.Client, or a fake in tests.
@@ -88,6 +106,11 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	if err := acct.Agent.finish(done, r.ID, f); err != nil {
 		rn.log.Error("agent run: record", "run", r.ID, "err", err)
 	}
+	u := RunUpdate{RunID: r.ID, NoteID: r.NoteID, Trigger: r.Trigger, Status: f.Status, Failure: f.Failure, Outcome: f.Outcome}
+	if !f.RetryAt.IsZero() {
+		u.Status, u.Failure = StatusQueued, ""
+	}
+	acct.notify(u)
 	t := f.timing
 	rn.log.Info("agent run", "run", r.ID, "trigger", r.Trigger, "status", f.Status, "failure", f.Failure,
 		"tools", f.ToolCalls, "tokens", f.PromptTokens+f.CompletionTokens,
@@ -109,8 +132,9 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		return failed(FailInterrupted, err)
 	}
 
+	// An editor trigger's note is read from its editor below.
 	var note *notes.Note
-	if r.Event.Title == nil {
+	if r.Event.Title == nil && !r.Trigger.InEditor() {
 		n, err := acct.Notes.Get(ctx, r.NoteID)
 		if f := unusable(n, err, r.SpaceID, false); f.Status != "" {
 			return f
@@ -137,7 +161,22 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	var f finished
 	rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, inEditor: map[string]*editorRead{}, day: day,
 		budget: min(left, today), dailyLimited: today <= left}
-	if note != nil {
+	switch {
+	case r.Trigger.InEditor():
+		// What the editor showed as it asked, if that's recent: else it's asked now.
+		en, fresh := acct.Agent.snapshots.take(r.ID, rn.now())
+		var n notes.Note
+		var err error
+		if fresh {
+			n = rs.fromEditor(r.NoteID, en)
+		} else {
+			n, err = rs.readEditor(runCtx, r.NoteID)
+		}
+		if u := unusable(n, err, r.SpaceID, false); u.Status != "" {
+			return u
+		}
+		note = &n
+	case note != nil:
 		// As the user sees it, if an editor has it open.
 		n, err := rs.read(runCtx, note.ID)
 		var stop *stopError
@@ -150,12 +189,23 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 		}
 		note = &n
 	}
-	messages := []llm.Message{
-		{Role: "system", Content: systemPrompt(c, r.Trigger)},
-		{Role: "user", Content: eventMessage(r, now, note, spaceName)},
+	var cursor *int
+	if note != nil && rs.inEditor[note.ID] != nil {
+		cursor = rs.inEditor[note.ID].cursor
 	}
-	f.timing.prep = time.Since(began)
-	rn.converse(runCtx, rs, st, messages, &f)
+	if rc, err := rs.gather(runCtx, c, note); err != nil {
+		if runCtx.Err() == nil {
+			return failed(FailInterrupted, err)
+		}
+		// Else the deadline or a shutdown, told apart below.
+	} else {
+		messages := []llm.Message{
+			{Role: "system", Content: systemPrompt(c, r.Trigger)},
+			{Role: "user", Content: eventMessage(r, now, note, cursor, rc, spaceName)},
+		}
+		f.timing.prep = time.Since(began)
+		rn.converse(runCtx, rs, st, messages, &f)
+	}
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) && f.Status == "" {
 		f.Status, f.Failure, f.Message = StatusFailed, FailTimeout, fmt.Sprintf("The run took longer than %s.", RunTimeout)
 	}
@@ -191,6 +241,12 @@ func unusable(n notes.Note, err error, spaceID string, started bool) finished {
 		when = "while the agent worked on it"
 	}
 	switch {
+	case errors.Is(err, errEditorClosed):
+		return skipped(FailNoteClosed, "The note was closed "+when+".")
+	case errors.Is(err, errLockedInEditor) && started:
+		return skipped(FailNoteLocked, "The note was locked "+when+".")
+	case errors.Is(err, errLockedInEditor):
+		return skipped(FailNoteLocked, "The note is locked. Locked notes are never sent.")
 	case errors.Is(err, notes.ErrNotFound) || (err == nil && n.DeletedAt != nil):
 		return skipped(FailNoteGone, "The note was deleted "+when+".")
 	case err != nil:
@@ -224,7 +280,8 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		case err != nil && ctx.Err() != nil:
 			// The deadline or a shutdown; the caller says which.
 			return
-		case rs.run.Event.Title == nil && unusable(n, err, rs.run.SpaceID, true).Status != "":
+		// An editor trigger's note is its editor's, which the store may not have yet.
+		case rs.run.Event.Title == nil && !rs.run.Trigger.InEditor() && unusable(n, err, rs.run.SpaceID, true).Status != "":
 			u := unusable(n, err, rs.run.SpaceID, true)
 			f.Status, f.Failure, f.Message = u.Status, u.Failure, u.Message
 			return

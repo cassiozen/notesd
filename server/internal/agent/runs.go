@@ -38,6 +38,7 @@ const (
 	FailQueueFull    = "queue_full"
 	FailUnknownEvent = "unknown_trigger"
 	FailEditorGone   = "editor_disconnected" // the editor went away while the run changed the note in it
+	FailNoteClosed   = "note_closed"         // an editor trigger's note was closed before or while it ran
 )
 
 // queuedRun is a run as the runner takes it from the queue.
@@ -49,24 +50,31 @@ type queuedRun struct {
 	NoteID    string
 	Event     Event
 	Attempts  int
-	// ConnectionID is the editor that asked for the run, if one did.
-	ConnectionID string
 	// What earlier attempts used, counted against this one's caps.
 	PriorToolCalls int
 	PriorTokens    int64
 }
 
+// editorPriority is the queue priority of runs an open editor asked for.
+const editorPriority = 1
+
 // claim takes the next run that's due, editor triggers first, and marks it
-// running. ok is false when none is due.
-func (s *Store) claim(ctx context.Context) (r queuedRun, ok bool, err error) {
+// running; editorOnly, only one an editor asked for. A note's run waits
+// while another on it runs. ok is false when none is due.
+func (s *Store) claim(ctx context.Context, editorOnly bool) (r queuedRun, ok bool, err error) {
 	now := s.now().UnixMilli()
+	minPriority := 0
+	if editorOnly {
+		minPriority = editorPriority
+	}
 	var ev string
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		return tx.QueryRowContext(ctx, `
 			UPDATE agent_runs SET status = 'running', started_at = ?, attempts = attempts + 1
-			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ?
+			WHERE id = (SELECT id FROM agent_runs WHERE status = 'queued' AND not_before <= ? AND priority >= ?
+			              AND NOT EXISTS (SELECT 1 FROM agent_runs b WHERE b.status = 'running' AND b.note_id = agent_runs.note_id)
 			            ORDER BY priority DESC, created_at, rowid LIMIT 1)
-			RETURNING id, created_at, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now).
+			RETURNING id, created_at, trigger, space_id, note_id, event_json, attempts, tool_calls, prompt_tokens + completion_tokens`, now, now, minPriority).
 			Scan(&r.ID, &r.CreatedAt, &r.Trigger, &r.SpaceID, &r.NoteID, &ev, &r.Attempts, &r.PriorToolCalls, &r.PriorTokens)
 	})
 	if errors.Is(err, sql.ErrNoRows) {
