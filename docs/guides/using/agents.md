@@ -9,9 +9,9 @@ A space can have an agent. It isn't a chatbot, and it doesn't write notes for yo
 notes when you ask it to: it tags new notes, titles them, or keeps a digest up to date. You decide
 what it does and when.
 
-Agents are being built. Every trigger works on the web; the Android and iOS apps don't open
-notes for an agent yet, so there it acts only after you're done (new note done, note edit done)
-and on deletes and moves.
+Agents are being built. Everything here works on the web and in the Android app. The iOS app doesn't
+open notes for an agent yet, so there it acts only after you're done (new note done, note edit
+done) and on deletes and moves.
 
 ## Give a space an agent
 
@@ -73,7 +73,7 @@ not yet saved, and where your cursor is. While it works, a marker with the space
 it's likely to write: at your cursor, or at the top of a new note. You can keep typing. Its change
 appears highlighted for a moment, with an **Undo** button beside it until you type again or a few
 seconds pass. It's one step: **Undo**, or Ctrl+Z (⌘Z on a Mac) right away, takes it back and leaves
-your typing alone.
+your typing alone. On Android, **Undo** is in a message at the bottom of the note instead.
 
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.
@@ -94,13 +94,14 @@ and it goes when you close the note.
 For the rules that run while you're in the note (a new note opened, editing started, the menu
 command), the agent suggests changes to your own words and adds its own text directly, unless the
 rule's prompt says otherwise. A rule's next run on the note replaces the cards its last one left. Cards show only in a note open on
-the web for now: an agent can't leave one on a note nobody has open. Activity counts what a run
+the web or in the Android app: an agent can't leave one on a note nobody has open. With TalkBack, a
+card is read after the note, and says where in the note it is. Activity counts what a run
 showed, and how many of its suggestions you accepted.
 
 ## See what it did, and undo it
 
 Everything an agent does is in **Activity**: pick **Activity…** beside **Agent** in Space info. On
-the web for now.
+the web and in the Android app.
 
 Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
 changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it

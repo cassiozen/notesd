@@ -9,7 +9,8 @@ The space agent (PRs #94–#100, #124, #136, GitHub stack #101) is complete on t
 app. The Mac app wraps the web app and has all of it. Android has phases 1 to 5 (agent level 3): AI
 and the time zone in Settings, the agent's section in Space info, Activity, a note's failed run, the
 socket, through which runs read and change the note open, editor triggers and the menu command, the
-agent shown at work, and cards beside the note. The parity pass (phase 6) is still to do. iOS has none of it, beyond sending
+agent shown at work, and cards beside the note, with phase 6's parity pass (screenshots left for
+later). iOS has none of it, beyond sending
 `X-Notesd-Time-Zone`. This is the inventory of what to replicate and the plan to build it.
 The protocol is in [Agent clients](agent-clients.md); this doesn't repeat it.
 
@@ -301,6 +302,12 @@ Markdown source in a card, as in a note, rather than as its text.
 accepted, then undone.
 
 ### Phase 6: parity pass
+
+Done on Android, but for screenshots. TalkBack reads an editable field as one item, so cards can't
+sit between its blocks without taking editing away from it: they're read after the note, each
+announced as it appears (a pane title) and saying where it is ("under “Bread”"). The agent's screens
+and the note's cards are in the accessibility audit, which found the sheets' handle unlabelled. A
+note beside the list keeps its marker, cards, Undo and failed-run notice in its pane.
 
 - Accessibility audit (TalkBack and VoiceOver order of cards inside the text, labels).
 - Tablet and foldable layouts: Android's two panes; iPad's split view.

@@ -69,6 +69,10 @@ sign in again. Nothing is lost.
 - Open locked notes with your fingerprint: see [Locked notes](../using/locked-notes.md). While a
   locked note is open, it's kept out of screenshots and the recent-apps view.
 - To email a note, share it and choose **Email** ([setup](../using/email.md)).
+- A space's agent works in the note you have open as it does on the web ([Agents](../using/agents.md)):
+  its marker where it will write, its change highlighted with **Undo** at the bottom of the note,
+  and cards between paragraphs. The space's command is in the note's **⋯** menu, and **Activity…**
+  is beside **Agent** in Space info.
 
 ## Using notesd
 
