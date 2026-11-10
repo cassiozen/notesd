@@ -2,6 +2,7 @@ package notes.core.api
 
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -18,6 +19,9 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 
 /**
  * notesd's JSON API (server/README.md) for one server. Authenticated
@@ -59,6 +63,12 @@ class ApiClient(
         .build()
 
     private val slowHttp: OkHttpClient = this.http.newBuilder().readTimeout(SLOW_READ_S, TimeUnit.SECONDS).build()
+
+    // A quiet socket is normal, so no read timeout; our own pings find a dead one (a phone changing networks).
+    private val socketHttp: OkHttpClient = this.http.newBuilder()
+        .readTimeout(0, TimeUnit.SECONDS)
+        .pingInterval(SOCKET_PING_S, TimeUnit.SECONDS)
+        .build()
 
     /** `/healthz`: is a server answering at this address at all. */
     suspend fun health(): ApiResult<Unit> = send(get("healthz")) { }
@@ -457,6 +467,45 @@ class ApiClient(
     suspend fun removePerson(id: Long): ApiResult<Unit> =
         authedReply({ request("DELETE", userUrl(id), null, it) }) { require(it.code == 204) { "Not a delete" } }
 
+    /** The access token the socket's upgrade last answered 401 to: the next open refreshes it first. */
+    private val socketRefused = AtomicReference<String?>(null)
+
+    /**
+     * Opens the agent socket (docs/contributing/agent-clients.md) with the bearer token, refreshed first when
+     * it's about to expire or the last upgrade refused it. Sends no `Origin`: that's for a browser's cookie.
+     */
+    suspend fun agentSocket(listener: WebSocketListener): ApiResult<WebSocket> {
+        val creds = credentials ?: return ApiResult.Unauthenticated
+        var tokens = creds.tokens() ?: return ApiResult.Unauthenticated
+        if (tokens.accessExpiresAt - clock() < REFRESH_EARLY_MS || socketRefused.get() == tokens.access) {
+            when (val r = refresh(tokens)) {
+                is ApiResult.Ok -> tokens = r.value
+                else -> return r.failure()
+            }
+        }
+        val access = tokens.access
+        val request = Request.Builder().url(
+            url("api/v1/agent/socket")
+        ).header("Authorization", "Bearer $access").build()
+        val watching = object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) = listener.onOpen(webSocket, response)
+
+            override fun onMessage(webSocket: WebSocket, text: String) = listener.onMessage(webSocket, text)
+
+            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) =
+                listener.onClosing(webSocket, code, reason)
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) =
+                listener.onClosed(webSocket, code, reason)
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                if (response?.code == 401) socketRefused.set(access)
+                listener.onFailure(webSocket, t, response)
+            }
+        }
+        return ApiResult.Ok(socketHttp.newWebSocket(request, watching))
+    }
+
     // --- plumbing ------------------------------------------------------------
 
     private suspend fun <T> authed(
@@ -585,6 +634,7 @@ class ApiClient(
 
         /** A model loading on a small server can take minutes to answer; the server waits 2.5. */
         private const val SLOW_READ_S = 160L
+        private const val SOCKET_PING_S = 30L
 
         val defaultHttp: OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
