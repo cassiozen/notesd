@@ -14,6 +14,7 @@ import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -56,6 +57,26 @@ data class RunUpdate(
     val status: String,
     val failure: String = "",
     val outcome: String = ""
+)
+
+/** Where an overlay shows: [at] the `top`, `end` or `cursor`; or [after] the block holding a quote from the note. */
+@Serializable
+data class OverlayPlace(val at: String = "", val after: String = "")
+
+/**
+ * What a run shows beside a note open here, never in it (docs/contributing/agent-clients.md: Overlays): a `card`
+ * to read and dismiss, or a `suggestion` whose [change] the user accepts or rejects. [body]: a card's Markdown, or
+ * why a suggestion is made.
+ */
+@Serializable
+data class Overlay(
+    val id: String,
+    val runId: String,
+    val noteId: String,
+    val kind: String,
+    val place: OverlayPlace = OverlayPlace(),
+    val body: String = "",
+    val change: AgentOp? = null
 )
 
 /** An editor trigger's run (docs/contributing/agent-clients.md: Editor triggers) that was never asked for. */
@@ -113,6 +134,9 @@ class AgentSocket(
     private val running = HashMap<String, String>()
     private val landed = HashSet<String>()
 
+    /** Overlay answers made while not connected, by overlay: sent first after hello. */
+    private val answers = LinkedHashMap<String, JsonObject>()
+
     private val _connected = MutableStateFlow(false)
 
     /** The server said hello: requests and run updates can come. */
@@ -132,6 +156,11 @@ class AgentSocket(
 
     /** Runs asked for that never went. */
     val dropped: SharedFlow<DroppedRun> = _dropped
+
+    private val _overlays = MutableStateFlow<Map<String, List<Overlay>>>(emptyMap())
+
+    /** What runs show beside each note open here, by note. */
+    val overlays: StateFlow<Map<String, List<Overlay>>> = _overlays
 
     fun start() = synchronized(lock) {
         if (wanted) return
@@ -170,6 +199,7 @@ class AgentSocket(
         // Another account's: nothing to tell.
         dropHeld(tell = false)
         drop()
+        answers.clear()
         openCount.clear()
         openIn.clear()
     }
@@ -204,6 +234,7 @@ class AgentSocket(
         }
         openCount.remove(noteId)
         val spaceId = openIn.remove(noteId)
+        setOverlays(noteId, emptyList())
         send(
             buildJsonObject {
                 put("type", "editor.closed")
@@ -267,6 +298,33 @@ class AgentSocket(
                 )
             }
         }
+    }
+
+    /**
+     * The user's answer to an overlay: `dismiss`, `accept`, `reject`, or `stale` when it can no longer be made. It
+     * goes at once; the server tells every editor what's left. Not connected, it's sent first after hello, so the
+     * list that follows leaves it out. An accepted suggestion was made in the editor, as [applied] says.
+     */
+    fun answerOverlay(overlay: Overlay, answer: String, applied: EditorReply.Applied? = null) = synchronized(lock) {
+        setOverlays(overlay.noteId, _overlays.value[overlay.noteId].orEmpty().filter { it.id != overlay.id })
+        val m = buildJsonObject {
+            put("type", "overlay.answer")
+            put("noteId", overlay.noteId)
+            put("id", overlay.id)
+            put("answer", answer)
+            if (applied != null) {
+                put("before", fields(applied.before))
+                put("revision", applied.revision)
+                put("shows", fields(applied.shows))
+            }
+        }
+        if (_connected.value) send(m) else answers[overlay.id] = m
+    }
+
+    private fun setOverlays(noteId: String, list: List<Overlay>) {
+        val now = _overlays.value
+        if (list.isEmpty() && noteId !in now) return
+        _overlays.value = if (list.isEmpty()) now - noteId else now + (noteId to list)
     }
 
     private fun dropHeld(tell: Boolean) {
@@ -335,11 +393,12 @@ class AgentSocket(
         }
     }
 
-    /** What's still going is unknown until the server says again. */
+    /** What's still going, or showing, is unknown until the server says again. */
     private fun forgetRuns() {
         running.clear()
         landed.clear()
         showWriting()
+        _overlays.value = emptyMap()
     }
 
     private fun showWriting() {
@@ -358,6 +417,8 @@ class AgentSocket(
             type == "hello" && m.string("connectionId") != null -> {
                 failures = 0
                 _connected.value = true
+                for (a in answers.values) send(a)
+                answers.clear()
                 for (noteId in openCount.keys) send(opened(noteId))
                 // Only for a note still open here; one past its wait has been dropped already.
                 for (h in held.values) {
@@ -369,6 +430,16 @@ class AgentSocket(
                     }
                 }
                 held.clear()
+            }
+
+            type == "overlays" -> {
+                val noteId = m.string("noteId") ?: return
+                // Every editor of the account hears it: only one with the note open keeps it.
+                if (noteId !in openCount) return
+                val list = (m["overlays"] as? JsonArray)?.mapNotNull {
+                    runCatching { json.decodeFromJsonElement<Overlay>(it) }.getOrNull()
+                }?.filter { it.kind == "card" || (it.kind == "suggestion" && it.change != null) } ?: return
+                setOverlays(noteId, list)
             }
 
             type == "run" -> runCatching {

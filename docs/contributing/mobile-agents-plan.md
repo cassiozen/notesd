@@ -207,8 +207,8 @@ Each phase ends with something a user can use, and each phase has a PR per app.
     syntax, ambiguous).
 
   Go and TS read them now, so drift shows up before the phone apps exist. Done for `made-to.json`
-  (Go, TS, Kotlin) and `cursor.json` (TS; Kotlin with phase 2's reading). `quote.json` comes with
-  phase 5, the first to need it.
+  (Go, TS, Kotlin) and `cursor.json` (TS; Kotlin with phase 2's reading). `quote.json` came with
+  phase 5, the first to need it (TS, Kotlin; the server doesn't place cards).
 - **Fix the web gaps** (findings, item 6) so the phones copy the fixed behaviour:
   - an empty rule makes the page dirty and can't be saved silently;
   - the menu command says why it can't run;
