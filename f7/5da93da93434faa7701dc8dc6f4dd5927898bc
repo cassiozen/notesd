@@ -53,6 +53,7 @@ apps/web/test/server.ts
   s_cc6cacc0a6fc01::t_933b658092ca4d 7,9,89-93,177-181,216-217,252,272,297
 apps/web/vite.config.ts
   s_cc6cacc0a6fc01::t_5cd6b28e8038ea 95
+  s_cc6cacc0a6fc01::t_785371ba436e8a 96
 docs/contributing/architecture.md
   s_cc6cacc0a6fc01::t_3919e18983aca0 66,607-611,613-619,627-628,630-633,638-652,743
 docs/contributing/development.md
@@ -63,6 +64,7 @@ pnpm-lock.yaml
   s_cc6cacc0a6fc01::t_8605710c44da33 128-130,149-151,1403-1405,2457-2468,3410-3413,4463-4464
 server/cmd/notesd/main.go
   s_cc6cacc0a6fc01::t_5cde0b47dc0428 67,637,659-661
+  s_cc6cacc0a6fc01::t_785371ba436e8a 668
 server/go.mod
   s_cc6cacc0a6fc01::t_5d882160fe698e 6
 server/go.sum
@@ -83,6 +85,7 @@ server/internal/agent/undo.go
   s_cc6cacc0a6fc01::t_bcc0af0a5ff39d 64
 server/internal/api/api_test.go
   s_cc6cacc0a6fc01::t_fcc601c30604cb 18,37-39,48-53,72-75,88-89
+  s_cc6cacc0a6fc01::t_785371ba436e8a 71,90
 server/internal/auth/auth.go
   s_cc6cacc0a6fc01::t_41cf5a90b302c5 536-539,545,575-588
 server/internal/editors/hub_test.go
