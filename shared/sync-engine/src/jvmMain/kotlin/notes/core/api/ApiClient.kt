@@ -50,6 +50,7 @@ class ApiClient(
                         chain.request().newBuilder()
                             .header("X-Notesd-Client", client.header)
                             .header("User-Agent", client.userAgent)
+                            .apply { client.timeZone?.let { header("X-Notesd-Time-Zone", it) } }
                             .build()
                     )
                 }

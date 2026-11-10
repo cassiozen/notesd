@@ -247,7 +247,8 @@ class ApiClientTest {
 
     @Test
     fun `every request says which app sent it`() = runBlocking<Unit> {
-        val app = ApiClient(server.url("/"), creds, clock = { now }, client = ClientInfo("android", "v1.0.0"))
+        val client = ClientInfo("android", "v1.0.0", "Europe/Lisbon")
+        val app = ApiClient(server.url("/"), creds, clock = { now }, client = client)
         server.enqueue(json(200, """{"setupRequired":false,"serverVersion":"v1.0.0","apiVersion":1}"""))
         assertEquals(ApiResult.Ok(AuthStatus(false, "v1.0.0", 1)), app.status())
         server.enqueue(MockResponse.Builder().code(204).build())
@@ -256,6 +257,7 @@ class ApiClientTest {
             val sent = server.takeRequest()
             assertEquals("android/1.0.0", sent.headers["X-Notesd-Client"])
             assertEquals("notesd-android/1.0.0", sent.headers["User-Agent"])
+            assertEquals("Europe/Lisbon", sent.headers["X-Notesd-Time-Zone"])
         }
     }
 

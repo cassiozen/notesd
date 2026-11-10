@@ -290,6 +290,7 @@ func (s *Service) move(ctx context.Context, userID int64, files []File, src, des
 		SpaceID:      spaceID,
 		UpdatedBy:    userID,
 		Fingerprint:  in.Fingerprint,
+		Origin:       in.Origin,
 	}, func(c notes.Carried) (notes.Result, error) {
 		var err error
 		if in.Carry, err = carried(ctx, files, dest, notes.ShownImages(in.Content, in.ImageIDs)); err != nil {
@@ -298,6 +299,7 @@ func (s *Service) move(ctx context.Context, userID int64, files []File, src, des
 		if c, err = src.Data.Notes.Edited(c, in); err != nil {
 			return notes.Result{}, err
 		}
+		c.Origin = in.Origin
 		return dest.Data.Notes.MoveIn(ctx, c, spaceID)
 	})
 	if err != nil {

@@ -70,6 +70,9 @@ type Server struct {
 func New(system *database.DB, users *userdata.Registry, authSvc *auth.Service, log *slog.Logger, cfg Config) *Server {
 	share := sharing.New(system, users)
 	share.Install()
+	users.OnOpen(func(_ int64, d *userdata.Data) {
+		d.Spaces.AddTrait("agent", d.Agent.Trait(func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) }))
+	}, nil)
 	pcfg := cfg.Publish
 	pcfg.DataDir, pcfg.Log = cfg.DataDir, log
 	pub := publish.New(system, users, share, pcfg)
@@ -151,6 +154,12 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("GET /api/v1/settings/email", s.authed(s.emailSettings))
 	mux.Handle("PUT /api/v1/settings/email", s.authed(adminOnly(s.saveEmailSettings)))
 	mux.Handle("DELETE /api/v1/settings/email", s.authed(adminOnly(s.deleteEmailSettings)))
+	mux.Handle("GET /api/v1/settings/account", s.authed(s.accountSettings))
+	mux.Handle("PUT /api/v1/settings/account", s.authed(s.saveAccountSettings))
+	mux.Handle("GET /api/v1/agent/spaces", s.authed(s.agentConfigs))
+	mux.Handle("GET /api/v1/agent/spaces/{id}", s.authed(s.agentConfig))
+	mux.Handle("PUT /api/v1/agent/spaces/{id}", s.authed(s.putAgentConfig))
+	mux.Handle("DELETE /api/v1/agent/spaces/{id}", s.authed(s.deleteAgentConfig))
 	mux.Handle("GET /api/v1/settings/ai", s.authed(s.aiSettings))
 	mux.Handle("PUT /api/v1/settings/ai", s.authed(adminOnly(s.saveAISettings)))
 	mux.Handle("DELETE /api/v1/settings/ai", s.authed(adminOnly(s.deleteAISettings)))
@@ -313,6 +322,18 @@ func userFrom(ctx context.Context) *userdata.Data {
 	return d
 }
 
+// noteTimeZone keeps the device's time zone for the account if it has none
+// yet. Best effort: a request never fails over the time zone.
+func (s *Server) noteTimeZone(r *http.Request, data *userdata.Data) {
+	tz := r.Header.Get("X-Notesd-Time-Zone")
+	if tz == "" {
+		return
+	}
+	if err := data.Agent.NoteDeviceTimeZone(r.Context(), tz); err != nil {
+		s.log.WarnContext(r.Context(), "record time zone", "error", err)
+	}
+}
+
 // authed requires a valid session, and opens the session's user's data. Devices authenticate with
 // "Authorization: Bearer <access token>". Browsers use the session cookie
 // and must send X-CSRF-Token on every non-GET request; a cross-origin
@@ -355,6 +376,7 @@ func (s *Server) authed(h http.HandlerFunc) http.Handler {
 			s.writeErr(w, r, err)
 			return
 		}
+		s.noteTimeZone(r, data)
 		ctx := context.WithValue(context.WithValue(r.Context(), sessionKey, sess), userKey, data)
 		h(w, r.WithContext(ctx))
 	})

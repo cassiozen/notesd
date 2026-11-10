@@ -19,6 +19,8 @@ export type TestServer = {
   loseNextResponse: (match: (method: string, path: string) => boolean) => void
   /** The JSON bodies the browser sent, oldest first. */
   sent: (method: string, path: string) => unknown[]
+  /** How many of the browser's requests to method and path have been answered. */
+  answered: (method: string, path: string) => number
   /** Calls the API as a separate client (its own cookie jar). */
   api: Api
   /** Like api, for endpoints that take or return bytes (images). */
@@ -97,6 +99,8 @@ export async function startServer({ resendUrl }: { resendUrl?: string } = {}): P
     },
     sent: (method, path) =>
       browser.log.filter((r) => r.method === method && r.path === `/api/v1${path}`).map((r) => r.body),
+    answered: (method, path) =>
+      browser.answered.filter((r) => r.method === method && r.path === `/api/v1${path}`).length,
     api: other.api,
     bytes: other.bytes,
     async addAccount(username, password = PASSWORD) {
@@ -228,6 +232,7 @@ type CookieFetch = typeof fetch & {
   origin?: string
   lose?: ((method: string, path: string) => boolean) | undefined
   log: { method: string; path: string; body: unknown }[]
+  answered: { method: string; path: string }[]
 }
 
 function cookieFetch(base: string): CookieFetch {
@@ -261,8 +266,10 @@ function cookieFetch(base: string): CookieFetch {
       if (expired) jar.delete(name)
       else jar.set(name, pair.slice(eq + 1).trim())
     }
+    fn.answered.push({ method: init.method ?? 'GET', path: url.pathname })
     return res
   }) as CookieFetch
   fn.log = []
+  fn.answered = []
   return fn
 }

@@ -7,6 +7,7 @@ import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
 import java.io.File
+import java.time.ZoneId
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -352,7 +353,10 @@ private fun ownId(account: Account, spaces: List<Space>): Long? = when (account)
 }
 
 /** This app, as every request names it: the server may ask for a newer one. */
-val clientInfo = ClientInfo("android", BuildConfig.VERSION_NAME)
+val clientInfo = ClientInfo("android", BuildConfig.VERSION_NAME, ianaTimeZone())
+
+/** The device's IANA time zone; none for a fixed offset (GMT+05:30), which the server can't use. */
+private fun ianaTimeZone(): String? = ZoneId.systemDefault().id.takeIf { '/' in it || it == "UTC" || it == "GMT" }
 
 /** Every client the app makes, signed in ([credentials]) or not. */
 fun apiClient(url: HttpUrl, credentials: Credentials? = null) = ApiClient(url, credentials, client = clientInfo)

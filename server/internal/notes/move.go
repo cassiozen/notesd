@@ -15,9 +15,11 @@ import (
 // there is exactly what becomes tombstones here. Callers log moves and finish cut-short ones at startup.
 
 // Carried is a note on its way to another file, with the images it shows.
+// Origin is the move's, as CreateInput.Origin, for the destination's hooks.
 type Carried struct {
 	Note   Note
 	Images []images.Blob
+	Origin string
 }
 
 // SpaceRow is a space as a shared space's file records it, with the settings
@@ -54,6 +56,8 @@ type MoveInput struct {
 	UpdatedBy int64 `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
+	// As CreateInput.Origin.
+	Origin string `json:"-"`
 }
 
 // MoveOut moves a note out of this file: write stores it in the destination and returns its revision
@@ -72,7 +76,8 @@ func (s *Store) MoveOut(ctx context.Context, in MoveInput, write func(Carried) (
 		return Result{}, &ValidationError{"baseRevision", "must be a positive revision"}
 	}
 	now := s.now().UnixMilli()
-	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "move", in.ID, in), func(tx *sql.Tx) (Result, error) {
+	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin, Left: true}
+	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "move", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
 			return Result{}, err
@@ -94,6 +99,11 @@ func (s *Store) MoveOut(ctx context.Context, in MoveInput, write func(Carried) (
 		if err := tombstoneMoved(ctx, tx, cur, in.SpaceID, in.UpdatedBy, now); err != nil {
 			return Result{}, err
 		}
+		// As an update to the destination's space: the text as it was here, any edit carried with the
+		// move being the destination's.
+		before := cur.Note
+		ev.Before, ev.After = &before, cur.Note
+		ev.After.SpaceID, ev.After.Revision, ev.After.ChangeSeq, ev.After.UpdatedAt = in.SpaceID, dest.Revision, dest.ChangeSeq, dest.UpdatedAt
 		return Result{ID: cur.ID, Status: StatusUpdated, Revision: dest.Revision, ChangeSeq: dest.ChangeSeq,
 			UpdatedAt: dest.UpdatedAt, SpaceID: in.SpaceID, HTTPStatus: 200}, nil
 	})
@@ -173,6 +183,13 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 		}
 		seq, err := s.store(ctx, tx, c, space, rev, cur.rowid)
 		if err != nil {
+			return err
+		}
+		// As an update from the space it was in, so hooks see it come in rather than a new note.
+		before := c.Note
+		after := c.Note
+		after.SpaceID, after.Revision, after.ChangeSeq, after.DeletedAt, after.MovedTo = space, rev, seq, nil, nil
+		if err := s.hooks(ctx, tx, Event{Kind: EventUpdated, NoteID: c.Note.ID, Before: &before, After: after, Origin: c.Origin}); err != nil {
 			return err
 		}
 		out = Result{ID: c.Note.ID, Status: StatusUpdated, Revision: rev, ChangeSeq: seq,

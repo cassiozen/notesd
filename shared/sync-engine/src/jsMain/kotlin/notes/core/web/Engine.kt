@@ -433,7 +433,9 @@ fun openEngine(
     return NotesEngine(
         directDatabase(db, capi),
         files.unsafeCast<ImageFiles>(),
-        version?.takeIf { it.isNotEmpty() }?.let { ClientInfo("web", it) }
+        version?.takeIf { it.isNotEmpty() }?.let {
+            ClientInfo("web", it, js("Intl.DateTimeFormat().resolvedOptions().timeZone") as String?)
+        }
     )
 }
 

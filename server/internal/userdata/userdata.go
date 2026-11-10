@@ -15,6 +15,7 @@ import (
 	"path/filepath"
 	"sync"
 
+	"notes/server/internal/agent"
 	"notes/server/internal/database"
 	"notes/server/internal/images"
 	"notes/server/internal/locks"
@@ -30,10 +31,19 @@ type Data struct {
 	Locks  *locks.Store
 	Images *images.Store
 	Spaces *spaces.Store
+	// Agent is nil in a shared space's file: agents run in an account's own spaces only (§7.11).
+	Agent *agent.Store
 }
 
-// New wraps an open notes database.
+// New wraps an account's open notes database.
 func New(db *database.DB) *Data {
+	d := newShared(db)
+	d.Agent = agent.NewStore(db)
+	return d
+}
+
+// newShared wraps a shared space's open notes database.
+func newShared(db *database.DB) *Data {
 	d := &Data{DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db), Spaces: spaces.NewStore(db)}
 	d.Notes.SetExposed(d.Spaces.Exposed)
 	return d
@@ -69,19 +79,23 @@ func NewRegistry(dataDir string) *Registry {
 	return &Registry{dir: dataDir, open: map[int64]*Data{}, spaces: map[string]*Data{}}
 }
 
-// OnOpen has users' and spaces' stores set up by fn, those open already and
-// those that open later: what depends on more than one file. Each feature
-// adds its own.
+// OnOpen adds user and space, which set up users' and spaces' stores, those
+// open already and those that open later: what depends on more than one file.
+// Either may be nil.
 func (r *Registry) OnOpen(user func(userID int64, d *Data), space func(spaceID string, d *Data)) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.onOpenUser = append(r.onOpenUser, user)
-	r.onOpenSpace = append(r.onOpenSpace, space)
-	for id, d := range r.open {
-		user(id, d)
+	if user != nil {
+		r.onOpenUser = append(r.onOpenUser, user)
+		for id, d := range r.open {
+			user(id, d)
+		}
 	}
-	for id, d := range r.spaces {
-		space(id, d)
+	if space != nil {
+		r.onOpenSpace = append(r.onOpenSpace, space)
+		for id, d := range r.spaces {
+			space(id, d)
+		}
 	}
 }
 
@@ -174,7 +188,7 @@ func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error)
 		db.Close()
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	d := New(db)
+	d := newShared(db)
 	d.Notes.ServeShared(spaceID)
 	d.onCommit(func() { r.spaceChanged(spaceID) })
 	for _, fn := range r.onOpenSpace {

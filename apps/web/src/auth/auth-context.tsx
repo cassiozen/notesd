@@ -3,6 +3,7 @@ import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { Person, SessionInfo } from '../api/types'
 import { forgetTouchId } from '../locks/touch-id'
+import { forgetAgentConfigs } from '../notes/agent-config'
 import { forgetAiSettings } from '../notes/ai-settings'
 import { forgetEmailSettings } from '../notes/email-settings'
 import { forgetSharing } from '../notes/sharing'
@@ -54,6 +55,7 @@ export const reconnectTiming = { everyMs: 30_000 }
 function forgetAccountSettings() {
   forgetAiSettings()
   forgetEmailSettings()
+  forgetAgentConfigs()
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {

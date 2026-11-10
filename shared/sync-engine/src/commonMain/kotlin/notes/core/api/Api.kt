@@ -32,8 +32,12 @@ sealed interface ApiResult<out T> {
     data class Unexpected(val status: Int) : ApiResult<Nothing>
 }
 
-/** What this app is, sent with every request so the server can ask for an upgrade (`android`/`ios`/`web`). */
-data class ClientInfo(val platform: String, val version: String) {
+/**
+ * What this app is, sent with every request so the server can ask for an upgrade (`android`/`ios`/`web`).
+ * [timeZone] (IANA) is the device's, `X-Notesd-Time-Zone`: the account takes the first one it hears
+ * as the "today" its agents go by.
+ */
+data class ClientInfo(val platform: String, val version: String, val timeZone: String? = null) {
     /** `X-Notesd-Client`. */
     val header: String get() = "$platform/${version.removePrefix("v")}"
 

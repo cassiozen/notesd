@@ -63,3 +63,12 @@
   font-size: 12px;
   white-space: nowrap;
 }
+
+.area {
+  height: auto;
+  min-height: 72px;
+  padding: 12px 15px;
+  line-height: 1.45;
+  resize: vertical;
+  font-family: inherit;
+}

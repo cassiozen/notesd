@@ -6,12 +6,13 @@ import { genericMessage } from '../auth/errors'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { themeKey } from '../notes/space-theme'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
-import { traitGlyph, traitRows, traitsLabel, UnknownGlyph, type TraitPage, type TraitRow } from '../notes/traits'
+import { traitGlyph, traitRows, traitsLabel, UnknownGlyph, useOffered, type TraitPage, type TraitRow } from '../notes/traits'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { InlineConfirm } from '../ui/inline-confirm'
 import settings from './settings.module.css'
 import styles from './space-info.module.css'
+import { UnsavedProvider, useUnsavedSections } from './unsaved'
 
 export const noteCount = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`
 
@@ -31,6 +32,10 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   const picks = useRef(0)
   const [deleting, setDeleting] = useState<'asking' | 'busy' | null>(null)
   const [error, setError] = useState<string>()
+  const offered = useOffered()
+  // A section's unsaved changes (an agent's draft) are asked about under Done; deleted, there's nothing to keep.
+  const { sections, unsaved } = useUnsavedSections()
+  const [discarding, setDiscarding] = useState<string[] | null>(null)
   // The trait whose page is shown instead of the rest.
   const [page, setPage] = useState<string | null>(null)
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
@@ -62,7 +67,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   }, [swap])
 
   // The open page's section gone (its trait off and no longer offered, say): back to the rest, not a blank page.
-  const pageGone = page !== null && space !== undefined && !blocks(traitRows(space)).some((b) => b.kind === 'section' && b.key === page)
+  const pageGone = page !== null && space !== undefined && !blocks(traitRows(space, offered)).some((b) => b.kind === 'section' && b.key === page)
   useEffect(() => {
     // After the commit: going back swaps pages synchronously, which React can't do from inside an effect.
     if (pageGone) queueMicrotask(back)
@@ -102,6 +107,14 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
     }
   }
 
+  function close() {
+    const what = unsaved()
+    if (what.length === 0) return onClose()
+    // Asked on the space's own page, where the changes are.
+    if (page) back()
+    setDiscarding(what)
+  }
+
   async function remove() {
     setDeleting('busy')
     setError(undefined)
@@ -126,7 +139,8 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   }
 
   return (
-    <Dialog labelledBy={page ? pageHeadingId : titleId} onClose={page ? back : onClose} space={themeKey(shownIcon)} wide>
+    <Dialog labelledBy={page ? pageHeadingId : titleId} onClose={page ? back : close} space={themeKey(shownIcon)} wide>
+      <UnsavedProvider value={sections}>
       <div ref={frame}>
         <div className={styles.page} hidden={page !== null}>
           <div className={styles.head}>
@@ -166,7 +180,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
             </p>
           )}
 
-          {blocks(traitRows(space)).map((block) =>
+          {blocks(traitRows(space, offered)).map((block) =>
             block.kind === 'section' ? (
               <block.Section key={block.key} space={space} page={pageFor(block.key)} />
             ) : (
@@ -179,6 +193,11 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
           )}
 
           <div className={styles.end}>
+            {discarding && (
+              <InlineConfirm title="Discard your changes?" action="Discard" onConfirm={onClose} onCancel={() => setDiscarding(null)}>
+                Your changes to {discarding.join(' and ')} aren’t saved.
+              </InlineConfirm>
+            )}
             {own && deleting && (
               <InlineConfirm
                 title={`Delete ${space.name}?`}
@@ -204,7 +223,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
                   Delete space…
                 </Button>
               )}
-              <Button size="md" onClick={onClose}>
+              <Button size="md" aria-expanded={discarding !== null} onClick={close}>
                 Done
               </Button>
             </div>
@@ -222,12 +241,13 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
           </Button>
           <div ref={setSlot} className={styles.slot} />
           <div className={settings.dialogActions}>
-            <Button size="md" onClick={onClose}>
+            <Button size="md" onClick={close}>
               Done
             </Button>
           </div>
         </div>
       </div>
+      </UnsavedProvider>
     </Dialog>
   )
 }

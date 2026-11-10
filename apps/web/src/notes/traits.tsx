@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react'
 import type { Space, SpaceTrait } from '../api/types'
 import { PublishedSection } from '../settings/published-space'
+import { AgentSection, useAgentOffered } from '../settings/agent-section'
 import { PeopleSection } from '../settings/shared-space'
 import { DEFAULT_SPACE } from './default-space'
 
@@ -75,8 +76,6 @@ export function UnknownGlyph({ size = 14 }: GlyphProps) {
   )
 }
 
-const off = () => false
-
 /**
  * Never the default space: everyone keeps a private one, where a locked note refused elsewhere is kept (§7.8). Only
  * by its owner once it's shared (§7.9).
@@ -87,7 +86,8 @@ const canExpose = (space: Space) => space.id !== DEFAULT_SPACE && (!space.shared
 export const TRAITS: readonly TraitEntry[] = [
   { key: 'shared', label: 'Shared', Glyph: SharedGlyph, Section: PeopleSection, canTurnOn: canExpose },
   { key: 'published', label: 'Published', Glyph: PublishedGlyph, Section: PublishedSection, canTurnOn: canExpose },
-  { key: 'agent', label: 'Agent', Glyph: AgentGlyph, canTurnOn: off },
+  // Agents run in an account's own spaces only (§7.11).
+  { key: 'agent', label: 'Agent', Glyph: AgentGlyph, Section: AgentSection, canTurnOn: (space) => !space.shared },
 ]
 
 export function traitEntry(key: string): TraitEntry | undefined {
@@ -139,6 +139,14 @@ export function lockedReason(trait: SpaceTrait, space: string, moving: boolean):
   return `Only you can read a locked note, and ${space} is ${exposure.charAt(0).toLowerCase()}${exposure.slice(1)}. ${next}`
 }
 
+/** Whether this account can turn a trait on now, beyond the space allowing it: what needs the server's settings. */
+type Offered = (key: string, space: Space) => boolean
+
+export function useOffered(): Offered {
+  const agent = useAgentOffered()
+  return (key, space) => key !== 'agent' || agent(space)
+}
+
 export type TraitRow =
   | { kind: 'on'; entry: TraitEntry; trait: SpaceTrait }
   | { kind: 'off'; entry: TraitEntry }
@@ -148,11 +156,11 @@ export type TraitRow =
  * Space info's rows: each trait this app knows, in order, when on or when it
  * could be turned on; then any on that it doesn't know, as the server sent them.
  */
-export function traitRows(space: Space): TraitRow[] {
+export function traitRows(space: Space, offered: Offered = () => true): TraitRow[] {
   const known: TraitRow[] = TRAITS.flatMap((entry): TraitRow[] => {
     const trait = space.traits.find((t) => t.key === entry.key)
     if (trait) return [{ kind: 'on', entry, trait }]
-    return entry.canTurnOn(space) ? [{ kind: 'off', entry }] : []
+    return entry.canTurnOn(space) && offered(entry.key, space) ? [{ kind: 'off', entry }] : []
   })
   const unknown = space.traits.filter((t) => !traitEntry(t.key)).map((trait): TraitRow => ({ kind: 'unknown', trait }))
   return [...known, ...unknown]
