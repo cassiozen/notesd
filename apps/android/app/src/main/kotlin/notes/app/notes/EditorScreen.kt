@@ -146,6 +146,9 @@ import notes.core.sync.EmailOutcome
 
 private const val SAVE_DELAY_MS = 700L
 
+/** How long after the text stops changing suggestions are checked against it. */
+private const val STALE_CHECK_MS = 600L
+
 /**
  * A note. Saves locally shortly after typing stops, and at once on leaving or
  * backgrounding. [showBack] is false beside the list (two panes), where
@@ -224,6 +227,9 @@ fun EditorScreen(
     var editor by remember { mutableStateOf<NoteEditText?>(null) }
     var state by remember { mutableStateOf(FormatState()) }
     var edits by remember { mutableIntStateOf(0) }
+
+    /** Every change to the text, the user's or not. */
+    var changes by remember { mutableIntStateOf(0) }
     var scrolled by remember { mutableStateOf(false) }
     var linkTap by remember { mutableStateOf<LinkTap?>(null) }
     var linkDialog by remember { mutableStateOf<Pair<String, String?>?>(null) }
@@ -261,6 +267,16 @@ fun EditorScreen(
         editor?.showOverlays(if (locked || unsupported) emptyList() else overlays, agentName)
     }
     LaunchedEffect(editor, onOverlayAnswer) { editor?.onOverlayAnswer = onOverlayAnswer }
+    // A suggested replacement whose text changed where it shows can't be made there any more: it goes rather than
+    // waiting for a ✓ that would do nothing, or change the same words elsewhere. Checked once the text settles,
+    // and when the list changes, since accepting one suggestion can be what changed another's text.
+    LaunchedEffect(editor, overlays, changes, locked) {
+        val e = editor ?: return@LaunchedEffect
+        val replacing = overlays.filter { it.change?.kind == "replace" }
+        if (locked || unsupported || replacing.isEmpty()) return@LaunchedEffect
+        delay(STALE_CHECK_MS)
+        for (o in replacing) if (!e.agentCards.canStillMake(o)) onOverlayAnswer(o, "stale")
+    }
 
     /** The agent's change is the latest: Undo is offered until the user types, or it times out. */
     var agentLanded by remember { mutableStateOf(false) }
@@ -277,7 +293,9 @@ fun EditorScreen(
         onEmailRequestHandled()
     }
     // An undo step of its own: undoing it shows it, rather than an undo of typing quietly taking it back too.
-    LaunchedEffect(vm) { vm.incoming.collect { doc -> editor?.applyOutside(byAgent = false) { doc } } }
+    LaunchedEffect(vm) {
+        vm.incoming.collect { doc -> if (editor?.applyOutside(byAgent = false) { doc } == true) changes++ }
+    }
     LaunchedEffect(edits) {
         if (edits == 0) return@LaunchedEffect
         delay(SAVE_DELAY_MS)
@@ -561,6 +579,7 @@ fun EditorScreen(
                         imageSource = images
                         setDocument(doc)
                         onChange = { byUser ->
+                            changes++
                             vm.edited()
                             if (byUser) vm.typed()
                             // An agent's change is saved and synced at once, so the server links it to its run.

@@ -73,6 +73,7 @@ class AgentCardView internal constructor(
         if (shown.kind == "card") {
             head.addView(button("×", "Dismiss") { onAnswer("dismiss") })
         } else {
+            head.addView(button("✓", "Accept the change") { onAnswer("accept") })
             head.addView(button("✗", "Reject the change") { onAnswer("reject") })
         }
         addView(head, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT))

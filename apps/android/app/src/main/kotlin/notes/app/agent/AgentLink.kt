@@ -12,9 +12,10 @@ import kotlinx.coroutines.launch
 import notes.app.account.Account
 import notes.app.account.AccountStore
 import notes.app.notes.OpenNotes
-import notes.core.agent.AgentEditors
 import notes.core.agent.AgentSocket
 import notes.core.agent.DroppedRun
+import notes.core.agent.EditorReply
+import notes.core.agent.Overlay
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 
@@ -30,7 +31,7 @@ class AgentLink(
     private val foreground: StateFlow<Boolean>,
     private val online: StateFlow<Boolean>,
     private val openNotes: OpenNotes,
-    editors: AgentEditors,
+    private val editors: OpenNoteEditors,
     api: () -> ApiClient?,
     private val scope: CoroutineScope,
     timing: AgentSocket.Timing = AgentSocket.Timing()
@@ -48,6 +49,21 @@ class AgentLink(
         val config = agents.cache.value.value?.get(spaceId)
         if (config?.enabled != true || config.triggers[trigger].isNullOrBlank()) return false
         return socket.requestRun(trigger, noteId, spaceId)
+    }
+
+    /**
+     * The user answered an overlay. Accepting a suggestion makes it in the note's editor first, and says what that
+     * did; one that can't be made any more is answered `stale`. A locked note's is never made, nor answered.
+     */
+    fun answerOverlay(overlay: Overlay, answer: String) {
+        if (answer != "accept") return socket.answerOverlay(overlay, answer)
+        scope.launch {
+            when (val made = editors.accept(overlay)) {
+                is EditorReply.Applied -> socket.answerOverlay(overlay, "accept", made)
+                EditorReply.Refused("stale") -> socket.answerOverlay(overlay, "stale")
+                else -> {}
+            }
+        }
     }
 
     /** The command a note's menu offers for its space's agent: its label, or null with none. */

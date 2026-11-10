@@ -474,7 +474,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     notices = remember(key.id) { graph.agentLink.menuDropped(key.id) },
                                     agentWriting = key.id in writing,
                                     overlays = overlays[key.id].orEmpty(),
-                                    onOverlayAnswer = { o, answer -> graph.agentLink.socket.answerOverlay(o, answer) }
+                                    onOverlayAnswer = graph.agentLink::answerOverlay
                                 )
                             }
                             entry<SettingsKey> {

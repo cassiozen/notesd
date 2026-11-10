@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import notes.core.agent.Overlay
 import notes.core.agent.Quotes
+import notes.core.agent.madeTo
 import notes.core.doc.Leaf
 
 /**
@@ -235,6 +236,36 @@ internal class AgentCards(private val view: NoteEditText, private val style: Edi
                 y += s.height + gapBelow
             }
         }
+    }
+
+    /**
+     * Whether a card placed by a quote still has it: the block it's anchored in holds it as it did. Text the user
+     * changed there, or typed elsewhere, doesn't move it.
+     */
+    fun stillQuoted(id: String): Boolean {
+        val s = shown.firstOrNull { it.overlay.id == id } ?: return false
+        val quote = s.overlay.place.after
+        if (quote.isEmpty()) return true
+        val t = view.text ?: return false
+        val at = s.anchor?.let { t.getSpanStart(it) }?.takeIf { it >= 0 } ?: return false
+        val block = Blocks.at(t, at) ?: return false
+        val i = quotable(t).indexOfFirst { it.start == block.start }
+        if (i < 0) return false
+        return Quotes.blocks(view.document()).getOrNull(i)?.let { Quotes.holds(it, quote) } ?: false
+    }
+
+    /** Where an insert at the cursor goes for a card: where it's anchored now, in code points into the content. */
+    fun cursorFor(id: String): Int? {
+        val t = view.text ?: return null
+        val at = shown.firstOrNull { it.overlay.id == id }?.anchor?.let { t.getSpanStart(it) }?.takeIf { it >= 0 }
+            ?: return null
+        return AgentReading.read(t, at, at).cursor
+    }
+
+    /** Whether a suggestion could still be made where it shows: its quote there, and its change fitting the text. */
+    fun canStillMake(o: Overlay): Boolean {
+        val op = o.change ?: return false
+        return stillQuoted(o.id) && madeTo(op, view.readForAgent().fields, cursorFor(o.id)) != null
     }
 
     /** For tests: each card's overlay, and the offset whose line it's under. */
