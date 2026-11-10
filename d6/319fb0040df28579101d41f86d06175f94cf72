@@ -1,0 +1,26 @@
+apps/android/app/src/test/kotlin/notes/app/agent/AgentTwoPaneTest.kt
+  s_cc6cacc0a6fc01::t_383d90a0683ae8 102-106
+  s_cc6cacc0a6fc01::t_88e6dd4364121c 1-101,107-132
+apps/android/app/src/test/kotlin/notes/app/agent/WhyNotTest.kt
+  s_cc6cacc0a6fc01::t_3a36787a04bb8c 1-18
+apps/android/app/src/test/kotlin/notes/app/RunOffMain.kt
+  s_cc6cacc0a6fc01::t_1861eb3ae2d7e7 3,9,15-16,18,21-27
+apps/android/app/src/main/kotlin/notes/app/agent/AgentLink.kt
+  s_cc6cacc0a6fc01::t_3a36787a04bb8c 80,126-132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "d6319fb0040df28579101d41f86d06175f94cf72",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
