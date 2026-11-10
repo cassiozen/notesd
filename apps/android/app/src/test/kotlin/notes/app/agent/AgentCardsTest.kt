@@ -171,7 +171,7 @@ class AgentCardsTest {
         )
 
         val s1 = editor.agentCards.cardFor("s1")!!
-        val (_, why, change) = texts(s1).filter { it.isNotEmpty() && it != "✗" }
+        val (_, why, change) = texts(s1).filter { it.isNotEmpty() && it != "✗" && it != "✓" }
         assertEquals("More precise", why.toString())
         assertEquals("Eggs → Eggs (6)", change.toString())
         val struck = (change as Spanned).getSpans(0, change.length, StrikethroughSpan::class.java).single()

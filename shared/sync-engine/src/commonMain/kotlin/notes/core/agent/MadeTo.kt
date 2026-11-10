@@ -33,7 +33,11 @@ data class AgentChange(val before: Fields, val after: Fields, val op: AgentOp)
  */
 fun madeTo(change: AgentChange, now: Fields, cursor: Int?): Fields? {
     if (now == change.before) return change.after
-    val op = change.op
+    return madeTo(change.op, now, cursor)
+}
+
+/** [op] made to [now], as a suggestion the user accepts is: null when it no longer fits. */
+fun madeTo(op: AgentOp, now: Fields, cursor: Int?): Fields? {
     return when (op.kind) {
         "title" -> now.copy(title = op.title)
 

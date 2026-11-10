@@ -8,6 +8,7 @@ import notes.app.notes.OpenNotes
 import notes.core.agent.AgentChange
 import notes.core.agent.AgentEditors
 import notes.core.agent.EditorReply
+import notes.core.agent.Overlay
 import notes.core.agent.madeTo
 import notes.core.doc.Document
 import notes.core.markdown.Markdown
@@ -39,6 +40,29 @@ class OpenNoteEditors(private val openNotes: OpenNotes) : AgentEditors {
             EditorReply.Applied(before, guessRevision.takeIf { before == guess }, editor.readForAgent().fields)
         }
 
+    /**
+     * Makes a suggestion the user accepted, to what the editor shows, as the agent's change: one undo step, saved
+     * at once. Answered as an apply is, so the server records it as the run's edit; `stale` when its quote left
+     * the block it's anchored in, or its change no longer fits.
+     */
+    suspend fun accept(overlay: Overlay): EditorReply = withEditor(overlay.noteId) { vm, editor ->
+        val op = overlay.change ?: return@withEditor STALE
+        val cards = editor.agentCards
+        val guess = editor.readForAgent().fields
+        val guessRevision = vm.shownRevision(guess)
+        var before = guess
+        var fits = true
+        editor.applyOutside(byAgent = true) { now ->
+            before = now.fields
+            // An insert at the cursor goes where the card is anchored now.
+            val after = if (cards.stillQuoted(overlay.id)) madeTo(op, now.fields, cards.cursorFor(overlay.id)) else null
+            fits = after != null
+            after?.let { Document.forNote(it.title, Markdown.parse(it.content)) }
+        }
+        if (!fits) return@withEditor STALE
+        EditorReply.Applied(before, guessRevision.takeIf { before == guess }, editor.readForAgent().fields)
+    }
+
     private suspend fun withEditor(
         noteId: String,
         answer: suspend (EditorViewModel, NoteEditText) -> EditorReply
@@ -56,5 +80,6 @@ class OpenNoteEditors(private val openNotes: OpenNotes) : AgentEditors {
         val NOT_OPEN = EditorReply.Refused("not_open")
         val LOCKED = EditorReply.Refused("locked")
         val CHANGED = EditorReply.Refused("changed")
+        val STALE = EditorReply.Refused("stale")
     }
 }

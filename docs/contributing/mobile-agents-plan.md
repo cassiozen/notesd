@@ -6,10 +6,10 @@ description: "What the web app does for space agents, what the phone apps must r
 # Space agents on Android and iOS
 
 The space agent (PRs #94–#100, #124, #136, GitHub stack #101) is complete on the server and the web
-app. The Mac app wraps the web app and has all of it. Android has phases 1 to 4 (agent level 2): AI
+app. The Mac app wraps the web app and has all of it. Android has phases 1 to 5 (agent level 3): AI
 and the time zone in Settings, the agent's section in Space info, Activity, a note's failed run, the
-socket, through which runs read and change the note open, editor triggers and the menu command, and
-the agent shown at work. Cards beside the note are still to do. iOS has none of it, beyond sending
+socket, through which runs read and change the note open, editor triggers and the menu command, the
+agent shown at work, and cards beside the note. The parity pass (phase 6) is still to do. iOS has none of it, beyond sending
 `X-Notesd-Time-Zone`. This is the inventory of what to replicate and the plan to build it.
 The protocol is in [Agent clients](agent-clients.md); this doesn't repeat it.
 
@@ -89,10 +89,10 @@ Status: ✓ done, – not needed, ☐ to do.
 | N7 | Editor triggers: `noteCreated` once per new note; `editStarted` on the first user change and after 3 min idle (agent changes don't count); held for up to 10 s while connecting | ✓ | ✓ | ☐ |
 | N8 | Agent at work: "{Space} agent" marker at the caret or top of body; screen reader "Agent is writing…" | ✓ | ✓ | ☐ |
 | N9 | Change landing: highlight fading over 3 s (static with reduced motion); Undo beside it until typing or 6 s | ✓ | ✓ | ☐ |
-| N10 | Overlays: cards between blocks, placed by top, end, cursor or quote; follow typing; card Markdown with safe links; suggestion old → new | ✓ | ☐ | ☐ |
-| N11 | Overlay answers: × / ✓ / ✗; accept checks the quote, makes the `op`, lands as the agent's change; stale when it can't; answers queued while disconnected | ✓ | ☐ | ☐ |
-| N12 | Stale check for suggested replaces when typing pauses and when the list changes | ✓ | ☐ | ☐ |
-| N13 | No overlays on a locked note; forgotten on close or drop | ✓ | ☐ | ☐ |
+| N10 | Overlays: cards between blocks, placed by top, end, cursor or quote; follow typing; card Markdown with safe links; suggestion old → new | ✓ | ✓ | ☐ |
+| N11 | Overlay answers: × / ✓ / ✗; accept checks the quote, makes the `op`, lands as the agent's change; stale when it can't; answers queued while disconnected | ✓ | ✓ | ☐ |
+| N12 | Stale check for suggested replaces when typing pauses and when the list changes | ✓ | ✓ | ☐ |
+| N13 | No overlays on a locked note; forgotten on close or drop | ✓ | ✓ | ☐ |
 
 ## How it maps onto each app
 
@@ -283,6 +283,14 @@ beside the text, since a button drawn in the text would be out of reach of TalkB
 | Both | N8–N9: the marker, the landing highlight with Undo, accessibility announcements, reduced motion |
 
 ### Phase 5: cards beside the note (agent level 3)
+
+Done on Android. The engine's `AgentSocket` keeps each open note's overlays and queues answers made
+offline; `Quotes` finds the block a quote points to (`quote.json`, shared with the web). `AgentCards`
+anchors each card, makes room under its block through the block spacing span (which the marker now
+uses too), and places native card views in a layer over the editor on every layout pass. ✓ goes
+through `OpenNoteEditors.accept`, as an apply does. TalkBack reaches the cards after the note's text,
+not between its blocks: phase 6's accessibility pass. A link the editor wouldn't make shows as its
+Markdown source in a card, as in a note, rather than as its text.
 
 | App | Work |
 | --- | --- |
