@@ -5,6 +5,7 @@ import { AgentOverlays, agentOverlays, setAgentOverlays, stillQuoted, type Overl
 import { editorExtensions } from './extensions'
 import { noteContent, noteFields } from './note-doc'
 import styles from './editor.module.css'
+import quoteCases from '../../../../shared/agent-fixtures/quote.json'
 
 let editor: Editor
 afterEach(() => editor.destroy())
@@ -31,6 +32,27 @@ describe('cards beside the note', () => {
     expect(layout()).toEqual(['T', '[top]', 'First', 'Second bold line', '[quote]', 'Third', '[end]'])
     expect(noteFields(editor.state.doc).content).toBe('First\n\nSecond **bold** line\n\nThird\n')
     expect(editor.view.dom.querySelector(`.${styles.agentCardWho}`)?.textContent).toBe('Journal agent')
+  })
+
+  it('go under the block the shared quote cases say', () => {
+    for (const c of quoteCases.cases) {
+      editor?.destroy()
+      editor = new Editor({
+        element: document.createElement('div'),
+        extensions: [...editorExtensions, AgentOverlays],
+        content: noteContent({ title: c.title, content: c.content }),
+      })
+      setAgentOverlays(editor, [card('q', { after: c.quote })], 'A', () => {})
+      const at = agentOverlays(editor.state)[0]?.at
+      const blocks: number[] = []
+      editor.state.doc.descendants((node, pos) => {
+        if (!node.isTextblock) return true
+        if (node.type.name !== 'title') blocks.push(pos)
+        return false
+      })
+      const i = blocks.findIndex((pos) => at === pos + 1)
+      expect(i === -1 ? null : i, c.name).toBe(c.block)
+    }
   })
 
   it('go at the top when the quote isn’t there', () => {

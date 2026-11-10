@@ -390,6 +390,83 @@ class AgentSocketTest {
         assertEquals(emptySet(), s.writing.value)
     }
 
+    private fun card(id: String, noteId: String = "a") =
+        """{"id":"$id","runId":"r1","noteId":"$noteId","kind":"card","place":{"at":"top"},"body":"Hi"}"""
+
+    @Test
+    fun `overlays show for notes open here, each list replacing the last, until it closes or the line drops`() =
+        runTest {
+            val s = socket()
+            s.opened("a", "work")
+            s.start()
+            runCurrent()
+            val ws = sockets.single()
+            ws.hello()
+            val tidy = """{"id":"s1","runId":"r1","noteId":"a","kind":"suggestion","place":{"after":"Teh"},""" +
+                """"body":"Typo","change":{"kind":"replace","find":"Teh","replace":"The"}}"""
+            // A suggestion without its change can't be accepted: not shown.
+            val broken = """{"id":"s2","runId":"r1","noteId":"a","kind":"suggestion","body":"?"}"""
+            ws.hear("""{"type":"overlays","noteId":"a","overlays":[${card("c1")},$tidy,$broken]}""")
+            ws.hear("""{"type":"overlays","noteId":"b","overlays":[${card("c9", "b")}]}""")
+            assertEquals(mapOf("a" to listOf("c1", "s1")), s.overlays.value.mapValues { (_, l) -> l.map { it.id } })
+            assertEquals(
+                Overlay(
+                    "s1",
+                    "r1",
+                    "a",
+                    "suggestion",
+                    OverlayPlace(after = "Teh"),
+                    "Typo",
+                    AgentOp("replace", find = "Teh", replace = "The")
+                ),
+                s.overlays.value["a"]!![1]
+            )
+
+            ws.hear("""{"type":"overlays","noteId":"a","overlays":[${card("c2")}]}""")
+            assertEquals(listOf("c2"), s.overlays.value["a"]!!.map { it.id })
+            ws.hear("""{"type":"overlays","noteId":"a","overlays":[]}""")
+            assertEquals(emptyMap(), s.overlays.value)
+
+            ws.hear("""{"type":"overlays","noteId":"a","overlays":[${card("c3")}]}""")
+            s.closed("a", null)
+            assertEquals(emptyMap(), s.overlays.value)
+
+            s.opened("a", "work")
+            ws.hear("""{"type":"overlays","noteId":"a","overlays":[${card("c4")}]}""")
+            ws.drop()
+            assertEquals(emptyMap(), s.overlays.value)
+        }
+
+    @Test
+    fun `an answer takes the overlay away at once, and one made offline goes first after hello`() = runTest {
+        val s = socket()
+        s.opened("a", "work")
+        s.start()
+        runCurrent()
+        sockets.single().hello()
+        sockets.single().hear("""{"type":"overlays","noteId":"a","overlays":[${card("c1")},${card("c2")}]}""")
+        val (c1, c2) = s.overlays.value["a"]!!
+        s.answerOverlay(c1, "dismiss")
+        assertEquals(listOf("c2"), s.overlays.value["a"]!!.map { it.id })
+        assertEquals(
+            """{"type":"overlay.answer","noteId":"a","id":"c1","answer":"dismiss"}""",
+            sockets.single().sent.last().toString()
+        )
+
+        sockets.single().drop()
+        s.answerOverlay(c2, "accept", EditorReply.Applied(Fields("P", "x\n"), 3, Fields("P", "y\n")))
+        advanceTimeBy(1_001)
+        sockets.last().hello()
+        assertEquals(
+            listOf(
+                """{"type":"overlay.answer","noteId":"a","id":"c2","answer":"accept",""" +
+                    """"before":{"title":"P","content":"x\n"},"revision":3,"shows":{"title":"P","content":"y\n"}}""",
+                """{"type":"editor.opened","noteId":"a","spaceId":"work"}"""
+            ),
+            sockets.last().sent.map { it.toString() }
+        )
+    }
+
     @Test
     fun `a connection that can't be made is tried again`() = runTest {
         var tries = 0

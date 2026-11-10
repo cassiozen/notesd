@@ -87,7 +87,22 @@ class AgentSocketServerTest {
 
     private suspend fun agentOn(trigger: String, prompt: String) {
         assertIs<ApiResult.Ok<*>>(api.saveAiSettings(AiSettingsInput(model.url, "m", "sk-test-1234", null)))
-        assertIs<ApiResult.Ok<*>>(api.putAgentConfig("default", true, "p", "", mapOf(trigger to prompt), null))
+        assertIs<ApiResult.Ok<*>>(
+            api.putAgentConfig(
+                "default",
+                true,
+                "p",
+                if (trigger ==
+                    "menu"
+                ) {
+                    "Look"
+                } else {
+                    ""
+                },
+                mapOf(trigger to prompt),
+                null
+            )
+        )
     }
 
     /** As a device's first sync puts it, starting no writing session. */
@@ -179,6 +194,43 @@ class AgentSocketServerTest {
         assertEquals(emptySet(), s.writing.value)
         until { heard.any { it.status == "done" } }
         assertEquals("noteCreated" to "j1", heard.first().trigger to heard.first().noteId)
+    }
+
+    @Test
+    fun `a run's card and suggestion show beside the note, and answering them is recorded`() = runBlocking {
+        agentOn("menu", "Look it over.")
+        note("plan", "Plan", "Step one\n")
+        val s = socket(Editor(Fields("Plan", "Step one\n")))
+        s.opened("plan", "default")
+        s.start()
+        s.connected.first { it }
+        model.script += Step.Tool("show_card", """{"body":"Looks **good**","after":"Step one"}""")
+        model.script += Step.Tool(
+            "suggest",
+            """{"changes":[{"find":"Step one","replace":"Step 1","why":"Shorter"}]}"""
+        )
+        model.script += Step.Text("Looked.")
+        s.requestRun("menu", "plan", "default")
+
+        until { s.overlays.value["plan"]?.size == 2 }
+        val (card, suggestion) = s.overlays.value["plan"]!!
+        assertEquals("card" to OverlayPlace(after = "Step one"), card.kind to card.place)
+        assertEquals("Looks **good**", card.body)
+        assertEquals(AgentOp("replace", find = "Step one", replace = "Step 1"), suggestion.change)
+        assertEquals("Shorter", suggestion.body)
+        val runId = card.runId
+        until { runs().firstOrNull()?.status == "done" }
+
+        s.answerOverlay(card, "dismiss")
+        s.answerOverlay(
+            suggestion,
+            "accept",
+            EditorReply.Applied(Fields("Plan", "Step one\n"), 1, Fields("Plan", "Step 1\n"))
+        )
+        until {
+            val run = (api.agentRun(runId) as? ApiResult.Ok)?.value
+            run?.overlays?.accepted == 1 && run.edits.isNotEmpty()
+        }
     }
 
     @Test

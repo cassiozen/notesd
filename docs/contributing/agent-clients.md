@@ -381,8 +381,9 @@ way, but should show the same things.
   (when triggers fire, and the editor's answers), `src/editor/agent-presence.ts` (the agent at work),
   `src/editor/agent-overlays.ts` (cards beside the note).
 - Kotlin engine: `notes.core.agent.AgentSocket` (the socket's life and messages, run requests held
-  while connecting, which notes are being written; the app answers through `AgentEditors`),
-  `ApiClient.agentSocket` (the authenticated upgrade), `notes.core.agent.madeTo`.
+  while connecting, which notes are being written, overlays and their answers; the app answers through
+  `AgentEditors`), `ApiClient.agentSocket` (the authenticated upgrade), `notes.core.agent.madeTo`,
+  `notes.core.agent.Quotes` (which block a quote points to).
 - Android: `notes.app.agent.AgentLink` (when the socket is open; which runs to ask for),
   `EditorViewModel.typed` and its `noteCreated` (when triggers fire), `OpenNoteEditors` (the editor's
   answers), `notes.app.editor.AgentPresence` (the agent at work, and its change landing).

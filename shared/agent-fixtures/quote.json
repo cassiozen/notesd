@@ -1,0 +1,18 @@
+{
+  "about": "Which block of a note an overlay placed {after: quote} goes under. block: the index of the body's text block (paragraphs and headings, those inside lists and quotes too, in order; not the title, and not code or other raw blocks, which show their source), or null for the top of the body. Searched as written in each block's own Markdown, then by the quote's longest line without block syntax, then by that line without inline Markdown in exactly one block's text.",
+  "cases": [
+    { "name": "as written", "title": "T", "content": "First\n\nSecond **bold** line\n\nThird", "quote": "Second **bold**", "block": 1 },
+    { "name": "not there: the top", "title": "T", "content": "First", "quote": "Nowhere", "block": null },
+    { "name": "by its Markdown, not text that looks the same", "title": "T", "content": "Milk is good\n\n**Milk** is good", "quote": "**Milk** is", "block": 1 },
+    { "name": "text with Markdown's characters, quoted as typed", "title": "T", "content": "First\n\nSet my_var to *x*", "quote": "my_var to x", "block": 1 },
+    { "name": "shown in more than one block: the top", "title": "T", "content": "Milk is *good*\n\nMilk is **good**", "quote": "Milk is _good_", "block": null },
+    { "name": "a heading, with its hashes", "title": "T", "content": "Intro\n\n## Plans for the week", "quote": "## Plans for the week", "block": 1 },
+    { "name": "list items with their markers: the longest line, the first of equals", "title": "T", "content": "Intro\n\n- Buy milk\n- Buy eggs and bread", "quote": "- Buy milk\n- Buy eggs", "block": 1 },
+    { "name": "a task, with its box", "title": "T", "content": "- [ ] Call Ana\n- [x] Pay rent", "quote": "- [x] Pay rent", "block": 1 },
+    { "name": "inside a quote, with its marker", "title": "T", "content": "Intro\n\n> Quoted words here", "quote": "> Quoted words", "block": 1 },
+    { "name": "a link, as written", "title": "T", "content": "See [the docs](https://example.com) today", "quote": "[the docs](https://example.com)", "block": 0 },
+    { "name": "a link quoted with another target: by its text", "title": "T", "content": "Intro\n\nSee the [docs](https://example.com) today", "quote": "the [docs](https://other.example) today", "block": 1 },
+    { "name": "in code, which isn't a text block: the top", "title": "T", "content": "Intro\n\n```\nlet x = 1\n```", "quote": "let x = 1", "block": null },
+    { "name": "only in the title: the top", "title": "Plans", "content": "Body", "quote": "Plans", "block": null }
+  ]
+}
