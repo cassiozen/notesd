@@ -1,0 +1,40 @@
+server/internal/publish/assets/site.css
+  s_8be127d8eeec54::t_93e740946c530d 10,462-474,478-481,486-610,719-720
+  s_8be127d8eeec54::t_271bf4a4b3d12c 475-477,482-485
+server/internal/publish/assets/theme.js
+  s_8be127d8eeec54::t_93e740946c530d 32-43
+server/internal/publish/site_test.go
+  s_8be127d8eeec54::t_6189ccb172fd12 299-382
+apps/web/e2e/publishing.spec.ts
+  s_8be127d8eeec54::t_7a75a8c5e464d7 68
+server/internal/publish/assets/site.html
+  s_8be127d8eeec54::t_60b12df94cbf4d 49,140-160,162-163
+  s_8be127d8eeec54::t_6a39cb9c66a3e7 161,164
+server/internal/publish/handler.go
+  s_8be127d8eeec54::t_433c13c7c202db 283
+server/internal/api/publish_test.go
+  s_8be127d8eeec54::t_eb2505c5f8317f 176-179
+server/internal/publish/site.go
+  s_8be127d8eeec54::t_e016fbe2e5ebfd 210-215,220-223,231-245,267-269,329,343-346,350,435,635
+  s_8be127d8eeec54::t_433c13c7c202db 65-66,216-219,224-230,347-349
+docs/guides/using/publishing.md
+  s_8be127d8eeec54::t_7a75a8c5e464d7 17,125-126
+docs/contributing/architecture.md
+  s_8be127d8eeec54::t_7a75a8c5e464d7 565
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "e5f86e53fc14135a244b9d68d43a9cb9e5c16f84",
+  "prompts": {},
+  "sessions": {
+    "s_8be127d8eeec54": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0050473a-6c36-43d4-b86b-66c306ad0f29",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
