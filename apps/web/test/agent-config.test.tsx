@@ -23,11 +23,21 @@ async function spaceInfo(user: User, name: string) {
   return screen.findByRole('dialog', { name })
 }
 
-/** The space's agent: its section of Space info. */
+/** The agent's section of Space info: its row, and Activity. */
+const agentSection = (info: HTMLElement) => within(info).findByRole('region', { name: 'Agent' })
+
+/** The row that opens the agent's page, named by the section and what it says: "Agent On". */
+const agentRow = async (info: HTMLElement) => within(await agentSection(info)).getByRole('button', { name: /^Agent / })
+
+/** The space's agent: its page, opened in Space info's own dialog. */
 async function agentPage(user: User, name = 'Notes') {
   const info = await spaceInfo(user, name)
-  return { info, page: await within(info).findByRole('region', { name: 'Agent' }) }
+  await user.click(await agentRow(info))
+  return { info, page: await screen.findByRole('dialog', { name: 'Agent' }) }
 }
+
+/** From the agent's page, back to the rest of Space info. */
+const back = (user: User, page: HTMLElement, name = 'Notes') => user.click(within(page).getByRole('button', { name: `Back to ${name}` }))
 
 /** Saved: its Save goes. */
 const saved = (page: HTMLElement) => waitFor(() => expect(within(page).queryByRole('button', { name: 'Save' })).toBeNull())
@@ -52,7 +62,13 @@ describe('a space’s agent', () => {
         await s.api('PUT', '/spaces/diary', { name: 'Diary', icon: 'duck' })
       },
     })
-    const { info, page } = await agentPage(user, 'Diary')
+    const info = await spaceInfo(user, 'Diary')
+    const row = await agentRow(info)
+    expect(row.textContent).toContain('Give it a purpose and rules')
+    await user.click(row)
+    const page = await screen.findByRole('dialog', { name: 'Agent' })
+    expect(page).toBe(info)
+    expect(document.activeElement).toBe(within(page).getByRole('heading', { name: 'Agent' }))
     // Off, it's one line; turned on, the rest opens in place.
     expect(within(page).queryByLabelText('What this space is for')).toBeNull()
     await user.click(within(page).getByRole('checkbox', { name: 'Agent' }))
@@ -69,9 +85,12 @@ describe('a space’s agent', () => {
     expect(config?.enabled).toBe(true)
     expect(Object.keys(config?.triggers ?? {}).toSorted()).toEqual(['movedOut', 'newNoteDone', 'noteCreated', 'noteDeleted'])
     expect(config?.referenceNotes).toEqual(['Digest'])
-    // Still on Space info: the server's trait by the space's name, and its Activity.
+    // Back on Space info: the server's trait by the space's name, the row saying so, and its Activity.
+    await back(user, page, 'Diary')
     expect(await within(info).findByRole('img', { name: 'Agent' })).toBeTruthy()
-    expect(within(page).getByRole('button', { name: 'Activity…' })).toBeTruthy()
+    expect(document.activeElement).toBe(await agentRow(info))
+    expect((await agentRow(info)).textContent).toBe('On4 rules')
+    expect(within(await agentSection(info)).getByRole('button', { name: 'Activity…' })).toBeTruthy()
   })
 
   it('gets rules added one at a time, showing the server’s complaint on the field', async () => {
@@ -264,11 +283,13 @@ describe('a space’s agent', () => {
   it('says when it couldn’t load, and tries again, in a space it was never set up in', async () => {
     const list = vi.spyOn(agent, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
     const { user } = await signedIn({ seed: withAI })
-    const { page } = await agentPage(user)
-    expect(await within(page).findByText('Couldn’t load the agent.')).toBeTruthy()
+    const section = await agentSection(await spaceInfo(user, 'Notes'))
+    expect(await within(section).findByText('Couldn’t load the agent.')).toBeTruthy()
     list.mockRestore()
-    await user.click(within(page).getByRole('button', { name: 'Try again' }))
-    expect(await within(page).findByRole('checkbox', { name: 'Agent' })).toBeTruthy()
+    await user.click(within(section).getByRole('button', { name: 'Try again' }))
+    await user.click(await within(section).findByRole('button', { name: 'Agent Set up' }))
+    const page = await screen.findByRole('dialog', { name: 'Agent' })
+    expect(within(page).getByRole('checkbox', { name: 'Agent' })).toBeTruthy()
   })
 
   it('says when it couldn’t load, and tries again', async () => {
@@ -279,11 +300,13 @@ describe('a space’s agent', () => {
         await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'Tags.', triggers: { newNoteDone: 'Tag it.' } })
       },
     })
-    const { page } = await agentPage(user)
-    expect(await within(page).findByText('Couldn’t load the agent.')).toBeTruthy()
+    const section = await agentSection(await spaceInfo(user, 'Notes'))
+    expect(await within(section).findByText('Couldn’t load the agent.')).toBeTruthy()
     list.mockRestore()
-    await user.click(within(page).getByRole('button', { name: 'Try again' }))
-    expect(await within(page).findByLabelText('What this space is for')).toBeTruthy()
+    await user.click(within(section).getByRole('button', { name: 'Try again' }))
+    await user.click(await within(section).findByRole('button', { name: 'Agent On' }))
+    const page = await screen.findByRole('dialog', { name: 'Agent' })
+    expect(within(page).getByLabelText('What this space is for')).toBeTruthy()
   })
 
   it('shows as paused when AI is removed', async () => {
@@ -294,9 +317,11 @@ describe('a space’s agent', () => {
         await s.api('DELETE', '/settings/ai')
       },
     })
-    const { info, page } = await agentPage(user)
+    const info = await spaceInfo(user, 'Notes')
     // The trait's problem, said with its glyph.
     expect(await within(info).findByRole('img', { name: 'Agent (AI isn’t set up)' })).toBeTruthy()
+    await user.click(await within(await agentSection(info)).findByRole('button', { name: 'Agent Paused' }))
+    const page = await screen.findByRole('dialog', { name: 'Agent' })
     expect(await within(page).findByText(/^Paused: AI isn’t set up/)).toBeTruthy()
     expect(within(page).queryByText(/Notes go to/)).toBeNull()
   })
@@ -307,16 +332,27 @@ describe('a space’s agent', () => {
     await user.click(await screen.findByRole('button', { name: /^Space:/ }))
     await user.click(within(screen.getByRole('dialog', { name: 'Spaces' })).getByRole('button', { name: 'Space info' }))
     const info = await screen.findByRole('dialog', { name: 'Notes' })
-    const page = await within(info).findByRole('region', { name: 'Agent' })
+    await user.click(await agentRow(info))
+    const page = await screen.findByRole('dialog', { name: 'Agent' })
     await user.click(within(page).getByRole('checkbox', { name: 'Agent' }))
 
-    await user.click(within(info).getByRole('button', { name: 'Done' }))
-    const ask = within(info).getByRole('group', { name: 'Discard your changes?' })
+    // Asked on the page, where the changes are.
+    await user.click(within(page).getByRole('button', { name: 'Done' }))
+    const ask = within(page).getByRole('group', { name: 'Discard your changes?' })
     expect(ask.textContent).toContain('Your changes to the agent aren’t saved.')
     await user.click(within(ask).getByRole('button', { name: 'Cancel' }))
     expect((within(page).getByRole('checkbox', { name: 'Agent' }) as HTMLInputElement).checked).toBe(true)
 
-    // Escape asks too; Discard closes.
+    // Escape goes back, keeping them, and the row says so.
+    await user.keyboard('{Escape}')
+    expect(await screen.findByRole('dialog', { name: 'Notes' })).toBe(info)
+    expect((await agentRow(info)).textContent).toContain('Unsaved changes')
+    expect(within(await agentSection(info)).queryByRole('button', { name: 'Activity…' })).toBeNull()
+    await user.click(await agentRow(info))
+    expect((within(page).getByRole('checkbox', { name: 'Agent' }) as HTMLInputElement).checked).toBe(true)
+    await back(user, page)
+
+    // Escape on the rest asks; Discard closes.
     await user.keyboard('{Escape}')
     await user.click(within(within(info).getByRole('group', { name: 'Discard your changes?' })).getByRole('button', { name: 'Discard' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Notes' })).toBeNull())
@@ -339,15 +375,16 @@ async function sharedWork(s: TestServer, agentOn: boolean) {
 describe('a shared space’s agent', () => {
   it('goes with the space when it’s shared, and any member manages it', async () => {
     const { user } = await signedIn({ as: 'ana', seed: async (s) => void (await sharedWork(s, true)) })
-    const { info, page } = await agentPage(user, 'Work')
-    expect((within(page).getByLabelText('What this space is for') as HTMLTextAreaElement).value).toBe('Work.')
+    const info = await spaceInfo(user, 'Work')
     expect(within(info).getByRole('img', { name: 'Shared, Agent' })).toBeTruthy()
+    await user.click(await agentRow(info))
+    const page = await screen.findByRole('dialog', { name: 'Agent' })
+    expect((within(page).getByLabelText('What this space is for') as HTMLTextAreaElement).value).toBe('Work.')
   })
 
   it('can be turned on by a member', async () => {
     const { server, user } = await signedIn({ as: 'ana', seed: async (s) => void (await sharedWork(s, false)) })
-    const info = await spaceInfo(user, 'Work')
-    const page = await within(info).findByRole('region', { name: 'Agent' })
+    const { page } = await agentPage(user, 'Work')
     await user.click(within(page).getByRole('checkbox', { name: 'Agent' }))
     await user.type(within(page).getByLabelText('What this space is for'), 'Work.')
     await user.click(within(page).getByRole('button', { name: 'Save' }))
@@ -360,8 +397,8 @@ describe('a shared space’s agent', () => {
     const { user } = await signedIn({ seed: async (s) => void (ana = await sharedWork(s, true)) })
     if (!ana) throw new Error('ana wasn’t made')
     expect((await ana.api('DELETE', '/notes/milk', { operationId: 'op-del', baseRevision: 1 })).status).toBe(200)
-    const { page } = await agentPage(user, 'Work')
-    await user.click(await within(page).findByRole('button', { name: 'Activity…' }))
+    const section = await agentSection(await spaceInfo(user, 'Work'))
+    await user.click(await within(section).findByRole('button', { name: 'Activity…' }))
     const sheet = await screen.findByRole('dialog', { name: 'Activity' })
     const runs = await within(sheet).findByRole('list', { name: 'Runs' })
     expect(within(runs).getByRole('button').textContent).toContain('for ana')

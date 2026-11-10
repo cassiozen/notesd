@@ -110,8 +110,6 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   function close() {
     const what = unsaved()
     if (what.length === 0) return onClose()
-    // Asked on the space's own page, where the changes are.
-    if (page) back()
     setDiscarding(what)
   }
 
@@ -137,6 +135,13 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
       setDeleting(null)
     }
   }
+
+  // Asked under the Done that was pressed: on a section's page, where its changes are (the agent's).
+  const discardAsk = discarding && (
+    <InlineConfirm title="Discard your changes?" action="Discard" onConfirm={onClose} onCancel={() => setDiscarding(null)}>
+      Your changes to {discarding.join(' and ')} aren’t saved.
+    </InlineConfirm>
+  )
 
   return (
     <Dialog labelledBy={page ? pageHeadingId : titleId} onClose={page ? back : close} space={themeKey(shownIcon)} wide>
@@ -193,11 +198,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
           )}
 
           <div className={styles.end}>
-            {discarding && (
-              <InlineConfirm title="Discard your changes?" action="Discard" onConfirm={onClose} onCancel={() => setDiscarding(null)}>
-                Your changes to {discarding.join(' and ')} aren’t saved.
-              </InlineConfirm>
-            )}
+            {page === null && discardAsk}
             {own && deleting && (
               <InlineConfirm
                 title={`Delete ${space.name}?`}
@@ -240,6 +241,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
             {space.name}
           </Button>
           <div ref={setSlot} className={styles.slot} />
+          {page !== null && discardAsk}
           <div className={settings.dialogActions}>
             <Button size="md" onClick={close}>
               Done

@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
-import type { AgentTrigger } from '../api/agent'
+import { createPortal } from 'react-dom'
+import type { AgentConfig, AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
@@ -37,6 +38,7 @@ import { providerHost, retryAiSettings, useAiSettings, useAiSettingsFailed } fro
 import { titleOf, useFoundTitles, useTitleMatches } from './note-titles'
 import { notesSource } from './source'
 import { reloadSpaces } from './spaces'
+import type { TraitPage } from './traits'
 import info from '../settings/space-info.module.css'
 import { useUnsaved } from '../settings/unsaved'
 import styles from './agent-page.module.css'
@@ -66,10 +68,11 @@ export function useAgentOffered(): (space: Space) => boolean {
 }
 
 /**
- * A space's agent: on or off, what the space is for, its rules, and the notes it always reads. The agent
- * trait's part of Space info (§7.8, §7.11), on or off: changed in place, saved with its own Save.
+ * A space's agent (§7.8, §7.11): in Space info, a row saying how it's set that opens its page, and Activity; on the
+ * page, on or off, what the space is for, its rules, and the notes it always reads, saved with its own Save. The page
+ * stays mounted while closed, so its draft outlasts Back.
  */
-export function AgentSection({ space }: { space: Space }) {
+export function AgentSection({ space, page }: { space: Space; page: TraitPage }) {
   const spaceId = space.id
   const configs = useAgentConfigs()
   const configsFailed = useAgentConfigsFailed()
@@ -83,6 +86,8 @@ export function AgentSection({ space }: { space: Space }) {
   const [savedNote, setSavedNote] = useState(false)
   const [showing, setShowing] = useState<AgentExample | null>(null)
   const headingId = useId()
+  const rowLabelId = useId()
+  const rowSummaryId = useId()
   const draft = edited ?? draftOf(saved)
   const dirty = edited !== null && !sameAgent(edited, draftOf(saved))
   useUnsaved('the agent', dirty)
@@ -127,89 +132,127 @@ export function AgentSection({ space }: { space: Space }) {
     setFormError(undefined)
   }
 
+  const loaded = configs !== null && ai !== null
+  const row = loaded ? rowText(saved, ai.configured, dirty) : null
+
   return (
-    <section aria-labelledby={headingId}>
-      <form className={info.section} onSubmit={(e) => void save(e)} noValidate>
-        <div className={styles.head}>
-          <h3 id={headingId} className={info.caption}>
-            Agent
-          </h3>
-          <div className={styles.actions}>
-            {saved && !dirty && (
-              // Over Space info, which it comes back to.
-              <Button size="sm" variant="ghost" onClick={() => openOver('/activity', { space: spaceId })}>
-                Activity…
-              </Button>
-            )}
-            {dirty && (
-              <>
-                <Button size="sm" onClick={cancel} disabled={busy}>
-                  Cancel
-                </Button>
-                <Button size="sm" variant="solid" type="submit" busy={busy}>
-                  Save
-                </Button>
-              </>
-            )}
-          </div>
+    <section className={info.section} aria-labelledby={headingId}>
+      <div className={styles.head}>
+        <h3 id={headingId} className={info.caption}>
+          Agent
+        </h3>
+        {saved && !dirty && (
+          // Over Space info, which it comes back to.
+          <Button size="sm" variant="ghost" onClick={() => openOver('/activity', { space: spaceId })}>
+            Activity…
+          </Button>
+        )}
+      </div>
+      {row ? (
+        <div className={info.group}>
+          <button
+            type="button"
+            className={info.pageRow}
+            aria-labelledby={`${headingId} ${rowLabelId}`}
+            aria-describedby={rowSummaryId}
+            onClick={page.show}
+          >
+            <span className={info.pageRowText}>
+              <span id={rowLabelId} className={info.pageRowLabel}>
+                {row.label}
+              </span>
+              <span id={rowSummaryId} className={info.pageRowSummary}>
+                {row.summary}
+              </span>
+            </span>
+            <span className={info.pageRowChevron} aria-hidden="true" />
+          </button>
         </div>
-        <p role="status" className="visually-hidden">
-          {savedNote ? 'Saved' : ''}
-        </p>
-        {(configs === null || ai === null) && (
-          <div className={styles.card}>
-            {configsFailed || aiFailed ? (
-              <>
-                <p role="alert" className={info.error}>
-                  Couldn’t load the agent.
-                </p>
-                <div>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (configsFailed) retryAgentConfigs()
-                      if (aiFailed) retryAiSettings()
-                    }}
-                  >
-                    Try again
-                  </Button>
-                </div>
-              </>
-            ) : (
-              <span className={styles.muted}>Loading…</span>
-            )}
-          </div>
-        )}
-        {configs !== null && ai !== null && (
-          <>
-            <OnOff draft={draft} provider={ai.configured ? providerHost(ai.baseUrl) : null} onChange={change} />
-            {formError && (
+      ) : (
+        <div className={styles.card}>
+          {configsFailed || aiFailed ? (
+            <>
               <p role="alert" className={info.error}>
-                {formError}
+                Couldn’t load the agent.
               </p>
-            )}
-            {/* Never set up, it's one line until turned on; one turned off keeps its rules in view, to change. */}
-            {(draft.enabled || saved) && (
-              <div className={styles.parts}>
-                <Examples
-                  showing={showing}
-                  draft={draft}
-                  onShow={setShowing}
-                  onUseAll={(ex) => {
-                    change(withExample(draft, ex))
-                    setShowing(null)
+              <div>
+                <Button
+                  size="sm"
+                  onClick={() => {
+                    if (configsFailed) retryAgentConfigs()
+                    if (aiFailed) retryAiSettings()
                   }}
-                />
-                <Purpose draft={draft} example={showing} error={errors.prompt} onChange={change} />
-                <Rules draft={draft} example={showing} errors={errors} onChange={change} />
-                <References spaceId={spaceId} draft={draft} example={showing} error={errors.referenceNotes} onChange={change} />
+                >
+                  Try again
+                </Button>
               </div>
-            )}
-          </>
+            </>
+          ) : (
+            <span className={styles.muted}>Loading…</span>
+          )}
+        </div>
+      )}
+      {loaded &&
+        page.slot &&
+        createPortal(
+          <div className={info.traitPage} hidden={!page.open}>
+            <form className={info.traitPage} onSubmit={(e) => void save(e)} noValidate>
+              <div className={styles.head}>
+                <h2 id={page.headingId} tabIndex={-1} className={info.pageTitle}>
+                  Agent
+                </h2>
+                {dirty && (
+                  <div className={styles.actions}>
+                    <Button size="sm" onClick={cancel} disabled={busy}>
+                      Cancel
+                    </Button>
+                    <Button size="sm" variant="solid" type="submit" busy={busy}>
+                      Save
+                    </Button>
+                  </div>
+                )}
+              </div>
+              <p role="status" className="visually-hidden">
+                {savedNote ? 'Saved' : ''}
+              </p>
+              <OnOff draft={draft} provider={ai.configured ? providerHost(ai.baseUrl) : null} onChange={change} />
+              {formError && (
+                <p role="alert" className={info.error}>
+                  {formError}
+                </p>
+              )}
+              {/* Never set up, it's one line until turned on; one turned off keeps its rules in view, to change. */}
+              {(draft.enabled || saved) && (
+                <div className={styles.parts}>
+                  <Examples
+                    showing={showing}
+                    draft={draft}
+                    onShow={setShowing}
+                    onUseAll={(ex) => {
+                      change(withExample(draft, ex))
+                      setShowing(null)
+                    }}
+                  />
+                  <Purpose draft={draft} example={showing} error={errors.prompt} onChange={change} />
+                  <Rules draft={draft} example={showing} errors={errors} onChange={change} />
+                  <References spaceId={spaceId} draft={draft} example={showing} error={errors.referenceNotes} onChange={change} />
+                </div>
+              )}
+            </form>
+          </div>,
+          page.slot,
         )}
-      </form>
     </section>
   )
+}
+
+/** Space info's row for the page: the agent as saved, or that there's a draft to come back to. */
+function rowText(saved: AgentConfig | undefined, aiSetUp: boolean, dirty: boolean): { label: string; summary: string } {
+  if (!saved) return { label: 'Set up', summary: dirty ? 'Unsaved changes' : 'Give it a purpose and rules, then turn it on.' }
+  const label = !saved.enabled ? 'Off' : aiSetUp ? 'On' : 'Paused'
+  if (dirty) return { label, summary: 'Unsaved changes' }
+  const n = rulesOf(draftOf(saved)).length
+  return { label, summary: n === 0 ? 'No rules yet' : `${n} ${n === 1 ? 'rule' : 'rules'}` }
 }
 
 function OnOff({ draft, provider, onChange }: { draft: AgentDraft; provider: string | null; onChange: Change }) {

@@ -230,7 +230,7 @@ the editor.
 | --- | --- |
 | Both | D3–D7 (types, calls, caches), with tests against a real notesd (both already test that way) |
 | Both | S1–S3: AI under Integrations (admin controls, Test, Disconnect), time zone under Server |
-| Both | S4–S8: the agent's section of Space info, changed in place as on the web (§7.8). Rules as rows. A rule's moment is a picker. Ideas and examples are chip rows, and an example's parts are dashed rows where they'd go. Notes it always reads uses the local notes' titles |
+| Both | S4–S8: the agent's section of Space info, changed in place (§7.8; the web gives it a page of its own). Rules as rows. A rule's moment is a picker. Ideas and examples are chip rows, and an example's parts are dashed rows where they'd go. Notes it always reads uses the local notes' titles |
 | Both | S9: the agent trait's section in each app's trait registry; refresh the space list after a save so the trait shows; Activity's "for {member}" in shared spaces and usage per space; `spaceId` on `editor.opened`/`editor.closed` |
 | Both | S10–S11: Activity list and run, line diffs, Undo |
 | Both | N1: the failed-run notice, fetched when a note opens (live in phase 3) |
