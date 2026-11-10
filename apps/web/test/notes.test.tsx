@@ -474,6 +474,9 @@ describe('failures', () => {
         await createNote(s, 'Plan', 'A')
       },
     })
+    // Side by side, the first note opens by itself, its GET possibly gone before the intercept is in.
+    await openNote(user, 'Plan')
+    await waitFor(() => expect(bodyText()).toBe('A'))
     expect(screen.queryByText(/notesd was updated/)).toBeNull()
     interceptApi(
       () => true,
@@ -484,8 +487,12 @@ describe('failures', () => {
         return new Response(res.body, { status: res.status, headers })
       },
     )
-    await openNote(user, 'Plan')
-    const banner = (await screen.findByText('notesd was updated. Reload to get the new version.')).closest('[role="status"]')
+    // A save: a request sure to go out after the intercept.
+    await typeAtEnd(user, 'B')
+    // The save waits out the debounce first.
+    const banner = (
+      await screen.findByText('notesd was updated. Reload to get the new version.', {}, { timeout: timing.debounceMs + 5000 })
+    ).closest('[role="status"]')
     if (!(banner instanceof HTMLElement)) throw new Error('no banner')
     expect(within(banner).getByRole('button', { name: 'Reload' })).toBeTruthy()
   })
