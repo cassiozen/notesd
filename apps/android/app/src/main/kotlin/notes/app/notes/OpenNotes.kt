@@ -1,10 +1,12 @@
 package notes.app.notes
 
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import notes.app.editor.NoteEditText
 
@@ -14,7 +16,17 @@ import notes.app.editor.NoteEditText
  * cleared by every way out of it: Back, the two-pane swap, switching space, a new note from the launcher, delete
  * and move all take the note's screen off the back stack.
  */
-class OpenNotes {
+class OpenNotes(private val scope: CoroutineScope) {
+    /** Hears of each editor showing a note, and of each one gone once its last save reached the server. */
+    interface Listener {
+        fun opened(id: String, spaceId: String)
+
+        /** [revision]: the server's of what that editor last showed, or null. */
+        fun closed(id: String, revision: Long?)
+    }
+
+    @Volatile var listener: Listener? = null
+
     private val open = HashMap<String, MutableList<EditorViewModel>>()
 
     private val _ids = MutableStateFlow<Set<String>>(emptySet())
@@ -31,12 +43,14 @@ class OpenNotes {
     internal fun opened(vm: EditorViewModel) {
         open.getOrPut(vm.id) { ArrayList() } += vm
         _ids.value = open.keys.toSet()
+        listener?.opened(vm.id, vm.spaceId())
     }
 
     @Synchronized
     internal fun closed(vm: EditorViewModel) {
         val vms = open[vm.id] ?: return
         vms.remove(vm)
+        listener?.let { l -> scope.launch { l.closed(vm.id, vm.closingRevision()) } }
         if (vms.isNotEmpty()) return
         open.remove(vm.id)
         _ids.value = open.keys.toSet()

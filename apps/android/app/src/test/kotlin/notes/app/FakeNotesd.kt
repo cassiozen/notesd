@@ -6,6 +6,7 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.builtins.ListSerializer
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.long
@@ -31,6 +32,9 @@ import notes.core.api.SyncPage
 import notes.core.api.UndoResult
 import notes.core.api.UndoSkip
 import notes.core.db.Spaces
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 
 /**
  * Enough of notesd for shared spaces (§7.9), from [me]'s side: the space list with its `shared` trait worked out
@@ -90,6 +94,45 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
     var tokensToday = 0L
 
     private val json = Json { encodeDefaults = false }
+
+    /** A connection to the agent socket, as the server holds it: what it was sent, and a way to send more. */
+    inner class AgentConn : WebSocketListener() {
+        val got = CopyOnWriteArrayList<JsonObject>()
+
+        @Volatile var socket: WebSocket? = null
+
+        @Volatile var closed = false
+
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            socket = webSocket
+            webSocket.send("""{"type":"hello","connectionId":"c${sockets.indexOf(this) + 1}","protocol":1}""")
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            got += Json.parseToJsonElement(text).jsonObject
+        }
+
+        override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            closed = true
+            webSocket.close(1000, null)
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            closed = true
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            closed = true
+        }
+
+        fun send(message: String) = socket!!.send(message)
+
+        /** The messages of [type] it was sent, as text. */
+        fun got(type: String) = got.filter { it["type"]?.jsonPrimitive?.content == type }.map { it.toString() }
+    }
+
+    /** Every agent socket connection, oldest first. */
+    val sockets = CopyOnWriteArrayList<AgentConn>()
 
     fun start() {
         server.dispatcher = object : Dispatcher() {
@@ -352,6 +395,29 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
 
             r.method == "GET" && path == "/agent/usage" ->
                 ok("""{"day":"2026-11-09","tokens":$tokensToday,"runs":${runs.size},"dailyTokenCap":1000000}""")
+
+            r.method == "GET" && path == "/agent/socket" -> AgentConn().let {
+                sockets += it
+                MockResponse.Builder().webSocketUpgrade(it).build()
+            }
+
+            // A note's save: the next revision, in its feed.
+            r.method == "PUT" && parts.size == 2 && parts[0] == "notes" -> {
+                val body = Json.parseToJsonElement(r.body!!.utf8()).jsonObject
+                val (feed, notes) = feeds.entries.first { (_, list) -> list.any { it.id == parts[1] } }.toPair()
+                val old = notes.first { it.id == parts[1] }
+                val seq = feeds.values.flatten().maxOf { it.changeSeq } + 1
+                val saved = old.copy(
+                    title = body["title"]!!.jsonPrimitive.content,
+                    content = body["content"]!!.jsonPrimitive.content,
+                    revision = old.revision + 1,
+                    changeSeq = seq
+                )
+                feeds[feed] = notes.map { if (it.id == old.id) saved else it }
+                ok(
+                    """{"id":"${old.id}","status":"updated","revision":${saved.revision},"changeSeq":$seq,"updatedAt":1}"""
+                )
+            }
 
             r.method == "GET" && path == "/settings/email" ->
                 ok("""{"configured":true,"from":"Me <notes@example.com>","keyHint":"6789","editable":true}""")

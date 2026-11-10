@@ -17,6 +17,9 @@ open class NotesApp : Application() {
         // Account first: the first sync tells this account's changes apart by its id.
         graph.watchAccount()
         graph.scheduler.start()
+        graph.connectivity.start(this)
+        graph.watchForeground()
+        graph.agentLink.start()
         graph.watchKeyring()
         graph.watchSpaces()
     }
