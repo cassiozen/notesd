@@ -460,7 +460,7 @@ class ScreenshotTest {
         }
     }
 
-    /** The default space's agent in Space info, with rules, a note it reads, and Journal's parts offered. */
+    /** The default space's agent in Space info, with rules and a note it reads. */
     @Test
     fun spaceInfoAgent() {
         val notesd = FakeNotesd()
@@ -484,10 +484,6 @@ class ScreenshotTest {
             compose.onNode(hasText("Notes") and hasClickAction()).performClick()
             compose.waitUntilExactlyOneExists(hasText("When you finish a new note"), 5_000)
             shoot("space-info-agent")
-            compose.onNode(hasText("Journal") and hasClickAction()).performScrollTo().performClick()
-            compose.waitUntilExactlyOneExists(hasText("Journal's purpose"))
-            compose.onNode(hasText("Journal's purpose")).performScrollTo()
-            shoot("space-info-agent-example")
         } finally {
             notesd.close()
         }

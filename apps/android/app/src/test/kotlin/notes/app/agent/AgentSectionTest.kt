@@ -115,27 +115,20 @@ class AgentSectionTest {
     }
 
     @Test
-    fun `an example's parts are taken one at a time or all, never turning it on or saving`() {
-        saved(triggers = mapOf("editDone" to "Fix my spelling."), enabled = false)
+    fun `an example is offered while nothing's written, and starting from one never turns it on or saves`() {
+        saved(prompt = "", triggers = emptyMap(), enabled = false)
         open()
-        compose.waitUntilExactlyOneExists(hasText("When you finish editing a note"))
-        button("Journal").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Journal's purpose"))
-        button("Use instead").performClick()
-        compose.waitUntilDoesNotExist(hasText("Journal's purpose"))
-        compose.onNodeWithText("My journal.", substring = true).assertExists()
-
-        button("Use all").performClick()
-        compose.waitUntilExactlyOneExists(hasText("When a new note is opened"))
-        compose.onNodeWithText("When a note is moved away").assertExists()
-        // Its own rule stays.
-        compose.onNodeWithText("Fix my spelling.").assertExists()
-        compose.onNodeWithText("not here yet").assertExists()
+        button("Recipes").performClick()
+        compose.waitUntilExactlyOneExists(hasText("When you finish a new note"))
+        compose.onNodeWithText("Recipes I cook.", substring = true).assertExists()
+        compose.onNodeWithText("Scale to 2 servings").assertExists()
+        // Something's written: nothing to start from over it.
+        compose.onNodeWithText("Start from an example").assertDoesNotExist()
         compose.onNodeWithText("Off").assertExists()
         assertEquals(emptyList(), notesd.agentSaves)
 
         button("Cancel").performClick()
-        compose.waitUntilDoesNotExist(hasText("When a new note is opened"))
+        compose.waitUntilExactlyOneExists(hasText("Start from an example"))
     }
 
     @Test

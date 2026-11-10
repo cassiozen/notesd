@@ -56,12 +56,6 @@
   color: var(--ink-3);
 }
 
-.error {
-  margin: 0;
-  font-size: 13px;
-  color: var(--danger);
-}
-
 /* The whole line toggles it. */
 .onOff {
   display: grid;
@@ -93,41 +87,19 @@
   accent-color: var(--accent-deep);
 }
 
-/* Stays in view while an example's parts are shown down the page. */
 .examples {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 0 6px;
-}
-
-/* The sheet's top padding counts toward a sticky offset: -28px of its 40px leaves the bar 12px down. */
-.examplesShowing {
-  position: sticky;
-  top: -28px;
-  z-index: 1;
-  padding: 12px 14px;
-  border: 1px solid var(--hair-strong);
-  border-radius: 18px;
-  background: var(--glass-hi);
-  backdrop-filter: blur(16px);
-  box-shadow: var(--shadow);
-}
-
-.exampleRow {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  padding: 0 6px;
 }
 
-.exampleRow > span {
+.examples > span {
   margin-right: 4px;
 }
 
-.exampleChip,
-.idea,
-.refOffer {
+.chip {
   display: inline-flex;
   align-items: baseline;
   gap: 6px;
@@ -142,81 +114,17 @@
   transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.exampleChip:hover,
-.idea:hover,
-.refOffer:hover {
+.chip:hover {
   border-color: var(--hair-strong);
   color: var(--ink);
 }
 
-.exampleChip[aria-pressed='true'] {
-  border-color: var(--solid);
-  background: var(--solid);
-  color: var(--on-solid);
-}
-
-.exampleBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px 12px;
-}
-
-.exampleBar > p {
-  flex: 1 1 260px;
-}
-
-.exampleChip:focus-visible,
-.idea:focus-visible,
-.refOffer:focus-visible,
+.chip:focus-visible,
 .moment:focus-visible,
 .pick:focus-visible,
 .refRemove:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus);
-}
-
-/* An example's part, where it would go: dashed, as it isn't yours until taken. */
-.borrow {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 12px 16px 14px;
-  border: 1px dashed var(--hair-strong);
-  border-radius: 18px;
-}
-
-.borrowHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.borrowFrom {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2);
-}
-
-.borrowTitle {
-  font-weight: 400;
-  color: var(--ink-3);
-}
-
-.borrowText {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--ink-2);
-  white-space: pre-wrap;
-}
-
-.ruleSlot {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
 }
 
 .empty {
@@ -237,11 +145,6 @@
 
 .ideas > span {
   margin-right: 2px;
-}
-
-.ideaFrom {
-  font-size: 11px;
-  color: var(--ink-3);
 }
 
 /* Grows with what's written: a rule is read as much as it's typed. */
@@ -394,19 +297,6 @@
   color: var(--ink-3);
 }
 
-.refOffer {
-  border-style: dashed;
-  font-size: 14px;
-  padding: 5px 12px;
-}
-
 .hint {
   padding: 0 4px;
-}
-
-/* The sheet's top padding is 16px here: none of it to take back. */
-@media (max-width: 759px) {
-  .examplesShowing {
-    top: 0;
-  }
 }

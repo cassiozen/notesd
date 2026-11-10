@@ -29,11 +29,9 @@ it up, change it or turn it off, and sharing a space keeps its agent. Everyone i
 what it did in Activity and can undo it. A run acts for whoever asked for it or wrote the note, so
 its changes show as theirs.
 
-**Learn from an example** (Journal, Recipes, Tidy tags) shows that example's parts
-where they'd go on the page, dashed: its purpose, each of its rules, and the notes it reads. Take
-any part, or **Use all**; beside a rule of yours for the same moment, an example's rule is another
-version to use instead. Close it and what you didn't take goes. Taking parts never turns the agent
-on, and nothing is kept until you save.
+While nothing's written yet, **Start from an example** (Tidy tags, Recipes) fills in an example's
+purpose and rules, to change as you like. It never turns the agent on, and nothing is kept until
+you save.
 
 **What this space is for** describes the space and how the agent should behave. It goes with every
 rule, and on its own does nothing:
@@ -42,8 +40,8 @@ rule, and on its own does nothing:
 - *Recipes. I cook mostly vegetarian. Quantities in metric.*
 
 Then add **rules**. A rule is a moment and what the agent does then; **Add rule** offers the
-moments a space doesn't have a rule for yet. While a rule is empty, **Ideas** under it offer what
-the examples do at that moment, to start from. A rule's moment, in its heading, can be changed
+moments a space doesn't have a rule for yet. While a rule is empty, an **Idea** under it
+offers a common one for that moment, to start from. A rule's moment, in its heading, can be changed
 without losing what it says. Without rules, the agent does nothing.
 
 | Rule | When |
@@ -85,7 +83,7 @@ An agent can also show you something without changing the note: a **card** betwe
 headed by the space's name. A card is never part of the note: it isn't saved, synced or searched,
 and it goes when you close the note.
 
-- A card to read, such as the Journal example's questions, has **×** to dismiss it.
+- A card to read, such as a question to start a new note, has **×** to dismiss it.
 - A suggested change, such as *Fix typos* in the Tidy tags example, sits under the text it would
   change (a new title at the top, an addition where it would go) and shows what goes and what
   comes. **✓** makes the change, as one step you can undo like

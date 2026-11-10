@@ -69,8 +69,8 @@ Status: ✓ done, – not needed, ☐ to do.
 | S2 | AI dialog: address, key (saved hint; empty keeps it), model, daily tokens (default 1,000,000), in-app checks, field errors, **Test** without saving, **Disconnect…** confirmation | ✓ | ✓ | ☐ |
 | S3 | Time zone under Server: IANA picker, saves on change, "Set from the first device that connected." | ✓ | ✓ | ☐ |
 | S4 | Agent page: AI-not-set-up and paused states; on/off (switch on phones) naming the provider host | ✓ | ✓ | ☐ |
-| S5 | Agent page: purpose; rules (add from 8 moments in 3 groups, change a rule's moment, remove, menu command name); ideas while a rule is empty | ✓ | ✓ | ☐ |
-| S6 | Agent page: examples (Journal, Recipes, Tidy tags) shown in place, each part taken or left, Use all; never turns it on or saves | ✓ | ✓ | ☐ |
+| S5 | Agent page: purpose; rules (add from 8 moments in 3 groups, change a rule's moment, remove, menu command name); an idea while a rule is empty | ✓ | ✓ | ☐ |
+| S6 | Agent page: examples (Tidy tags, Recipes), offered while nothing's written, fill in the purpose and rules; never turns it on or saves | ✓ | ✓ | ☐ |
 | S7 | Agent page: notes it always reads (5; title lookup in the space; "not here yet"; offers for notes a rule needs; no-room message) | ✓ | ✓ | ☐ |
 | S8 | Agent page: Save keeps typing done meanwhile; field errors; "hasn't reached the server yet"; discard confirmation | ✓ | ✓ | ☐ |
 | S9 | Ways in: the `agent` trait's section in Space info (architecture §7.8), on or off: offered once AI is set up (or to resume a paused agent), in any space, by any member; going back with changes not saved asks first. The glyph, summary, problem and move check already show on all three apps, from main's traits | ✓ | ✓ | ☐ |
@@ -230,7 +230,7 @@ the editor.
 | --- | --- |
 | Both | D3–D7 (types, calls, caches), with tests against a real notesd (both already test that way) |
 | Both | S1–S3: AI under Integrations (admin controls, Test, Disconnect), time zone under Server |
-| Both | S4–S8: the agent's section of Space info, changed in place (§7.8; the web gives it a page of its own). Rules as rows. A rule's moment is a picker. Ideas and examples are chip rows, and an example's parts are dashed rows where they'd go. Notes it always reads uses the local notes' titles |
+| Both | S4–S8: the agent's section of Space info, changed in place (§7.8; the web gives it a page of its own). Rules as rows. A rule's moment is a picker. An idea and the examples are chip rows. Notes it always reads uses the local notes' titles |
 | Both | S9: the agent trait's section in each app's trait registry; refresh the space list after a save so the trait shows; Activity's "for {member}" in shared spaces and usage per space; `spaceId` on `editor.opened`/`editor.closed` |
 | Both | S10–S11: Activity list and run, line diffs, Undo |
 | Both | N1: the failed-run notice, fetched when a note opens (live in phase 3) |
@@ -298,7 +298,7 @@ Markdown source in a card, as in a note, rather than as its text.
 | Both | N10: room under blocks, card views, placement passing `quote.json`, following typing |
 | Both | N11–N13: answers, accept as the agent's change, stale check, queued answers, locked |
 
-**User check:** the Journal's follow-ups show above a new entry, and a "Fix typos" suggestion is
+**User check:** a question card shows above a new note, and a "Fix typos" suggestion is
 accepted, then undone.
 
 ### Phase 6: parity pass
