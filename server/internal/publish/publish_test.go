@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -76,14 +77,36 @@ func TestAReloadThatReadBeforeAForgetDoesNotBringTheSiteBack(t *testing.T) {
 	s.reload(ctx)
 
 	// The publisher's own reload (a change woke it) reads the site, then the space is deleted before it swaps.
+	var calls atomic.Int32
+	raced := make(chan struct{}) // Forget's reload read and is about to swap: only without the lock
 	forgot := make(chan error, 1)
 	s.reloaded = func() {
-		s.reloaded = nil
+		if calls.Add(1) > 1 {
+			close(raced)
+			return
+		}
 		go func() { forgot <- s.Forget(ctx, "user:1", "fam") }()
+		for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+			var n int
+			if err := system.R.QueryRowContext(ctx, `SELECT COUNT(*) FROM published_spaces`).Scan(&n); err != nil {
+				t.Error(err)
+				return
+			}
+			if n == 0 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Error("Forget never deleted the address")
+				return
+			}
+		}
+		// Its delete is in: only the lock keeps Forget's reload from reading and swapping before this one.
 		select {
-		case err := <-forgot:
+		case <-raced:
+			// Let it swap first, so this stale swap lands last.
+			err := <-forgot
 			forgot <- err
-		case <-time.After(200 * time.Millisecond): // Forget waits its turn
+		case <-time.After(time.Second): // held at the lock
 		}
 	}
 	s.reload(ctx)
