@@ -1,0 +1,89 @@
+{
+  "about": "Where an editor's caret is, as an agent reads it: code points into the note's saved content. The caret is at U+E001 in title or content; take it out, put the caret there, and read. cursor null: none (in the title).",
+  "cases": [
+    {
+      "name": "in a paragraph",
+      "title": "T",
+      "content": "Hello world",
+      "cursor": 9
+    },
+    {
+      "name": "in a later paragraph",
+      "title": "T",
+      "content": "First\n\nSecond",
+      "cursor": 10
+    },
+    {
+      "name": "after an emoji, one code point",
+      "title": "T",
+      "content": "Hi 👋 there",
+      "cursor": 4
+    },
+    {
+      "name": "after a combining mark",
+      "title": "T",
+      "content": "Café au lait",
+      "cursor": 5
+    },
+    {
+      "name": "after an escaped hash that would start a heading",
+      "title": "T",
+      "content": "\\# not a heading",
+      "cursor": 6
+    },
+    {
+      "name": "after an escaped character",
+      "title": "T",
+      "content": "Not a \\*star\\* here",
+      "cursor": 14
+    },
+    {
+      "name": "inside bold, before its closing marks",
+      "title": "T",
+      "content": "Dear **Sam** hi",
+      "cursor": 9
+    },
+    {
+      "name": "in a heading",
+      "title": "T",
+      "content": "## Plan\n\nBody",
+      "cursor": 6
+    },
+    {
+      "name": "in a list item",
+      "title": "T",
+      "content": "- Milk\n- Tea",
+      "cursor": 11
+    },
+    {
+      "name": "in a task",
+      "title": "T",
+      "content": "- [ ] Buy milk",
+      "cursor": 8
+    },
+    {
+      "name": "in a quote",
+      "title": "T",
+      "content": "> Quote",
+      "cursor": 5
+    },
+    {
+      "name": "at the end of the note",
+      "title": "T",
+      "content": "Body",
+      "cursor": 4
+    },
+    {
+      "name": "with the marker character already in the note",
+      "title": "T",
+      "content": "A  mark, then Sam",
+      "cursor": 18
+    },
+    {
+      "name": "in the title, none",
+      "title": "Plan",
+      "content": "Body",
+      "cursor": null
+    }
+  ]
+}

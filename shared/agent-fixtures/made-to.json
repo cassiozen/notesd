@@ -1,0 +1,537 @@
+{
+  "about": "An agent's change made to what the editor shows now (agent.EditorChange.MadeTo; the web's madeTo). want null: the op no longer fits. cursor: code points into now's content, null for none. Every client's change has an op.",
+  "cases": [
+    {
+      "name": "the editor still shows before: after, whatever the op",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "end",
+        "text": "#tag"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      }
+    },
+    {
+      "name": "the editor still shows before: after, even for the whole content",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "content",
+        "text": "Rewritten\n"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      }
+    },
+    {
+      "name": "the title, over typing in the content",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "title",
+        "title": "Shopping"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "Shopping",
+        "content": "Milk\nTea\n"
+      }
+    },
+    {
+      "name": "replace, found once",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "replace",
+        "find": "Tea",
+        "replace": "Green tea"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk\nGreen tea\n"
+      }
+    },
+    {
+      "name": "replace takes its text as written",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "replace",
+        "find": "Tea",
+        "replace": "$&$&"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk\n$&$&\n"
+      }
+    },
+    {
+      "name": "replace, not found",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "replace",
+        "find": "Oat",
+        "replace": "Soy"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": null
+    },
+    {
+      "name": "replace, found twice",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "replace",
+        "find": "Tea",
+        "replace": "Coffee"
+      },
+      "now": {
+        "title": "T",
+        "content": "Tea\nTea\n"
+      },
+      "cursor": null,
+      "want": null
+    },
+    {
+      "name": "replace, found twice overlapping",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "replace",
+        "find": "aa",
+        "replace": "b"
+      },
+      "now": {
+        "title": "T",
+        "content": "aaa\n"
+      },
+      "cursor": null,
+      "want": null
+    },
+    {
+      "name": "replace across lines",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "replace",
+        "find": "Milk\nTea",
+        "replace": "Milk and tea"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk and tea\n"
+      }
+    },
+    {
+      "name": "insert at the end, as its own block",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "end",
+        "text": "#tag"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk\nTea\n\n#tag\n"
+      }
+    },
+    {
+      "name": "insert at the end, trailing newlines trimmed",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "end",
+        "text": "#tag"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\n\n\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      }
+    },
+    {
+      "name": "insert at the start, as its own block",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "start",
+        "text": "# List"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "# List\n\nMilk\nTea\n"
+      }
+    },
+    {
+      "name": "insert at the start, leading newlines trimmed",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "start",
+        "text": "# List"
+      },
+      "now": {
+        "title": "T",
+        "content": "\n\nMilk\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "# List\n\nMilk\n"
+      }
+    },
+    {
+      "name": "insert into nothing but newlines",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "end",
+        "text": "First"
+      },
+      "now": {
+        "title": "T",
+        "content": "\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "First\n"
+      }
+    },
+    {
+      "name": "insert at the start of nothing",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "start",
+        "text": "First"
+      },
+      "now": {
+        "title": "T",
+        "content": ""
+      },
+      "cursor": null,
+      "want": {
+        "title": "T",
+        "content": "First\n"
+      }
+    },
+    {
+      "name": "insert at the cursor, in code points",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "cursor",
+        "text": "🍵 "
+      },
+      "now": {
+        "title": "T",
+        "content": "🥛 Milk\nTea\n"
+      },
+      "cursor": 7,
+      "want": {
+        "title": "T",
+        "content": "🥛 Milk\n🍵 Tea\n"
+      }
+    },
+    {
+      "name": "insert at the cursor after combining marks",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "cursor",
+        "text": "!"
+      },
+      "now": {
+        "title": "T",
+        "content": "Café au lait\n"
+      },
+      "cursor": 5,
+      "want": {
+        "title": "T",
+        "content": "Café! au lait\n"
+      }
+    },
+    {
+      "name": "insert at a cursor past the end, at the end",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "cursor",
+        "text": "!"
+      },
+      "now": {
+        "title": "T",
+        "content": "Tea\n"
+      },
+      "cursor": 99,
+      "want": {
+        "title": "T",
+        "content": "Tea\n!"
+      }
+    },
+    {
+      "name": "insert at a cursor before the start, at the start",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "cursor",
+        "text": "!"
+      },
+      "now": {
+        "title": "T",
+        "content": "Tea\n"
+      },
+      "cursor": -3,
+      "want": {
+        "title": "T",
+        "content": "!Tea\n"
+      }
+    },
+    {
+      "name": "insert at the cursor, with none",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "cursor",
+        "text": "x"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": null
+    },
+    {
+      "name": "the whole content, made again, would wipe out the typing",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "content",
+        "text": "Rewritten\n"
+      },
+      "now": {
+        "title": "T",
+        "content": "Milk\nTea\n"
+      },
+      "cursor": null,
+      "want": null
+    },
+    {
+      "name": "a title change in the editor counts as typing",
+      "before": {
+        "title": "T",
+        "content": "Milk\n"
+      },
+      "after": {
+        "title": "T",
+        "content": "Milk\n\n#tag\n"
+      },
+      "op": {
+        "kind": "insert",
+        "at": "end",
+        "text": "#tag"
+      },
+      "now": {
+        "title": "Groceries",
+        "content": "Milk\n"
+      },
+      "cursor": null,
+      "want": {
+        "title": "Groceries",
+        "content": "Milk\n\n#tag\n"
+      }
+    }
+  ]
+}

@@ -56,7 +56,7 @@ Status: ✓ done, – not needed, ☐ to do.
 | D5 | API: `GET /agent/runs`, `GET /agent/runs/{id}`, `POST …/undo`, `GET /agent/usage` | ✓ | ✓ | ☐ |
 | D6 | API: `GET/PUT /settings/account` (time zone) | ✓ | ✓ | ☐ |
 | D7 | Per-account caches for AI settings and agent configs: forgotten at sign-in and sign-out, an answer for an old account ignored, refetched when back online | ✓ | ✓ | ☐ |
-| D8 | `madeTo` (the `op` rules), identical to Go and TS | ✓ | ☐ | ☐ |
+| D8 | `madeTo` (the `op` rules), identical to Go and TS | ✓ | ✓ | ☐ |
 
 ### Settings and pages
 
@@ -204,7 +204,9 @@ Each phase ends with something a user can use, and each phase has a PR per app.
   - `quote.json`: content + quote → which body block, or the top (as written, longest line without
     syntax, ambiguous).
 
-  Go and TS read them now, so drift shows up before the phone apps exist.
+  Go and TS read them now, so drift shows up before the phone apps exist. Done for `made-to.json`
+  (Go, TS, Kotlin) and `cursor.json` (TS; Kotlin with phase 2's reading). `quote.json` comes with
+  phase 5, the first to need it.
 - **Fix the web gaps** (findings, item 6) so the phones copy the fixed behaviour:
   - an empty rule makes the page dirty and can't be saved silently;
   - the menu command says why it can't run;

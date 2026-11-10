@@ -193,8 +193,10 @@ typed since the run read the note.
 ### The rules for `op`
 
 They're the server's (`agent.EditorChange.MadeTo` in Go, `madeTo` in
-`apps/web/src/editor/agent-edit.ts`), and every implementation must give the same text for the same
-input.
+`apps/web/src/editor/agent-edit.ts`, `notes.core.agent.madeTo` in the Kotlin engine), and every
+implementation must give the same text for the same input. Each passes
+`shared/agent-fixtures/made-to.json`; add a case there for any change to these rules. Where the caret
+is, as `read` gives it, has its cases in `cursor.json`.
 
 | `op` | Made to `now` |
 | --- | --- |
