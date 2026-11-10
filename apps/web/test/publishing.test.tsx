@@ -353,6 +353,24 @@ describe('publishing a space', () => {
     expect(within(info).queryByRole('img', { name: 'Published' })).toBeNull()
   })
 
+  it('goes back from Customize site when the section itself goes: handed on, then taken down by its new owner', async () => {
+    let ana: (Client & { id: number }) | undefined
+    const { server, user, info } = await publishedInfo(async (s) => {
+      ana = await s.addAccount('ana')
+      expect((await s.api('POST', '/spaces/journal/invites', { userId: ana.id })).status).toBe(201)
+      const [invite] = (await ana.api<{ invites: { id: string }[] }>('GET', '/invites')).body.invites
+      expect((await ana.api('POST', `/invites/${invite?.id}/accept`)).status).toBe(200)
+    })
+    await customize(user, info)
+    expect((await server.api('PUT', '/spaces/journal/owner', { userId: ana?.id })).status).toBe(204)
+    expect((await ana?.api('DELETE', '/spaces/journal/publish'))?.status).toBe(204)
+    await act(() => reloadSpaces())
+    // A member of a space that isn't published has no Published section: the rest of Space info, not a blank page.
+    expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
+    await waitFor(() => expect(within(info).queryByRole('region', { name: 'Published' })).toBeNull())
+    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
+  })
+
   it('shows a member where the space is, and nothing to change', async () => {
     const { user } = await signedIn({
       as: 'ana',

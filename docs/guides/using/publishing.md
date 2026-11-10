@@ -81,6 +81,7 @@ can't have a domain of its own.
            proxy_pass http://127.0.0.1:8080/@garden/;
            proxy_set_header Host $host;
            proxy_set_header X-Forwarded-Proto $scheme;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
        }
    }
    ```
@@ -104,7 +105,9 @@ can't have a domain of its own.
 
 Point the domain's DNS at your server, then have the proxy send every request for the domain to
 notesd, adding `/@garden` before the path: `blog.example.com/tags/` goes to
-`127.0.0.1:8080/@garden/tags/`. Any proxy that can rewrite a path can do it.
+`127.0.0.1:8080/@garden/tags/`. Any proxy that can rewrite a path can do it. Have it pass the
+visitor's address in `X-Forwarded-For` too: the site's search is limited per visitor, and without it
+everyone shares one limit.
 
 ## Good to know
 

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ComponentType } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from 'react'
 import { flushSync } from 'react-dom'
 import { ApiError } from '../api/client'
 import type { Space, SpaceTrait } from '../api/types'
@@ -44,6 +44,30 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
     if (spaces && !space) onClose()
   }, [spaces, space, onClose])
 
+  /** Synchronously, so the new page can be measured and focused straight after. */
+  const swap = useCallback((next: string | null) => {
+    const el = frame.current
+    // Swapped again while the last swap still moves: measured as it is at rest, not mid-way.
+    if (typeof el?.getAnimations === 'function') for (const a of el.getAnimations({ subtree: true })) a.cancel()
+    const before = el?.offsetHeight ?? 0
+    flushSync(() => setPage(next))
+    if (el) settle(el, before, next === null ? -1 : 1)
+  }, [])
+
+  const back = useCallback(() => {
+    const to = opener.current
+    opener.current = null
+    swap(null)
+    if (to?.isConnected) to.focus()
+  }, [swap])
+
+  // The open page's section gone (its trait off and no longer offered, say): back to the rest, not a blank page.
+  const pageGone = page !== null && space !== undefined && !blocks(traitRows(space)).some((b) => b.kind === 'section' && b.key === page)
+  useEffect(() => {
+    // After the commit: going back swaps pages synchronously, which React can't do from inside an effect.
+    if (pageGone) queueMicrotask(back)
+  }, [pageGone, back])
+
   if (!space) return null
   const name = space.name
   // A shared space's name, icon and existence are its owner's (§7.9).
@@ -56,27 +80,10 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
         ? 'Move or delete its notes to delete it.'
         : null
 
-  /** Synchronously, so the new page can be measured and focused straight after. */
-  function swap(next: string | null) {
-    const el = frame.current
-    // Swapped again while the last swap still moves: measured as it is at rest, not mid-way.
-    if (typeof el?.getAnimations === 'function') for (const a of el.getAnimations({ subtree: true })) a.cancel()
-    const before = el?.offsetHeight ?? 0
-    flushSync(() => setPage(next))
-    if (el) settle(el, before, next === null ? -1 : 1)
-  }
-
   function showPage(key: string) {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     swap(key)
     document.getElementById(pageHeadingId)?.focus()
-  }
-
-  function back() {
-    const to = opener.current
-    opener.current = null
-    swap(null)
-    if (to?.isConnected) to.focus()
   }
 
   const pageFor = (key: string): TraitPage => ({ slot, open: page === key, headingId: pageHeadingId, show: () => showPage(key), back })

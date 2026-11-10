@@ -269,6 +269,9 @@
 }
 
 .path {
+  /* A handle runs to 64 characters: wraps rather than pushing Copy and the link out of a narrow row. */
+  min-width: 0;
+  overflow-wrap: anywhere;
   font: 500 13px var(--font-mono);
   color: var(--ink);
 }
