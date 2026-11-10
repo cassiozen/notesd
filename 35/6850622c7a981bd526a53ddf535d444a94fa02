@@ -1,0 +1,27 @@
+shared/sync-engine/src/jvmTest/kotlin/notes/core/agent/AgentSocketServerTest.kt
+  s_cc6cacc0a6fc01::t_2d5ab46a47b277 1-269
+shared/sync-engine/src/jvmTest/kotlin/notes/core/agent/AgentSocketTest.kt
+  s_cc6cacc0a6fc01::t_2d5ab46a47b277 1-305
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_2d5ab46a47b277 381-382
+shared/sync-engine/src/jvmMain/kotlin/notes/core/agent/AgentSocket.kt
+  s_cc6cacc0a6fc01::t_2d5ab46a47b277 1-352
+shared/sync-engine/src/jvmMain/kotlin/notes/core/api/ApiClient.kt
+  s_cc6cacc0a6fc01::t_2d5ab46a47b277 5,22-24,67-72,470-508,637
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "356850622c7a981bd526a53ddf535d444a94fa02",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
