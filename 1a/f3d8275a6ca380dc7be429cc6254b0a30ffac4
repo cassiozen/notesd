@@ -32,6 +32,7 @@ shared/sync-engine/src/jvmTest/kotlin/notes/core/api/AgentApiTest.kt
 apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
   s_cc6cacc0a6fc01::t_3c925471bb2d69 90,100,120,207-209
   s_cc6cacc0a6fc01::t_b36b7b8b5696f1 210
+  s_cc6cacc0a6fc01::t_96e297751c4cd6 96
 apps/android/app/src/test/kotlin/notes/app/settings/AiSettingsTest.kt
   s_cc6cacc0a6fc01::t_52c7d1ed6a2c2d 198-202,204
   s_cc6cacc0a6fc01::t_20cc13e507a000 127
