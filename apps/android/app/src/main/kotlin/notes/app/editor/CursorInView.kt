@@ -39,7 +39,9 @@ private fun NoteEditText.revealCursor() {
 fun NoteEditText.revealMatch() {
     val m = currentMatch() ?: return
     val layout = layout ?: return
-    val viewport = (parent as? View)?.height ?: return
+    // The scroller's height: the editor sits in a frame with its cards' layer.
+    val viewport = generateSequence(parent) { it.parent }.filterIsInstance<NestedScrollView>().firstOrNull()?.height
+        ?: return
     val top = layout.getLineTop(layout.getLineForOffset(m.start)) + totalPaddingTop
     val bottom = layout.getLineBottom(layout.getLineForOffset(m.end)) + totalPaddingTop
     val visible = Rect()

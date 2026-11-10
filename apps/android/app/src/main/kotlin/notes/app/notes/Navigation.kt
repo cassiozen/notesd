@@ -424,6 +424,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                 LaunchedEffect(key.id) { graph.email.refresh() }
                                 LaunchedEffect(key.id) { graph.scheduler.noteOpened() }
                                 val writing by graph.agentLink.socket.writing.collectAsStateWithLifecycle()
+                                val overlays by graph.agentLink.socket.overlays.collectAsStateWithLifecycle()
                                 EditorScreen(
                                     vm = viewModel(key = key.id) {
                                         EditorViewModel(
@@ -471,7 +472,9 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         graph.agentLink.requestRun(AgentLink.MENU, key.id, space)
                                     },
                                     notices = remember(key.id) { graph.agentLink.menuDropped(key.id) },
-                                    agentWriting = key.id in writing
+                                    agentWriting = key.id in writing,
+                                    overlays = overlays[key.id].orEmpty(),
+                                    onOverlayAnswer = { o, answer -> graph.agentLink.socket.answerOverlay(o, answer) }
                                 )
                             }
                             entry<SettingsKey> {

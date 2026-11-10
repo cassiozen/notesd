@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.text.Spanned
 import android.util.TypedValue
 import androidx.compose.ui.graphics.toArgb
 import androidx.core.content.res.ResourcesCompat
@@ -28,6 +29,12 @@ class EditorStyle(
 ) {
     fun dp(v: Float) = v * density
 
+    /**
+     * Room to leave under a line of the text, in px, for what's drawn between blocks (an agent's marker and
+     * cards): given the text and the line's start and end. Added by [LeafStyleSpan] after its own spacing.
+     */
+    var roomBelow: ((Spanned, Int, Int) -> Int)? = null
+
     val ink get() = tokens.ink.toArgb()
     val ink2 get() = tokens.ink2.toArgb()
     val ink3 get() = tokens.ink3.toArgb()
@@ -38,6 +45,7 @@ class EditorStyle(
     val link get() = tokens.link.toArgb()
     val hover get() = tokens.hover.toArgb()
     val hairStrong get() = tokens.hairStrong.toArgb()
+    val chip get() = tokens.chip.toArgb()
     val onSolid get() = tokens.onSolid.toArgb()
 
     /** Behind #tags (web: .prose [data-tag]). */

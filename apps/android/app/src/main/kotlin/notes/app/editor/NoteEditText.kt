@@ -12,6 +12,7 @@ import android.text.Editable
 import android.text.InputFilter
 import android.text.InputType
 import android.text.Layout
+import android.text.NoCopySpan
 import android.text.Selection
 import android.text.SpannableString
 import android.text.Spanned
@@ -19,23 +20,27 @@ import android.text.TextPaint
 import android.text.TextUtils
 import android.text.TextWatcher
 import android.text.style.MetricAffectingSpan
+import android.text.style.UpdateLayout
 import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ViewConfiguration
+import android.view.ViewTreeObserver
 import android.view.inputmethod.BaseInputConnection
 import android.view.inputmethod.EditorInfo
 import android.view.inputmethod.InputConnection
 import android.view.inputmethod.InputConnectionWrapper
 import android.view.inputmethod.InputMethodManager
+import android.widget.FrameLayout
 import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withTranslation
 import kotlin.math.abs
 import kotlinx.coroutines.delay
 import notes.app.ui.Tokens
+import notes.core.agent.Overlay
 import notes.core.doc.Container
 import notes.core.doc.Document
 import notes.core.doc.Leaf
@@ -93,6 +98,53 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     private val imageSpans = ImageSpans(this)
     private val normalizer = Normalizer(editorStyle, imageSpans)
     private val presence = AgentPresence(this, editorStyle)
+    private val cards = AgentCards(this, editorStyle).also { c ->
+        editorStyle.roomBelow = { t, start, end -> presence.roomBelow(t, start, end) + c.roomBelow(t, start, end) }
+    }
+
+    /** For tests: the cards beside the note. */
+    internal val agentCards: AgentCards get() = cards
+
+    /** Shows what runs put beside the note, all of it, each headed by [label]: none for a locked note. */
+    fun showOverlays(list: List<Overlay>, label: String) = cards.show(list, label)
+
+    /** The user answered a card: `dismiss`, `accept` or `reject`. */
+    var onOverlayAnswer: ((Overlay, String) -> Unit)?
+        get() = cards.onAnswer
+        set(value) {
+            cards.onAnswer = value
+        }
+
+    /** Where the card views go: a layer over this view, its size, scrolling with it. */
+    fun attachCardLayer(layer: FrameLayout?) = cards.attach(layer)
+
+    private val placeCards = ViewTreeObserver.OnPreDrawListener {
+        cards.place()
+        true
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        viewTreeObserver.addOnPreDrawListener(placeCards)
+    }
+
+    override fun onDetachedFromWindow() {
+        viewTreeObserver.removeOnPreDrawListener(placeCards)
+        super.onDetachedFromWindow()
+    }
+
+    /** Lays the whole text out again: the room asked for under its lines changed. */
+    internal fun reflow() {
+        val t = text ?: return
+        val r = Reflow()
+        t.setSpan(r, 0, t.length, Spanned.SPAN_INCLUSIVE_INCLUSIVE)
+        t.removeSpan(r)
+    }
+
+    /** Added and taken away at once: the layout redoes what it covers. */
+    private class Reflow :
+        UpdateLayout,
+        NoCopySpan
 
     /** For tests: the agent's marker and highlight. */
     internal val agentPresence: AgentPresence get() = presence
@@ -171,6 +223,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         if (editorStyle.tokens == tokens) return
         editorStyle.tokens = tokens
         applyColors()
+        cards.restyle()
         invalidate()
     }
 
@@ -270,6 +323,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         undoStack.clear()
         clearPending()
         presence.textReplaced()
+        cards.reanchor()
         refreshFind()
         publishState()
     }
@@ -310,6 +364,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         clearPending()
         // Still composing after the wait: the IME's idea of the text is out of date.
         if (composing) context.getSystemService(InputMethodManager::class.java)?.restartInput(this)
+        cards.keep()
         if (byAgent) {
             presence.landed(was)
             changed(byUser = false)
@@ -503,6 +558,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     private fun changed(byUser: Boolean = true) {
         if (byUser) presence.userChanged()
         presence.keep()
+        cards.keep()
         refreshFind()
         onChange?.invoke(byUser)
         publishState()
@@ -517,11 +573,14 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         val saved = t.filters
         try {
             t.filters = emptyArray()
+            val was = t.toString()
+            val anchored = cards.offsets()
             for (span in t.getSpans(0, t.length, EditorSpan::class.java)) t.removeSpan(span)
             t.replace(0, t.length, state.text)
             Selection.setSelection(t, state.selStart.coerceIn(0, t.length), state.selEnd.coerceIn(0, t.length))
             normalizer.normalize(t)
             presence.textReplaced()
+            cards.remap(was, anchored)
         } finally {
             t.filters = saved
             guard--
