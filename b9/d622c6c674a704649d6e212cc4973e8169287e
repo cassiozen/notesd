@@ -1,0 +1,26 @@
+shared/sync-engine/src/jvmTest/kotlin/notes/core/agent/AgentSocketServerTest.kt
+  s_cc6cacc0a6fc01::t_2a21712f324550 164-183
+  s_cc6cacc0a6fc01::t_62af4ba2e97239 163
+shared/sync-engine/src/jvmMain/kotlin/notes/core/agent/AgentSocket.kt
+  s_cc6cacc0a6fc01::t_3029918d9c3a48 61-71,84-93,109-115,126-135,154,170-171,218-279,318,327,338-348,362-371,376-385,391-398,432,444-451,454-456
+  s_cc6cacc0a6fc01::t_a255e38cca2251 457
+shared/sync-engine/src/jvmTest/kotlin/notes/core/agent/AgentSocketTest.kt
+  s_cc6cacc0a6fc01::t_a6e6cf07def349 284-342,344-392
+  s_cc6cacc0a6fc01::t_43346887201278 343
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9d622c6c674a704649d6e212cc4973e8169287e",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
