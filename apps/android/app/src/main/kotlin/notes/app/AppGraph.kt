@@ -37,6 +37,7 @@ import notes.app.account.Sealer
 import notes.app.agent.AgentConfigs
 import notes.app.agent.AgentLink
 import notes.app.agent.AiSetup
+import notes.app.agent.OpenNoteEditors
 import notes.app.images.ImageLoader
 import notes.app.locks.Biometrics
 import notes.app.locks.FingerprintUnlock
@@ -53,9 +54,6 @@ import notes.app.sharing.Sharing
 import notes.app.sync.Connectivity
 import notes.app.sync.SyncScheduler
 import notes.app.ui.SpaceThemes
-import notes.core.agent.AgentChange
-import notes.core.agent.AgentEditors
-import notes.core.agent.EditorReply
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 import notes.core.api.ClientInfo
@@ -180,7 +178,7 @@ class AppGraph(
         foreground,
         connectivity.online,
         openNotes,
-        NoEditors,
+        OpenNoteEditors(openNotes),
         { api() },
         scope
     )
@@ -451,11 +449,4 @@ internal fun decodeFilter(s: String?): NoteFilter? = when {
         NoteFilter.Tag(s.substring(4).substringBefore('\n'), s.substringAfter('\n'))
 
     else -> null
-}
-
-/** Until the editor answers runs: every note is read from the server's copy. */
-private object NoEditors : AgentEditors {
-    override suspend fun read(noteId: String) = EditorReply.Refused("not_open")
-
-    override suspend fun apply(noteId: String, runId: String, change: AgentChange) = EditorReply.Refused("not_open")
 }
