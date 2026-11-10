@@ -1,0 +1,23 @@
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_f957389a0e6379 12-14,76,97-98,104
+docs/guides/apps/android.md
+  s_cc6cacc0a6fc01::t_f957389a0e6379 74-77
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_c35eeb0a861742 12-13,306-311
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "bedbc9d5577095349e8bfa80c478b13395279cee",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
