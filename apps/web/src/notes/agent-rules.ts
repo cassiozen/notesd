@@ -1,7 +1,6 @@
 import type { AgentConfig, AgentConfigInput, AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
 import { sentence } from '../auth/errors'
-import type { Idea } from './agent-examples'
 
 /** A space's agent being edited. */
 export type AgentDraft = Required<AgentConfigInput>
@@ -52,9 +51,12 @@ export const GROUPS: { key: TriggerGroup; title: string }[] = [
   { key: 'moved', title: 'When notes come and go' },
 ]
 
+/** A rule to start from. title: what it does, in a few words. */
+export type Idea = { title: string; prompt: string }
+
 /**
  * label: the trigger's name, as Activity shows it. rule: a rule's heading, always "When …".
- * when: exactly when it happens. idea: a general one, where the examples have none or need a Digest.
+ * when: exactly when it happens. idea: one to start from, offered while the rule is empty.
  */
 export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; rule: string; when: string; idea?: Idea }[] = [
   {

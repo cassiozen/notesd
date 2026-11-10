@@ -34,17 +34,12 @@ enum class TriggerGroup(val title: String) {
     Moved("When notes come and go")
 }
 
-/** A rule to borrow. [title]: what it does, in a few words. [reads]: notes it needs the agent to always read. */
-data class Idea(
-    val title: String,
-    val prompt: String,
-    val menuLabel: String? = null,
-    val reads: List<String> = emptyList()
-)
+/** A rule to start from. [title]: what it does, in a few words. */
+data class Idea(val title: String, val prompt: String)
 
 /**
  * A moment the agent can act on. [label]: its name, as Activity shows it. [rule]: a rule's heading, always
- * "When …". [whenText]: exactly when it happens. [idea]: a general one, where the examples have none.
+ * "When …". [whenText]: exactly when it happens. [idea]: one to start from, offered while the rule is empty.
  */
 data class Trigger(
     val key: String,
@@ -128,151 +123,45 @@ fun trigger(key: String): Trigger? = TRIGGERS.firstOrNull { it.key == key }
 /** A trigger's name, as Activity shows it. */
 fun triggerLabel(key: String): String = trigger(key)?.label ?: key
 
-/** A whole agent to learn from, or to take part or all of. [rules] by moment. */
-data class AgentExample(val name: String, val blurb: String, val prompt: String, val rules: Map<String, Idea>)
-
-private val DIGEST_TRIM = Idea(
-    "Keep the Digest current",
-    "Take out of the Digest anything that came only from this entry.",
-    reads = listOf("Digest")
+/** A whole agent to start from: its purpose and rules, by moment. [menuLabel]: its menu rule's command name. */
+data class AgentExample(
+    val name: String,
+    val prompt: String,
+    val rules: Map<String, String>,
+    val menuLabel: String = ""
 )
 
 // From the agents guide, as the web's agent-examples.ts.
 val EXAMPLES: List<AgentExample> = listOf(
     AgentExample(
-        "Journal",
-        "Starts each entry with a few follow-ups, and keeps a Digest of what’s on your mind.",
-        "My journal. These words are mine: don’t rewrite or add to what I write unless a rule says so. Keep a note " +
-            "titled Digest that sums up my recent entries.",
+        "Tidy tags",
+        "Everyday notes. Keep them findable with a small, consistent set of tags.",
         linkedMapOf(
-            "noteCreated" to Idea(
-                "Follow-ups from the Digest",
-                "Show me a card at the top with a short list of 2 to 4 follow-ups and questions, no heading. Take " +
-                    "them mostly from For now in the Digest (“Cold gone yet?”, “Did the talk happen?”), with one " +
-                    "from Lasting now and then. Friendly and direct, like a friend catching up: ask what happened, " +
-                    "not how I felt about it. Only if there’s no Digest, ask about my day. Don’t write in the entry.",
-                reads = listOf("Digest")
-            ),
-            "newNoteDone" to Idea(
-                "Update the Digest",
-                "Update the Digest with this entry, in two sections, a few short lines each. Lasting: realizations " +
-                    "about myself, patterns, values, big decisions; things worth knowing about me months from now. " +
-                    "Keep these unless I say otherwise. For now: things to follow up on soon (a cold, a deadline, " +
-                    "plans for the weekend), each with the date I first mentioned it. Take one out once I say it’s " +
-                    "over, or after 2 weeks with no mention. Merge with what’s there and rewrite the whole " +
-                    "Digest. If I wrote nothing, change nothing. Create the Digest if there isn’t one.",
-                reads = listOf("Digest")
-            ),
-            "noteDeleted" to DIGEST_TRIM,
-            "movedOut" to DIGEST_TRIM
-        )
+            "newNoteDone" to "Add 1 to 3 tags on a line at the end, reusing the space’s tags whenever one fits. " +
+                "Change nothing else.",
+            "menu" to "Suggest a fix for each spelling mistake and obvious typo, for me to accept or reject. Keep " +
+                "the wording, punctuation and formatting."
+        ),
+        menuLabel = "Fix typos"
     ),
     AgentExample(
         "Recipes",
-        "Turns ingredients into a checklist in metric, tags each recipe, and scales it when you ask.",
         "Recipes I cook. I measure in grams and millilitres.",
         linkedMapOf(
-            "newNoteDone" to Idea(
-                "Metric checklist, tagged",
-                "Turn the ingredients into a checklist, converting cups and ounces to metric. Tag the recipe with " +
-                    "its cuisine and main ingredient. Leave the method as written."
-            ),
-            "menu" to Idea(
-                "Scale to 2 servings",
-                "Rewrite the quantities for 2 servings, with the originals in brackets.",
-                menuLabel = "Scale to 2 servings"
-            )
-        )
-    ),
-    AgentExample(
-        "Tidy tags",
-        "Tags each new note from a small, consistent set, and suggests typo fixes when you ask.",
-        "Everyday notes. Keep them findable with a small, consistent set of tags.",
-        linkedMapOf(
-            "newNoteDone" to Idea(
-                "Tag from a small set",
-                "Add 1 to 3 tags on a line at the end, reusing the space’s tags whenever one fits. Change nothing " +
-                    "else."
-            ),
-            "menu" to Idea(
-                "Suggest typo fixes",
-                "Suggest a fix for each spelling mistake and obvious typo, for me to accept or reject. Keep the " +
-                    "wording, punctuation and formatting.",
-                menuLabel = "Fix typos"
-            )
-        )
+            "newNoteDone" to "Turn the ingredients into a checklist, converting cups and ounces to metric. Tag the " +
+                "recipe with its cuisine and main ingredient. Leave the method as written.",
+            "menu" to "Rewrite the quantities for 2 servings, with the originals in brackets."
+        ),
+        menuLabel = "Scale to 2 servings"
     )
 )
 
-/** An idea for a rule, and the example it's from (null: a general one). */
-data class IdeaFrom(val idea: Idea, val from: String?)
+/** Nothing written yet to start from an example over: no purpose, no rules. */
+fun isBlank(d: AgentDraft): Boolean = d.prompt.isBlank() && d.triggers.isEmpty()
 
-/** Ideas for a rule: the examples', then a general one for a moment no example covers well. */
-fun ideasFor(trigger: String): List<IdeaFrom> {
-    val out = ArrayList<IdeaFrom>()
-    for (ex in EXAMPLES) {
-        val idea = ex.rules[trigger] ?: continue
-        if (out.none { it.idea.prompt == idea.prompt }) out += IdeaFrom(idea, ex.name)
-    }
-    trigger(trigger)?.idea?.let { out += IdeaFrom(it, null) }
-    return out
-}
-
-/** The notes an example's rules need it to always read. */
-fun readsOf(ex: AgentExample): List<String> = ex.rules.values.flatMap { it.reads }.distinct()
-
-private val menuLabels = EXAMPLES.mapNotNullTo(HashSet()) { it.rules["menu"]?.menuLabel }
-
-/** The notes added to those it reads, as many as fit: References offers the rest while a rule needs them. */
-private fun reading(refs: List<String>, more: List<String>): List<String> {
-    val out = refs.toMutableList()
-    for (r in more) if (r !in out && out.size < MAX_REFERENCES) out += r
-    return out
-}
-
-/**
- * The draft with the idea as its rule for the moment, and the notes it needs read. A command name typed
- * already stays, unless it's another idea's.
- */
-fun withIdea(d: AgentDraft, trigger: String, idea: Idea): AgentDraft {
-    val name = d.menuLabel.trim()
-    val menuLabel = if (trigger == "menu" && idea.menuLabel != null && (name.isEmpty() || name in menuLabels)) {
-        idea.menuLabel
-    } else {
-        d.menuLabel
-    }
-    return d.copy(
-        triggers = d.triggers + (trigger to idea.prompt),
-        menuLabel = menuLabel,
-        referenceNotes = reading(d.referenceNotes, idea.reads)
-    )
-}
-
-/** The draft with all of the example: its purpose, and its rules over any for the same moments. Others stay. */
-fun withExample(d: AgentDraft, ex: AgentExample): AgentDraft {
-    var out = d.copy(prompt = ex.prompt)
-    for ((trigger, idea) in ex.rules) {
-        out = withIdea(out.copy(menuLabel = if (trigger == "menu") "" else out.menuLabel), trigger, idea)
-    }
-    return out
-}
-
-/** Whether taking the idea would change the draft's rule: not if it has it, as [withIdea] would leave it. */
-fun hasIdea(d: AgentDraft, trigger: String, idea: Idea): Boolean {
-    val w = withIdea(d, trigger, idea)
-    return w.triggers[trigger] == d.triggers[trigger] && w.menuLabel == d.menuLabel
-}
-
-/** Notes the draft's rules taken from examples need read, as each was taken (at any moment): an edited one may not. */
-fun readsNeeded(d: AgentDraft): List<String> {
-    val prompts = d.triggers.values.toSet()
-    return EXAMPLES.flatMap { it.rules.values }.filter { it.prompt in prompts }.flatMap { it.reads }.distinct()
-}
-
-/** Whether a draft has every part of the example already. */
-fun hasExample(d: AgentDraft, ex: AgentExample): Boolean = d.prompt == ex.prompt &&
-    ex.rules.all { (t, idea) -> hasIdea(d, t, idea) } &&
-    readsOf(ex).all { it in d.referenceNotes }
+/** The draft with the example's purpose and rules. Only offered while blank, so there's nothing of mine to keep. */
+fun withExample(d: AgentDraft, ex: AgentExample): AgentDraft =
+    d.copy(prompt = ex.prompt, triggers = ex.rules, menuLabel = ex.menuLabel)
 
 /** A title as the server keeps one the agent reads: trimmed, each run of spaces one space. */
 fun titleOf(t: String): String = t.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.joinToString(" ")

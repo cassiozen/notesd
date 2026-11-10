@@ -73,23 +73,25 @@ describe('a space’s agent', () => {
     expect(within(page).queryByLabelText('What this space is for')).toBeNull()
     await user.click(within(page).getByRole('checkbox', { name: 'Agent' }))
     expect(within(page).getByText('Notes go to 127.0.0.1', { exact: false })).toBeTruthy()
-    await user.click(within(page).getByRole('button', { name: 'Journal' }))
-    await user.click(within(page).getByRole('button', { name: 'Use all' }))
-    expect(within(page).getByRole('article', { name: 'When a new note is opened' })).toBeTruthy()
-    expect(within(page).getByRole('list', { name: 'Notes it always reads' }).textContent).toContain('Digest')
+    await user.click(within(page).getByRole('button', { name: 'Recipes' }))
+    expect(within(page).getByRole('article', { name: 'When you finish a new note' })).toBeTruthy()
+    expect((within(page).getByLabelText('Command name, as the menu shows it') as HTMLInputElement).value).toBe('Scale to 2 servings')
+    // Something's written: no examples to start from over it.
+    expect(within(page).queryByRole('group', { name: 'Start from an example' })).toBeNull()
     await user.click(within(page).getByRole('button', { name: 'Save' }))
 
     await saved(page)
     const [config] = await configs(server)
     expect(config?.spaceId).toBe('diary')
     expect(config?.enabled).toBe(true)
-    expect(Object.keys(config?.triggers ?? {}).toSorted()).toEqual(['movedOut', 'newNoteDone', 'noteCreated', 'noteDeleted'])
-    expect(config?.referenceNotes).toEqual(['Digest'])
+    expect(Object.keys(config?.triggers ?? {}).toSorted()).toEqual(['menu', 'newNoteDone'])
+    expect(config?.menuLabel).toBe('Scale to 2 servings')
+    expect(config?.referenceNotes ?? []).toEqual([])
     // Back on Space info: the server's trait by the space's name, the row saying so, and its Activity.
     await back(user, page, 'Diary')
     expect(await within(info).findByRole('img', { name: 'Agent' })).toBeTruthy()
     expect(document.activeElement).toBe(await agentRow(info))
-    expect((await agentRow(info)).textContent).toBe('On4 rules')
+    expect((await agentRow(info)).textContent).toBe('On2 rules')
     expect(within(await agentSection(info)).getByRole('button', { name: 'Activity…' })).toBeTruthy()
   })
 
@@ -102,7 +104,7 @@ describe('a space’s agent', () => {
     expect(within(page).getByText('No rules yet', { exact: false })).toBeTruthy()
     await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
     await user.click(within(page).getByRole('button', { name: /^When you ask, from the note’s menu/ }))
-    // Empty and ready to type, with the examples' ideas for it.
+    // Empty and ready to type.
     const prompt = within(page).getByLabelText(/^When you ask, from the note’s menu: what the agent does/) as HTMLTextAreaElement
     expect(document.activeElement).toBe(prompt)
     expect(prompt.value).toBe('')
@@ -110,14 +112,8 @@ describe('a space’s agent', () => {
     await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
     expect(within(page).queryByRole('button', { name: /^When you ask, from the note’s menu/ })).toBeNull()
     await user.click(within(page).getByRole('button', { name: 'Close' }))
-    const ideas = within(page).getByRole('group', { name: 'Ideas' })
-    await user.click(within(ideas).getByRole('button', { name: 'Suggest typo fixes, from Tidy tags' }))
-    expect(prompt.value).toMatch(/^Suggest a fix for each spelling mistake/)
-    expect(document.activeElement).toBe(prompt)
-    expect((within(page).getByLabelText('Command name, as the menu shows it') as HTMLInputElement).value).toBe('Fix typos')
-    expect(within(page).queryByRole('group', { name: 'Ideas' })).toBeNull()
-    await user.clear(prompt)
     await user.type(prompt, 'Fix typos only.')
+    await user.type(within(page).getByLabelText('Command name, as the menu shows it'), 'Fix typos')
     await user.type(within(page).getByLabelText('Note title'), 'Digest{Enter}')
 
     // A menu rule needs the command's name.
@@ -146,39 +142,28 @@ describe('a space’s agent', () => {
     expect(await configs(server)).toMatchObject([{ enabled: false, prompt: 'My notes.', triggers: {}, referenceNotes: ['Digest'] }])
   })
 
-  it('shows an example’s parts where they’d go, each to take or leave', async () => {
-    const { server, user } = await signedIn({
+  it('offers examples only while nothing’s written, and an idea for an empty rule', async () => {
+    const { user } = await signedIn({
       seed: async (s) => {
         await withAI(s)
         await s.api('PUT', '/agent/spaces/default', { enabled: false, prompt: 'Mine.', triggers: { newNoteDone: 'Tag it.' } })
       },
     })
     const { page } = await agentPage(user)
-    await user.click(within(page).getByRole('button', { name: 'Journal' }))
-    expect(within(page).getByRole('button', { name: 'Journal', pressed: true })).toBeTruthy()
+    expect(within(page).queryByRole('group', { name: 'Start from an example' })).toBeNull()
+    await user.clear(within(page).getByLabelText('What this space is for'))
+    await user.click(within(page).getByRole('button', { name: 'Remove rule: When you finish a new note' }))
+    expect(within(page).getByRole('group', { name: 'Start from an example' })).toBeTruthy()
 
-    // Beside a rule of mine for the same moment, it's another version of it.
-    const version = within(page).getByRole('complementary', { name: 'Journal’s rule: When you finish a new note' })
-    expect(within(version).getByRole('button', { name: 'Use instead' })).toBeTruthy()
-    // A moment I have no rule for: added with the note it needs read.
-    const opened = within(page).getByRole('complementary', { name: 'Journal’s rule: When a new note is opened' })
-    await user.click(within(opened).getByRole('button', { name: 'Add' }))
-    expect(within(page).getByRole('article', { name: 'When a new note is opened' })).toBeTruthy()
-    expect(within(page).queryByRole('complementary', { name: 'Journal’s rule: When a new note is opened' })).toBeNull()
-    expect(within(page).getByRole('list', { name: 'Notes it always reads' }).textContent).toContain('Digest')
-    expect((within(page).getByLabelText('What this space is for') as HTMLTextAreaElement).value).toBe('Mine.')
-
-    // Closed: what wasn't taken goes; what was stays, unsaved.
-    await user.click(within(page).getByRole('button', { name: 'Journal' }))
-    expect(within(page).queryByRole('complementary')).toBeNull()
-    expect(within(page).getByRole('article', { name: 'When you finish a new note' })).toBeTruthy()
-    expect((within(page).getByLabelText(/^When you finish a new note: what the agent does/) as HTMLTextAreaElement).value).toBe('Tag it.')
+    await user.click(within(page).getByRole('button', { name: '+ Add rule' }))
+    await user.click(within(page).getByRole('button', { name: /^When you finish editing a note/ }))
+    const prompt = within(page).getByLabelText(/^When you finish editing a note: what the agent does/) as HTMLTextAreaElement
+    await user.click(within(page).getByRole('button', { name: 'Finished tasks last' }))
+    expect(prompt.value).toBe('Move finished tasks to the end of their list.')
+    expect(document.activeElement).toBe(prompt)
+    expect(within(page).queryByRole('button', { name: 'Finished tasks last' })).toBeNull()
+    // Taken, it's mine: the switch stays as it was.
     expect((within(page).getByRole('checkbox', { name: 'Agent' }) as HTMLInputElement).checked).toBe(false)
-    await user.click(within(page).getByRole('button', { name: 'Save' }))
-    await saved(page)
-    expect(await configs(server)).toMatchObject([
-      { enabled: false, prompt: 'Mine.', triggers: { newNoteDone: 'Tag it.', noteCreated: expect.stringContaining('follow-ups') }, referenceNotes: ['Digest'] },
-    ])
   })
 
   it('moves a rule to another moment, keeping what it says', async () => {
@@ -213,26 +198,6 @@ describe('a space’s agent', () => {
     const title = within(page).getByLabelText('Note title') as HTMLInputElement
     await user.type(title, 'dige')
     await waitFor(() => expect([...(title.list?.options ?? [])].map((o) => o.value)).toEqual(['Weekly digest']))
-  })
-
-  it('says when there’s no room for a note a rule it took needs', async () => {
-    const { user } = await signedIn({
-      seed: async (s) => {
-        await withAI(s)
-        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'Mine.', referenceNotes: ['A', 'B', 'C', 'D', 'E'] })
-      },
-    })
-    const { page } = await agentPage(user)
-    await user.click(within(page).getByRole('button', { name: 'Journal' }))
-    const opened = within(page).getByRole('complementary', { name: 'Journal’s rule: When a new note is opened' })
-    await user.click(within(opened).getByRole('button', { name: 'Add' }))
-    await user.click(within(page).getByRole('button', { name: 'Journal' }))
-    expect(within(page).getByText('No room for Digest, which a rule needs', { exact: false })).toBeTruthy()
-    // Room made: it's offered, and taken.
-    await user.click(within(page).getByRole('button', { name: 'Stop reading E' }))
-    await user.click(within(page).getByRole('button', { name: 'Read Digest: a rule needs it' }))
-    expect(within(page).getByRole('list', { name: 'Notes it always reads' }).textContent).toContain('Digest')
-    expect(within(page).queryByText('No room', { exact: false })).toBeNull()
   })
 
   it('keeps what’s typed while it saves', async () => {

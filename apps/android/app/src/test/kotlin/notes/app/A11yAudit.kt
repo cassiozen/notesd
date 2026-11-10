@@ -33,8 +33,9 @@ fun ComposeTestRule.auditAccessibility(screen: String, minControls: Int = 3, vie
     }
     fun visit(node: SemanticsNode) {
         val config = node.config
-        // Scrolled out of view: audited where a test scrolls to it.
-        val onScreen = node.boundsInRoot.width > 0f && node.boundsInRoot.height > 0f
+        // Scrolled out of view, even partly (its target then clipped, not small): audited where a test scrolls to it.
+        val onScreen = node.boundsInRoot.width >= node.size.width && node.boundsInRoot.height >= node.size.height &&
+            node.boundsInRoot.height > 0f
         if (onScreen && config.getOrNull(SemanticsActions.OnClick) != null) {
             val text = config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
             val description = config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString().orEmpty()

@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { createPortal } from 'react-dom'
 import type { AgentConfig, AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
@@ -10,18 +10,7 @@ import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
 import field from '../ui/field.module.css'
 import { retryAgentConfigs, saveAgentConfig, useAgentConfigs, useAgentConfigsFailed } from './agent-config'
-import {
-  EXAMPLES,
-  hasExample,
-  hasIdea,
-  ideasFor,
-  readsNeeded,
-  readsOf,
-  withExample,
-  withIdea,
-  type AgentExample,
-  type Idea,
-} from './agent-examples'
+import { EXAMPLES, isBlank, withExample, type AgentExample } from './agent-examples'
 import {
   GROUPS,
   MAX_REFERENCES,
@@ -33,6 +22,7 @@ import {
   sameAgent,
   type AgentDraft,
   type AgentErrors,
+  type Idea,
 } from './agent-rules'
 import { providerHost, retryAiSettings, useAiSettings, useAiSettingsFailed } from './ai-settings'
 import { titleOf, useFoundTitles, useTitleMatches } from './note-titles'
@@ -84,7 +74,6 @@ export function AgentSection({ space, page }: { space: Space; page: TraitPage })
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [savedNote, setSavedNote] = useState(false)
-  const [showing, setShowing] = useState<AgentExample | null>(null)
   const headingId = useId()
   const rowLabelId = useId()
   const rowSummaryId = useId()
@@ -224,18 +213,10 @@ export function AgentSection({ space, page }: { space: Space; page: TraitPage })
               {/* Never set up, it's one line until turned on; one turned off keeps its rules in view, to change. */}
               {(draft.enabled || saved) && (
                 <div className={styles.parts}>
-                  <Examples
-                    showing={showing}
-                    draft={draft}
-                    onShow={setShowing}
-                    onUseAll={(ex) => {
-                      change(withExample(draft, ex))
-                      setShowing(null)
-                    }}
-                  />
-                  <Purpose draft={draft} example={showing} error={errors.prompt} onChange={change} />
-                  <Rules draft={draft} example={showing} errors={errors} onChange={change} />
-                  <References spaceId={spaceId} draft={draft} example={showing} error={errors.referenceNotes} onChange={change} />
+                  {isBlank(draft) && <Examples onPick={(ex) => change(withExample(draft, ex))} />}
+                  <Purpose draft={draft} error={errors.prompt} onChange={change} />
+                  <Rules draft={draft} errors={errors} onChange={change} />
+                  <References spaceId={spaceId} draft={draft} error={errors.referenceNotes} onChange={change} />
                 </div>
               )}
             </form>
@@ -281,80 +262,25 @@ function OnOff({ draft, provider, onChange }: { draft: AgentDraft; provider: str
   )
 }
 
-/**
- * Examples to learn from: one picked shows its parts where they'd go, each to take or leave. Taking
- * one never turns the agent on, or saves.
- */
-function Examples(props: {
-  showing: AgentExample | null
-  draft: AgentDraft
-  onShow: (ex: AgentExample | null) => void
-  onUseAll: (ex: AgentExample) => void
-}) {
-  const { showing, draft, onShow, onUseAll } = props
+/** While nothing's written: an example's purpose and rules, to start from. Never turns it on, or saves. */
+function Examples({ onPick }: { onPick: (ex: AgentExample) => void }) {
   return (
-    <section className={[styles.examples, showing && styles.examplesShowing].filter(Boolean).join(' ')} aria-labelledby="agent-examples">
-      <div className={styles.exampleRow}>
-        <span id="agent-examples" className={styles.muted}>
-          Learn from an example
-        </span>
-        {EXAMPLES.map((ex) => (
-          <button
-            key={ex.name}
-            type="button"
-            className={styles.exampleChip}
-            aria-pressed={showing?.name === ex.name}
-            onClick={() => onShow(showing?.name === ex.name ? null : ex)}
-          >
-            {ex.name}
-          </button>
-        ))}
-      </div>
-      {showing && (
-        <div className={styles.exampleBar}>
-          <p className={styles.muted}>
-            {hasExample(draft, showing) ? `Everything from ${showing.name} is in.` : `${showing.blurb} Take any part of it below.`}
-          </p>
-          <div className={styles.actions}>
-            {!hasExample(draft, showing) && (
-              <Button size="sm" onClick={() => onUseAll(showing)}>
-                Use all
-              </Button>
-            )}
-            <Button size="sm" variant="ghost" onClick={() => onShow(null)}>
-              Close
-            </Button>
-          </div>
-        </div>
-      )}
-    </section>
+    <div className={styles.examples} role="group" aria-labelledby="agent-examples">
+      <span id="agent-examples" className={styles.muted}>
+        Start from an example
+      </span>
+      {EXAMPLES.map((ex) => (
+        <button key={ex.name} type="button" className={styles.chip} onClick={() => onPick(ex)}>
+          {ex.name}
+        </button>
+      ))}
+    </div>
   )
 }
 
-/** A part of an example, beside where it would go, to take. */
-function Borrow(props: { label: string; from: string; title?: string; text: string; action: string; onTake: () => void; children?: ReactNode }) {
-  const { label, from, title, text, action, onTake, children } = props
-  return (
-    <aside className={styles.borrow} aria-label={label}>
-      <div className={styles.borrowHead}>
-        <span className={styles.borrowFrom}>
-          {from}
-          {title && <span className={styles.borrowTitle}> · {title}</span>}
-        </span>
-        <Button size="sm" onClick={onTake}>
-          {action}
-        </Button>
-      </div>
-      {children}
-      <p className={styles.borrowText}>{text}</p>
-    </aside>
-  )
-}
-
-function Purpose(props: { draft: AgentDraft; example: AgentExample | null; error: string | undefined; onChange: Change }) {
-  const { draft, example, error, onChange } = props
+function Purpose(props: { draft: AgentDraft; error: string | undefined; onChange: Change }) {
+  const { draft, error, onChange } = props
   const id = useId()
-  const box = useRef<HTMLTextAreaElement>(null)
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
@@ -367,7 +293,6 @@ function Purpose(props: { draft: AgentDraft; example: AgentExample | null; error
       </div>
       <textarea
         id={id}
-        ref={box}
         className={[field.input, field.area, styles.prompt].join(' ')}
         placeholder="Recipes. I cook mostly vegetarian, and measure in grams."
         value={draft.prompt}
@@ -380,29 +305,12 @@ function Purpose(props: { draft: AgentDraft; example: AgentExample | null; error
           {error}
         </p>
       )}
-      {example && example.prompt !== draft.prompt && (
-        <Borrow
-          label={`${example.name}’s purpose`}
-          from={`${example.name}’s purpose`}
-          text={example.prompt}
-          action={draft.prompt.trim() ? 'Use instead' : 'Use'}
-          onTake={() => {
-            onChange({ prompt: example.prompt })
-            box.current?.focus()
-          }}
-        />
-      )}
     </section>
   )
 }
 
-function Rules(props: {
-  draft: AgentDraft
-  example: AgentExample | null
-  errors: AgentErrors
-  onChange: Change
-}) {
-  const { draft, example, errors, onChange } = props
+function Rules(props: { draft: AgentDraft; errors: AgentErrors; onChange: Change }) {
+  const { draft, errors, onChange } = props
   const [picking, setPicking] = useState(false)
   const [focusOn, setFocusOn] = useState<FocusOn | null>(null)
   const rules = rulesOf(draft)
@@ -412,10 +320,6 @@ function Rules(props: {
     delete triggers[key]
     onChange({ triggers, ...(key === 'menu' ? { menuLabel: '' } : {}) })
   }
-  const take = (key: AgentTrigger, idea: Idea) => {
-    onChange(withIdea(draft, key, idea))
-    setFocusOn({ key, what: 'prompt' })
-  }
 
   return (
     <section className={styles.section} aria-labelledby="agent-rules">
@@ -423,47 +327,29 @@ function Rules(props: {
         <Kicker id="agent-rules">Rules</Kicker>
         <p className={styles.muted}>Each rule is a moment, and what the agent does then.</p>
       </div>
-      {rules.length === 0 && !example && <p className={styles.empty}>No rules yet. Without one, the agent does nothing.</p>}
-      {TRIGGERS.map((t) => {
-        const has = rules.includes(t.key)
-        const theirs = example?.rules[t.key]
-        const offer = theirs && !hasIdea(draft, t.key, theirs) ? theirs : undefined
-        if (!has && !offer) return null
-        return (
-          <div key={t.key} className={styles.ruleSlot}>
-            {has && (
-              <Rule
-                trigger={t.key}
-                draft={draft}
-                errors={errors}
-                focus={focusOn?.key === t.key ? focusOn : null}
-                onPrompt={(p) => onChange({ triggers: { ...draft.triggers, [t.key]: p } })}
-                onMenuLabel={(menuLabel) => onChange({ menuLabel })}
-                onIdea={(idea) => take(t.key, idea)}
-                onMove={(to) => {
-                  const triggers = { ...draft.triggers, [to]: draft.triggers[t.key] ?? '' }
-                  delete triggers[t.key]
-                  onChange({ triggers, ...(t.key === 'menu' ? { menuLabel: '' } : {}) })
-                  setFocusOn({ key: to, what: 'moment' })
-                }}
-                onRemove={() => remove(t.key)}
-              />
-            )}
-            {offer && example && (
-              <Borrow
-                label={`${example.name}’s rule: ${t.rule}`}
-                from={has ? `${example.name}’s version` : t.rule}
-                title={offer.title}
-                text={offer.prompt}
-                action={has ? 'Use instead' : 'Add'}
-                onTake={() => take(t.key, offer)}
-              >
-                {t.key === 'menu' && offer.menuLabel && <p className={styles.muted}>Command: {offer.menuLabel}</p>}
-              </Borrow>
-            )}
-          </div>
-        )
-      })}
+      {rules.length === 0 && <p className={styles.empty}>No rules yet. Without one, the agent does nothing.</p>}
+      {TRIGGERS.filter((t) => rules.includes(t.key)).map((t) => (
+        <Rule
+          key={t.key}
+          trigger={t.key}
+          draft={draft}
+          errors={errors}
+          focus={focusOn?.key === t.key ? focusOn : null}
+          onPrompt={(p) => onChange({ triggers: { ...draft.triggers, [t.key]: p } })}
+          onMenuLabel={(menuLabel) => onChange({ menuLabel })}
+          onIdea={(idea) => {
+            onChange({ triggers: { ...draft.triggers, [t.key]: idea.prompt } })
+            setFocusOn({ key: t.key, what: 'prompt' })
+          }}
+          onMove={(to) => {
+            const triggers = { ...draft.triggers, [to]: draft.triggers[t.key] ?? '' }
+            delete triggers[t.key]
+            onChange({ triggers, ...(t.key === 'menu' ? { menuLabel: '' } : {}) })
+            setFocusOn({ key: to, what: 'moment' })
+          }}
+          onRemove={() => remove(t.key)}
+        />
+      ))}
       {picking ? (
         <div className={[styles.card, styles.picker].join(' ')} role="group" aria-label="Add a rule">
           {GROUPS.map((g) => {
@@ -537,7 +423,7 @@ function Rule(props: {
     el.setSelectionRange(el.value.length, el.value.length)
   }, [focus])
   if (!t) return null
-  const ideas = prompt.trim() ? [] : ideasFor(trigger)
+  const idea = prompt.trim() ? undefined : t.idea
   return (
     <article className={[styles.card, styles.rule].join(' ')} aria-label={t.rule}>
       <div className={styles.ruleHead}>
@@ -597,38 +483,27 @@ function Rule(props: {
           {error}
         </p>
       )}
-      {ideas.length > 0 && (
-        <div className={styles.ideas} role="group" aria-label="Ideas">
-          <span className={styles.muted}>Ideas</span>
-          {ideas.map(({ idea, from }) => (
-            <button
-              key={idea.prompt}
-              type="button"
-              className={styles.idea}
-              title={idea.prompt}
-              aria-label={from ? `${idea.title}, from ${from}` : idea.title}
-              onClick={() => onIdea(idea)}
-            >
-              {idea.title}
-              {from && <span className={styles.ideaFrom}>{from}</span>}
-            </button>
-          ))}
+      {idea && (
+        <div className={styles.ideas}>
+          <span id={`${id}-idea`} className={styles.muted}>
+            Idea
+          </span>
+          <button type="button" className={styles.chip} title={idea.prompt} aria-describedby={`${id}-idea`} onClick={() => onIdea(idea)}>
+            {idea.title}
+          </button>
         </div>
       )}
     </article>
   )
 }
 
-function References(props: { spaceId: string; draft: AgentDraft; example: AgentExample | null; error: string | undefined; onChange: Change }) {
-  const { spaceId, draft, example, error, onChange } = props
+function References(props: { spaceId: string; draft: AgentDraft; error: string | undefined; onChange: Change }) {
+  const { spaceId, draft, error, onChange } = props
   const [title, setTitle] = useState('')
   const refs = draft.referenceNotes
   const listId = useId()
   const matches = useTitleMatches(spaceId, title, refs)
   const found = useFoundTitles(spaceId, refs)
-  const shown = example ? readsOf(example) : []
-  // An example's while it's shown; else one a rule taken from an example needs and was left out.
-  const offers = [...new Set([...shown, ...readsNeeded(draft)])].filter((r) => !refs.includes(r))
   const room = refs.length < MAX_REFERENCES
   const add = (t: string) => {
     t = titleOf(t)
@@ -645,7 +520,7 @@ function References(props: { spaceId: string; draft: AgentDraft; example: AgentE
           them. Up to {MAX_REFERENCES}.
         </p>
       </div>
-      {(refs.length > 0 || (room && offers.length > 0)) && (
+      {refs.length > 0 && (
         <ul className={styles.refs} aria-label="Notes it always reads">
           {refs.map((r) => (
             <li key={r} className={styles.ref}>
@@ -661,24 +536,7 @@ function References(props: { spaceId: string; draft: AgentDraft; example: AgentE
               </button>
             </li>
           ))}
-          {room &&
-            offers.map((r) => {
-              const from = example && shown.includes(r) ? example.name : 'a rule needs it'
-              return (
-                <li key={`offer-${r}`}>
-                  <button type="button" className={styles.refOffer} aria-label={`Read ${r}: ${from}`} onClick={() => add(r)}>
-                    + {r}
-                    <span className={styles.ideaFrom}>{from}</span>
-                  </button>
-                </li>
-              )
-            })}
         </ul>
-      )}
-      {!room && offers.length > 0 && (
-        <p role="status" className={[styles.error, styles.hint].join(' ')}>
-          No room for {offers.join(', ')}, which {offers.length === 1 ? 'a rule needs' : 'rules need'}: take one off to add it.
-        </p>
       )}
       {[...found.values()].includes(false) && (
         <p className={[styles.muted, styles.hint].join(' ')}>

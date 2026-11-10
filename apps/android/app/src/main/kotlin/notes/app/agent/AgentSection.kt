@@ -101,7 +101,6 @@ fun AgentSection(graph: AppGraph, space: Space, onActivity: (String) -> Unit = {
     var formError by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var savedNote by remember { mutableStateOf(false) }
-    var showing by remember { mutableStateOf<AgentExample?>(null) }
     val draft = edited ?: draftOf(saved)
     val dirty = edited.let { it != null && !sameAgent(it, draftOf(saved)) }
     Unsaved("the agent", dirty)
@@ -212,16 +211,15 @@ fun AgentSection(graph: AppGraph, space: Space, onActivity: (String) -> Unit = {
                 // Never set up, it's one line until turned on; one turned off keeps its rules in view, to change.
                 if (draft.enabled || saved != null) {
                     Spacer(Modifier.height(20.dp))
-                    Examples(showing, draft, onShow = { showing = it }) {
-                        change(withExample(draft, it))
-                        showing = null
+                    if (isBlank(draft)) {
+                        Examples { change(withExample(draft, it)) }
+                        Spacer(Modifier.height(20.dp))
                     }
-                    Spacer(Modifier.height(20.dp))
-                    Purpose(draft, showing, errors["prompt"], ::change)
+                    Purpose(draft, errors["prompt"], ::change)
                     Spacer(Modifier.height(24.dp))
-                    Rules(draft, showing, errors, ::change)
+                    Rules(draft, errors, ::change)
                     Spacer(Modifier.height(24.dp))
-                    References(graph, space, draft, showing, errors["referenceNotes"], ::change)
+                    References(graph, space, draft, errors["referenceNotes"], ::change)
                 }
             }
         }
@@ -268,18 +266,10 @@ private fun OnOff(draft: AgentDraft, provider: String?, onChange: (Boolean) -> U
     }
 }
 
-/**
- * Examples to learn from: one picked shows its parts where they'd go, each to take or leave. Taking one never
- * turns the agent on, or saves.
- */
+/** While nothing's written: an example's purpose and rules, to start from. Never turns it on, or saves. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Examples(
-    showing: AgentExample?,
-    draft: AgentDraft,
-    onShow: (AgentExample?) -> Unit,
-    onUseAll: (AgentExample) -> Unit
-) {
+private fun Examples(onPick: (AgentExample) -> Unit) {
     val t = LocalTokens.current
     FlowRow(
         Modifier.padding(horizontal = 8.dp),
@@ -287,128 +277,46 @@ private fun Examples(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         itemVerticalAlignment = Alignment.CenterVertically
     ) {
-        Text("Learn from an example", style = Type.small, color = t.ink2)
-        for (ex in EXAMPLES) {
-            Chip(ex.name, selected = showing?.name == ex.name) { onShow(if (showing?.name == ex.name) null else ex) }
-        }
-    }
-    if (showing != null) {
-        val has = hasExample(draft, showing)
-        Column(Modifier.padding(horizontal = 8.dp, vertical = 8.dp)) {
-            Text(
-                if (has) "Everything from ${showing.name} is in." else "${showing.blurb} Take any part of it below.",
-                style = Type.small,
-                color = t.ink2
-            )
-            Row(Modifier.padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                if (!has) NotesButton("Use all", { onUseAll(showing) }, kind = ButtonKind.Chip, small = true)
-                NotesButton("Close", { onShow(null) }, kind = ButtonKind.Ghost, small = true)
-            }
-        }
+        Text("Start from an example", style = Type.small, color = t.ink2)
+        for (ex in EXAMPLES) Chip(ex.name) { onPick(ex) }
     }
 }
 
-/** A pill to pick: an example, or an idea. [from]: where an idea comes from, after it. */
+/** A pill to pick: an example, or an idea. */
 @Composable
-private fun Chip(label: String, selected: Boolean = false, from: String? = null, onClick: () -> Unit) {
+private fun Chip(label: String, onClick: () -> Unit) {
     val t = LocalTokens.current
     val shape = RoundedCornerShape(999.dp)
-    Row(
-        Modifier
+    Text(
+        label,
+        style = Type.label,
+        color = t.ink,
+        modifier = Modifier
             .heightIn(min = 36.dp)
             .clip(shape)
-            .background(if (selected) t.solid else t.chip)
-            .border(1.dp, if (selected) t.solid else t.hair, shape)
+            .background(t.chip)
+            .border(1.dp, t.hair, shape)
             .clickable(role = Role.Button, onClick = onClick)
-            .semantics {
-                this.selected = selected
-                if (from != null) contentDescription = "$label, from $from"
-            }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(label, style = Type.label, color = if (selected) t.onSolid else t.ink)
-        if (from != null) {
-            Spacer(Modifier.width(6.dp))
-            Text(from, style = Type.small, color = t.ink3)
-        }
-    }
-}
-
-/** A part of an example, dashed, beside where it would go, to take. */
-@Composable
-private fun Borrow(
-    from: String,
-    title: String?,
-    text: String,
-    action: String,
-    onTake: () -> Unit,
-    extra: @Composable ColumnScope.() -> Unit = {}
-) {
-    val t = LocalTokens.current
-    Column(
-        Modifier
-            .padding(top = 8.dp)
-            .fillMaxWidth()
-            .drawBehind {
-                drawRoundRect(
-                    t.hairStrong,
-                    cornerRadius = CornerRadius(14.dp.toPx()),
-                    style = Stroke(1.dp.toPx(), pathEffect = PathEffect.dashPathEffect(floatArrayOf(6f, 5f)))
-                )
-            }
-            .padding(14.dp)
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                if (title != null) "$from · $title" else from,
-                style = Type.label,
-                color = t.ink2,
-                modifier = Modifier.weight(1f)
-            )
-            Spacer(Modifier.width(8.dp))
-            NotesButton(action, onTake, kind = ButtonKind.Chip, small = true)
-        }
-        extra()
-        Text(text, style = Type.small, color = t.ink2, modifier = Modifier.padding(top = 6.dp))
-    }
+            .padding(horizontal = 14.dp, vertical = 8.dp)
+    )
 }
 
 @Composable
-private fun Purpose(draft: AgentDraft, example: AgentExample?, error: String?, onChange: (AgentDraft) -> Unit) {
-    val box = remember { FocusRequester() }
+private fun Purpose(draft: AgentDraft, error: String?, onChange: (AgentDraft) -> Unit) {
     NotesField(
         value = draft.prompt,
         onValueChange = { onChange(draft.copy(prompt = it)) },
         label = "What this space is for",
-        modifier = Modifier.focusRequester(box),
         placeholder = "Recipes. I cook mostly vegetarian, and measure in grams.",
         error = error,
         hint = "Goes with every rule: what the notes are, and how the agent should treat them.",
         singleLine = false,
         minLines = 3
     )
-    if (example != null && example.prompt != draft.prompt) {
-        Borrow(
-            "${example.name}'s purpose",
-            null,
-            example.prompt,
-            if (draft.prompt.isNotBlank()) "Use instead" else "Use",
-            onTake = {
-                onChange(draft.copy(prompt = example.prompt))
-                box.requestFocus()
-            }
-        )
-    }
 }
 
 @Composable
-private fun Rules(
-    draft: AgentDraft,
-    example: AgentExample?,
-    errors: Map<String, String>,
-    onChange: (AgentDraft) -> Unit
-) {
+private fun Rules(draft: AgentDraft, errors: Map<String, String>, onChange: (AgentDraft) -> Unit) {
     val t = LocalTokens.current
     var picking by remember { mutableStateOf<String?>(null) }
     var focusOn by remember { mutableStateOf<FocusOn?>(null) }
@@ -420,7 +328,7 @@ private fun Rules(
     }
 
     fun take(key: String, idea: Idea) {
-        onChange(withIdea(draft, key, idea))
+        onChange(draft.copy(triggers = draft.triggers + (key to idea.prompt)))
         focusOn = FocusOn(key, moment = false)
     }
 
@@ -431,7 +339,7 @@ private fun Rules(
         color = t.ink2,
         modifier = Modifier.padding(start = 8.dp, top = 2.dp, bottom = 8.dp)
     )
-    if (rules.isEmpty() && example == null) {
+    if (rules.isEmpty()) {
         Text(
             "No rules yet. Without one, the agent does nothing.",
             style = Type.body,
@@ -439,39 +347,19 @@ private fun Rules(
             modifier = Modifier.padding(8.dp)
         )
     }
-    for (trigger in TRIGGERS) {
-        val has = trigger.key in rules
-        val theirs = example?.rules?.get(trigger.key)
-        val offer = theirs?.takeIf { !hasIdea(draft, trigger.key, it) }
-        if (!has && offer == null) continue
-        Column(Modifier.padding(bottom = 12.dp)) {
-            if (has) {
-                Rule(
-                    trigger,
-                    draft,
-                    errors,
-                    focusOn?.takeIf { it.key == trigger.key },
-                    onPrompt = { onChange(draft.copy(triggers = draft.triggers + (trigger.key to it))) },
-                    onMenuLabel = { onChange(draft.copy(menuLabel = it)) },
-                    onIdea = { take(trigger.key, it) },
-                    onMoment = { picking = trigger.key },
-                    onRemove = { remove(trigger.key) }
-                )
-            }
-            if (offer != null && example != null) {
-                Borrow(
-                    if (has) "${example.name}'s version" else trigger.rule,
-                    offer.title,
-                    offer.prompt,
-                    if (has) "Use instead" else "Add",
-                    onTake = { take(trigger.key, offer) }
-                ) {
-                    if (trigger.key == "menu" && offer.menuLabel != null) {
-                        Text("Command: ${offer.menuLabel}", style = Type.small, color = t.ink3)
-                    }
-                }
-            }
-        }
+    for (trigger in TRIGGERS.filter { it.key in rules }) {
+        Rule(
+            trigger,
+            draft,
+            errors,
+            focusOn?.takeIf { it.key == trigger.key },
+            onPrompt = { onChange(draft.copy(triggers = draft.triggers + (trigger.key to it))) },
+            onMenuLabel = { onChange(draft.copy(menuLabel = it)) },
+            onIdea = { take(trigger.key, it) },
+            onMoment = { picking = trigger.key },
+            onRemove = { remove(trigger.key) }
+        )
+        Spacer(Modifier.height(12.dp))
     }
     if (unused.isNotEmpty()) {
         NotesButton("+ Add rule", { picking = "" }, kind = ButtonKind.Chip)
@@ -631,16 +519,16 @@ private fun Rule(
             singleLine = false,
             minLines = 3
         )
-        val ideas = if (prompt.isBlank()) ideasFor(trigger.key) else emptyList()
-        if (ideas.isNotEmpty()) {
+        val idea = trigger.idea?.takeIf { prompt.isBlank() }
+        if (idea != null) {
             FlowRow(
                 Modifier.padding(top = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 itemVerticalAlignment = Alignment.CenterVertically
             ) {
-                Text("Ideas", style = Type.small, color = t.ink2)
-                for ((idea, from) in ideas) Chip(idea.title, from = from) { onIdea(idea) }
+                Text("Idea", style = Type.small, color = t.ink2)
+                Chip(idea.title) { onIdea(idea) }
             }
         }
     }
@@ -672,7 +560,6 @@ private fun References(
     graph: AppGraph,
     space: Space,
     draft: AgentDraft,
-    example: AgentExample?,
     error: String?,
     onChange: (AgentDraft) -> Unit
 ) {
@@ -680,9 +567,6 @@ private fun References(
     var title by remember { mutableStateOf("") }
     val refs = draft.referenceNotes
     val titles = spaceTitles(graph, space.id)
-    val shown = example?.let(::readsOf).orEmpty()
-    // An example's while it's shown; else one a rule taken from an example needs and was left out.
-    val offers = (shown + readsNeeded(draft)).distinct().filter { it !in refs }
     val room = refs.size < MAX_REFERENCES
     val typed = title.trim().lowercase()
     // Not one the server would change: the agent looks a title up exactly, so it would never find that note.
@@ -710,7 +594,7 @@ private fun References(
         color = t.ink2,
         modifier = Modifier.padding(start = 8.dp, top = 2.dp, bottom = 8.dp)
     )
-    if (refs.isNotEmpty() || (room && offers.isNotEmpty())) {
+    if (refs.isNotEmpty()) {
         Card {
             var first = true
             for (r in refs) {
@@ -735,38 +619,7 @@ private fun References(
                     )
                 }
             }
-            if (room) {
-                for (r in offers) {
-                    if (!first) Divider()
-                    first = false
-                    val from = if (example != null && r in shown) example.name else "a rule needs it"
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 52.dp)
-                            .clickable(role = Role.Button) { add(r) }
-                            .semantics(mergeDescendants = true) { contentDescription = "Read $r: $from" }
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("+ $r", style = Type.rowTitle, color = t.link)
-                        Spacer(Modifier.width(8.dp))
-                        Text(from, style = Type.small, color = t.ink3)
-                    }
-                }
-            }
         }
-    }
-    if (!room && offers.isNotEmpty()) {
-        Text(
-            "No room for ${offers.joinToString(
-                ", "
-            )}, which ${if (offers.size == 1) "a rule needs" else "rules need"}: " +
-                "take one off to add it.",
-            style = Type.small,
-            color = t.errInk,
-            modifier = Modifier.padding(8.dp).semantics { liveRegion = LiveRegionMode.Polite }
-        )
     }
     if (missing.isNotEmpty()) {
         Text(
