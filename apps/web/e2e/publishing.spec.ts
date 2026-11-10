@@ -44,6 +44,19 @@ test('a published space: on from Space info, its site readable, then off', async
   const url = await open.getAttribute('href')
   expect(url).toBe(`${new URL(page.url()).origin}/@garden-${tag}/`)
 
+  // Customize site: its page in the same dialog, what's typed there kept across Escape back to the rest.
+  const row = published.getByRole('button', { name: /^Customize site/ })
+  await row.click()
+  const customize = page.getByRole('dialog', { name: 'Customize site' })
+  await expect(customize.getByRole('heading', { name: 'Customize site' })).toBeFocused()
+  await customize.getByRole('textbox', { name: 'Custom CSS' }).fill(':root { --accent: teal }')
+  await page.keyboard.press('Escape')
+  await expect(row).toBeFocused()
+  await row.click()
+  await expect(customize.getByRole('textbox', { name: 'Custom CSS' })).toHaveValue(':root { --accent: teal }')
+  await customize.getByRole('button', { name: `Back to ${name}` }).click()
+  await expect(published).toBeVisible()
+
   // Anyone: a browser with no session.
   const visitor = await (await browser.newContext()).newPage()
   await visitor.goto(url ?? '')

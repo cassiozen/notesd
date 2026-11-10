@@ -41,9 +41,16 @@ async function journal() {
   return (await loadedSpaces())?.find((sp) => sp.name === 'Journal')
 }
 
-/** One of the section's disclosures, by its summary: each has a Save of its own. */
-const disclosure = (info: HTMLElement, name: string) =>
-  within(section(info)).getByText(name, { selector: 'summary' }).closest('details') as HTMLElement
+const customizeRow = (info: HTMLElement) => within(section(info)).getByRole('button', { name: /^Customize site/ })
+
+/** The Published section's page, Customize site, opened in Space info's own dialog. */
+async function customize(user: User, info: HTMLElement) {
+  await user.click(customizeRow(info))
+  return screen.findByRole('dialog', { name: 'Customize site' })
+}
+
+/** One of Customize site's parts, by its caption: each has a Save of its own. */
+const part = (page: HTMLElement, name: string) => within(page).getByRole('region', { name })
 
 async function seedJournal(server: TestServer) {
   await server.api('PUT', '/spaces/journal', { name: 'Journal' })
@@ -234,31 +241,106 @@ describe('publishing a space', () => {
     expect((await within(info).findByRole('alert')).textContent).toBe('Another space has that address. Try another.')
   })
 
-  it('saves custom CSS when Save is pressed', async () => {
-    const { server, user, info } = await publishedInfo()
-    await user.click(within(section(info)).getByText('Custom CSS', { selector: 'summary' }))
-    const save = within(disclosure(info, 'Custom CSS')).getByRole('button', { name: 'Save' })
-    expect(save).toHaveProperty('disabled', true)
-    await user.click(within(section(info)).getByRole('textbox', { name: 'Custom CSS' }))
-    await user.paste(':root { --accent: teal }')
-    await user.click(save)
-    await waitFor(async () => expect((await settings(server)).css).toBe(':root { --accent: teal }'))
-    await waitFor(() => expect(within(disclosure(info, 'Custom CSS')).getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true))
+  it('opens Customize site in the same dialog, and Escape goes back to the rest', async () => {
+    const { user, info } = await publishedInfo()
+    expect(customizeRow(info).textContent).toContain('Custom CSS or your own domain')
+    const page = await customize(user, info)
+    expect(page).toBe(info)
+    expect(document.activeElement).toBe(within(page).getByRole('heading', { name: 'Customize site' }))
+    expect(within(page).queryByRole('region', { name: 'Published' })).toBeNull()
+
+    await user.keyboard('{Escape}')
+    expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
+    expect(document.activeElement).toBe(customizeRow(info))
+    expect(within(info).queryByRole('heading', { name: 'Customize site' })).toBeNull()
+
+    await customize(user, info)
+    await user.click(within(info).getByRole('button', { name: 'Back to Journal' }))
+    expect(document.activeElement).toBe(customizeRow(info))
+    // Escape from Space info itself still closes it.
+    await user.keyboard('{Escape}')
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Journal' })).toBeNull())
   })
 
-  it('puts the site on a domain of its own, with the proxy block to add', async () => {
+  it('saves custom CSS when Save is pressed, keeping what’s typed across Back', async () => {
     const { server, user, info } = await publishedInfo()
-    await user.click(within(section(info)).getByText('Your own domain', { selector: 'summary' }))
-    const field = within(section(info)).getByRole('textbox', { name: 'Domain' })
+    let page = await customize(user, info)
+    const save = within(part(page, 'Custom CSS')).getByRole('button', { name: 'Save' })
+    expect(save).toHaveProperty('disabled', true)
+    await user.click(within(page).getByRole('textbox', { name: 'Custom CSS' }))
+    await user.paste(':root { --accent: teal }')
+
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
+    page = await customize(user, info)
+    expect((within(page).getByRole('textbox', { name: 'Custom CSS' }) as HTMLTextAreaElement).value).toBe(':root { --accent: teal }')
+
+    await user.click(within(part(page, 'Custom CSS')).getByRole('button', { name: 'Save' }))
+    await waitFor(async () => expect((await settings(server)).css).toBe(':root { --accent: teal }'))
+    await waitFor(() => expect(within(part(page, 'Custom CSS')).getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true))
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
+    expect(customizeRow(info).textContent).toContain('Custom CSS')
+  })
+
+  it('discards what’s typed in the custom CSS', async () => {
+    const { user, info } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { css: 'a { color: red }' }).then(() => undefined))
+    const page = await customize(user, info)
+    const field = within(page).getByRole('textbox', { name: 'Custom CSS' }) as HTMLTextAreaElement
+    expect(field.value).toBe('a { color: red }')
+    expect(within(part(page, 'Custom CSS')).queryByRole('button', { name: 'Discard' })).toBeNull()
+    await user.type(field, ' b')
+    await user.click(within(part(page, 'Custom CSS')).getByRole('button', { name: 'Discard' }))
+    expect(field.value).toBe('a { color: red }')
+  })
+
+  it('puts the site on a domain of its own, saying what the proxy maps it onto', async () => {
+    const { server, user, info } = await publishedInfo()
+    const page = await customize(user, info)
+    const domain = part(page, 'Your own domain')
+    const field = within(domain).getByRole('textbox', { name: 'Domain' })
     await user.type(field, 'not a domain{Enter}')
-    expect((await within(info).findByRole('alert')).textContent).toBe('Use a domain name, such as blog.example.com.')
+    expect((await within(domain).findByRole('alert')).textContent).toBe('Use a domain name, such as blog.example.com.')
     await user.clear(field)
     await user.type(field, 'Blog.Example.com')
-    await user.click(within(disclosure(info, 'Your own domain')).getByRole('button', { name: 'Save' }))
+    await user.click(within(domain).getByRole('button', { name: 'Save' }))
     await waitFor(async () => expect(await settings(server)).toMatchObject({ domain: 'blog.example.com', url: 'https://blog.example.com/' }))
-    const block = await within(section(info)).findByText(/rewrite \* \/@journal\{uri\}/)
-    expect(block.textContent).toBe('blog.example.com {\n    rewrite * /@journal{uri}\n    reverse_proxy 127.0.0.1:8080\n}')
+
+    // Saved, the part is put back with the server's settings: looked for again, not kept from before.
+    await waitFor(() => expect(within(part(page, 'Your own domain')).getByText('/@journal', { selector: 'code:not(p code)' })).toBeTruthy())
+    const saved = part(page, 'Your own domain')
+    expect(within(saved).getByRole('link', { name: 'How to set it up' }).getAttribute('href')).toBe(
+      'https://notesd.app/docs/guides/using/publishing.html#use-your-own-domain',
+    )
+    // The page's own address, under its title, is the domain now.
+    expect(within(page).getByRole('heading', { name: 'Customize site' }).nextElementSibling?.textContent).toBe('blog.example.com')
+
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
     expect(within(section(info)).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('https://blog.example.com/')
+    expect(customizeRow(info).textContent).toContain('blog.example.com')
+  })
+
+  it('asks before the site stops using its own domain', async () => {
+    const { server, user, info } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { domain: 'blog.example.com' }).then(() => undefined))
+    const page = await customize(user, info)
+    const domain = part(page, 'Your own domain')
+    await user.clear(within(domain).getByRole('textbox', { name: 'Domain' }))
+    await user.click(within(domain).getByRole('button', { name: 'Save' }))
+    const confirm = await within(domain).findByRole('group', { name: 'Stop using blog.example.com?' })
+    await user.click(within(confirm).getByRole('button', { name: 'Cancel' }))
+    expect((await settings(server)).domain).toBe('blog.example.com')
+
+    await user.click(within(domain).getByRole('button', { name: 'Save' }))
+    await user.click(within(await within(domain).findByRole('group', { name: 'Stop using blog.example.com?' })).getByRole('button', { name: 'Stop using it' }))
+    await waitFor(async () => expect((await settings(server)).domain).toBe(''))
+    await waitFor(() => expect(within(part(page, 'Your own domain')).getByText(/^Serve the site at a domain of its own/)).toBeTruthy())
+  })
+
+  it('goes back from Customize site when the space stops being published elsewhere', async () => {
+    const { server, user, info } = await publishedInfo()
+    await customize(user, info)
+    expect((await server.api('DELETE', '/spaces/journal/publish')).status).toBe(204)
+    await act(() => reloadSpaces())
+    expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
+    expect(await within(section(info)).findByRole('button', { name: 'Publish' })).toBeTruthy()
   })
 
   it('stops publishing once asked; the address stays the space’s', async () => {
@@ -269,6 +351,24 @@ describe('publishing a space', () => {
     await within(section(info)).findByRole('button', { name: 'Publish' })
     expect(await settings(server)).toMatchObject({ published: false, handle: 'journal' })
     expect(within(info).queryByRole('img', { name: 'Published' })).toBeNull()
+  })
+
+  it('goes back from Customize site when the section itself goes: handed on, then taken down by its new owner', async () => {
+    let ana: (Client & { id: number }) | undefined
+    const { server, user, info } = await publishedInfo(async (s) => {
+      ana = await s.addAccount('ana')
+      expect((await s.api('POST', '/spaces/journal/invites', { userId: ana.id })).status).toBe(201)
+      const [invite] = (await ana.api<{ invites: { id: string }[] }>('GET', '/invites')).body.invites
+      expect((await ana.api('POST', `/invites/${invite?.id}/accept`)).status).toBe(200)
+    })
+    await customize(user, info)
+    expect((await server.api('PUT', '/spaces/journal/owner', { userId: ana?.id })).status).toBe(204)
+    expect((await ana?.api('DELETE', '/spaces/journal/publish'))?.status).toBe(204)
+    await act(() => reloadSpaces())
+    // A member of a space that isn't published has no Published section: the rest of Space info, not a blank page.
+    expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
+    await waitFor(() => expect(within(info).queryByRole('region', { name: 'Published' })).toBeNull())
+    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
   })
 
   it('shows a member where the space is, and nothing to change', async () => {

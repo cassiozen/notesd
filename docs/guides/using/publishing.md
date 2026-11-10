@@ -39,14 +39,25 @@ publish it again.
 ## Use your own domain
 
 A site can have a domain of its own, such as `blog.example.com`. notesd can't serve a domain by
-itself, so the reverse proxy in front of it does, the same one that serves the app's address.
+itself, so the reverse proxy in front of it does, the same one that serves the app's address. It
+sends every request for the domain to notesd with `/@<handle>` put before the path.
+
+1. In the web app, under **Published → Customize site → Your own domain**, enter the domain and
+   choose **Save**. The site's feed, sitemap and links now use it.
+2. Set up your proxy, below. The examples use the handle `garden` and the domain
+   `blog.example.com`, and notesd at `127.0.0.1:8080`: put in your own, with notesd's address as in
+   your app's own block.
+
+Only the site is reachable on its domain, never the app. The site still answers at its address on
+the app's domain too; search engines are told the domain is the real one. To stop using the domain,
+empty the field and save, then remove what you added to the proxy. With Tailscale alone, a site
+can't have a domain of its own.
+
+### Caddy
 
 1. Point the domain's DNS at your server, as you did for the app's address: an `A` (and `AAAA`)
    record, or a `CNAME` to the app's domain.
-2. Under **Published → Your own domain** in the web app, enter the domain and choose **Save**. The
-   site's feed, sitemap and links now use it.
-3. Add a block for it to your proxy, with notesd's address as in your app's own block. The web app
-   shows the one for Caddy, with your site's handle filled in:
+2. Add a block for it to `/etc/caddy/Caddyfile`:
 
    ```caddyfile
    blog.example.com {
@@ -55,27 +66,48 @@ itself, so the reverse proxy in front of it does, the same one that serves the a
    }
    ```
 
-   With nginx, and a certificate for the domain from certbot:
+3. `sudo systemctl reload caddy`. Caddy gets the domain's certificate by itself.
+
+### nginx
+
+1. Point the domain's DNS at your server, as for Caddy.
+2. Add a server for it:
 
    ```nginx
    server {
-       listen 443 ssl;
+       listen 80;
        server_name blog.example.com;
-       ssl_certificate     /etc/letsencrypt/live/blog.example.com/fullchain.pem;
-       ssl_certificate_key /etc/letsencrypt/live/blog.example.com/privkey.pem;
        location / {
            proxy_pass http://127.0.0.1:8080/@garden/;
+           proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-Proto $scheme;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
        }
    }
    ```
 
-4. Reload the proxy. Caddy gets the domain's certificate by itself.
+3. `sudo certbot --nginx -d blog.example.com`. It gets the certificate and adds HTTPS to that
+   server.
 
-Only the site is reachable on its domain, never the app. The site still answers at its address on
-the app's domain too; search engines are told the domain is the real one. To stop using the domain,
-empty the field and save, then remove the proxy's block. With Tailscale alone, a site can't have a
-domain of its own.
+### Cloudflare Tunnel
+
+1. The domain must be on Cloudflare. There's no DNS record to add: the tunnel makes it.
+2. In the [Zero Trust dashboard](https://one.dash.cloudflare.com), under **Networks → Tunnels**, add a
+   public hostname to your tunnel, `blog.example.com`, pointing to `http://127.0.0.1:8080`.
+3. In the domain's dashboard, under **Rules**, add a URL rewrite rule for requests whose hostname is
+   `blog.example.com`, rewriting the path dynamically to:
+
+   ```text
+   concat("/@garden", http.request.uri.path)
+   ```
+
+### Other proxies
+
+Point the domain's DNS at your server, then have the proxy send every request for the domain to
+notesd, adding `/@garden` before the path: `blog.example.com/tags/` goes to
+`127.0.0.1:8080/@garden/tags/`. Any proxy that can rewrite a path can do it. Have it pass the
+visitor's address in `X-Forwarded-For` too: the site's search is limited per visitor, and without it
+everyone shares one limit.
 
 ## Good to know
 
@@ -86,12 +118,12 @@ domain of its own.
   Your first space, "Notes", can't be published.
 - **Sharing and publishing are separate.** A shared space can be published too, by its owner, and
   then every member's notes in it are public.
-- **Custom CSS.** Under **Published → Custom CSS** in the web app, add CSS of your own. It's
-  added after the site's styles, so it wins without `!important`, and most changes are a
+- **Custom CSS.** Under **Published → Customize site → Custom CSS** in the web app, add CSS of
+  your own. It's added after the site's styles, so it wins without `!important`, and most changes are a
   variable, such as `:root { --accent: teal }`. The variables are `--bg`, `--surface`, `--text`, `--muted`,
   `--border`, `--accent`, `--link`, `--font-body`, `--font-heading`, `--font-mono` and
   `--measure`.
-- **Custom CSS is set in the web or Mac app.** The Android and iPhone apps publish, change the
-  address and stop publishing.
+- **Custom CSS and the domain are set in the web or Mac app.** The Android and iPhone apps
+  publish, change the address and stop publishing.
 
 For who can see what, see the [security model](../../concepts/security-model.md).

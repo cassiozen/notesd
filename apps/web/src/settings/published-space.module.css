@@ -112,48 +112,11 @@
   box-shadow: 0 0 0 3px var(--focus);
 }
 
-.summary {
-  min-height: 32px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  list-style: none;
-  font-size: 14px;
-  cursor: pointer;
-}
 
-.summary::-webkit-details-marker {
-  display: none;
-}
 
-/* Flex drops the built-in marker: a chevron says it opens. */
-.summary::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  margin: 0 2px;
-  border-right: 1.5px solid var(--ink-3);
-  border-bottom: 1.5px solid var(--ink-3);
-  transform: rotate(-45deg);
-  transition: transform 0.15s;
-}
 
-[open] > .summary::before {
-  transform: rotate(45deg);
-}
 
-:global(:where(:root[data-keyboard])) .summary:focus-visible {
-  outline: none;
-  border-radius: 6px;
-  box-shadow: 0 0 0 3px var(--focus);
-}
 
-.css {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-bottom: 4px;
-}
 
 .code {
   width: 100%;
@@ -188,13 +151,9 @@
 .save {
   display: flex;
   justify-content: flex-end;
+  gap: 6px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .summary::before {
-    transition: none;
-  }
-}
 
 .domain {
   width: 100%;
@@ -214,21 +173,118 @@
   box-shadow: 0 0 0 3px var(--focus);
 }
 
-.steps {
+/* Opens the section's page: a row of the group, its summary saying what's set there. */
+.customize {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding-top: 4px;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 0;
   border-top: 1px solid var(--hair);
+  border-radius: 0 0 13px 13px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s;
 }
 
-.snippet {
+.customize:hover {
+  background: var(--hover);
+}
+
+:global(:where(:root[data-keyboard])) .customize:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
+}
+
+.customizeText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.customizeLabel {
+  font-size: 14.5px;
+  font-weight: 600;
+}
+
+.customizeSummary {
+  font-size: 13px;
+  color: var(--ink-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chevron {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: rotate(-45deg);
+}
+
+/* Customize site: Space info's page column, its sections as the main page's. */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.page[hidden] {
+  display: none;
+}
+
+.pageHead {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pageTitle {
   margin: 0;
-  padding: 10px 12px;
-  overflow-x: auto;
-  border-radius: 10px;
-  background: var(--bg);
-  border: 1px solid var(--hair);
-  font: 12.5px/1.5 var(--font-mono);
+  font: 400 30px/1.15 var(--font-serif);
+}
+
+/* Focused when the page opens, so a screen reader starts there; not something to press. */
+.pageTitle:focus {
+  outline: none;
+}
+
+.pageAddress {
+  font: 500 13px var(--font-mono);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
+
+.field {
+  padding: 12px;
+}
+
+.path {
+  /* A handle runs to 64 characters: wraps rather than pushing Copy and the link out of a narrow row. */
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font: 500 13px var(--font-mono);
   color: var(--ink);
+}
+
+.docs {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--link);
+}
+
+@media (max-width: 600px) {
+  .pageTitle {
+    font-size: 26px;
+  }
 }
