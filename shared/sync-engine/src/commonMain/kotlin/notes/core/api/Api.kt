@@ -32,6 +32,18 @@ sealed interface ApiResult<out T> {
     data class Unexpected(val status: Int) : ApiResult<Nothing>
 }
 
+/** An Ok's value through [f]; any failure as it is. */
+fun <T, R> ApiResult<T>.map(f: (T) -> R): ApiResult<R> = when (this) {
+    is ApiResult.Ok -> ApiResult.Ok(f(value))
+    is ApiResult.Conflict -> this
+    ApiResult.Unauthenticated -> ApiResult.Unauthenticated
+    is ApiResult.RateLimited -> this
+    is ApiResult.Rejected -> this
+    is ApiResult.Unreachable -> this
+    is ApiResult.UpgradeRequired -> this
+    is ApiResult.Unexpected -> this
+}
+
 /**
  * What this app is, sent with every request so the server can ask for an upgrade (`android`/`ios`/`web`).
  * [timeZone] (IANA) is the device's, `X-Notesd-Time-Zone`: the account takes the first one it hears
@@ -192,6 +204,133 @@ data class EmailSettings(
     val keyHint: String = "",
     val editable: Boolean = true
 )
+
+/**
+ * The server's AI provider for spaces' agents: any OpenAI-compatible API. Server-wide; the key never comes back,
+ * [keyHint] is its last 4 characters. [editable]: whether this account may change it (admins).
+ */
+@Serializable
+data class AiSettings(
+    val configured: Boolean = false,
+    val baseUrl: String = "",
+    val model: String = "",
+    val keyHint: String = "",
+    val dailyTokenCap: Long = DEFAULT_DAILY_TOKEN_CAP,
+    val editable: Boolean = false
+) {
+    companion object {
+        /** As the server's llm.DefaultDailyTokenCap, which a removed setup reverts to. */
+        const val DEFAULT_DAILY_TOKEN_CAP = 1_000_000L
+    }
+}
+
+/** What an admin saves or tests. A null [apiKey] uses the saved one. */
+data class AiSettingsInput(val baseUrl: String, val model: String, val apiKey: String?, val dailyTokenCap: Long?)
+
+/** A passed test; [model] as the provider named it. */
+@Serializable
+data class AiTestResult(val model: String = "", val latencyMs: Long = 0)
+
+/**
+ * A space's agent. [triggers] maps a moment (`noteCreated`, `editDone`, `menu`, …) to what it does then; one
+ * without a prompt does nothing. [referenceNotes]: titles of notes in the space that go with every run.
+ */
+@Serializable
+data class AgentConfig(
+    val spaceId: String,
+    val enabled: Boolean = false,
+    val prompt: String = "",
+    val menuLabel: String = "",
+    val triggers: Map<String, String> = emptyMap(),
+    val referenceNotes: List<String> = emptyList(),
+    val updatedAt: Long = 0
+)
+
+@Serializable
+internal data class AgentConfigs(val spaces: List<AgentConfig> = emptyList())
+
+/** A note a run changed or created. [blocked]: why it can't be undone, when it can't. */
+@Serializable
+data class RunEdit(
+    val noteId: String,
+    val kind: String,
+    val title: String = "",
+    val writtenAt: Long = 0,
+    val undoneAt: Long? = null,
+    val undoable: Boolean = false,
+    val blocked: String? = null
+)
+
+/** What a run showed beside its note: cards, and suggested changes with how many were accepted. */
+@Serializable
+data class RunOverlays(val cards: Int = 0, val suggestions: Int = 0, val accepted: Int = 0)
+
+/**
+ * A line of a run's diff: [op] `=`, `-` or `+` with its [text], or `…` standing for [count] unchanged lines
+ * left out.
+ */
+@Serializable
+data class DiffLine(val op: String, val text: String = "", val count: Int = 0)
+
+@Serializable
+data class NoteDiff(
+    val noteId: String,
+    val kind: String,
+    val titleBefore: String = "",
+    val titleAfter: String = "",
+    val lines: List<DiffLine> = emptyList(),
+    /** The note was locked or deleted since, and the run's copy of its text cleared. */
+    val textRemoved: Boolean = false
+)
+
+/**
+ * One run of a space's agent, as the activity log shows it. [status]: queued, running, done, failed or skipped.
+ * [outcome]: edited, created, no_change, undone, partly_undone; empty until it finishes. [forUserId]: whose
+ * editor asked or whose write fired it, 0 when not recorded. [diffs] only from a single run's request.
+ */
+@Serializable
+data class AgentRun(
+    val id: String,
+    val trigger: String,
+    val status: String,
+    val spaceId: String = "",
+    val noteId: String = "",
+    val noteTitle: String = "",
+    val noteDeleted: Boolean = false,
+    val outcome: String = "",
+    val failure: String = "",
+    val message: String = "",
+    val model: String = "",
+    val toolCalls: Int = 0,
+    val promptTokens: Long = 0,
+    val completionTokens: Long = 0,
+    val createdAt: Long = 0,
+    val startedAt: Long? = null,
+    val finishedAt: Long? = null,
+    val edits: List<RunEdit> = emptyList(),
+    val overlays: RunOverlays? = null,
+    val forUserId: Long = 0,
+    val diffs: List<NoteDiff> = emptyList()
+)
+
+/** A page of the activity log, newest first. */
+@Serializable
+data class RunsPage(val runs: List<AgentRun> = emptyList(), val nextCursor: String = "", val hasMore: Boolean = false)
+
+/** A space's today ([day], in the account's time zone), against the daily cap per space. */
+@Serializable
+data class AgentUsage(val day: String = "", val tokens: Long = 0, val runs: Int = 0, val dailyTokenCap: Long = 0)
+
+/** A note an undo left, and why ([RunEdit.blocked]'s words). */
+@Serializable
+data class UndoSkip(val noteId: String, val reason: String)
+
+@Serializable
+data class UndoResult(val undone: List<String> = emptyList(), val skipped: List<UndoSkip> = emptyList())
+
+/** The account's time zone (IANA), the "today" its agents go by. [timeZoneSource]: default, auto or user. */
+@Serializable
+data class AccountSettings(val timeZone: String, val timeZoneSource: String = "default")
 
 /** One wrapped copy of the locked-notes key (§10.1); nothing here opens without its secret. */
 @Serializable

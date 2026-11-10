@@ -49,20 +49,20 @@ Status: ✓ done, – not needed, ☐ to do.
 | --- | --- | --- | --- | --- |
 | D1 | `X-Notesd-Time-Zone` (IANA) on every request | ✓ | ✓ | ✓ |
 | D2 | `X-Notesd-Sync` on writes nobody typed (architecture §7.12) | ✓ | ✓ | ☐ |
-| D3 | API: `GET/PUT/DELETE /settings/ai`, `POST /settings/ai/test` | ✓ | ☐ | ☐ |
-| D4 | API: `GET /agent/spaces`, `PUT /agent/spaces/{id}` | ✓ | ☐ | ☐ |
-| D5 | API: `GET /agent/runs`, `GET /agent/runs/{id}`, `POST …/undo`, `GET /agent/usage` | ✓ | ☐ | ☐ |
-| D6 | API: `GET/PUT /settings/account` (time zone) | ✓ | ☐ | ☐ |
-| D7 | Per-account caches for AI settings and agent configs: forgotten at sign-in and sign-out, an answer for an old account ignored, refetched when back online | ✓ | ☐ | ☐ |
+| D3 | API: `GET/PUT/DELETE /settings/ai`, `POST /settings/ai/test` | ✓ | ✓ | ☐ |
+| D4 | API: `GET /agent/spaces`, `PUT /agent/spaces/{id}` | ✓ | ✓ | ☐ |
+| D5 | API: `GET /agent/runs`, `GET /agent/runs/{id}`, `POST …/undo`, `GET /agent/usage` | ✓ | ✓ | ☐ |
+| D6 | API: `GET/PUT /settings/account` (time zone) | ✓ | ✓ | ☐ |
+| D7 | Per-account caches for AI settings and agent configs: forgotten at sign-in and sign-out, an answer for an old account ignored, refetched when back online | ✓ | ✓ | ☐ |
 | D8 | `madeTo` (the `op` rules), identical to Go and TS | ✓ | ☐ | ☐ |
 
 ### Settings and pages
 
 | # | Feature | Web | Android | iOS |
 | --- | --- | --- | --- | --- |
-| S1 | Integrations → AI row: "{model} at {host}"; Manage/Connect for admins, "On" / "An admin can connect it." for others; category value "AI" or a count | ✓ | ☐ | ☐ |
-| S2 | AI dialog: address, key (saved hint; empty keeps it), model, daily tokens (default 1,000,000), in-app checks, field errors, **Test** without saving, **Disconnect…** confirmation | ✓ | ☐ | ☐ |
-| S3 | Time zone under Server: IANA picker, saves on change, "Set from the first device that connected." | ✓ | ☐ | ☐ |
+| S1 | Integrations → AI row: "{model} at {host}"; Manage/Connect for admins, "On" / "An admin can connect it." for others; category value "AI" or a count | ✓ | ✓ | ☐ |
+| S2 | AI dialog: address, key (saved hint; empty keeps it), model, daily tokens (default 1,000,000), in-app checks, field errors, **Test** without saving, **Disconnect…** confirmation | ✓ | ✓ | ☐ |
+| S3 | Time zone under Server: IANA picker, saves on change, "Set from the first device that connected." | ✓ | ✓ | ☐ |
 | S4 | Agent page: AI-not-set-up and paused states; on/off (switch on phones) naming the provider host | ✓ | ☐ | ☐ |
 | S5 | Agent page: purpose; rules (add from 8 moments in 3 groups, change a rule's moment, remove, menu command name); ideas while a rule is empty | ✓ | ☐ | ☐ |
 | S6 | Agent page: examples (Journal, Recipes, Tidy tags) shown in place, each part taken or left, Use all; never turns it on or saves | ✓ | ☐ | ☐ |

@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -33,6 +34,8 @@ import notes.app.account.Avatars
 import notes.app.account.KeystoreSealer
 import notes.app.account.Profile
 import notes.app.account.Sealer
+import notes.app.agent.AgentConfigs
+import notes.app.agent.AiSetup
 import notes.app.images.ImageLoader
 import notes.app.locks.Biometrics
 import notes.app.locks.FingerprintUnlock
@@ -60,6 +63,7 @@ import notes.core.db.Spaces
 import notes.core.images.ImageStore
 import notes.core.sync.NoteMailer
 import notes.core.sync.SyncEngine
+import notes.core.sync.SyncStatus
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
@@ -105,6 +109,12 @@ class AppGraph(
     /** Emails notes through the server; it syncs a note before sending it. */
     val mailer = NoteMailer(store, sync) { api() }
     val email = EmailSetup { api() }
+
+    /** The server's AI provider, for spaces' agents. */
+    val ai = AiSetup { api() }
+
+    /** Each space's agent. */
+    val agents = AgentConfigs { api() }
 
     private val prefs = context.getSharedPreferences("app", Context.MODE_PRIVATE)
 
@@ -286,6 +296,22 @@ class AppGraph(
         }
         // Fetched when a note or Settings opens; another account's settings must not linger.
         scope.launch { accounts.account.collect { if (it !is Account.SignedIn) email.forget() } }
+        // Another account's may have loaded in between, or none: each sign-in starts with nothing.
+        scope.launch {
+            accounts.account.map { (it as? Account.SignedIn)?.let { a -> a.server to a.username } }
+                .distinctUntilChanged()
+                .collect {
+                    ai.cache.forget()
+                    agents.cache.forget()
+                }
+        }
+        // A cycle that reached the server: whatever failed to load offline can now.
+        scope.launch {
+            sync.status.filterIsInstance<SyncStatus.Synced>().collect {
+                ai.cache.retryIfFailed()
+                agents.cache.retryIfFailed()
+            }
+        }
         scope.launch { locks.state.collect { if (it != LockSession.State.Unlocked) imageLoader.forgetLocked() } }
     }
 

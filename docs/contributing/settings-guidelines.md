@@ -72,6 +72,7 @@ the list is its own screen and a category opens on top of it with a back button.
 | Sign out | Server | – | ✓ | ✓ | ✓ |
 | Change password (+ `notesd reset-password` hint on the web) | Server | account | ✓ | ✓ | ✓ |
 | People: invite (a setup link to send), new link, reset password, admin on/off, remove (admins only; hidden from everyone else). Android: tap a person for a sheet of actions; the link has Copy and Share | Server | – | ✓ | – | ✓ |
+| Time zone (IANA; agents' "today"); set from the first device that connected until chosen. Android: a searchable list | Server | account | ✓ | – | ✓ |
 | Lock password: create hint, lock now, change, forgot/reset | Security | account | ✓ | ✓ | ✓ |
 | Passkeys for locked notes | Security | account | ✓ | – | – |
 | Unlock with Face ID / Touch ID / fingerprint | Security | **device** | – | ✓ | ✓ |
@@ -79,6 +80,7 @@ the list is its own screen and a category opens on top of it with a back button.
 | Spaces: list (each row opens its Space info), new | Spaces | account | ✓ | ✓ | ✓ |
 | A space's name and icon, delete, and its traits' settings: in Space info, not Settings ([architecture §7.8](architecture.md#78-space-traits)) | Spaces | account | ✓ | ✓ | ✓ |
 | Email via Resend (API key, From): listed as connected or available, connected in two steps (key, then sender) | Integrations | **server** | ✓ | ✓ | ✓ |
+| AI for spaces' agents (API address, key, model, daily tokens per space): Test before saving, Disconnect | Integrations | **server** | ✓ | – | ✓ |
 | Theme | Appearance | device | ✓ | ✓ | ✓ |
 | Note font (System, Sans, Serif, Book, Legible, Mono; the note's title and text only) | Appearance | device | ✓ | – | – |
 | Keep my notes on this device (also offered at sign-in; on by default in the installed app; off removes them) | Sync & data | device | ✓ | – | – |

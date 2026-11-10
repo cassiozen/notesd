@@ -58,6 +58,8 @@ class ApiClient(
         }
         .build()
 
+    private val slowHttp: OkHttpClient = this.http.newBuilder().readTimeout(SLOW_READ_S, TimeUnit.SECONDS).build()
+
     /** `/healthz`: is a server answering at this address at all. */
     suspend fun health(): ApiResult<Unit> = send(get("healthz")) { }
 
@@ -266,6 +268,107 @@ class ApiClient(
         )
     }) { }
 
+    /** The server's AI provider; everyone may read it, only admins change it. */
+    suspend fun aiSettings(): ApiResult<AiSettings> =
+        authed({ request("GET", url("api/v1/settings/ai"), null, it) }) { lenient.decodeFromString(it) }
+
+    suspend fun saveAiSettings(input: AiSettingsInput): ApiResult<AiSettings> =
+        authed({ request("PUT", url("api/v1/settings/ai"), input.json(), it) }) { lenient.decodeFromString(it) }
+
+    /** Stops every space's agent until it's connected again. */
+    suspend fun deleteAiSettings(): ApiResult<Unit> = authedReply({
+        request("DELETE", url("api/v1/settings/ai"), null, it)
+    }) { require(it.code == 204) { "Not a delete" } }
+
+    /**
+     * Calls the model with [input] before it's saved, or with the saved settings when null. A failed call is
+     * Rejected 502 `ai_test_failed`, its message the provider's reason.
+     */
+    suspend fun testAiSettings(input: AiSettingsInput?): ApiResult<AiTestResult> = authed(
+        { access ->
+            Request.Builder()
+                .url(url("api/v1/settings/ai/test"))
+                .post(input?.json()?.toString()?.toRequestBody(JSON) ?: ByteArray(0).toRequestBody())
+                .header("Authorization", "Bearer $access")
+                .build()
+        },
+        slow = true
+    ) { lenient.decodeFromString(it) }
+
+    /** Every space whose agent has been set up. */
+    suspend fun agentConfigs(): ApiResult<List<AgentConfig>> =
+        authed({ request("GET", url("api/v1/agent/spaces"), null, it) }) {
+            lenient.decodeFromString<AgentConfigs>(it).spaces
+        }
+
+    /**
+     * Replaces a space's agent; Rejected 404 `not_found` when the server doesn't have the space. A null
+     * [referenceNotes] keeps the saved ones.
+     */
+    suspend fun putAgentConfig(
+        spaceId: String,
+        enabled: Boolean,
+        prompt: String,
+        menuLabel: String,
+        triggers: Map<String, String>,
+        referenceNotes: List<String>?
+    ): ApiResult<AgentConfig> = authed({
+        request(
+            "PUT",
+            url("api/v1/agent/spaces").newBuilder().addPathSegment(spaceId).build(),
+            buildJsonObject {
+                put("enabled", enabled)
+                put("prompt", prompt)
+                put("menuLabel", menuLabel)
+                put("triggers", JsonObject(triggers.mapValues { (_, v) -> JsonPrimitive(v) }))
+                if (referenceNotes != null) put("referenceNotes", JsonArray(referenceNotes.map(::JsonPrimitive)))
+            },
+            it
+        )
+    }) { lenient.decodeFromString(it) }
+
+    /** The activity log, newest first: a [space]'s, a [note]'s, or every run; [cursor] from the page before. */
+    suspend fun agentRuns(
+        space: String? = null,
+        note: String? = null,
+        limit: Int? = null,
+        cursor: String? = null
+    ): ApiResult<RunsPage> = authed({
+        val url = url("api/v1/agent/runs").newBuilder()
+            .apply {
+                space?.let { s -> addQueryParameter("space", s) }
+                note?.let { n -> addQueryParameter("note", n) }
+                limit?.let { l -> addQueryParameter("limit", l.toString()) }
+                cursor?.takeIf { c -> c.isNotEmpty() }?.let { c -> addQueryParameter("cursor", c) }
+            }
+            .build()
+        request("GET", url, null, it)
+    }) { lenient.decodeFromString(it) }
+
+    /** A run with its diffs. */
+    suspend fun agentRun(id: String): ApiResult<AgentRun> =
+        authed({ request("GET", runUrl(id), null, it) }) { lenient.decodeFromString(it) }
+
+    /** Conflict `nothing_to_undo` when none of its changes can be: the run's edits then say why. */
+    suspend fun undoAgentRun(id: String): ApiResult<UndoResult> = authed({
+        request("POST", runUrl(id).newBuilder().addPathSegment("undo").build(), JsonObject(emptyMap()), it)
+    }) {
+        lenient.decodeFromString(it)
+    }
+
+    /** A space's today, against the daily cap per space. */
+    suspend fun agentUsage(space: String): ApiResult<AgentUsage> = authed({
+        request("GET", url("api/v1/agent/usage").newBuilder().addQueryParameter("space", space).build(), null, it)
+    }) { lenient.decodeFromString(it) }
+
+    suspend fun accountSettings(): ApiResult<AccountSettings> =
+        authed({ request("GET", url("api/v1/settings/account"), null, it) }) { lenient.decodeFromString(it) }
+
+    /** [timeZone] is IANA; the server refuses one it doesn't know (Rejected 400, field `timeZone`). */
+    suspend fun setTimeZone(timeZone: String): ApiResult<AccountSettings> = authed({
+        request("PUT", url("api/v1/settings/account"), buildJsonObject { put("timeZone", timeZone) }, it)
+    }) { lenient.decodeFromString(it) }
+
     /** The locked-notes keyring. */
     override suspend fun lockKeys(): ApiResult<List<LockKey>> =
         authed({ request("GET", url("api/v1/locks"), null, it) }) { json.decodeFromString<LockKeys>(it).keys }
@@ -356,10 +459,18 @@ class ApiClient(
 
     // --- plumbing ------------------------------------------------------------
 
-    private suspend fun <T> authed(build: (access: String) -> Request, decode: (String) -> T): ApiResult<T> =
-        authedReply(build) { decode(it.text) }
+    private suspend fun <T> authed(
+        build: (access: String) -> Request,
+        slow: Boolean = false,
+        decode: (String) -> T
+    ): ApiResult<T> = authedReply(build, slow) { decode(it.text) }
 
-    private suspend fun <T> authedReply(build: (access: String) -> Request, decode: (Reply) -> T): ApiResult<T> {
+    /** [slow]: an answer that may take minutes (a model loading), past the usual read timeout. */
+    private suspend fun <T> authedReply(
+        build: (access: String) -> Request,
+        slow: Boolean = false,
+        decode: (Reply) -> T
+    ): ApiResult<T> {
         val creds = credentials ?: return ApiResult.Unauthenticated
         var tokens = creds.tokens() ?: return ApiResult.Unauthenticated
         if (tokens.accessExpiresAt - clock() < REFRESH_EARLY_MS) {
@@ -368,10 +479,10 @@ class ApiClient(
                 else -> return r.failure()
             }
         }
-        val first = sendReply(build(tokens.access), decode)
+        val first = sendReply(build(tokens.access), slow, decode)
         if (first != ApiResult.Unauthenticated) return first
         return when (val r = refresh(tokens)) {
-            is ApiResult.Ok -> sendReply(build(r.value.access), decode)
+            is ApiResult.Ok -> sendReply(build(r.value.access), slow, decode)
             else -> r.failure()
         }
     }
@@ -412,19 +523,20 @@ class ApiClient(
     }
 
     private suspend fun <T> send(request: Request, decode: (String) -> T): ApiResult<T> =
-        sendReply(request) { decode(it.text) }
+        sendReply(request, slow = false) { decode(it.text) }
 
-    private suspend fun <T> sendReply(request: Request, decode: (Reply) -> T): ApiResult<T> = withContext(io) {
-        val reply = try {
-            http.newCall(request).execute().use {
-                val type = it.body.contentType()?.let { t -> "${t.type}/${t.subtype}" }
-                Reply(it.code, it.header("Retry-After"), type, it.body.bytes())
+    private suspend fun <T> sendReply(request: Request, slow: Boolean, decode: (Reply) -> T): ApiResult<T> =
+        withContext(io) {
+            val reply = try {
+                (if (slow) slowHttp else http).newCall(request).execute().use {
+                    val type = it.body.contentType()?.let { t -> "${t.type}/${t.subtype}" }
+                    Reply(it.code, it.header("Retry-After"), type, it.body.bytes())
+                }
+            } catch (e: IOException) {
+                return@withContext ApiResult.Unreachable(e)
             }
-        } catch (e: IOException) {
-            return@withContext ApiResult.Unreachable(e)
+            apiResult(reply.code, reply.retryAfter, { reply.text }) { decode(reply) }
         }
-        apiResult(reply.code, reply.retryAfter, { reply.text }) { decode(reply) }
-    }
 
     /** [path] as written: its ids already through [seg], which a second encoding would turn `%20` into `%2520`. */
     private fun url(path: String) = baseUrl.newBuilder().addEncodedPathSegments(path).build()
@@ -447,6 +559,15 @@ class ApiClient(
 
     private fun spaceUrl(id: String) = url("api/v1/spaces").newBuilder().addPathSegment(id).build()
 
+    private fun runUrl(id: String) = url("api/v1/agent/runs").newBuilder().addPathSegment(id).build()
+
+    private fun AiSettingsInput.json() = buildJsonObject {
+        put("baseUrl", baseUrl)
+        put("model", model)
+        apiKey?.let { put("apiKey", it) }
+        dailyTokenCap?.let { put("dailyTokenCap", it) }
+    }
+
     private fun userUrl(id: Long) = url("api/v1/users").newBuilder().addPathSegment(id.toString()).build()
 
     companion object {
@@ -455,6 +576,15 @@ class ApiClient(
         private const val REFRESH_EARLY_MS = 60_000L
         private val JSON = "application/json".toMediaType()
         private val json = Json { ignoreUnknownKeys = true }
+
+        // Go sends an empty list or map as null.
+        private val lenient = Json {
+            ignoreUnknownKeys = true
+            coerceInputValues = true
+        }
+
+        /** A model loading on a small server can take minutes to answer; the server waits 2.5. */
+        private const val SLOW_READ_S = 160L
 
         val defaultHttp: OkHttpClient = OkHttpClient.Builder()
             .connectTimeout(10, TimeUnit.SECONDS)
