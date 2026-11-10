@@ -14,6 +14,7 @@ The site has:
 - a home page listing posts, newest first, 30 to a page;
 - a page for each post, with its tags and the posts before and after it;
 - a page for each tag, and a list of every tag;
+- on a wide enough screen, the tags in the left margin of every page, with the one you're on marked;
 - a search, and a feed for feed readers.
 
 It looks like notesd: titles in the same serif as the apps, and the colour of the space's icon
@@ -121,8 +122,8 @@ everyone shares one limit.
 - **Custom CSS.** Under **Published → Customize site → Custom CSS** in the web app, add CSS of
   your own. It's added after the site's styles, so it wins without `!important`, and most changes are a
   variable, such as `:root { --accent: teal }`. The variables are `--bg`, `--surface`, `--text`, `--muted`,
-  `--border`, `--accent`, `--link`, `--font-body`, `--font-heading`, `--font-mono` and
-  `--measure`.
+  `--border`, `--accent`, `--link`, `--font-body`, `--font-heading`, `--font-mono`,
+  `--measure` and `--rail` (the width of the tags in the margin).
 - **Custom CSS and the domain are set in the web or Mac app.** The Android and iPhone apps
   publish, change the address and stop publishing.
 

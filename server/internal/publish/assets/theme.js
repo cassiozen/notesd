@@ -29,4 +29,16 @@
       label()
     })
   })
+
+  // The tags beside the page scroll on their own, and each page opens them at the top: bring the
+  // current one into view.
+  document.addEventListener('DOMContentLoaded', function () {
+    var rail = document.querySelector('.tag-rail')
+    var current = rail && rail.querySelector('[aria-current]')
+    if (!current || rail.scrollHeight <= rail.clientHeight) return
+    // Clear of the fade along its bottom.
+    if (current.offsetTop + current.offsetHeight > rail.clientHeight - 32) {
+      rail.scrollTop = current.offsetTop - rail.clientHeight / 2
+    }
+  })
 })()

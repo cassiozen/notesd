@@ -280,7 +280,7 @@ func (s *Service) search(w http.ResponseWriter, r *http.Request, site Site, m *m
 	}
 	root := rootFor("search")
 	p := page{Site: siteInfo{Name: m.Name, Accent: m.Accent, Style: m.Style, Script: m.Script, Icon: m.Icon},
-		Kind: "search", Root: root, Title: q + " · Search", NoIndex: true, Query: q}
+		Kind: "search", Root: root, Title: q + " · Search", NoIndex: true, Query: q, Rail: m.Rail}
 	// The index has the space's notes the site doesn't show (untitled, empty), so matches come in batches until
 	// enough are posts. Bounded: one search must stay cheap.
 	for batch := 0; batch < searchBatches && len(p.Posts) < searchResults; batch++ {

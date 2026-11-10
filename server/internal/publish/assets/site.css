@@ -7,6 +7,7 @@
   --font-heading: 'Instrument Serif', ui-serif, Georgia, serif;
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
   --measure: 42rem;
+  --rail: 12.5rem;
   color-scheme: light;
 }
 
@@ -458,6 +459,155 @@ h6 {
   margin-left: 0.4rem;
 }
 
+/* The tags beside the page, in the left margin: only where both margins fit it, so the column stays
+   centred and nothing moves as the window narrows. */
+.tag-rail {
+  display: none;
+}
+
+@media (min-width: 74rem) {
+  body {
+    display: grid;
+    grid-template-columns: 1fr min(var(--measure), 100%) 1fr;
+    align-items: start;
+  }
+
+  /* Its auto margins would shrink it to its content in a grid. */
+  .site-header {
+    grid-row: 1;
+    grid-column: 1 / -1;
+    margin-inline: 0;
+  }
+
+  main,
+  .site-footer {
+    grid-column: 2;
+    width: 100%;
+  }
+
+  main {
+    grid-row: 2;
+  }
+
+  .site-footer {
+    grid-row: 3;
+  }
+
+  .tag-rail {
+    display: block;
+    grid-row: 2;
+    grid-column: 1;
+    justify-self: end;
+    position: sticky;
+    top: 5rem;
+    width: var(--rail);
+    max-width: calc(100% - 2.25rem);
+    max-height: calc(100vh - 6rem);
+    margin-right: 2.25rem;
+    padding-bottom: 2rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: none;
+    /* A long list fades out rather than being cut; the padding keeps a short one clear of the fade. */
+    -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent);
+    mask-image: linear-gradient(to bottom, #000 calc(100% - 2rem), transparent);
+  }
+}
+
+.tag-rail-title {
+  margin: 0 0 0.85rem;
+  padding-left: 0.85rem;
+  color: var(--muted);
+  font: 500 0.75rem/1.4 var(--font-mono);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.tag-rail ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.tag-rail .tag-rail-all {
+  margin-bottom: 0.5rem;
+}
+
+/* Nested tags hang off a hairline under their parent's name, as in the apps' sidebar. */
+.tag-rail ul ul {
+  margin: 0.05rem 0 0.25rem 0.85rem;
+  border-left: 1px solid var(--border);
+}
+
+.tag-rail a {
+  position: relative;
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.26rem 0 0.26rem 0.85rem;
+  color: var(--muted);
+  font-size: 0.9375rem;
+  line-height: 1.35;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+
+.tag-rail ul ul a {
+  padding-left: 0.75rem;
+}
+
+.tag-rail a:hover,
+.tag-rail a[aria-current='page'] {
+  color: var(--text);
+}
+
+.tag-rail-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A parent's branch opens on its page or a nested tag's: this says there's one to open. */
+.tag-rail-more {
+  flex: none;
+  align-self: center;
+  opacity: 0.55;
+}
+
+.tag-rail-more.open {
+  transform: rotate(90deg);
+}
+
+.tag-rail-count {
+  margin-left: auto;
+  color: var(--muted);
+  font: 500 0.75rem/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The accent, once, where the reader is; on a nested tag it lights its stretch of the hairline. Named, so
+   between pages it slides to the new tag instead of fading. */
+.tag-rail-mark {
+  position: absolute;
+  top: 0.3rem;
+  bottom: 0.3rem;
+  left: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  view-transition-name: tag-rail-mark;
+}
+
+.tag-rail ul ul .tag-rail-mark {
+  left: -1.5px;
+}
+
+::view-transition-group(tag-rail-mark) {
+  animation-duration: 0.38s;
+  animation-timing-function: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
 .post-nav,
 .pager {
   display: flex;
@@ -566,7 +716,8 @@ h6 {
   .heading-anchor,
   .tag,
   .tag-list .tag,
-  .tag-tree .tag {
+  .tag-tree .tag,
+  .tag-rail a {
     transition: none;
   }
 }
