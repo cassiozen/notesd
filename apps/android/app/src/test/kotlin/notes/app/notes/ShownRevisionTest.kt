@@ -24,7 +24,7 @@ import org.junit.runner.RunWith
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 
-/** The server's revision of what the editor shows, which an agent's read and the editor's close report. */
+/** What an agent needs of the open note: the server's revision of what it shows, and its changes saved at once. */
 @RunWith(AndroidJUnit4::class)
 @Config(application = TestNotesApp::class)
 class ShownRevisionTest {
@@ -50,13 +50,15 @@ class ShownRevisionTest {
         return runBlocking { result.await() }
     }
 
+    private var syncs = 0
+
     private fun opened(): EditorViewModel {
         // Another client's Markdown style, which this one saves as "- Milk".
         notesd.feeds[""] = listOf(RemoteNote("n1", "Groceries", "* Milk\n", revision = 3, changeSeq = 1))
         notesd.start()
         notesd.signIn(graph)
         assertEquals(SyncOutcome.Done, runBlocking { graph.sync.sync() })
-        val vm = EditorViewModel(graph.store, "n1", graph.scope, graph.locks)
+        val vm = EditorViewModel(graph.store, "n1", graph.scope, graph.locks, requestSync = { syncs++ })
         val looper = shadowOf(Looper.getMainLooper())
         val deadline = System.currentTimeMillis() + 5_000
         while (vm.document.value == null) {
@@ -84,5 +86,19 @@ class ShownRevisionTest {
         vm.save(doc)
         offMain { vm.saved() }
         assertNull(offMain { vm.shownRevision(Fields("Groceries", "- Milk\n- Tea\n")) })
+    }
+
+    @Test
+    fun `an agent's change is saved and synced at once`() {
+        val vm = opened()
+        vm.edited()
+        vm.saveNow(Document.forNote("Groceries", Markdown.parse("- Milk\n\n#food\n")))
+        val deadline = System.currentTimeMillis() + 5_000
+        while (syncs == 0) {
+            check(System.currentTimeMillis() < deadline) { "never synced" }
+            shadowOf(Looper.getMainLooper()).idle()
+            Thread.sleep(5)
+        }
+        assertEquals("- Milk\n\n#food\n", offMain { graph.store.get("n1") }?.content)
     }
 }

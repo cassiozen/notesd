@@ -431,7 +431,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             graph.locks,
                                             key.startTag,
                                             graph.images,
-                                            graph.space.value
+                                            graph.space.value,
+                                            requestSync = graph.scheduler::request
                                         )
                                     },
                                     locks = graph.locks,

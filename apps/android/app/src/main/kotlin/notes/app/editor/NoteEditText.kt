@@ -34,6 +34,7 @@ import androidx.appcompat.widget.AppCompatEditText
 import androidx.core.graphics.ColorUtils
 import androidx.core.graphics.withTranslation
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 import notes.app.ui.Tokens
 import notes.core.doc.Container
 import notes.core.doc.Document
@@ -42,6 +43,10 @@ import notes.core.doc.ListKind
 import notes.core.doc.Mark
 import notes.core.images.ImageRef
 import notes.core.text.tagText
+
+/** How long an outside change waits for an IME to finish composing a character. */
+private const val COMPOSE_WAIT_MS = 3_000L
+private const val COMPOSE_POLL_MS = 50L
 
 /** What the formatting bar shows for the current selection. */
 data class FormatState(
@@ -123,7 +128,8 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         imageSpans.refresh(t, id)
     }
 
-    var onChange: (() -> Unit)? = null
+    /** The text changed: [byUser], typing or a command; else an agent's change. A synced change isn't reported. */
+    var onChange: ((byUser: Boolean) -> Unit)? = null
     var onFormatState: ((FormatState) -> Unit)? = null
     var onLinkTap: ((LinkTap) -> Unit)? = null
 
@@ -235,10 +241,8 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         }
     }
 
-    /** Loads [doc]. With [keepSelection], the cursor stays at the same offset (a remote change). */
-    fun setDocument(doc: Document, keepSelection: Boolean = false) {
-        val selStart = selectionStart
-        val selEnd = selectionEnd
+    /** Loads [doc], as a note opens: undo starts over. A change to the note open is [applyOutside]'s. */
+    fun setDocument(doc: Document) {
         val sb = SpanCodec.toSpannable(doc, editorStyle)
         normalizer.normalize(sb)
         guard++
@@ -247,12 +251,61 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         } finally {
             guard--
         }
-        val len = text!!.length
-        if (keepSelection) setSelection(selStart.coerceIn(0, len), selEnd.coerceIn(0, len))
-        if (!keepSelection) undoStack.clear()
+        undoStack.clear()
         clearPending()
         refreshFind()
         publishState()
+    }
+
+    /**
+     * Changes the note open to what [to] makes of it: another device's change through sync, or, [byAgent], an
+     * agent's. Waits for an IME to finish composing first, up to [COMPOSE_WAIT_MS], and only then asks [to], so
+     * the change is made to what's shown once the word is done (null: none). Only the blocks that differ are
+     * replaced, as one undo step, with typing before and after steps of their own, and the selection follows
+     * the text it was in. False when nothing changed.
+     */
+    suspend fun applyOutside(byAgent: Boolean, to: (AgentRead) -> Document?): Boolean {
+        composed()
+        val t = text ?: return false
+        val doc = to(readForAgent()) ?: return false
+        val target = SpanCodec.toSpannable(doc, editorStyle)
+        normalizer.normalize(target)
+        val before = currentState()
+        val selStart = selectionStart
+        val selEnd = selectionEnd
+        val composing = composingStart(t) >= 0
+        val saved = t.filters
+        val mapping: OutsideChange.Mapping
+        guard++
+        try {
+            // Not the user's typing: none of its rules (raw text is read-only) apply.
+            t.filters = emptyArray()
+            mapping = OutsideChange.apply(t, target, editorStyle) ?: return false
+            normalizer.normalize(t)
+        } finally {
+            t.filters = saved
+            guard--
+        }
+        undoStack.push(before)
+        val len = t.length
+        setSelection(mapping.map(selStart).coerceIn(0, len), mapping.map(selEnd).coerceIn(0, len))
+        clearPending()
+        // Still composing after the wait: the IME's idea of the text is out of date.
+        if (composing) context.getSystemService(InputMethodManager::class.java)?.restartInput(this)
+        if (byAgent) {
+            changed(byUser = false)
+        } else {
+            refreshFind()
+            publishState()
+        }
+        return true
+    }
+
+    private suspend fun composed() {
+        val until = SystemClock.uptimeMillis() + COMPOSE_WAIT_MS
+        while (text?.let { composingStart(it) >= 0 } == true && SystemClock.uptimeMillis() < until) {
+            delay(COMPOSE_POLL_MS)
+        }
     }
 
     // --- formatting commands -------------------------------------------------
@@ -427,9 +480,9 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         changed()
     }
 
-    private fun changed() {
+    private fun changed(byUser: Boolean = true) {
         refreshFind()
-        onChange?.invoke()
+        onChange?.invoke(byUser)
         publishState()
     }
 

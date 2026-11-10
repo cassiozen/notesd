@@ -36,6 +36,14 @@ class UndoStack(private val limit: Int = 200, private val pauseMillis: Long = 10
         lastAt = now
     }
 
+    /** [state] as a step of its own, before a change that isn't typing: what comes after starts afresh. */
+    fun push(state: State) {
+        undo.addLast(state)
+        if (undo.size > limit) undo.removeFirst()
+        redo.clear()
+        lastKind = null
+    }
+
     fun breakCoalescing() {
         lastKind = null
     }
