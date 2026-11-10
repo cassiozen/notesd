@@ -173,6 +173,10 @@ func TestPublishedSitesFollowTheirNotes(t *testing.T) {
 	if tag.status != 200 {
 		t.Fatalf("its tag: %d", tag.status)
 	}
+	// Search results are rendered for each query, beside the same tags as every page.
+	if r := s.visit("/@family/search?q=coast"); !strings.Contains(r.body, `<a href="./tags/coast/" aria-label="#coast, 1 post">`) {
+		t.Fatalf("search's rail: %s", r.body)
+	}
 
 	// The address keeps working after the title changes.
 	post := home.body[strings.Index(home.body, `href="./trip-`)+8:]

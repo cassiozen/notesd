@@ -296,6 +296,90 @@ func TestBuildLaysOutTheSite(t *testing.T) {
 	}
 }
 
+func TestTheRailListsTagsWithOnlyTheCurrentBranchOpen(t *testing.T) {
+	src := &source{Name: "Garden", Base: "https://notes.example/@garden/",
+		Posts: posts(31), Images: map[string]imageFile{}, ImageData: map[string][]byte{}}
+	s, err := build(src, "duck")
+	if err != nil {
+		t.Fatal(err)
+	}
+	page := func(route string) string {
+		t.Helper()
+		name, ok := s.manifest.Routes[route]
+		if !ok {
+			t.Fatalf("no %q", route)
+		}
+		return string(s.files[name])
+	}
+	// What's in the rail, apart from the page around it.
+	railOf := func(html string) string {
+		t.Helper()
+		start := strings.Index(html, `<nav class="tag-rail"`)
+		if start < 0 {
+			return ""
+		}
+		return html[start : start+strings.Index(html[start:], "</nav>")]
+	}
+
+	home := railOf(page(""))
+	for _, want := range []string{
+		`<a href="./" aria-label="All posts, 31" aria-current="page"><span class="tag-rail-mark"`,
+		`<a href="./tags/all/" aria-label="#all, 31 posts">`,
+		`<a href="./tags/home/" aria-label="#home, 15 posts">`,
+		`<svg class="tag-rail-more" `,
+	} {
+		if !strings.Contains(home, want) {
+			t.Errorf("%s not in the home page's rail: %s", want, home)
+		}
+	}
+	if strings.Contains(home, "garden") {
+		t.Errorf("a branch is closed away from its tags: %s", home)
+	}
+
+	garden := railOf(page("tags/home/garden/"))
+	for _, want := range []string{
+		`<a href="../../../" aria-label="All posts, 31">`,
+		`<svg class="tag-rail-more open" `,
+		`<a href="../../../tags/home/garden/" aria-label="#garden, 15 posts" aria-current="page"><span class="tag-rail-mark"`,
+	} {
+		if !strings.Contains(garden, want) {
+			t.Errorf("%s not in a nested tag's rail: %s", want, garden)
+		}
+	}
+	if strings.Count(garden, `aria-current`) != 1 {
+		t.Errorf("one tag is current: %s", garden)
+	}
+	if parent := railOf(page("tags/home/")); !strings.Contains(parent, `href="../../tags/home/garden/"`) {
+		t.Errorf("a tag's own page opens its branch: %s", parent)
+	}
+	if other := railOf(page("tags/all/")); strings.Contains(other, "garden") {
+		t.Errorf("another tag's page leaves the branch closed: %s", other)
+	}
+
+	if post := railOf(page(src.Posts[0].Path)); post == "" || strings.Contains(post, "aria-current") {
+		t.Errorf("a post's page has the rail, nothing current: %s", post)
+	}
+	if railOf(page("tags/")) != "" {
+		t.Error("the tags page has no rail: it would repeat the page")
+	}
+	if nf := railOf(string(s.files["404.html"])); !strings.Contains(nf, `href="`+missingRoot+`tags/all/"`) {
+		t.Errorf("the 404 page's rail starts its links where its root is filled in: %s", nf)
+	}
+
+	bare := posts(2)
+	for i := range bare {
+		bare[i].Tags = nil
+	}
+	s, err = build(&source{Name: "Bare", Base: "https://notes.example/@bare/", Posts: bare,
+		Images: map[string]imageFile{}, ImageData: map[string][]byte{}}, "duck")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if railOf(page("")) != "" {
+		t.Error("no tags, no rail")
+	}
+}
+
 func TestImportsEndOutsideStringsAndBrackets(t *testing.T) {
 	css := "@import url(https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&display=swap);\n" +
 		"@IMPORT \"a;b.css\" screen;\n" +

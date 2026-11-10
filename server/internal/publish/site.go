@@ -62,6 +62,8 @@ type manifest struct {
 	// ETags by file name; a file in Gzipped also has its compressed copy, <name>.gz.
 	ETags   map[string]string `json:"etags"`
 	Gzipped map[string]bool   `json:"gzipped"`
+	// Rail is the search page's rail, for its results, rendered per request without the posts' tags.
+	Rail *rail `json:"rail,omitempty"`
 }
 
 // post is a published note.
@@ -205,6 +207,42 @@ type tagNode struct {
 	Href, Name string
 	Count      int
 	Children   []*tagNode
+	key        string
+}
+
+// rail is the list of tags beside a page, where the screen is wide enough: every top-level tag, and only
+// the current tag's branch open, so it stays short.
+type rail struct {
+	All        string     `json:"all"` // the list's address
+	AllCount   int        `json:"allCount"`
+	AllCurrent bool       `json:"allCurrent,omitempty"`
+	Tags       []*railTag `json:"tags"`
+}
+
+// railTag is a tag in the rail.
+type railTag struct {
+	Href     string     `json:"href"`
+	Name     string     `json:"name"`
+	Label    string     `json:"label"`
+	Count    int        `json:"count"`
+	Current  bool       `json:"current,omitempty"`
+	Parent   bool       `json:"parent,omitempty"`
+	Children []*railTag `json:"children,omitempty"` // only when its branch is open
+}
+
+// railTags is the rail's tree as seen from root, with current's branch open.
+func railTags(nodes []*tagNode, root, current string) []*railTag {
+	var out []*railTag
+	for _, n := range nodes {
+		path, _ := tagPath(n.key)
+		t := &railTag{Href: root + path, Name: n.Name, Label: "#" + n.Name + ", " + plural(n.Count, "post", "posts"),
+			Count: n.Count, Current: n.key == current, Parent: len(n.Children) > 0}
+		if t.Parent && (t.Current || strings.HasPrefix(current, n.key+"/")) {
+			t.Children = railTags(n.Children, root, current)
+		}
+		out = append(out, t)
+	}
+	return out
 }
 
 // page is what the page template is given.
@@ -226,6 +264,9 @@ type page struct {
 	Tag          string
 	Count        string
 	Query        string
+	Rail         *rail
+
+	tagKey string // a tag page's tag, current in the rail
 }
 
 // missingRoot stands for the 404 page's root: it's served at any depth, so the handler puts in the one
@@ -285,6 +326,7 @@ func build(src *source, accent string) (*site, error) {
 		s.add(f.name, f.name, f.data)
 	}
 	info := siteInfo{Name: src.Name, Accent: accent, Style: m.Style, Script: m.Script, Icon: m.Icon}
+	tree, byKey := tagTree(src.Posts)
 	for name, data := range src.ImageData {
 		s.add(name, name, data)
 	}
@@ -297,6 +339,14 @@ func build(src *source, accent string) (*site, error) {
 			p.Root = missingRoot
 		} else if !p.NoIndex {
 			p.Canonical = src.Base + route
+		}
+		// Not beside the tags page, which it would repeat.
+		if len(tree) > 0 && p.Kind != "tags" {
+			p.Rail = &rail{All: p.Root, AllCount: len(src.Posts), AllCurrent: p.Kind == "home",
+				Tags: railTags(tree, p.Root, p.tagKey)}
+		}
+		if p.Kind == "search" {
+			m.Rail = p.Rail
 		}
 		var b bytes.Buffer
 		if err := pages.ExecuteTemplate(&b, "page", p); err != nil {
@@ -376,14 +426,13 @@ func build(src *source, accent string) (*site, error) {
 
 	// Tags: the tree, and a page per tag with its nested tags' posts, all on one: a tag's page/2/ would be the
 	// address of a tag nested in it.
-	tree, byKey := tagTree(src.Posts)
 	if err := render("tags/", "tags.html", page{Kind: "tags", Title: "Tags", Tags: hrefs(tree, "../")}); err != nil {
 		return nil, err
 	}
 	for key, t := range byKey {
 		route, _ := tagPath(key)
 		root := rootFor(route)
-		p := page{Kind: "tag", Title: "#" + t.name, Tag: t.name, Count: plural(len(t.posts), "post", "posts")}
+		p := page{Kind: "tag", Title: "#" + t.name, Tag: t.name, Count: plural(len(t.posts), "post", "posts"), tagKey: key}
 		for _, post := range t.posts {
 			p.Posts = append(p.Posts, post.item(root))
 		}
@@ -583,7 +632,7 @@ func tagTree(posts []post) ([]*tagNode, map[string]*tagEntry) {
 	sort.Strings(keys)
 	for _, k := range keys {
 		e := byKey[k]
-		n := &tagNode{Name: e.name, Count: len(e.posts)}
+		n := &tagNode{Name: e.name, Count: len(e.posts), key: k}
 		n.Href, _ = tagPath(k)
 		nodes[k] = n
 		if i := strings.LastIndex(k, "/"); i >= 0 && nodes[k[:i]] != nil {

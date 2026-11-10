@@ -46,6 +46,7 @@
 </button>
 </nav>
 </header>
+{{- if .Rail}}{{template "rail" .Rail}}{{end}}
 <main id="main">
 {{- if eq .Kind "home"}}{{template "home" .}}
 {{- else if eq .Kind "post"}}{{template "post" .}}
@@ -132,6 +133,31 @@
 {{- range .}}
 <li><a class="tag" href="{{.Href}}">#{{.Name}}</a><span class="tag-count">{{.Count}}</span>
 {{- if .Children}}{{template "tree" .Children}}{{end}}</li>
+{{- end}}
+</ul>
+{{end}}
+
+{{define "rail"}}
+<nav class="tag-rail" aria-label="Tags">
+<p class="tag-rail-title" aria-hidden="true">Tags</p>
+<ul class="tag-rail-all">
+<li><a href="{{.All}}" aria-label="All posts, {{.AllCount}}"{{if .AllCurrent}} aria-current="page"{{end}}>
+{{- if .AllCurrent}}<span class="tag-rail-mark" aria-hidden="true"></span>{{end -}}
+<span class="tag-rail-name">All posts</span><span class="tag-rail-count" aria-hidden="true">{{.AllCount}}</span></a></li>
+</ul>
+{{- template "rail-tags" .Tags}}
+</nav>
+{{end}}
+
+{{define "rail-tags"}}
+<ul>
+{{- range .}}
+<li><a href="{{.Href}}" aria-label="{{.Label}}"{{if .Current}} aria-current="page"{{end}}>
+{{- if .Current}}<span class="tag-rail-mark" aria-hidden="true"></span>{{end -}}
+<span class="tag-rail-name">{{.Name}}</span>
+{{- if .Parent}}<svg class="tag-rail-more{{if .Children}} open{{end}}" width="7" height="7" viewBox="0 0 8 8" aria-hidden="true"><path d="M2.5 1 5.5 4 2.5 7" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>{{end -}}
+<span class="tag-rail-count" aria-hidden="true">{{.Count}}</span></a>
+{{- if .Children}}{{template "rail-tags" .Children}}{{end}}</li>
 {{- end}}
 </ul>
 {{end}}

@@ -65,7 +65,7 @@ test('a published space: on from Space info, its site readable, then off', async
   await expect(visitor.getByRole('heading', { name: 'Posts', level: 1 })).toBeAttached()
   await visitor.getByRole('link', { name: 'Tomatoes' }).click()
   await expect(visitor.getByRole('heading', { name: 'Tomatoes', level: 1 })).toBeVisible()
-  await expect(visitor.getByRole('link', { name: '#veg' }).first()).toBeVisible()
+  await expect(visitor.getByRole('link', { name: '#veg', exact: true }).first()).toBeVisible()
 
   await info.getByRole('button', { name: 'Stop publishing…' }).click()
   await info.getByRole('group', { name: `Stop publishing ${name}?` }).getByRole('button', { name: 'Stop publishing' }).click()
