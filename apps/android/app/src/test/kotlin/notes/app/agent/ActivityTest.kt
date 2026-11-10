@@ -50,6 +50,7 @@ class ActivityTest {
     @After
     fun tearDown() {
         scenario?.close()
+        graph.agentLink.socket.reset()
         graph.shutDown()
         notesd.close()
         activityPollMs = 5_000L
@@ -86,16 +87,27 @@ class ActivityTest {
         diffs = diffs
     )
 
-    private fun launch(until: String) {
+    /** [socket]: the agent socket open, and the run updates it hears. */
+    private fun launch(until: String, socket: Boolean = false) {
         notesd.agents[Spaces.DEFAULT] =
             AgentConfig(Spaces.DEFAULT, true, "Tags.", "", mapOf("newNoteDone" to "Tag it."))
         notesd.start()
         notesd.signIn(graph)
         graph.setOnboardingDismissed(true)
         assertEquals(SyncOutcome.Done, runBlocking { graph.sync.sync() })
+        if (socket) {
+            graph.foreground.value = true
+            graph.agentLink.start()
+        }
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntilAtLeastOneExists(hasText(until), 5_000)
+        if (socket) compose.waitUntil(5_000) { graph.agentLink.socket.connected.value }
     }
+
+    /** The server telling every socket of the account of a run. */
+    private fun update(run: String, note: String, status: String, failure: String = "") = notesd.sockets.last().send(
+        """{"type":"run","runId":"$run","noteId":"$note","trigger":"menu","status":"$status","failure":"$failure"}"""
+    )
 
     private fun openActivity() {
         compose.onNode(hasContentDescription("Sidebar")).performClick()
@@ -219,5 +231,43 @@ class ActivityTest {
         compose.waitUntil(3_000) { notesd.requests.count { it == "GET /api/v1/agent/runs" } >= 2 }
         compose.waitForIdle()
         compose.onNodeWithText(notice).assertDoesNotExist()
+    }
+
+    @Test
+    fun `a run still going is fetched again as it ends, without waiting to poll`() {
+        activityPollMs = 60_000
+        notesd.runs += run("r1", "n1", "Groceries", status = "running", outcome = "")
+        launch("All Notes", socket = true)
+        openActivity()
+        compose.waitUntilExactlyOneExists(hasText("Running"))
+        synchronized(notesd) { notesd.runs[0] = notesd.runs[0].copy(status = "done", outcome = "no_change") }
+        update("r1", "n1", "done")
+        compose.waitUntilExactlyOneExists(hasText("No change"), 5_000)
+
+        compose.onNode(hasText("Groceries", substring = true) and hasClickAction()).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Tagged it."))
+        synchronized(notesd) { notesd.runs[0] = notesd.runs[0].copy(outcome = "undone") }
+        update("r1", "n1", "done")
+        compose.waitUntilExactlyOneExists(hasText("Undone"), 5_000)
+    }
+
+    @Test
+    fun `a run on the open note failing says so as it ends, and the next run takes it away`() {
+        notesd.feeds[""] = listOf(
+            RemoteNote("n1", "Groceries", "Groceries\n", revision = 1, changeSeq = 1, createdAt = now, updatedAt = now)
+        )
+        launch("Groceries", socket = true)
+        compose.onNode(hasText("Groceries") and hasClickAction()).performClick()
+        compose.waitUntil(5_000) { notesd.requests.count { it == "GET /api/v1/agent/runs" } >= 1 }
+        val notice = "The agent's last run on this note failed: it took too long."
+
+        synchronized(notesd) {
+            notesd.runs.add(0, run("r1", "n1", "Groceries", status = "failed", outcome = "", failure = "timeout"))
+        }
+        update("r1", "n1", "failed", "timeout")
+        compose.waitUntilExactlyOneExists(hasText(notice), 5_000)
+
+        update("r2", "n1", "running")
+        compose.waitUntilDoesNotExist(hasText(notice), 5_000)
     }
 }

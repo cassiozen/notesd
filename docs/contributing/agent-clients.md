@@ -6,9 +6,10 @@ description: "What an app does to take part in a space's agent: the socket, edit
 # Agent clients
 
 What an app has to do to take part in a space's agent, and what it gets without doing anything. The
-web app does all of it. Android is at level 0: it sets up AI and a space's agent, shows Activity with
-Undo, and fetches a note's failed run as the note opens. iOS does none of it yet. Read this before
-adding agent support to an app.
+web app does all of it. Android is at level 1: it sets up AI and a space's agent, shows Activity with
+Undo, opens the socket, says which notes are open, answers `read` and `apply`, and keeps a note's
+failed run and Activity current from `run` updates. iOS does none of it yet. Read this before adding
+agent support to an app.
 
 The server is the authority: it decides when an agent acts, runs the model with the AI key only it
 holds, and records every run. An app only tells the server what the user has open, answers its

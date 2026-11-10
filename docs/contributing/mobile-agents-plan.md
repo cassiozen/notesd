@@ -6,9 +6,10 @@ description: "What the web app does for space agents, what the phone apps must r
 # Space agents on Android and iOS
 
 The space agent (PRs #94–#100, #124, #136, GitHub stack #101) is complete on the server and the web
-app. The Mac app wraps the web app and has all of it. Android has phase 1 (agent level 0): AI and the
-time zone in Settings, the agent's section in Space info, Activity, and a note's failed run;
-everything else in the editor is still to do. iOS has none of it, beyond sending
+app. The Mac app wraps the web app and has all of it. Android has phases 1 to 3 (agent level 1): AI
+and the time zone in Settings, the agent's section in Space info, Activity, a note's failed run, and
+the socket, through which runs read and change the note open. Editor triggers, the agent at work and
+cards beside the note are still to do. iOS has none of it, beyond sending
 `X-Notesd-Time-Zone`. This is the inventory of what to replicate and the plan to build it.
 The protocol is in [Agent clients](agent-clients.md); this doesn't repeat it.
 
@@ -81,10 +82,10 @@ Status: ✓ done, – not needed, ☐ to do.
 | --- | --- | --- | --- | --- |
 | N1 | Failed-run notice: latest run failed and not dismissed; Dismiss remembered; Activity opens the run | ✓ | ✓ | ☐ |
 | N2 | The space's menu command in the note's menu (agent on, menu prompt, not locked) | ✓ | ☐ | ☐ |
-| N3 | Socket: open while AI is set up and the shown space's agent is on, and the app is in the foreground; same socket across agent spaces; backoff only while online; closes 5 s after the last `editor.closed`; closes at once on sign-out | ✓ | ☐ | ☐ |
-| N4 | `editor.opened` / `editor.closed` per note, counted; close after the last save and push, with its revision | ✓ | ☐ | ☐ |
-| N5 | Answer `read`: title, Markdown content, cursor in code points, revision; `locked` | ✓ | ☐ | ☐ |
-| N6 | Answer `apply`: wait for IME, `madeTo` when the text moved, change only what differs as one undoable step, keep the caret; `{before, revision, shows}` | ✓ | ☐ | ☐ |
+| N3 | Socket: open while AI is set up and the shown space's agent is on, and the app is in the foreground; same socket across agent spaces; backoff only while online; closes 5 s after the last `editor.closed`; closes at once on sign-out | ✓ | ✓ | ☐ |
+| N4 | `editor.opened` / `editor.closed` per note, counted; close after the last save and push, with its revision | ✓ | ✓ | ☐ |
+| N5 | Answer `read`: title, Markdown content, cursor in code points, revision; `locked` | ✓ | ✓ | ☐ |
+| N6 | Answer `apply`: wait for IME, `madeTo` when the text moved, change only what differs as one undoable step, keep the caret; `{before, revision, shows}` | ✓ | ✓ | ☐ |
 | N7 | Editor triggers: `noteCreated` once per new note; `editStarted` on the first user change and after 3 min idle (agent changes don't count); held for up to 10 s while connecting | ✓ | ☐ | ☐ |
 | N8 | Agent at work: "{Space} agent" marker at the caret or top of body; screen reader "Agent is writing…" | ✓ | ☐ | ☐ |
 | N9 | Change landing: highlight fading over 3 s (static with reduced motion); Undo beside it until typing or 6 s | ✓ | ☐ | ☐ |
@@ -250,6 +251,11 @@ its own there too.
 | Both | The open-editor registry and every way out of a note (one test per path) |
 
 ### Phase 3: the socket, reading and writing (agent level 1, and live updates)
+
+Done on Android: `notes.core.agent.AgentSocket` in the engine (tested against the real hub with a
+stand-in model), `AgentLink` (when it's open), `OpenNotes` saying what's open and closing with the
+revision once the last save is pushed, `OpenNoteEditors` (`read`, `apply`), and `run` updates
+refreshing the failed-run notice and Activity, which polls only while the socket isn't connected.
 
 | App | Work |
 | --- | --- |

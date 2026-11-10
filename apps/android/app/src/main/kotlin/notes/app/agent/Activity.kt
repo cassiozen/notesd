@@ -28,6 +28,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +54,8 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
 import notes.app.notes.ago
@@ -67,6 +70,7 @@ import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
 import notes.app.ui.Sheet
 import notes.app.ui.Type
+import notes.core.agent.RunUpdate
 import notes.core.api.AgentRun
 import notes.core.api.AgentUsage
 import notes.core.api.ApiResult
@@ -74,18 +78,41 @@ import notes.core.api.DiffLine
 import notes.core.api.NoteDiff
 import notes.core.db.Space
 
-/** How often what's shown is fetched again while a run in it is waiting or going: the phone has no socket yet. */
+/**
+ * How often what's shown is fetched again while a run in it is waiting or going and the agent socket isn't
+ * connected: none is open for a space without an agent, or in the background.
+ */
 internal var activityPollMs = 5_000L
+
+/** Run updates arriving together are fetched for once. */
+private const val SETTLE_MS = 300L
 
 private fun tokens(n: Long): String = NumberFormat.getIntegerInstance().format(n)
 
-/** Fetched again every [activityPollMs] while [polling]. */
+/**
+ * Calls [refresh] when runs that [matches] start or end, as the agent socket hears; and, while not connected,
+ * every [activityPollMs] while [polling].
+ */
 @Composable
-private fun Polling(polling: Boolean, refresh: suspend () -> Unit) {
-    LaunchedEffect(polling) {
-        while (polling) {
+private fun RunsChanged(
+    graph: AppGraph,
+    polling: Boolean,
+    matches: (RunUpdate) -> Boolean = { true },
+    refresh: suspend () -> Unit
+) {
+    val latest by rememberUpdatedState(refresh)
+    val socket = graph.agentLink.socket
+    val connected by socket.connected.collectAsStateWithLifecycle()
+    LaunchedEffect(socket) {
+        socket.runs.filter { matches(it) }.collectLatest {
+            delay(SETTLE_MS)
+            latest()
+        }
+    }
+    LaunchedEffect(polling && !connected) {
+        while (polling && !connected) {
             delay(activityPollMs)
-            refresh()
+            latest()
         }
     }
 }
@@ -125,8 +152,9 @@ fun ActivityScreen(graph: AppGraph, space: String, backLabel: String?, onBack: (
     }
 
     // The newest page again: runs it has replace what was shown, new ones go first, older pages stay.
-    Polling(runs.orEmpty().any(::going)) {
-        val page = (graph.api()?.agentRuns(space = chosen.ifEmpty { null }) as? ApiResult.Ok)?.value ?: return@Polling
+    RunsChanged(graph, runs.orEmpty().any(::going)) {
+        val page =
+            (graph.api()?.agentRuns(space = chosen.ifEmpty { null }) as? ApiResult.Ok)?.value ?: return@RunsChanged
         val ids = page.runs.mapTo(HashSet()) { it.id }
         val rest = runs.orEmpty().filter { it.id !in ids }
         runs = page.runs + rest
@@ -304,7 +332,9 @@ fun RunScreen(graph: AppGraph, id: String, onBack: () -> Unit) {
         }
     }
     LaunchedEffect(id) { load() }
-    Polling(run?.let(::going) == true) { (graph.api()?.agentRun(id) as? ApiResult.Ok)?.value?.let { run = it } }
+    RunsChanged(graph, run?.let(::going) == true, { it.runId == id }) {
+        (graph.api()?.agentRun(id) as? ApiResult.Ok)?.value?.let { run = it }
+    }
 
     fun undo() {
         busy = true
@@ -498,7 +528,7 @@ private class DismissedRuns(context: Context) {
 /** A note's latest agent run, if it failed and wasn't dismissed, with a way to dismiss it. */
 class FailedRun(val run: AgentRun, val dismiss: () -> Unit)
 
-/** Fetched as the note opens, once the account has an agent in some space: the phone hears of runs no other way yet. */
+/** Fetched as the note opens, once the account has an agent in some space, and again as each run on it ends. */
 @Composable
 fun rememberFailedRun(graph: AppGraph, noteId: String): FailedRun? {
     val context = LocalContext.current
@@ -509,8 +539,15 @@ fun rememberFailedRun(graph: AppGraph, noteId: String): FailedRun? {
     val any = configs?.isNotEmpty() == true
     LaunchedEffect(noteId, any) {
         if (!any) return@LaunchedEffect
-        val r = graph.api()?.agentRuns(note = noteId, limit = 1) as? ApiResult.Ok ?: return@LaunchedEffect
-        found = r.value.runs.firstOrNull()?.takeIf { it.status == "failed" && !dismissed.has(it.id) }
+        suspend fun look() {
+            val r = graph.api()?.agentRuns(note = noteId, limit = 1) as? ApiResult.Ok ?: return
+            // Cleared otherwise: a later run replaces an old failure.
+            found = r.value.runs.firstOrNull()?.takeIf { it.status == "failed" && !dismissed.has(it.id) }
+        }
+        look()
+        graph.agentLink.socket.runs.filter { it.noteId == noteId }.collectLatest {
+            if (it.status == "running") found = null else look()
+        }
     }
     val run = found?.takeIf { any } ?: return null
     return FailedRun(run) {
