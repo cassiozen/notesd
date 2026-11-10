@@ -23,10 +23,11 @@ The protocol is in [Agent clients](agent-clients.md); this doesn't repeat it.
    - Android: `NoteEditText` (an `EditText` over one `Spannable`).
    - iOS: `NoteTextView` (a TextKit 2 `UITextView` over one `NSAttributedString`).
 
-   Neither can make an outside change as one undoable step today. Their only outside-change path
-   (`setDocument`) replaces the whole text, moves the caret by raw offset, records no undo step (a
-   later undo silently reverts it), and ignores IME composition. Neither can put views between
-   blocks. That's where the hard work is: reading, applying and overlays.
+   Neither could make an outside change as one undoable step. Their only outside-change path
+   (`setDocument`) replaced the whole text, moved the caret by raw offset, recorded no undo step (a
+   later undo silently reverted it), and ignored IME composition. Android's now goes through
+   `NoteEditText.applyOutside` (phase 2); iOS's still does. Neither can put views between blocks.
+   That's where the hard work is: reading, applying and overlays.
 3. **The rules for `op` exist only in Go and TypeScript, with no shared fixtures.** Kotlin and Swift
    ports would be a third and fourth copy, so the fixtures come first.
 4. **Neither app knows "the server's revision of exactly what the editor shows."** Saves go to the
@@ -234,7 +235,10 @@ the editor.
 
 ### Phase 2: editor foundations (no socket yet)
 
-The riskiest work, kept apart from networking and tested on its own.
+The riskiest work, kept apart from networking and tested on its own. Done on Android:
+`notes.core.agent.madeTo`, `AgentReading`, `EditorViewModel.shownRevision` and `saveNow`,
+`NoteEditText.applyOutside` (`OutsideChange`), and `OpenNotes`. A synced change is an undo step of
+its own there too.
 
 | App | Work |
 | --- | --- |

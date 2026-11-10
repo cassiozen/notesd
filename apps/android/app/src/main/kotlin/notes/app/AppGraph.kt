@@ -41,6 +41,7 @@ import notes.app.locks.Biometrics
 import notes.app.locks.FingerprintUnlock
 import notes.app.locks.KeystoreBiometrics
 import notes.app.notes.Deletions
+import notes.app.notes.OpenNotes
 import notes.app.notes.SpaceInvite
 import notes.app.notes.TagTreeState
 import notes.app.notes.changeLine
@@ -115,6 +116,9 @@ class AppGraph(
 
     /** Each space's agent. */
     val agents = AgentConfigs { api() }
+
+    /** The notes open in an editor here. */
+    val openNotes = OpenNotes()
 
     private val prefs = context.getSharedPreferences("app", Context.MODE_PRIVATE)
 

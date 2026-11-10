@@ -23,6 +23,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import notes.app.editor.NoteEditText
 import notes.app.images.ImageException
 import notes.app.images.Prepared
 import notes.app.images.prepareImage
@@ -80,8 +81,20 @@ class EditorViewModel(
     /** Where a new note is created: the space the list showed (§7.7). */
     spaceId: String = Spaces.DEFAULT,
     /** Asks for a sync now rather than after the usual pause. */
-    private val requestSync: () -> Unit = {}
+    private val requestSync: () -> Unit = {},
+    /** Where the note counts as open while this lives. */
+    private val openNotes: OpenNotes? = null
 ) : ViewModel() {
+    private val _view = MutableStateFlow<NoteEditText?>(null)
+
+    /** The editor showing the note, while there is one: none for a locked note, or during a rotation. */
+    val view: StateFlow<NoteEditText?> = _view
+
+    /** Set by the screen as its editor comes and goes. */
+    fun attach(editor: NoteEditText?) {
+        _view.value = editor
+    }
+
     /** The note's space: where it's created, or where it is once loaded or moved. */
     private var noteSpace = spaceId
 
@@ -243,6 +256,7 @@ class EditorViewModel(
     private val blankContent = startTag?.let { tagText(it) + "\n" } ?: ""
 
     init {
+        openNotes?.opened(this)
         viewModelScope.launch {
             val note = store.get(id)
             isNew = note == null
@@ -267,6 +281,8 @@ class EditorViewModel(
 
     override fun onCleared() {
         unhook()
+        _view.value = null
+        openNotes?.closed(this)
     }
 
     /**
