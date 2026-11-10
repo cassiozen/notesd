@@ -15,8 +15,11 @@ describe('newPasswordErrors', () => {
 })
 
 describe('sentence', () => {
-  it('capitalizes and ends with one full stop', () => {
+  it('capitalises, and ends with a full stop only when it needs one', () => {
     expect(sentence('must be at least 8 characters')).toBe('Must be at least 8 characters.')
+    expect(sentence('model not found')).toBe('Model not found.')
     expect(sentence('already done.')).toBe('Already done.')
+    expect(sentence('unauthorized!')).toBe('Unauthorized!')
+    expect(sentence('is the key right?')).toBe('Is the key right?')
   })
 })

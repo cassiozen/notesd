@@ -13,7 +13,7 @@ description: The JSON API the notesd apps use to sign in, sync, search and store
 - [Basics](#basics): requests, compatibility, authentication, writing notes, errors
 - [Endpoints](#endpoints): [auth](#auth), [notes](#notes), [sync](#sync),
   [search and filters](#search-and-filters), [spaces](#spaces), [shared spaces](#shared-spaces), [images](#images),
-  [locked notes](#locked-notes), [email](#email), [updates](#updates), [health](#health)
+  [locked notes](#locked-notes), [email](#email), [AI](#ai), [updates](#updates), [health](#health)
 - [Error codes](#error-codes)
 
 ## Basics
@@ -495,6 +495,29 @@ An admin can't change, remove or make a link for their own account here (`409
 cannot_change_self`), and the server always keeps an admin who can sign in (`409 last_admin`).
 Removing an account leaves its notes database on disk, as
 [`remove-user`](cli.md#remove-user) does.
+### AI
+
+| Method | Path | Body → response |
+| --- | --- | --- |
+| `GET` | `/settings/ai` | → `{configured, baseUrl, model, keyHint, dailyTokenCap, editable}` |
+| `PUT` | `/settings/ai` | `{baseUrl, apiKey?, model, dailyTokenCap?}` → the same as `GET`. Admins only |
+| `DELETE` | `/settings/ai` | → `204`. Admins only |
+| `POST` | `/settings/ai/test` | `{baseUrl, apiKey?, model}`, or no body → `{ok, model, latencyMs}`. Admins only |
+
+**Settings** are server-wide: one OpenAI-compatible provider for every account's
+[agents](../guides/using/agents.md). `baseUrl` is where requests go, without `/chat/completions`
+(a trailing one is removed); plain `http` is accepted only for a loopback, private or link-local
+address, a `.local` name or a name with no dot. `apiKey` can be left out to keep the saved one; it's never returned,
+and `keyHint` is its last 4 characters. `dailyTokenCap` is tokens per account per day, 1,000,000
+when left out or `0`. `editable` says whether this account is an admin; other accounts get
+`403 admin_only` when they change it.
+
+**Testing** sends one small request that asks the model to call a tool, with the settings in the
+body before they're saved (`apiKey` left out uses the saved key), or the saved settings when there
+is no body. `model` in the answer is the model as the provider names it. The test fails with
+`502 ai_test_failed` and a `message` for the admin when the provider can't be reached, refuses the
+request, or the model answers without calling the tool. With no body and nothing saved, it's
+`409 ai_not_configured`.
 
 ### Updates
 
@@ -555,6 +578,7 @@ Outside `/api/v1`, need no session, and expose no data:
 | `stale_revision` | 409 | The note changed since the revision you sent; sync first |
 | `note_locked` | 409 | Locked notes can't be emailed |
 | `email_not_configured` | 409 | Email isn't set up on this server |
+| `ai_not_configured` | 409 | AI isn't set up on this server |
 | `generation_mismatch` | 409 | The server was restored; reconcile in full |
 | `cursor_ahead` | 409 | The sync cursor is ahead of the server; reconcile in full |
 | `updates_disabled` | 409 | The server wasn't started with `--self-update` |
@@ -568,3 +592,5 @@ Outside `/api/v1`, need no session, and expose no data:
 | `internal_error` | 500 | Something went wrong on the server; it's in the logs |
 | `email_failed` | 502 | Resend refused the email; see `message` |
 | `busy` | 503 | A note kept moving between files during the write; retry |
+| `ai_test_failed` | 502 | The AI provider failed the test; see `message` |
+| `ai_failed` | 502 | The AI provider refused or failed a request; see `message` |

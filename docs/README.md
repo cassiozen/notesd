@@ -42,6 +42,7 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 - [Publishing a space](guides/using/publishing.md): a space as a small public website
 - [Locked notes](guides/using/locked-notes.md): end-to-end encrypted notes
 - [Emailing notes](guides/using/email.md)
+- [Agents](guides/using/agents.md): an AI provider for spaces
 - [Offline and sync](guides/using/offline-and-sync.md): what works offline, conflicts, lost devices
 - [Settings](guides/using/settings.md)
 

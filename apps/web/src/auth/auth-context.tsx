@@ -3,6 +3,7 @@ import { auth } from '../api/auth'
 import { ApiError, onUnauthenticated, setCsrfToken } from '../api/client'
 import type { Person, SessionInfo } from '../api/types'
 import { forgetTouchId } from '../locks/touch-id'
+import { forgetAiSettings } from '../notes/ai-settings'
 import { forgetEmailSettings } from '../notes/email-settings'
 import { forgetSharing } from '../notes/sharing'
 import { forgetSpaces } from '../notes/spaces'
@@ -48,6 +49,12 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 
 /** Opened offline: how often to try the server again, besides on the browser's online event. */
 export const reconnectTiming = { everyMs: 30_000 }
+
+// What the server told one account (whether it's an admin, for one) mustn't outlive its session.
+function forgetAccountSettings() {
+  forgetAiSettings()
+  forgetEmailSettings()
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<AuthState>({ status: 'loading' })
@@ -98,6 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signedIn = useCallback((info: SessionInfo, opts: { firstRun?: boolean } = {}) => {
     setCsrfToken(info.csrfToken)
     rememberUserId(info.username, info.userId)
+    forgetAccountSettings()
     openNotes(info.username)
     setState({ status: 'signed-in', ...accountOf(info), firstRun: opts.firstRun ?? false })
   }, [])
@@ -127,7 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Already on the server's notes, the source doesn't change: the next account would get these.
       forgetSpaces()
       forgetSharing()
-      forgetEmailSettings()
+      forgetAccountSettings()
       setState({ status: 'signed-out' })
     }
   }, [])
