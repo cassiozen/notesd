@@ -294,6 +294,10 @@ export abstract class SaverCore implements Saver {
     return this.space
   }
 
+  knownRevision(): number | null {
+    return null
+  }
+
   /** Moves the note to another space: saved like an edit. */
   moveTo(spaceId: string) {
     if (this.space === spaceId) return
@@ -484,7 +488,11 @@ export class NoteSaver extends SaverCore {
    */
   async savedRevision(): Promise<number | null> {
     await this.flush()
-    if (!this.created || this.dirty || this.pending || this.problem || this.waitingForAuth) return null
+    return this.knownRevision()
+  }
+
+  override knownRevision(): number | null {
+    if (!this.created || this.dirty || this.pending || this.inflight || this.problem || this.waitingForAuth) return null
     return this.revision
   }
 

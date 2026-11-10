@@ -92,7 +92,8 @@ export default defineConfig({
     // browser's Origin is the Vite dev server.
     // Published spaces too (/@<handle>/), but not Vite's own /@vite/, /@fs/, /@id/ and /@react-refresh.
     proxy: Object.fromEntries(
-      ['/api', '/healthz', '/readyz', '^/@(?!vite/|fs/|id/|react-refresh)'].map((path) => [path, { target: server, changeOrigin: false }]),
+      // ws: the agent socket (/api/v1/agent/socket) goes through too.
+      ['/api', '/healthz', '/readyz', '^/@(?!vite/|fs/|id/|react-refresh)'].map((path) => [path, { target: server, changeOrigin: false, ws: path === '/api' }]),
     ),
   },
   test: {

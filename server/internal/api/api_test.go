@@ -34,6 +34,9 @@ type env struct {
 	auth  *auth.Service
 	users *userdata.Registry
 	dir   string
+	// ctx bounds the test's socket calls, so a missed reply fails it
+	// instead of hanging it: from the test's start, not the binary's.
+	ctx context.Context
 }
 
 func newEnv(t *testing.T) *env {
@@ -42,6 +45,12 @@ func newEnv(t *testing.T) *env {
 }
 
 func newEnvWith(t *testing.T, cfg api.Config) *env {
+	t.Helper()
+	return newEnvServer(t, cfg, nil)
+}
+
+// newEnvServer also lets the test set up the HTTP server before it starts.
+func newEnvServer(t *testing.T, cfg api.Config, setup func(*http.Server)) *env {
 	t.Helper()
 	ctx := context.Background()
 	dir := t.TempDir()
@@ -59,7 +68,11 @@ func newEnvWith(t *testing.T, cfg api.Config) *env {
 		cfg.Publish.Quiet, cfg.Publish.MaxWait = 20*time.Millisecond, 200*time.Millisecond
 	}
 	server := api.New(system, users, a, log, cfg)
-	srv := httptest.NewServer(server.Handler())
+	srv := httptest.NewUnstartedServer(server.Handler())
+	if setup != nil {
+		setup(srv.Config)
+	}
+	srv.Start()
 	ctx, stop := context.WithCancel(ctx)
 	done := make(chan struct{})
 	go func() {
@@ -72,7 +85,9 @@ func newEnvWith(t *testing.T, cfg api.Config) *env {
 		<-done
 		server.Publish().Close()
 	})
-	return &env{t: t, srv: srv, auth: a, users: users, dir: dir}
+	calls, cancel := context.WithTimeout(context.Background(), time.Minute)
+	t.Cleanup(cancel)
+	return &env{t: t, srv: srv, auth: a, users: users, dir: dir, ctx: calls}
 }
 
 // userDB is a user's notes database; the owner is user 1.

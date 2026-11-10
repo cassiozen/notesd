@@ -55,6 +55,8 @@ export interface Saver {
   flush(): Promise<void>
   /** Flushes, then the revision the server has, or null when it has none of this. */
   savedRevision(): Promise<number | null>
+  /** The server's revision of exactly what the editor shows, now, without saving; null if unknown. */
+  knownRevision(): number | null
   retryNow(): void
   /** Something that blocked saving may have cleared (focus, online, signed in, unlocked). */
   resume(): void

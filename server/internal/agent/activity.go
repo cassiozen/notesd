@@ -22,6 +22,9 @@ const (
 	BlockedDeleted = "deleted" // the note was deleted since
 	BlockedLocked  = "locked"  // the note was locked since
 	BlockedChanged = "changed" // the note changed since the run wrote it
+	// The run changed the note in an editor, which hasn't saved just that:
+	// not yet, or with the user's typing in the same save.
+	BlockedNotSaved = "not_saved"
 )
 
 // Run is a run as the activity log shows it.
@@ -235,7 +238,9 @@ func (s *Store) fillEdits(ctx context.Context, tx *sql.Tx, runs []Run) error {
 			e.Blocked = BlockedDeleted
 		case locked:
 			e.Blocked = BlockedLocked
-		case !afterRev.Valid || rev.Int64 != afterRev.Int64:
+		case !afterRev.Valid:
+			e.Blocked = BlockedNotSaved
+		case rev.Int64 != afterRev.Int64:
 			e.Blocked = BlockedChanged
 		}
 		e.Undoable = e.Blocked == ""
