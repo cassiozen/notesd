@@ -10,7 +10,7 @@ import { applyFont, readFont, type FontChoice } from '../font'
 import { useLockStatus } from '../locks/session'
 import { relativeTime } from '../notes/relative-time'
 import { useSpaces } from '../notes/spaces'
-import { navigate } from '../router'
+import { moveOver } from '../router'
 import { applyTheme, readTheme, type ThemeChoice } from '../theme'
 import { Avatar } from '../ui/avatar'
 import { Button } from '../ui/button'
@@ -35,7 +35,7 @@ import styles from './settings.module.css'
 /** On a phone. Opened from the list, a page's entry is popped, so browser Back won't reopen the page. */
 function backToList() {
   if ((window.history.state as { fromList?: boolean } | null)?.fromList) window.history.back()
-  else navigate('/settings', { replace: true })
+  else moveOver('/settings', { replace: true })
 }
 
 export function SettingsSheet({
@@ -145,7 +145,7 @@ function SettingsNav({
     onClick: (e: MouseEvent) => {
       if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return
       e.preventDefault()
-      navigate(`/settings/${key}`, { replace, state: replace ? null : { fromList: true } })
+      moveOver(`/settings/${key}`, { replace, state: replace ? {} : { fromList: true } })
     },
   })
 

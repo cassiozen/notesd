@@ -26,3 +26,6 @@ func SetStartRetry(t interface{ Cleanup(func()) }, d time.Duration) {
 	startRetry = d
 	t.Cleanup(func() { startRetry = old })
 }
+
+// DiffLines is Diff with nothing folded.
+func DiffLines(before, after string) []DiffLine { return diffLines(before, after) }

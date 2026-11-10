@@ -9,6 +9,7 @@ export type Route =
   | { name: 'note'; id: string }
   | { name: 'settings'; section?: SettingsSection }
   | { name: 'tags' }
+  | { name: 'activity' }
 
 const listeners = new Set<() => void>()
 
@@ -49,8 +50,35 @@ export function navigate(
   })
 }
 
+/**
+ * Settings and Activity open over a page, which closing them returns to: kept with the
+ * history entry, so each of several open in turn returns to its own, and a reload still knows.
+ */
+type Over = { returnTo?: string; returnState?: unknown }
+
+const over = () => window.history.state as Over | null
+
+/** Opens [path] over the current page. [state]: the page's own, as `window.history.state`. */
+export function openOver(path: string, state: Record<string, unknown> = {}) {
+  navigate(path, { state: { ...state, returnTo: window.location.pathname, returnState: window.history.state } })
+}
+
+/** Moves within a page opened over another, keeping where it returns to. */
+export function moveOver(
+  path: string,
+  { replace = false, state = {} }: { replace?: boolean; state?: Record<string, unknown> } = {},
+) {
+  navigate(path, { replace, state: { ...state, returnTo: over()?.returnTo, returnState: over()?.returnState } })
+}
+
+/** Closes a page opened over another: back to it, or to [fallback] when opened straight from its address. */
+export function closeOver(fallback: string, { replace = false }: { replace?: boolean } = {}) {
+  const s = over()
+  navigate(s?.returnTo ?? fallback, { replace, state: s?.returnState ?? null })
+}
+
 /** Phones: the tags, the list and a note stack like screens; deeper pushes, shallower pops. */
-const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null })[route.name]
+const depth = (route: Route) => ({ tags: 0, notes: 1, note: 2, settings: null, activity: null })[route.name]
 
 /**
  * How a user-initiated move animates (see base.css), or null for none.
@@ -75,6 +103,7 @@ export function parseRoute(pathname: string): Route {
     return isSettingsSection(settings) ? { name: 'settings', section: settings } : { name: 'settings' }
   }
   if (pathname === '/tags') return { name: 'tags' }
+  if (pathname === '/activity') return { name: 'activity' }
   const match = /^\/notes\/([A-Za-z0-9_-]{1,64})$/.exec(pathname)
   if (match?.[1]) return { name: 'note', id: match[1] }
   return { name: 'notes' }

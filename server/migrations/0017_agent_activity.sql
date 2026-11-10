@@ -8,6 +8,7 @@ ALTER TABLE agent_runs ADD COLUMN completion_tokens INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE agent_runs ADD COLUMN outcome TEXT NOT NULL DEFAULT '';  -- edited, created, no_change
 ALTER TABLE agent_runs ADD COLUMN message TEXT NOT NULL DEFAULT '';  -- the agent's last word, or what went wrong
 CREATE INDEX idx_agent_runs_finished ON agent_runs(finished_at) WHERE finished_at IS NOT NULL;
+CREATE INDEX idx_agent_runs_space ON agent_runs(space_id, created_at DESC);
 
 -- Each note a run changed: as it was before the run's first change to it,
 -- and after its last. The activity log's diff, and what undo puts back.

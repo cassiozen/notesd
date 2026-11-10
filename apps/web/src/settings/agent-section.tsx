@@ -8,6 +8,7 @@ import { saveAgentConfig, useAgentConfigs } from '../notes/agent-config'
 import { providerHost, useAiSettings } from '../notes/ai-settings'
 import { notesSource } from '../notes/source'
 import { reloadSpaces } from '../notes/spaces'
+import { openOver } from '../router'
 import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { ChevronIcon } from '../ui/icons'
@@ -65,6 +66,11 @@ const TRIGGERS: { key: AgentTrigger; label: string; when: string }[] = [
   },
   { key: 'menu', label: 'Run from menu', when: 'You pick the command in a note’s menu. Also a handy way to try a prompt.' },
 ]
+
+/** A trigger's name, as Settings shows it. */
+export function triggerLabel(key: AgentTrigger): string {
+  return TRIGGERS.find((t) => t.key === key)?.label ?? key
+}
 
 const DIGEST = 'Find the note titled "Digest"'
 
@@ -310,14 +316,24 @@ export function AgentSection({ space }: { space: Space }) {
             {formError}
           </p>
         )}
-        {dirty && (
+        {(saved || dirty) && (
           <div className={styles.dialogActions}>
-            <Button size="md" onClick={cancel} disabled={busy}>
-              Cancel
-            </Button>
-            <Button variant="solid" size="md" type="submit" busy={busy}>
-              Save
-            </Button>
+            {saved && (
+              // Over Space info, which it comes back to as it was.
+              <Button size="md" className={dirty ? styles.leading : undefined} onClick={() => openOver('/activity', { space: space.id })}>
+                Activity
+              </Button>
+            )}
+            {dirty && (
+              <>
+                <Button size="md" onClick={cancel} disabled={busy}>
+                  Cancel
+                </Button>
+                <Button variant="solid" size="md" type="submit" busy={busy}>
+                  Save
+                </Button>
+              </>
+            )}
           </div>
         )}
       </form>
