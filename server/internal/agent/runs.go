@@ -29,7 +29,7 @@ const (
 	FailNoteGone     = "note_gone"   // deleted before the run started
 	FailNoteMoved    = "note_moved"  // moved to another space before the run started
 	FailNoteLocked   = "note_locked" // locked notes are never sent
-	FailDailyCap     = "daily_cap"   // the account used its tokens for the day
+	FailDailyCap     = "daily_cap"   // the space used its tokens for the day
 	FailTokenCap     = "token_cap"   // the run used more tokens than one run may
 	FailToolCap      = "tool_cap"    // the run made more tool calls than one run may
 	FailTimeout      = "timeout"     // the run took longer than one run may
@@ -172,9 +172,9 @@ func (s *Store) finish(ctx context.Context, id string, f finished) error {
 	})
 }
 
-// addUsage counts one model call's tokens, for the run and the day, as soon
-// as it comes back, so a crash mid-run can't spend tokens the cap never saw.
-func (s *Store) addUsage(ctx context.Context, id, day, model string, prompt, completion int64) error {
+// addUsage counts one model call's tokens, for the run and its space's day, as
+// soon as it comes back, so a crash mid-run can't spend tokens the cap never saw.
+func (s *Store) addUsage(ctx context.Context, id, spaceID, day, model string, prompt, completion int64) error {
 	if prompt+completion == 0 {
 		return nil
 	}
@@ -190,10 +190,11 @@ func (s *Store) addUsage(ctx context.Context, id, day, model string, prompt, com
 		if total == prompt+completion {
 			first = 1
 		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO agent_usage (day, prompt_tokens, completion_tokens, runs) VALUES (?, ?, ?, ?)
-			ON CONFLICT(day) DO UPDATE SET prompt_tokens = prompt_tokens + excluded.prompt_tokens,
+		_, err := tx.ExecContext(ctx, `INSERT INTO agent_usage (space_id, day, prompt_tokens, completion_tokens, runs)
+			VALUES (?, ?, ?, ?, ?)
+			ON CONFLICT(space_id, day) DO UPDATE SET prompt_tokens = prompt_tokens + excluded.prompt_tokens,
 				completion_tokens = completion_tokens + excluded.completion_tokens, runs = runs + excluded.runs`,
-			day, prompt, completion, first)
+			spaceID, day, prompt, completion, first)
 		return err
 	})
 }
@@ -209,10 +210,11 @@ func truncate(s string, n int) string {
 	return s[:n]
 }
 
-// usedOn is the tokens the account used on day.
-func (s *Store) usedOn(ctx context.Context, day string) (int64, error) {
+// usedOn is the tokens a space's agent used on day.
+func (s *Store) usedOn(ctx context.Context, spaceID, day string) (int64, error) {
 	var n int64
-	err := s.db.R.QueryRowContext(ctx, `SELECT prompt_tokens + completion_tokens FROM agent_usage WHERE day = ?`, day).Scan(&n)
+	err := s.db.R.QueryRowContext(ctx, `SELECT prompt_tokens + completion_tokens FROM agent_usage WHERE space_id = ? AND day = ?`,
+		spaceID, day).Scan(&n)
 	if errors.Is(err, sql.ErrNoRows) {
 		return 0, nil
 	}

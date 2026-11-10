@@ -5,7 +5,9 @@ import (
 	"database/sql"
 	"errors"
 	"net/http"
+	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -149,7 +151,7 @@ func TestClosingTheEditorEndsTheWritingSession(t *testing.T) {
 	ctx := e.ctx
 	e.setupOwner()
 	var woken atomic.Int32
-	e.users.OnAgentScheduled(func(int64) { woken.Add(1) })
+	e.users.OnAgentScheduled(func(agent.Home) { woken.Add(1) })
 	c := e.webClient()
 	if r := c.do("PUT", "/api/v1/agent/spaces/default", map[string]any{
 		"enabled": true, "prompt": "p", "triggers": map[string]any{"newNoteDone": "Add tags."},
@@ -239,7 +241,7 @@ func TestRequestAgentRun(t *testing.T) {
 	ctx := e.ctx
 	e.setupOwner()
 	var woken atomic.Int32
-	e.users.OnAgentScheduled(func(int64) { woken.Add(1) })
+	e.users.OnAgentScheduled(func(agent.Home) { woken.Add(1) })
 	c := e.webClient()
 	if r := c.do("PUT", "/api/v1/agent/spaces/default", map[string]any{
 		"enabled": true, "prompt": "p", "triggers": map[string]any{"noteCreated": "Ask a question."},
@@ -379,5 +381,74 @@ func TestOverlaysThroughTheSocket(t *testing.T) {
 	}
 	if list, err := d.Agent.OpenOverlays(ctx, "n1"); err != nil || len(list) != 0 {
 		t.Fatalf("still open: %+v %v", list, err)
+	}
+}
+
+// In a shared space the socket works on the space's file, and every member's editors hear of it (§7.11).
+func TestSocketInASharedSpace(t *testing.T) {
+	s := newSharedEnv(t)
+	ctx := s.ctx
+	s.share()
+	var mu sync.Mutex
+	var woken []agent.Home
+	s.users.OnAgentScheduled(func(h agent.Home) { mu.Lock(); woken = append(woken, h); mu.Unlock() })
+	if r := s.kid.do("PUT", "/api/v1/agent/spaces/fam", map[string]any{
+		"enabled": true, "prompt": "p", "triggers": map[string]any{"noteCreated": "Ask a question."},
+	}); r.status != 200 {
+		t.Fatalf("agent: %d %s", r.status, r.raw)
+	}
+	kid, _ := s.editorSocket(s.kid)
+	owner, _ := s.editorSocket(s.owner)
+	send := func(m map[string]any) {
+		t.Helper()
+		if err := wsjson.Write(ctx, kid, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	// The kid's editor asks: a run in the space's file, for the kid, woken in that file's worker.
+	send(map[string]any{"type": "run.request", "trigger": "noteCreated", "noteId": "draft", "spaceId": "fam",
+		"note": map[string]any{"spaceId": "fam", "title": "", "content": "", "cursor": 0}})
+	var runs []any
+	deadline := time.Now().Add(5 * time.Second)
+	for len(runs) == 0 && time.Now().Before(deadline) {
+		runs, _ = s.owner.do("GET", "/api/v1/agent/runs?space=fam", nil).body["runs"].([]any)
+	}
+	if len(runs) != 1 || runs[0].(map[string]any)["forUserId"] != float64(s.kidID) {
+		t.Fatalf("runs: %v", runs)
+	}
+	mu.Lock()
+	if !slices.Contains(woken, agent.SpaceHome("fam")) {
+		t.Fatalf("woken: %v", woken)
+	}
+	mu.Unlock()
+
+	// A card shown on a note there: once the last editor closes the note, both members' editors hear it went.
+	fam, err := s.users.OpenSpace(ctx, "fam")
+	if err != nil {
+		t.Fatal(err)
+	}
+	runID := runs[0].(map[string]any)["id"].(string)
+	if _, err := fam.DB.W.ExecContext(ctx, `INSERT INTO agent_overlays (id, run_id, note_id, kind, place, body, created_at)
+		VALUES ('ov1', ?, 'groceries', 'card', '{"at":"top"}', 'Hi', 1)`, runID); err != nil {
+		t.Fatal(err)
+	}
+	send(map[string]any{"type": "editor.opened", "noteId": "groceries"})
+	send(map[string]any{"type": "editor.closed", "noteId": "groceries"})
+	for {
+		var m struct {
+			Type     string `json:"type"`
+			NoteID   string `json:"noteId"`
+			Overlays []any  `json:"overlays"`
+		}
+		read, cancel := context.WithTimeout(ctx, 5*time.Second)
+		err := wsjson.Read(read, owner, &m)
+		cancel()
+		if err != nil {
+			t.Fatalf("the owner's editor heard nothing: %v", err)
+		}
+		if m.Type == "overlays" && m.NoteID == "groceries" && len(m.Overlays) == 0 {
+			break
+		}
 	}
 }

@@ -31,22 +31,16 @@ type Data struct {
 	Locks  *locks.Store
 	Images *images.Store
 	Spaces *spaces.Store
-	// Agent is nil in a shared space's file: agents run in an account's own spaces only (§7.11).
-	Agent *agent.Store
+	Agent  *agent.Store
 }
 
-// New wraps an account's open notes database.
+// New wraps an open notes database: an account's, or a shared space's.
 func New(db *database.DB) *Data {
-	d := newShared(db)
-	d.Agent = agent.NewStore(db)
-	d.Notes.OnWrite(d.Agent.OnWrite)
-	return d
-}
-
-// newShared wraps a shared space's open notes database.
-func newShared(db *database.DB) *Data {
-	d := &Data{DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db), Spaces: spaces.NewStore(db)}
+	d := &Data{DB: db, Notes: notes.NewStore(db), Locks: locks.NewStore(db), Images: images.NewStore(db),
+		Spaces: spaces.NewStore(db), Agent: agent.NewStore(db)}
 	d.Notes.SetExposed(d.Spaces.Exposed)
+	d.Notes.OnWrite(d.Agent.OnWrite)
+	d.Notes.OnSpaceLeft(d.Agent.SpaceLeft)
 	return d
 }
 
@@ -71,7 +65,7 @@ type Registry struct {
 	hooks         sync.RWMutex
 	onChange      []func(userID int64)
 	onSpaceChange []func(spaceID string)
-	onAgent       []func(userID int64)
+	onAgent       []func(home agent.Home)
 	onOpenUser    []func(userID int64, d *Data)
 	onOpenSpace   []func(spaceID string, d *Data)
 }
@@ -132,20 +126,20 @@ func (r *Registry) spaceChanged(spaceID string) {
 	}
 }
 
-// OnAgentScheduled adds fn, called when a write gives a user's agents
+// OnAgentScheduled adds fn, called when a write gives a file's agents
 // something new to wait for (see agent.Store.OnScheduled), also for
 // databases open already. fn must not block.
-func (r *Registry) OnAgentScheduled(fn func(userID int64)) {
+func (r *Registry) OnAgentScheduled(fn func(home agent.Home)) {
 	r.hooks.Lock()
 	defer r.hooks.Unlock()
 	r.onAgent = append(r.onAgent, fn)
 }
 
-func (r *Registry) agentScheduled(userID int64) {
+func (r *Registry) agentScheduled(home agent.Home) {
 	r.hooks.RLock()
 	defer r.hooks.RUnlock()
 	for _, fn := range r.onAgent {
-		fn(userID)
+		fn(home)
 	}
 }
 
@@ -171,7 +165,7 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 	d := New(db)
 	d.onCommit(func() { r.changed(userID) })
 	// Looked up when it fires, so a runner started after this database opened still hears it.
-	d.Agent.OnScheduled(func() { r.agentScheduled(userID) })
+	d.Agent.OnScheduled(func() { r.agentScheduled(agent.UserHome(userID)) })
 	for _, fn := range r.onOpenUser {
 		fn(userID, d)
 	}
@@ -209,9 +203,10 @@ func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error)
 		db.Close()
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
-	d := newShared(db)
+	d := New(db)
 	d.Notes.ServeShared(spaceID)
 	d.onCommit(func() { r.spaceChanged(spaceID) })
+	d.Agent.OnScheduled(func() { r.agentScheduled(agent.SpaceHome(spaceID)) })
 	for _, fn := range r.onOpenSpace {
 		fn(spaceID, d)
 	}

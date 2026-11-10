@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -76,6 +77,7 @@ type harness struct {
 	settings llm.Settings
 	setupErr error
 	removed  bool
+	zoneFor  func(userID int64) // hears whose time zone a run asks for
 	editor   *fakeEditor
 	onRun    func(agent.RunUpdate)
 	// shown is what editors were last told shows on each note.
@@ -87,10 +89,16 @@ func newHarness(t *testing.T) *harness {
 	h := &harness{fixture: f, model: &fakeModel{}, shown: map[string][]agent.Overlay{},
 		settings: llm.Settings{BaseURL: "http://fake", APIKey: "k", Model: "m", DailyTokenCap: llm.DefaultDailyTokenCap}}
 	h.runner = agent.NewRunner(agent.RunnerConfig{
-		Accounts: func(context.Context) ([]int64, error) { return []int64{1}, nil },
-		Exists:   func(context.Context, int64) (bool, error) { return !h.removed, nil },
-		Open: func(context.Context, int64) (agent.Account, error) {
-			a := agent.Account{UserID: 1, Notes: f.d.Notes, Agent: f.d.Agent,
+		Homes:  func(context.Context) ([]agent.Home, error) { return []agent.Home{agent.UserHome(1)}, nil },
+		Exists: func(context.Context, agent.Home) (bool, error) { return !h.removed, nil },
+		Open: func(context.Context, agent.Home) (agent.Account, error) {
+			a := agent.Account{Owner: 1, Notes: f.d.Notes, Agent: f.d.Agent,
+				Zone: func(ctx context.Context, id int64) (*time.Location, error) {
+					if h.zoneFor != nil {
+						h.zoneFor(id)
+					}
+					return f.zone(ctx, id)
+				},
 				SpaceName: func(_ context.Context, id string) string { return "space " + id }}
 			if h.editor != nil {
 				a.Editors = h.editor
@@ -267,6 +275,36 @@ func TestAutoTagging(t *testing.T) {
 	}
 }
 
+// In a shared space's file a run is for whoever wrote last (§7.11): its writes are theirs, and its day
+// is in their time zone.
+func TestRunIsForWhoeverWroteLast(t *testing.T) {
+	h := newHarness(t)
+	h.agent("work", agent.NewNoteDone)
+	space := "work"
+	if _, err := h.d.Notes.Create(ctx, notes.CreateInput{OperationID: h.op(), ID: "n1", Title: "T", Content: "Milk",
+		SpaceID: &space, UpdatedBy: 7}); err != nil {
+		t.Fatal(err)
+	}
+	var zoneOf []int64
+	h.zoneFor = func(id int64) { zoneOf = append(zoneOf, id) }
+	h.advance(agent.IdleAfter)
+	if h.close() != 1 {
+		t.Fatal("no run queued")
+	}
+	h.model.steps = append(h.model.steps, call("insert", `{"at": "end", "text": "#groceries"}`), final("Tagged."))
+	h.next()
+	if n, err := h.d.Notes.Get(ctx, "n1"); err != nil || n.UpdatedBy == nil || *n.UpdatedBy != 7 {
+		t.Fatalf("updated by: %v %v", n.UpdatedBy, err)
+	}
+	if !slices.Equal(zoneOf, []int64{7}) {
+		t.Fatalf("time zone of: %v", zoneOf)
+	}
+	runs, _, err := h.d.Agent.Runs(ctx, agent.RunFilter{}, 10, "")
+	if err != nil || len(runs) != 1 || runs[0].ForUserID != 7 {
+		t.Fatalf("runs: %+v %v", runs, err)
+	}
+}
+
 func TestToolsRefuseAndExplain(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NewNoteDone)
@@ -335,7 +373,7 @@ func TestSkippedWithoutCallingTheModel(t *testing.T) {
 func (h *harness) useTokens(n int64) {
 	h.t.Helper()
 	day := h.clock.UTC().Format(time.DateOnly)
-	if _, err := h.db.W.Exec(`INSERT INTO agent_usage (day, prompt_tokens) VALUES (?, ?)`, day, n); err != nil {
+	if _, err := h.db.W.Exec(`INSERT INTO agent_usage (space_id, day, prompt_tokens) VALUES ('work', ?, ?)`, day, n); err != nil {
 		h.t.Fatal(err)
 	}
 }
@@ -724,18 +762,18 @@ func TestRunnerRetriesListingAccounts(t *testing.T) {
 	var mu sync.Mutex
 	fails := 2
 	runner := agent.NewRunner(agent.RunnerConfig{
-		Accounts: func(context.Context) ([]int64, error) {
+		Homes: func(context.Context) ([]agent.Home, error) {
 			mu.Lock()
 			defer mu.Unlock()
 			if fails > 0 {
 				fails--
 				return nil, io.ErrUnexpectedEOF
 			}
-			return []int64{1}, nil
+			return []agent.Home{agent.UserHome(1)}, nil
 		},
-		Exists: func(context.Context, int64) (bool, error) { return true, nil },
-		Open: func(context.Context, int64) (agent.Account, error) {
-			return agent.Account{Notes: h.d.Notes, Agent: h.d.Agent, SpaceName: func(context.Context, string) string { return "" }}, nil
+		Exists: func(context.Context, agent.Home) (bool, error) { return true, nil },
+		Open: func(context.Context, agent.Home) (agent.Account, error) {
+			return agent.Account{Zone: h.zone, Notes: h.d.Notes, Agent: h.d.Agent, SpaceName: func(context.Context, string) string { return "" }}, nil
 		},
 		Settings: func(context.Context) (llm.Settings, error) { return h.settings, nil },
 		Provider: h.model,
@@ -862,7 +900,7 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n2"}); err != nil {
 		t.Fatal(err)
 	}
-	h.runner.Wake(1)
+	h.runner.Wake(agent.UserHome(1))
 	waitFor("n2's run", func() bool { return status(agent.EditStarted, "n2") == agent.StatusDone })
 
 	// The same note's: it waits for n1's to end.
@@ -873,7 +911,7 @@ func TestEditorRunsDontWaitBehindOthers(t *testing.T) {
 	if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.EditStarted, NoteID: "n3"}); err != nil {
 		t.Fatal(err)
 	}
-	h.runner.Wake(1)
+	h.runner.Wake(agent.UserHome(1))
 	waitFor("n3's run", func() bool { return status(agent.EditStarted, "n3") == agent.StatusDone })
 	if s := status(agent.Menu, "n1"); s != agent.StatusQueued {
 		t.Fatalf("ran beside another run on its note: %s", s)
@@ -897,7 +935,7 @@ func TestTimeoutBeforeTheModelIsATimeout(t *testing.T) {
 func TestWorkersEndIdleSessionsWhenWoken(t *testing.T) {
 	h := newHarness(t)
 	h.agent("work", agent.NewNoteDone)
-	h.d.Agent.OnScheduled(func() { h.runner.Wake(1) })
+	h.d.Agent.OnScheduled(func() { h.runner.Wake(agent.UserHome(1)) })
 	h.model.steps = append(h.model.steps, final("No change."))
 	runCtx, stop := context.WithCancel(ctx)
 	done := make(chan struct{})
@@ -1050,7 +1088,7 @@ func TestEditorRunsOnDifferentNotesGoAtOnce(t *testing.T) {
 		if _, err := h.d.Agent.RequestRun(ctx, agent.RunRequest{Trigger: agent.Menu, NoteID: id}); err != nil {
 			t.Fatal(err)
 		}
-		h.runner.Wake(1)
+		h.runner.Wake(agent.UserHome(1))
 	}
 	// Two at the model, more than the account's slots could hold one each.
 	for _, id := range []string{"n1", "n2"} {

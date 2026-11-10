@@ -76,7 +76,7 @@ func (s *Store) MoveOut(ctx context.Context, in MoveInput, write func(Carried) (
 		return Result{}, &ValidationError{"baseRevision", "must be a positive revision"}
 	}
 	now := s.now().UnixMilli()
-	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin, Left: true}
+	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, By: in.UpdatedBy, Origin: in.Origin, Left: true}
 	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "move", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
@@ -189,7 +189,11 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 		before := c.Note
 		after := c.Note
 		after.SpaceID, after.Revision, after.ChangeSeq, after.DeletedAt, after.MovedTo = space, rev, seq, nil, nil
-		if err := s.hooks(ctx, tx, Event{Kind: EventUpdated, NoteID: c.Note.ID, Before: &before, After: after, Origin: c.Origin}); err != nil {
+		var by int64
+		if c.Note.UpdatedBy != nil {
+			by = *c.Note.UpdatedBy
+		}
+		if err := s.hooks(ctx, tx, Event{Kind: EventUpdated, NoteID: c.Note.ID, By: by, Before: &before, After: after, Origin: c.Origin}); err != nil {
 			return err
 		}
 		out = Result{ID: c.Note.ID, Status: StatusUpdated, Revision: rev, ChangeSeq: seq,
@@ -243,6 +247,9 @@ func (s *Store) ShareOut(ctx context.Context, spaceID string, by int64, write fu
 		if err := write(row, carried); err != nil {
 			return err
 		}
+		if err := s.spaceLeft(ctx, tx, spaceID); err != nil {
+			return err
+		}
 		return finishShareOut(ctx, tx, live, spaceID, by, now)
 	})
 	if err == nil {
@@ -252,8 +259,8 @@ func (s *Store) ShareOut(ctx context.Context, spaceID string, by int64, write fu
 }
 
 // ShareIn stores a space and its notes, moved here by ShareOut, in what must
-// be a new shared space's file.
-func (s *Store) ShareIn(ctx context.Context, space SpaceRow, notes []Carried) error {
+// be a new shared space's file, with what also writes in the same transaction.
+func (s *Store) ShareIn(ctx context.Context, space SpaceRow, notes []Carried, also ...func(*sql.Tx) error) error {
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `INSERT INTO spaces (id, name, name_key, icon, created_at) VALUES (?, ?, ?, ?, ?)
 			ON CONFLICT (id) DO NOTHING`, space.ID, space.Name, spaces.Key(space.Name), space.Icon, space.CreatedAt); err != nil {
@@ -267,6 +274,11 @@ func (s *Store) ShareIn(ctx context.Context, space SpaceRow, notes []Carried) er
 		}
 		for _, c := range notes {
 			if _, err := s.store(ctx, tx, c, space.ID, c.Note.Revision, 0); err != nil {
+				return err
+			}
+		}
+		for _, fn := range also {
+			if err := fn(tx); err != nil {
 				return err
 			}
 		}
@@ -309,12 +321,31 @@ func (s *Store) FinishShareOut(ctx context.Context, spaceID string) error {
 		if err != nil {
 			return err
 		}
+		if err := s.spaceLeft(ctx, tx, spaceID); err != nil {
+			return err
+		}
 		return finishShareOut(ctx, tx, live, spaceID, 0, s.now().UnixMilli())
 	})
 	if err == nil {
 		s.committed()
 	}
 	return err
+}
+
+// OnSpaceLeft adds fn, called inside the transaction that moves a space out
+// of this file when it's shared (ShareOut, FinishShareOut), before its row
+// goes: for what else this file keeps of the space.
+func (s *Store) OnSpaceLeft(fn func(ctx context.Context, tx *sql.Tx, spaceID string) error) {
+	s.onSpaceLeft = append(s.onSpaceLeft, fn)
+}
+
+func (s *Store) spaceLeft(ctx context.Context, tx *sql.Tx, spaceID string) error {
+	for _, fn := range s.onSpaceLeft {
+		if err := fn(ctx, tx, spaceID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // HasSpace reports whether this file still has a space's row.

@@ -24,7 +24,7 @@ const (
 
 var allKeys = []any{keyBaseURL, keyAPIKey, keyModel, keyCap}
 
-// DefaultDailyTokenCap bounds what one account can spend in a day when the
+// DefaultDailyTokenCap bounds what one space's agent can spend in a day when the
 // admin hasn't set a cap: enough for hundreds of small runs, small enough
 // that a device replaying a backlog can't run up a large bill.
 const DefaultDailyTokenCap = 1_000_000
@@ -45,7 +45,7 @@ type Settings struct {
 	BaseURL       string // without a trailing slash; requests go to BaseURL + "/chat/completions"
 	APIKey        string
 	Model         string
-	DailyTokenCap int64 // tokens per account per day
+	DailyTokenCap int64 // tokens per space per day
 }
 
 // KeyHint is the key's last four characters, enough to tell keys apart;

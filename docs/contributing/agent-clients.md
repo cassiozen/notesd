@@ -118,8 +118,8 @@ to 64 characters.
 
 | Message | When |
 | --- | --- |
-| `{type: "editor.opened", noteId}` | An editor shows the note, a new one not yet saved included |
-| `{type: "editor.closed", noteId, revision}` | It no longer does, sent after its last save completes (see below) |
+| `{type: "editor.opened", noteId, spaceId}` | An editor shows the note, a new one not yet saved included. `spaceId` is the note's space: for a new note in a shared space, the server finds the note's file by it |
+| `{type: "editor.closed", noteId, revision, spaceId}` | It no longer does, sent after its last save completes (see below) |
 | `{type: "run.request", trigger, noteId, spaceId, note}` | It asks for an editor trigger's run (see [Editor triggers](#editor-triggers)) |
 | `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered an overlay (see [Overlays](#overlays)) |
 | `{type: "result", id, …}` | It answers the server's request `id` |

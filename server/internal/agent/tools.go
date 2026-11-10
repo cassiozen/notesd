@@ -506,7 +506,7 @@ func (rs *runState) writeStore(ctx context.Context, id string, cur, next notes.N
 	rs.ops++
 	res, err := rs.acct.Notes.Update(ctx, notes.UpdateInput{
 		OperationID: fmt.Sprintf("agent:%s:%d", rs.run.ID, rs.ops), ID: id, BaseRevision: cur.Revision,
-		Title: next.Title, Content: next.Content, UpdatedBy: rs.acct.UserID,
+		Title: next.Title, Content: next.Content, UpdatedBy: rs.acct.forUser(rs.run),
 		Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
 	})
 	var conflict *notes.ConflictError
@@ -567,7 +567,7 @@ func (rs *runState) create(ctx context.Context, title, content string) (string, 
 	space := rs.run.SpaceID
 	res, err := rs.acct.Notes.Create(ctx, notes.CreateInput{
 		OperationID: fmt.Sprintf("agent:%s:%d", rs.run.ID, rs.ops), ID: id, Title: title, Content: content,
-		SpaceID: &space, UpdatedBy: rs.acct.UserID, Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
+		SpaceID: &space, UpdatedBy: rs.acct.forUser(rs.run), Agent: &notes.AgentMark{RunID: rs.run.ID, Only: true, Runner: true},
 	})
 	var invalid *notes.ValidationError
 	if errors.As(err, &invalid) {

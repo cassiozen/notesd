@@ -2,6 +2,7 @@ package agent_test
 
 import (
 	"bytes"
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -48,6 +49,12 @@ func newFixture(t *testing.T) *fixture {
 		}
 	}
 	return f
+}
+
+// zone is the time zone of any account: the fixture's file's, as the server reads each account's own.
+func (f *fixture) zone(ctx context.Context, _ int64) (*time.Location, error) {
+	st, err := f.d.Agent.Settings(ctx)
+	return st.Location(), err
 }
 
 func (f *fixture) advance(d time.Duration) { f.mu.Lock(); f.clock = f.clock.Add(d); f.mu.Unlock() }

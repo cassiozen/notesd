@@ -82,7 +82,7 @@ func TestAgentRunsEndpoints(t *testing.T) {
 	if r.status != 200 || len(r.body["runs"].([]any)) != 0 || r.body["hasMore"] != false {
 		t.Fatalf("empty: %d %s", r.status, r.raw)
 	}
-	if r := c.do("GET", "/api/v1/agent/usage", nil); r.status != 200 || r.body["tokens"] != float64(0) ||
+	if r := c.do("GET", "/api/v1/agent/usage?space=default", nil); r.status != 200 || r.body["tokens"] != float64(0) ||
 		r.body["dailyTokenCap"] != float64(1_000_000) {
 		t.Fatalf("usage: %d %s", r.status, r.raw)
 	}

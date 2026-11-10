@@ -344,3 +344,15 @@ func carried(ctx context.Context, files []File, dest File, ids []string) ([]imag
 	}
 	return out, nil
 }
+
+// FileFor is the file among files, as Files lists them, that holds spaceID.
+func FileFor(files []File, spaceID string) File { return forSpace(files, spaceID) }
+
+// FileOf is the file among files where note id is (live, else deleted); ok is false when none has it.
+func FileOf(ctx context.Context, files []File, id string) (f File, ok bool, err error) {
+	f, _, err = locate(ctx, files, id)
+	if errors.Is(err, notes.ErrNotFound) {
+		return File{}, false, nil
+	}
+	return f, err == nil, err
+}

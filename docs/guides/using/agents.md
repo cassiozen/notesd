@@ -15,16 +15,18 @@ and on deletes and moves.
 
 ## Give a space an agent
 
-Once an admin has [set up AI](#set-it-up-admins), every space of your own that has synced to the
-server can have an agent. Open the space's **Space info** (**Info** in the space switcher, or the
+Once an admin has [set up AI](#set-it-up-admins), every space that has synced to the server can
+have an agent. Open the space's **Space info** (**Info** in the space switcher, or the
 space's row in Settings → Spaces): the agent has its own part there, **Agent**. Turning it on says
 where your notes will be sent ([locked notes](locked-notes.md) never are) and opens the rest in
 place: what the space is for, its rules and the notes it always reads, saved with **Save**. A space
 with an agent shows the agent's glyph after its name, and moving a note into it asks first, since its
 notes go to the AI provider.
 
-Agents run in your own spaces. A shared space can't have one, and a space whose agent is on can't
-be shared until you turn the agent off.
+Sharing and agents don't depend on each other. A shared space can have an agent, any member can set
+it up, change it or turn it off, and sharing a space keeps its agent. Everyone in the space sees
+what it did in Activity and can undo it. A run acts for whoever asked for it or wrote the note, so
+its changes show as theirs.
 
 **Learn from an example** (Journal, Recipes, Tidy tags) shows that example's parts
 where they'd go on the page, dashed: its purpose, each of its rules, and the notes it reads. Take
@@ -102,8 +104,8 @@ the web for now.
 
 Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
 changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it
-used, its last words, and each note it changed, line by line. Today's token use is at the top,
-against the daily limit. A run that's waiting or going updates as it goes, and a new one shows as it
+used, its last words, and each note it changed, line by line. With a space chosen, today's token use
+in that space is at the top, against the daily limit per space. A run that's waiting or going updates as it goes, and a new one shows as it
 starts.
 
 **Undo** puts each note the run changed back as it was, and deletes a note it made. A note you've
@@ -141,7 +143,7 @@ how an agent reads and changes notes.
    - **API key**: the provider's key. A local model that doesn't check keys still needs something
      here; any word will do.
    - **Model**: the model's name as the provider spells it.
-   - **Daily tokens per account**: how many tokens each account's agents may use in a day.
+   - **Daily tokens per space**: how many tokens each space's agent may use in a day.
      1,000,000 unless you change it.
 3. Click **Test**. notesd asks the model to call a tool and says whether it did. A model that
    answers in text instead can't run agents.

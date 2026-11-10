@@ -21,10 +21,11 @@ var moments = []struct {
 }
 
 // Trait is the agent trait (architecture §7.8, §7.11): on while a space's agent is on and has a rule.
-// The AI provider ai reports is who its notes are exposed to; none set up is the trait's problem.
-func (s *Store) Trait(ai func(context.Context) (llm.Settings, error)) spaces.TraitSource {
+// configs reads the agents of the spaces asked about, wherever their files are. The AI provider ai
+// reports is who their notes are exposed to; none set up is the trait's problem.
+func Trait(configs func(ctx context.Context, ids []string) ([]Config, error), ai func(context.Context) (llm.Settings, error)) spaces.TraitSource {
 	return func(ctx context.Context, ids []string) (map[string]spaces.Trait, error) {
-		configs, err := s.Configs(ctx)
+		configs, err := configs(ctx, ids)
 		if err != nil {
 			return nil, err
 		}

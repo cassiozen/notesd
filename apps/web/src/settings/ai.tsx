@@ -192,7 +192,7 @@ function AiDialog({
           readOnly={!!busy}
         />
         <Field
-          label="Daily tokens per account"
+          label="Daily tokens per space"
           type="text"
           inputMode="numeric"
           autoComplete="off"

@@ -10,6 +10,7 @@ import {
 } from '../api/agent'
 import { agentSocket } from '../agent/socket'
 import { ApiError } from '../api/client'
+import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
 import { triggerLabel } from './agent-rules'
 import { Banner } from '../ui/banner'
@@ -17,6 +18,7 @@ import { Button } from '../ui/button'
 import { Sheet } from '../ui/sheet'
 import { Surface } from '../ui/surface'
 import { relativeTime } from './relative-time'
+import { editorName } from './sharing'
 import { spaceName, useSpaces } from './spaces'
 import styles from './activity.module.css'
 
@@ -143,20 +145,23 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
   })
   // Bumped by an undo: the list behind the run shows its new outcome.
   const [listVersion, setListVersion] = useState(0)
-  const [usage, setUsage] = useState<AgentUsage | null>(null)
+  // With the space it's for: shown only while that space is the one chosen.
+  const [usage, setUsage] = useState<{ space: string; usage: AgentUsage } | null>(null)
   const selectId = useId()
   const heading = useRef<HTMLHeadingElement>(null)
   const was = useRef(open)
 
+  // The cap is per space: usage shows for the space chosen. The log shows without it.
   useEffect(() => {
+    if (!space) return
     const abort = new AbortController()
-    // The log shows without it.
-    agent.usage(abort.signal).then(setUsage, () => {})
+    agent.usage(space, abort.signal).then((u) => setUsage({ space, usage: u }), () => {})
     return () => abort.abort()
-  }, [])
+  }, [space])
   useRunsChanged(() => {
-    agent.usage().then(setUsage, () => {})
+    if (space) agent.usage(space).then((u) => setUsage({ space, usage: u }), () => {})
   }, false)
+  const today = usage?.space === space ? usage.usage : null
 
   useEffect(() => {
     if (was.current !== open) heading.current?.focus()
@@ -196,9 +201,9 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
               </option>
             ))}
           </select>
-          {usage && (
+          {today && (
             <p className={styles.usage}>
-              Today: {tokens(usage.tokens)} of {tokens(usage.dailyTokenCap)} tokens
+              Today in this space: {tokens(today.tokens)} of {tokens(today.dailyTokenCap)} tokens
             </p>
           )}
         </div>
@@ -221,6 +226,10 @@ function RunList({
   const [next, setNext] = useState('')
   const [error, setError] = useState<string>()
   const [busy, setBusy] = useState(false)
+  const { state: auth } = useAuth()
+  const me = 'userId' in auth ? auth.userId : undefined
+  /** In a shared space, the member a run was for, when it wasn't this account (§7.11). */
+  const forWhom = (r: AgentRun) => editorName(spaces?.find((sp) => sp.id === r.spaceId), r.forUserId || null, me)
 
   useEffect(() => {
     const abort = new AbortController()
@@ -282,6 +291,7 @@ function RunList({
                   <span>
                     {triggerLabel(r.trigger)}
                     {!space && ` · ${spaceName(spaces, r.spaceId)}`}
+                    {forWhom(r) && ` · for ${forWhom(r)}`}
                   </span>
                   <span className={r.status === 'failed' ? styles.failed : undefined}>{runStatus(r)}</span>
                 </span>

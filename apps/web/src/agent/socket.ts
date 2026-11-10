@@ -50,6 +50,8 @@ class AgentSocket {
   private closing: ReturnType<typeof setTimeout> | undefined
   /** Notes open here, each with how many opens haven't closed yet. */
   private readonly open = new Map<string, number>()
+  /** Each open note's space, for the server to find a new one it hasn't got yet (§7.11). */
+  private readonly openIn = new Map<string, string>()
   private readonly editors = new Map<string, EditorHandler>()
   private readonly runListeners = new Set<(u: RunUpdate) => void>()
   readonly runningListeners = new Set<() => void>()
@@ -114,13 +116,15 @@ class AgentSocket {
     this.stop()
     this.close()
     this.open.clear()
+    this.openIn.clear()
     this.editors.clear()
     this.answers.clear()
   }
 
-  noteOpened(noteId: string) {
+  noteOpened(noteId: string, spaceId: string) {
     this.open.set(noteId, (this.open.get(noteId) ?? 0) + 1)
-    this.send({ type: 'editor.opened', noteId })
+    this.openIn.set(noteId, spaceId)
+    this.send({ type: 'editor.opened', noteId, spaceId })
   }
 
   /** Answers runs' requests about the note while it's open here. */
@@ -209,8 +213,10 @@ class AgentSocket {
       return
     }
     this.open.delete(noteId)
+    const spaceId = this.openIn.get(noteId)
+    this.openIn.delete(noteId)
     this.dropOverlays(noteId)
-    this.send({ type: 'editor.closed', noteId, revision })
+    this.send({ type: 'editor.closed', noteId, revision, spaceId })
     if (!this.wanted && this.open.size === 0 && this.ws) this.close()
   }
 
@@ -233,7 +239,7 @@ class AgentSocket {
         this.connectionId = m.connectionId
         for (const a of this.answers.values()) this.send(a)
         this.answers.clear()
-        for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId })
+        for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId, spaceId: this.openIn.get(noteId) })
         // Only for a note still open here, asked for recently enough.
         for (const h of this.held.values()) {
           clearTimeout(h.expires)

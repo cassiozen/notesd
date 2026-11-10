@@ -68,7 +68,7 @@ Status: ✓ done, – not needed, ☐ to do.
 | S6 | Agent page: examples (Journal, Recipes, Tidy tags) shown in place, each part taken or left, Use all; never turns it on or saves | ✓ | ☐ | ☐ |
 | S7 | Agent page: notes it always reads (5; title lookup in the space; "not here yet"; offers for notes a rule needs; no-room message) | ✓ | ☐ | ☐ |
 | S8 | Agent page: Save keeps typing done meanwhile; field errors; "hasn't reached the server yet"; discard confirmation | ✓ | ☐ | ☐ |
-| S9 | Ways in: the `agent` trait's row in Space info (architecture §7.8): Manage while on, Turn on once AI is set up (or to resume a paused agent), never for a shared space; Activity… from the agent page. The glyph, summary, problem and move check already show on all three apps, from main's traits | ✓ | ☐ | ☐ |
+| S9 | Ways in: the `agent` trait's row in Space info (architecture §7.8): Manage while on, Turn on once AI is set up (or to resume a paused agent), in any space, by any member; Activity… from the agent page. The glyph, summary, problem and move check already show on all three apps, from main's traits | ✓ | ☐ | ☐ |
 | S10 | Activity: space filter, today's usage, runs (paginated), status and failure text, overlay counts | ✓ | ☐ | ☐ |
 | S11 | Activity → run: summary, model's message, per-note line diffs, Undo with result, "Can't undo: …" | ✓ | ☐ | ☐ |
 
@@ -224,7 +224,7 @@ the editor.
 | Both | D3–D7 (types, calls, caches), with tests against a real notesd (both already test that way) |
 | Both | S1–S3: AI under Integrations (admin controls, Test, Disconnect), time zone under Server |
 | Both | S4–S8: the agent page as a pushed page. Rules as rows. A rule's moment is a picker. Ideas and examples are chip rows, and an example's parts are dashed rows where they'd go. Notes it always reads uses local search |
-| Both | S9: the agent trait's Settings and Turn on in each app's trait registry, opening the agent page from Space info; refresh the space list after a save so the trait shows; explain `409 space_has_agent` where sharing starts |
+| Both | S9: the agent trait's Settings and Turn on in each app's trait registry, opening the agent page from Space info; refresh the space list after a save so the trait shows; Activity's "for {member}" in shared spaces and usage per space; `spaceId` on `editor.opened`/`editor.closed` |
 | Both | S10–S11: Activity list and run, line diffs, Undo |
 | Both | N1: the failed-run notice, fetched when a note opens (live in phase 3) |
 
