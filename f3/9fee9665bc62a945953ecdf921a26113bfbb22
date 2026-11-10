@@ -1,0 +1,85 @@
+docs/README.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 45
+apps/web/src/ui/icons.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 68-76
+server/internal/llm/probe.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-58
+apps/web/src/notes/email-settings.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 2,4-5,7-11
+website/.vitepress/config.mjs
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 130
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 23,61,82,154-157
+server/internal/llm/client.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-207
+apps/web/test/server.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 159-199
+docs/guides/using/settings.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 20
+apps/web/src/notes/account-store.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-86
+apps/web/src/auth/errors.test.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 18,20,22-23
+apps/web/test/ai-settings.test.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-91
+apps/web/src/auth/errors.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 21,24
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 16,498-520,581,595-596
+apps/web/src/settings/disconnect-dialog.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-46
+apps/web/src/auth/auth-context.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 6,53-58,108,138
+apps/web/test/setup.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 4,87
+server/internal/api/ai_test.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-248
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 15,68-76,85,110-112,135-136,168-174
+apps/web/test/settings-stores.test.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-43
+apps/web/src/api/types.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 192-207
+apps/web/src/notes/ai-settings.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-14
+docs/concepts/security-model.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 28,115-116
+docs/contributing/settings-guidelines.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 53
+apps/web/src/settings/integrations.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 5,26,28,32
+server/internal/llm/settings.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-219
+server/internal/api/ai_handlers.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-98
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-44
+apps/web/src/api/settings.ts
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 2,10-14
+apps/web/src/settings/ai.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-257
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 170,628-629,669
+server/internal/llm/client_test.go
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 1-116
+apps/web/src/settings/resend.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 11,266-274
+apps/web/test/share.test.tsx
+  s_cc6cacc0a6fc01::t_e3f985c1987d54 96-98
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f39fee9665bc62a945953ecdf921a26113bfbb22",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
