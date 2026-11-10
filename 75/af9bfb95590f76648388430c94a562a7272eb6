@@ -1,0 +1,23 @@
+apps/web/test/notes.test.tsx
+  s_c2ad4aa2cf2b8b::t_2d0c27c8bf1e69 492-495
+  s_c2ad4aa2cf2b8b::t_f8497b8d38fd27 477-479,490-491
+apps/web/test/publishing.test.tsx
+  s_c2ad4aa2cf2b8b::t_449aac3f64b691 120-121
+  s_c2ad4aa2cf2b8b::t_faae878a7983bf 270,272
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "75af9bfb95590f76648388430c94a562a7272eb6",
+  "prompts": {},
+  "sessions": {
+    "s_c2ad4aa2cf2b8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc7056c0-2689-4f18-b55d-6a667411926e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
