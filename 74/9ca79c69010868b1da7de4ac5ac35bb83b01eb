@@ -1,0 +1,38 @@
+apps/web/test/activity.test.tsx
+  s_cc6cacc0a6fc01::t_02d8270594e4a3 35-36,44,174,189-191
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_8568add624fe12 26-32,35-36,39-41,65-71,88-89,91-93,286-287,289-292,303-304,306-309,320,323-324,335-336,339-341,346-355,378,382,387,400-401
+  s_cc6cacc0a6fc01::t_6d4308d7f06f65 380-381
+docs/contributing/architecture.md
+  s_cc6cacc0a6fc01::t_d3e0a2d4f0f462 537,713-718
+apps/web/src/settings/space-info.module.css
+  s_cc6cacc0a6fc01::t_0b38dce0e6a34d 269-365
+apps/web/src/settings/published-space.tsx
+  s_cc6cacc0a6fc01::t_0b38dce0e6a34d 155-158,162,171-173
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_d3e0a2d4f0f462 20-23
+apps/web/src/notes/agent-page.tsx
+  s_cc6cacc0a6fc01::t_f27b6b6cd2d095 2-3,41,71-73,75,89-90,135-137,139-186,188-192,194-219,221,223-233,235-238,240-243,249-253,255
+  s_cc6cacc0a6fc01::t_a018601287fdf9 254
+  s_cc6cacc0a6fc01::t_796ea7646dbeb6 256-257
+apps/web/src/settings/space-info.tsx
+  s_cc6cacc0a6fc01::t_addfaa25bc5e4a 139-145,201,244
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_d3e0a2d4f0f462 233
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "749ca79c69010868b1da7de4ac5ac35bb83b01eb",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
