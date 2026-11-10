@@ -247,6 +247,8 @@ type Event struct {
 	Before *Note
 	// After is the note as written: a tombstone for a delete.
 	After Note
+	// Agent marks a write an agent made, or a save holding its changes.
+	Agent *AgentMark
 	// Origin is "" for a write made as someone edits, or what the client
 	// said otherwise (see CreateInput.Origin).
 	Origin string
@@ -258,6 +260,17 @@ type Event struct {
 // SpaceChanged reports whether the write moved the note between spaces.
 func (e Event) SpaceChanged() bool {
 	return e.Before != nil && e.Kind == EventUpdated && e.Before.SpaceID != e.After.SpaceID
+}
+
+// AgentMark is carried by a write an agent made. Only the server sets it:
+// a client could otherwise keep its own writes from firing triggers.
+type AgentMark struct {
+	RunID string
+	// Only is true when the write holds nothing but the agent's changes.
+	Only bool
+	// Runner is the runner's own write: recorded as the run's edits in the
+	// same transaction.
+	Runner bool
 }
 
 // Store persists notes.
@@ -393,6 +406,8 @@ type CreateInput struct {
 	// Carry is images the note shows that are stored in another file the
 	// writer reaches, stored here with it so every member can load them.
 	Carry []images.Blob `json:"-"`
+	// Agent marks an agent's write; see AgentMark.
+	Agent *AgentMark `json:"-"`
 	// Fingerprint identifies the request as received (see Fingerprint);
 	// empty, it is taken from the fields above.
 	Fingerprint string `json:"-"`
@@ -420,6 +435,8 @@ type UpdateInput struct {
 	UpdatedBy int64 `json:"-"`
 	// As CreateInput.Carry.
 	Carry []images.Blob `json:"-"`
+	// As CreateInput.Agent.
+	Agent *AgentMark `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 	// As CreateInput.Origin.
@@ -434,6 +451,8 @@ type DeleteInput struct {
 	BaseRevision int64  `json:"baseRevision"`
 	// As CreateInput.UpdatedBy.
 	UpdatedBy int64 `json:"-"`
+	// As CreateInput.Agent.
+	Agent *AgentMark `json:"-"`
 	// As CreateInput.Fingerprint.
 	Fingerprint string `json:"-"`
 	// As CreateInput.Origin.
@@ -469,7 +488,7 @@ func (s *Store) Create(ctx context.Context, in CreateInput) (Result, error) {
 		updated = created
 	}
 
-	ev := Event{Kind: EventCreated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	ev := Event{Kind: EventCreated, NoteID: in.ID, OpID: in.OperationID, Agent: in.Agent, Origin: in.Origin}
 	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "create", "", in), &ev, func(tx *sql.Tx) (Result, error) {
 		if cur, err := loadForUpdate(ctx, tx, in.ID); err == nil {
 			return Result{}, &ConflictError{Code: CodeNoteExists, Current: cur.Note}
@@ -541,7 +560,7 @@ func (s *Store) Update(ctx context.Context, in UpdateInput) (Result, error) {
 	updated := s.clientTime(in.UpdatedAt, now)
 
 	locking := false
-	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	ev := Event{Kind: EventUpdated, NoteID: in.ID, OpID: in.OperationID, Agent: in.Agent, Origin: in.Origin}
 	res, err := s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "update", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {
@@ -637,7 +656,7 @@ func (s *Store) Delete(ctx context.Context, in DeleteInput) (Result, error) {
 	}
 	now := s.now().UnixMilli()
 
-	ev := Event{Kind: EventDeleted, NoteID: in.ID, OpID: in.OperationID, Origin: in.Origin}
+	ev := Event{Kind: EventDeleted, NoteID: in.ID, OpID: in.OperationID, Agent: in.Agent, Origin: in.Origin}
 	return s.apply(ctx, in.OperationID, fingerprint(in.Fingerprint, "delete", in.ID, in), &ev, func(tx *sql.Tx) (Result, error) {
 		cur, err := loadForUpdate(ctx, tx, in.ID)
 		if err != nil {

@@ -473,7 +473,7 @@ func TestFailedMutationRollsBack(t *testing.T) {
 
 func tagNames(t *testing.T, db *database.DB) map[string]int {
 	t.Helper()
-	tags, err := search.ListTags(ctx, db, "")
+	tags, err := search.ListTags(ctx, db, search.Filter{})
 	if err != nil {
 		t.Fatal(err)
 	}
