@@ -241,7 +241,12 @@ class SharedSpacesFlowTest {
         notesd.server.close()
         openSpaceInfo("Family")
         compose.waitUntilExactlyOneExists(hasText("This needs a connection. Try again when you're online."))
-        compose.onNode(hasText("Try again") and hasClickAction()).assertExists()
+        compose.onNode(
+            hasText("Try again") and hasClickAction() and
+                hasAnySibling(hasText("This needs a connection. Try again when you're online."))
+        ).assertExists()
+        // The agent's section can't tell either, and says so rather than hiding.
+        compose.onNodeWithText("Couldn't load the agent.", substring = true).assertExists()
     }
 
     @Test

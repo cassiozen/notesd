@@ -8,7 +8,7 @@ import { Button } from '../ui/button'
 import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
 import field from '../ui/field.module.css'
-import { saveAgentConfig, useAgentConfigs } from './agent-config'
+import { retryAgentConfigs, saveAgentConfig, useAgentConfigs, useAgentConfigsFailed } from './agent-config'
 import {
   EXAMPLES,
   hasExample,
@@ -27,12 +27,13 @@ import {
   TRIGGERS,
   agentFieldError,
   draftOf,
+  emptyRules,
   rulesOf,
   sameAgent,
   type AgentDraft,
   type AgentErrors,
 } from './agent-rules'
-import { providerHost, useAiSettings } from './ai-settings'
+import { providerHost, retryAiSettings, useAiSettings, useAiSettingsFailed } from './ai-settings'
 import { titleOf, useFoundTitles, useTitleMatches } from './note-titles'
 import { notesSource } from './source'
 import { reloadSpaces } from './spaces'
@@ -44,11 +45,24 @@ type Change = (p: Partial<AgentDraft>) => void
 /** What to focus once a rule renders: its prompt (after it's added) or its moment (after it moved). */
 type FocusOn = { key: AgentTrigger; what: 'prompt' | 'moment' }
 
-/** Whether Space info offers to turn the space's agent on: once AI is set up, or to resume one paused. */
+/**
+ * Whether Space info offers to turn the space's agent on: once AI is set up, or to resume one paused. When
+ * either couldn't load, it's offered too: the section says so, with Try again, rather than hiding.
+ */
 export function useAgentOffered(): (space: Space) => boolean {
   const configs = useAgentConfigs()
+  const configsFailed = useAgentConfigsFailed()
   const ai = useAiSettings()
-  return (space) => configs !== null && ai !== null && (ai.configured || configs.has(space.id))
+  const aiFailed = useAiSettingsFailed()
+  const loaded = configs !== null && ai !== null
+  // Kept from a failure until both load: Try again clears it while asking, and the section would go meanwhile.
+  const [unsure, setUnsure] = useState(false)
+  if ((configsFailed || aiFailed) && !unsure) setUnsure(true)
+  else if (loaded && unsure) setUnsure(false)
+  return (space) => {
+    if (configs === null || ai === null) return unsure || configsFailed || aiFailed
+    return ai.configured || configs.has(space.id)
+  }
 }
 
 /**
@@ -58,7 +72,9 @@ export function useAgentOffered(): (space: Space) => boolean {
 export function AgentSection({ space }: { space: Space }) {
   const spaceId = space.id
   const configs = useAgentConfigs()
+  const configsFailed = useAgentConfigsFailed()
   const ai = useAiSettings()
+  const aiFailed = useAiSettingsFailed()
   const saved = configs?.get(spaceId)
   const [edited, setEdited] = useState<AgentDraft | null>(null)
   const [errors, setErrors] = useState<AgentErrors>({})
@@ -78,6 +94,11 @@ export function AgentSection({ space }: { space: Space }) {
 
   async function save(e?: FormEvent) {
     e?.preventDefault()
+    const empty = emptyRules(draft)
+    if (empty.length > 0) {
+      setErrors(Object.fromEntries(empty.map((k) => [`triggers.${k}`, 'Say what the agent does then, or remove the rule.'])))
+      return
+    }
     setErrors({})
     setFormError(undefined)
     setBusy(true)
@@ -135,6 +156,30 @@ export function AgentSection({ space }: { space: Space }) {
         <p role="status" className="visually-hidden">
           {savedNote ? 'Saved' : ''}
         </p>
+        {(configs === null || ai === null) && (
+          <div className={styles.card}>
+            {configsFailed || aiFailed ? (
+              <>
+                <p role="alert" className={info.error}>
+                  Couldn’t load the agent.
+                </p>
+                <div>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (configsFailed) retryAgentConfigs()
+                      if (aiFailed) retryAiSettings()
+                    }}
+                  >
+                    Try again
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <span className={styles.muted}>Loading…</span>
+            )}
+          </div>
+        )}
         {configs !== null && ai !== null && (
           <>
             <OnOff draft={draft} provider={ai.configured ? providerHost(ai.baseUrl) : null} onChange={change} />

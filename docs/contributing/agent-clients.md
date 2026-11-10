@@ -6,8 +6,8 @@ description: "What an app does to take part in a space's agent: the socket, edit
 # Agent clients
 
 What an app has to do to take part in a space's agent, and what it gets without doing anything. The
-web app does all of it; Android and iOS do none of it yet. Read this before adding agent support to
-an app.
+web app does all of it. Android is at level 0, and sets up AI and a space's agent; iOS does none of
+it yet. Read this before adding agent support to an app.
 
 The server is the authority: it decides when an agent acts, runs the model with the AI key only it
 holds, and records every run. An app only tells the server what the user has open, answers its

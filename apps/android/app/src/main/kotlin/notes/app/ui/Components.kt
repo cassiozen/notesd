@@ -244,7 +244,10 @@ fun NotesField(
     enabled: Boolean = true,
     keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
     keyboardActions: KeyboardActions = KeyboardActions.Default,
-    contentType: ContentType? = null
+    contentType: ContentType? = null,
+    /** False: grows line by line from [minLines], for a prompt or anything else written at length. */
+    singleLine: Boolean = true,
+    minLines: Int = 1
 ) {
     val t = LocalTokens.current
     val interaction = remember { MutableInteractionSource() }
@@ -268,7 +271,8 @@ fun NotesField(
         value = value,
         onValueChange = onValueChange,
         enabled = enabled,
-        singleLine = true,
+        singleLine = singleLine,
+        minLines = minLines,
         textStyle = textStyle,
         cursorBrush = SolidColor(t.tint),
         keyboardOptions = keyboardOptions,
@@ -308,7 +312,12 @@ fun NotesField(
                 ) {
                     Box(Modifier.weight(1f).padding(vertical = 14.dp)) {
                         if (value.isEmpty() && placeholder != null) {
-                            Text(placeholder, style = textStyle, color = t.ink3, maxLines = 1)
+                            Text(
+                                placeholder,
+                                style = textStyle,
+                                color = t.ink3,
+                                maxLines = if (singleLine) 1 else minLines
+                            )
                         }
                         inner()
                     }

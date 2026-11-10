@@ -18,10 +18,16 @@ export function draftOf(config: AgentConfig | undefined): AgentDraft {
   return { enabled, prompt, menuLabel, triggers, referenceNotes: referenceNotes ?? [] }
 }
 
+/** Equal as saved: the same rules, an empty one too. */
 export function sameAgent(a: AgentDraft, b: AgentDraft): boolean {
   const norm = (d: AgentDraft) =>
-    JSON.stringify([d.enabled, d.prompt, d.menuLabel, TRIGGERS.map((t) => d.triggers[t.key] ?? ''), d.referenceNotes])
+    JSON.stringify([d.enabled, d.prompt, d.menuLabel, TRIGGERS.map((t) => d.triggers[t.key] ?? null), d.referenceNotes])
   return norm(a) === norm(b)
+}
+
+/** Rules with nothing to do: saving them would drop them without a word. */
+export function emptyRules(d: AgentDraft): AgentTrigger[] {
+  return rulesOf(d).filter((k) => !d.triggers[k]?.trim())
 }
 
 /** The rules a draft has: the triggers it has a prompt for, even an empty one being written. */
