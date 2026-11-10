@@ -30,7 +30,8 @@ jobs:
           # basic: the MIT actions/cache wrapper; the default provider is a paid preview for private repos.
           cache-provider: basic
       - run: mise run install
-      - run: mise run lint:web lint:sync-engine
+      - run: mise run lint:web
+      - run: mise run lint:sync-engine
       - run: mise run typecheck
       - run: mise run test:web
 
