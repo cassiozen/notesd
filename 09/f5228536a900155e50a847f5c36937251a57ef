@@ -1,0 +1,65 @@
+apps/web/src/settings/settings.module.css
+  s_cc6cacc0a6fc01::t_dd39d0eeecf239 902-911
+server/internal/userdata/userdata.go
+  s_cc6cacc0a6fc01::t_1fc0282eb2087b 73-74,82-84,88
+  s_cc6cacc0a6fc01::t_b29930c7f6c36a 89-92,94-98,154,194
+apps/web/src/settings/agent-section.tsx
+  s_cc6cacc0a6fc01::t_6faa37aa82b27a 1,4,6-10,16-17,139,234-326
+apps/web/src/notes/sharing.ts
+  s_cc6cacc0a6fc01::t_b7e267b21ee2b4 248-249
+server/internal/api/agent_trait_test.go
+  s_cc6cacc0a6fc01::t_b3304b95738770 1-47,53,65,67-68
+  s_cc6cacc0a6fc01::t_def09901dcc681 48-52,54-63,66
+  s_cc6cacc0a6fc01::t_32db9acfd0cace 64
+server/internal/api/image_test.go
+  s_cc6cacc0a6fc01::t_1317e0c3c81769 257-259
+server/internal/agent/trait.go
+  s_cc6cacc0a6fc01::t_0d322541cb6d2a 1-23,27,29-86
+  s_cc6cacc0a6fc01::t_c661aa1f1d2d26 24-26,28
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_08ebc193ac5d25 73
+  h_506d0d833c777f 75
+  s_cc6cacc0a6fc01::t_bc2807ab37373b 74
+apps/web/src/notes/traits.test.tsx
+  s_cc6cacc0a6fc01::t_ae731c0803b329 12,35-36,38-40,61-63,65-66
+  s_cc6cacc0a6fc01::t_fb9addf2c28b6f 37
+  s_cc6cacc0a6fc01::t_0aa74bfaba5de5 71
+apps/web/src/settings/space-info.tsx
+  s_cc6cacc0a6fc01::t_0e819f524a3a47 15,35-38,110-111,116-117,143,176,250
+server/internal/notes/notes.go
+  s_cc6cacc0a6fc01::t_0391adb249e0a4 229
+apps/web/test/agent-config.test.tsx
+  s_cc6cacc0a6fc01::t_e9639a211440e1 17-21,23-24,27-29,33,40,43,98-114
+  s_cc6cacc0a6fc01::t_4cd7eb1284afef 45-54,56,59-61,64-72,75-82,87-88,91-92,94-95,97,128,132-133,135-136,138
+  s_cc6cacc0a6fc01::t_7626b886da4454 96,115-116,127,129-131,134,137,139-149
+apps/web/src/notes/traits.tsx
+  s_cc6cacc0a6fc01::t_8e3b30f75aac5d 89
+  s_cc6cacc0a6fc01::t_24248aae4c2868 142-148
+  s_cc6cacc0a6fc01::t_91db6ebcc4ff12 4,90,149,159,163
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_62ac4a1f1b25a3 229-230
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_842925f7eccc80 519-525,599
+apps/web/src/api/spaces.ts
+  s_cc6cacc0a6fc01::t_fa406c10634998 34
+apps/web/src/settings/unsaved.ts
+  s_cc6cacc0a6fc01::t_756c7a12dec5de 1-27
+server/internal/sharing/sharing.go
+  s_cc6cacc0a6fc01::t_2aa8362dbecf44 34-35,363-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "09f5228536a900155e50a847f5c36937251a57ef",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": null
+    }
+  }
+}

@@ -1,0 +1,127 @@
+docs/guides/using/agents.md
+  s_cc6cacc0a6fc01::t_7c3540de195872 18-22
+  s_cc6cacc0a6fc01::t_3fc26f142a7400 24
+  s_cc6cacc0a6fc01::t_f84d63d93799b0 14,23,25-26,51-72
+server/internal/api/agent_handlers.go
+  s_cc6cacc0a6fc01::t_557bf63b2a9ec3 91-148,151-154
+  s_cc6cacc0a6fc01::t_54be36d2a09e4c 4,8,149-150
+server/internal/agent/activity_test.go
+  s_cc6cacc0a6fc01::t_f63d7c8746556c 63
+  s_cc6cacc0a6fc01::t_ea96e95c43c92b 1-62,64-113
+apps/web/test/activity.test.tsx
+  s_cc6cacc0a6fc01::t_11ff283a2f0c6b 58
+  s_cc6cacc0a6fc01::t_a9e942d21877cb 35-43
+  s_cc6cacc0a6fc01::t_375d8a97a79a40 1-34,44-57,59-163
+apps/web/src/notes/note-pane.tsx
+  s_66be3861a6f5cd::t_c7a47fc75f68c4 282-283,551-552
+  s_96d7ef8051c8f1::t_9d255fd336c2f8 550
+  s_cc6cacc0a6fc01::t_fbd66ea509074c 19,21-22,532-549
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_bc475d82ace2a6 13
+  s_cc6cacc0a6fc01::t_9348f9509c3257 102-158,166,234,318
+  s_cc6cacc0a6fc01::t_698a4274334482 1-12,14-101,159-165,167-233,235-317,319-381
+server/internal/api/agent_config_test.go
+  s_cc6cacc0a6fc01::t_014b5cbf6a5d64 85
+  s_cc6cacc0a6fc01::t_1bf6b965d46aeb 76-84,86-98
+server/internal/agent/activity.go
+  s_cc6cacc0a6fc01::t_c2d79baa895503 36-272,274
+  s_cc6cacc0a6fc01::t_775fa1e7ea88d3 1-35,273,275-279
+docs/contributing/architecture.md
+  s_96d7ef8051c8f1::t_fa217ae2fce1bc 646-647
+  s_96d7ef8051c8f1::t_b8950ebe2bc91d 648
+  h_506d0d833c777f 640-641,643-645,649
+  s_cc6cacc0a6fc01::t_61397551cbeea0 637-639,642
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_1a53e0fc55f9af 26-85,96-106
+apps/web/src/notes/activity.module.css
+  s_cc6cacc0a6fc01::t_3999ad6fb67f81 1-245
+apps/web/src/notes/failed-run.test.ts
+  s_cc6cacc0a6fc01::t_c1104d064f984f 1-45
+apps/web/src/notes/failed-run.ts
+  s_cc6cacc0a6fc01::t_6b5ba69c530273 1-45
+apps/web/src/notes/local-source.ts
+  s_cc6cacc0a6fc01::t_a161257368ca13 33-39
+apps/web/src/notes/local-storage.ts
+  s_cc6cacc0a6fc01::t_44eb3577ae6124 1-18
+apps/web/src/notes/shell.tsx
+  s_cc6cacc0a6fc01::t_e6272f637dfea9 7,14,86,278,354,358-359
+apps/web/src/notes/tags-panel.tsx
+  s_cc6cacc0a6fc01::t_9236bed40ba4e7 5,64,71
+apps/web/src/router.ts
+  s_cc6cacc0a6fc01::t_4fff10506f39a7 12,53-79,81,106
+apps/web/src/settings/settings.tsx
+  s_cc6cacc0a6fc01::t_7876d8ec08a3b0 13,38,148
+apps/web/src/ui/icons.tsx
+  s_cc6cacc0a6fc01::t_18495e8ae4e362 77-84
+apps/web/test/router.test.ts
+  s_cc6cacc0a6fc01::t_7a2f6c0bfa0e95 2,74-95
+apps/web/test/server.ts
+  s_cc6cacc0a6fc01::t_b6ad7a117270c2 170-171,176,190-200
+docs/reference/api.md
+  s_cc6cacc0a6fc01::t_9de8bc53f3dbea 512-515,536-561,647
+server/internal/agent/diff.go
+  s_cc6cacc0a6fc01::t_1a6ad76b31120a 1-181
+server/internal/agent/diff_test.go
+  s_cc6cacc0a6fc01::t_9fc615fe039b87 1-129
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_b3d3c5efe2d58e 29-31
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_acdfc3625cdfb7 196-220
+server/internal/agent/runner_test.go
+  s_cc6cacc0a6fc01::t_18a765762ff65d 308-311,614,616,912-925
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_aa07c0447837d3 119-121,134-139
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_52fb6e5b8e50e5 64-66,128-160
+server/internal/agent/undo.go
+  s_cc6cacc0a6fc01::t_19b852d4fe1641 1-150
+server/internal/agent/undo_test.go
+  s_cc6cacc0a6fc01::t_1628dd29dcfdbc 1-256
+server/internal/api/api.go
+  s_cc6cacc0a6fc01::t_2410085a4c7eb0 166-169
+server/internal/api/respond.go
+  s_cc6cacc0a6fc01::t_b4688b0f17de87 143-144
+server/migrations/0016_agent_activity.sql
+  s_cc6cacc0a6fc01::t_3cb84059a4e03f 11
+server/migrations/0017_agent_text_removed.sql
+  s_cc6cacc0a6fc01::t_431f1e9e52fc05 1-3
+apps/web/src/settings/agent-section.tsx
+  h_506d0d833c777f 11,70-74,319,321-336
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58405bcaa450dd7c60709bbaf754d8789ada399b",
+  "prompts": {},
+  "humans": {
+    "h_506d0d833c777f": {
+      "author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_66be3861a6f5cd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e932a4ed-e734-4aff-830e-7b474c7fc5ba",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_96d7ef8051c8f1": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "3df987eb-bfae-47de-a7e8-d297edb3517d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    },
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

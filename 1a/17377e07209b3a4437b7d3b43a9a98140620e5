@@ -1,0 +1,39 @@
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_f0d9598b003439 196-199
+shared/sync-engine/src/commonMain/kotlin/notes/core/agent/MadeTo.kt
+  s_cc6cacc0a6fc01::t_0eaa4acc57a0ec 1-71
+shared/sync-engine/build.gradle.kts
+  s_cc6cacc0a6fc01::t_0eaa4acc57a0ec 178,181
+shared/sync-engine/src/jvmTest/kotlin/notes/core/agent/MadeToTest.kt
+  s_cc6cacc0a6fc01::t_0eaa4acc57a0ec 1-36
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_f0d9598b003439 59,207-209
+apps/web/src/editor/agent-edit.test.ts
+  s_cc6cacc0a6fc01::t_eeec31621a69c3 7,93-96
+  s_cc6cacc0a6fc01::t_313ad681018f28 6,55-69
+  s_cc6cacc0a6fc01::t_022932d6753cdd 70-72
+shared/agent-fixtures/made-to.json
+  s_cc6cacc0a6fc01::t_599ffdbf038515 1-537
+server/internal/agent/madeto_test.go
+  s_cc6cacc0a6fc01::t_6b2e9ce2c9270d 1-53
+shared/agent-fixtures/cursor.json
+  s_cc6cacc0a6fc01::t_313ad681018f28 1-28,41-89
+  s_cc6cacc0a6fc01::t_d4a0a3a6441cd7 30,33-40
+  s_cc6cacc0a6fc01::t_1e363529d9f0ea 29,31-32
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1a17377e07209b3a4437b7d3b43a9a98140620e5",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

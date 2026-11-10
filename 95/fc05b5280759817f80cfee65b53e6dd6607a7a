@@ -1,0 +1,43 @@
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_cc6cacc0a6fc01::t_c05532031ad46e 81-83,323-327
+  s_cc6cacc0a6fc01::t_b97462ab37c62e 328-330
+apps/android/app/src/main/kotlin/notes/app/editor/UndoStack.kt
+  s_cc6cacc0a6fc01::t_bcd37adbbde0d0 39-46
+apps/android/app/src/main/kotlin/notes/app/editor/NoteEditText.kt
+  s_cc6cacc0a6fc01::t_bcd37adbbde0d0 37,131-132,244-245,254,260,266,268-269,271-310,483,485
+  s_cc6cacc0a6fc01::t_c05532031ad46e 47-50
+  s_cc6cacc0a6fc01::t_b383c694c7db6c 261-265,267,270
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_cc6cacc0a6fc01::t_b383c694c7db6c 236
+  s_cc6cacc0a6fc01::t_c05532031ad46e 235,519,521-522
+apps/android/app/src/main/kotlin/notes/app/editor/OutsideChange.kt
+  s_cc6cacc0a6fc01::t_91bac4db1c91c8 1-50,63,67,69-139
+  s_cc6cacc0a6fc01::t_591f4e1c1c4ce1 51-62,64-66,68
+apps/android/app/src/test/kotlin/notes/app/notes/ShownRevisionTest.kt
+  s_cc6cacc0a6fc01::t_d1704bcbbeb570 53-54,61,90-102
+  s_cc6cacc0a6fc01::t_0dca3abd4e450d 27
+  s_cc6cacc0a6fc01::t_3ce2a48177cf48 103
+apps/android/app/src/test/kotlin/notes/app/editor/OutsideChangeTest.kt
+  s_cc6cacc0a6fc01::t_b383c694c7db6c 49,156-157,175
+  s_cc6cacc0a6fc01::t_df191f017958e7 5-6,36,40-41,51,53,59,74,87,102,110-112,120,128,140,142-153,162-172,180-181
+  s_cc6cacc0a6fc01::t_25850d6d6786bf 131
+  s_cc6cacc0a6fc01::t_273c98d69fd502 1-4,7-35,37-39,42-48,50,52,54-58,60-73,75-86,88-101,103-109,113-119,121-127,129-130,132-139,141,154-155,158-161,173-174,176-179,182
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_cc6cacc0a6fc01::t_c05532031ad46e 434-435
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "95fc05b5280759817f80cfee65b53e6dd6607a7a",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

@@ -1,0 +1,32 @@
+apps/android/app/src/main/kotlin/notes/app/editor/AgentReading.kt
+  s_cc6cacc0a6fc01::t_b7e673625c9582 1-3,5-23,26,32-44
+  s_cc6cacc0a6fc01::t_4b4e56e64222bc 4
+  s_cc6cacc0a6fc01::t_1a1e87037c4521 24-25,27-31
+apps/android/app/src/test/kotlin/notes/app/notes/ShownRevisionTest.kt
+  s_cc6cacc0a6fc01::t_9332c645e23e58 1-72,76-81,83-84,87-88
+  s_cc6cacc0a6fc01::t_fcfb8302ff283c 73-75,82,85-86
+apps/android/app/src/main/kotlin/notes/app/editor/NoteEditText.kt
+  s_cc6cacc0a6fc01::t_b7e673625c9582 178-180
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_cc6cacc0a6fc01::t_321437fb9cb4f7 332-336
+  s_cc6cacc0a6fc01::t_98aea10582a009 29,324-331,337
+  s_cc6cacc0a6fc01::t_81f40e7789680c 338
+apps/android/app/src/test/kotlin/notes/app/editor/AgentReadingTest.kt
+  s_cc6cacc0a6fc01::t_4b4e56e64222bc 1-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "44ebec235164e19fa0560de893209886e6763280",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

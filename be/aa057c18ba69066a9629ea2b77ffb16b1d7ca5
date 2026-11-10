@@ -1,0 +1,21 @@
+apps/web/src/api/spaces.ts
+  s_cc6cacc0a6fc01::t_789dd8410e4733 34
+server/internal/sharing/sharing_test.go
+  s_cc6cacc0a6fc01::t_9dd4c725cdfa72 286,288,291-292,295-299,318-319,335-337,340,343,347,351-352
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "beaa057c18ba69066a9629ea2b77ffb16b1d7ca5",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}

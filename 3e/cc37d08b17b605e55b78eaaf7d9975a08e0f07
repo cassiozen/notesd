@@ -1,0 +1,35 @@
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_cc6cacc0a6fc01::t_6c71aad08c2631 435-436
+apps/android/app/src/main/kotlin/notes/app/AppGraph.kt
+  s_cc6cacc0a6fc01::t_6c71aad08c2631 44,120-121
+  s_cc6cacc0a6fc01::t_73204d08b8a5b4 122
+apps/android/app/src/main/kotlin/notes/app/notes/OpenNotes.kt
+  s_cc6cacc0a6fc01::t_6c71aad08c2631 8
+  s_cc6cacc0a6fc01::t_7ea9d3c6640d36 1-7,9-63
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_cc6cacc0a6fc01::t_6c71aad08c2631 530,548-551
+apps/android/app/src/test/kotlin/notes/app/notes/OpenNotesTest.kt
+  s_cc6cacc0a6fc01::t_c245acbad682fd 4,30,50,59-60,62-63,70-81,84-85,89,113,147
+  s_cc6cacc0a6fc01::t_361f915d5b2300 1-3,5-29,31-42,46-49,51-58,61,64-69,82-83,86-88,90-112,114-146,148-170
+  s_cc6cacc0a6fc01::t_6090e4f36a9511 43-45
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_cc6cacc0a6fc01::t_6c71aad08c2631 26,84-86,88-97,259,284-285
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_c9e9626a9e8bb4 26-30,238-241
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "3ecc37d08b17b605e55b78eaaf7d9975a08e0f07",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
