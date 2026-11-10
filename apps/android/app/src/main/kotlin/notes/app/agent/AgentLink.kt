@@ -1,6 +1,7 @@
 package notes.app.agent
 
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -13,6 +14,7 @@ import notes.app.account.AccountStore
 import notes.app.notes.OpenNotes
 import notes.core.agent.AgentEditors
 import notes.core.agent.AgentSocket
+import notes.core.agent.DroppedRun
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 
@@ -36,6 +38,36 @@ class AgentLink(
     val socket = AgentSocket({ api()?.agentSocket(it) ?: ApiResult.Unauthenticated }, editors, scope, timing)
 
     private enum class Want { Open, Closed, Background }
+
+    /**
+     * Asks for an editor trigger's run on a note open here (docs/contributing/agent-clients.md: Editor triggers),
+     * if the note's space has its agent on with a prompt for [trigger]. Not otherwise: the server would drop it.
+     */
+    fun requestRun(trigger: String, noteId: String, spaceId: String): Boolean {
+        if (ai.cache.value.value?.configured != true) return false
+        val config = agents.cache.value.value?.get(spaceId)
+        if (config?.enabled != true || config.triggers[trigger].isNullOrBlank()) return false
+        return socket.requestRun(trigger, noteId, spaceId)
+    }
+
+    /** The command a note's menu offers for its space's agent: its label, or null with none. */
+    fun menuCommand(spaceId: String): String? {
+        if (ai.cache.value.value?.configured != true) return null
+        val config = agents.cache.value.value?.get(spaceId)
+        if (config?.enabled != true || config.triggers[MENU].isNullOrBlank()) return null
+        return config.menuLabel.ifBlank { null }
+    }
+
+    /** Why the menu command, asked for on [noteId], didn't run: the one run asked for by hand. */
+    fun menuDropped(noteId: String): Flow<String> = socket.dropped
+        .filter { it.trigger == MENU && it.noteId == noteId }
+        .map {
+            when {
+                it.why == DroppedRun.Why.Off -> "The agent didn't run: it isn't on for this space."
+                online.value -> "The agent didn't run: the server can't be reached."
+                else -> "The agent didn't run: you're offline."
+            }
+        }
 
     fun start() {
         openNotes.listener = object : OpenNotes.Listener {
@@ -77,5 +109,9 @@ class AgentLink(
                 }
             }
         }
+    }
+
+    companion object {
+        const val MENU = "menu"
     }
 }

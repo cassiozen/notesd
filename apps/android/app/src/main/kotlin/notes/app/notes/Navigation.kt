@@ -51,6 +51,7 @@ import notes.app.account.Account
 import notes.app.account.OnboardingScreen
 import notes.app.account.OnboardingViewModel
 import notes.app.agent.ActivityScreen
+import notes.app.agent.AgentLink
 import notes.app.agent.RunScreen
 import notes.app.agent.rememberFailedRun
 import notes.app.apiClient
@@ -434,7 +435,10 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             graph.space.value,
                                             requestSync = graph.scheduler::request,
                                             openNotes = graph.openNotes,
-                                            push = { graph.push() }
+                                            push = { graph.push() },
+                                            requestRun = { trigger, note, space ->
+                                                graph.agentLink.requestRun(trigger, note, space)
+                                            }
                                         )
                                     },
                                     locks = graph.locks,
@@ -460,7 +464,12 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         if (!twoPane) home()
                                     },
                                     failedRun = rememberFailedRun(graph, key.id),
-                                    onRun = { activity(it.spaceId, it.id) }
+                                    onRun = { activity(it.spaceId, it.id) },
+                                    agentCommand = graph.agentLink::menuCommand,
+                                    onAgentCommand = { space ->
+                                        graph.agentLink.requestRun(AgentLink.MENU, key.id, space)
+                                    },
+                                    notices = remember(key.id) { graph.agentLink.menuDropped(key.id) }
                                 )
                             }
                             entry<SettingsKey> {
