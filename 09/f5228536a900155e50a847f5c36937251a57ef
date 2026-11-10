@@ -24,8 +24,10 @@ apps/web/src/notes/traits.test.tsx
   s_cc6cacc0a6fc01::t_ae731c0803b329 12,35-36,38-40,61-63,65-66
   s_cc6cacc0a6fc01::t_fb9addf2c28b6f 37
   s_cc6cacc0a6fc01::t_0aa74bfaba5de5 71
+  s_cc6cacc0a6fc01::t_5f13947eba6412 26-27,64,67
 apps/web/src/settings/space-info.tsx
   s_cc6cacc0a6fc01::t_0e819f524a3a47 15,35-38,110-111,116-117,143,176,250
+  s_cc6cacc0a6fc01::t_b897b5b277c5a7 9,70,112-115,142,183,196-200,226,244
 server/internal/notes/notes.go
   s_cc6cacc0a6fc01::t_0391adb249e0a4 229
 apps/web/test/agent-config.test.tsx
@@ -40,6 +42,7 @@ server/internal/api/respond.go
   s_cc6cacc0a6fc01::t_62ac4a1f1b25a3 229-230
 docs/reference/api.md
   s_cc6cacc0a6fc01::t_842925f7eccc80 519-525,599
+  s_cc6cacc0a6fc01::t_afd9cd4865f06c 341-344
 apps/web/src/api/spaces.ts
   s_cc6cacc0a6fc01::t_fa406c10634998 34
 apps/web/src/settings/unsaved.ts
