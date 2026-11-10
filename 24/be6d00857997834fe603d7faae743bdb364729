@@ -1,0 +1,23 @@
+server/internal/publish/publish_test.go
+  s_c2ad4aa2cf2b8b::t_1bb33126df8d1b 8,59-97
+  s_c2ad4aa2cf2b8b::t_e60d8275c3fabb 98
+server/internal/publish/publish.go
+  s_c2ad4aa2cf2b8b::t_d88da29bae236f 136-140,437-438,459-460
+  s_c2ad4aa2cf2b8b::t_725611340b338b 461
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "24be6d00857997834fe603d7faae743bdb364729",
+  "prompts": {},
+  "sessions": {
+    "s_c2ad4aa2cf2b8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc7056c0-2689-4f18-b55d-6a667411926e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
