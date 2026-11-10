@@ -78,11 +78,13 @@ type harness struct {
 	removed  bool
 	editor   *fakeEditor
 	onRun    func(agent.RunUpdate)
+	// shown is what editors were last told shows on each note.
+	shown map[string][]agent.Overlay
 }
 
 func newHarness(t *testing.T) *harness {
 	f := newFixture(t)
-	h := &harness{fixture: f, model: &fakeModel{},
+	h := &harness{fixture: f, model: &fakeModel{}, shown: map[string][]agent.Overlay{},
 		settings: llm.Settings{BaseURL: "http://fake", APIKey: "k", Model: "m", DailyTokenCap: llm.DefaultDailyTokenCap}}
 	h.runner = agent.NewRunner(agent.RunnerConfig{
 		Accounts: func(context.Context) ([]int64, error) { return []int64{1}, nil },
@@ -93,6 +95,7 @@ func newHarness(t *testing.T) *harness {
 			if h.editor != nil {
 				a.Editors = h.editor
 			}
+			a.OnOverlays = func(noteID string, list []agent.Overlay) { h.shown[noteID] = list }
 			a.OnRun = func(u agent.RunUpdate) {
 				if h.onRun != nil {
 					h.onRun(u)

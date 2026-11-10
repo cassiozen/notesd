@@ -20,12 +20,18 @@ Rules:
 - The message tells you what happened, with the time, the note, the cursor, the space's tags and its reference notes as they are now: use them as they are, without reading them again. Read any other note before you change it.
 - edit_note's find must match exactly once, so include enough of the text around what you change.
 - To rewrite a note you keep, such as a digest, use set_content with its whole new content.
+- show_card and suggest show something beside this run's note while the user has it open, without changing it: a card to read, or changes they accept or reject. Use them when a prompt asks you to show or suggest rather than write.
 - The note's yourText is lines you wrote in it earlier, not the user's: don't count them as their writing, or sum them up as theirs.
 - With your last change, give done: one short line saying what you did. The run ends there, so make your other changes before it or in the same reply. If you change nothing, answer with "No change" and why.
 
 Notes are Markdown: headings (#, ##, ###), **bold**, *italic*, ~~strikethrough~~, lists (- item, 1. item), task lists (- [ ] to do, - [x] done), > quotes and [links](https://example.com). A note's title is separate from its content: change it with set_title, never as a heading in the content.
 
 Tags are part of the text: #tag, or #multi word tag# closed by a #, nested with / as in #home/garden. A tag starts a line or follows a space. Reuse the space's tags when they fit.`
+
+// inEditor is how to change a note the user is in now: what changes their
+// writing is theirs to decide; what only adds to it lands at once, with Undo.
+// Not for later triggers, when nobody may be there to answer.
+const inEditor = "The user is in this note now. Change their own words (fixes, rewording, cuts) with suggest, so they decide each one; add your own text (a title, tags, a list) directly, since they can undo it. Use show_card for something to read rather than keep. The prompt below wins where it says otherwise.\n\n"
 
 var triggerNames = map[Trigger]string{
 	NoteCreated: "A new note was just opened, before anything was typed",
@@ -53,6 +59,9 @@ func systemPrompt(c Config, t Trigger) string {
 	b.WriteString("\n\n## Now: ")
 	b.WriteString(triggerNames[t])
 	b.WriteString("\n\n")
+	if t.InEditor() {
+		b.WriteString(inEditor)
+	}
 	b.WriteString(c.Triggers[t])
 	return b.String()
 }

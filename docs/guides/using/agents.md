@@ -69,6 +69,25 @@ your typing alone.
 Turning the agent off keeps everything you wrote, and so does removing AI from the server: the
 agent is paused until it's back.
 
+## Cards beside the note
+
+An agent can also show you something without changing the note: a **card** between its paragraphs,
+headed by the space's name. A card is never part of the note: it isn't saved, synced or searched,
+and it goes when you close the note.
+
+- A card to read, such as the Journal example's questions, has **×** to dismiss it.
+- A suggested change, such as *Fix typos* in the Tidy tags example, sits under the text it would
+  change (a new title at the top, an addition where it would go) and shows what goes and what
+  comes. **✓** makes the change, as one step you can undo like
+  any other change the agent makes; **✗** leaves the note as it is. A suggestion whose text you've
+  changed since goes by itself.
+
+For the rules that run while you're in the note (a new note opened, editing started, the menu
+command), the agent suggests changes to your own words and adds its own text directly, unless the
+rule's prompt says otherwise. A rule's next run on the note replaces the cards its last one left. Cards show only in a note open on
+the web for now: an agent can't leave one on a note nobody has open. Activity counts what a run
+showed, and how many of its suggestions you accepted.
+
 ## See what it did, and undo it
 
 Everything an agent does is in **Activity**: pick **Activity…** beside **Agent** in Space info. On

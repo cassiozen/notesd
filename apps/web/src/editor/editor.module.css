@@ -625,6 +625,95 @@
   color: var(--ink);
 }
 
+/* What a run shows beside the note: a card between its blocks, never part of its text. */
+.agentCard {
+  margin: 10px 0 14px;
+  padding: 8px 10px 10px 12px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 10px;
+  background: var(--chip);
+  color: var(--ink);
+  font: 14px/1.5 var(--font-sans);
+  white-space: normal;
+  cursor: default;
+  user-select: text;
+  animation: agent-mark-in 0.25s var(--ease-out);
+}
+
+.agentCardHead {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-block-end: 2px;
+}
+
+.agentCardWho {
+  display: inline-flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.agentCardWho .agentDot {
+  animation: none;
+}
+
+.agentCardButton {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: none;
+  color: var(--ink-2);
+  font: 500 15px/1 var(--font-sans);
+  cursor: pointer;
+}
+
+.agentCardButton:hover {
+  border-color: var(--hair-strong);
+  background: var(--hover);
+  color: var(--ink);
+}
+
+.agentCardButton:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 1px;
+}
+
+.agentCardBody > :first-child {
+  margin-top: 0;
+}
+
+.agentCardBody > :last-child {
+  margin-bottom: 0;
+}
+
+.agentCardBody p {
+  margin: 0.3em 0;
+}
+
+.agentCardBody h1,
+.agentCardBody h2,
+.agentCardBody h3 {
+  margin: 0.4em 0 0.2em;
+  font-size: 1em;
+}
+
+.agentChange del {
+  color: var(--ink-3);
+  text-decoration-color: var(--danger);
+}
+
+.agentChange ins {
+  background: color-mix(in oklch, var(--good) 18%, transparent);
+  border-radius: 3px;
+  text-decoration: none;
+}
+
 @keyframes agent-mark-in {
   from {
     opacity: 0;
@@ -650,7 +739,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .agentMark,
-  .agentUndo {
+  .agentUndo,
+  .agentCard {
     animation: none;
   }
 

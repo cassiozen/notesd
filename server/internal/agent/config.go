@@ -9,6 +9,7 @@ import (
 	"errors"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -80,6 +81,8 @@ type Store struct {
 	tz          tzCache
 	onScheduled func()
 	snapshots   snapshots
+	// overlays orders changes to overlays with the messages telling editors about them.
+	overlays sync.Mutex
 }
 
 // NewStore returns a Store over an account's database.

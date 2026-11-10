@@ -29,3 +29,6 @@ func SetStartRetry(t interface{ Cleanup(func()) }, d time.Duration) {
 
 // DiffLines is Diff with nothing folded.
 func DiffLines(before, after string) []DiffLine { return diffLines(before, after) }
+
+// SystemPrompt is what a run of trigger t is told first.
+func SystemPrompt(c Config, t Trigger) string { return systemPrompt(c, t) }

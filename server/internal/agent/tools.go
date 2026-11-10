@@ -44,12 +44,22 @@ var tools = []llm.Tool{
 		`{"type": "object", "properties": {`+noteIDParam+`, "content": {"type": "string"}, `+doneParam+`}, "required": ["content"], "additionalProperties": false}`),
 	tool("get_cursor", "Where the user's cursor is in this run's note, while they have it open: the text just before and just after it.",
 		`{"type": "object", "properties": {}, "additionalProperties": false}`),
+	tool("show_card", "Show a card on this run's note while the user has it open: beside the note's text, never in it, for them to read and dismiss. Gone when they close the note. Only for this run's note, while it's open in an editor.",
+		`{"type": "object", "properties": {"body": {"type": "string", "description": "What the card says, in Markdown: at most 2000 characters."}, `+placeParams+`, `+doneParam+`}, "required": ["body"], "additionalProperties": false}`),
+	tool("suggest", "Suggest changes to this run's note while the user has it open: each shows as a card by the text it changes, with accept and reject buttons. Nothing changes unless the user accepts it. Only for this run's note, while it's open in an editor.",
+		`{"type": "object", "properties": {"changes": {"type": "array", "minItems": 1, "maxItems": 20, "items": {"type": "object", "properties": {
+			"find": {"type": "string", "description": "Text to replace: it must appear exactly once."},
+			"replace": {"type": "string", "description": "What replaces find."},
+			"title": {"type": "string", "description": "A new title, instead of find and replace."},
+			"insert": {"type": "object", "description": "Text to add, instead of find and replace: at the start or end as a block of its own, or at the cursor.", "properties": {"at": {"type": "string", "enum": ["start", "end", "cursor"]}, "text": {"type": "string"}}, "required": ["at", "text"], "additionalProperties": false},
+			"why": {"type": "string", "description": "A few words on why, shown on the card."}}, "additionalProperties": false}}, `+doneParam+`}, "required": ["changes"], "additionalProperties": false}`),
 	tool("create_note", "Create a note in this space.",
 		`{"type": "object", "properties": {"title": {"type": "string"}, "content": {"type": "string"}, `+doneParam+`}, "required": ["title", "content"], "additionalProperties": false}`),
 }
 
 // writeTools are the tools that take done.
-var writeTools = map[string]bool{"set_title": true, "edit_note": true, "insert": true, "set_content": true, "create_note": true}
+var writeTools = map[string]bool{"set_title": true, "edit_note": true, "insert": true, "set_content": true, "create_note": true,
+	"show_card": true, "suggest": true}
 
 // doneWith is the summary a write call ends the run with, if it does.
 func doneWith(tc llm.ToolCall) string {
@@ -130,6 +140,12 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		if err := json.Unmarshal([]byte(tc.Function.Arguments), &args); err != nil {
 			return "", refuse("the arguments aren't a JSON object: %v", err)
 		}
+	}
+	switch tc.Function.Name {
+	case "show_card":
+		return rs.showCard(ctx, tc.Function.Arguments)
+	case "suggest":
+		return rs.suggest(ctx, tc.Function.Arguments)
 	}
 	id := args.ID
 	if id == "" {

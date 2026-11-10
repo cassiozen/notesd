@@ -69,7 +69,7 @@ export const TRIGGERS: { key: AgentTrigger; group: TriggerGroup; label: string; 
     label: 'Run from menu',
     rule: 'When you ask, from the note’s menu',
     when: 'A command in the note’s ⋯ menu. Also a handy way to try a prompt.',
-    suggestion: 'Fix spelling and obvious typos only.',
+    suggestion: 'Suggest fixes for spelling and obvious typos.',
   },
   {
     key: 'newNoteDone',

@@ -160,6 +160,15 @@ func (h *Hub) Closed(c *Conn, noteID string) (last bool) {
 	return true
 }
 
+// Send sends msg to c, without waiting, after what's already on its way to
+// it: one that's slow or gone misses it.
+func (h *Hub) Send(c *Conn, msg any) {
+	select {
+	case c.outbox <- msg:
+	default:
+	}
+}
+
 // Broadcast sends msg to each of the user's editors, without waiting:
 // one that's slow or gone misses it.
 func (h *Hub) Broadcast(userID int64, msg any) {

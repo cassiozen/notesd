@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import type { AgentTrigger, RunStatus } from '../api/agent'
 import type { AgentChange, AgentOp } from '../editor/agent-edit'
+import type { Overlay } from '../editor/agent-overlays'
 import type { Fields } from '../notes/saver'
 import { useAgentConfigs } from '../notes/agent-config'
 import { useAiSettings } from '../notes/ai-settings'
@@ -53,6 +54,14 @@ class AgentSocket {
   private readonly landed = new Set<string>()
   /** Runs asked for before hello, by trigger and note: sent once it comes. */
   private readonly held = new Map<string, { trigger: Trigger; noteId: string; spaceId: string; at: number }>()
+  /** What runs show on the notes open here, as the server last said. */
+  private overlays = new Map<string, Overlay[]>()
+  /**
+   * Answers to overlays not sent yet, by overlay: sent first once the server says hello, so the lists it
+   * sends then leave them out. Dropped, a dismissed card would come back, or an accepted change twice.
+   */
+  private readonly answers = new Map<string, object>()
+  readonly overlayListeners = new Set<() => void>()
   /** The server's id for this connection, once it said hello. */
   connectionId: string | null = null
 
@@ -88,6 +97,7 @@ class AgentSocket {
     // Its close is ignored once this.ws is null, so forget the runs here.
     this.landed.clear()
     this.setRunning(new Map())
+    this.setOverlays(new Map())
     ws?.close()
   }
 
@@ -97,6 +107,7 @@ class AgentSocket {
     this.close()
     this.open.clear()
     this.editors.clear()
+    this.answers.clear()
   }
 
   noteOpened(noteId: string) {
@@ -158,6 +169,7 @@ class AgentSocket {
       return
     }
     this.open.delete(noteId)
+    this.dropOverlays(noteId)
     this.send({ type: 'editor.closed', noteId, revision })
     if (!this.wanted && this.open.size === 0 && this.ws) this.close()
   }
@@ -179,12 +191,22 @@ class AgentSocket {
       if (m?.type === 'hello' && typeof m.connectionId === 'string') {
         this.failures = 0
         this.connectionId = m.connectionId
+        for (const a of this.answers.values()) this.send(a)
+        this.answers.clear()
         for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId })
         // Only for a note still open here, asked for recently enough.
         for (const h of this.held.values()) {
           if (this.open.has(h.noteId) && Date.now() - h.at <= socketTiming.heldMs) this.sendRequest(h.trigger, h.noteId, h.spaceId)
         }
         this.held.clear()
+      } else if (m?.type === 'overlays' && typeof m.noteId === 'string' && Array.isArray(m.overlays)) {
+        // Each of the account's tabs hears it: only those with the note open keep it.
+        if (!this.open.has(m.noteId)) return
+        const next = new Map(this.overlays)
+        const list = m.overlays.filter(isOverlay)
+        if (list.length) next.set(m.noteId, list)
+        else next.delete(m.noteId)
+        this.setOverlays(next)
       } else if (m?.type === 'run' && typeof m.runId === 'string' && typeof m.noteId === 'string') {
         this.heard(m as unknown as RunUpdate)
       } else if (m && typeof m.id === 'string') {
@@ -207,9 +229,10 @@ class AgentSocket {
       if (ws !== this.ws) return
       this.ws = null
       this.connectionId = null
-      // What's still going is unknown until the server says again.
+      // What's still going, or showing, is unknown until the server says again.
       this.landed.clear()
       this.setRunning(new Map())
+      this.setOverlays(new Map())
       if (!this.wanted) return
       const wait = Math.min(socketTiming.retryMaxMs, socketTiming.retryBaseMs * 2 ** this.failures++)
       this.timer = setTimeout(() => this.connect(), wait * (0.5 + Math.random() / 2))
@@ -246,9 +269,46 @@ class AgentSocket {
     return { error: 'not_open' }
   }
 
+  /** What runs show on the note now. */
+  overlaysOn(noteId: string): Overlay[] {
+    return this.overlays.get(noteId) ?? noOverlays
+  }
+
+  /**
+   * The user's answer to an overlay, which goes at once: the server tells every tab what's left. An
+   * accepted suggestion's change was made in the editor, as applied says, as for an apply.
+   */
+  answerOverlay(overlay: Overlay, answer: 'dismiss' | 'accept' | 'reject' | 'stale', applied?: { before: Fields; revision: number | null; shows: Fields }) {
+    const list = this.overlaysOn(overlay.noteId).filter((o) => o.id !== overlay.id)
+    const next = new Map(this.overlays)
+    if (list.length) next.set(overlay.noteId, list)
+    else next.delete(overlay.noteId)
+    this.setOverlays(next)
+    const m = { type: 'overlay.answer', noteId: overlay.noteId, id: overlay.id, answer, ...applied }
+    if (this.connected()) this.send(m)
+    else this.answers.set(overlay.id, m)
+  }
+
+  private dropOverlays(noteId: string) {
+    if (!this.overlays.has(noteId)) return
+    const next = new Map(this.overlays)
+    next.delete(noteId)
+    this.setOverlays(next)
+  }
+
+  private setOverlays(next: Map<string, Overlay[]>) {
+    if (next.size === 0 && this.overlays.size === 0) return
+    this.overlays = next
+    for (const l of this.overlayListeners) l()
+  }
+
+  private connected(): boolean {
+    return this.ws?.readyState === WebSocket.OPEN && this.connectionId !== null
+  }
+
   private send(m: object) {
     // Before hello, nothing is lost: hello re-sends what's open.
-    if (this.ws?.readyState === WebSocket.OPEN && this.connectionId) this.ws.send(JSON.stringify(m))
+    if (this.connected()) this.ws?.send(JSON.stringify(m))
   }
 }
 
@@ -272,6 +332,22 @@ function isOp(v: unknown): v is AgentOp {
   return false
 }
 
+const noOverlays: Overlay[] = []
+
+function isOverlay(v: unknown): v is Overlay {
+  if (typeof v !== 'object' || v === null) return false
+  const o = v as Record<string, unknown>
+  const place = o.place as Record<string, unknown> | null
+  return (
+    typeof o.id === 'string' &&
+    typeof o.noteId === 'string' &&
+    typeof o.body === 'string' &&
+    typeof place === 'object' &&
+    place !== null &&
+    (o.kind === 'card' || (o.kind === 'suggestion' && isOp(o.change)))
+  )
+}
+
 function parse(data: string): Record<string, unknown> | null {
   try {
     const m: unknown = JSON.parse(data)
@@ -293,6 +369,19 @@ export function useAgentWriting(noteId: string): boolean {
       }
     },
     () => agentSocket.isWriting(noteId),
+  )
+}
+
+/** What runs show on the note now, beside its text. */
+export function useAgentOverlays(noteId: string): Overlay[] {
+  return useSyncExternalStore(
+    (l) => {
+      agentSocket.overlayListeners.add(l)
+      return () => {
+        agentSocket.overlayListeners.delete(l)
+      }
+    },
+    () => agentSocket.overlaysOn(noteId),
   )
 }
 
