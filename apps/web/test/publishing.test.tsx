@@ -124,7 +124,8 @@ describe('publishing a space', () => {
     server.setOffline(false)
     await user.click(within(again).getByRole('button', { name: 'Stop publishing' }))
     await waitFor(() => expect(within(info).queryByRole('group', { name: 'Stop publishing Journal?' })).toBeNull())
-    expect(await settings(server)).toMatchObject({ published: false })
+    // Gone as the call goes out, not once it's done: the server may not have it yet.
+    await waitFor(async () => expect(await settings(server)).toMatchObject({ published: false }))
   })
 
   it('shows the space published, and not, at once: the glyph doesn’t wait for the server', async () => {
@@ -348,8 +349,9 @@ describe('publishing a space', () => {
     await user.click(within(info).getByRole('button', { name: 'Stop publishing…' }))
     const confirm = await within(info).findByRole('group', { name: 'Stop publishing Journal?' })
     await user.click(within(confirm).getByRole('button', { name: 'Stop publishing' }))
+    // Shown at once, before the server has it.
     await within(section(info)).findByRole('button', { name: 'Publish' })
-    expect(await settings(server)).toMatchObject({ published: false, handle: 'journal' })
+    await waitFor(async () => expect(await settings(server)).toMatchObject({ published: false, handle: 'journal' }))
     expect(within(info).queryByRole('img', { name: 'Published' })).toBeNull()
   })
 

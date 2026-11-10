@@ -22,6 +22,13 @@ test('kept on this device, the app opens offline, and what was typed reaches the
   expect(created.status()).toBe(201)
 
   await page.goto('/')
+  // The fixture's visit registered the service worker. A page that loads while it activates stays uncontrolled
+  // (claim() skips pages still loading), and the engine's files are only cached when fetched through it.
+  await page.evaluate(async () => {
+    await navigator.serviceWorker.ready
+  })
+  await page.reload()
+  await page.waitForFunction(() => navigator.serviceWorker.controller !== null, null, { timeout: 10_000 })
   await page.getByLabel('Username').fill(owner.username)
   await page.getByLabel('Password').fill(owner.password)
   await page.getByRole('checkbox', { name: /Keep my notes on this device/ }).check()
@@ -29,7 +36,6 @@ test('kept on this device, the app opens offline, and what was typed reaches the
   // Listed from the engine: the first sync is done.
   const row = page.getByRole('complementary', { name: 'Notes' }).getByRole('link', { name: new RegExp(`^${title}`) })
   await expect(row).toBeVisible({ timeout: 30_000 })
-  await page.waitForFunction(() => navigator.serviceWorker.controller !== null)
 
   await context.setOffline(true)
   await page.reload()

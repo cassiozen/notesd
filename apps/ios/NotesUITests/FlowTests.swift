@@ -743,12 +743,19 @@ final class FlowTests: XCTestCase {
         // Not the hit regions: the system bar's clear button is small.
         try audit("find", .sufficientElementDescription)
         app.buttons["find.doneButton"].tap()
-        XCTAssertFalse(search.waitForExistence(timeout: 1))
+        XCTAssertTrue(search.waitForNonExistence(timeout: 5))
+        // The bar's field leaves the tree before its keyboard is done sliding away: a tap before then lands on it.
+        XCTAssertTrue(app.keyboards.firstMatch.waitForNonExistence(timeout: 5))
 
         // Opened while reading, Done leaves the keyboard down; opened while typing, it goes back to typing.
         XCTAssertNotEqual(editor.value(forKey: "hasKeyboardFocus") as? Bool, true)
-        editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).tap()
-        XCTAssertTrue(waitForFocus(editor))
+        // A tap while the screen still settles can be lost; another only moves the caret.
+        var focused = false
+        for _ in 0..<3 where !focused {
+            editor.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.6)).tap()
+            focused = waitForFocus(editor)
+        }
+        XCTAssertTrue(focused, "tapping the editor gives it the keyboard")
         // ⌘F, on the last search. The simulator sometimes drops a hardware key after the on-screen
         // keyboard was in use: a few tries.
         for _ in 0..<3 where !search.exists {

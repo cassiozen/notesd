@@ -133,6 +133,11 @@ type Service struct {
 	wake     chan struct{}
 
 	limits *limits
+
+	// reloadMu: a reload that read before a change must not swap in its sites after one that read since.
+	reloadMu sync.Mutex
+	// reloaded runs between a reload's read and its swap; tests only.
+	reloaded func()
 }
 
 // New returns a Service. Call Install before any notes file opens, and Run once serving.
@@ -429,6 +434,8 @@ func (s *Service) Reload(ctx context.Context) { s.reload(ctx) }
 
 // reload reads every published space's address, and takes down the sites of those no longer published.
 func (s *Service) reload(ctx context.Context) {
+	s.reloadMu.Lock()
+	defer s.reloadMu.Unlock()
 	rows, err := s.system.R.QueryContext(ctx, `SELECT file, space_id, handle, origin, domain FROM published_spaces WHERE published = 1`)
 	if err != nil {
 		s.log.Error("published spaces", "err", err)
@@ -448,6 +455,9 @@ func (s *Service) reload(ctx context.Context) {
 	if err := rows.Err(); err != nil {
 		s.log.Error("published spaces", "err", err)
 		return
+	}
+	if s.reloaded != nil {
+		s.reloaded()
 	}
 	s.mu.Lock()
 	var gone []string

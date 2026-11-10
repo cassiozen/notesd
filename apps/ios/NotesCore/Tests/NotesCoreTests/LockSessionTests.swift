@@ -63,12 +63,12 @@ struct LockSessionTests {
         unhook()
     }
 
-    @Test func idleLocks() async throws {
+    @Test(.timeLimit(.minutes(1))) func idleLocks() async throws {
         let short = LockSession(keys: keys, api: { nil }, iterations: 10_000, idle: .milliseconds(100))
         try await keys.replace([Keyring.create("lock pass 123", iterations: 10_000).entry])
         #expect(await short.unlock("lock pass 123"))
-        try await Task.sleep(for: .milliseconds(400))
-        #expect(short.state.value == .locked)
+        // Not a fixed sleep: with every suite deriving keys at once, the idle task can run late.
+        for await state in short.state.stream() where state == .locked { break }
         #expect(short.key() == nil)
     }
 }

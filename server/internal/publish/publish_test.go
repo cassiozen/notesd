@@ -4,7 +4,9 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"notes/server/internal/database"
 	"notes/server/internal/userdata"
@@ -53,5 +55,67 @@ func TestADeletedSpacesAddressGoesWithIt(t *testing.T) {
 	}
 	if len(s.sites) != 0 {
 		t.Fatalf("still served: %v", s.sites)
+	}
+}
+
+func TestAReloadThatReadBeforeAForgetDoesNotBringTheSiteBack(t *testing.T) {
+	ctx := context.Background()
+	dir := t.TempDir()
+	system, err := database.OpenSystem(ctx, filepath.Join(dir, "system.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { system.Close() })
+	files := userdata.NewRegistry(dir)
+	t.Cleanup(func() { files.Close() })
+	s := New(system, files, nil, Config{DataDir: dir})
+	t.Cleanup(func() { s.Close() })
+	if _, err := system.W.ExecContext(ctx, `INSERT INTO published_spaces
+		(file, space_id, handle, origin, published, updated_at) VALUES ('user:1', 'fam', 'family', 'https://x', 1, 0)`); err != nil {
+		t.Fatal(err)
+	}
+	s.reload(ctx)
+
+	// The publisher's own reload (a change woke it) reads the site, then the space is deleted before it swaps.
+	var calls atomic.Int32
+	raced := make(chan struct{}) // Forget's reload read and is about to swap: only without the lock
+	forgot := make(chan error, 1)
+	s.reloaded = func() {
+		if calls.Add(1) > 1 {
+			close(raced)
+			return
+		}
+		go func() { forgot <- s.Forget(ctx, "user:1", "fam") }()
+		for deadline := time.Now().Add(5 * time.Second); ; time.Sleep(5 * time.Millisecond) {
+			var n int
+			if err := system.R.QueryRowContext(ctx, `SELECT COUNT(*) FROM published_spaces`).Scan(&n); err != nil {
+				t.Error(err)
+				return
+			}
+			if n == 0 {
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Error("Forget never deleted the address")
+				return
+			}
+		}
+		// Its delete is in: only the lock keeps Forget's reload from reading and swapping before this one.
+		select {
+		case <-raced:
+			// Let it swap first, so this stale swap lands last.
+			err := <-forgot
+			forgot <- err
+		case <-time.After(time.Second): // held at the lock
+		}
+	}
+	s.reload(ctx)
+	if err := <-forgot; err != nil {
+		t.Fatal(err)
+	}
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	if _, ok := s.sites["family"]; ok {
+		t.Fatal("a deleted space's site is served again")
 	}
 }
