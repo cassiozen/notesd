@@ -19,6 +19,7 @@ import notes.core.api.RemoteSpace
 import notes.core.api.SyncApi
 import notes.core.api.SyncPage
 import notes.core.api.UPGRADE_REQUIRED_MESSAGE
+import notes.core.api.WriteOrigin
 import notes.core.api.unexpectedMessage
 import notes.core.crypto.LockedEnvelope
 import notes.core.db.Database
@@ -33,30 +34,45 @@ class SyncClassificationTest {
         var answer: (String, JsonObject) -> ApiResult<MutationResult> = { id, _ -> ok(id) }
         var spaceAnswer: () -> ApiResult<RemoteSpace>? = { null }
         val sent = mutableListOf<Pair<String, String>>()
+
+        /** Each note write's X-Notesd-Sync, by note id, in order. */
+        val origins = mutableListOf<Pair<String, String?>>()
         var calls = 0
 
         fun ok(id: String) = ApiResult.Ok(MutationResult(id, "ok", 1, 1, 1, spaceId = "default"))
 
-        private fun note(id: String, body: JsonObject): ApiResult<MutationResult> {
+        private fun note(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> {
             calls++
             sent += id to body["operationId"]!!.jsonPrimitive.content
+            origins += id to origin
             return answer(id, body)
         }
 
-        override suspend fun createNote(body: JsonObject) = note(body["id"]!!.jsonPrimitive.content, body)
+        override suspend fun createNote(body: JsonObject, origin: String?) =
+            note(body["id"]!!.jsonPrimitive.content, body, origin)
 
-        override suspend fun updateNote(id: String, body: JsonObject) = note(id, body)
+        override suspend fun updateNote(id: String, body: JsonObject, origin: String?) = note(id, body, origin)
 
-        override suspend fun deleteNote(id: String, body: JsonObject) = note(id, body)
+        override suspend fun deleteNote(id: String, body: JsonObject, origin: String?) = note(id, body, origin)
+
+        /** The server's backup generation: changed, as by a restore, the next pull starts over. */
+        var generation = "g"
+        var spacesAnswer: ApiResult<List<RemoteSpace>> = ApiResult.Ok(emptyList())
 
         override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> {
             calls++
-            return ApiResult.Ok(SyncPage(emptyList(), since, false, "g"))
+            if (generation != null && generation != this.generation) {
+                return ApiResult.Conflict("generation_mismatch", "Restored from a backup.", null)
+            }
+            return ApiResult.Ok(SyncPage(emptyList(), since, false, this.generation))
         }
 
         override suspend fun lockKeys(): ApiResult<List<LockKey>> = ApiResult.Ok(emptyList())
 
-        override suspend fun spaces(): ApiResult<List<RemoteSpace>> = ApiResult.Ok(emptyList())
+        /** Answers to the next downloads of the list, before [spacesAnswer]. */
+        var spacesAnswers = mutableListOf<ApiResult<List<RemoteSpace>>>()
+
+        override suspend fun spaces(): ApiResult<List<RemoteSpace>> = spacesAnswers.removeFirstOrNull() ?: spacesAnswer
 
         override suspend fun putSpace(id: String, name: String, icon: String): ApiResult<RemoteSpace> =
             spaceAnswer() ?: ApiResult.Ok(RemoteSpace(id, name, icon))
@@ -111,6 +127,42 @@ class SyncClassificationTest {
         api.invitesAnswers = mutableListOf(portal, portal)
         assertEquals(SyncOutcome.Failed, engine.sync())
         assertEquals(0, notes.pendingNotes())
+    }
+
+    @Test
+    fun whatADeviceWroteBeforeItsFirstSyncGoesAsInitialAndLaterEditsAsEditing() = env {
+        notes.save("a", "A", "written before connecting")
+        assertEquals(SyncOutcome.Done, engine.sync())
+        notes.save("a", "A", "edited")
+        notes.save("b", "B", "new")
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(listOf<Pair<String, String?>>("a" to WriteOrigin.INITIAL, "a" to null, "b" to null), api.origins)
+    }
+
+    @Test
+    fun notesPutBackOnARestoredServerGoAsInitial() = env {
+        notes.save("a", "A", "text")
+        assertEquals(SyncOutcome.Done, engine.sync())
+        api.origins.clear()
+        // Restored from a backup without the note: the full pull doesn't see it, so it's put back.
+        api.generation = "restored"
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(listOf<Pair<String, String?>>("a" to WriteOrigin.INITIAL), api.origins)
+    }
+
+    @Test
+    fun typingThatJoinsANoteWaitingToBePutBackGoesAsEditing() = env {
+        notes.save("a", "A", "text")
+        assertEquals(SyncOutcome.Done, engine.sync())
+        api.origins.clear()
+        api.generation = "restored"
+        // The cycle stops after the pull, with the note queued to be put back: the list downloaded after it fails.
+        api.spacesAnswers = mutableListOf(ApiResult.Ok(emptyList()), ApiResult.Unreachable(Exception("offline")))
+        assertEquals(SyncOutcome.Offline, engine.sync())
+        assertEquals(emptyList(), api.origins)
+        notes.save("a", "A", "typed meanwhile")
+        assertEquals(SyncOutcome.Done, engine.sync())
+        assertEquals(listOf<Pair<String, String?>>("a" to null), api.origins)
     }
 
     @Test

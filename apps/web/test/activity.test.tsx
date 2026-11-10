@@ -1,5 +1,5 @@
 import { screen, waitFor, within } from '@testing-library/react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, onTestFinished } from 'vitest'
 import type { AgentRun } from '../src/api/agent'
 import { signedIn } from './helpers'
 import { startFakeLLM, type FakeLLM, type TestServer } from './server'
@@ -70,6 +70,72 @@ describe('Activity', () => {
 
     await user.click(within(sheet).getByRole('button', { name: 'Back to Activity' }))
     expect((await within(sheet).findByRole('button', { name: /Deleted note/ })).textContent).toContain('Undone')
+  })
+
+  it('shows a run as it starts and ends, in the list and open', async () => {
+    const llm = await startFakeLLM()
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await s.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
+        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'A list.', triggers: { noteDeleted: 'Note it in Digest.' } })
+        await s.api('POST', '/notes', { operationId: 'op-digest', id: 'digest', title: 'Digest', content: DIGEST })
+        await s.api('POST', '/notes', { operationId: 'op-milk', id: 'milk', title: 'Milk', content: 'Milk' })
+      },
+    })
+    const sheet = await openActivity(user)
+    await within(sheet).findByText(/^Nothing yet/)
+
+    const release: { go?: () => void } = {}
+    const hold = new Promise<void>((r) => (release.go = r))
+    llm.script.push({ tool: 'edit_note', args: { id: 'digest', find: 'Items', replace: 'Items\n- Milk' }, hold }, { text: 'Added Milk.' })
+    await server.api('DELETE', '/notes/milk', { operationId: 'op-del', baseRevision: 1 })
+    // Named by its note's title while it runs; the trigger's name stays.
+    const row = await within(sheet).findByRole('button', { name: /Note deleted/ }, { timeout: 5000 })
+    await waitFor(() => expect(row.textContent).toContain('Running'), { timeout: 5000 })
+    await user.click(row)
+    const summary = await within(sheet).findByRole('region', { name: 'Summary' })
+    expect(summary.textContent).toContain('Running')
+
+    release.go?.()
+    await waitFor(() => expect(within(sheet).getByRole('region', { name: 'Summary' }).textContent).toContain('Changed the note'), {
+      timeout: 5000,
+    })
+    await user.click(within(sheet).getByRole('button', { name: 'Back to Activity' }))
+    await waitFor(() => expect(within(sheet).getByRole('button', { name: /Note deleted/ }).textContent).toContain('Changed the note'))
+  })
+
+  it('checks a run that’s going again, with no socket to hear it end', async () => {
+    const llm = await startFakeLLM()
+    const { activityTiming } = await import('../src/notes/activity')
+    const { agentSocket } = await import('../src/agent/socket')
+    const { pollMs } = activityTiming
+    activityTiming.pollMs = 100
+    onTestFinished(() => {
+      activityTiming.pollMs = pollMs
+    })
+    const { server, user } = await signedIn({
+      seed: async (s) => {
+        await s.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
+        await s.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'A list.', triggers: { noteDeleted: 'Note it in Digest.' } })
+        await s.api('POST', '/notes', { operationId: 'op-digest', id: 'digest', title: 'Digest', content: DIGEST })
+        await s.api('POST', '/notes', { operationId: 'op-milk', id: 'milk', title: 'Milk', content: 'Milk' })
+      },
+    })
+    const release: { go?: () => void } = {}
+    const hold = new Promise<void>((r) => (release.go = r))
+    llm.script.push({ tool: 'edit_note', args: { id: 'digest', find: 'Items', replace: 'Items\n- Milk' }, hold }, { text: 'Added Milk.' })
+    await server.api('DELETE', '/notes/milk', { operationId: 'op-del', baseRevision: 1 })
+    await waitFor(async () => expect((await server.api<{ runs: AgentRun[] }>('GET', '/agent/runs')).body.runs[0]?.status).toBe('running'), {
+      timeout: 5000,
+    })
+    agentSocket.stop()
+    const sheet = await openActivity(user)
+    const row = await within(sheet).findByRole('button', { name: /Note deleted/ })
+    expect(row.textContent).toContain('Running')
+    release.go?.()
+    await waitFor(() => expect(within(sheet).getByRole('button', { name: /Note deleted/ }).textContent).toContain('Changed the note'), {
+      timeout: 5000,
+    })
   })
 
   it('says why a change can’t be undone', async () => {

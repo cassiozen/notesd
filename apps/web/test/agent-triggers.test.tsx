@@ -120,6 +120,33 @@ describe('editor triggers', () => {
     expect(await screen.findByText('The agent’s last run on this note failed: it took too many steps.', {}, { timeout: 5000 })).toBeTruthy()
   })
 
+  it('the menu command says so when it can’t reach the agent', async () => {
+    const llm = await startFakeLLM()
+    const { agentSocket, socketTiming } = await import('../src/agent/socket')
+    const { heldMs } = socketTiming
+    socketTiming.heldMs = 50
+    onTestFinished(() => {
+      socketTiming.heldMs = heldMs
+    })
+    const { user } = await signedIn({
+      seed: async (s) => {
+        await withAgent(s, llm, { menuLabel: 'Fix typos', triggers: { menu: 'Fix typos.' } })
+        await createNote(s, 'Plan', 'Teh plan')
+      },
+    })
+    await connected()
+    await openNote(user, 'Plan')
+    // Offline: the connection drops, and isn't tried again until it's back.
+    const online = vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
+    onTestFinished(() => online.mockRestore())
+    agentSocket['ws']?.close()
+    await waitFor(() => expect(agentSocket.connectionId).toBeNull())
+    await user.click(screen.getByRole('button', { name: 'More' }))
+    await user.click(within(screen.getByRole('menu', { name: 'More' })).getByRole('menuitem', { name: 'Fix typos' }))
+    expect(await screen.findByText('The agent didn’t run: you’re offline.')).toBeTruthy()
+    expect(llm.requests).toHaveLength(0)
+  })
+
   it('aren’t offered where the agent doesn’t act on them', async () => {
     const llm = await startFakeLLM()
     const { user } = await signedIn({

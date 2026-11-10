@@ -20,6 +20,7 @@ import notes.core.api.PendingImages
 import notes.core.api.RemoteNote
 import notes.core.api.SyncApi
 import notes.core.api.UPGRADE_REQUIRED_MESSAGE
+import notes.core.api.WriteOrigin
 import notes.core.api.unexpectedMessage
 import notes.core.db.Database
 import notes.core.db.LockKeyStore
@@ -320,6 +321,9 @@ class SyncEngine(
     private suspend fun push(api: SyncApi): Stop? {
         // Every waiting image goes, whether or not a note operation follows.
         uploadImages(api)?.let { return it }
+        // Never synced (not a restore's pull again): what this device wrote before it had the server's
+        // notes goes in bulk, not as someone editing.
+        val first = store.state().let { it.generation == null && !it.fullSync }
         while (true) {
             val next = store.nextOperation() ?: return null
             var op = store.prepare(next) ?: continue
@@ -330,10 +334,11 @@ class SyncEngine(
             // Likewise a space made since the cycle began: the server files a note naming an
             // unknown space in the default.
             pushSpaces(api, deletes = false)?.let { return it }
-            var result = send(api, op)
+            val origin = op.origin ?: WriteOrigin.INITIAL.takeIf { first }
+            var result = send(api, op, origin)
             if (result is ApiResult.Rejected && result.error == OPERATION_ID_REUSED) {
                 op = store.remint(op)
-                result = send(api, op)
+                result = send(api, op, origin)
                 // Twice is no coincidence.
                 if (result is ApiResult.Rejected && result.error == OPERATION_ID_REUSED) {
                     result = ApiResult.Unexpected(result.status)
@@ -392,7 +397,7 @@ class SyncEngine(
     }
 
     // Every change goes to the account's address, whatever space the note is in: the server finds the file (§7.9).
-    private suspend fun send(api: SyncApi, op: Operation): ApiResult<MutationResult> = when (op.type) {
+    private suspend fun send(api: SyncApi, op: Operation, origin: String?): ApiResult<MutationResult> = when (op.type) {
         "create" -> api.createNote(
             buildJsonObject {
                 put("operationId", op.operationId)
@@ -404,7 +409,8 @@ class SyncEngine(
                 op.conflictOf?.let { put("conflictOf", it) }
                 op.spaceId?.let { put("spaceId", it) }
                 op.imageIds?.let { ids -> put("imageIds", JsonArray(ids.map { JsonPrimitive(it) })) }
-            }
+            },
+            origin
         )
 
         "update" -> api.updateNote(
@@ -417,7 +423,8 @@ class SyncEngine(
                 op.updatedAt?.let { put("updatedAt", it) }
                 op.spaceId?.let { put("spaceId", it) }
                 op.imageIds?.let { ids -> put("imageIds", JsonArray(ids.map { JsonPrimitive(it) })) }
-            }
+            },
+            origin
         )
 
         else -> api.deleteNote(
@@ -425,7 +432,8 @@ class SyncEngine(
             buildJsonObject {
                 put("operationId", op.operationId)
                 put("baseRevision", op.baseRevision)
-            }
+            },
+            origin
         )
     }
 

@@ -363,6 +363,22 @@ const val LOCKED_IMAGE = "application/vnd.notesd.locked"
 fun isLockedImageType(type: String) = type == LOCKED_IMAGE || type.startsWith("$LOCKED_IMAGE.")
 
 /**
+ * Why a note write isn't someone editing, sent as the X-Notesd-Sync header. Agents start no rules for
+ * these: without it, a write the device makes in bulk looks like a person finishing each note. Any new
+ * code that writes notes nobody just typed must send one; see "Writes nobody typed" in
+ * docs/contributing/architecture.md.
+ */
+object WriteOrigin {
+    const val HEADER = "X-Notesd-Sync"
+
+    /** A device's first sync, or notes it puts back on a server restored from a backup. */
+    const val INITIAL = "initial"
+
+    /** Notes brought in from elsewhere. */
+    const val IMPORT = "import"
+}
+
+/**
  * The calls a sync cycle makes: the JVM's [ApiClient] with device tokens, the browser's with its session cookie.
  * Every call is at the account's address, which finds a note in whichever file it is (§7.9), except a shared
  * space's change feed: [inSpace]'s [sync].
@@ -374,11 +390,12 @@ interface SyncApi {
     /** The invitations waiting for this account. */
     suspend fun invites(): ApiResult<List<RemoteInvite>>
 
-    suspend fun createNote(body: JsonObject): ApiResult<MutationResult>
+    /** [origin]: a [WriteOrigin] when the write isn't someone editing, else null. */
+    suspend fun createNote(body: JsonObject, origin: String?): ApiResult<MutationResult>
 
-    suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult>
+    suspend fun updateNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult>
 
-    suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult>
+    suspend fun deleteNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult>
 
     /** Changes after [since]. [generation] is the one stored from the last page, null before the first sync. */
     suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage>

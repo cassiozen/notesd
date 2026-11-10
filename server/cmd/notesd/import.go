@@ -39,6 +39,8 @@ func (w storeWriter) CreateNote(ctx context.Context, n mdimport.Note) (bool, err
 		Title:       n.Title,
 		Content:     n.Content,
 		SpaceID:     &w.spaceID,
+		// Not someone writing each note: agents act on none of them.
+		Origin: notes.OriginImport,
 	}
 	if n.CreatedAt > 0 {
 		in.CreatedAt = &n.CreatedAt

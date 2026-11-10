@@ -382,6 +382,39 @@ describe('the agent socket, connecting', () => {
     again?.hello()
     expect(again?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
   })
+
+  it('says when a run asked for never reached the server, and why', async () => {
+    const make = socketFactory.make
+    const { heldMs } = socketTiming
+    socketFactory.make = () => new FakeSocket() as unknown as WebSocket
+    socketTiming.heldMs = 20
+    const dropped: string[] = []
+    const off = agentSocket.onDropped((r, why) => dropped.push(`${r.trigger}:${r.noteId}:${why}`))
+    onTestFinished(() => {
+      off()
+      agentSocket.reset()
+      socketFactory.make = make
+      socketTiming.heldMs = heldMs
+      FakeSocket.all = []
+    })
+    expect(agentSocket.requestRun('menu', 'n1', 's1')).toBe(false)
+    expect(dropped).toEqual(['menu:n1:off'])
+
+    // No hello in time: dropped then, and not sent once it comes.
+    agentSocket.start()
+    agentSocket.noteOpened('n1')
+    expect(agentSocket.requestRun('menu', 'n1', 's1')).toBe(true)
+    await waitFor(() => expect(dropped).toEqual(['menu:n1:off', 'menu:n1:unreachable']))
+    FakeSocket.all[0]?.hello()
+    expect(FakeSocket.all[0]?.sent).toEqual([{ type: 'editor.opened', noteId: 'n1' }])
+
+    // Signing out says nothing: it was another account's.
+    FakeSocket.all[0]?.drop()
+    agentSocket.requestRun('menu', 'n1', 's1')
+    agentSocket.reset()
+    await new Promise((r) => setTimeout(r, 40))
+    expect(dropped).toHaveLength(2)
+  })
 })
 
 describe('the agent socket, stopped while connecting', () => {

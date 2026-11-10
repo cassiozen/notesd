@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 
 /**
  * One copy of something the server says about the signed-in account, for the
- * whole app: fetched once, replaced on save, and dropped on forget.
+ * whole app: fetched once (again once back online after failing), replaced on save, and dropped on forget.
  */
 export function accountStore<T>(fetch: () => Promise<T>) {
   let current: T | null = null
@@ -37,6 +37,12 @@ export function accountStore<T>(fetch: () => Promise<T>) {
     )
   }
 
+  function retry() {
+    failed = false
+    notify()
+    load()
+  }
+
   function subscribe(l: () => void) {
     listeners.add(l)
     return () => {
@@ -60,6 +66,12 @@ export function accountStore<T>(fetch: () => Promise<T>) {
       useEffect(() => {
         if (value === null) load(asked)
       }, [value, asked])
+      // A fetch that failed offline isn't asked again by anything else: what hangs on it would stay off.
+      useEffect(() => {
+        if (value !== null) return
+        window.addEventListener('online', retry)
+        return () => window.removeEventListener('online', retry)
+      }, [value])
       return value
     },
 
@@ -68,11 +80,7 @@ export function accountStore<T>(fetch: () => Promise<T>) {
       return useSyncExternalStore(subscribe, () => failed && current === null)
     },
 
-    retry() {
-      failed = false
-      notify()
-      load()
-    },
+    retry,
 
     /** Drops what was loaded, and any fetch on its way: the next account sees its own. */
     forget() {

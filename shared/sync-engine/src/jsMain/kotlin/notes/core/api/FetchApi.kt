@@ -29,14 +29,14 @@ class FetchApi(
 ) : SyncApi {
     override fun inSpace(spaceId: String): SyncApi = FetchApi(csrfToken, client, "/spaces/${enc(spaceId)}")
 
-    override suspend fun createNote(body: JsonObject): ApiResult<MutationResult> =
-        send("POST", "/notes", body.toString()) { json.decodeFromString(it) }
+    override suspend fun createNote(body: JsonObject, origin: String?): ApiResult<MutationResult> =
+        send("POST", "/notes", body.toString(), origin = origin) { json.decodeFromString(it) }
 
-    override suspend fun updateNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("PUT", "/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
+    override suspend fun updateNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> =
+        send("PUT", "/notes/${enc(id)}", body.toString(), origin = origin) { json.decodeFromString(it) }
 
-    override suspend fun deleteNote(id: String, body: JsonObject): ApiResult<MutationResult> =
-        send("DELETE", "/notes/${enc(id)}", body.toString()) { json.decodeFromString(it) }
+    override suspend fun deleteNote(id: String, body: JsonObject, origin: String?): ApiResult<MutationResult> =
+        send("DELETE", "/notes/${enc(id)}", body.toString(), origin = origin) { json.decodeFromString(it) }
 
     override suspend fun sync(since: Long, limit: Int, generation: String?): ApiResult<SyncPage> {
         val gen = generation?.let { "&generation=${enc(it)}" }.orEmpty()
@@ -74,10 +74,12 @@ class FetchApi(
         body: Any?,
         contentType: String = "application/json",
         ok: Int? = null,
+        origin: String? = null,
         decode: (String) -> T
     ): ApiResult<T> {
         val headers = js("({})")
         headers["Accept"] = "application/json"
+        if (origin != null) headers[WriteOrigin.HEADER] = origin
         if (client != null) headers["X-Notesd-Client"] = client.header
         client?.timeZone?.let { headers["X-Notesd-Time-Zone"] = it }
         if (body != null) headers["Content-Type"] = contentType

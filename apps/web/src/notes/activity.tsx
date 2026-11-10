@@ -8,6 +8,7 @@ import {
   type NoteDiff,
   type UndoBlock,
 } from '../api/agent'
+import { agentSocket } from '../agent/socket'
 import { ApiError } from '../api/client'
 import { genericMessage } from '../auth/errors'
 import { triggerLabel } from './agent-rules'
@@ -95,6 +96,38 @@ function noteName(r: AgentRun): string {
 
 const tokens = (n: number) => n.toLocaleString()
 
+/** How often what's shown is fetched again while a run in it is waiting or going. */
+export const activityTiming = { pollMs: 5000, settleMs: 300 }
+
+const going = (r: AgentRun) => r.status === 'queued' || r.status === 'running'
+
+/**
+ * Calls refresh when runs change: on the agent socket's updates, gathered over settleMs; and every
+ * pollMs while polling, for runs the socket doesn't hear of (none is open for a space without an agent).
+ */
+function useRunsChanged(refresh: () => void, polling: boolean) {
+  const latest = useRef(refresh)
+  useEffect(() => {
+    latest.current = refresh
+  })
+  useEffect(() => {
+    let t: ReturnType<typeof setTimeout> | undefined
+    const off = agentSocket.onRun(() => {
+      clearTimeout(t)
+      t = setTimeout(() => latest.current(), activityTiming.settleMs)
+    })
+    return () => {
+      off()
+      clearTimeout(t)
+    }
+  }, [])
+  useEffect(() => {
+    if (!polling) return
+    const t = setInterval(() => latest.current(), activityTiming.pollMs)
+    return () => clearInterval(t)
+  }, [polling])
+}
+
 /** What each space's agent did: the runs, newest first, and each one's changes, with Undo. */
 export function ActivitySheet({ onClose }: { onClose: () => void }) {
   const spaces = useSpaces()
@@ -121,6 +154,9 @@ export function ActivitySheet({ onClose }: { onClose: () => void }) {
     agent.usage(abort.signal).then(setUsage, () => {})
     return () => abort.abort()
   }, [])
+  useRunsChanged(() => {
+    agent.usage().then(setUsage, () => {})
+  }, false)
 
   useEffect(() => {
     if (was.current !== open) heading.current?.focus()
@@ -200,6 +236,19 @@ function RunList({
     return () => abort.abort()
   }, [space])
 
+  // The newest page again: runs it has replace what was shown, new ones go first, older pages stay.
+  useRunsChanged(() => {
+    agent.runs({ space }).then(
+      (page) => {
+        const ids = new Set(page.runs.map((r) => r.id))
+        const rest = (runs ?? []).filter((r) => !ids.has(r.id))
+        setRuns([...page.runs, ...rest])
+        if (rest.length === 0) setNext(page.nextCursor)
+      },
+      () => {},
+    )
+  }, runs?.some(going) ?? false)
+
   async function more() {
     setBusy(true)
     try {
@@ -266,6 +315,13 @@ function RunView({ id, onUndone }: { id: string; onUndone: () => void }) {
       live = false
     }
   }, [id])
+
+  useRunsChanged(
+    () => {
+      agent.run(id).then(setRun, () => {})
+    },
+    run ? going(run) : false,
+  )
 
   async function undo() {
     setBusy(true)

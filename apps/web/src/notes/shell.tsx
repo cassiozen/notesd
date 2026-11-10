@@ -1,4 +1,4 @@
-import { useAgentSocket } from '../agent/socket'
+import { agentSocket, useAgentSocket } from '../agent/socket'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { nameOf } from '../api/profile'
 import { useAuth } from '../auth/auth-context'
@@ -118,6 +118,22 @@ function ShellView({ username }: { username: string }) {
         // A delete's Undo stays: replaced, the deletion would go through with no way back.
         setNotice((shown) => (shown?.undo ? shown : { id: crypto.randomUUID(), text: noticeText(n), undo: false })),
       ),
+    [],
+  )
+
+  // The menu command is the one run asked for by hand: it says when it couldn't go.
+  useEffect(
+    () =>
+      agentSocket.onDropped((r, why) => {
+        if (r.trigger !== 'menu') return
+        const text =
+          why === 'off'
+            ? 'The agent didn’t run: it isn’t on for this space.'
+            : navigator.onLine
+              ? 'The agent didn’t run: the server can’t be reached.'
+              : 'The agent didn’t run: you’re offline.'
+        setNotice((shown) => (shown?.undo ? shown : { id: crypto.randomUUID(), text, undo: false }))
+      }),
     [],
   )
 

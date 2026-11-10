@@ -2,7 +2,9 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"fmt"
 	"image"
@@ -16,6 +18,7 @@ import (
 
 	"notes/server/internal/database"
 	"notes/server/internal/images"
+	"notes/server/internal/mdimport"
 	"notes/server/internal/notes"
 	"notes/server/internal/spaces"
 )
@@ -220,5 +223,22 @@ func TestImportDryRunChecksSpaceName(t *testing.T) {
 	err := importNotes(ctx, db, options{from: dir, space: strings.Repeat("x", 65), dryRun: true}, io.Discard)
 	if err == nil || !strings.Contains(err.Error(), "at most") {
 		t.Errorf("err = %v", err)
+	}
+}
+
+func TestImportedNotesAreMarkedAsNobodyTyping(t *testing.T) {
+	db, _ := newDB(t)
+	ns := notes.NewStore(db)
+	var origins []string
+	ns.OnWrite(func(_ context.Context, _ *sql.Tx, ev notes.Event) error {
+		origins = append(origins, ev.Origin)
+		return nil
+	})
+	w := storeWriter{notes: ns, images: images.NewStore(db), spaceID: "default"}
+	if _, err := w.CreateNote(ctx, mdimport.Note{ID: "n1", Title: "Soup", Content: "Chop\n"}); err != nil {
+		t.Fatal(err)
+	}
+	if len(origins) != 1 || origins[0] != notes.OriginImport {
+		t.Fatalf("origins %q", origins)
 	}
 }

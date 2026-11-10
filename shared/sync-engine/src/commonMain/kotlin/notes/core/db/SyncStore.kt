@@ -4,6 +4,7 @@ import androidx.sqlite.SQLiteStatement
 import notes.core.api.MutationResult
 import notes.core.api.RemoteNote
 import notes.core.api.SyncPage
+import notes.core.api.WriteOrigin
 import notes.core.crypto.LockedEnvelope
 import notes.core.markdown.BodyMerge
 import notes.core.text.Uuid7
@@ -51,6 +52,7 @@ class Operation internal constructor(
     val conflictOf get() = payload.conflictOf
     val imageIds get() = payload.imageIds
     val spaceId get() = payload.spaceId
+    val origin get() = payload.origin
 }
 
 /**
@@ -489,7 +491,9 @@ class SyncStore(private val db: Database, private val clock: () -> Long = ::nowM
                     note.createdAt,
                     note.updatedAt,
                     note.conflictOf,
-                    spaceId = note.spaceId
+                    spaceId = note.spaceId,
+                    // Put back, not written: one rule run per note on the restored server otherwise.
+                    origin = WriteOrigin.INITIAL
                 ),
                 now
             )
