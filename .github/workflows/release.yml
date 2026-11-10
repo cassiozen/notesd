@@ -89,7 +89,8 @@ jobs:
           cache-provider: basic
 
       - name: Check
-        run: mise run check && mise run test:android
+        # One task at a time: all at once on one runner, timing-sensitive tests starve (CI splits them into jobs).
+        run: mise run --jobs 1 check && mise run test:android
 
       - name: Server binaries
         run: mise run release

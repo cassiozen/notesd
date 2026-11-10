@@ -6,9 +6,69 @@ on:
   pull_request:
 
 jobs:
-  check:
+  # One job per toolchain rather than `mise run check` on one runner: run all at once, the Go race tests,
+  # vitest, Playwright and Gradle starve each other's timing-sensitive tests of CPU.
+  go:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - run: mise run lint:go
+      - run: mise run test:go
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      # The sync engine the web app depends on is a Kotlin build.
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          # Gradle's dependencies, plugins and wrapper; without them setup can take 20 min on a slow day.
+          # basic: the MIT actions/cache wrapper; the default provider is a paid preview for private repos.
+          cache-provider: basic
+      - run: mise run install
+      - run: mise run lint:web lint:sync-engine
+      - run: mise run typecheck
+      - run: mise run test:web
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+      # The browser, with the system libraries it needs.
+      - run: mise run install && cd apps/web && mise exec -- pnpm exec playwright install --with-deps chromium
+      - run: mise run test:e2e
+      # Each failed test's trace: what the page showed and did, step by step.
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: apps/web/test-results
+          retention-days: 14
+
+  sync-engine:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+      - run: mise run install
+      - run: mise run test:sync-engine
+
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: android-actions/setup-android@v3
@@ -19,12 +79,7 @@ jobs:
       - uses: jdx/mise-action@v2
       - uses: gradle/actions/setup-gradle@v6
         with:
-          # Gradle's dependencies, plugins and wrapper; without them setup can take 20 min on a slow day.
-          # basic: the MIT actions/cache wrapper; the default provider is a paid preview for private repos.
           cache-provider: basic
-      # The e2e tests' browser, with the system libraries it needs.
-      - run: mise run install && cd apps/web && mise exec -- pnpm exec playwright install --with-deps chromium
-      - run: mise run check
       - run: mise run test:android
 
   desktop:
