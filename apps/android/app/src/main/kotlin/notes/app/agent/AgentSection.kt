@@ -88,7 +88,7 @@ private data class FocusOn(val key: String, val moment: Boolean, val at: Long = 
  * trait's part of Space info (§7.8, §7.11), on or off: changed in place, saved with its own Save.
  */
 @Composable
-fun AgentSection(graph: AppGraph, space: Space) {
+fun AgentSection(graph: AppGraph, space: Space, onActivity: (String) -> Unit = {}) {
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
     val configs by graph.agents.cache.value.collectAsStateWithLifecycle()
@@ -168,13 +168,18 @@ fun AgentSection(graph: AppGraph, space: Space) {
             if (dirty) {
                 NotesButton("Cancel", ::cancel, kind = ButtonKind.Chip, enabled = !busy, small = true)
                 NotesButton("Save", ::save, busy = busy, small = true)
-            } else if (savedNote) {
-                Text(
-                    "Saved",
-                    style = Type.small,
-                    color = t.ink3,
-                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                )
+            } else {
+                if (savedNote) {
+                    Text(
+                        "Saved",
+                        style = Type.small,
+                        color = t.ink3,
+                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                    )
+                }
+                if (saved != null) {
+                    NotesButton("Activity…", { onActivity(space.id) }, kind = ButtonKind.Ghost, small = true)
+                }
             }
         }
         val provider = ai

@@ -493,6 +493,73 @@ class ScreenshotTest {
         }
     }
 
+    /** Activity for the default space, and a run with its line changes and Undo. */
+    @Test
+    fun activity() {
+        val notesd = FakeNotesd()
+        val now = System.currentTimeMillis()
+        notesd.agents[Spaces.DEFAULT] =
+            notes.core.api.AgentConfig(Spaces.DEFAULT, true, "Tags.", "", mapOf("newNoteDone" to "Tag it."))
+        fun run(id: String, title: String, status: String, outcome: String, ago: Long) = notes.core.api.AgentRun(
+            id,
+            "newNoteDone",
+            status,
+            Spaces.DEFAULT,
+            "n$id",
+            title,
+            outcome = outcome,
+            failure = if (status == "failed") "provider" else "",
+            message = "Added #errands and #food, and gave it a title.",
+            model = "gpt-4.1-mini",
+            toolCalls = 3,
+            promptTokens = 1840,
+            completionTokens = 96,
+            createdAt = now - ago,
+            edits = listOf(notes.core.api.RunEdit("n$id", "edit", title, undoable = true)),
+            diffs = listOf(
+                notes.core.api.NoteDiff(
+                    "n$id",
+                    "edit",
+                    "",
+                    title,
+                    listOf(
+                        notes.core.api.DiffLine("+", "# $title"),
+                        notes.core.api.DiffLine("=", "- Oat milk"),
+                        notes.core.api.DiffLine("…", count = 4),
+                        notes.core.api.DiffLine("-", "lemons"),
+                        notes.core.api.DiffLine("+", "Lemons"),
+                        notes.core.api.DiffLine("+", "#errands #food")
+                    )
+                )
+            )
+        )
+        notesd.runs += run("1", "Groceries", "done", "edited", 120_000)
+        notesd.runs += run("2", "Reading list", "done", "no_change", 3_600_000)
+        notesd.runs += run("3", "Trip to Lisbon", "failed", "", 26 * 3_600_000)
+        notesd.tokensToday = 5_872
+        notesd.start()
+        try {
+            notesd.signIn(graph)
+            graph.setOnboardingDismissed(true)
+            launch()
+            compose.onNode(hasContentDescription("Sidebar")).performClick()
+            compose.onNode(hasContentDescription("Settings")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Spaces"))
+            compose.onNode(hasText("Spaces")).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Notes") and hasClickAction())
+            compose.onNode(hasText("Notes") and hasClickAction()).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Activity…") and hasClickAction(), 5_000)
+            compose.onNode(hasText("Activity…") and hasClickAction()).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Groceries", substring = true) and hasClickAction(), 5_000)
+            shoot("activity")
+            compose.onNode(hasText("Groceries", substring = true) and hasClickAction()).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Added #errands and #food, and gave it a title."), 5_000)
+            shoot("activity-run")
+        } finally {
+            notesd.close()
+        }
+    }
+
     @Test
     fun wide() {
         graph.setOnboardingDismissed(true)

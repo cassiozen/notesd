@@ -6,10 +6,10 @@ description: "What the web app does for space agents, what the phone apps must r
 # Space agents on Android and iOS
 
 The space agent (PRs #94–#100, #124, #136, GitHub stack #101) is complete on the server and the web
-app. The Mac app wraps the web app and has all of it. Android has part of phase 1 (agent level 0): AI
-and the time zone in Settings, and the agent's section in Space info; Activity and everything in the
-editor are still to do. iOS has none of it, beyond sending `X-Notesd-Time-Zone`. This is the
-inventory of what to replicate and the plan to build it.
+app. The Mac app wraps the web app and has all of it. Android has phase 1 (agent level 0): AI and the
+time zone in Settings, the agent's section in Space info, Activity, and a note's failed run;
+everything else in the editor is still to do. iOS has none of it, beyond sending
+`X-Notesd-Time-Zone`. This is the inventory of what to replicate and the plan to build it.
 The protocol is in [Agent clients](agent-clients.md); this doesn't repeat it.
 
 ## Findings that change the plan
@@ -71,14 +71,14 @@ Status: ✓ done, – not needed, ☐ to do.
 | S7 | Agent page: notes it always reads (5; title lookup in the space; "not here yet"; offers for notes a rule needs; no-room message) | ✓ | ✓ | ☐ |
 | S8 | Agent page: Save keeps typing done meanwhile; field errors; "hasn't reached the server yet"; discard confirmation | ✓ | ✓ | ☐ |
 | S9 | Ways in: the `agent` trait's section in Space info (architecture §7.8), on or off: offered once AI is set up (or to resume a paused agent), in any space, by any member; going back with changes not saved asks first. The glyph, summary, problem and move check already show on all three apps, from main's traits | ✓ | ✓ | ☐ |
-| S10 | Activity: space filter, today's usage, runs (paginated), status and failure text, overlay counts | ✓ | ☐ | ☐ |
-| S11 | Activity → run: summary, model's message, per-note line diffs, Undo with result, "Can't undo: …" | ✓ | ☐ | ☐ |
+| S10 | Activity: space filter, today's usage, runs (paginated), status and failure text, overlay counts | ✓ | ✓ | ☐ |
+| S11 | Activity → run: summary, model's message, per-note line diffs, Undo with result, "Can't undo: …" | ✓ | ✓ | ☐ |
 
 ### In a note
 
 | # | Feature | Web | Android | iOS |
 | --- | --- | --- | --- | --- |
-| N1 | Failed-run notice: latest run failed and not dismissed; Dismiss remembered; Activity opens the run | ✓ | ☐ | ☐ |
+| N1 | Failed-run notice: latest run failed and not dismissed; Dismiss remembered; Activity opens the run | ✓ | ✓ | ☐ |
 | N2 | The space's menu command in the note's menu (agent on, menu prompt, not locked) | ✓ | ☐ | ☐ |
 | N3 | Socket: open while AI is set up and the shown space's agent is on, and the app is in the foreground; same socket across agent spaces; backoff only while online; closes 5 s after the last `editor.closed`; closes at once on sign-out | ✓ | ☐ | ☐ |
 | N4 | `editor.opened` / `editor.closed` per note, counted; close after the last save and push, with its revision | ✓ | ☐ | ☐ |

@@ -15,17 +15,21 @@ import mockwebserver3.MockWebServer
 import mockwebserver3.RecordedRequest
 import notes.app.notes.names
 import notes.core.api.AgentConfig
+import notes.core.api.AgentRun
 import notes.core.api.Invitee
 import notes.core.api.Member
 import notes.core.api.PublishSettings
 import notes.core.api.RemoteInvite
 import notes.core.api.RemoteNote
 import notes.core.api.RemoteSpace
+import notes.core.api.RunsPage
 import notes.core.api.Session
 import notes.core.api.SharedSpace
 import notes.core.api.SignIn
 import notes.core.api.SpaceTrait
 import notes.core.api.SyncPage
+import notes.core.api.UndoResult
+import notes.core.api.UndoSkip
 import notes.core.db.Spaces
 
 /**
@@ -77,6 +81,13 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
 
     /** The next agent save's answer instead: status, error code, field and message. */
     var refuseAgentSave: List<String>? = null
+
+    /** Agents' runs, newest first, each with its diffs; a page of the list holds [runsPerPage]. */
+    val runs = ArrayList<AgentRun>()
+    var runsPerPage = 50
+
+    /** What a space has used today. */
+    var tokensToday = 0L
 
     private val json = Json { encodeDefaults = false }
 
@@ -298,6 +309,49 @@ class FakeNotesd(val me: Member = Member(1, "me")) : AutoCloseable {
                 )
                 ok(json.encodeToString(AgentConfig.serializer(), config))
             }
+
+            r.method == "GET" && path == "/agent/runs" -> {
+                val space = r.url.queryParameter("space")
+                val note = r.url.queryParameter("note")
+                val limit = r.url.queryParameter("limit")?.toInt() ?: runsPerPage
+                val from = r.url.queryParameter("cursor")?.toInt() ?: 0
+                val all = runs.filter { (space == null || it.spaceId == space) && (note == null || it.noteId == note) }
+                val page = all.drop(from).take(limit)
+                val next = if (from + page.size < all.size) "${from + page.size}" else ""
+                ok(
+                    json.encodeToString(
+                        RunsPage.serializer(),
+                        RunsPage(page.map { it.copy(diffs = emptyList()) }, next, next.isNotEmpty())
+                    )
+                )
+            }
+
+            r.method == "GET" && parts.size == 3 && parts[0] == "agent" && parts[1] == "runs" ->
+                runs.firstOrNull { it.id == parts[2] }?.let { ok(json.encodeToString(AgentRun.serializer(), it)) }
+                    ?: error(404, "not_found")
+
+            r.method == "POST" && path.startsWith("/agent/runs/") && path.endsWith("/undo") -> {
+                val i = runs.indexOfFirst { it.id == parts[2] }
+                if (i < 0) return error(404, "not_found")
+                val run = runs[i]
+                val undoing = run.edits.filter { it.undoable }
+                if (undoing.isEmpty()) {
+                    return MockResponse.Builder().code(409).addHeader("Content-Type", "application/json")
+                        .body("""{"error":"nothing_to_undo","message":"nothing to undo"}""").build()
+                }
+                val edits = run.edits.map {
+                    if (it.undoable) it.copy(undoable = false, undoneAt = 1, blocked = "undone") else it
+                }
+                val skipped = run.edits.filter { !it.undoable }.map { UndoSkip(it.noteId, it.blocked ?: "changed") }
+                runs[i] = run.copy(
+                    edits = edits,
+                    outcome = if (skipped.isEmpty()) "undone" else "partly_undone"
+                )
+                ok(json.encodeToString(UndoResult.serializer(), UndoResult(undoing.map { it.noteId }, skipped)))
+            }
+
+            r.method == "GET" && path == "/agent/usage" ->
+                ok("""{"day":"2026-11-09","tokens":$tokensToday,"runs":${runs.size},"dailyTokenCap":1000000}""")
 
             r.method == "GET" && path == "/settings/email" ->
                 ok("""{"configured":true,"from":"Me <notes@example.com>","keyHint":"6789","editable":true}""")

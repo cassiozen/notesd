@@ -106,7 +106,14 @@ import notes.core.db.Spaces
  * itself once the space is gone, deleted here or elsewhere, or left.
  */
 @Composable
-fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () -> Unit) {
+fun SpaceInfoScreen(
+    graph: AppGraph,
+    id: String,
+    backLabel: String?,
+    onBack: () -> Unit,
+    /** A space's Activity, from its agent's section. */
+    onActivity: (String) -> Unit = {}
+) {
     val spaces by graph.spaces.collectAsStateWithLifecycle()
     val account by graph.accounts.account.collectAsStateWithLifecycle()
     val agents by graph.agents.cache.value.collectAsStateWithLifecycle()
@@ -120,7 +127,7 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
         graph.agents.cache.refresh()
     }
     val registry = remember(graph, account, agents, ai, agentsFailed, aiFailed) {
-        spaceInfoRegistry(graph) { space ->
+        spaceInfoRegistry(graph, onActivity) { space ->
             // Signed in but couldn't tell: the section says so, with Try again, rather than hiding.
             val unsure = (agents == null && agentsFailed) || (ai == null && aiFailed)
             if (unsure && account is Account.SignedIn) return@spaceInfoRegistry true
@@ -188,19 +195,22 @@ fun SpaceInfoScreen(graph: AppGraph, id: String, backLabel: String?, onBack: () 
  * (§7.10), where its owner publishes it. Both are there for the account's own spaces but the default, and for a
  * shared space its owner's. The agent's sets it up (§7.11).
  */
-internal fun spaceInfoRegistry(graph: AppGraph, agentOffered: (Space) -> Boolean): List<TraitEntry> =
-    SpaceTraits.entries.map {
-        when (it.key) {
-            "shared" -> it.with(section = { space -> PeopleSection(graph, space) }, canTurnOn = ::canExpose)
+internal fun spaceInfoRegistry(
+    graph: AppGraph,
+    onActivity: (String) -> Unit,
+    agentOffered: (Space) -> Boolean
+): List<TraitEntry> = SpaceTraits.entries.map {
+    when (it.key) {
+        "shared" -> it.with(section = { space -> PeopleSection(graph, space) }, canTurnOn = ::canExpose)
 
-            "published" -> it.with(section = { space -> PublishedSection(graph, space) }, canTurnOn = ::canExpose)
+        "published" -> it.with(section = { space -> PublishedSection(graph, space) }, canTurnOn = ::canExpose)
 
-            // Any space, shared or not, by any member (§7.11); offered once AI is set up, or to resume one paused.
-            "agent" -> it.with(section = { space -> AgentSection(graph, space) }, canTurnOn = agentOffered)
+        // Any space, shared or not, by any member (§7.11); offered once AI is set up, or to resume one paused.
+        "agent" -> it.with(section = { space -> AgentSection(graph, space, onActivity) }, canTurnOn = agentOffered)
 
-            else -> it
-        }
+        else -> it
     }
+}
 
 /**
  * Never the default space: everyone keeps a private one, where a locked note refused elsewhere is kept (§7.8). For

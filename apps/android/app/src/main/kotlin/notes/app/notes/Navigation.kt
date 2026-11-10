@@ -50,6 +50,9 @@ import notes.app.AppGraph
 import notes.app.account.Account
 import notes.app.account.OnboardingScreen
 import notes.app.account.OnboardingViewModel
+import notes.app.agent.ActivityScreen
+import notes.app.agent.RunScreen
+import notes.app.agent.rememberFailedRun
 import notes.app.apiClient
 import notes.app.settings.NewSpaceDialog
 import notes.app.settings.SettingsScreen
@@ -91,6 +94,14 @@ data class SettingsSectionKey(val section: SettingsSection) : NavKey
 /** A space's Space info (§7.8). */
 @Serializable
 data class SpaceInfoKey(val id: String) : NavKey
+
+/** What spaces' agents did (§7.11), narrowed to [space] ("" for all). */
+@Serializable
+data class ActivityKey(val space: String = "") : NavKey
+
+/** One agent run, from Activity. */
+@Serializable
+data class AgentRunKey(val id: String) : NavKey
 
 /** Connecting to a server; with [signInAgain], signing back in to the one these notes belong to. */
 @Serializable
@@ -215,6 +226,13 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
         if (backStack.lastOrNull() == SpaceInfoKey(id)) return
         view.hideKeyboard()
         backStack += SpaceInfoKey(id)
+    }
+
+    fun activity(space: String, run: String? = null) {
+        view.hideKeyboard()
+        backStack += ActivityKey(space)
+        // Back from the run goes to the list it's in.
+        if (run != null) backStack += AgentRunKey(run)
     }
 
     // A note open: coming back after a while doesn't move the list to the default space from under it.
@@ -437,7 +455,9 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         graph.listFilter.value = NoteFilter.Tag(tagKey(name), name)
                                         // One pane: the list is a screen away.
                                         if (!twoPane) home()
-                                    }
+                                    },
+                                    failedRun = rememberFailedRun(graph, key.id),
+                                    onRun = { activity(it.spaceId, it.id) }
                                 )
                             }
                             entry<SettingsKey> {
@@ -477,9 +497,24 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
 
                                         else -> "Notes"
                                     },
-                                    onBack = { pop() }
+                                    onBack = { pop() },
+                                    onActivity = { activity(it) }
                                 )
                             }
+                            entry<ActivityKey> { key ->
+                                val from = backStack.getOrNull(backStack.lastIndexOf(key) - 1)
+                                ActivityScreen(
+                                    graph,
+                                    key.space,
+                                    backLabel = when (from) {
+                                        is SpaceInfoKey -> spaces.firstOrNull { it.id == from.id }?.name
+                                        else -> null
+                                    },
+                                    onBack = { pop() },
+                                    onRun = { backStack += AgentRunKey(it) }
+                                )
+                            }
+                            entry<AgentRunKey> { key -> RunScreen(graph, key.id, onBack = { pop() }) }
                             entry<OnboardingKey> { key ->
                                 val signedOut = account as? Account.SignedOut
                                 val firstRun = backStack.size == 1
