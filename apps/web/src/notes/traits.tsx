@@ -1,8 +1,8 @@
 import type { ComponentType } from 'react'
 import type { Space, SpaceTrait } from '../api/types'
 import { PublishedSection } from '../settings/published-space'
-import { AgentSection, useAgentOffered } from '../settings/agent-section'
 import { PeopleSection } from '../settings/shared-space'
+import { AgentSection, useAgentOffered } from './agent-page'
 import { DEFAULT_SPACE } from './default-space'
 
 // Space traits (architecture §7.8): this app's registry, the glyphs it draws and the move check.

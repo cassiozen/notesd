@@ -10,7 +10,7 @@ import {
 } from '../api/agent'
 import { ApiError } from '../api/client'
 import { genericMessage } from '../auth/errors'
-import { triggerLabel } from '../settings/agent-section'
+import { triggerLabel } from './agent-rules'
 import { Banner } from '../ui/banner'
 import { Button } from '../ui/button'
 import { Sheet } from '../ui/sheet'
