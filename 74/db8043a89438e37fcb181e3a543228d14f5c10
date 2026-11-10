@@ -1,0 +1,33 @@
+apps/android/app/src/test/kotlin/notes/app/agent/AgentTriggersTest.kt
+  s_cc6cacc0a6fc01::t_c33c3e65ab5efa 161-162,178,180-181,205-207
+  s_cc6cacc0a6fc01::t_0f39c9972799bd 1-160,163-177,179,182-204,208-214
+apps/android/app/src/main/kotlin/notes/app/agent/AgentLink.kt
+  s_cc6cacc0a6fc01::t_35c762a6bc75c5 113-115
+  s_cc6cacc0a6fc01::t_a3b7e2a15d0a63 4,17,42-71,116
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_cc6cacc0a6fc01::t_0ec2d15e4d365a 54,438-441,467-472
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_cc6cacc0a6fc01::t_0ec2d15e4d365a 54-55,72,75,95-96,129
+  s_cc6cacc0a6fc01::t_d5bad27709a89b 180-186,245-249,542,577,595-600
+  s_cc6cacc0a6fc01::t_7e4efc8a6db351 601-602
+apps/android/app/src/main/kotlin/notes/app/notes/EditorViewModel.kt
+  s_cc6cacc0a6fc01::t_e8d4f6ceb55b39 5,554-555,558-560
+  s_cc6cacc0a6fc01::t_35c762a6bc75c5 90-92,280-281,331-340
+  s_cc6cacc0a6fc01::t_30e1468a0194fd 341-342
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "74db8043a89438e37fcb181e3a543228d14f5c10",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
