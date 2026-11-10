@@ -164,7 +164,7 @@ class AgentCardsTest {
         assertEquals("See docs and [this](javascript:void)", shown.toString().trim())
         assertEquals(listOf("https://example.com"), shown.getSpans(0, shown.length, URLSpan::class.java).map { it.url })
         assertEquals(
-            "Notes agent: a note",
+            "Notes agent: a note, at the top",
             views(c1).first {
                 it is TextView && it.text == "Notes agent"
             }.contentDescription

@@ -34,6 +34,7 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -107,6 +108,8 @@ fun Sheet(onDismiss: () -> Unit, title: String? = null, content: @Composable () 
                     top = 10.dp,
                     bottom = 6.dp
                 ).size(36.dp, 4.dp).clip(CircleShape).background(t.hairStrong)
+                    // The sheet makes its handle a control (dismiss, expand); only Material's own handle names it.
+                    .semantics { contentDescription = "Drag handle" }
             )
         }
     ) {
