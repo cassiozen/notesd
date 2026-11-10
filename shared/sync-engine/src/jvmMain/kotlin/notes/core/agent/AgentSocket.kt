@@ -58,6 +58,17 @@ data class RunUpdate(
     val outcome: String = ""
 )
 
+/** An editor trigger's run (docs/contributing/agent-clients.md: Editor triggers) that was never asked for. */
+data class DroppedRun(val trigger: String, val noteId: String, val spaceId: String, val why: Why) {
+    enum class Why {
+        /** No socket wanted: the agent isn't on, or the app is signed out or away. */
+        Off,
+
+        /** Still not connected after [AgentSocket.Timing.heldMs]. */
+        Unreachable
+    }
+}
+
 /**
  * The app's connection for agents (docs/contributing/agent-clients.md): it tells the server which notes are
  * open here, so closing one ends its writing session at once, and answers runs reading and changing them.
@@ -70,8 +81,16 @@ class AgentSocket(
     private val timing: Timing = Timing(),
     private val jitter: () -> Double = Random::nextDouble
 ) {
-    /** Reconnect backoff, and how long a socket no longer wanted waits for the open notes to say they closed. */
-    data class Timing(val retryBaseMs: Long = 1_000, val retryMaxMs: Long = 30_000, val closeWaitMs: Long = 5_000)
+    /**
+     * Reconnect backoff; how long a socket no longer wanted waits for the open notes to say they closed; how long
+     * a run asked for while connecting is held.
+     */
+    data class Timing(
+        val retryBaseMs: Long = 1_000,
+        val retryMaxMs: Long = 30_000,
+        val closeWaitMs: Long = 5_000,
+        val heldMs: Long = 10_000
+    )
 
     private val lock = Any()
     private var wanted = false
@@ -87,6 +106,13 @@ class AgentSocket(
     private val openCount = HashMap<String, Int>()
     private val openIn = HashMap<String, String>()
 
+    /** Runs asked for before hello, by trigger and note: sent once it comes, or dropped after [Timing.heldMs]. */
+    private val held = LinkedHashMap<String, Held>()
+
+    /** Runs going on notes, by run; and those whose change is in the editor already. */
+    private val running = HashMap<String, String>()
+    private val landed = HashSet<String>()
+
     private val _connected = MutableStateFlow(false)
 
     /** The server said hello: requests and run updates can come. */
@@ -96,6 +122,16 @@ class AgentSocket(
 
     /** Runs starting and ending, while connected. Best-effort, as the server sends them. */
     val runs: SharedFlow<RunUpdate> = _runs
+
+    private val _writing = MutableStateFlow<Set<String>>(emptySet())
+
+    /** Notes with a run going whose change isn't in the editor yet: "Agent is writing…". */
+    val writing: StateFlow<Set<String>> = _writing
+
+    private val _dropped = MutableSharedFlow<DroppedRun>(extraBufferCapacity = 16)
+
+    /** Runs asked for that never went. */
+    val dropped: SharedFlow<DroppedRun> = _dropped
 
     fun start() = synchronized(lock) {
         if (wanted) return
@@ -115,6 +151,7 @@ class AgentSocket(
         if (!wanted) return
         wanted = false
         retry?.cancel()
+        dropHeld(tell = true)
         if (!waitForCloses || openCount.isEmpty() || !_connected.value) {
             drop()
             return
@@ -130,6 +167,8 @@ class AgentSocket(
     fun reset() = synchronized(lock) {
         wanted = false
         retry?.cancel()
+        // Another account's: nothing to tell.
+        dropHeld(tell = false)
         drop()
         openCount.clear()
         openIn.clear()
@@ -176,6 +215,68 @@ class AgentSocket(
         if (!wanted && openCount.isEmpty()) drop()
     }
 
+    /**
+     * Asks for an editor trigger's run on a note open here, sending what its editor shows so the run needn't ask
+     * first. Still connecting, it's held, and sent after hello. False, and dropped, with no socket wanted.
+     */
+    fun requestRun(trigger: String, noteId: String, spaceId: String): Boolean = synchronized(lock) {
+        if (!wanted) {
+            _dropped.tryEmit(DroppedRun(trigger, noteId, spaceId, DroppedRun.Why.Off))
+            return false
+        }
+        val attempt = current
+        if (attempt != null && _connected.value) {
+            sendRequest(attempt, trigger, noteId, spaceId)
+            return true
+        }
+        val key = "$trigger:$noteId"
+        held.remove(key)?.expires?.cancel()
+        val h = Held(trigger, noteId, spaceId)
+        held[key] = h
+        h.expires = scope.launch {
+            delay(timing.heldMs)
+            synchronized(lock) {
+                if (held[key] !== h) return@launch
+                held.remove(key)
+                _dropped.tryEmit(DroppedRun(trigger, noteId, spaceId, DroppedRun.Why.Unreachable))
+            }
+        }
+        true
+    }
+
+    private fun sendRequest(attempt: Attempt, trigger: String, noteId: String, spaceId: String) {
+        scope.launch {
+            val shown = try {
+                editors.read(noteId) as? EditorReply.Shown
+            } catch (e: CancellationException) {
+                throw e
+            } catch (_: Exception) {
+                null
+            }
+            synchronized(lock) {
+                if (current !== attempt) return@launch
+                send(
+                    buildJsonObject {
+                        put("type", "run.request")
+                        put("trigger", trigger)
+                        put("noteId", noteId)
+                        put("spaceId", spaceId)
+                        // Without it (locked, or the view not back yet), the run asks the editor itself.
+                        if (shown != null) put("note", note(shown))
+                    }
+                )
+            }
+        }
+    }
+
+    private fun dropHeld(tell: Boolean) {
+        for (h in held.values) {
+            h.expires?.cancel()
+            if (tell) _dropped.tryEmit(DroppedRun(h.trigger, h.noteId, h.spaceId, DroppedRun.Why.Off))
+        }
+        held.clear()
+    }
+
     private fun opened(noteId: String) = buildJsonObject {
         put("type", "editor.opened")
         put("noteId", noteId)
@@ -214,6 +315,7 @@ class AgentSocket(
         val attempt = current ?: return
         current = null
         _connected.value = false
+        forgetRuns()
         attempt.job?.cancel()
         attempt.socket?.close(NORMAL, null)
     }
@@ -222,6 +324,7 @@ class AgentSocket(
     private fun lost() {
         current = null
         _connected.value = false
+        forgetRuns()
         if (!wanted) return
         val wait = min(timing.retryMaxMs, timing.retryBaseMs shl min(failures++, MAX_DOUBLINGS))
         retry = scope.launch {
@@ -230,6 +333,17 @@ class AgentSocket(
             val me = coroutineContext.job
             synchronized(lock) { if (retry === me && wanted && current == null) connect() }
         }
+    }
+
+    /** What's still going is unknown until the server says again. */
+    private fun forgetRuns() {
+        running.clear()
+        landed.clear()
+        showWriting()
+    }
+
+    private fun showWriting() {
+        _writing.value = running.filterKeys { it !in landed }.values.toSet()
     }
 
     private fun send(m: JsonObject) {
@@ -245,17 +359,43 @@ class AgentSocket(
                 failures = 0
                 _connected.value = true
                 for (noteId in openCount.keys) send(opened(noteId))
+                // Only for a note still open here; one past its wait has been dropped already.
+                for (h in held.values) {
+                    h.expires?.cancel()
+                    if (h.noteId in openCount) {
+                        sendRequest(attempt, h.trigger, h.noteId, h.spaceId)
+                    } else {
+                        _dropped.tryEmit(DroppedRun(h.trigger, h.noteId, h.spaceId, DroppedRun.Why.Unreachable))
+                    }
+                }
+                held.clear()
             }
 
             type == "run" -> runCatching {
                 json.decodeFromJsonElement<RunUpdate>(m)
-            }.getOrNull()?.let { _runs.tryEmit(it) }
+            }.getOrNull()?.let { u ->
+                if (u.status == "running") {
+                    running[u.runId] = u.noteId
+                } else {
+                    running.remove(u.runId)
+                    landed.remove(u.runId)
+                }
+                showWriting()
+                _runs.tryEmit(u)
+            }
 
             m.string("id") != null -> scope.launch {
                 val reply = answer(m)
                 synchronized(lock) {
                     // Ids are per connection: on a newer one this would answer another request.
-                    if (current === attempt) send(result(m.string("id")!!, reply))
+                    if (current !== attempt) return@launch
+                    send(result(m.string("id")!!, reply))
+                    // Its summary still to come, the run is done as far as the user can tell.
+                    val runId = m.string("runId")
+                    if (reply is EditorReply.Applied && runId != null && runId in running) {
+                        landed += runId
+                        showWriting()
+                    }
                 }
             }
         }
@@ -289,13 +429,7 @@ class AgentSocket(
         put("type", "result")
         put("id", id)
         when (reply) {
-            is EditorReply.Shown -> {
-                put("spaceId", reply.spaceId)
-                put("title", reply.note.title)
-                put("content", reply.note.content)
-                put("cursor", reply.cursor)
-                put("revision", reply.revision)
-            }
+            is EditorReply.Shown -> for ((k, v) in note(reply)) put(k, v)
 
             is EditorReply.Applied -> {
                 put("before", fields(reply.before))
@@ -307,7 +441,19 @@ class AgentSocket(
         }
     }
 
+    private fun note(shown: EditorReply.Shown) = buildJsonObject {
+        put("spaceId", shown.spaceId)
+        put("title", shown.note.title)
+        put("content", shown.note.content)
+        put("cursor", shown.cursor)
+        put("revision", shown.revision)
+    }
+
     private fun fields(f: Fields): JsonElement = json.encodeToJsonElement(f)
+
+    private class Held(val trigger: String, val noteId: String, val spaceId: String) {
+        var expires: Job? = null
+    }
 
     private inner class Attempt : WebSocketListener() {
         var job: Job? = null

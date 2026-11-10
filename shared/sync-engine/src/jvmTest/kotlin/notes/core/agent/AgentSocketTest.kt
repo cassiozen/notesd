@@ -282,6 +282,115 @@ class AgentSocketTest {
     }
 
     @Test
+    fun `a run asked for carries what the editor shows, or nothing for a note it won't read`() = runTest {
+        val s = socket(object : Editors() {
+            override suspend fun read(noteId: String): EditorReply =
+                if (noteId == "locked") EditorReply.Refused("locked") else super.read(noteId)
+        })
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        assertTrue(s.requestRun("menu", "a", "default"))
+        assertTrue(s.requestRun("editStarted", "locked", "default"))
+        runCurrent()
+        assertEquals(
+            listOf(
+                """{"type":"run.request","trigger":"menu","noteId":"a","spaceId":"default",""" +
+                    """"note":{"spaceId":"default","title":"Plan","content":"Milk\n","cursor":2,"revision":7}}""",
+                """{"type":"run.request","trigger":"editStarted","noteId":"locked","spaceId":"default"}"""
+            ),
+            ws.sent.map { it.toString() }
+        )
+    }
+
+    @Test
+    fun `a run asked for while connecting is sent after hello, if its note is still open and in time`() = runTest {
+        val s = socket()
+        val dropped = ArrayList<DroppedRun>()
+        backgroundScope.launch { s.dropped.toList(dropped) }
+        s.opened("a", "work")
+        s.start()
+        runCurrent()
+        assertTrue(s.requestRun("noteCreated", "a", "work"))
+        // Asked again: one request.
+        assertTrue(s.requestRun("noteCreated", "a", "work"))
+        assertTrue(s.requestRun("menu", "gone", "work"))
+        runCurrent()
+        assertEquals(emptyList(), sockets.single().sent)
+
+        advanceTimeBy(9_000)
+        sockets.single().hello()
+        runCurrent()
+        assertEquals(listOf("editor.opened", "run.request"), sockets.single().types())
+        assertEquals(listOf(DroppedRun("menu", "gone", "work", DroppedRun.Why.Unreachable)), dropped)
+
+        // Too late: the moment it was for has passed.
+        sockets.single().drop()
+        assertTrue(s.requestRun("noteCreated", "a", "work"))
+        advanceTimeBy(10_001)
+        sockets.last().hello()
+        runCurrent()
+        assertEquals(listOf("editor.opened"), sockets.last().types())
+        assertEquals(DroppedRun("noteCreated", "a", "work", DroppedRun.Why.Unreachable), dropped.last())
+    }
+
+    @Test
+    fun `with no socket wanted, a run asked for is dropped, and stopping drops those held`() = runTest {
+        val s = socket()
+        val dropped = ArrayList<DroppedRun>()
+        backgroundScope.launch { s.dropped.toList(dropped) }
+        runCurrent()
+        assertFalse(s.requestRun("menu", "a", "work"))
+        s.start()
+        runCurrent()
+        assertTrue(s.requestRun("editStarted", "b", "work"))
+        s.stop()
+        runCurrent()
+        assertEquals(
+            listOf(
+                DroppedRun("menu", "a", "work", DroppedRun.Why.Off),
+                DroppedRun("editStarted", "b", "work", DroppedRun.Why.Off)
+            ),
+            dropped
+        )
+
+        // Reset: another account's, so not said.
+        s.start()
+        runCurrent()
+        s.requestRun("editStarted", "b", "work")
+        s.reset()
+        advanceTimeBy(20_000)
+        assertEquals(2, dropped.size)
+    }
+
+    @Test
+    fun `a note is written in from its run going until the change is in the editor, or the run ends`() = runTest {
+        val s = socket()
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        ws.hear("""{"type":"run","runId":"r1","noteId":"a","trigger":"menu","status":"running"}""")
+        ws.hear("""{"type":"run","runId":"r2","noteId":"b","trigger":"menu","status":"running"}""")
+        assertEquals(setOf("a", "b"), s.writing.value)
+
+        ws.hear(
+            """{"type":"apply","id":"x1","noteId":"a","runId":"r1","before":{"title":"P","content":"x\n"},""" +
+                """"after":{"title":"P","content":"y\n"}}"""
+        )
+        runCurrent()
+        assertEquals(setOf("b"), s.writing.value)
+        ws.hear("""{"type":"run","runId":"r2","noteId":"b","trigger":"menu","status":"failed","failure":"timeout"}""")
+        assertEquals(emptySet(), s.writing.value)
+
+        // A dropped connection: what's still going is unknown.
+        ws.hear("""{"type":"run","runId":"r3","noteId":"a","trigger":"menu","status":"running"}""")
+        ws.drop()
+        assertEquals(emptySet(), s.writing.value)
+    }
+
+    @Test
     fun `a connection that can't be made is tried again`() = runTest {
         var tries = 0
         val s = AgentSocket(

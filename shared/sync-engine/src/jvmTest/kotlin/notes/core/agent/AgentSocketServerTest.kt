@@ -161,6 +161,27 @@ class AgentSocketServerTest {
     }
 
     @Test
+    fun `a new note's run, asked for while connecting, works on it as its editor shows it`() = runBlocking {
+        agentOn("noteCreated", "Start the entry.")
+        // Not on the server yet: only the editor has it.
+        val editor = Editor(Fields("Journal", "Day one\n"))
+        val s = socket(editor)
+        val heard = CopyOnWriteArrayList<RunUpdate>()
+        scope.launch { s.runs.collect { heard += it } }
+        s.opened("j1", "default")
+        model.script += Step.Tool("edit_note", """{"id":"j1","find":"Day one","replace":"Day one\n\n- Woke up"}""")
+        model.script += Step.Text("Started it.")
+        s.start()
+        s.requestRun("noteCreated", "j1", "default")
+
+        until { editor.applied.isNotEmpty() }
+        assertEquals(Fields("Journal", "Day one\n\n- Woke up\n"), editor.shows)
+        assertEquals(emptySet(), s.writing.value)
+        until { heard.any { it.status == "done" } }
+        assertEquals("noteCreated" to "j1", heard.first().trigger to heard.first().noteId)
+    }
+
+    @Test
     fun `an editor that hasn't the note says so, and the run uses the server's copy`() = runBlocking {
         agentOn("noteDeleted", "Add it to Digest.")
         note("digest", "Digest", "Items\n")
