@@ -1,0 +1,45 @@
+apps/android/app/src/main/kotlin/notes/app/agent/OpenNoteEditors.kt
+  s_cc6cacc0a6fc01::t_0cdf9315ed10f5 11,43-65,83
+apps/android/app/src/main/kotlin/notes/app/editor/AgentCards.kt
+  s_cc6cacc0a6fc01::t_0cdf9315ed10f5 11,241-269
+  s_cc6cacc0a6fc01::t_533c7e1e7589cf 270
+apps/android/app/src/main/kotlin/notes/app/editor/AgentCardView.kt
+  s_cc6cacc0a6fc01::t_0cdf9315ed10f5 76
+apps/android/app/src/main/kotlin/notes/app/notes/EditorScreen.kt
+  s_cc6cacc0a6fc01::t_e7e9b8f496a673 281
+  s_cc6cacc0a6fc01::t_76fceaeef5e1cb 149-151,233-235,273-280,282,299-301,585
+apps/android/app/src/main/kotlin/notes/app/agent/AgentLink.kt
+  s_cc6cacc0a6fc01::t_20f0bdfbdb535e 17-18,34,54-66
+  s_cc6cacc0a6fc01::t_c8baca288c20e5 67-68
+docs/contributing/agent-clients.md
+  s_cc6cacc0a6fc01::t_f820c823550a8d 9,11-13,389-390
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_cc6cacc0a6fc01::t_20f0bdfbdb535e 477
+docs/contributing/mobile-agents-plan.md
+  s_cc6cacc0a6fc01::t_f820c823550a8d 9,11-12,92-95,287-293
+  s_cc6cacc0a6fc01::t_b1f88b208d27a1 294
+apps/android/app/src/test/kotlin/notes/app/agent/AgentSuggestionsTest.kt
+  s_cc6cacc0a6fc01::t_e7e9b8f496a673 154,162
+  s_cc6cacc0a6fc01::t_1664161e205a67 94-95
+  s_cc6cacc0a6fc01::t_a87975e16db691 1-93,96-153,155-161,163-167
+shared/sync-engine/src/commonMain/kotlin/notes/core/agent/MadeTo.kt
+  s_cc6cacc0a6fc01::t_0789588d74d2ff 36-40
+apps/android/app/src/test/kotlin/notes/app/agent/AgentCardsTest.kt
+  s_cc6cacc0a6fc01::t_f9d40adbed496c 174
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "18d4f3f3c647872d9d507b2e3b5563b134af6d31",
+  "prompts": {},
+  "sessions": {
+    "s_cc6cacc0a6fc01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "fed77ec8-70e6-478d-b842-83dc781ca2b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
