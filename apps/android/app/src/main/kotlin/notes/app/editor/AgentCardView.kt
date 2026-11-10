@@ -15,6 +15,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.view.ViewCompat
 import notes.core.agent.AgentOp
 import notes.core.agent.Overlay
 import notes.core.doc.Document
@@ -32,6 +33,9 @@ class AgentCardView internal constructor(
     label: String,
     onAnswer: (String) -> Unit
 ) : LinearLayout(context) {
+    /** What it is, for screen readers: "{label}: a note" or "…: a suggested change". */
+    private val what = if (shown.kind == "card") "$label: a note" else "$label: a suggested change"
+    private val who: TextView
     private val bodyStyle = EditorStyle(
         style.density,
         style.tokens,
@@ -62,12 +66,12 @@ class AgentCardView internal constructor(
             }
         }
         head.addView(dot, LayoutParams(dp(7f).toInt(), dp(7f).toInt()).apply { marginEnd = dp(7f).toInt() })
-        val who = TextView(context).apply {
+        who = TextView(context).apply {
             text = label
             setTextColor(style.ink2)
             setTextSize(TypedValue.COMPLEX_UNIT_PX, bodyStyle.bodySize * 13f / 14f)
             typeface = style.typeface
-            contentDescription = if (shown.kind == "card") "$label: a note" else "$label: a suggested change"
+            contentDescription = what
         }
         head.addView(who, LayoutParams(0, LayoutParams.WRAP_CONTENT, 1f))
         if (shown.kind == "card") {
@@ -92,8 +96,8 @@ class AgentCardView internal constructor(
         gravity = Gravity.CENTER
         setTextColor(style.ink2)
         setTextSize(TypedValue.COMPLEX_UNIT_PX, style.bodySize * 1.1f)
-        minWidth = style.dp(40f).toInt()
-        minHeight = style.dp(40f).toInt()
+        minWidth = style.dp(48f).toInt()
+        minHeight = style.dp(48f).toInt()
         isClickable = true
         // Tapping it leaves the caret and the keyboard where they are.
         isFocusable = false
@@ -114,9 +118,12 @@ class AgentCardView internal constructor(
 
     private fun TextView.links() {
         movementMethod = LinkMovementMethod.getInstance()
-        // A link's movement method makes the text focusable: tapping it would take the note's focus.
+        // A link's movement method makes the text focusable and clickable: tapping it would take the note's focus,
+        // and TalkBack would offer the whole text as a button. Its links still open, and TalkBack lists them.
         isFocusable = false
         isFocusableInTouchMode = false
+        isClickable = false
+        isLongClickable = false
     }
 
     /** A card's Markdown as the editor shows it, with links only where the editor allows them. */
@@ -171,6 +178,18 @@ class AgentCardView internal constructor(
             else -> comes(op.text)
         }
         return sb
+    }
+
+    /** TalkBack reads the note as one item, so a card says where in it it is: [where], as "under “Bread”". */
+    internal fun describe(where: String) {
+        val said = "$what, $where"
+        if (who.contentDescription != said) who.contentDescription = said
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // Said as it appears, so a card that comes while someone listens isn't missed.
+        ViewCompat.setAccessibilityPaneTitle(this, what)
     }
 
     // A tap on the card isn't one on the text under it.

@@ -192,6 +192,10 @@ internal class AgentCards(private val view: NoteEditText, private val style: Edi
         return room
     }
 
+    private companion object {
+        const val EXCERPT = 40
+    }
+
     private val gapAbove = style.dp(6f).toInt()
     private val gapBelow = style.dp(10f).toInt()
     private val gaps = gapAbove + gapBelow
@@ -227,14 +231,39 @@ internal class AgentCards(private val view: NoteEditText, private val style: Edi
             return
         }
         // In the order shown, stacked under their line.
-        for ((spot, cards) in shown.groupBy { spotOf(t, it) }) {
+        val bySpot = shown.groupBy { spotOf(t, it) }
+        for ((spot, cards) in bySpot) {
             val line = layout.getLineForOffset(spot)
             var y = view.totalPaddingTop + layout.getLineBottom(line) - cards.sumOf { it.height + gaps }
+            val where = whereIs(t, spot)
             for (s in cards) {
                 y += gapAbove
                 if (s.card.translationY != y.toFloat()) s.card.translationY = y.toFloat()
                 y += s.height + gapBelow
+                s.card.describe(where)
             }
+        }
+        readInOrder(bySpot.toSortedMap().values.flatten())
+    }
+
+    /** Where in the note a spot is, in words: TalkBack reads the note as one item, and the cards after it. */
+    private fun whereIs(t: Spanned, spot: Int): String {
+        if (spot >= t.length) return "at the end"
+        val block = Blocks.at(t, spot)
+        if (block == null || block.span.leaf == Leaf.Title) return "at the top"
+        val text = t.substring(block.start, block.contentEnd).trim()
+        if (text.isEmpty()) return "under an empty line"
+        val short = if (text.length > EXCERPT) text.take(EXCERPT).trimEnd() + "…" else text
+        return "under “$short”"
+    }
+
+    /** The card views in the layer in the order they show, top to bottom: the order TalkBack reads them in. */
+    private fun readInOrder(order: List<Shown>) {
+        val layer = layer ?: return
+        if ((0 until layer.childCount).map(layer::getChildAt) == order.map { it.card }) return
+        for (s in order) {
+            layer.removeView(s.card)
+            layer.addView(s.card)
         }
     }
 

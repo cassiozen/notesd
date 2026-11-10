@@ -1,7 +1,6 @@
 package notes.app
 
 import androidx.compose.ui.semantics.LiveRegionMode
-import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
@@ -9,7 +8,6 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.createEmptyComposeRule
-import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import androidx.test.core.app.ActivityScenario
@@ -51,33 +49,7 @@ class AccessibilityTest {
         compose.waitForIdle()
     }
 
-    private fun audit(screen: String) {
-        compose.mainClock.advanceTimeBy(1_000)
-        compose.waitForIdle()
-        val density = ApplicationProvider.getApplicationContext<NotesApp>().resources.displayMetrics.density
-        val problems = mutableListOf<String>()
-        var controls = 0
-        fun visit(node: SemanticsNode) {
-            val config = node.config
-            if (config.getOrNull(SemanticsActions.OnClick) != null) {
-                controls++
-                val text = config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty()
-                val description = config.getOrNull(SemanticsProperties.ContentDescription)?.joinToString().orEmpty()
-                val name = (description + text).ifBlank { null }
-                if (name == null) problems += "unlabelled control at ${node.boundsInRoot}"
-                val w = node.touchBoundsInRoot.width / density
-                val h = node.touchBoundsInRoot.height / density
-                // Rows of text inside a larger target (a sheet item's label) report their own bounds; the
-                // platform also extends small targets to 48dp, so allow a hair under.
-                if (w < 47.5f || h < 47.5f) problems += "“$name” is ${w.toInt()}×${h.toInt()}dp"
-            }
-            node.children.forEach(::visit)
-        }
-        visit(compose.onRoot().fetchSemanticsNode())
-        println("$screen: $controls controls")
-        assertTrue(controls >= 3, "$screen: the audit found only $controls controls")
-        assertTrue(problems.isEmpty(), "$screen:\n" + problems.joinToString("\n"))
-    }
+    private fun audit(screen: String) = compose.auditAccessibility(screen)
 
     private fun seed() = runBlocking {
         val now = System.currentTimeMillis()
