@@ -10,6 +10,7 @@ apps/android/app/src/main/kotlin/notes/app/ui/Components.kt
 apps/android/app/src/main/kotlin/notes/app/settings/SpaceInfo.kt
   s_cc6cacc0a6fc01::t_374b3ff767fc44 3,79-80,276-304,306-308
   s_cc6cacc0a6fc01::t_15e85afb74e28d 37,111-126,186-188,191-197,249-254,257-272,274-275
+  s_cc6cacc0a6fc01::t_062be225790e1c 184,189-190
 apps/android/app/src/test/kotlin/notes/app/agent/AgentRulesTest.kt
   s_cc6cacc0a6fc01::t_d2a404bf06dbfc 66
   s_cc6cacc0a6fc01::t_374b3ff767fc44 56-61,64-65,67
