@@ -40,9 +40,25 @@ func TestHeadingsLinkToThemselves(t *testing.T) {
 	}
 }
 
-func TestExcerptsLeaveTagsOut(t *testing.T) {
-	if got := excerpt("Tomatoes at last. #veg #summer\n\nMore #home/garden soon."); got != "Tomatoes at last. More soon." {
-		t.Fatalf("%q", got)
+func TestExcerptsLeaveLabellingTagsOut(t *testing.T) {
+	for content, want := range map[string]string{
+		// Labels: a line of only tags, or a run after a finished sentence.
+		"#summer, #refreshing, #drinks\nGet chill with these drinks": "Get chill with these drinks",
+		"#a · #b | #c; #d / #e\nText":                                "Text",
+		"Tomatoes at last. #veg #summer\n\nMore #home/garden soon.":  "Tomatoes at last. More #home/garden soon.",
+		"Tomatoes at last! #veg, #summer":                            "Tomatoes at last!",
+		"Recipes: #drinks":                                           "Recipes:",
+		"A tag #with spaces# closes. #veg":                           "A tag #with spaces# closes.",
+		// Words: a tag in a sentence stays, as written.
+		"I went to the #beach":                     "I went to the #beach",
+		"I like #tea, #coffee":                     "I like #tea, #coffee",
+		"#idea what if notes could talk":           "#idea what if notes could talk",
+		"Back at last. #veg.":                      "Back at last. #veg.",
+		"Planted #home/garden tomatoes. #veg #fun": "Planted #home/garden tomatoes.",
+	} {
+		if got := excerpt(content); got != want {
+			t.Errorf("excerpt(%q) = %q, want %q", content, got, want)
+		}
 	}
 	// Code isn't prose: its # stays.
 	if got := excerpt("C at last. #c\n\n```\n#include <stdio.h>\n```"); got != "C at last. #include <stdio.h>" {

@@ -220,15 +220,37 @@ func anchorHeadings(heads []*ast.Heading, src []byte) {
 	}
 }
 
-// withoutTags is a line of prose without its #tags: an excerpt's are noise, the post's page lists them.
+// withoutTags drops a line's labelling #tags ("#a, #b" alone, or "Done. #a #b"): the post's page lists them.
+// A tag in a sentence ("to the #beach") is a word, so it stays.
 func withoutTags(line string) string {
-	var b strings.Builder
-	at := 0
-	for _, sp := range search.TagSpans(line, true) {
-		b.WriteString(line[at:sp.Start])
-		at = sp.End
+	spans := search.TagSpans(line, true)
+	if len(spans) == 0 {
+		return line
 	}
-	return b.String() + line[at:]
+	if !onlySeparators(line[spans[len(spans)-1].End:]) {
+		return line
+	}
+	first := len(spans) - 1
+	for first > 0 && onlySeparators(line[spans[first-1].End:spans[first].Start]) {
+		first--
+	}
+	before := strings.TrimRightFunc(line[:spans[first].Start], separator)
+	if before == "" {
+		return ""
+	}
+	if r, _ := utf8.DecodeLastRuneInString(before); strings.ContainsRune(".!?…:", r) {
+		return before
+	}
+	return line
+}
+
+// separator is what may sit between a line's labelling tags: "#a, #b", "#a · #b".
+func separator(r rune) bool {
+	return unicode.IsSpace(r) || strings.ContainsRune(",;·|/", r)
+}
+
+func onlySeparators(s string) bool {
+	return strings.TrimLeftFunc(s, separator) == ""
 }
 
 // readingTime is how long a post takes to read, at 230 words a minute.
