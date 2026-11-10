@@ -1,0 +1,19 @@
+apps/web/e2e/offline.spec.ts
+  s_c2ad4aa2cf2b8b::t_d345b369a48340 25-31
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "8a9604be63760d670efbaa52dc7b86e44668500f",
+  "prompts": {},
+  "sessions": {
+    "s_c2ad4aa2cf2b8b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "cc7056c0-2689-4f18-b55d-6a667411926e",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
