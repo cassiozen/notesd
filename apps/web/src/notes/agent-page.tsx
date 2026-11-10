@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import type { AgentTrigger } from '../api/agent'
 import { ApiError } from '../api/client'
 import type { Space } from '../api/types'
@@ -9,10 +9,21 @@ import { Field } from '../ui/field'
 import { Kicker } from '../ui/kicker'
 import field from '../ui/field.module.css'
 import { saveAgentConfig, useAgentConfigs } from './agent-config'
-import { EXAMPLES } from './agent-examples'
+import {
+  EXAMPLES,
+  hasExample,
+  hasIdea,
+  ideasFor,
+  readsNeeded,
+  readsOf,
+  withExample,
+  withIdea,
+  type AgentExample,
+  type Idea,
+} from './agent-examples'
 import {
   GROUPS,
-  SUGGESTED_MENU_LABEL,
+  MAX_REFERENCES,
   TRIGGERS,
   agentFieldError,
   draftOf,
@@ -22,13 +33,16 @@ import {
   type AgentErrors,
 } from './agent-rules'
 import { providerHost, useAiSettings } from './ai-settings'
+import { titleOf, useFoundTitles, useTitleMatches } from './note-titles'
 import { notesSource } from './source'
 import { reloadSpaces } from './spaces'
 import info from '../settings/space-info.module.css'
 import { useUnsaved } from '../settings/unsaved'
 import styles from './agent-page.module.css'
 
-const MAX_REFERENCES = 5
+type Change = (p: Partial<AgentDraft>) => void
+/** What to focus once a rule renders: its prompt (after it's added) or its moment (after it moved). */
+type FocusOn = { key: AgentTrigger; what: 'prompt' | 'moment' }
 
 /** Whether Space info offers to turn the space's agent on: once AI is set up, or to resume one paused. */
 export function useAgentOffered(): (space: Space) => boolean {
@@ -51,12 +65,13 @@ export function AgentSection({ space }: { space: Space }) {
   const [formError, setFormError] = useState<string>()
   const [busy, setBusy] = useState(false)
   const [savedNote, setSavedNote] = useState(false)
+  const [showing, setShowing] = useState<AgentExample | null>(null)
   const headingId = useId()
   const draft = edited ?? draftOf(saved)
   const dirty = edited !== null && !sameAgent(edited, draftOf(saved))
   useUnsaved('the agent', dirty)
 
-  const change = (patch: Partial<AgentDraft>) => {
+  const change: Change = (patch) => {
     setEdited({ ...draft, ...patch })
     setSavedNote(false)
   }
@@ -131,10 +146,18 @@ export function AgentSection({ space }: { space: Space }) {
             {/* Never set up, it's one line until turned on; one turned off keeps its rules in view, to change. */}
             {(draft.enabled || saved) && (
               <div className={styles.parts}>
-                {rulesOf(draft).length === 0 && !draft.prompt.trim() && <Examples onPick={(d) => change(d)} />}
-                <Purpose draft={draft} error={errors.prompt} onChange={change} />
-                <Rules draft={draft} errors={errors} onChange={change} />
-                <References draft={draft} error={errors.referenceNotes} onChange={change} />
+                <Examples
+                  showing={showing}
+                  draft={draft}
+                  onShow={setShowing}
+                  onUseAll={(ex) => {
+                    change(withExample(draft, ex))
+                    setShowing(null)
+                  }}
+                />
+                <Purpose draft={draft} example={showing} error={errors.prompt} onChange={change} />
+                <Rules draft={draft} example={showing} errors={errors} onChange={change} />
+                <References spaceId={spaceId} draft={draft} example={showing} error={errors.referenceNotes} onChange={change} />
               </div>
             )}
           </>
@@ -144,21 +167,11 @@ export function AgentSection({ space }: { space: Space }) {
   )
 }
 
-function OnOff({ draft, provider, onChange }: { draft: AgentDraft; provider: string | null; onChange: (p: Partial<AgentDraft>) => void }) {
+function OnOff({ draft, provider, onChange }: { draft: AgentDraft; provider: string | null; onChange: Change }) {
   const why = useId()
   return (
     <div className={styles.card}>
       <label className={styles.onOff}>
-        <span>
-          <span className={styles.lead}>{draft.enabled ? 'On' : 'Off'}</span>
-          <span id={why} className={styles.muted}>
-            {provider === null
-              ? 'Paused: AI isn’t set up on this server. Everything here is kept.'
-              : draft.enabled
-                ? `It acts on this space’s notes as your rules say. Notes go to ${provider}; locked notes never do. Everything it does is in Activity, and can be undone.`
-                : 'Turn it on to have it act on this space’s notes as your rules say.'}
-          </span>
-        </span>
         <input
           type="checkbox"
           className={styles.check}
@@ -167,31 +180,93 @@ function OnOff({ draft, provider, onChange }: { draft: AgentDraft; provider: str
           checked={draft.enabled}
           onChange={(e) => onChange({ enabled: e.target.checked })}
         />
+        <span className={styles.lead}>{draft.enabled ? 'On' : 'Off'}</span>
+        <span id={why} className={styles.muted}>
+          {provider === null
+            ? 'Paused: AI isn’t set up on this server. Everything here is kept.'
+            : draft.enabled
+              ? `It acts on this space’s notes as your rules say. Notes go to ${provider}; locked notes never do. Everything it does is in Activity, and can be undone.`
+              : 'Turn it on to have it act on this space’s notes as your rules say.'}
+        </span>
       </label>
     </div>
   )
 }
 
-function Examples({ onPick }: { onPick: (d: AgentDraft) => void }) {
+/**
+ * Examples to learn from: one picked shows its parts where they'd go, each to take or leave. Taking
+ * one never turns the agent on, or saves.
+ */
+function Examples(props: {
+  showing: AgentExample | null
+  draft: AgentDraft
+  onShow: (ex: AgentExample | null) => void
+  onUseAll: (ex: AgentExample) => void
+}) {
+  const { showing, draft, onShow, onUseAll } = props
   return (
-    <section className={styles.section} aria-labelledby="agent-examples">
-      <div className={styles.sectionHead}>
-        <Kicker id="agent-examples">Start from an example</Kicker>
-      </div>
-      <div className={styles.examples}>
+    <section className={[styles.examples, showing && styles.examplesShowing].filter(Boolean).join(' ')} aria-labelledby="agent-examples">
+      <div className={styles.exampleRow}>
+        <span id="agent-examples" className={styles.muted}>
+          Learn from an example
+        </span>
         {EXAMPLES.map((ex) => (
-          <button key={ex.name} type="button" className={styles.example} onClick={() => onPick(ex.draft)}>
-            <span className={styles.exampleName}>{ex.name}</span>
-            <span className={styles.muted}>{ex.blurb}</span>
+          <button
+            key={ex.name}
+            type="button"
+            className={styles.exampleChip}
+            aria-pressed={showing?.name === ex.name}
+            onClick={() => onShow(showing?.name === ex.name ? null : ex)}
+          >
+            {ex.name}
           </button>
         ))}
       </div>
+      {showing && (
+        <div className={styles.exampleBar}>
+          <p className={styles.muted}>
+            {hasExample(draft, showing) ? `Everything from ${showing.name} is in.` : `${showing.blurb} Take any part of it below.`}
+          </p>
+          <div className={styles.actions}>
+            {!hasExample(draft, showing) && (
+              <Button size="sm" onClick={() => onUseAll(showing)}>
+                Use all
+              </Button>
+            )}
+            <Button size="sm" variant="ghost" onClick={() => onShow(null)}>
+              Close
+            </Button>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
 
-function Purpose({ draft, error, onChange }: { draft: AgentDraft; error: string | undefined; onChange: (p: Partial<AgentDraft>) => void }) {
+/** A part of an example, beside where it would go, to take. */
+function Borrow(props: { label: string; from: string; title?: string; text: string; action: string; onTake: () => void; children?: ReactNode }) {
+  const { label, from, title, text, action, onTake, children } = props
+  return (
+    <aside className={styles.borrow} aria-label={label}>
+      <div className={styles.borrowHead}>
+        <span className={styles.borrowFrom}>
+          {from}
+          {title && <span className={styles.borrowTitle}> · {title}</span>}
+        </span>
+        <Button size="sm" onClick={onTake}>
+          {action}
+        </Button>
+      </div>
+      {children}
+      <p className={styles.borrowText}>{text}</p>
+    </aside>
+  )
+}
+
+function Purpose(props: { draft: AgentDraft; example: AgentExample | null; error: string | undefined; onChange: Change }) {
+  const { draft, example, error, onChange } = props
   const id = useId()
+  const box = useRef<HTMLTextAreaElement>(null)
   return (
     <section className={styles.section}>
       <div className={styles.sectionHead}>
@@ -204,6 +279,7 @@ function Purpose({ draft, error, onChange }: { draft: AgentDraft; error: string 
       </div>
       <textarea
         id={id}
+        ref={box}
         className={[field.input, field.area, styles.prompt].join(' ')}
         placeholder="Recipes. I cook mostly vegetarian, and measure in grams."
         value={draft.prompt}
@@ -216,41 +292,90 @@ function Purpose({ draft, error, onChange }: { draft: AgentDraft; error: string 
           {error}
         </p>
       )}
+      {example && example.prompt !== draft.prompt && (
+        <Borrow
+          label={`${example.name}’s purpose`}
+          from={`${example.name}’s purpose`}
+          text={example.prompt}
+          action={draft.prompt.trim() ? 'Use instead' : 'Use'}
+          onTake={() => {
+            onChange({ prompt: example.prompt })
+            box.current?.focus()
+          }}
+        />
+      )}
     </section>
   )
 }
 
-function Rules({ draft, errors, onChange }: { draft: AgentDraft; errors: AgentErrors; onChange: (p: Partial<AgentDraft>) => void }) {
+function Rules(props: {
+  draft: AgentDraft
+  example: AgentExample | null
+  errors: AgentErrors
+  onChange: Change
+}) {
+  const { draft, example, errors, onChange } = props
   const [picking, setPicking] = useState(false)
-  const [focusOn, setFocusOn] = useState<AgentTrigger | null>(null)
+  const [focusOn, setFocusOn] = useState<FocusOn | null>(null)
   const rules = rulesOf(draft)
   const unused = TRIGGERS.filter((t) => !rules.includes(t.key))
-  const setPrompt = (key: AgentTrigger, prompt: string | undefined) => {
+  const remove = (key: AgentTrigger) => {
     const triggers = { ...draft.triggers }
-    if (prompt === undefined) delete triggers[key]
-    else triggers[key] = prompt
-    onChange({ triggers, ...(key === 'menu' && prompt === undefined ? { menuLabel: '' } : {}) })
+    delete triggers[key]
+    onChange({ triggers, ...(key === 'menu' ? { menuLabel: '' } : {}) })
+  }
+  const take = (key: AgentTrigger, idea: Idea) => {
+    onChange(withIdea(draft, key, idea))
+    setFocusOn({ key, what: 'prompt' })
   }
 
   return (
     <section className={styles.section} aria-labelledby="agent-rules">
       <div className={styles.sectionHead}>
         <Kicker id="agent-rules">Rules</Kicker>
-        <p className={styles.muted}>Each rule is a moment, and what the agent does then. Without rules, it does nothing.</p>
+        <p className={styles.muted}>Each rule is a moment, and what the agent does then.</p>
       </div>
-      {rules.map((key) => (
-        <Rule
-          key={key}
-          trigger={key}
-          prompt={draft.triggers[key] ?? ''}
-          menuLabel={draft.menuLabel}
-          errors={errors}
-          autoFocus={focusOn === key}
-          onPrompt={(p) => setPrompt(key, p)}
-          onMenuLabel={(menuLabel) => onChange({ menuLabel })}
-          onRemove={() => setPrompt(key, undefined)}
-        />
-      ))}
+      {rules.length === 0 && !example && <p className={styles.empty}>No rules yet. Without one, the agent does nothing.</p>}
+      {TRIGGERS.map((t) => {
+        const has = rules.includes(t.key)
+        const theirs = example?.rules[t.key]
+        const offer = theirs && !hasIdea(draft, t.key, theirs) ? theirs : undefined
+        if (!has && !offer) return null
+        return (
+          <div key={t.key} className={styles.ruleSlot}>
+            {has && (
+              <Rule
+                trigger={t.key}
+                draft={draft}
+                errors={errors}
+                focus={focusOn?.key === t.key ? focusOn : null}
+                onPrompt={(p) => onChange({ triggers: { ...draft.triggers, [t.key]: p } })}
+                onMenuLabel={(menuLabel) => onChange({ menuLabel })}
+                onIdea={(idea) => take(t.key, idea)}
+                onMove={(to) => {
+                  const triggers = { ...draft.triggers, [to]: draft.triggers[t.key] ?? '' }
+                  delete triggers[t.key]
+                  onChange({ triggers, ...(t.key === 'menu' ? { menuLabel: '' } : {}) })
+                  setFocusOn({ key: to, what: 'moment' })
+                }}
+                onRemove={() => remove(t.key)}
+              />
+            )}
+            {offer && example && (
+              <Borrow
+                label={`${example.name}’s rule: ${t.rule}`}
+                from={has ? `${example.name}’s version` : t.rule}
+                title={offer.title}
+                text={offer.prompt}
+                action={has ? 'Use instead' : 'Add'}
+                onTake={() => take(t.key, offer)}
+              >
+                {t.key === 'menu' && offer.menuLabel && <p className={styles.muted}>Command: {offer.menuLabel}</p>}
+              </Borrow>
+            )}
+          </div>
+        )
+      })}
       {picking ? (
         <div className={[styles.card, styles.picker].join(' ')} role="group" aria-label="Add a rule">
           {GROUPS.map((g) => {
@@ -265,11 +390,8 @@ function Rules({ draft, errors, onChange }: { draft: AgentDraft; errors: AgentEr
                     type="button"
                     className={styles.pick}
                     onClick={() => {
-                      onChange({
-                        triggers: { ...draft.triggers, [t.key]: t.suggestion },
-                        ...(t.key === 'menu' && !draft.menuLabel.trim() ? { menuLabel: SUGGESTED_MENU_LABEL } : {}),
-                      })
-                      setFocusOn(t.key)
+                      onChange({ triggers: { ...draft.triggers, [t.key]: '' } })
+                      setFocusOn({ key: t.key, what: 'prompt' })
                       setPicking(false)
                     }}
                   >
@@ -301,32 +423,56 @@ function Rules({ draft, errors, onChange }: { draft: AgentDraft; errors: AgentEr
 
 function Rule(props: {
   trigger: AgentTrigger
-  prompt: string
-  menuLabel: string
+  draft: AgentDraft
   errors: AgentErrors
-  autoFocus: boolean
+  /** A new object each time it's to be focused. */
+  focus: FocusOn | null
   onPrompt: (p: string) => void
   onMenuLabel: (l: string) => void
+  onIdea: (idea: Idea) => void
+  onMove: (to: AgentTrigger) => void
   onRemove: () => void
 }) {
-  const { trigger, prompt, menuLabel, errors, autoFocus, onPrompt, onMenuLabel, onRemove } = props
+  const { trigger, draft, errors, focus, onPrompt, onMenuLabel, onIdea, onMove, onRemove } = props
   const t = TRIGGERS.find((x) => x.key === trigger)
+  const prompt = draft.triggers[trigger] ?? ''
   const id = useId()
   const box = useRef<HTMLTextAreaElement>(null)
+  const moment = useRef<HTMLSelectElement>(null)
   const error = errors[`triggers.${trigger}`]
-  // A rule just added starts from a suggestion: selected, so typing replaces it.
+  const rules = rulesOf(draft)
   useEffect(() => {
-    if (!autoFocus) return
-    box.current?.focus()
-    box.current?.select()
-  }, [autoFocus])
+    if (focus?.what === 'moment') moment.current?.focus()
+    const el = box.current
+    if (focus?.what !== 'prompt' || !el) return
+    el.focus()
+    el.setSelectionRange(el.value.length, el.value.length)
+  }, [focus])
   if (!t) return null
+  const ideas = prompt.trim() ? [] : ideasFor(trigger)
   return (
-    <article className={[styles.card, styles.rule].join(' ')} aria-labelledby={`${id}-title`}>
+    <article className={[styles.card, styles.rule].join(' ')} aria-label={t.rule}>
       <div className={styles.ruleHead}>
         <div>
-          <h3 id={`${id}-title`} className={styles.ruleTitle}>
-            {t.rule}
+          <h3 className={styles.ruleTitle}>
+            <span aria-hidden>When</span>
+            <select
+              ref={moment}
+              className={styles.moment}
+              aria-label="When"
+              value={trigger}
+              onChange={(e) => onMove(e.target.value as AgentTrigger)}
+            >
+              {GROUPS.map((g) => (
+                <optgroup key={g.key} label={g.title}>
+                  {TRIGGERS.filter((o) => o.group === g.key && (o.key === trigger || !rules.includes(o.key))).map((o) => (
+                    <option key={o.key} value={o.key}>
+                      {o.rule.replace(/^When /, '')}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
           </h3>
           <p className={styles.muted}>{t.when}</p>
         </div>
@@ -340,7 +486,7 @@ function Rule(props: {
           placeholder="Fix typos"
           autoComplete="off"
           maxLength={40}
-          value={menuLabel}
+          value={draft.menuLabel}
           onChange={(e) => onMenuLabel(e.target.value)}
           error={errors.menuLabel}
         />
@@ -363,16 +509,42 @@ function Rule(props: {
           {error}
         </p>
       )}
+      {ideas.length > 0 && (
+        <div className={styles.ideas} role="group" aria-label="Ideas">
+          <span className={styles.muted}>Ideas</span>
+          {ideas.map(({ idea, from }) => (
+            <button
+              key={idea.prompt}
+              type="button"
+              className={styles.idea}
+              title={idea.prompt}
+              aria-label={from ? `${idea.title}, from ${from}` : idea.title}
+              onClick={() => onIdea(idea)}
+            >
+              {idea.title}
+              {from && <span className={styles.ideaFrom}>{from}</span>}
+            </button>
+          ))}
+        </div>
+      )}
     </article>
   )
 }
 
-function References({ draft, error, onChange }: { draft: AgentDraft; error: string | undefined; onChange: (p: Partial<AgentDraft>) => void }) {
+function References(props: { spaceId: string; draft: AgentDraft; example: AgentExample | null; error: string | undefined; onChange: Change }) {
+  const { spaceId, draft, example, error, onChange } = props
   const [title, setTitle] = useState('')
   const refs = draft.referenceNotes
-  const add = () => {
-    const t = title.trim()
-    if (!t || refs.includes(t) || refs.length >= MAX_REFERENCES) return
+  const listId = useId()
+  const matches = useTitleMatches(spaceId, title, refs)
+  const found = useFoundTitles(spaceId, refs)
+  const shown = example ? readsOf(example) : []
+  // An example's while it's shown; else one a rule taken from an example needs and was left out.
+  const offers = [...new Set([...shown, ...readsNeeded(draft)])].filter((r) => !refs.includes(r))
+  const room = refs.length < MAX_REFERENCES
+  const add = (t: string) => {
+    t = titleOf(t)
+    if (!t || refs.includes(t) || !room) return
     onChange({ referenceNotes: [...refs, t] })
     setTitle('')
   }
@@ -385,11 +557,12 @@ function References({ draft, error, onChange }: { draft: AgentDraft; error: stri
           them. Up to {MAX_REFERENCES}.
         </p>
       </div>
-      {refs.length > 0 && (
+      {(refs.length > 0 || (room && offers.length > 0)) && (
         <ul className={styles.refs} aria-label="Notes it always reads">
           {refs.map((r) => (
             <li key={r} className={styles.ref}>
               {r}
+              {found.get(r) === false && <span className={styles.refMissing}>not here yet</span>}
               <button
                 type="button"
                 className={styles.refRemove}
@@ -400,9 +573,31 @@ function References({ draft, error, onChange }: { draft: AgentDraft; error: stri
               </button>
             </li>
           ))}
+          {room &&
+            offers.map((r) => {
+              const from = example && shown.includes(r) ? example.name : 'a rule needs it'
+              return (
+                <li key={`offer-${r}`}>
+                  <button type="button" className={styles.refOffer} aria-label={`Read ${r}: ${from}`} onClick={() => add(r)}>
+                    + {r}
+                    <span className={styles.ideaFrom}>{from}</span>
+                  </button>
+                </li>
+              )
+            })}
         </ul>
       )}
-      {refs.length < MAX_REFERENCES && (
+      {!room && offers.length > 0 && (
+        <p role="status" className={[styles.error, styles.hint].join(' ')}>
+          No room for {offers.join(', ')}, which {offers.length === 1 ? 'a rule needs' : 'rules need'}: take one off to add it.
+        </p>
+      )}
+      {[...found.values()].includes(false) && (
+        <p className={[styles.muted, styles.hint].join(' ')}>
+          A note that’s not here yet is read once there is one, such as one a rule has the agent make.
+        </p>
+      )}
+      {room && (
         <div className={styles.refAdd}>
           <Field
             label="Note title"
@@ -410,17 +605,23 @@ function References({ draft, error, onChange }: { draft: AgentDraft; error: stri
             placeholder="Note title"
             autoComplete="off"
             maxLength={200}
+            list={listId}
             value={title}
             error={error}
             onChange={(e) => setTitle(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 e.preventDefault()
-                add()
+                add(title)
               }
             }}
           />
-          <Button size="md" onClick={add}>
+          <datalist id={listId}>
+            {matches.map((m) => (
+              <option key={m} value={m} />
+            ))}
+          </datalist>
+          <Button size="md" onClick={() => add(title)}>
             Add
           </Button>
         </div>

@@ -62,65 +62,186 @@
   color: var(--danger);
 }
 
-/* The whole card toggles it, as a setting's line does in Settings. */
+/* The whole line toggles it. */
 .onOff {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto auto 1fr;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
+  column-gap: 10px;
+  padding: 0 6px;
   cursor: pointer;
 }
 
-.onOff > span {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.onOff .muted {
+  grid-column: 2 / -1;
+}
+
+.onOff .lead {
+  grid-column: 2;
+}
+
+.onOff > input {
+  grid-row: 1 / span 2;
+  align-self: start;
+  margin-top: 2px;
 }
 
 .check {
-  flex: none;
   width: 16px;
   height: 16px;
   margin: 0;
   accent-color: var(--accent-deep);
 }
 
+/* Stays in view while an example's parts are shown down the page. */
 .examples {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-  gap: 10px;
-}
-
-.example {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  padding: 14px 16px;
+  gap: 10px;
+  padding: 0 6px;
+}
+
+/* The sheet's top padding counts toward a sticky offset: -28px of its 40px leaves the bar 12px down. */
+.examplesShowing {
+  position: sticky;
+  top: -28px;
+  z-index: 1;
+  padding: 12px 14px;
+  border: 1px solid var(--hair-strong);
+  border-radius: 18px;
+  background: var(--glass-hi);
+  backdrop-filter: blur(16px);
+  box-shadow: var(--shadow);
+}
+
+.exampleRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.exampleRow > span {
+  margin-right: 4px;
+}
+
+.exampleChip,
+.idea,
+.refOffer {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 4px 11px;
   border: 1px solid var(--hair);
-  border-radius: 16px;
+  border-radius: 999px;
   background: var(--chip);
-  text-align: start;
   font: inherit;
-  color: inherit;
+  font-size: 13px;
+  color: var(--ink-2);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
 }
 
-.example:hover {
-  background: var(--paper);
+.exampleChip:hover,
+.idea:hover,
+.refOffer:hover {
   border-color: var(--hair-strong);
+  color: var(--ink);
 }
 
-.example:focus-visible,
+.exampleChip[aria-pressed='true'] {
+  border-color: var(--solid);
+  background: var(--solid);
+  color: var(--on-solid);
+}
+
+.exampleBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+}
+
+.exampleBar > p {
+  flex: 1 1 260px;
+}
+
+.exampleChip:focus-visible,
+.idea:focus-visible,
+.refOffer:focus-visible,
+.moment:focus-visible,
 .pick:focus-visible,
 .refRemove:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px var(--focus);
 }
 
-.exampleName {
-  font-size: 14px;
+/* An example's part, where it would go: dashed, as it isn't yours until taken. */
+.borrow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 16px 14px;
+  border: 1px dashed var(--hair-strong);
+  border-radius: 18px;
+}
+
+.borrowHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.borrowFrom {
+  font-size: 13px;
   font-weight: 600;
+  color: var(--ink-2);
+}
+
+.borrowTitle {
+  font-weight: 400;
+  color: var(--ink-3);
+}
+
+.borrowText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-2);
+  white-space: pre-wrap;
+}
+
+.ruleSlot {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.empty {
+  margin: 0;
+  padding: 18px 20px;
+  border: 1px dashed var(--hair);
+  border-radius: 18px;
+  font-size: 14px;
+  color: var(--ink-3);
+}
+
+.ideas {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.ideas > span {
+  margin-right: 2px;
+}
+
+.ideaFrom {
+  font-size: 11px;
+  color: var(--ink-3);
 }
 
 /* Grows with what's written: a rule is read as much as it's typed. */
@@ -148,9 +269,33 @@
 }
 
 .ruleTitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px;
   margin: 0;
   font-size: 15px;
   font-weight: 600;
+}
+
+/* Reads as the rest of the heading, with a caret to say it can change. */
+.moment {
+  field-sizing: content;
+  max-width: 100%;
+  padding: 0 18px 0 4px;
+  margin-left: -4px;
+  border: 0;
+  border-radius: 6px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='none' stroke='%23888' stroke-width='1.5' stroke-linecap='round'%3E%3Cpath d='m1 1 4 4 4-4'/%3E%3C/svg%3E")
+    no-repeat right 4px center;
+  font: inherit;
+  color: inherit;
+  appearance: none;
+  cursor: pointer;
+}
+
+.moment:hover {
+  background-color: var(--hover);
 }
 
 .picker {
@@ -242,4 +387,26 @@
 
 .refAdd > :first-child {
   flex: 1;
+}
+
+.refMissing {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.refOffer {
+  border-style: dashed;
+  font-size: 14px;
+  padding: 5px 12px;
+}
+
+.hint {
+  padding: 0 4px;
+}
+
+/* The sheet's top padding is 16px here: none of it to take back. */
+@media (max-width: 759px) {
+  .examplesShowing {
+    top: 0;
+  }
 }

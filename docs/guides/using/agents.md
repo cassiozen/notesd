@@ -26,8 +26,11 @@ notes go to the AI provider.
 Agents run in your own spaces. A shared space can't have one, and a space whose agent is on can't
 be shared until you turn the agent off.
 
-A new agent can start from an example (Journal, Meeting notes, Recipes, Tidy tags), which fills in
-everything below for you to change.
+**Learn from an example** (Journal, Recipes, Tidy tags) shows that example's parts
+where they'd go on the page, dashed: its purpose, each of its rules, and the notes it reads. Take
+any part, or **Use all**; beside a rule of yours for the same moment, an example's rule is another
+version to use instead. Close it and what you didn't take goes. Taking parts never turns the agent
+on, and nothing is kept until you save.
 
 **What this space is for** describes the space and how the agent should behave. It goes with every
 rule, and on its own does nothing:
@@ -36,8 +39,9 @@ rule, and on its own does nothing:
 - *Recipes. I cook mostly vegetarian. Quantities in metric.*
 
 Then add **rules**. A rule is a moment and what the agent does then; **Add rule** offers the
-moments a space doesn't have a rule for yet, and starts the rule from a suggestion you can change
-or type over. Without rules, the agent does nothing.
+moments a space doesn't have a rule for yet. While a rule is empty, **Ideas** under it offer what
+the examples do at that moment, to start from. A rule's moment, in its heading, can be changed
+without losing what it says. Without rules, the agent does nothing.
 
 | Rule | When |
 | --- | --- |
@@ -51,7 +55,9 @@ or type over. Without rules, the agent does nothing.
 | **When a note is moved away** | A note is moved from here to another space |
 
 **Notes it always reads** are up to 5 notes, by title, that go with every rule, such as a *Digest*
-the agent keeps. The agent acts faster when it doesn't have to look for them.
+the agent keeps. The agent acts faster when it doesn't have to look for them. Typing offers the
+space's note titles; a title with no note yet is marked *not here yet*, and is read once there is
+one, such as a note a rule has the agent make.
 
 A new note opened, editing started and the menu command happen in the editor, and need a connection to
 the server: offline, they're skipped, unless the connection comes back within about 10 seconds. The agent works on the note as you see it there, unsaved
