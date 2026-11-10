@@ -16,6 +16,7 @@ apps/web/test/agent-config.test.tsx
   s_cc6cacc0a6fc01::t_e9639a211440e1 17-21,23-24,27-29,33,40,43,45-54,56,59-61,64-72,75-82,87-88,91-92,94-97,99,104-106,107,116,127-149
 docs/reference/api.md
   s_cc6cacc0a6fc01::t_883be3995cb279 526-532,664
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 508,518,523-525,566-573,584,586
 server/internal/agent/trait.go
   s_cc6cacc0a6fc01::t_0d322541cb6d2a 1-86
 server/internal/api/agent_trait_test.go
@@ -26,6 +27,7 @@ server/internal/api/image_test.go
   s_cc6cacc0a6fc01::t_1317e0c3c81769 257-259
 server/internal/api/respond.go
   s_cc6cacc0a6fc01::t_62ac4a1f1b25a3 239-240
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 145-152
 server/internal/notes/notes.go
   s_cc6cacc0a6fc01::t_0391adb249e0a4 229
 server/internal/sharing/sharing.go
@@ -34,26 +36,101 @@ server/internal/userdata/userdata.go
   s_cc6cacc0a6fc01::t_1fc0282eb2087b 75-76,84-86,90-94,96-100,175,215
 apps/web/src/agent/socket.ts
   s_cc6cacc0a6fc01::t_fbfc65a07da4b4 58-75,77-87,91-93,102,104-110
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-2,11-13,15-17,24-26,45-46,48-55,76,88-90,94-101,103,115-149,152-159,182-189,193-199,210-212,219-234,286-297
 docs/contributing/architecture.md
   h_506d0d833c777f 66
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 152,610-618,623-627,630-634,637-640,665-666
 server/internal/editors/hub.go
   s_cc6cacc0a6fc01::t_8a87d9ebd02e5b 35,59,64,74-75,94,101,108,121,124,136,145-146,148,154-155,161,165-170,182-183,188-189,192,194-199,201,203,205-209,214-216,227,236,244,258,262,269,275-276,297,302
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 42-44,47-50,65-66,79,83-93,95-100,102,123,125-135,137-142,150,163-164,171-179,200,202,204,310-311,313
 server/internal/api/agent_socket.go
   s_cc6cacc0a6fc01::t_42e2451ef8eaa3 16-36,42-54,56-58,59,61-64,72-107
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 14,37-41,55,60,65-71,108-118,124-130
 apps/web/src/notes/note-pane.tsx
   s_66be3861a6f5cd::t_c7a47fc75f68c4 164-168,401
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 22-23,25,161,294-308,349,351,370-376,562-565
 apps/web/test/agent-socket.test.tsx
   s_cc6cacc0a6fc01::t_146a1568d9aa14 127,134,137-147,149-211,214,228,238
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 148,239-318
 server/internal/api/agent_socket_test.go
   s_cc6cacc0a6fc01::t_25123dab8e8561 25,31,34,42,49,58,63,67,73,76,100,107,114,117,122,128,132,137,146,151-234
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 235-280
 server/internal/agent/runner_test.go
   s_cc6cacc0a6fc01::t_add1296845f87f 1041
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 80,96-100,809-893,1023-1040,1042-1105
 server/internal/agent/request.go
   s_cc6cacc0a6fc01::t_f9da594c6755d0 53,58,70,74,80
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-52,54-57,59-69,71-73,75-79,81-150
 server/internal/agent/runner.go
   s_cc6cacc0a6fc01::t_c886440649b1d1 168,176,245
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 36-39,52,60,98-100,109,111-112,116,119-123,140,167,169-175,177,179,204-207,217-220,230,240-244,246-256
 docs/guides/using/agents.md
   s_cc6cacc0a6fc01::t_f84d63d93799b0 14
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 12-13,39-40,46-59,78-82
+server/internal/agent/export_test.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 10,16
+apps/web/src/api/agent.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 21-22,26-27
+apps/web/src/editor/editor.tsx
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-2,20-21,53,102
+apps/web/src/editor/agent-edit.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 5,8-10,103-104
+apps/web/src/notes/agent-config.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 11-15
+apps/web/src/notes/note-pane.module.css
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 57
+apps/web/src/editor/agent-presence.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-142
+apps/web/src/editor/agent-presence.test.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-91
+apps/web/test/setup.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 3,91
+server/internal/agent/tools.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 99-105,181,216,316-325,358,369-408,425,466-467,469-471,517-524
+server/internal/agent/config_test.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 7,104-106,153-176
+apps/web/test/helpers.tsx
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1,43,51,72,154,158-162
+server/internal/agent/run.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 35-52,109-113,135,137,164-179,192-207,244-249,283-284
+server/cmd/notesd/main.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 661,999-1004
+server/internal/agent/runs.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 41,58-60,62-64,66-69,74-75,77
+server/internal/agent/prompt.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 20-21,23,28,62,72-87,102-109
+apps/web/src/notes/failed-run.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 2,12-13,22-47
+apps/web/src/notes/activity.tsx
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 36
+apps/web/src/notes/share.tsx
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 14-16,33,58-61,166-177
+apps/web/test/agent-triggers.test.tsx
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-141
+server/internal/agent/editors.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 25
+apps/web/src/agent/triggers.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-21
+apps/web/src/agent/triggers.test.ts
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-21
+apps/web/src/auth/auth-context.tsx
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 5,60-61
+server/internal/agent/request_test.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-232
+server/migrations/0019_agent_reference_notes.sql
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-5
+server/internal/agent/context.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 1-126
+server/internal/agent/config.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 8,38-42,45-48,59-62,82,120,137,148,150,155-157,180-194,196,198-199,252-268
+server/internal/agent/editors_test.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 5,7,9,11,20-21,24-25,41-43,47-49,58-59,292-344
+server/internal/agent/triggers.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 46-47,91-97
+apps/web/src/editor/editor.module.css
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 579-665
+server/internal/editors/hub_test.go
+  s_cc6cacc0a6fc01::t_c71d28ab458d2b 81-99,110-111,179-216,218-219
 ---
 {
   "schema_version": "authorship/3.0.0",
