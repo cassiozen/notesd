@@ -1,11 +1,12 @@
 import { useEffect, useId, useRef, useState, type ComponentType } from 'react'
+import { flushSync } from 'react-dom'
 import { ApiError } from '../api/client'
 import type { Space, SpaceTrait } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { themeKey } from '../notes/space-theme'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
-import { traitGlyph, traitRows, traitsLabel, UnknownGlyph, type TraitRow } from '../notes/traits'
+import { traitGlyph, traitRows, traitsLabel, UnknownGlyph, type TraitPage, type TraitRow } from '../notes/traits'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { InlineConfirm } from '../ui/inline-confirm'
@@ -17,7 +18,7 @@ export const noteCount = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`
 /**
  * Space info (§7.8): a space's one page of space-level settings, changed in place with nothing opened over it.
  * Its icon (pressed, the picker opens under it) and name (edited where it's shown) with its note count; a section
- * per trait; then Delete.
+ * per trait; then Delete. A section may have one page of its own, shown in this dialog in place of the rest.
  */
 export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) {
   const spaces = useSpaces()
@@ -30,6 +31,13 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   const picks = useRef(0)
   const [deleting, setDeleting] = useState<'asking' | 'busy' | null>(null)
   const [error, setError] = useState<string>()
+  // The trait whose page is shown instead of the rest.
+  const [page, setPage] = useState<string | null>(null)
+  const [slot, setSlot] = useState<HTMLDivElement | null>(null)
+  const pageHeadingId = useId()
+  const frame = useRef<HTMLDivElement>(null)
+  // What had focus when a page opened, to take it again on Back.
+  const opener = useRef<HTMLElement | null>(null)
 
   // Deleted, here or on another device: nothing left to show.
   useEffect(() => {
@@ -47,6 +55,31 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
       : space.noteCount > 0
         ? 'Move or delete its notes to delete it.'
         : null
+
+  /** Synchronously, so the new page can be measured and focused straight after. */
+  function swap(next: string | null) {
+    const el = frame.current
+    // Swapped again while the last swap still moves: measured as it is at rest, not mid-way.
+    if (typeof el?.getAnimations === 'function') for (const a of el.getAnimations({ subtree: true })) a.cancel()
+    const before = el?.offsetHeight ?? 0
+    flushSync(() => setPage(next))
+    if (el) settle(el, before, next === null ? -1 : 1)
+  }
+
+  function showPage(key: string) {
+    opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
+    swap(key)
+    document.getElementById(pageHeadingId)?.focus()
+  }
+
+  function back() {
+    const to = opener.current
+    opener.current = null
+    swap(null)
+    if (to?.isConnected) to.focus()
+  }
+
+  const pageFor = (key: string): TraitPage => ({ slot, open: page === key, headingId: pageHeadingId, show: () => showPage(key), back })
 
   async function pickIcon(key: string) {
     const n = ++picks.current
@@ -86,95 +119,136 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   }
 
   return (
-    <Dialog labelledBy={titleId} onClose={onClose} space={themeKey(shownIcon)} wide>
-      <div className={styles.page}>
-        <div className={styles.head}>
-          {own ? (
-            <button
-              type="button"
-              className={styles.iconButton}
-              aria-label="Change icon"
-              aria-expanded={picking}
-              title="Change icon"
-              onClick={() => setPicking((v) => !v)}
-            >
-              <SpaceIcon space={{ icon: shownIcon }} size={56} />
-            </button>
-          ) : (
-            <SpaceIcon space={space} size={56} />
+    <Dialog labelledBy={page ? pageHeadingId : titleId} onClose={page ? back : onClose} space={themeKey(shownIcon)} wide>
+      <div ref={frame}>
+        <div className={styles.page} hidden={page !== null}>
+          <div className={styles.head}>
+            {own ? (
+              <button
+                type="button"
+                className={styles.iconButton}
+                aria-label="Change icon"
+                aria-expanded={picking}
+                title="Change icon"
+                onClick={() => setPicking((v) => !v)}
+              >
+                <SpaceIcon space={{ icon: shownIcon }} size={56} />
+              </button>
+            ) : (
+              <SpaceIcon space={space} size={56} />
+            )}
+            <div className={styles.headText}>
+              <h2 id={titleId} className={own ? 'visually-hidden' : styles.name}>
+                {space.name}
+              </h2>
+              {own && <NameField space={space} onError={setError} />}
+              <span className={styles.meta}>
+                {noteCount(space.noteCount)}
+                <HeadGlyphs traits={space.traits} />
+              </span>
+            </div>
+          </div>
+          {own && picking && (
+            <div className={styles.picker}>
+              <SpaceIconPicker value={shownIcon} onChange={(key) => void pickIcon(key)} />
+            </div>
           )}
-          <div className={styles.headText}>
-            <h2 id={titleId} className={own ? 'visually-hidden' : styles.name}>
-              {space.name}
-            </h2>
-            {own && <NameField space={space} onError={setError} />}
-            <span className={styles.meta}>
-              {noteCount(space.noteCount)}
-              <HeadGlyphs traits={space.traits} />
-            </span>
+          {error && (
+            <p role="alert" className={styles.error}>
+              {error}
+            </p>
+          )}
+
+          {blocks(traitRows(space)).map((block) =>
+            block.kind === 'section' ? (
+              <block.Section key={block.key} space={space} page={pageFor(block.key)} />
+            ) : (
+              <ul key={block.key} className={styles.group} aria-label="Features">
+                {block.rows.map((row) => (
+                  <TraitItem key={row.kind === 'off' ? row.entry.key : row.trait.key} row={row} />
+                ))}
+              </ul>
+            ),
+          )}
+
+          <div className={styles.end}>
+            {own && deleting && (
+              <InlineConfirm
+                title={`Delete ${space.name}?`}
+                action="Delete"
+                busy={deleting === 'busy'}
+                onConfirm={() => void remove()}
+                onCancel={() => setDeleting(null)}
+              >
+                It has no notes: only the space itself goes.
+              </InlineConfirm>
+            )}
+            <div className={settings.dialogActions}>
+              {own && (
+                <Button
+                  size="md"
+                  variant="danger-text"
+                  className={settings.leading}
+                  disabled={why !== null || deleting !== null}
+                  aria-describedby={why ? deleteWhyId : undefined}
+                  aria-expanded={deleting !== null}
+                  onClick={() => setDeleting('asking')}
+                >
+                  Delete space…
+                </Button>
+              )}
+              <Button size="md" onClick={onClose}>
+                Done
+              </Button>
+            </div>
+            {own && why && (
+              <p id={deleteWhyId} className={styles.why}>
+                {why}
+              </p>
+            )}
           </div>
         </div>
-        {own && picking && (
-          <div className={styles.picker}>
-            <SpaceIconPicker value={shownIcon} onChange={(key) => void pickIcon(key)} />
-          </div>
-        )}
-        {error && (
-          <p role="alert" className={styles.error}>
-            {error}
-          </p>
-        )}
-
-        {blocks(traitRows(space)).map((block) =>
-          block.kind === 'section' ? (
-            <block.Section key={block.key} space={space} />
-          ) : (
-            <ul key={block.key} className={styles.group} aria-label="Features">
-              {block.rows.map((row) => (
-                <TraitItem key={row.kind === 'off' ? row.entry.key : row.trait.key} row={row} />
-              ))}
-            </ul>
-          ),
-        )}
-
-        <div className={styles.end}>
-          {own && deleting && (
-            <InlineConfirm
-              title={`Delete ${space.name}?`}
-              action="Delete"
-              busy={deleting === 'busy'}
-              onConfirm={() => void remove()}
-              onCancel={() => setDeleting(null)}
-            >
-              It has no notes: only the space itself goes.
-            </InlineConfirm>
-          )}
+        <div className={styles.page} hidden={page === null}>
+          <Button size="sm" variant="ghost" className={styles.back} aria-label={`Back to ${space.name}`} onClick={back}>
+            <span className={styles.backChevron} aria-hidden="true" />
+            {space.name}
+          </Button>
+          <div ref={setSlot} className={styles.slot} />
           <div className={settings.dialogActions}>
-            {own && (
-              <Button
-                size="md"
-                variant="danger-text"
-                className={settings.leading}
-                disabled={why !== null || deleting !== null}
-                aria-describedby={why ? deleteWhyId : undefined}
-                aria-expanded={deleting !== null}
-                onClick={() => setDeleting('asking')}
-              >
-                Delete space…
-              </Button>
-            )}
             <Button size="md" onClick={onClose}>
               Done
             </Button>
           </div>
-          {own && why && (
-            <p id={deleteWhyId} className={styles.why}>
-              {why}
-            </p>
-          )}
         </div>
       </div>
     </Dialog>
+  )
+}
+
+/**
+ * After a page swap, the dialog grows or shrinks to the new page rather than jumping, and the page slides in from
+ * the side it's opened toward (dir 1) or gone back to (-1).
+ */
+function settle(el: HTMLElement, from: number, dir: 1 | -1) {
+  if (typeof el.animate !== 'function' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  const spring = getComputedStyle(el).getPropertyValue('--spring').trim()
+  // linear() is newer than the rest: a browser without it settles without the overshoot.
+  const easing = spring && CSS.supports('transition-timing-function', spring) ? spring : 'ease-out'
+  const to = el.offsetHeight
+  if (from !== to) {
+    // Clipped while it moves: the spring overshoots, and the page's content is already at its final size.
+    el.style.overflow = 'hidden'
+    const grow = el.animate([{ height: `${from}px` }, { height: `${to}px` }], { duration: 450, easing })
+    const done = () => el.style.removeProperty('overflow')
+    grow.addEventListener('finish', done)
+    grow.addEventListener('cancel', done)
+  }
+  el.querySelector(':scope > :not([hidden])')?.animate(
+    [
+      { opacity: 0, transform: `translateX(${dir * 16}px)` },
+      { opacity: 1, transform: 'none' },
+    ],
+    { duration: 300, easing },
   )
 }
 
@@ -251,7 +325,7 @@ function HeadGlyphs({ traits }: { traits: readonly SpaceTrait[] }) {
 }
 
 type Block =
-  | { kind: 'section'; key: string; Section: ComponentType<{ space: Space }> }
+  | { kind: 'section'; key: string; Section: ComponentType<{ space: Space; page: TraitPage }> }
   | { kind: 'rows'; key: string; rows: TraitRow[] }
 
 /** A trait with a section of its own gets it; the others, in a row each, share a group between sections. */

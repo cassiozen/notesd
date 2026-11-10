@@ -1,17 +1,19 @@
 import { useEffect, useId, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { ApiError } from '../api/client'
 import { publishing, type PublishSettings } from '../api/spaces'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { catchUpSpaces, expectPublished, unexpectPublished } from '../notes/spaces'
+import type { TraitPage } from '../notes/traits'
 import { Button } from '../ui/button'
 import { useCopy } from '../ui/copy'
 import { InlineConfirm } from '../ui/inline-confirm'
 import info from './space-info.module.css'
 import styles from './published-space.module.css'
 
-// Publishing a space (architecture §7.10), as Space info's Published section: its address, its own stylesheet,
-// and turning it on and off, all in place.
+// Publishing a space (architecture §7.10), as Space info's Published section: its address and turning it on and
+// off, in place; its custom CSS and own domain on the section's page, Customize site.
 
 type Failure = { field?: 'handle' | 'css' | 'domain'; message: string }
 
@@ -42,11 +44,20 @@ export function publishError(err: unknown): Failure {
 /** The address without its scheme or handle: "notes.example.com/@". */
 const prefix = (s: PublishSettings) => `${s.origin.replace(/^https?:\/\//, '')}/@`
 
+const DOMAIN_DOCS = 'https://notesd.app/docs/guides/using/publishing.html#use-your-own-domain'
+
+/** What Customize site has set, for the row that opens it. */
+function customized(s: PublishSettings) {
+  if (s.css && s.domain) return `Custom CSS · ${s.domain}`
+  if (s.css) return 'Custom CSS'
+  return s.domain || 'Custom CSS or your own domain'
+}
+
 /**
  * Whether the space is a website anyone can read. Off, its owner publishes it; on, the address (its handle edited
- * in place), its custom CSS, and Stop publishing. A member sees where it is.
+ * in place), Customize site, and Stop publishing. A member sees where it is.
  */
-export function PublishedSection({ space }: { space: Space }) {
+export function PublishedSection({ space, page }: { space: Space; page: TraitPage }) {
   const headingId = useId()
   const trait = space.traits.find((t) => t.key === 'published')
   const owner = space.shared?.role !== 'member'
@@ -54,8 +65,17 @@ export function PublishedSection({ space }: { space: Space }) {
   const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'domain' | 'stop' | null>(null)
   const [failure, setFailure] = useState<Failure>()
   const [stopping, setStopping] = useState(false)
+  const summaryId = useId()
   // Turned on or off here, the list shows it at once (expectPublished): the trait is the section's state.
   const on = trait !== undefined
+  const customizable = on && owner && settings !== null
+
+  // Taken down, here or elsewhere, with its page open: nothing left on it to change.
+  const { open, back } = page
+  useEffect(() => {
+    // After the commit: going back swaps pages synchronously, which React can't do from inside an effect.
+    if (open && !customizable) queueMicrotask(back)
+  }, [open, customizable, back])
 
   // Read again when the trait changes: published, moved or taken down here or on another device.
   const summary = trait?.summary
@@ -132,6 +152,29 @@ export function PublishedSection({ space }: { space: Space }) {
               onEdit={() => failure?.field === 'handle' && setFailure(undefined)}
             />
             {error('handle')}
+            <button type="button" className={styles.customize} aria-describedby={summaryId} onClick={page.show}>
+              <span className={styles.customizeText}>
+                <span className={styles.customizeLabel}>Customize site</span>
+                <span id={summaryId} className={styles.customizeSummary}>
+                  {customized(settings)}
+                </span>
+              </span>
+              <span className={styles.chevron} aria-hidden="true" />
+            </button>
+          </>
+        )}
+      </div>
+      {!page.open && error()}
+      {customizable &&
+        page.slot &&
+        createPortal(
+          <div className={styles.page} hidden={!page.open}>
+            <div className={styles.pageHead}>
+              <h2 id={page.headingId} tabIndex={-1} className={styles.pageTitle}>
+                Customize site
+              </h2>
+              <span className={styles.pageAddress}>{settings.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
+            </div>
             <Stylesheet
               key={`css:${settings.css}`}
               css={settings.css}
@@ -146,10 +189,10 @@ export function PublishedSection({ space }: { space: Space }) {
               onSave={(domain) => run('domain', () => publishing.put(space.id, { domain }))}
               error={error('domain')}
             />
-          </>
+            {page.open && error()}
+          </div>,
+          page.slot,
         )}
-      </div>
-      {error()}
       {on && owner && (
         <div className={info.footer}>
           <Button size="sm" variant="danger-text" disabled={busy !== null} aria-expanded={stopping} onClick={() => setStopping(true)}>
@@ -273,8 +316,9 @@ function Address({
 }
 
 /**
- * The site on a domain of its own: the owner points the domain at this server and adds a block to the proxy in
- * front of notesd that maps it onto the site's path; notesd only builds the site's absolute links from it.
+ * The site on a domain of its own. The owner's proxy serves it, mapping the domain onto the site's path; notesd only
+ * builds the site's absolute links from it. How to set up each proxy is the docs': here, only the one thing to map.
+ * Emptied and saved, it asks first: the site's links go back to the app's address.
  */
 function OwnDomain({
   settings,
@@ -287,59 +331,86 @@ function OwnDomain({
   onSave: (domain: string) => Promise<boolean>
   error: ReactNode
 }) {
+  const headingId = useId()
   const hintId = useId()
   const [draft, setDraft] = useState(settings.domain)
+  const [asking, setAsking] = useState(false)
   const [copied, copy] = useCopy()
-  const block = `${settings.domain} {\n    rewrite * /@${settings.handle}{uri}\n    reverse_proxy 127.0.0.1:8080\n}`
+  const path = `/@${settings.handle}`
+  const changed = draft.trim() !== settings.domain
+
+  function submit() {
+    if (busy !== null || !changed) return
+    if (draft.trim() === '') setAsking(true)
+    else void onSave(draft.trim())
+  }
+
   return (
-    <details className={styles.row} open={settings.domain !== '' || undefined}>
-      <summary className={styles.summary}>Your own domain</summary>
-      <div className={styles.css}>
-        <input
-          className={styles.domain}
-          aria-label="Domain"
-          aria-describedby={hintId}
-          placeholder="blog.example.com"
-          autoComplete="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value.toLowerCase())}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && busy === null && draft.trim() !== settings.domain) void onSave(draft.trim())
-          }}
-        />
-        <p id={hintId} className={styles.hint}>
-          The site’s feed and links use it. It also needs your proxy: notesd can’t serve a domain by itself.
-        </p>
-        {error}
-        <div className={styles.save}>
-          <Button size="sm" busy={busy === 'domain'} disabled={busy !== null || draft.trim() === settings.domain} onClick={() => void onSave(draft.trim())}>
-            Save
-          </Button>
-        </div>
-        {settings.domain && (
-          <div className={styles.steps}>
-            <p className={styles.hint}>
-              Point {settings.domain}’s DNS at this server, as you did for the app’s address. Then add this to your Caddyfile, with notesd’s
-              address as in your app’s block, and reload Caddy:
+    <section className={info.section} aria-labelledby={headingId}>
+      <h3 id={headingId} className={info.caption}>
+        Your own domain
+      </h3>
+      <div className={info.group}>
+        <div className={`${styles.row} ${styles.field}`}>
+          <input
+            className={styles.domain}
+            aria-label="Domain"
+            aria-describedby={hintId}
+            placeholder="blog.example.com"
+            autoComplete="off"
+            autoCapitalize="none"
+            spellCheck={false}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value.toLowerCase())}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') submit()
+            }}
+          />
+          {settings.domain ? (
+            <>
+              <p id={hintId} className={styles.hint}>
+                Point {settings.domain} at this server, then have your proxy send its requests to notesd with <code>{path}</code> before
+                the path.
+              </p>
+              <div className={styles.line}>
+                <code className={styles.path}>{path}</code>
+                <Button size="sm" variant="ghost" onClick={() => void copy(path)}>
+                  {copied ? 'Copied' : 'Copy'}
+                </Button>
+                <a className={styles.docs} href={DOMAIN_DOCS} target="_blank" rel="noopener noreferrer">
+                  How to set it up
+                </a>
+              </div>
+            </>
+          ) : (
+            <p id={hintId} className={styles.hint}>
+              Serve the site at a domain of its own, such as blog.example.com. Your proxy serves it: notesd can’t by itself.
             </p>
-            <pre className={styles.snippet}>
-              <code>{block}</code>
-            </pre>
-            <div className={styles.save}>
-              <Button size="sm" variant="ghost" onClick={() => void copy(block)}>
-                {copied ? 'Copied' : 'Copy'}
-              </Button>
-            </div>
+          )}
+          {error}
+          <div className={styles.save}>
+            <Button size="sm" busy={busy === 'domain'} disabled={busy !== null || !changed} onClick={submit}>
+              Save
+            </Button>
           </div>
-        )}
+          {asking && (
+            <InlineConfirm
+              title={`Stop using ${settings.domain}?`}
+              action="Stop using it"
+              busy={busy === 'domain'}
+              onConfirm={() => void onSave('')}
+              onCancel={() => setAsking(false)}
+            >
+              The site’s links go back to its address here. Remove its block from your proxy too.
+            </InlineConfirm>
+          )}
+        </div>
       </div>
-    </details>
+    </section>
   )
 }
 
-/** The space's own CSS, added after the site's: folded away until wanted, saved when Save is pressed. */
+/** The space's own CSS, added after the site's: saved when Save is pressed, kept as typed while the page is away. */
 function Stylesheet({
   css,
   busy,
@@ -351,34 +422,45 @@ function Stylesheet({
   onSave: (css: string) => Promise<boolean>
   error: ReactNode
 }) {
+  const headingId = useId()
   const hintId = useId()
   const [draft, setDraft] = useState(css)
   return (
-    <details className={styles.row} open={css !== '' || undefined}>
-      <summary className={styles.summary}>Custom CSS</summary>
-      <div className={styles.css}>
-        <textarea
-          className={styles.code}
-          aria-label="Custom CSS"
-          aria-describedby={hintId}
-          spellCheck={false}
-          autoCapitalize="none"
-          rows={8}
-          wrap="off"
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-        />
-        <p id={hintId} className={styles.hint}>
-          Added after the site’s own styles, so it wins without <code>!important</code>. Most changes are a variable, such as{' '}
-          <code>:root {'{'} --accent: teal {'}'}</code>.
-        </p>
-        {error}
-        <div className={styles.save}>
-          <Button size="sm" busy={busy === 'css'} disabled={busy !== null || draft === css} onClick={() => void onSave(draft)}>
-            Save
-          </Button>
+    <section className={info.section} aria-labelledby={headingId}>
+      <h3 id={headingId} className={info.caption}>
+        Custom CSS
+      </h3>
+      <div className={info.group}>
+        <div className={`${styles.row} ${styles.field}`}>
+          <textarea
+            className={styles.code}
+            aria-label="Custom CSS"
+            aria-describedby={hintId}
+            placeholder=":root { --accent: teal }"
+            spellCheck={false}
+            autoCapitalize="none"
+            rows={12}
+            wrap="off"
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+          />
+          <p id={hintId} className={styles.hint}>
+            Added after the site’s own styles, so it wins without <code>!important</code>. Most changes are a variable, such as{' '}
+            <code>--accent</code>, <code>--font-body</code> or <code>--measure</code>.
+          </p>
+          {error}
+          <div className={styles.save}>
+            {draft !== css && (
+              <Button size="sm" variant="ghost" disabled={busy !== null} onClick={() => setDraft(css)}>
+                Discard
+              </Button>
+            )}
+            <Button size="sm" busy={busy === 'css'} disabled={busy !== null || draft === css} onClick={() => void onSave(draft)}>
+              Save
+            </Button>
+          </div>
         </div>
       </div>
-    </details>
+    </section>
   )
 }

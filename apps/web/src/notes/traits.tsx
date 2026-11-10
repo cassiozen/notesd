@@ -17,9 +17,22 @@ export type TraitEntry = {
    * Its part of Space info, on or off: everything it changes, in place. None: Space info shows the server's
    * label and summary, and there is nothing to change.
    */
-  Section?: ComponentType<{ space: Space }>
+  Section?: ComponentType<{ space: Space; page: TraitPage }>
   /** Off, whether Space info offers it. Set only with a Section: that section is what turns it on. */
   canTurnOn: (space: Space) => boolean
+}
+
+/**
+ * A section's one page of its own (§7.8), shown in Space info's dialog in place of the rest. The section renders
+ * it through a portal into `slot`, so it stays mounted while closed and what's typed there outlasts Back.
+ */
+export type TraitPage = {
+  slot: HTMLElement | null
+  open: boolean
+  /** For the page's heading: it names the dialog while the page is open, and takes focus when it opens. */
+  headingId: string
+  show: () => void
+  back: () => void
 }
 
 // Line glyphs as in ui/icons.tsx: a 16-unit grid in currentColor.

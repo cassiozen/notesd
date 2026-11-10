@@ -242,3 +242,27 @@
     font-size: 26px;
   }
 }
+
+.page[hidden] {
+  display: none;
+}
+
+/* Back to the rest of Space info, named by the space: where it goes, not the page it leaves. */
+.back {
+  align-self: flex-start;
+  gap: 6px;
+  margin: -10px 0 -8px -10px;
+}
+
+.backChevron {
+  width: 7px;
+  height: 7px;
+  margin-left: 2px;
+  border-left: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+}
+
+.slot {
+  display: contents;
+}
