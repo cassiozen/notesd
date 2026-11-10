@@ -53,6 +53,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.ripple
 import androidx.compose.runtime.Composable
@@ -73,8 +74,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.input.TextFieldValue
@@ -180,7 +183,9 @@ fun EditorScreen(
     /** The agent command was picked, for the note in the given space. */
     onAgentCommand: (String) -> Unit = {},
     /** Said briefly over the note: why the agent command didn't run. */
-    notices: Flow<String> = emptyFlow()
+    notices: Flow<String> = emptyFlow(),
+    /** A run of the space's agent is going on the note, and its change isn't in yet. */
+    agentWriting: Boolean = false
 ) {
     val context = LocalContext.current
     val t = LocalTokens.current
@@ -242,6 +247,16 @@ fun EditorScreen(
     val toasts = remember { SnackbarHostState() }
     LaunchedEffect(notices) {
         notices.collect { toasts.showSnackbar(it, withDismissAction = true, duration = SnackbarDuration.Long) }
+    }
+    val agentName = "${here?.name ?: "Space"} agent"
+    LaunchedEffect(editor, agentWriting, agentName) { editor?.showAgent(if (agentWriting) agentName else null) }
+
+    /** The agent's change is the latest: Undo is offered until the user types, or it times out. */
+    var agentLanded by remember { mutableStateOf(false) }
+    LaunchedEffect(agentLanded) {
+        if (!agentLanded) return@LaunchedEffect
+        val r = toasts.showSnackbar("$agentName changed this note", "Undo", duration = SnackbarDuration.Indefinite)
+        if (r == SnackbarResult.ActionPerformed) editor?.undo()
     }
 
     LaunchedEffect(gone) { if (gone) onBack() }
@@ -544,6 +559,7 @@ fun EditorScreen(
                         onFindState = { findState = it }
                         onFindRequest = { openFind(FindMode.Find) }
                         onLinkTap = { linkTap = it }
+                        onAgentLanded = { agentLanded = it }
                         setOnFocusChangeListener { _, has -> focused = has }
                         editor = this
                         vm.attach(this)
@@ -566,10 +582,18 @@ fun EditorScreen(
                 update = { (it.getChildAt(0) as? NoteEditText)?.applyTokens(t) },
                 onRelease = {
                     editor = null
+                    agentLanded = false
                     vm.attach(null)
                 },
                 // Compose doesn't clip a native view: the edge stretch would draw the text over the top bar.
                 modifier = Modifier.weight(1f).fillMaxWidth().clipToBounds()
+            )
+            // The marker shows it; this tells screen readers.
+            Box(
+                Modifier.semantics {
+                    liveRegion = LiveRegionMode.Polite
+                    if (agentWriting) contentDescription = "Agent is writing…"
+                }
             )
             ToastHost(toasts, Modifier.align(Alignment.CenterHorizontally))
             if (keyboardBar != null) Spacer(Modifier.height(keyboardBar.height)) else toolbars()

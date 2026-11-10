@@ -92,6 +92,20 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     override val editorStyle: EditorStyle = EditorStyle.from(context)
     private val imageSpans = ImageSpans(this)
     private val normalizer = Normalizer(editorStyle, imageSpans)
+    private val presence = AgentPresence(this, editorStyle)
+
+    /** For tests: the agent's marker and highlight. */
+    internal val agentPresence: AgentPresence get() = presence
+
+    /** Shows "{label}" where a run on the note will likely write, while it does; null hides it. */
+    fun showAgent(label: String?) = presence.show(label)
+
+    /** Told whether the agent's last change is the latest one, so Undo takes back just it. */
+    var onAgentLanded: ((Boolean) -> Unit)?
+        get() = presence.onLanded
+        set(value) {
+            presence.onLanded = value
+        }
     private val undoStack = UndoStack()
 
     /** >0 while the editor changes its own text: filters and watchers stand aside. */
@@ -193,7 +207,9 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
 
     override fun onDraw(canvas: Canvas) {
         drawPills(canvas)
+        layout?.let { presence.drawUnder(canvas, it, ::drawPill) }
         super.onDraw(canvas)
+        layout?.let { presence.drawOver(canvas, it) }
     }
 
     /** Tag and find pills, under the text. */
@@ -253,6 +269,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         }
         undoStack.clear()
         clearPending()
+        presence.textReplaced()
         refreshFind()
         publishState()
     }
@@ -274,6 +291,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         val selStart = selectionStart
         val selEnd = selectionEnd
         val composing = composingStart(t) >= 0
+        val was = t.toString()
         val saved = t.filters
         val mapping: OutsideChange.Mapping
         guard++
@@ -293,8 +311,10 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
         // Still composing after the wait: the IME's idea of the text is out of date.
         if (composing) context.getSystemService(InputMethodManager::class.java)?.restartInput(this)
         if (byAgent) {
+            presence.landed(was)
             changed(byUser = false)
         } else {
+            presence.keep()
             refreshFind()
             publishState()
         }
@@ -481,6 +501,8 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
     }
 
     private fun changed(byUser: Boolean = true) {
+        if (byUser) presence.userChanged()
+        presence.keep()
         refreshFind()
         onChange?.invoke(byUser)
         publishState()
@@ -499,6 +521,7 @@ class NoteEditText @JvmOverloads constructor(context: Context, attrs: AttributeS
             t.replace(0, t.length, state.text)
             Selection.setSelection(t, state.selStart.coerceIn(0, t.length), state.selEnd.coerceIn(0, t.length))
             normalizer.normalize(t)
+            presence.textReplaced()
         } finally {
             t.filters = saved
             guard--

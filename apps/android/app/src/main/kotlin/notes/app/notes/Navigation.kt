@@ -423,6 +423,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                 // Email can be set up from another device; check before the share sheet needs it.
                                 LaunchedEffect(key.id) { graph.email.refresh() }
                                 LaunchedEffect(key.id) { graph.scheduler.noteOpened() }
+                                val writing by graph.agentLink.socket.writing.collectAsStateWithLifecycle()
                                 EditorScreen(
                                     vm = viewModel(key = key.id) {
                                         EditorViewModel(
@@ -469,7 +470,8 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     onAgentCommand = { space ->
                                         graph.agentLink.requestRun(AgentLink.MENU, key.id, space)
                                     },
-                                    notices = remember(key.id) { graph.agentLink.menuDropped(key.id) }
+                                    notices = remember(key.id) { graph.agentLink.menuDropped(key.id) },
+                                    agentWriting = key.id in writing
                                 )
                             }
                             entry<SettingsKey> {
