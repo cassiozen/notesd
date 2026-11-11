@@ -22,8 +22,8 @@ class SpaceTraitsTest {
     }
 
     @Test
-    fun `on its own the registry turns nothing on and has no sections`() {
-        assertTrue(SpaceTraits.entries.none { it.canTurnOn(space()) || it.section != null })
+    fun `on its own the registry turns nothing on and has no rows or pages`() {
+        assertTrue(SpaceTraits.entries.none { it.canTurnOn(space()) || it.row != null || it.page != null })
     }
 
     @Test
@@ -100,7 +100,9 @@ class SpaceTraitsTest {
 
     @Test
     fun `an off trait a space can't have isn't offered there`() {
-        val canShare = SpaceTraits.entries[0].with({}) { it.id != "default" }
+        val canShare = SpaceTraits.entries[0].with({ TraitLine("People", "Only you", on = false) }, { _, _ -> }) {
+            it.id != "default"
+        }
         assertEquals(listOf(TraitRow.Off(canShare)), traitRows(space().copy(id = "w"), listOf(canShare)))
         assertEquals(emptyList(), traitRows(space().copy(id = "default"), listOf(canShare)))
     }

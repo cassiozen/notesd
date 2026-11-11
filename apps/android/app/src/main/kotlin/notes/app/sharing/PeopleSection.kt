@@ -51,6 +51,7 @@ import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.liveRegion
@@ -66,9 +67,12 @@ import kotlinx.coroutines.launch
 import notes.app.AppGraph
 import notes.app.account.Account
 import notes.app.account.Avatars
+import notes.app.notes.TraitLine
+import notes.app.notes.names
 import notes.app.settings.Action
 import notes.app.settings.Card
 import notes.app.settings.Divider
+import notes.app.settings.TraitPage
 import notes.app.settings.initial
 import notes.app.settings.rememberPhoto
 import notes.app.ui.ButtonKind
@@ -106,12 +110,53 @@ private sealed interface People {
 }
 
 /**
- * Space info's section for sharing (§7.9): who's in the space, who's invited, and everyone else on the server to
- * invite with one tap (the first invitation shares it), all changed in place. The owner cancels invitations,
- * removes people, hands the space on and stops sharing; a member leaves.
+ * Sharing's row in Space info (§7.9): who's in the space ("You, Ana and Ben", with their faces) and how many are
+ * invited, or "Only you"; the trait's problem instead, when it has one.
  */
 @Composable
-fun PeopleSection(graph: AppGraph, space: Space) {
+fun peopleLine(graph: AppGraph, space: Space): TraitLine {
+    val me by graph.userId.collectAsStateWithLifecycle()
+    val members = space.shared?.members.orEmpty()
+    val invites = space.shared?.invites.orEmpty()
+    val others = members.filter { it.id != me }
+    val problem = space.traits.firstOrNull { it.key == "shared" }?.problem
+    val status = problem ?: listOfNotNull(
+        if (others.isEmpty()) "Only you" else names(listOf("You") + others.map { it.name }),
+        "${invites.size} invited".takeIf { invites.isNotEmpty() }
+    ).joinToString(" · ")
+    val faces = members.sortedBy { it.id != me }.take(FACES)
+    return TraitLine(
+        "People",
+        status,
+        on = others.isNotEmpty() || invites.isNotEmpty(),
+        problem = problem != null,
+        end = if (others.isEmpty()) null else ({ Faces(graph.avatars, faces) })
+    )
+}
+
+private const val FACES = 3
+
+/** The first few in the space, overlapping: who's there at a glance, before the page names them. */
+@Composable
+private fun Faces(avatars: Avatars, people: List<Member>) {
+    val t = LocalTokens.current
+    Row(Modifier.clearAndSetSemantics {}, horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
+        for (person in people) {
+            // Ringed in the page's colour, so the edges read where they overlap.
+            Box(Modifier.clip(CircleShape).background(t.bg).padding(2.dp)) {
+                Avatar(avatars, person, base = 22.dp, solid = true)
+            }
+        }
+    }
+}
+
+/**
+ * Sharing's page (§7.9): who's in the space, who's invited, and everyone else on the server to invite with one tap
+ * (the first invitation shares it), all changed in place. The owner cancels invitations, removes people, hands the
+ * space on and stops sharing; a member leaves.
+ */
+@Composable
+fun PeoplePage(graph: AppGraph, space: Space, back: () -> Unit) {
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
     val me by graph.userId.collectAsStateWithLifecycle()
@@ -175,117 +220,123 @@ fun PeopleSection(graph: AppGraph, space: Space) {
         act("invite:${person.id}", { invite(space, person.id) })
     }
 
-    Kicker("People", Modifier.padding(start = 8.dp, bottom = 8.dp).semantics { heading() })
-    Card {
-        Column(Modifier.animateContentSize(if (LocalReduceMotion.current) snap() else springPop())) {
-            if (shared) {
-                for ((i, m) in members.withIndex()) {
-                    if (i > 0) Divider()
-                    key("m${m.id}") {
-                        MemberRow(
+    TraitPage(
+        space.name,
+        space.icon,
+        "People",
+        back,
+        lead = if (shared) {
+            "Everyone here can read and edit every note in ${space.name}, and add their own."
+        } else {
+            "Invite people to read and edit every note in ${space.name}, and add their own."
+        }
+    ) {
+        Column {
+            Card {
+                Column(Modifier.animateContentSize(if (LocalReduceMotion.current) snap() else springPop())) {
+                    if (shared) {
+                        for ((i, m) in members.withIndex()) {
+                            if (i > 0) Divider()
+                            key("m${m.id}") {
+                                MemberRow(
+                                    graph.avatars,
+                                    space,
+                                    m,
+                                    role = listOfNotNull("Owner".takeIf { i == 0 }, "You".takeIf { m.id == me })
+                                        .joinToString(" · "),
+                                    manage = owner && m.id != me,
+                                    busy = busy != null,
+                                    confirm = confirm,
+                                    onAsk = {
+                                        error = null
+                                        confirm = it
+                                    },
+                                    onCancel = { confirm = null },
+                                    onConfirm = ::confirmed,
+                                    working = busy == "confirm"
+                                )
+                            }
+                        }
+                        if (owner) {
+                            for (invite in invites) {
+                                Divider()
+                                key("i${invite.id}") {
+                                    InvitedRow(
+                                        graph.avatars,
+                                        invite,
+                                        arriving = invite.userId == fresh,
+                                        cancelling = busy == "cancel:${invite.id}",
+                                        enabled = busy == null
+                                    ) { act("cancel:${invite.id}", { cancelInvite(space.id, invite.id) }) }
+                                }
+                            }
+                        }
+                    }
+                    if (owner) {
+                        Invite(
                             graph.avatars,
-                            space,
-                            m,
-                            role = listOfNotNull("Owner".takeIf { i == 0 }, "You".takeIf { m.id == me })
-                                .joinToString(" · "),
-                            manage = owner && m.id != me,
-                            busy = busy != null,
-                            confirm = confirm,
-                            onAsk = {
-                                error = null
-                                confirm = it
-                            },
-                            onCancel = { confirm = null },
-                            onConfirm = ::confirmed,
-                            working = busy == "confirm"
+                            people,
+                            candidates,
+                            shared,
+                            busy,
+                            onRetry = { attempt++ },
+                            onInvite = ::invite
                         )
                     }
                 }
-                if (owner) {
-                    for (invite in invites) {
-                        Divider()
-                        key("i${invite.id}") {
-                            InvitedRow(
-                                graph.avatars,
-                                invite,
-                                arriving = invite.userId == fresh,
-                                cancelling = busy == "cancel:${invite.id}",
-                                enabled = busy == null
-                            ) { act("cancel:${invite.id}", { cancelInvite(space.id, invite.id) }) }
-                        }
-                    }
-                }
-            } else {
+            }
+            error?.let {
                 Text(
-                    "Invite people to read and edit every note in ${space.name}, and add their own.",
-                    style = Type.body,
-                    color = t.ink2,
-                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 14.dp)
-                )
-            }
-            if (owner) {
-                Invite(
-                    graph.avatars,
-                    people,
-                    candidates,
-                    shared,
-                    busy,
-                    onRetry = { attempt++ },
-                    onInvite = ::invite
-                )
-            }
-        }
-    }
-    error?.let {
-        Text(
-            it,
-            style = Type.small,
-            color = t.danger,
-            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-            }
-        )
-    }
-    if (!owner || shared) {
-        Spacer(Modifier.height(12.dp))
-        Card {
-            Column(Modifier.animateContentSize()) {
-                if (owner) {
-                    Action("Stop sharing…", t.danger, enabled = busy == null && me != null) {
-                        error = null
-                        confirm = Confirm.StopSharing
+                    it,
+                    style = Type.small,
+                    color = t.danger,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp).semantics {
+                        liveRegion = LiveRegionMode.Polite
                     }
-                    InlineConfirm(
-                        visible = confirm == Confirm.StopSharing,
-                        title = "Stop sharing ${space.name}?",
-                        text = "Everyone else leaves it, and its notes leave their devices. " +
-                            "It stays here, yours alone.",
-                        action = "Stop sharing",
-                        busy = busy == "confirm",
-                        onConfirm = { confirmed(Confirm.StopSharing) },
-                        onCancel = { confirm = null },
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                    )
-                } else {
-                    Action("Leave space…", t.danger, enabled = busy == null && me != null) {
-                        error = null
-                        busy = "leave"
-                        scope.launch {
-                            unsynced = graph.sharing.unsynced(space.id)
-                            busy = null
-                            confirm = Confirm.Leave
+                )
+            }
+            if (!owner || shared) {
+                Spacer(Modifier.height(12.dp))
+                Card {
+                    Column(Modifier.animateContentSize()) {
+                        if (owner) {
+                            Action("Stop sharing…", t.danger, enabled = busy == null && me != null) {
+                                error = null
+                                confirm = Confirm.StopSharing
+                            }
+                            InlineConfirm(
+                                visible = confirm == Confirm.StopSharing,
+                                title = "Stop sharing ${space.name}?",
+                                text = "Everyone else leaves it, and its notes leave their devices. " +
+                                    "It stays here, yours alone.",
+                                action = "Stop sharing",
+                                busy = busy == "confirm",
+                                onConfirm = { confirmed(Confirm.StopSharing) },
+                                onCancel = { confirm = null },
+                                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                            )
+                        } else {
+                            Action("Leave space…", t.danger, enabled = busy == null && me != null) {
+                                error = null
+                                busy = "leave"
+                                scope.launch {
+                                    unsynced = graph.sharing.unsynced(space.id)
+                                    busy = null
+                                    confirm = Confirm.Leave
+                                }
+                            }
+                            InlineConfirm(
+                                visible = confirm == Confirm.Leave,
+                                title = "Leave ${space.name}?",
+                                text = leaveText(space.name, unsynced),
+                                action = "Leave",
+                                busy = busy == "confirm",
+                                onConfirm = { confirmed(Confirm.Leave) },
+                                onCancel = { confirm = null },
+                                modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                            )
                         }
                     }
-                    InlineConfirm(
-                        visible = confirm == Confirm.Leave,
-                        title = "Leave ${space.name}?",
-                        text = leaveText(space.name, unsynced),
-                        action = "Leave",
-                        busy = busy == "confirm",
-                        onConfirm = { confirmed(Confirm.Leave) },
-                        onCancel = { confirm = null },
-                        modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                    )
                 }
             }
         }
@@ -434,7 +485,13 @@ private fun Invite(
     onInvite: (Member) -> Unit
 ) {
     val t = LocalTokens.current
-    val pad = Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 10.dp, bottom = 14.dp)
+    // Alone in its card, it's the card's first line: the same inset all round.
+    val pad = Modifier.fillMaxWidth().padding(
+        start = 16.dp,
+        end = 16.dp,
+        top = if (shared) 10.dp else 14.dp,
+        bottom = 14.dp
+    )
     when (people) {
         People.Loading -> if (!shared) {
             Text("Loading people…", style = Type.small, color = t.ink3, modifier = pad)
@@ -543,7 +600,14 @@ private val AVATAR_GAP = 12.dp
 
 /** Someone's photo, or their initial, in a circle; [pending] (invited, not in yet) an outline instead of a fill. */
 @Composable
-private fun Avatar(avatars: Avatars, person: Member, base: Dp = AVATAR, pending: Boolean = false) {
+private fun Avatar(
+    avatars: Avatars,
+    person: Member,
+    base: Dp = AVATAR,
+    pending: Boolean = false,
+    /** Opaque, for where avatars overlap: the one under shouldn't show through. */
+    solid: Boolean = false
+) {
     val t = LocalTokens.current
     val photo = rememberPhoto(avatars, person.id, person.avatar)
     // Grows a little with large text, so it doesn't shrink beside the name; not fully, or it'd crowd the row.
@@ -566,7 +630,7 @@ private fun Avatar(avatars: Avatars, person: Member, base: Dp = AVATAR, pending:
                         )
                     }
                 } else {
-                    Modifier.background(t.hover)
+                    Modifier.then(if (solid) Modifier.background(t.bg) else Modifier).background(t.hover)
                 }
             ),
         contentAlignment = Alignment.Center

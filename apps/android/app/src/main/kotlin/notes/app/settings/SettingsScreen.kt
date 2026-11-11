@@ -6,11 +6,13 @@ import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -301,6 +303,8 @@ internal fun SettingsFrame(
     title: String?,
     /** Under the back link, outside the scroll: a question it asks before going back. */
     top: @Composable () -> Unit = {},
+    /** At the end of the back link's bar: the page's own Save, say, in reach without scrolling. */
+    actions: @Composable RowScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit
 ) {
     val t = LocalTokens.current
@@ -310,6 +314,13 @@ internal fun SettingsFrame(
             verticalAlignment = Alignment.CenterVertically
         ) {
             BackLink(backLabel, onBack)
+            Spacer(Modifier.weight(1f))
+            Row(
+                Modifier.padding(end = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                content = actions
+            )
         }
         top()
         Column(

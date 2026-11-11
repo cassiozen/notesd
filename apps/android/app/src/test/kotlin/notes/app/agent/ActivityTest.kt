@@ -129,8 +129,10 @@ class ActivityTest {
         compose.onNodeWithText("Spaces").performClick()
         compose.waitUntilExactlyOneExists(hasText("Notes") and hasClickAction())
         compose.onNode(hasText("Notes") and hasClickAction()).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Activity…") and hasClickAction(), 5_000)
-        button("Activity…").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Agent") and hasClickAction(), 5_000)
+        button("Agent").performClick()
+        compose.waitUntilExactlyOneExists(hasText("Activity") and hasClickAction(), 5_000)
+        button("Activity").performClick()
         compose.waitUntilExactlyOneExists(hasText("Space") and hasClickAction())
     }
 

@@ -54,8 +54,11 @@ class AgentSectionTest {
         notesd.close()
     }
 
-    /** Signed in and synced, on the default space's Space info, its agent section shown. */
-    private fun open(until: String = "Agent") {
+    /**
+     * Signed in and synced, on the default space's Space info until [until] shows; then, with [page], its Agent row
+     * pressed, on the agent's page.
+     */
+    private fun open(until: String = "Agent", page: Boolean = true) {
         notesd.start()
         notesd.signIn(graph)
         graph.setOnboardingDismissed(true)
@@ -68,7 +71,14 @@ class AgentSectionTest {
         compose.waitUntilExactlyOneExists(hasText("Notes") and hasClickAction())
         compose.onNode(hasText("Notes") and hasClickAction()).performClick()
         compose.waitUntilAtLeastOneExists(hasText(until), 5_000)
+        if (page) {
+            compose.onNode(hasText("Agent") and hasClickAction()).performScrollTo().performClick()
+            compose.waitUntilExactlyOneExists(hasContentDescription("Back") and hasText("Notes"), 5_000)
+        }
     }
+
+    /** One of the top bar's buttons: there without scrolling. */
+    private fun top(label: String) = compose.onNode(hasText(label) and hasClickAction())
 
     private fun button(label: String) = compose.onNode(hasText(label) and hasClickAction()).performScrollTo()
 
@@ -87,7 +97,7 @@ class AgentSectionTest {
     @Test
     fun `it's turned on with a rule, which can't be left empty`() {
         open()
-        compose.onNodeWithText("Turn it on", substring = true).assertExists()
+        compose.onNodeWithText("Acts on this space's notes", substring = true).assertExists()
         toggle().performClick()
         compose.waitUntilExactlyOneExists(hasText("No rules yet. Without one, the agent does nothing."))
         compose.onNodeWithText("Notes go to ai.example.com", substring = true).assertExists()
@@ -96,12 +106,12 @@ class AgentSectionTest {
         compose.waitUntilExactlyOneExists(hasText("While you write"))
         button("When you finish a new note").performClick()
         compose.waitUntilExactlyOneExists(hasText("When you close it, or leave it for 2 minutes."))
-        button("Save").performClick()
+        top("Save").performClick()
         compose.waitUntilExactlyOneExists(hasText("Say what the agent does then, or remove the rule."))
         assertEquals(emptyList(), notesd.agentSaves)
 
         button("Title and tags").performClick()
-        button("Save").performClick()
+        top("Save").performClick()
         compose.waitUntilExactlyOneExists(hasText("Saved"))
         assertEquals(
             listOf(
@@ -127,7 +137,7 @@ class AgentSectionTest {
         compose.onNodeWithText("Off").assertExists()
         assertEquals(emptyList(), notesd.agentSaves)
 
-        button("Cancel").performClick()
+        top("Cancel").performClick()
         compose.waitUntilExactlyOneExists(hasText("Start from an example"))
     }
 
@@ -150,7 +160,7 @@ class AgentSectionTest {
         compose.onNode(hasText("Groceries") and hasClickAction()).performScrollTo().performClick()
         described("Stop reading Groceries").assertExists()
 
-        button("Save").performClick()
+        top("Save").performClick()
         compose.waitUntilExactlyOneExists(hasText("Saved"))
         assertEquals(
             """{"enabled":true,"prompt":"Keep it tidy.","menuLabel":"Spelling",""" +
@@ -182,7 +192,7 @@ class AgentSectionTest {
     @Test
     fun `it isn't offered until AI is set up`() {
         notesd.aiConfigured = false
-        open(until = "Delete space…")
+        open(until = "Delete space…", page = false)
         compose.waitForIdle()
         compose.onNodeWithText("Agent").assertDoesNotExist()
     }
@@ -190,10 +200,11 @@ class AgentSectionTest {
     @Test
     fun `when it couldn't load, it says so in any space, and Try again brings it`() {
         notesd.failing += "GET /api/v1/agent/spaces"
+        // Its row says so, and still opens the page, where Try again is.
         open(until = "Couldn't load the agent.")
         synchronized(notesd) { notesd.failing.clear() }
         button("Try again").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Turn it on", substring = true), 5_000)
+        compose.waitUntilExactlyOneExists(hasText("Acts on this space's notes", substring = true), 5_000)
     }
 
     @Test
@@ -243,11 +254,11 @@ class AgentSectionTest {
         compose.waitUntilExactlyOneExists(hasText("When you finish editing a note"))
         field("What this space is for").performTextInput(" Briefly.")
         notesd.refuseAgentSave = listOf("400", "invalid_request", "triggers.editDone", "the rule is too long")
-        button("Save").performClick()
+        top("Save").performClick()
         compose.waitUntilExactlyOneExists(hasText("The rule is too long."))
 
         notesd.refuseAgentSave = listOf("404", "not_found", "", "no such space")
-        button("Save").performClick()
+        top("Save").performClick()
         compose.waitUntilExactlyOneExists(hasText("This space hasn't reached the server yet", substring = true))
         assertTrue(notesd.agents.getValue(Spaces.DEFAULT).prompt == "Keep it tidy.")
     }

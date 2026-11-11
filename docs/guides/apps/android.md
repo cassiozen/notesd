@@ -71,8 +71,8 @@ sign in again. Nothing is lost.
 - To email a note, share it and choose **Email** ([setup](../using/email.md)).
 - A space's agent works in the note you have open as it does on the web ([Agents](../using/agents.md)):
   its marker where it will write, its change highlighted with **Undo** at the bottom of the note,
-  and cards between paragraphs. The space's command is in the note's **⋯** menu, and **Activity…**
-  is beside **Agent** in Space info.
+  and cards between paragraphs. The space's command is in the note's **⋯** menu, and **Activity**
+  is at the top of the agent's page in Space info.
 
 ## Using notesd
 

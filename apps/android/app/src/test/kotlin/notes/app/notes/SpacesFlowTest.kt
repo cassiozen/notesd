@@ -181,9 +181,8 @@ class SpacesFlowTest {
         launch("Groceries")
         openSpaceInfoFromSettings("Work")
         compose.onNodeWithText("0 notes").assertExists()
-        // No traits on, but a space of your own can be shared: by inviting someone, right there.
-        compose.onNodeWithText("People").assertExists()
-        compose.onNodeWithText("Invite people to read and edit every note in Work, and add their own.").assertExists()
+        // No traits on, but a space of your own can be shared: its People row, to invite from.
+        compose.onNode(hasText("People") and hasText("Only you") and hasClickAction()).assertExists()
         compose.onNodeWithText("Delete space…").performScrollTo().performClick()
         compose.onNode(hasText("Delete") and hasClickAction()).performScrollTo().performClick()
         // Gone: back to the list of spaces.
@@ -219,13 +218,13 @@ class SpacesFlowTest {
         compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared, Archived"))
         compose.onNodeWithContentDescription("Space info: Shared, Archived").performClick()
         compose.waitUntilExactlyOneExists(hasText("Delete space…"))
-        // Sharing has a section of its own; a trait without one is a row with the server's words.
-        compose.onNodeWithText("People").assertExists()
+        // Sharing's row opens its page; a trait this app doesn't know is a row with the server's words, and none.
+        compose.onNode(hasText("People") and hasClickAction()).assertExists()
         compose.onNodeWithText("Archived").assertExists()
-        compose.onNodeWithText("Read only").assertExists()
-        compose.onNodeWithText("Update the app to change this.").assertExists()
-        // Publishing can't be turned on from this app yet, so it's left out while off.
-        compose.onNodeWithText("Published").assertDoesNotExist()
+        compose.onNodeWithText("Read only · Update the app to change this.").assertExists()
+        compose.onNode(hasText("Archived") and hasClickAction()).assertDoesNotExist()
+        // The default space can't be published, so it's left out while off.
+        compose.onNodeWithText("Website").assertDoesNotExist()
     }
 
     @Test

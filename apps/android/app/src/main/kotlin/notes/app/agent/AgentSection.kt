@@ -57,10 +57,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
+import notes.app.notes.TraitLine
 import notes.app.settings.Action
 import notes.app.settings.Card
 import notes.app.settings.Divider
 import notes.app.settings.Info
+import notes.app.settings.NavAction
+import notes.app.settings.TraitPage
 import notes.app.settings.Unsaved
 import notes.app.settings.refusal
 import notes.app.settings.sentence
@@ -84,11 +87,48 @@ private val FIELDS = setOf("prompt", "menuLabel", "referenceNotes")
 private data class FocusOn(val key: String, val moment: Boolean, val at: Long = System.nanoTime())
 
 /**
- * A space's agent: on or off, what the space is for, its rules, and the notes it always reads. The agent
- * trait's part of Space info (§7.8, §7.11), on or off: changed in place, saved with its own Save.
+ * The agent's row in Space info (§7.11): "Off", or on, off or paused with its rule count; the trait's problem
+ * instead, when it has one; or that it couldn't load.
  */
 @Composable
-fun AgentSection(graph: AppGraph, space: Space, onActivity: (String) -> Unit = {}) {
+fun agentLine(graph: AppGraph, space: Space): TraitLine {
+    val configs by graph.agents.cache.value.collectAsStateWithLifecycle()
+    val configsFailed by graph.agents.cache.failed.collectAsStateWithLifecycle()
+    val ai by graph.ai.cache.value.collectAsStateWithLifecycle()
+    val aiFailed by graph.ai.cache.failed.collectAsStateWithLifecycle()
+    val saved = configs?.get(space.id)
+    val problem = space.traits.firstOrNull { it.key == "agent" }?.problem
+    val provider = ai
+    val status = when {
+        configs == null || provider == null -> if (configsFailed || aiFailed) "Couldn't load the agent." else "Loading…"
+
+        problem != null -> problem
+
+        saved == null -> "Off"
+
+        else -> {
+            val state = if (!saved.enabled) {
+                "Off"
+            } else if (provider.configured) {
+                "On"
+            } else {
+                "Paused"
+            }
+            val n = rulesOf(draftOf(saved)).size
+            "$state · ${if (n == 0) "No rules yet" else "$n ${if (n == 1) "rule" else "rules"}"}"
+        }
+    }
+    val failed = (configs == null || provider == null) && (configsFailed || aiFailed)
+    return TraitLine("Agent", status, on = saved?.enabled == true, problem = failed || problem != null)
+}
+
+/**
+ * A space's agent, on its page (§7.8, §7.11): Activity, once it's set up; on or off; what the space is for, its
+ * rules, and the notes it always reads, saved with Save in the top bar. Going back with changes not saved asks
+ * first.
+ */
+@Composable
+fun AgentPage(graph: AppGraph, space: Space, back: () -> Unit, onActivity: (String) -> Unit = {}) {
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
     val configs by graph.agents.cache.value.collectAsStateWithLifecycle()
@@ -103,7 +143,6 @@ fun AgentSection(graph: AppGraph, space: Space, onActivity: (String) -> Unit = {
     var savedNote by remember { mutableStateOf(false) }
     val draft = edited ?: draftOf(saved)
     val dirty = edited.let { it != null && !sameAgent(it, draftOf(saved)) }
-    Unsaved("the agent", dirty)
 
     fun change(next: AgentDraft) {
         edited = next
@@ -157,69 +196,72 @@ fun AgentSection(graph: AppGraph, space: Space, onActivity: (String) -> Unit = {
         formError = null
     }
 
-    Column(Modifier.animateContentSize()) {
-        Row(
-            Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(start = 8.dp, bottom = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Kicker("Agent", Modifier.weight(1f).semantics { heading() })
+    TraitPage(
+        space.name,
+        space.icon,
+        "Agent",
+        back,
+        actions = {
             if (dirty) {
                 NotesButton("Cancel", ::cancel, kind = ButtonKind.Chip, enabled = !busy, small = true)
                 NotesButton("Save", ::save, busy = busy, small = true)
-            } else {
-                if (savedNote) {
-                    Text(
-                        "Saved",
-                        style = Type.small,
-                        color = t.ink3,
-                        modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                }
-                if (saved != null) {
-                    NotesButton("Activity…", { onActivity(space.id) }, kind = ButtonKind.Ghost, small = true)
-                }
+            } else if (savedNote) {
+                Text(
+                    "Saved",
+                    style = Type.small,
+                    color = t.ink3,
+                    modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite }
+                )
             }
         }
-        val provider = ai
-        when {
-            configs == null || provider == null -> Card {
-                if (configsFailed || aiFailed) {
-                    Info("Couldn't load the agent.", "Check the connection to the server.")
-                    Divider()
-                    Action("Try again", t.link, enabled = true) {
-                        scope.launch { graph.ai.cache.retryIfFailed() }
-                        scope.launch { graph.agents.cache.retryIfFailed() }
-                    }
-                } else {
-                    Text("Loading…", style = Type.rowMeta, color = t.ink3, modifier = Modifier.padding(16.dp))
-                }
+    ) {
+        // Inside the page's frame, which is what asks about it on Back.
+        Unsaved("the agent", dirty)
+        Column(Modifier.animateContentSize()) {
+            if (saved != null) {
+                Card { NavAction("Activity", enabled = !dirty) { onActivity(space.id) } }
+                Spacer(Modifier.height(24.dp))
             }
-
-            else -> {
-                OnOff(draft, providerHost(provider.baseUrl).takeIf { provider.configured }) {
-                    change(draft.copy(enabled = it))
-                }
-                formError?.let {
-                    Text(
-                        it,
-                        style = Type.small,
-                        color = t.errInk,
-                        modifier = Modifier.padding(8.dp).semantics { liveRegion = LiveRegionMode.Polite }
-                    )
-                }
-                // Never set up, it's one line until turned on; one turned off keeps its rules in view, to change.
-                if (draft.enabled || saved != null) {
-                    Spacer(Modifier.height(20.dp))
-                    if (isBlank(draft)) {
-                        Examples { change(withExample(draft, it)) }
-                        Spacer(Modifier.height(20.dp))
+            val provider = ai
+            when {
+                configs == null || provider == null -> Card {
+                    if (configsFailed || aiFailed) {
+                        Info("Couldn't load the agent.", "Check the connection to the server.")
+                        Divider()
+                        Action("Try again", t.link, enabled = true) {
+                            scope.launch { graph.ai.cache.retryIfFailed() }
+                            scope.launch { graph.agents.cache.retryIfFailed() }
+                        }
+                    } else {
+                        Text("Loading…", style = Type.rowMeta, color = t.ink3, modifier = Modifier.padding(16.dp))
                     }
-                    Purpose(draft, errors["prompt"], ::change)
-                    Spacer(Modifier.height(24.dp))
-                    Rules(draft, errors, ::change)
-                    Spacer(Modifier.height(24.dp))
-                    References(graph, space, draft, errors["referenceNotes"], ::change)
+                }
+
+                else -> {
+                    OnOff(draft, providerHost(provider.baseUrl).takeIf { provider.configured }) {
+                        change(draft.copy(enabled = it))
+                    }
+                    formError?.let {
+                        Text(
+                            it,
+                            style = Type.small,
+                            color = t.errInk,
+                            modifier = Modifier.padding(8.dp).semantics { liveRegion = LiveRegionMode.Polite }
+                        )
+                    }
+                    // Never set up, it's one line until turned on; one turned off keeps its rules in view, to change.
+                    if (draft.enabled || saved != null) {
+                        Spacer(Modifier.height(20.dp))
+                        if (isBlank(draft)) {
+                            Examples { change(withExample(draft, it)) }
+                            Spacer(Modifier.height(20.dp))
+                        }
+                        Purpose(draft, errors["prompt"], ::change)
+                        Spacer(Modifier.height(24.dp))
+                        Rules(draft, errors, ::change)
+                        Spacer(Modifier.height(24.dp))
+                        References(graph, space, draft, errors["referenceNotes"], ::change)
+                    }
                 }
             }
         }
@@ -242,14 +284,11 @@ private fun OnOff(draft: AgentDraft, provider: String?, onChange: (Boolean) -> U
             Column(Modifier.weight(1f)) {
                 Text(if (draft.enabled) "On" else "Off", style = Type.rowTitle, color = t.ink)
                 Text(
+                    // A line: what it does is the rules' to say, and Activity's, above, what it did.
                     when {
-                        provider == null -> "Paused: AI isn't set up on this server. Everything here is kept."
-
-                        draft.enabled ->
-                            "It acts on this space's notes as your rules say. Notes go to $provider; locked notes " +
-                                "never do. Everything it does is in Activity, and can be undone."
-
-                        else -> "Turn it on to have it act on this space's notes as your rules say."
+                        provider == null -> "Paused: AI isn't set up on this server."
+                        draft.enabled -> "Notes go to $provider; locked notes never do."
+                        else -> "Acts on this space's notes as your rules say."
                     },
                     style = Type.rowMeta,
                     color = t.ink2
