@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -123,7 +124,8 @@ class AgentSocket(
      * Reconnect backoff; how long a socket no longer wanted waits for the open notes to say they closed; how long
      * a run asked for while connecting is held. How soon a result done ahead the server threw away is asked for
      * again (what made it stale often changes again within seconds), and how long before it expires one is no
-     * longer used, so the server still has it when the new note asks for it.
+     * longer used, so the server still has it when the new note asks for it. And how long an ask can go
+     * unanswered before it's made again, doubling: the server says nothing of a run done ahead that failed.
      */
     data class Timing(
         val retryBaseMs: Long = 1_000,
@@ -131,7 +133,9 @@ class AgentSocket(
         val closeWaitMs: Long = 5_000,
         val heldMs: Long = 10_000,
         val aheadAgainMs: Long = 2_000,
-        val aheadMarginMs: Long = 5_000
+        val aheadMarginMs: Long = 5_000,
+        val aheadUnansweredMs: Long = 60_000,
+        val aheadUnansweredMaxMs: Long = 10 * 60_000
     )
 
     private val lock = Any()
@@ -162,6 +166,11 @@ class AgentSocket(
     private var aheadSpace: String? = null
     private val prepared = HashMap<String, Pair<Prepared, Job>>()
     private var askAgain: Job? = null
+    private var unanswered: Job? = null
+    private var unansweredWait = timing.aheadUnansweredMs
+
+    /** Each space's last result too near its end to use, which the server may hand back until it lets it go. */
+    private val retired = HashMap<String, String>()
 
     private val _missed = MutableSharedFlow<String>(extraBufferCapacity = 16)
 
@@ -281,32 +290,62 @@ class AgentSocket(
     private fun askAhead() {
         askAgain?.cancel()
         val space = aheadSpace ?: return
-        if (space in prepared) return
+        if (space in prepared || !_connected.value) return
         send(
             buildJsonObject {
                 put("type", "prepare")
                 put("spaceId", space)
             }
         )
+        // Asked again while it runs, the server carries on with the same run.
+        unanswered?.cancel()
+        val wait = unansweredWait
+        unansweredWait = min(wait * 2, timing.aheadUnansweredMaxMs)
+        unanswered = later(wait) { askAhead() }
     }
 
     private fun heardPrepared(p: Prepared) {
+        unanswered?.cancel()
+        unansweredWait = timing.aheadUnansweredMs
         prepared.remove(p.spaceId)?.second?.cancel()
-        val expires = scope.launch {
-            delay((p.expiresAt - timing.aheadMarginMs - now()).coerceAtLeast(0))
-            synchronized(lock) {
-                if (prepared[p.spaceId]?.first?.id != p.id) return@launch
-                prepared.remove(p.spaceId)
-                askAhead()
-            }
+        // Too near its end to use: the server, which hands back one it still holds, is asked once it let it go.
+        val usable = p.expiresAt - timing.aheadMarginMs - now()
+        if (p.id == retired[p.spaceId] || usable <= 0) {
+            retire(p)
+            return
+        }
+        val expires = later(usable) {
+            if (prepared[p.spaceId]?.first?.id != p.id) return@later
+            prepared.remove(p.spaceId)
+            retire(p)
         }
         prepared[p.spaceId] = p to expires
     }
 
+    /**
+     * Asks for the next once the server has let [p] go, at its expiresAt by the server's clock; at least
+     * [Timing.aheadAgainMs] later, so a clock behind the server's can't have it ask, and be handed [p] back, over
+     * and over.
+     */
+    private fun retire(p: Prepared) {
+        retired[p.spaceId] = p.id
+        askAgain?.cancel()
+        askAgain = later((p.expiresAt - now()).coerceAtLeast(0) + timing.aheadAgainMs) { askAhead() }
+    }
+
+    /** Runs [block] under the lock after [ms], unless cancelled first. */
+    private fun later(ms: Long, block: () -> Unit): Job = scope.launch {
+        delay(ms)
+        synchronized(lock) { if (isActive) block() }
+    }
+
     private fun dropPrepared() {
         askAgain?.cancel()
+        unanswered?.cancel()
+        unansweredWait = timing.aheadUnansweredMs
         for ((_, expires) in prepared.values) expires.cancel()
         prepared.clear()
+        retired.clear()
     }
 
     /** Doesn't connect while offline; back online, connects at once. */
@@ -551,15 +590,7 @@ class AgentSocket(
                 held?.second?.cancel()
                 prepared.remove(space)
                 askAgain?.cancel()
-                askAgain = scope.launch {
-                    delay(timing.aheadAgainMs)
-                    val me = coroutineContext.job
-                    synchronized(lock) {
-                        if (askAgain !== me) return@launch
-                        askAgain = null
-                        askAhead()
-                    }
-                }
+                askAgain = later(timing.aheadAgainMs) { askAhead() }
             }
 
             type == "prepared.missed" -> {

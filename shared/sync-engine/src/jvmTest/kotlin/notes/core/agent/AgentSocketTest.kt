@@ -559,19 +559,49 @@ class AgentSocketTest {
     }
 
     @Test
-    fun `a result isn't used near its expiry, and is asked for again then`() = runTest {
+    fun `a result isn't used near its expiry, and the next is asked for once the server let it go`() = runTest {
         val s = socket()
         s.wantAhead("work")
         s.start()
         runCurrent()
         val ws = sockets.single()
         ws.hello()
-        ws.hear(prepared("run_1"))
-        advanceTimeBy(30 * 60_000L - 5_001)
+        val first = prepared("run_1")
+        ws.hear(first)
+        advanceTimeBy(30 * 60_000L - 5_000)
+        runCurrent()
+        assertEquals(null, s.takePrepared("work"))
+        assertEquals(1, ws.prepares())
+        // The server still holds it, and hands it back: kept out, and nothing asked meanwhile.
+        ws.hear(first)
+        assertEquals(null, s.takePrepared("work"))
+        advanceTimeBy(5_000 + 2_000 - 1)
         assertEquals(1, ws.prepares())
         advanceTimeBy(2)
-        assertEquals(null, s.takePrepared("work"))
         assertEquals(2, ws.prepares())
+    }
+
+    @Test
+    fun `an ask the server never answers is made again, waiting longer each time, until a result comes`() = runTest {
+        val s = socket()
+        s.wantAhead("work")
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        assertEquals(1, ws.prepares())
+        advanceTimeBy(60_000 - 1)
+        assertEquals(1, ws.prepares())
+        advanceTimeBy(2)
+        assertEquals(2, ws.prepares())
+        advanceTimeBy(120_000 - 2)
+        assertEquals(2, ws.prepares())
+        advanceTimeBy(2)
+        assertEquals(3, ws.prepares())
+
+        ws.hear(prepared("run_1"))
+        advanceTimeBy(10 * 60_000L)
+        assertEquals(3, ws.prepares())
     }
 
     @Test
