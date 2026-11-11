@@ -11,4 +11,14 @@ extension XCUIElement {
             usleep(100_000)
         }
     }
+
+    /// For what slides in: it exists before it's in place, and a tap then lands nowhere.
+    func hittable(within timeout: TimeInterval) -> Bool {
+        let deadline = Date().addingTimeInterval(timeout)
+        while true {
+            if exists && isHittable { return true }
+            if Date() >= deadline { return false }
+            usleep(100_000)
+        }
+    }
 }

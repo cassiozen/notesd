@@ -792,7 +792,9 @@ final class FlowTests: XCTestCase {
         }
         XCTAssertTrue(search.exists, "⌘F")
         XCTAssertEqual(search.value as? String, "apples")
-        app.buttons["find.doneButton"].tap()
+        let done = app.buttons["find.doneButton"]
+        XCTAssertTrue(done.hittable(within: 5), "the find bar in place")
+        done.tap()
         XCTAssertTrue(waitForFocus(editor), "back to typing")
 
         tap(app.buttons["More"], until: app.buttons["Find and Replace"])
