@@ -1,0 +1,22 @@
+apps/ios/NotesUITests/FlowTests.swift
+  s_45dcdef56c175e::t_ddb75e8193c330 207-208
+  s_45dcdef56c175e::t_a4544adbc12aad 206,209
+apps/android/app/src/test/kotlin/notes/app/agent/ActivityTest.kt
+  s_45dcdef56c175e::t_3118d904663cfc 193-194
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0c352bcda3c9f32ffd0953a428a2d6d6baea9dab",
+  "prompts": {},
+  "sessions": {
+    "s_45dcdef56c175e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "f9f49f43-36fd-4f0a-acfa-49c784d514b0",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
