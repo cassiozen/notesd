@@ -1,0 +1,24 @@
+apps/android/app/src/test/kotlin/notes/app/agent/AgentCardsTest.kt
+  s_05e8a684575b9e::t_c9d187da17c176 88,91,104-110,140,169-170
+apps/android/app/src/test/kotlin/notes/app/agent/ActivityTest.kt
+  s_05e8a684575b9e::t_e4d1d3af1ed20f 151-152
+  s_05e8a684575b9e::t_ad23b31f9e3122 105-112,115-118
+  s_05e8a684575b9e::t_1e9fe04998bdcd 3
+  s_05e8a684575b9e::t_46303c2447e281 119
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "58b86a64750e513d17f44e21938676a7589c1ce8",
+  "prompts": {},
+  "sessions": {
+    "s_05e8a684575b9e": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "214e25a8-8b84-4f86-8d42-567ed45418db",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
