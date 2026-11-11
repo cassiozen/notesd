@@ -12,7 +12,31 @@ permissions:
   packages: write # the Docker image on ghcr.io
 
 jobs:
+  # CI already ran on the tagged commit when it was pushed to main: require it passed instead of re-running the checks.
+  # Fails rather than waits when CI is still running: re-run the release once it's green.
+  ci:
+    # Run by hand, nothing is published: a Mac build dry run shouldn't need green CI.
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+    steps:
+      - env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          passed=$(gh run list --workflow ci.yml --branch main --event push --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          if [ "$passed" = 0 ]; then
+            echo "::error::CI hasn't passed on $GITHUB_SHA on main: wait for it or fix it, then re-run this workflow"
+            exit 1
+          fi
+
   macos:
+    # Not before CI passed: signing and notarizing a commit that won't be released is 10× minutes for nothing.
+    needs: ci
+    # The gate is skipped when run by hand.
+    if: ${{ !failure() && !cancelled() }}
     runs-on: macos-26
     timeout-minutes: 60
     # Builds with the signing secrets in reach: no write access to the repository or its packages.
@@ -87,10 +111,6 @@ jobs:
           # Gradle's dependencies, plugins and wrapper; without them setup can take 20 min on a slow day.
           # basic: the MIT actions/cache wrapper; the default provider is a paid preview for private repos.
           cache-provider: basic
-
-      - name: Check
-        # One task at a time: all at once on one runner, timing-sensitive tests starve (CI splits them into jobs).
-        run: mise run --jobs 1 check && mise run test:android
 
       - name: Server binaries
         run: mise run release
