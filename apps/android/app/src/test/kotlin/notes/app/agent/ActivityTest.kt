@@ -190,7 +190,8 @@ class ActivityTest {
 
         button("Undo").performClick()
         compose.waitUntilExactlyOneExists(hasText("Undone 1 of 2."))
-        compose.onNodeWithText("Partly undone").assertExists()
+        // The message shows before the run is fetched again with its new status.
+        compose.waitUntilExactlyOneExists(hasText("Partly undone"))
         compose.onNode(hasText("Undo") and hasClickAction()).assertDoesNotExist()
     }
 
