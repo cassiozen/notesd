@@ -679,7 +679,7 @@
   color: var(--ink);
 }
 
-.agentCardButton:focus-visible {
+:global(:where(:root[data-keyboard])) .agentCardButton:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 1px;
 }

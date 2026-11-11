@@ -48,7 +48,13 @@ code {
 
 /* Gated on data-keyboard (ui/modality.ts), not :focus-visible alone, which also
    matches script-moved focus after a click. Non-text-input focus styles need the same gate;
-   :where() keeps specificity as if ungated. */
+   :where() keeps specificity as if ungated.
+   The reset drops the UA's own ring (WebKit: outline auto, system blue), which would
+   otherwise still show on those script-moved focuses; same specificity, so the gated rule wins. */
+:focus-visible {
+  outline: none;
+}
+
 :where(:root[data-keyboard]) :focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;

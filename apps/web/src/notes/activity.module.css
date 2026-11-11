@@ -116,7 +116,7 @@
   background: var(--hover);
 }
 
-.run:focus-visible {
+:global(:where(:root[data-keyboard])) .run:focus-visible {
   outline: 2px solid var(--accent-deep);
   outline-offset: -2px;
 }
