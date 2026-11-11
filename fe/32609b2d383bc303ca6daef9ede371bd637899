@@ -1,0 +1,57 @@
+server/internal/notes/move.go
+  s_70f1f8e1b11029::t_f5e84ed62adda3 156
+  s_70f1f8e1b11029::t_b6dbdd7504d215 197-198,207
+server/internal/agent/run.go
+  s_70f1f8e1b11029::t_d5725623d08243 369-370,384-386,414
+docs/contributing/agent-clients.md
+  s_70f1f8e1b11029::t_3e1e2a1535ae4d 63,238-240,245-247
+server/internal/agent/config.go
+  s_70f1f8e1b11029::t_1bcf629746e3db 180,185-188,196,219-220
+  s_70f1f8e1b11029::t_f5e84ed62adda3 236-239
+  s_70f1f8e1b11029::t_17abcd9a9a62c1 229
+server/internal/notes/notes.go
+  s_70f1f8e1b11029::t_b6dbdd7504d215 301,388-398,865,894,899,916-918
+server/internal/agent/prepare_test.go
+  s_70f1f8e1b11029::t_ebcd618704a232 287,330,332-341
+  s_70f1f8e1b11029::t_d5725623d08243 242,248-286,288
+  s_70f1f8e1b11029::t_a514bcd82de587 289
+apps/web/src/agent/socket-ahead.test.ts
+  s_70f1f8e1b11029::t_74da2be715f202 1-79
+docs/contributing/architecture.md
+  s_70f1f8e1b11029::t_69af3a4edbf256 656-660
+apps/web/src/agent/socket.ts
+  s_70f1f8e1b11029::t_afd93e06b99419 91-92,208-218,222-231,236
+server/internal/agent/export_test.go
+  s_70f1f8e1b11029::t_d5725623d08243 48
+server/internal/agent/prepare.go
+  s_70f1f8e1b11029::t_f5e84ed62adda3 81-82
+  s_70f1f8e1b11029::t_1bcf629746e3db 35-40,215-216,317,372,374
+  s_70f1f8e1b11029::t_d5725623d08243 24
+server/internal/agent/triggers.go
+  s_70f1f8e1b11029::t_f5e84ed62adda3 66-70
+server/internal/userdata/userdata.go
+  s_70f1f8e1b11029::t_f5e84ed62adda3 43
+server/internal/agent/runner.go
+  s_70f1f8e1b11029::t_1bcf629746e3db 77
+docs/reference/api.md
+  s_70f1f8e1b11029::t_8a519e8b8cdeaf 590-591
+  s_70f1f8e1b11029::t_3e1e2a1535ae4d 593-596
+docs/guides/using/agents.md
+  s_70f1f8e1b11029::t_3e1e2a1535ae4d 66-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "fe32609b2d383bc303ca6daef9ede371bd637899",
+  "prompts": {},
+  "sessions": {
+    "s_70f1f8e1b11029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec45a082-151f-4929-9e4d-994d52eca516",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
