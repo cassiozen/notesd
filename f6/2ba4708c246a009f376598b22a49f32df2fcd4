@@ -1,0 +1,87 @@
+server/internal/agent/triggers.go
+  s_70f1f8e1b11029::t_aa285ddb012cdb 70-71
+docs/reference/api.md
+  s_70f1f8e1b11029::t_346ca43ece3e61 582-592,603-607
+server/internal/agent/prepare.go
+  s_70f1f8e1b11029::t_8d7cc283725065 217-218,221-233,239,241-242,244-248,255,275-276
+  s_70f1f8e1b11029::t_aa285ddb012cdb 12,17-18,20-21,30,209,213-214,348-349,383-384,549-551
+  s_70f1f8e1b11029::t_1520c2d229767b 1-11,13-16,19,22-29,31-208,210-212,215-216,219-220,234-238,240,243,249-254,256-274,277-347,350-382,385-548,552-558
+server/internal/userdata/userdata.go
+  s_70f1f8e1b11029::t_1cd943ee942737 139-154,186,228
+  s_70f1f8e1b11029::t_e3832e1bf846b0 69
+server/internal/agent/runner_test.go
+  s_70f1f8e1b11029::t_2052886ebd3306 85-87,121-125
+apps/web/src/notes/store.tsx
+  s_70f1f8e1b11029::t_55009b7103cae2 5,276-277,279-284,288-297
+apps/web/src/notes/note-pane.tsx
+  s_70f1f8e1b11029::t_0998987bd4c4f5 397-411
+  s_70f1f8e1b11029::t_55009b7103cae2 23
+apps/web/test/agent-overlays.test.tsx
+  s_70f1f8e1b11029::t_86981c0b2ad4ec 29-30,33-34,36-37
+server/internal/agent/prepare_test.go
+  s_70f1f8e1b11029::t_af85c2a542b77a 1-77,79-229,235-237,239-275
+  s_70f1f8e1b11029::t_82cb8d90cd5400 78,230-234,238
+server/internal/api/agent_socket.go
+  s_70f1f8e1b11029::t_a234d4db498b83 51-52,106-109,157-160,176-177,179-204,270,292,295
+  s_70f1f8e1b11029::t_b6ddd26aa0c3d0 16
+  s_70f1f8e1b11029::t_c47d1a791891aa 178
+docs/guides/using/agents.md
+  s_70f1f8e1b11029::t_346ca43ece3e61 63-68,167-168
+apps/web/src/agent/socket.ts
+  s_70f1f8e1b11029::t_fa5815f2da9795 187-188,521
+  s_70f1f8e1b11029::t_83ef09d8aec7be 18-30,86-92,100,113,129,145-186,189-220,342-344,360-363,365-370,395,513-520,522-524,566-568,574-577
+  s_70f1f8e1b11029::t_0f95a9e2f74c02 364
+server/internal/agent/run.go
+  s_70f1f8e1b11029::t_6d648a0ed45dc3 88-89,101,138,180,229,336-340
+apps/web/test/agent-triggers.test.tsx
+  s_70f1f8e1b11029::t_bcaa929390d3e1 25-32,98
+  s_70f1f8e1b11029::t_70a12b67544fdb 22-24,33-41,46,57,73,83-97,99-135
+  s_70f1f8e1b11029::t_e30c97f089b50e 136
+server/internal/agent/overlays.go
+  s_70f1f8e1b11029::t_56d7de1a4dca83 102-114,118,120-125
+server/internal/agent/config.go
+  s_70f1f8e1b11029::t_aa285ddb012cdb 83,217-219,231-233
+server/internal/api/api.go
+  s_70f1f8e1b11029::t_a234d4db498b83 34-39,49-50
+server/internal/agent/overlay_tools.go
+  s_70f1f8e1b11029::t_6d648a0ed45dc3 180-184
+docs/contributing/architecture.md
+  s_70f1f8e1b11029::t_346ca43ece3e61 647-657
+docs/contributing/agent-clients.md
+  s_70f1f8e1b11029::t_346ca43ece3e61 63,228-247
+  s_70f1f8e1b11029::t_1cdcb5bd828fcd 248
+apps/web/test/agent-socket-space.test.tsx
+  s_70f1f8e1b11029::t_86981c0b2ad4ec 14,19-21,24,32-33,37,40
+server/internal/agent/tools.go
+  s_70f1f8e1b11029::t_6d648a0ed45dc3 162,176,331-333,460-462,558-562,573-575
+server/internal/agent/runner.go
+  s_70f1f8e1b11029::t_aa285ddb012cdb 38-39,67-69,76-77
+server/internal/agent/export_test.go
+  s_70f1f8e1b11029::t_8d7cc283725065 36-53
+server/internal/api/agent_socket_test.go
+  s_70f1f8e1b11029::t_5617017cc401b6 461,474-477,481
+  s_70f1f8e1b11029::t_d87ce48c3f0edd 455-460,462-473,478-480,482-511
+server/internal/agent/runs.go
+  s_70f1f8e1b11029::t_56d7de1a4dca83 189-200,204-215
+  s_70f1f8e1b11029::t_0b895674644fdc 216
+apps/web/src/agent/triggers.ts
+  s_70f1f8e1b11029::t_55009b7103cae2 2-3,9-23,32-40,45-50
+server/cmd/notesd/main.go
+  s_70f1f8e1b11029::t_a83c831c2347bd 707,710-715
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "f62ba4708c246a009f376598b22a49f32df2fcd4",
+  "prompts": {},
+  "sessions": {
+    "s_70f1f8e1b11029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec45a082-151f-4929-9e4d-994d52eca516",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
