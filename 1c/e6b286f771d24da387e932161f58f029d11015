@@ -1,0 +1,19 @@
+apps/web/src/settings/space-info.tsx
+  s_c3b38fb2a663e4::t_179d5e6a831da0 343-344
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "1ce6b286f771d24da387e932161f58f029d11015",
+  "prompts": {},
+  "sessions": {
+    "s_c3b38fb2a663e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1d1944a-c107-4c4f-9779-0dc027b08b05",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
