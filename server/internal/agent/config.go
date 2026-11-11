@@ -80,6 +80,7 @@ type Store struct {
 	now         func() time.Time
 	tz          tzCache
 	onScheduled func()
+	onChange    func(Change)
 	snapshots   snapshots
 	// overlays orders changes to overlays with the messages telling editors about them.
 	overlays sync.Mutex
@@ -213,6 +214,9 @@ func (s *Store) Put(ctx context.Context, c Config) (Config, error) {
 		}
 		return nil
 	})
+	if err == nil {
+		s.changed(Change{ConfigOf: c.SpaceID})
+	}
 	return c, err
 }
 
@@ -224,6 +228,9 @@ func (s *Store) Delete(ctx context.Context, spaceID string) error {
 			return err
 		}
 		_, err := tx.ExecContext(ctx, `DELETE FROM agent_spaces WHERE space_id = ?`, spaceID)
+		if err == nil {
+			s.changed(Change{ConfigOf: spaceID})
+		}
 		return err
 	})
 }

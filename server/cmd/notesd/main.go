@@ -704,9 +704,15 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		Settings: func(ctx context.Context) (llm.Settings, error) { return llm.Load(ctx, system) },
 		Provider: llm.NewClient(),
 		Log:      log,
+		Tell:     hub.Broadcast,
 	})
 	users.OnAgentScheduled(runner.Wake)
-	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: runner.WakeAll, Editors: hub}
+	users.OnAgentChanged(runner.Changed)
+	aiChanged := func() {
+		runner.DropAhead()
+		runner.WakeAll()
+	}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: aiChanged, Editors: hub, Ahead: runner}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}

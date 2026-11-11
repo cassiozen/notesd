@@ -31,6 +31,12 @@ import (
 	"notes/server/internal/web"
 )
 
+// Ahead is the agent runner's side of results done ahead (agent.Runner).
+type Ahead interface {
+	Prepare(home agent.Home, spaceID string, userID int64)
+	UsePrepared(ctx context.Context, home agent.Home, id, noteID, spaceID string, userID int64) error
+}
+
 // Config holds HTTP-layer settings.
 type Config struct {
 	// ResendURL overrides Resend's API base URL (tests).
@@ -40,6 +46,8 @@ type Config struct {
 	// OnAIChanged is called after the AI settings are saved or removed, so
 	// agents waiting for them resume or pause.
 	OnAIChanged func()
+	// Ahead does spaces' "new note opened" runs ahead, for the agent socket; nil does none.
+	Ahead Ahead
 	// Editors are the connected note editors, shared with the agent runner;
 	// nil gets a hub of the server's own.
 	Editors *editors.Hub

@@ -67,6 +67,8 @@ func (s *Store) scheduled() {
 // write's transaction it keeps writing sessions up to date and queues the
 // triggers a write fires, so neither is lost to a crash.
 func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
+	// Any write, whoever made it: what a run done ahead read may be what changed.
+	s.changed(Change{Note: &ev})
 	if err := removeText(ctx, tx, ev, s.now().UnixMilli()); err != nil {
 		return err
 	}

@@ -19,11 +19,31 @@ async function connected() {
   await waitFor(() => expect(agentSocket.connectionId).not.toBeNull())
 }
 
+// The new note run done ahead, as the space opened, is here.
+async function aheadReady() {
+  const { agentSocket } = await import('../src/agent/socket')
+  return await waitFor(
+    () => {
+      const p = agentSocket['prepared'].get('default')
+      if (!p) throw new Error('not done ahead yet')
+      return p
+    },
+    { timeout: 5000 },
+  )
+}
+
+// A new note runs live, as one made before its run done ahead is back.
+async function live() {
+  await aheadReady()
+  const { agentSocket } = await import('../src/agent/socket')
+  agentSocket['dropPrepared']()
+}
+
 describe('editor triggers', () => {
   it('note created: the agent writes in the new note, and Undo takes it back', async () => {
     const llm = await startFakeLLM()
     const { user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
-    await connected()
+    await live()
     llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?' } }, { text: 'Asked.' })
     await user.click(newNoteButton())
     await waitFor(() => expect(bodyText()).toBe('What went well today?'), { timeout: 5000 })
@@ -34,7 +54,7 @@ describe('editor triggers', () => {
   it('Agent is writing… ends once the change shows, before the run does', async () => {
     const llm = await startFakeLLM()
     const { server, user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
-    await connected()
+    await live()
     const finished: { resolve?: () => void } = {}
     const wait = new Promise<void>((resolve) => (finished.resolve = resolve))
     llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?' } }, { text: 'Asked.', hold: wait })
@@ -50,7 +70,7 @@ describe('editor triggers', () => {
   it('note created, as dev builds mount effects twice', async () => {
     const llm = await startFakeLLM()
     const { server, user } = await signedIn({ strict: true, seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
-    await connected()
+    await live()
     llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?' } }, { text: 'Asked.' })
     await user.click(newNoteButton())
     await waitFor(() => expect(bodyText()).toBe('What went well today?'), { timeout: 5000 })
@@ -58,6 +78,60 @@ describe('editor triggers', () => {
     await waitFor(async () => expect((await runs(server)).map((r) => [r.trigger, r.status])).toEqual([['noteCreated', 'done']]), {
       timeout: 5000,
     })
+  })
+
+  it('note created, done ahead: the new note opens with it, and Activity has it', async () => {
+    const llm = await startFakeLLM()
+    // Done as the space opens, before any note.
+    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?', done: 'Asked.' } })
+    const { server, user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
+    await aheadReady()
+    expect(await runs(server)).toEqual([])
+    await user.click(newNoteButton())
+    // At once: nothing to wait for.
+    expect(bodyText()).toBe('What went well today?')
+    expect(screen.queryByText('Agent is writing…')).toBeNull()
+    await waitFor(async () => expect((await runs(server)).map((r) => [r.trigger, r.status, r.outcome])).toEqual([['noteCreated', 'done', 'edited']]))
+    // Saved as the agent's change, which its run can undo.
+    await waitFor(async () => {
+      const [run] = await runs(server)
+      const detail = await server.api<{ edits: { blocked?: string }[] }>('GET', `/agent/runs/${run?.id ?? ''}`)
+      expect(detail.body.edits.map((e) => e.blocked ?? '')).toEqual([''])
+    }, { timeout: 5000 })
+    // The next new note's is done in turn.
+    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## And tomorrow?', done: 'Asked.' } })
+    await waitFor(() => expect(llm.requests.filter((r) => (r.tools?.length ?? 0) > 1)).toHaveLength(2), { timeout: 5000 })
+  })
+
+  it('a result done ahead the server no longer has: the new note starts over empty, and the run goes live', async () => {
+    const llm = await startFakeLLM()
+    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## Ahead', done: 'Asked.' } })
+    const { server, user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
+    const p = await aheadReady()
+    p.id = 'run_gone'
+    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## Live', done: 'Asked.' } })
+    await user.click(newNoteButton())
+    await waitFor(() => expect(bodyText()).toBe('Live'), { timeout: 5000 })
+    await waitFor(async () => expect((await runs(server)).map((r) => [r.trigger, r.status])).toEqual([['noteCreated', 'done']]))
+  })
+
+  it('a result done ahead is done again once what it went by changes', async () => {
+    const { aheadTiming } = await import('../src/agent/socket')
+    const again = aheadTiming.againMs
+    aheadTiming.againMs = 50
+    onTestFinished(() => {
+      aheadTiming.againMs = again
+    })
+    const llm = await startFakeLLM()
+    const { server } = await signedIn({
+      seed: (s) => withAgent(s, llm, { referenceNotes: ['Digest'], triggers: { noteCreated: 'Ask a question.' } }),
+    })
+    const first = (await aheadReady()).id
+    await createNote(server, 'Something else', 'Not read')
+    await new Promise((r) => setTimeout(r, 300))
+    expect((await aheadReady()).id).toBe(first)
+    await createNote(server, 'Digest', 'So far')
+    await waitFor(async () => expect((await aheadReady()).id).not.toBe(first), { timeout: 5000 })
   })
 
   it('started editing fires once, on the first change', async () => {

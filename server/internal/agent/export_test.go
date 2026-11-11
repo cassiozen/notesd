@@ -33,3 +33,21 @@ func DiffLines(before, after string) []DiffLine { return diffLines(before, after
 
 // SystemPrompt is what a run of trigger t is told first.
 func SystemPrompt(c Config, t Trigger) string { return systemPrompt(c, t) }
+
+// PrepareNow is Prepare on the caller's goroutine, for a runner that isn't running.
+func (rn *Runner) PrepareNow(ctx context.Context, home Home, spaceID string, userID int64) {
+	if s, runCtx := rn.newAhead(ctx, aheadKey{home, spaceID, userID}); s != nil {
+		rn.runAhead(runCtx, s)
+	}
+}
+
+// PreparedFor is the result done ahead ready for a space and user, if there's one.
+func (rn *Runner) PreparedFor(home Home, spaceID string, userID int64) (Prepared, bool) {
+	rn.ahead.mu.Lock()
+	defer rn.ahead.mu.Unlock()
+	s := rn.ahead.current[aheadKey{home, spaceID, userID}]
+	if s == nil || s.ready == nil {
+		return Prepared{}, false
+	}
+	return *s.ready, true
+}

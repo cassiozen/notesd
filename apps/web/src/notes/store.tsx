@@ -2,6 +2,7 @@ import { createContext, use, useCallback, useEffect, useMemo, useRef, useState, 
 import type { ListItem, TagCount } from '../api/types'
 import { useAuth } from '../auth/auth-context'
 import { lockSession, useLockStatus } from '../locks/session'
+import { openNewNote } from '../agent/triggers'
 import { preview as previewOf } from './plaintext'
 import { timing, type Fields } from './saver'
 import { notesSource, type Saver, type SaverInit } from './source'
@@ -272,13 +273,28 @@ export function NotesProvider({ children }: { children: ReactNode }) {
 
   const newDraft = useCallback(() => {
     const f = filterRef.current
-    const fields = { title: '', content: f && 'tag' in f ? tagText(f.name) : '' }
+    const tagged = f && 'tag' in f
+    const blank = { title: '', content: tagged ? tagText(f.name) : '' }
     const spaceId = spaceRef.current
-    const s = notesSource().saver({ id: crypto.randomUUID(), fields, blank: fields, spaceId }, hooks)
+    const id = crypto.randomUUID()
+    // The agent's run done ahead was for an empty note: not one that starts with a tag.
+    const ahead = tagged ? null : openNewNote(id, spaceId)
+    const s = notesSource().saver({ id, fields: ahead ?? blank, blank, spaceId }, hooks)
+    // Saved as the agent's change in the editor would be.
+    if (ahead && (ahead.title || ahead.content)) s.edit()
     savers.current.set(s.id, s)
     drafts.current.add(s.id)
     const now = Date.now()
-    const row: ListItem = { id: s.id, title: '', preview: '', locked: false, revision: 0, createdAt: now, updatedAt: now, spaceId }
+    const row: ListItem = {
+      id: s.id,
+      title: ahead?.title ?? '',
+      preview: ahead ? previewOf(ahead.content) : '',
+      locked: false,
+      revision: 0,
+      createdAt: now,
+      updatedAt: now,
+      spaceId,
+    }
     setList((prev) => ({ ...prev, items: [row, ...prev.items] }))
     return s
   }, [hooks])

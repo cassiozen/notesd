@@ -60,6 +60,7 @@ An app can add support in steps; each works on its own.
 | 1 | Opens the socket, says which notes are open, answers `read` and `apply` | Runs read unsaved typing and write in the editor, as one undoable step; closing a note ends its writing session at once |
 | 2 | Asks for editor triggers; shows `run` updates | *Note created*, *started editing* and the menu command; the agent shown at work, and a failed run on the note |
 | 3 | Shows `overlays` and sends `overlay.answer` | Cards beside the note to read or dismiss, and suggested changes to accept or reject |
+| 4 | Has *new note opened* done ahead (see [below](#done-ahead)) | A new note opens with the agent's work in it, instead of seconds later |
 
 An app below level 3 still gets `overlays` messages, and ignores them: the cards just don't show
 there, and close with the note.
@@ -223,6 +224,27 @@ save that holds exactly `shows`; that save completes the record, so Activity can
   take that typing; the run's edit then shows there as `not_saved`. Undo in the editor still works.
 
 So an app should save the change promptly, as its normal saving would.
+
+## Done ahead
+
+*New note opened* runs on an empty note, so it can run before the note exists. The web app has the
+server do it while it shows a space, and a new note opens with its result, with nothing to wait for.
+
+1. While the app shows a space whose agent acts on new notes, send `{type: "prepare", spaceId}`
+   after `hello`, on showing the space, when the app is seen again, and when the result it holds
+   expires or is thrown away (`prepared.void`, waiting about 2 seconds, as what made it stale often
+   changes again). Not while it's in the background: nobody can use the result.
+2. Keep the latest `prepared` per space; drop it on `prepared.void` with its `id`, on its
+   `expiresAt` (a few seconds early, so the server still has it), and on any new connection.
+3. On a new note, if the space has one and the note would start empty (a note started with a tag
+   wouldn't), take it: open the note with its `title` and `content`, saved as the agent's change in
+   the editor would be, and show its `overlays` on the new note at once. Then send `run.request` for
+   `noteCreated` with `prepared: id`, and `prepare` again for the next.
+4. On `prepared.missed` for the note, the server no longer had it. If the editor still shows what it
+   opened with, empty it and ask for the run live, without `prepared`; otherwise what's there is
+   the user's now.
+
+Since the note opens with the change, it isn't a step the editor can undo; Activity's Undo is.
 
 ## Overlays
 

@@ -85,6 +85,8 @@ type runState struct {
 	dailyLimited bool
 	// What this run has shown, against its limits.
 	cards, suggestions int
+	// ahead is set for a run done before its note exists (prepare.go): what it does stays in memory.
+	ahead *aheadRun
 }
 
 // execute runs r to its end and records how it went.
@@ -96,7 +98,7 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 	if loc, err := acct.Zone(ctx, acct.forUser(r)); err != nil {
 		f = failed(FailInterrupted, err)
 	} else {
-		f = rn.attempt(ctx, acct, st, r, rn.now().In(loc))
+		f = rn.attempt(ctx, acct, st, r, rn.now().In(loc), nil)
 	}
 	if ctx.Err() != nil && f.Status == "" {
 		f = finished{Status: StatusFailed, Failure: FailInterrupted, Message: "The server stopped during the run."}
@@ -133,7 +135,7 @@ func (rn *Runner) execute(ctx context.Context, acct Account, st llm.Settings, r 
 }
 
 // attempt checks the run still makes sense, then talks to the model.
-func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r queuedRun, now time.Time) finished {
+func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r queuedRun, now time.Time, ahead *aheadRun) finished {
 	began := time.Now()
 	day := now.Format(time.DateOnly)
 	if _, ok := triggerNames[r.Trigger]; !ok {
@@ -175,7 +177,7 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	spaceName := func(id string) string { return acct.SpaceName(ctx, id) }
 	var f finished
 	rs := &runState{acct: acct, run: r, reads: map[string]notes.Note{}, inEditor: map[string]*editorRead{}, day: day,
-		budget: min(left, today), dailyLimited: today <= left}
+		budget: min(left, today), dailyLimited: today <= left, ahead: ahead}
 	switch {
 	case r.Trigger.InEditor():
 		// What the editor showed as it asked, if that's recent: else it's asked now.
@@ -224,7 +226,7 @@ func (rn *Runner) attempt(ctx context.Context, acct Account, st llm.Settings, r 
 	if errors.Is(runCtx.Err(), context.DeadlineExceeded) && f.Status == "" {
 		f.Status, f.Failure, f.Message = StatusFailed, FailTimeout, fmt.Sprintf("The run took longer than %s.", RunTimeout)
 	}
-	if f.Status == StatusFailed && f.Failure == FailProvider && r.Attempts < 2 {
+	if f.Status == StatusFailed && f.Failure == FailProvider && r.Attempts < 2 && ahead == nil {
 		// Only a run that did nothing yet: a retry would make its changes, or show its overlays, twice.
 		edits, creates, err := acct.Agent.edited(ctx, r.ID)
 		shown, err2 := acct.Agent.showed(ctx, r.ID)
@@ -331,7 +333,11 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		f.CompletionTokens += completion
 		// Recorded even if the run's time ran out as the answer came back: they were spent.
 		saved, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
-		err = rs.acct.Agent.addUsage(saved, rs.run.ID, rs.run.SpaceID, rs.day, res.Model, prompt, completion)
+		if rs.ahead != nil {
+			err = rs.acct.Agent.addSpaceUsage(saved, rs.run.SpaceID, rs.day, prompt, completion, f.PromptTokens+f.CompletionTokens == prompt+completion)
+		} else {
+			err = rs.acct.Agent.addUsage(saved, rs.run.ID, rs.run.SpaceID, rs.day, res.Model, prompt, completion)
+		}
 		cancel()
 		if err != nil {
 			interrupted(ctx, f, err)

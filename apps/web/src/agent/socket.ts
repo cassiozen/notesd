@@ -15,6 +15,19 @@ export const SOCKET_PATH = '/api/v1/agent/socket'
  */
 export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000, closeWaitMs: 5000, heldMs: 10_000 }
 
+/**
+ * How soon a result done ahead that the server threw away is asked for again: what made it stale (a
+ * reference note, say) often changes again within seconds. And how long before it expires one is no
+ * longer used, so its run is still on the server when the new note asks for it.
+ */
+export const aheadTiming = { againMs: 2000, marginMs: 5000 }
+
+/**
+ * A space's "new note opened" run, done ahead by the server (§7.11): a new note opens with it, at once.
+ * Its overlays' noteId is empty until then.
+ */
+export type Prepared = { id: string; spaceId: string; title: string; content: string; overlays: Overlay[]; expiresAt: number }
+
 type Trigger = 'noteCreated' | 'editStarted' | 'menu'
 
 /** Opens the socket; tests swap in one that carries their cookie jar. */
@@ -70,6 +83,13 @@ class AgentSocket {
    */
   private readonly answers = new Map<string, object>()
   readonly overlayListeners = new Set<() => void>()
+  /** The space whose new notes this tab wants done ahead, while it shows it. */
+  private aheadSpace: string | null = null
+  /** Results done ahead, by space, as the server last said. */
+  private readonly prepared = new Map<string, Prepared & { expires: ReturnType<typeof setTimeout> }>()
+  private askAgain: ReturnType<typeof setTimeout> | undefined
+  /** Hears of a new note that opened with a result the server no longer had. */
+  private readonly missedListeners = new Set<(noteId: string) => void>()
   /** The server's id for this connection, once it said hello. */
   connectionId: string | null = null
 
@@ -77,6 +97,7 @@ class AgentSocket {
     if (this.wanted) return
     this.wanted = true
     window.addEventListener('online', this.online)
+    document.addEventListener('visibilitychange', this.askAhead)
     clearTimeout(this.closing)
     // Still open, waiting to close: it carries on.
     if (!this.ws) this.connect()
@@ -89,6 +110,7 @@ class AgentSocket {
   stop() {
     this.wanted = false
     window.removeEventListener('online', this.online)
+    document.removeEventListener('visibilitychange', this.askAhead)
     clearTimeout(this.timer)
     this.dropHeld(true)
     // Stopped again while waiting (a sign-out resets it): one wait, or it would close a later socket.
@@ -104,6 +126,7 @@ class AgentSocket {
     this.connectionId = null
     // Its close is ignored once this.ws is null, so forget the runs here.
     this.landed.clear()
+    this.dropPrepared()
     this.setRunning(new Map())
     this.setOverlays(new Map())
     ws?.close()
@@ -119,6 +142,82 @@ class AgentSocket {
     this.openIn.clear()
     this.editors.clear()
     this.answers.clear()
+    this.aheadSpace = null
+  }
+
+  /**
+   * Has the server do spaceId's "new note opened" run ahead while this tab shows it (null: none), and
+   * keep it done: again once it expires or the server throws it away, and when the tab is seen again.
+   */
+  wantAhead(spaceId: string | null) {
+    if (this.aheadSpace === spaceId) return
+    this.aheadSpace = spaceId
+    this.askAhead()
+  }
+
+  private readonly askAhead = () => {
+    clearTimeout(this.askAgain)
+    const space = this.aheadSpace
+    // A hidden tab can't open a note: asking would spend tokens nobody may use.
+    if (!space || this.prepared.has(space) || document.visibilityState === 'hidden') return
+    this.send({ type: 'prepare', spaceId: space })
+  }
+
+  /**
+   * The result done ahead for a new note in spaceId, taken: the note opens with it, and usePrepared
+   * then tells the server. Null with none, or none it surely still has.
+   */
+  takePrepared(spaceId: string): Prepared | null {
+    const p = this.prepared.get(spaceId)
+    if (!p || !this.connected() || Date.now() >= p.expiresAt - aheadTiming.marginMs) return null
+    clearTimeout(p.expires)
+    this.prepared.delete(spaceId)
+    const { expires: _, ...prepared } = p
+    return prepared
+  }
+
+  /** Says the new note noteId opened with p, which becomes its run; its overlays show at once. */
+  usePrepared(p: Prepared, noteId: string) {
+    if (p.overlays.length) this.setOverlays(new Map(this.overlays).set(noteId, p.overlays.map((o) => ({ ...o, noteId }))))
+    if (!this.connected()) {
+      queueMicrotask(() => this.missed(noteId))
+      return
+    }
+    this.send({ type: 'run.request', trigger: 'noteCreated', noteId, spaceId: p.spaceId, prepared: p.id })
+    // After it on the same socket, so the server has let the used one go: the next new note's.
+    this.askAhead()
+  }
+
+  /** Hears of a new note that opened with a result done ahead the server no longer had. */
+  onMissed(listener: (noteId: string) => void): () => void {
+    this.missedListeners.add(listener)
+    return () => {
+      this.missedListeners.delete(listener)
+    }
+  }
+
+  private missed(noteId: string) {
+    this.dropOverlays(noteId)
+    for (const l of this.missedListeners) l(noteId)
+  }
+
+  private heardPrepared(p: Prepared) {
+    clearTimeout(this.prepared.get(p.spaceId)?.expires)
+    const expires = setTimeout(
+      () => {
+        if (this.prepared.get(p.spaceId)?.id !== p.id) return
+        this.prepared.delete(p.spaceId)
+        this.askAhead()
+      },
+      Math.max(0, p.expiresAt - aheadTiming.marginMs - Date.now()),
+    )
+    this.prepared.set(p.spaceId, { ...p, expires })
+  }
+
+  private dropPrepared() {
+    clearTimeout(this.askAgain)
+    for (const p of this.prepared.values()) clearTimeout(p.expires)
+    this.prepared.clear()
   }
 
   noteOpened(noteId: string, spaceId: string) {
@@ -240,6 +339,9 @@ class AgentSocket {
         for (const a of this.answers.values()) this.send(a)
         this.answers.clear()
         for (const noteId of this.open.keys()) this.send({ type: 'editor.opened', noteId, spaceId: this.openIn.get(noteId) })
+        // A new connection may be to a server started since, which has none: it sends again what it has.
+        this.dropPrepared()
+        this.askAhead()
         // Only for a note still open here, asked for recently enough.
         for (const h of this.held.values()) {
           clearTimeout(h.expires)
@@ -255,6 +357,17 @@ class AgentSocket {
         if (list.length) next.set(m.noteId, list)
         else next.delete(m.noteId)
         this.setOverlays(next)
+      } else if (m?.type === 'prepared' && isPrepared(m)) {
+        this.heardPrepared(m)
+      } else if (m?.type === 'prepared.void' && typeof m.spaceId === 'string') {
+        const p = this.prepared.get(m.spaceId)
+        if (!p || p.id !== m.id) return
+        clearTimeout(p.expires)
+        this.prepared.delete(m.spaceId)
+        clearTimeout(this.askAgain)
+        this.askAgain = setTimeout(this.askAhead, aheadTiming.againMs)
+      } else if (m?.type === 'prepared.missed' && typeof m.noteId === 'string') {
+        this.missed(m.noteId)
       } else if (m?.type === 'run' && typeof m.runId === 'string' && typeof m.noteId === 'string') {
         this.heard(m as unknown as RunUpdate)
       } else if (m && typeof m.id === 'string') {
@@ -279,6 +392,7 @@ class AgentSocket {
       this.connectionId = null
       // What's still going, or showing, is unknown until the server says again.
       this.landed.clear()
+      this.dropPrepared()
       this.setRunning(new Map())
       this.setOverlays(new Map())
       if (!this.wanted) return
@@ -396,6 +510,18 @@ function isOverlay(v: unknown): v is Overlay {
   )
 }
 
+function isPrepared(v: Record<string, unknown>): v is Record<string, unknown> & Prepared {
+  return (
+    typeof v.id === 'string' &&
+    typeof v.spaceId === 'string' &&
+    typeof v.title === 'string' &&
+    typeof v.content === 'string' &&
+    typeof v.expiresAt === 'number' &&
+    Array.isArray(v.overlays) &&
+    v.overlays.every(isOverlay)
+  )
+}
+
 function parse(data: string): Record<string, unknown> | null {
   try {
     const m: unknown = JSON.parse(data)
@@ -437,10 +563,16 @@ export function useAgentOverlays(noteId: string): Overlay[] {
 export function useAgentSocket(spaceId: string) {
   const ai = useAiSettings()
   const configs = useAgentConfigs()
-  const wanted = Boolean(ai?.configured) && Boolean(configs?.get(spaceId)?.enabled)
+  const config = configs?.get(spaceId)
+  const wanted = Boolean(ai?.configured) && Boolean(config?.enabled)
+  const ahead = wanted && config?.triggers.noteCreated ? spaceId : null
   useEffect(() => {
     if (!wanted) return
     agentSocket.start()
     return () => agentSocket.stop()
   }, [wanted])
+  useEffect(() => {
+    agentSocket.wantAhead(ahead)
+    return () => agentSocket.wantAhead(null)
+  }, [ahead])
 }

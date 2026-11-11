@@ -452,3 +452,60 @@ func TestSocketInASharedSpace(t *testing.T) {
 		}
 	}
 }
+
+// fakeAhead hears what the socket asks of results done ahead.
+type fakeAhead struct {
+	mu       sync.Mutex
+	prepared []string
+	used     []string
+	gone     string // the id it no longer has
+}
+
+func (f *fakeAhead) Prepare(home agent.Home, spaceID string, userID int64) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.prepared = append(f.prepared, string(home)+"/"+spaceID)
+}
+
+func (f *fakeAhead) UsePrepared(_ context.Context, home agent.Home, id, noteID, spaceID string, _ int64) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.used = append(f.used, string(home)+"/"+spaceID+"/"+id+"/"+noteID)
+	if id == f.gone {
+		return agent.ErrPreparedGone
+	}
+	return nil
+}
+
+func TestPreparedThroughTheSocket(t *testing.T) {
+	ahead := &fakeAhead{gone: "run_2"}
+	e := newEnvWith(t, api.Config{Ahead: ahead})
+	ctx := e.ctx
+	e.setupOwner()
+	conn, _ := e.editorSocket(e.webClient())
+	send := func(m map[string]any) {
+		t.Helper()
+		if err := wsjson.Write(ctx, conn, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+	send(map[string]any{"type": "prepare", "spaceId": "default"})
+	send(map[string]any{"type": "prepare", "spaceId": "../bad"})
+	send(map[string]any{"type": "run.request", "trigger": "noteCreated", "noteId": "n1", "spaceId": "default", "prepared": "run_1"})
+	send(map[string]any{"type": "run.request", "trigger": "noteCreated", "noteId": "n2", "spaceId": "default", "prepared": "run_2"})
+	var missed map[string]string
+	if err := wsjson.Read(ctx, conn, &missed); err != nil {
+		t.Fatal(err)
+	}
+	if missed["type"] != "prepared.missed" || missed["noteId"] != "n2" || missed["id"] != "run_2" {
+		t.Fatalf("missed: %v", missed)
+	}
+	ahead.mu.Lock()
+	defer ahead.mu.Unlock()
+	if want := []string{"user:1/default"}; !slices.Equal(ahead.prepared, want) {
+		t.Fatalf("prepared %v", ahead.prepared)
+	}
+	if want := []string{"user:1/default/run_1/n1", "user:1/default/run_2/n2"}; !slices.Equal(ahead.used, want) {
+		t.Fatalf("used %v", ahead.used)
+	}
+}

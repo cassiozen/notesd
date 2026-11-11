@@ -99,26 +99,30 @@ func (s *Store) addOverlays(ctx context.Context, r queuedRun, list []Overlay) er
 			overlayClosed, now, r.NoteID, r.ID, string(r.Trigger), r.SpaceID); err != nil {
 			return err
 		}
-		for _, o := range list {
-			place, err := json.Marshal(o.Place)
+		return insertOverlaysTx(ctx, tx, r.ID, r.NoteID, list, now)
+	})
+}
+
+func insertOverlaysTx(ctx context.Context, tx *sql.Tx, runID, noteID string, list []Overlay, now int64) error {
+	for _, o := range list {
+		place, err := json.Marshal(o.Place)
+		if err != nil {
+			return err
+		}
+		var change any
+		if o.Change != nil {
+			b, err := json.Marshal(o.Change)
 			if err != nil {
 				return err
 			}
-			var change any
-			if o.Change != nil {
-				b, err := json.Marshal(o.Change)
-				if err != nil {
-					return err
-				}
-				change = string(b)
-			}
-			if _, err := tx.ExecContext(ctx, `INSERT INTO agent_overlays (id, run_id, note_id, kind, place, body, change, created_at)
-				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, o.ID, r.ID, r.NoteID, o.Kind, string(place), o.Body, change, now); err != nil {
-				return err
-			}
+			change = string(b)
 		}
-		return nil
-	})
+		if _, err := tx.ExecContext(ctx, `INSERT INTO agent_overlays (id, run_id, note_id, kind, place, body, change, created_at)
+			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, o.ID, runID, noteID, o.Kind, string(place), o.Body, change, now); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // OpenOverlays is what's showing on a note, in the order it was shown.

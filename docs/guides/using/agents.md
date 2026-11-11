@@ -60,6 +60,12 @@ the agent keeps. The agent acts faster when it doesn't have to look for them. Ty
 space's note titles; a title with no note yet is marked *not here yet*, and is read once there is
 one, such as a note a rule has the agent make.
 
+A space whose agent acts on new notes has the next new note's run done ahead, on the web, while you're
+in the space: a new note opens with what the agent wrote already in it, rather than it arriving a few
+seconds later, and with any card it shows. It's done again when something it went by changes, such as
+the space's tags or a note it always reads, and every 30 minutes. Its tokens count whether or not you
+make a note, and Activity shows it once you do. Undo it there: it was in the note as it opened.
+
 A new note opened, editing started and the menu command happen in the editor, and need a connection to
 the server: offline, they're skipped, unless the connection comes back within about 10 seconds. The menu
 command then says it didn't run, and why. The agent works on the note as you see it there, unsaved
@@ -158,4 +164,5 @@ it. The first account is an admin; [`notesd add-user --admin`](../../reference/c
 makes more.
 
 Nothing is sent to the provider until someone turns on an agent for a space, except the test
-itself, which sends no notes.
+itself, which sends no notes. With a rule for new notes, the space's tags and the notes it always
+reads are sent as soon as someone is in the space, for the next new note.

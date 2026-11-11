@@ -66,6 +66,7 @@ type Registry struct {
 	onChange      []func(userID int64)
 	onSpaceChange []func(spaceID string)
 	onAgent       []func(home agent.Home)
+	onAgentChange []func(home agent.Home, c agent.Change)
 	onOpenUser    []func(userID int64, d *Data)
 	onOpenSpace   []func(spaceID string, d *Data)
 }
@@ -135,6 +136,22 @@ func (r *Registry) OnAgentScheduled(fn func(home agent.Home)) {
 	r.onAgent = append(r.onAgent, fn)
 }
 
+// OnAgentChanged adds fn, called with what may make a file's results done ahead stale (see
+// agent.Store.OnChange). fn must not block.
+func (r *Registry) OnAgentChanged(fn func(home agent.Home, c agent.Change)) {
+	r.hooks.Lock()
+	defer r.hooks.Unlock()
+	r.onAgentChange = append(r.onAgentChange, fn)
+}
+
+func (r *Registry) agentChanged(home agent.Home, c agent.Change) {
+	r.hooks.RLock()
+	defer r.hooks.RUnlock()
+	for _, fn := range r.onAgentChange {
+		fn(home, c)
+	}
+}
+
 func (r *Registry) agentScheduled(home agent.Home) {
 	r.hooks.RLock()
 	defer r.hooks.RUnlock()
@@ -166,6 +183,7 @@ func (r *Registry) Open(ctx context.Context, userID int64) (*Data, error) {
 	d.onCommit(func() { r.changed(userID) })
 	// Looked up when it fires, so a runner started after this database opened still hears it.
 	d.Agent.OnScheduled(func() { r.agentScheduled(agent.UserHome(userID)) })
+	d.Agent.OnChange(func(c agent.Change) { r.agentChanged(agent.UserHome(userID), c) })
 	for _, fn := range r.onOpenUser {
 		fn(userID, d)
 	}
@@ -207,6 +225,7 @@ func (r *Registry) openSpace(ctx context.Context, spaceID string) (*Data, error)
 	d.Notes.ServeShared(spaceID)
 	d.onCommit(func() { r.spaceChanged(spaceID) })
 	d.Agent.OnScheduled(func() { r.agentScheduled(agent.SpaceHome(spaceID)) })
+	d.Agent.OnChange(func(c agent.Change) { r.agentChanged(agent.SpaceHome(spaceID), c) })
 	for _, fn := range r.onOpenSpace {
 		fn(spaceID, d)
 	}

@@ -13,6 +13,7 @@ import (
 
 	"notes/server/internal/agent"
 	"notes/server/internal/auth"
+	"notes/server/internal/editors"
 	"notes/server/internal/sharing"
 	"notes/server/internal/userdata"
 )
@@ -47,6 +48,8 @@ type socketIn struct {
 	Answer string        `json:"answer"`
 	Before *agent.Fields `json:"before"`
 	Shows  *agent.Fields `json:"shows"`
+	// On run.request for noteCreated: the result done ahead the new note opened with.
+	Prepared string `json:"prepared"`
 }
 
 // agentSocket is the editors' connection for agents (architecture §7.11): an
@@ -100,6 +103,10 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			s.editors.Answer(ec, m.ID, raw)
 			continue
 		}
+		if m.Type == "prepare" {
+			s.prepare(ctx, userID, m.SpaceID)
+			continue
+		}
 		if !noteIDPattern.MatchString(m.NoteID) {
 			continue
 		}
@@ -147,6 +154,10 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 			}
 			s.answerOverlay(ctx, data.Agent, f.members, m.ID, m.Answer, applied)
 		case "run.request":
+			if m.Prepared != "" && m.Trigger == agent.NoteCreated {
+				s.usePrepared(ctx, ec, f, userID, m)
+				continue
+			}
 			// Before the run is queued, which starts it.
 			s.editors.Claim(ec, m.NoteID)
 			_, err := data.Agent.RequestRun(ctx, agent.RunRequest{Trigger: m.Trigger, NoteID: m.NoteID, SpaceID: m.SpaceID,
@@ -160,6 +171,35 @@ func (s *Server) agentSocket(w http.ResponseWriter, r *http.Request) {
 		}
 		// Unknown types are skipped: a newer app may send more.
 	}
+}
+
+// prepare has the space's "new note opened" run done ahead for this user, if it has one.
+func (s *Server) prepare(ctx context.Context, userID int64, spaceID string) {
+	if s.cfg.Ahead == nil || !idPattern.MatchString(spaceID) {
+		return
+	}
+	f, err := s.socketFile(ctx, userID, "", spaceID)
+	if err != nil {
+		s.log.Error("agent socket: find the space's file", "error", err)
+		return
+	}
+	s.cfg.Ahead.Prepare(f.home, spaceID, userID)
+}
+
+// usePrepared records the result done ahead a new note opened with as its run. One no longer there
+// is a miss: the editor takes it out of the note, if the user hasn't typed yet, and asks for a live run.
+func (s *Server) usePrepared(ctx context.Context, ec *editors.Conn, f socketFile, userID int64, m socketIn) {
+	err := agent.ErrPreparedGone
+	if s.cfg.Ahead != nil {
+		err = s.cfg.Ahead.UsePrepared(ctx, f.home, m.Prepared, m.NoteID, m.SpaceID, userID)
+	}
+	if err == nil {
+		return
+	}
+	if !errors.Is(err, agent.ErrPreparedGone) && !refusedRun(err) {
+		s.log.Error("agent socket: use a result done ahead", "error", err)
+	}
+	s.editors.Send(ec, map[string]string{"type": "prepared.missed", "noteId": m.NoteID, "id": m.Prepared})
 }
 
 // refusedRun is a run request the space's agent or the note turns down:
@@ -227,6 +267,7 @@ func (s *Server) answerOverlay(ctx context.Context, a *agent.Store, members []in
 type socketFile struct {
 	data    *userdata.Data
 	members []int64
+	home    agent.Home
 }
 
 // socketFile finds the file of a message's note (§7.11): wherever the note is, else, for a new note not
@@ -248,8 +289,8 @@ func (s *Server) socketFile(ctx context.Context, userID int64, noteID, spaceID s
 		f = sharing.FileFor(files, spaceID)
 	}
 	if f.SpaceID == "" {
-		return socketFile{data: f.Data, members: []int64{userID}}, nil
+		return socketFile{data: f.Data, members: []int64{userID}, home: agent.UserHome(userID)}, nil
 	}
 	members, err := s.sharing.Members(ctx, f.SpaceID)
-	return socketFile{data: f.Data, members: members}, err
+	return socketFile{data: f.Data, members: members, home: agent.SpaceHome(f.SpaceID)}, err
 }
