@@ -151,6 +151,9 @@ final class AppGraph {
             ] {
                 Self.defaults.removeObject(forKey: key)
             }
+            #if DEBUG
+                Self.signInForUITests(accounts)
+            #endif
         }
         database = Database(path: databasePath)
         store = NoteStore(db: database)
@@ -274,6 +277,19 @@ final class AppGraph {
     func spaceName(_ id: String) -> String {
         spaces.first { $0.id == id }?.name ?? Spaces.defaultName
     }
+
+    #if DEBUG
+        /// Starts signed in when a UI test passes a session: UITEST_SERVER and UITEST_SIGN_IN, the server's login
+        /// response. Walking the sign-in screens costs ~20 s a test; one test still walks them.
+        private static func signInForUITests(_ accounts: AccountStore) {
+            let env = ProcessInfo.processInfo.environment
+            guard let server = env["UITEST_SERVER"], case .valid(let url) = ServerAddress.parse(server),
+                let json = env["UITEST_SIGN_IN"],
+                let signIn = try? JSONDecoder().decode(SignIn.self, from: Data(json.utf8))
+            else { return }
+            accounts.signedIn(server: url.absoluteString, signIn)
+        }
+    #endif
 
     /// The database lives in Application Support, readable after the first unlock so background sync can open it.
     nonisolated static func defaultDatabasePath() -> String {

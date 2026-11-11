@@ -169,16 +169,19 @@ NOTESD_SERVER_BIN="$bin" swift test
 """
 
 [tasks."test:ios"]
-description = "iOS app tests on a simulator: the editor, then the UI flows against a real notesd"
+description = "iOS app tests on a simulator: the editor, then the UI flows against a real notesd. Narrow with e.g. NotesUITests/FlowTests/testSpaces"
 dir = "apps/ios"
-run = """
-set -e
-bin="$(pwd)/build/notesd"
-(cd ../../server && go build -o "$bin" ./cmd/notesd)
-sim=$(scripts/simulator.sh)
-scripts/with-server.sh "$bin" scripts/xctest.sh build/test.log -project Notes.xcodeproj -scheme Notes \
-  -destination "id=$sim" -derivedDataPath build/DerivedData test
-"""
+run = "scripts/test.sh"
+
+[tasks."test:ios:unit"]
+description = "iOS editor tests only (NotesTests), on a simulator"
+dir = "apps/ios"
+run = "scripts/test.sh NotesTests"
+
+[tasks."test:ios:ui"]
+description = "iOS UI flows only (NotesUITests), on a simulator against a real notesd"
+dir = "apps/ios"
+run = "scripts/test.sh NotesUITests"
 
 [tasks."lint:ios"]
 description = "swift-format (apps/ios/.swift-format), warnings fail"

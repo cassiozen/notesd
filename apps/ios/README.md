@@ -25,10 +25,15 @@ Run from the repository root:
 | --- | --- |
 | `mise run test:ios:core` | NotesCore tests on the Mac: shared fixtures, store, API client, and every sync scenario against a real notesd |
 | `mise run test:ios` | The editor tests, then the UI flows against a real notesd, on a simulator |
+| `mise run test:ios:unit` | The editor tests only |
+| `mise run test:ios:ui` | The UI flows only |
 | `mise run lint:ios` | swift-format (`.swift-format`), warnings fail |
 | `mise run build:ios` | Debug build for a simulator |
 
 `NOTESD_SEEDS=1,2,3` runs `RandomSyncTests` with other seeds.
+
+The simulator tasks take targets, classes or tests to run only those, as
+`-only-testing` does: `mise run test:ios NotesUITests/FlowTests/testSpaces`.
 
 ## Layout
 
@@ -98,7 +103,10 @@ refuses "Notes" as the name of Apple's own app (ITMS-90129).
 - `NotesUITests` launch the app with `--ui-testing` (a fresh database and
   Keychain item), sign in to the server `scripts/with-server.sh` starts, and
   run the accessibility audit on every screen. Screenshots stay in the test
-  results.
+  results. Most start already signed in: the test logs in through the API
+  and hands the app the session (`UITEST_SIGN_IN`, debug builds only);
+  `testSignInWriteAndSync` goes through the sign-in screens. Wait with
+  `appears(within:)`, not `waitForExistence`, which checks only once a second.
 
 ## Images, locked notes, email
 

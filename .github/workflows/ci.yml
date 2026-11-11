@@ -98,12 +98,40 @@ jobs:
       - run: mise run test:desktop
       - run: mise run build:desktop
 
+  # Which apps a change can affect, for the jobs that only run when it can.
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pull-requests: read
+    outputs:
+      ios: ${{ steps.filter.outputs.ios }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          # server/: the UI flows and NotesCore's sync tests run against a real notesd.
+          filters: |
+            ios:
+              - 'apps/ios/**'
+              - 'server/**'
+              - 'shared/**'
+              - 'mise.toml'
+              - '.github/workflows/ci.yml'
+
   ios:
+    needs: changes
+    # Skipped counts as passed for a required check.
+    if: needs.changes.outputs.ios == 'true'
     # macOS runners cost 10× the minutes of Linux ones on a private repository.
     runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+      # A fresh runner's first simulator boot takes minutes (7 of test:ios's 25, once): started now, in the
+      # background, it boots during lint, NotesCore's tests and the build. simulator.sh then picks the same one.
+      - run: (xcrun simctl bootstatus "$(apps/ios/scripts/simulator.sh)" -b >/dev/null 2>&1 &)
       - uses: jdx/mise-action@v2
       - run: mise run lint:ios
       - run: mise run test:ios:core

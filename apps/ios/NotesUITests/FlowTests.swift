@@ -138,41 +138,41 @@ final class FlowTests: XCTestCase {
     func testWithoutAServer() throws {
         app.launch()
         // No onboarding on iOS: the app opens on the list, working offline, and offers a server.
-        XCTAssertTrue(app.staticTexts["No notes yet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No notes yet"].appears(within: 5))
         XCTAssertTrue(app.staticTexts["Working offline"].exists)
         XCTAssertFalse(app.buttons["Write a note"].exists)
         try audit("empty list")
         screenshot("empty list")
         app.buttons["Connect to a server"].tap()
-        XCTAssertTrue(app.textFields["Server address"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["Server address"].appears(within: 5))
         screenshot("connect")
         app.buttons["Cancel"].tap()
-        XCTAssertTrue(app.staticTexts["No notes yet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No notes yet"].appears(within: 5))
         writeNewNote("Offline thoughts\nWritten with no server.")
         // Undo and Redo in the bar step through the typing.
         let editor = app.textViews.firstMatch
         let typed = editor.value as? String ?? ""
         let undo = app.buttons["Undo"]
-        XCTAssertTrue(undo.waitForExistence(timeout: 5) && undo.isEnabled)
+        XCTAssertTrue(undo.appears(within: 5) && undo.isEnabled)
         undo.tap()
         XCTAssertNotEqual(editor.value as? String ?? "", typed, "Undo took the typing back")
         app.buttons["Redo"].tap()
         XCTAssertEqual(editor.value as? String ?? "", typed, "Redo put it back")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["Offline thoughts"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Offline thoughts"].appears(within: 5))
         let local = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "On this iPhone only"))
         XCTAssertTrue(local.firstMatch.exists)
 
         // Settings says what syncs once there's a server, and offers one from the account row.
-        app.buttons["Tags"].tap()
+        openSidebar()
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.staticTexts["Synced once you connect"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Synced once you connect"].appears(within: 5))
         XCTAssertFalse(app.buttons["Security"].exists)
         XCTAssertFalse(app.buttons["Integrations"].exists)
         XCTAssertEqual(app.buttons["Sync & Data"].value as? String, "1 waiting")
         try audit("settings offline", [.sufficientElementDescription, .hitRegion])
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Not connected")).firstMatch.tap()
-        XCTAssertTrue(app.buttons["Connect to a server"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Connect to a server"].appears(within: 5))
     }
 
     /// Spaces (§7.7) work offline: the sidebar always names the space, and its switcher makes new ones.
@@ -183,26 +183,26 @@ final class FlowTests: XCTestCase {
 
     func testSpaces() throws {
         app.launch()
-        XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["New note"].appears(within: 10))
         writeNewNote("Groceries\nMilk")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Groceries"].appears(within: 5))
         // The list is titled by what it shows.
         XCTAssertTrue(app.staticTexts["All Notes"].exists)
 
-        app.buttons["Tags"].tap()
+        openSidebar()
         let notesSwitcher = app.buttons["Space: Notes"]
-        XCTAssertTrue(notesSwitcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(notesSwitcher.appears(within: 5))
         notesSwitcher.tap()
         let newSpace = app.buttons["New Space…"]
-        XCTAssertTrue(newSpace.waitForExistence(timeout: 5))
+        XCTAssertTrue(newSpace.appears(within: 5))
         // One space: the card and New Space only. The caption shows uppercased, so matched without case.
         let switchTo = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Switch to")).firstMatch
         XCTAssertFalse(switchTo.exists)
         screenshot("space switcher, one space")
         newSpace.tap()
         let name = app.textFields["Name"]
-        XCTAssertTrue(name.waitForExistence(timeout: 5))
+        XCTAssertTrue(name.appears(within: 5))
         // The sheet focuses the field on appear, a moment after it exists: typing sooner goes nowhere.
         let focused = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: name)
@@ -210,30 +210,30 @@ final class FlowTests: XCTestCase {
         app.typeText("Work")
         // An icon is required too.
         app.buttons["Create"].tap()
-        XCTAssertTrue(app.staticTexts["Choose an icon."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Choose an icon."].appears(within: 5))
         app.buttons["Diary"].tap()
         screenshot("new space")
         app.buttons["Create"].tap()
 
         // Straight to the new, empty space, in its icon's colours.
-        XCTAssertTrue(app.staticTexts["No notes in Work yet"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["No notes in Work yet"].appears(within: 10))
         writeNewNote("Standup\nStatus")
         screenshot("a note in the diary's theme")
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["Standup"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Standup"].appears(within: 5))
         XCTAssertFalse(app.staticTexts["Groceries"].exists)
         try audit("a second space")
         screenshot("the diary's theme")
         let diary = background(app.screenshot().image)
 
-        app.buttons["Tags"].tap()
+        openSidebar()
         let switcher = app.buttons["Space: Work"]
-        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(switcher.appears(within: 5))
         switcher.tap()
         // The current space is the card; the others are listed to switch to. Without traits a row is its name
         // alone: private goes unsaid.
         let notes = app.buttons["Notes"]
-        XCTAssertTrue(notes.waitForExistence(timeout: 5))
+        XCTAssertTrue(notes.appears(within: 5))
         XCTAssertTrue(switchTo.exists)
         XCTAssertFalse(app.buttons["Work"].exists)
         XCTAssertFalse(app.staticTexts["Only you"].exists)
@@ -242,7 +242,7 @@ final class FlowTests: XCTestCase {
 
         // Holding a row opens that space's info (§7.8) without switching: the default can't be deleted.
         notes.press(forDuration: 1)
-        XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].appears(within: 5))
         XCTAssertTrue(nameEditor.exists)
         XCTAssertTrue(app.buttons["Change icon"].exists)
         XCTAssertFalse(app.buttons["Delete Space…"].isEnabled)
@@ -250,12 +250,12 @@ final class FlowTests: XCTestCase {
         try audit("space info", [.sufficientElementDescription, .hitRegion])
         // Done: back on the sidebar it was opened from.
         app.buttons["Done"].tap()
-        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(switcher.appears(within: 5))
         switcher.tap()
-        XCTAssertTrue(notes.waitForExistence(timeout: 5))
+        XCTAssertTrue(notes.appears(within: 5))
         notes.tap()
         // The sidebar closes onto the space's list, back in the app icon's colours.
-        XCTAssertTrue(app.staticTexts["Groceries"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Groceries"].appears(within: 5))
         XCTAssertTrue(app.staticTexts["Groceries"].isHittable)
         XCTAssertFalse(app.staticTexts["Standup"].exists)
         sleep(1)
@@ -264,25 +264,25 @@ final class FlowTests: XCTestCase {
         XCTAssertNotEqual([diary.0, diary.1, diary.2], [home.0, home.1, home.2])
 
         // The card's Info is the current space's.
-        app.buttons["Tags"].tap()
-        XCTAssertTrue(app.buttons["Space: Notes"].waitForExistence(timeout: 5))
+        openSidebar()
+        XCTAssertTrue(app.buttons["Space: Notes"].appears(within: 5))
         app.buttons["Space: Notes"].tap()
         let info = app.buttons["Space info"]
-        XCTAssertTrue(info.waitForExistence(timeout: 5))
+        XCTAssertTrue(info.appears(within: 5))
         info.tap()
-        XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["This space can be renamed but not deleted."].appears(within: 5))
         app.buttons["Done"].tap()
 
         // Settings › Spaces: each row opens its Space info.
-        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Settings"].appears(within: 5))
         app.buttons["Settings"].tap()
         let spaces = app.buttons["Spaces"]
-        XCTAssertTrue(spaces.waitForExistence(timeout: 5))
+        XCTAssertTrue(spaces.appears(within: 5))
         spaces.tap()
         let work = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Work")).firstMatch
-        XCTAssertTrue(work.waitForExistence(timeout: 5))
+        XCTAssertTrue(work.appears(within: 5))
         work.tap()
-        XCTAssertTrue(app.staticTexts["Move or delete its notes to delete this space."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Move or delete its notes to delete this space."].appears(within: 5))
         XCTAssertFalse(app.buttons["Delete Space…"].isEnabled)
 
         // Its owner renames it where the name is shown, and picks an icon under the header: each saved as made.
@@ -291,13 +291,13 @@ final class FlowTests: XCTestCase {
         nameField.typeText("Office\n")
         app.buttons["Change icon"].tap()
         let castle = app.buttons["Castle"]
-        XCTAssertTrue(castle.waitForExistence(timeout: 5))
+        XCTAssertTrue(castle.appears(within: 5))
         castle.tap()
         XCTAssertTrue(castle.isSelected)
         screenshot("space info, icons")
         app.buttons["Done"].tap()
         let office = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Office,")).firstMatch
-        XCTAssertTrue(office.waitForExistence(timeout: 5))
+        XCTAssertTrue(office.appears(within: 5))
         office.tap()
         XCTAssertEqual(app.buttons["Change icon"].value as? String, "Castle")
         app.buttons["Done"].tap()
@@ -336,7 +336,7 @@ final class FlowTests: XCTestCase {
     /// Pull to refresh: a sync now, not at the next 30-second one.
     private func refreshList() {
         let list = app.collectionViews.firstMatch
-        XCTAssertTrue(list.waitForExistence(timeout: 5))
+        XCTAssertTrue(list.appears(within: 5))
         list.swipeDown(velocity: .slow)
         sleep(2)
     }
@@ -352,20 +352,20 @@ final class FlowTests: XCTestCase {
             "POST", "api/v1/notes", token: pam,
             ["operationId": newId(), "id": newId(), "title": "Tomatoes", "content": "Red at last\n", "spaceId": garden])
 
-        try signIn(as: "Pam")
-        app.buttons["Tags"].tap()
+        try await signIn(as: "Pam")
+        openSidebar()
         let switcher = app.buttons["Space: Notes"]
-        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(switcher.appears(within: 5))
         switcher.tap()
         let row = app.buttons["Garden"]
-        XCTAssertTrue(row.waitForExistence(timeout: 10))
+        XCTAssertTrue(row.appears(within: 10))
         row.press(forDuration: 1)
         let publish = app.buttons["Publish"]
-        XCTAssertTrue(publish.waitForExistence(timeout: 10))
+        XCTAssertTrue(publish.appears(within: 10))
         publish.tap()
 
         let address = app.textFields["Address"]
-        XCTAssertTrue(address.waitForExistence(timeout: 15))
+        XCTAssertTrue(address.appears(within: 15))
         XCTAssertEqual(address.value as? String, "garden")
         XCTAssertTrue(app.buttons["Stop Publishing…"].exists)
         XCTAssertTrue(app.links["Open"].exists || app.buttons["Open"].exists)
@@ -376,7 +376,7 @@ final class FlowTests: XCTestCase {
         address.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: "garden".count))
         address.typeText("our-plot\n")
         let change = app.buttons["Change Address"]
-        XCTAssertTrue(change.waitForExistence(timeout: 5))
+        XCTAssertTrue(change.appears(within: 5))
         change.tap()
         let moved = try await waitFor {
             let s = try await self.call("GET", "api/v1/spaces/\(garden)/publish", token: pam)
@@ -386,9 +386,9 @@ final class FlowTests: XCTestCase {
 
         app.buttons["Stop Publishing…"].tap()
         let stop = app.buttons["Stop Publishing"]
-        XCTAssertTrue(stop.waitForExistence(timeout: 5))
+        XCTAssertTrue(stop.appears(within: 5))
         stop.tap()
-        XCTAssertTrue(app.buttons["Publish"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Publish"].appears(within: 15))
         let settings = try await call("GET", "api/v1/spaces/\(garden)/publish", token: pam)
         XCTAssertEqual(settings["published"] as? Bool, false)
         XCTAssertEqual(settings["handle"] as? String, "our-plot")
@@ -425,13 +425,13 @@ final class FlowTests: XCTestCase {
         _ = try await call("PUT", "api/v1/spaces/\(club)", token: ana, ["name": "Book club", "icon": "journal"])
         _ = try await call("POST", "api/v1/spaces/\(club)/invites", token: ana, ["userId": samId])
 
-        try signIn(as: "Sam")
-        app.buttons["Tags"].tap()
+        try await signIn(as: "Sam")
+        openSidebar()
         let switcher = app.buttons["Space: Notes"]
-        XCTAssertTrue(switcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(switcher.appears(within: 5))
         switcher.tap()
         let join = app.buttons["Join Book club"]
-        XCTAssertTrue(join.waitForExistence(timeout: 15))
+        XCTAssertTrue(join.appears(within: 15))
         XCTAssertTrue(app.buttons["Decline Book club"].exists)
         sleep(1)
         screenshot("ios-shared-switcher-invitation")
@@ -439,15 +439,15 @@ final class FlowTests: XCTestCase {
 
         // Joining switches to the space.
         join.tap()
-        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].appears(within: 15))
 
         // A member's Space info: the name is the owner's to change; People lists who's in it, and Leave.
-        app.buttons["Tags"].tap()
+        openSidebar()
         let bookClubSwitcher = app.buttons["Space: Book club"]
-        XCTAssertTrue(bookClubSwitcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(bookClubSwitcher.appears(within: 5))
         bookClubSwitcher.tap()
         app.buttons["Space info"].tap()
-        XCTAssertTrue(app.staticTexts["Ana, Owner"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Ana, Owner"].appears(within: 10))
         XCTAssertTrue(app.staticTexts["Sam, You"].exists)
         XCTAssertTrue(app.buttons["Leave Space…"].exists)
         XCTAssertFalse(nameEditor.exists)
@@ -457,30 +457,30 @@ final class FlowTests: XCTestCase {
         app.buttons["Done"].tap()
 
         // Family's Space info: People says what inviting does and lists everyone else, not the account itself.
-        XCTAssertTrue(bookClubSwitcher.waitForExistence(timeout: 5))
+        XCTAssertTrue(bookClubSwitcher.appears(within: 5))
         bookClubSwitcher.tap()
         let familyRow = app.buttons["Family"]
-        XCTAssertTrue(familyRow.waitForExistence(timeout: 5))
+        XCTAssertTrue(familyRow.appears(within: 5))
         familyRow.press(forDuration: 1)
         let lead = "Invite people to read and edit every note in Family, and add their own."
-        XCTAssertTrue(app.staticTexts[lead].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts[lead].appears(within: 5))
         let inviteAna = app.buttons["Invite Ana"]
-        XCTAssertTrue(inviteAna.waitForExistence(timeout: 10))
+        XCTAssertTrue(inviteAna.appears(within: 10))
         XCTAssertTrue(app.buttons["Invite Ben"].exists)
         XCTAssertFalse(app.buttons["Invite Sam"].exists)
         screenshot("ios-shared-people-invite")
         // One tap invites, which shares it: Ana lands in the list, invited, and the glyph arrives.
         inviteAna.tap()
-        XCTAssertTrue(app.staticTexts["Ana, Invited"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Ana, Invited"].appears(within: 15))
         XCTAssertTrue(app.staticTexts["Sam, Owner · You"].exists)
         XCTAssertTrue(app.buttons["Stop Sharing…"].exists)
         screenshot("ios-shared-invited")
         // Ben too, then not: Cancel needs no confirmation.
         app.buttons["Invite Ben"].tap()
         let cancelBen = app.buttons["Cancel invitation for Ben"]
-        XCTAssertTrue(cancelBen.waitForExistence(timeout: 15))
+        XCTAssertTrue(cancelBen.appears(within: 15))
         cancelBen.tap()
-        XCTAssertTrue(app.buttons["Invite Ben"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Invite Ben"].appears(within: 15))
         app.buttons["Done"].tap()
         app.buttons["Close sidebar"].tap()
 
@@ -503,28 +503,28 @@ final class FlowTests: XCTestCase {
             ])
 
         // Back on Book club's list: a sync brings what Ana did; the switcher says so.
-        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].appears(within: 5))
         refreshList()
-        app.buttons["Tags"].tap()
+        openSidebar()
         app.buttons["Space: Book club"].tap()
         let news = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Family, Ana edited 2 notes"))
             .firstMatch
-        XCTAssertTrue(news.waitForExistence(timeout: 40), app.debugDescription)
+        XCTAssertTrue(news.appears(within: 40), app.debugDescription)
         sleep(1)
         screenshot("ios-shared-switcher-news")
 
         // Space info: Ana's in; the owner manages her from her row, each change asked first where it was asked.
         news.press(forDuration: 1)
-        XCTAssertTrue(app.staticTexts["Ana"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["Ana"].appears(within: 10))
         XCTAssertTrue(app.buttons["Invite Ben"].exists)
         XCTAssertTrue(app.buttons["Stop Sharing…"].exists)
         screenshot("ios-shared-space-info")
         try audit("shared", [.sufficientElementDescription, .hitRegion])
         app.buttons["Options for Ana"].tap()
         let makeOwner = app.buttons["Make Owner"]
-        XCTAssertTrue(makeOwner.waitForExistence(timeout: 5))
+        XCTAssertTrue(makeOwner.appears(within: 5))
         makeOwner.tap()
-        XCTAssertTrue(app.staticTexts["Make Ana the owner of “Family”?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Make Ana the owner of “Family”?"].appears(within: 5))
         screenshot("ios-shared-make-owner")
         // A popover on iOS 26 has no Cancel: tapping outside it is.
         if app.buttons["Cancel"].exists {
@@ -532,47 +532,47 @@ final class FlowTests: XCTestCase {
         } else {
             app.otherElements["PopoverDismissRegion"].firstMatch.tap()
         }
-        XCTAssertTrue(app.staticTexts["Ana"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Ana"].appears(within: 5))
         app.buttons["Done"].tap()
 
         // Family's list says who edited; having shown it, what changed there is no longer news.
-        XCTAssertTrue(app.buttons["Space: Book club"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Space: Book club"].appears(within: 5))
         app.buttons["Space: Book club"].tap()
-        XCTAssertTrue(news.waitForExistence(timeout: 5))
+        XCTAssertTrue(news.appears(within: 5))
         news.tap()
         let edited = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Ana · ")).firstMatch
-        XCTAssertTrue(edited.waitForExistence(timeout: 10))
+        XCTAssertTrue(edited.appears(within: 10))
         screenshot("ios-shared-note-row")
-        app.buttons["Tags"].tap()
+        openSidebar()
         app.buttons["Space: Family"].tap()
         let bookClub = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Book club,")).firstMatch
-        XCTAssertTrue(bookClub.waitForExistence(timeout: 5))
+        XCTAssertTrue(bookClub.appears(within: 5))
         bookClub.tap()
-        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].waitForExistence(timeout: 5))
-        app.buttons["Tags"].tap()
+        XCTAssertTrue(app.staticTexts["No notes in Book club yet"].appears(within: 5))
+        openSidebar()
         app.buttons["Space: Book club"].tap()
         let seen = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Family,")).firstMatch
-        XCTAssertTrue(seen.waitForExistence(timeout: 5))
+        XCTAssertTrue(seen.appears(within: 5))
         XCTAssertFalse(seen.label.contains("edited"), seen.label)
         seen.tap()
 
         // The editor says who edited; Lock explains; moving out asks.
         let row = app.staticTexts["Groceries"]
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.appears(within: 5))
         row.tap()
         let editedBy = app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Edited by Ana · "))
             .firstMatch
-        XCTAssertTrue(editedBy.waitForExistence(timeout: 10))
+        XCTAssertTrue(editedBy.appears(within: 10))
         screenshot("ios-shared-editor")
         app.buttons["More"].tap()
         app.buttons["Lock note"].tap()
-        XCTAssertTrue(app.alerts["Locked notes can’t be in a shared space."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.alerts["Locked notes can’t be in a shared space."].appears(within: 5))
         app.alerts.buttons["OK"].tap()
         app.buttons["More"].tap()
         app.buttons["Move to Space"].tap()
         app.buttons["Notes"].tap()
         let moveOut = app.alerts["Move “Groceries” to Notes?"]
-        XCTAssertTrue(moveOut.waitForExistence(timeout: 5))
+        XCTAssertTrue(moveOut.appears(within: 5))
         XCTAssertTrue(moveOut.staticTexts["It will no longer be:\nVisible to Ana"].exists, moveOut.debugDescription)
         screenshot("ios-shared-move-out")
         moveOut.buttons["Cancel"].tap()
@@ -581,66 +581,82 @@ final class FlowTests: XCTestCase {
     /// Wide (an unfolded iPhone Duo), a note opens beside the list, and another one takes its place.
     func testNotesOpenBesideTheListWhenWide() throws {
         app.launch()
-        XCTAssertTrue(app.staticTexts["No notes yet"].waitForExistence(timeout: 5))
-        guard app.staticTexts["Pick a note, or start one."].waitForExistence(timeout: 2) else {
+        XCTAssertTrue(app.staticTexts["No notes yet"].appears(within: 5))
+        guard app.staticTexts["Pick a note, or start one."].appears(within: 2) else {
             throw XCTSkip("A narrow window: notes open over the list")
         }
         writeNewNote("First note\nBeside the list.")
-        XCTAssertTrue(app.staticTexts["First note"].waitForExistence(timeout: 5), "the list shows it beside the note")
+        XCTAssertTrue(app.staticTexts["First note"].appears(within: 5), "the list shows it beside the note")
         writeNewNote("Second note\nIn its place.")
-        XCTAssertTrue(app.staticTexts["Second note"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Second note"].appears(within: 5))
         XCTAssertEqual(app.textViews.count, 1, "one note open at a time")
         let heading = app.buttons["Heading 1"]
-        XCTAssertTrue(heading.waitForExistence(timeout: 5))
+        XCTAssertTrue(heading.appears(within: 5))
         XCTAssertGreaterThanOrEqual(
             heading.frame.minX, app.textViews.firstMatch.frame.minX,
             "the formatting bar is under the note, not the list")
         app.staticTexts["First note"].tap()
         let first = app.textViews.matching(NSPredicate(format: "value CONTAINS %@", "Beside the list."))
-        XCTAssertTrue(first.firstMatch.waitForExistence(timeout: 5), "the first note took the second's place")
+        XCTAssertTrue(first.firstMatch.appears(within: 5), "the first note took the second's place")
         XCTAssertEqual(app.textViews.count, 1)
         screenshot("wide")
     }
 
     func testALongNoteScrolls() throws {
         app.launch()
-        XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["New note"].appears(within: 10))
         writeNewNote("Long note\n" + (1...60).map { "Line \($0)" }.joined(separator: "\n"))
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["Long note"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Long note"].appears(within: 5))
         // Opened again, at the top and with no keyboard: a swipe scrolls the text.
         app.staticTexts["Long note"].tap()
         let editor = app.textViews.firstMatch
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertTrue(editor.appears(within: 5))
         let top = editor.screenshot().pngRepresentation
         editor.swipeUp()
         XCTAssertNotEqual(editor.screenshot().pngRepresentation, top, "the note scrolled")
     }
 
-    /// Launches and signs in to the test server.
-    /// As the owner, or (`user`) another account `account(_:)` made.
-    private func signIn(screenshotted: Bool = false, as user: String? = nil) throws {
+    /// Launches signed in to the test server, as the owner or (`user`) another account `account(_:)` made.
+    /// The session comes from the API, not the sign-in screens: those cost ~20 s, and `signInOnScreen` covers them.
+    private func signIn(as user: String? = nil) async throws {
+        let server = try XCTUnwrap(env["NOTESD_URL"], "run through scripts/with-server.sh")
+        let session = try await call(
+            "POST", "api/v1/auth/login", token: "",
+            [
+                "username": user ?? env["NOTESD_USERNAME"] ?? "owner", "password": env["NOTESD_PASSWORD"] ?? "",
+                "client": "device", "deviceName": "ui test",
+            ])
+        app.launchEnvironment["UITEST_SERVER"] = server
+        app.launchEnvironment["UITEST_SIGN_IN"] = String(
+            decoding: try JSONSerialization.data(withJSONObject: session), as: UTF8.self)
+        app.launch()
+        XCTAssertTrue(app.buttons["New note"].appears(within: 10))
+    }
+
+    /// Launches and signs in to the test server as the owner, through the screens.
+    private func signInOnScreen(screenshotted: Bool = false) throws {
         let server = try XCTUnwrap(env["NOTESD_URL"], "run through scripts/with-server.sh")
         app.launch()
         let connect = app.buttons["Connect to a server"]
-        XCTAssertTrue(connect.waitForExistence(timeout: 5))
+        XCTAssertTrue(connect.appears(within: 5))
         connect.tap()
 
         let address = app.textFields["Server address"]
-        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        XCTAssertTrue(address.appears(within: 5))
         focus(address)
         address.typeText(server)
         let username = app.textFields["Username"]
         tap(app.buttons["Continue"], until: username, timeout: 10)
 
         focus(username)
-        username.typeText(user ?? env["NOTESD_USERNAME"] ?? "owner")
+        username.typeText(env["NOTESD_USERNAME"] ?? "owner")
         let password = app.secureTextFields["Password"]
         focus(password)
         password.typeText(env["NOTESD_PASSWORD"] ?? "")
         if screenshotted { screenshot("sign in") }
         app.buttons["Sign in"].tap()
-        XCTAssertTrue(app.buttons["New note"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["New note"].appears(within: 10))
     }
 
     /// The lock sheet after Lock note: the first lock on any device creates
@@ -648,7 +664,7 @@ final class FlowTests: XCTestCase {
     private func enterLockPassword(screenshotted: Bool = false) throws {
         let create = app.navigationBars["Create a lock password"]
         let existing = app.navigationBars["Lock this note"]
-        XCTAssertTrue(create.waitForExistence(timeout: 5) || existing.exists)
+        XCTAssertTrue(create.appears(within: 5) || existing.exists)
         let password = app.secureTextFields["Lock password"]
         focus(password)
         password.typeText(lockPassword)
@@ -681,9 +697,15 @@ final class FlowTests: XCTestCase {
     private func tap(_ button: XCUIElement, until result: XCUIElement, timeout: TimeInterval = 5) {
         for _ in 0..<3 {
             if button.exists && button.isHittable { button.tap() }
-            if result.waitForExistence(timeout: timeout) { return }
+            if result.appears(within: timeout) { return }
         }
         XCTFail("tapping \(button) never showed \(result)")
+    }
+
+    /// Tags opens the sidebar, Settings at its foot. Right after a space switch or a sheet the sidebar is still
+    /// closing, and the tap is lost.
+    private func openSidebar() {
+        tap(app.buttons["Tags"], until: app.buttons["Settings"], timeout: 2)
     }
 
     /// Opens a new note and types into it. A tap while a sheet is still closing (sign-in's, on CI) can be
@@ -692,9 +714,9 @@ final class FlowTests: XCTestCase {
         let editor = app.textViews.firstMatch
         for _ in 0..<3 {
             let newNote = app.buttons["New note"]
-            XCTAssertTrue(newNote.waitForExistence(timeout: 10))
+            XCTAssertTrue(newNote.appears(within: 10))
             newNote.tap()
-            if editor.waitForExistence(timeout: 5) { break }
+            if editor.appears(within: 5) { break }
         }
         let deadline = Date().addingTimeInterval(5)
         while editor.value(forKey: "hasKeyboardFocus") as? Bool != true && Date() < deadline { usleep(200_000) }
@@ -713,19 +735,19 @@ final class FlowTests: XCTestCase {
             "content": content,
         ])
         _ = try await api("POST", "api/v1/notes", body: note)
-        try signIn()
+        try await signIn()
         let row = app.staticTexts["Apples"]
-        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        XCTAssertTrue(row.appears(within: 15))
         row.tap()
         let editor = app.textViews.firstMatch
-        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        XCTAssertTrue(editor.appears(within: 5))
 
         // Find alone: no replace field. The search field has the keyboard straight away.
         tap(app.buttons["More"], until: app.buttons["Find"])
         XCTAssertTrue(app.buttons["Find and Replace"].exists)
         app.buttons["Find"].tap()
         let search = app.searchFields["find.searchField"]
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         XCTAssertFalse(app.textFields["find.replaceField"].exists)
         XCTAssertEqual(search.value(forKey: "hasKeyboardFocus") as? Bool, true)
         search.typeText("apples")
@@ -766,16 +788,18 @@ final class FlowTests: XCTestCase {
             app.typeKey(XCUIKeyboardKey.leftArrow.rawValue, modifierFlags: [])
             sleep(1)
             app.typeKey("f", modifierFlags: .command)
-            _ = search.waitForExistence(timeout: 3)
+            _ = search.appears(within: 3)
         }
         XCTAssertTrue(search.exists, "⌘F")
         XCTAssertEqual(search.value as? String, "apples")
-        app.buttons["find.doneButton"].tap()
+        let done = app.buttons["find.doneButton"]
+        XCTAssertTrue(done.hittable(within: 5), "the find bar in place")
+        done.tap()
         XCTAssertTrue(waitForFocus(editor), "back to typing")
 
         tap(app.buttons["More"], until: app.buttons["Find and Replace"])
         app.buttons["Find and Replace"].tap()
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         let replace = app.textFields["find.replaceField"]
         replace.tap()
         replace.typeText("pears")
@@ -791,7 +815,7 @@ final class FlowTests: XCTestCase {
         XCUIDevice.shared.appearance = .light
         button.press(forDuration: 1)
         let all = app.buttons["Replace All"]
-        XCTAssertTrue(all.waitForExistence(timeout: 5))
+        XCTAssertTrue(all.appears(within: 5))
         all.tap()
         let replaced = editor.value as? String ?? ""
         XCTAssertFalse(replaced.lowercased().contains("apples"), replaced)
@@ -821,7 +845,7 @@ final class FlowTests: XCTestCase {
     }
 
     func testSignInWriteAndSync() async throws {
-        try signIn(screenshotted: true)
+        try signInOnScreen(screenshotted: true)
 
         // A note with a checklist, a heading and a tag.
         writeNewNote("Weekend\n")
@@ -831,7 +855,7 @@ final class FlowTests: XCTestCase {
         screenshot("editor")
 
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(app.staticTexts["Weekend"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Weekend"].appears(within: 5))
         // Pushed 2 s after the last edit; while sync is fine the list says nothing about it.
         var pushed = false
         for _ in 0..<30 where !pushed {
@@ -841,28 +865,28 @@ final class FlowTests: XCTestCase {
         }
         XCTAssertTrue(pushed, "the note reached the server")
         let count = app.staticTexts.matching(NSPredicate(format: "label MATCHES %@", "[0-9]+ notes?")).firstMatch
-        XCTAssertTrue(count.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(count.appears(within: 5), app.debugDescription)
         screenshot("list")
         try audit("list")
 
         // Search finds it by a word in the body.
         let search = app.textFields["Search notes"]
-        XCTAssertTrue(search.waitForExistence(timeout: 5))
+        XCTAssertTrue(search.appears(within: 5))
         search.tap()
         search.typeText("bre")
-        XCTAssertTrue(app.staticTexts["1 result"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["1 result"].appears(within: 5))
         XCTAssertTrue(app.staticTexts["Weekend"].exists)
         screenshot("search")
         app.buttons["Clear search"].tap()
 
         // The sidebar lists the new tag.
-        app.buttons["Tags"].tap()
-        XCTAssertTrue(app.buttons["#groceries, 1 note"].waitForExistence(timeout: 5))
+        openSidebar()
+        XCTAssertTrue(app.buttons["#groceries, 1 note"].appears(within: 5))
         screenshot("tags")
         try audit("tags")
         app.buttons["Settings"].tap()
         let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
-        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(account.firstMatch.appears(within: 5))
         screenshot("settings")
         // The last row on screen leaves it as the text grows, which the Dynamic Type check reports as
         // partial support; the form's fonts are the ones the other screens check.
@@ -872,76 +896,76 @@ final class FlowTests: XCTestCase {
         // The lock tests share the server, so its lock password may exist already.
         XCTAssertTrue(["Off", "Locked", "Unlocked"].contains(app.buttons["Security"].value as? String ?? ""))
         account.firstMatch.tap()
-        XCTAssertTrue(app.staticTexts["Signed in as"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Signed in as"].appears(within: 5))
         screenshot("settings server")
         try audit("settings server", [.sufficientElementDescription, .hitRegion])
     }
 
     /// Settings → Integrations, signed in.
-    private func openIntegrations() throws {
-        try signIn()
-        app.buttons["Tags"].tap()
+    private func openIntegrations() async throws {
+        try await signIn()
+        openSidebar()
         app.buttons["Settings"].tap()
         let integrations = app.buttons["Integrations"]
-        XCTAssertTrue(integrations.waitForExistence(timeout: 5))
+        XCTAssertTrue(integrations.appears(within: 5))
         integrations.tap()
     }
 
     /// Resend connects in two steps, then is managed and disconnected. Server-wide: it ends disconnected again,
     /// for the tests after it.
-    func testResendConnectsInTwoSteps() throws {
-        try openIntegrations()
+    func testResendConnectsInTwoSteps() async throws {
+        try await openIntegrations()
         let connect = app.buttons["Connect Resend"]
-        XCTAssertTrue(connect.waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(connect.appears(within: 10), app.debugDescription)
         connect.tap()
 
         let key = app.secureTextFields["API key"]
-        XCTAssertTrue(key.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(key.appears(within: 5), app.debugDescription)
         app.buttons["Continue"].tap()
-        XCTAssertTrue(app.staticTexts["Paste your Resend API key."].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Paste your Resend API key."].appears(within: 5))
         key.tap()
         key.typeText("re_123456789")
         app.buttons["Continue"].tap()
 
         let address = app.textFields["Address"]
-        XCTAssertTrue(address.waitForExistence(timeout: 5))
+        XCTAssertTrue(address.appears(within: 5))
         app.textFields["Name"].tap()
         app.textFields["Name"].typeText("Notes")
         address.tap()
         address.typeText("notes@example.com")
         screenshot("resend sender")
         app.buttons["Connect"].tap()
-        XCTAssertTrue(app.staticTexts["Ready to Send"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.staticTexts["Ready to Send"].appears(within: 10), app.debugDescription)
         screenshot("resend connected")
         app.buttons["Done"].tap()
 
         let manage = app.buttons["Manage Resend"]
-        XCTAssertTrue(manage.waitForExistence(timeout: 5))
+        XCTAssertTrue(manage.appears(within: 5))
         XCTAssertTrue(app.staticTexts["Sending as Notes <notes@example.com>"].exists)
         manage.tap()
         let disconnect = app.buttons["Disconnect Resend"]
-        XCTAssertTrue(disconnect.waitForExistence(timeout: 5))
+        XCTAssertTrue(disconnect.appears(within: 5))
         disconnect.tap()
         let confirm = app.buttons.matching(NSPredicate(format: "label == %@", "Disconnect")).firstMatch
-        XCTAssertTrue(confirm.waitForExistence(timeout: 5))
+        XCTAssertTrue(confirm.appears(within: 5))
         confirm.tap()
-        XCTAssertTrue(app.buttons["Connect Resend"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.buttons["Connect Resend"].appears(within: 10))
     }
 
     /// Only the refusal: the tests share the owner, and a real change signs out their sessions (NotesCore tests it).
-    func testChangePasswordRefusesAWrongCurrentOne() throws {
-        try signIn()
-        app.buttons["Tags"].tap()
+    func testChangePasswordRefusesAWrongCurrentOne() async throws {
+        try await signIn()
+        openSidebar()
         app.buttons["Settings"].tap()
         let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
-        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(account.firstMatch.appears(within: 5))
         account.firstMatch.tap()
         let change = app.buttons["Change Password"]
-        XCTAssertTrue(change.waitForExistence(timeout: 5))
+        XCTAssertTrue(change.appears(within: 5))
         change.tap()
 
         let current = app.secureTextFields["Current password"]
-        XCTAssertTrue(current.waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(current.appears(within: 5), app.debugDescription)
         current.tap()
         current.typeText("not it")
         app.secureTextFields["New password"].tap()
@@ -949,28 +973,28 @@ final class FlowTests: XCTestCase {
         app.secureTextFields["Confirm new password"].tap()
         app.secureTextFields["Confirm new password"].typeText("a brand new one")
         app.buttons["Change"].tap()
-        XCTAssertTrue(app.staticTexts["That isn’t your current password."].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["That isn’t your current password."].appears(within: 10))
         // Still signed in: the refusal isn't a lost session.
         app.buttons["Cancel"].tap()
-        XCTAssertTrue(app.staticTexts["Signed in as"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Signed in as"].appears(within: 5))
     }
 
     /// The tests share the owner: the name keeps "owner" in it, so the others still find the account row if this
     /// one stops halfway, and it's cleared again at the end.
-    func testANameIsSetFromServer() throws {
-        try signIn()
-        app.buttons["Tags"].tap()
+    func testANameIsSetFromServer() async throws {
+        try await signIn()
+        openSidebar()
         app.buttons["Settings"].tap()
         let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
-        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(account.firstMatch.appears(within: 5))
         account.firstMatch.tap()
 
         func edit(_ name: String) {
             let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Name and Photo")).firstMatch
-            XCTAssertTrue(row.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(row.appears(within: 5), app.debugDescription)
             row.tap()
             let field = app.textFields["Name"]
-            XCTAssertTrue(field.waitForExistence(timeout: 5), app.debugDescription)
+            XCTAssertTrue(field.appears(within: 5), app.debugDescription)
             XCTAssertTrue(app.buttons["Choose Photo…"].exists)
             field.tap()
             if let old = field.value as? String, !old.isEmpty, old != "Name" {
@@ -978,49 +1002,49 @@ final class FlowTests: XCTestCase {
             }
             field.typeText(name)
             app.buttons["Save"].tap()
-            XCTAssertTrue(app.staticTexts["Signed in as"].waitForExistence(timeout: 10))
+            XCTAssertTrue(app.staticTexts["Signed in as"].appears(within: 10))
         }
 
         edit("The owner")
-        XCTAssertTrue(app.buttons["Name and Photo, The owner"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["Name and Photo, The owner"].appears(within: 10), app.debugDescription)
         edit("")
-        XCTAssertTrue(app.buttons["Name and Photo, Optional"].waitForExistence(timeout: 10), app.debugDescription)
+        XCTAssertTrue(app.buttons["Name and Photo, Optional"].appears(within: 10), app.debugDescription)
     }
 
     /// Signed out, the notes stay, so only their owner may sign in again: anyone else's first sync would take them.
-    func testSignInAgainKeepsTheUsername() throws {
-        try signIn()
-        app.buttons["Tags"].tap()
+    func testSignInAgainKeepsTheUsername() async throws {
+        try await signIn()
+        openSidebar()
         app.buttons["Settings"].tap()
         let account = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "owner"))
-        XCTAssertTrue(account.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(account.firstMatch.appears(within: 5))
         account.firstMatch.tap()
         let signOut = app.buttons["Sign out"]
-        XCTAssertTrue(signOut.waitForExistence(timeout: 5))
+        XCTAssertTrue(signOut.appears(within: 5))
         let row = signOut.frame
         signOut.tap()
         // The dialog has a Sign out too: the one that isn't the row.
-        XCTAssertTrue(app.staticTexts["Sign out of this server?"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Sign out of this server?"].appears(within: 5))
         let confirm = app.buttons.matching(NSPredicate(format: "label == %@", "Sign out")).allElementsBoundByIndex
             .first { $0.frame != row }
         try XCTUnwrap(confirm, app.debugDescription).tap()
 
         let again = app.buttons["Sign in again"]
-        XCTAssertTrue(again.waitForExistence(timeout: 10))
+        XCTAssertTrue(again.appears(within: 10))
         again.tap()
         let username = app.textFields["Username"]
-        XCTAssertTrue(username.waitForExistence(timeout: 5))
+        XCTAssertTrue(username.appears(within: 5))
         XCTAssertEqual(username.value as? String, env["NOTESD_USERNAME"] ?? "owner")
         XCTAssertFalse(username.isEnabled, "the username is fixed while this iPhone holds its notes")
     }
 
     func testAPictureFromAnotherDeviceShows() async throws {
         try await notesWithAPicture()
-        try signIn()
+        try await signIn()
         let note = app.staticTexts["Postcard"]
-        XCTAssertTrue(note.waitForExistence(timeout: 15))
+        XCTAssertTrue(note.appears(within: 15))
         note.tap()
-        XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textViews.firstMatch.appears(within: 5))
         // The picture is drawn into the text, not an element of its own: look for its blue.
         var blue = 0
         for _ in 0..<20 where blue < 2000 {
@@ -1041,11 +1065,11 @@ final class FlowTests: XCTestCase {
             "content": content,
         ])
         _ = try await api("POST", "api/v1/notes", body: note)
-        try signIn()
+        try await signIn()
         let row = app.staticTexts["Code"]
-        XCTAssertTrue(row.waitForExistence(timeout: 15))
+        XCTAssertTrue(row.appears(within: 15))
         row.tap()
-        XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textViews.firstMatch.appears(within: 5))
         sleep(1)
         // The fences are drawn into the text: look for the keyword purple and the string green,
         // at full size, as thin strokes fade into the block when shrunk.
@@ -1059,16 +1083,16 @@ final class FlowTests: XCTestCase {
 
     /// Face ID (faked: it matches at once) is offered right after the lock
     /// password, then opens the locked note without it.
-    func testFaceIDUnlocksALockedNote() throws {
+    func testFaceIDUnlocksALockedNote() async throws {
         app.launchArguments += ["--fake-biometrics=match"]
-        try signIn()
+        try await signIn()
         writeNewNote("Bank\nPIN 4321")
         tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword()
 
         let offer = app.alerts["Use Face ID for locked notes?"]
-        XCTAssertTrue(offer.waitForExistence(timeout: 15))
+        XCTAssertTrue(offer.appears(within: 15))
         screenshot("face id offer")
         // A system alert: iOS sizes its text, capped, and the audit reports the cap.
         try audit("face id offer", [.sufficientElementDescription, .hitRegion])
@@ -1076,7 +1100,7 @@ final class FlowTests: XCTestCase {
 
         // Locked from its own screen: Face ID waits to be asked.
         let lockNow = app.buttons["Lock now"]
-        XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
+        XCTAssertTrue(lockNow.appears(within: 15))
         let useFaceID = app.buttons["Use Face ID"]
         tap(lockNow, until: useFaceID)
         XCTAssertTrue(app.secureTextFields["Lock password"].exists)
@@ -1086,22 +1110,22 @@ final class FlowTests: XCTestCase {
         // Opened again: Face ID is asked for at once and opens it.
         app.navigationBars.buttons.element(boundBy: 0).tap()
         let row = app.buttons.matching(NSPredicate(format: "label BEGINSWITH %@", "Bank")).firstMatch
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.appears(within: 5))
         row.tap()
         let editor = app.textViews.firstMatch
-        XCTAssertTrue(editor.waitForExistence(timeout: 10))
+        XCTAssertTrue(editor.appears(within: 10))
         XCTAssertTrue((editor.value as? String ?? "").contains("PIN 4321"), "\(editor.value ?? "")")
 
         // Settings has it on; turned off, the password is the only way in.
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.buttons["Tags"].tap()
+        openSidebar()
         app.buttons["Settings"].tap()
         let security = app.buttons["Security"]
-        XCTAssertTrue(security.waitForExistence(timeout: 5))
+        XCTAssertTrue(security.appears(within: 5))
         XCTAssertEqual(security.value as? String, "Unlocked")
         security.tap()
         let toggle = app.switches["Unlock with Face ID"]
-        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertTrue(toggle.appears(within: 5))
         let onlyHere = NSPredicate(format: "label CONTAINS %@", "only on this iPhone")
         XCTAssertTrue(app.staticTexts.matching(onlyHere).firstMatch.exists)
         XCTAssertEqual(toggle.value as? String, "1")
@@ -1114,48 +1138,48 @@ final class FlowTests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "0")
         // Back to Settings, then to the list.
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(security.waitForExistence(timeout: 5))
+        XCTAssertTrue(security.appears(within: 5))
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        XCTAssertTrue(row.waitForExistence(timeout: 5))
+        XCTAssertTrue(row.appears(within: 5))
         row.tap()
-        XCTAssertTrue(lockNow.waitForExistence(timeout: 10))
+        XCTAssertTrue(lockNow.appears(within: 10))
         tap(lockNow, until: app.secureTextFields["Lock password"])
         XCTAssertFalse(useFaceID.exists)
     }
 
     /// Dismissing the Face ID prompt is a choice: the password alone next time, not asked again.
-    func testDismissedFaceIDIsNotOfferedAgain() throws {
+    func testDismissedFaceIDIsNotOfferedAgain() async throws {
         app.launchArguments += ["--fake-biometrics=cancel"]
-        try signIn()
+        try await signIn()
         writeNewNote("Diary\nDear diary")
         tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword()
         let offer = app.alerts["Use Face ID for locked notes?"]
-        XCTAssertTrue(offer.waitForExistence(timeout: 15))
+        XCTAssertTrue(offer.appears(within: 15))
         offer.buttons["Use Face ID"].tap()
 
         let lockNow = app.buttons["Lock now"]
-        XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
+        XCTAssertTrue(lockNow.appears(within: 15))
         let field = app.secureTextFields["Lock password"]
         tap(lockNow, until: field)
         XCTAssertFalse(app.buttons["Use Face ID"].exists)
         field.tap()
         field.typeText(lockPassword)
         app.buttons["Unlock"].tap()
-        XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
-        XCTAssertFalse(offer.waitForExistence(timeout: 2), "Face ID was offered again")
+        XCTAssertTrue(lockNow.appears(within: 15))
+        XCTAssertFalse(offer.appears(within: 2), "Face ID was offered again")
     }
 
     func testLockAndUnlockANote() async throws {
-        try signIn()
+        try await signIn()
         writeNewNote("Secret plans\nMeet at noon")
         tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword(screenshotted: true)
 
         let lockNow = app.buttons["Lock now"]
-        XCTAssertTrue(lockNow.waitForExistence(timeout: 15))
+        XCTAssertTrue(lockNow.appears(within: 15))
         // Saved encrypted: the server has an envelope, never the text.
         var stored: [String: Any]?
         for _ in 0..<30 where stored == nil {
@@ -1172,19 +1196,19 @@ final class FlowTests: XCTestCase {
         let field = app.secureTextFields["Lock password"]
         tap(lockNow, until: field)
         XCTAssertTrue(app.staticTexts["This note is locked."].exists)
-        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.keyboards.firstMatch.appears(within: 5))
         sleep(1)
         screenshot("locked note")
         try audit("locked note")
         field.tap()
         field.typeText("wrong password")
         app.buttons["Unlock"].tap()
-        XCTAssertTrue(app.staticTexts["Wrong password."].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.staticTexts["Wrong password."].appears(within: 15))
         field.tap()
         field.typeText(lockPassword)
         app.buttons["Unlock"].tap()
         let editor = app.textViews.firstMatch
-        XCTAssertTrue(editor.waitForExistence(timeout: 15))
+        XCTAssertTrue(editor.appears(within: 15))
         XCTAssertTrue((editor.value as? String ?? "").contains("Meet at noon"), "\(editor.value ?? "")")
 
         // Removing the lock stores the text plainly again.
@@ -1200,30 +1224,30 @@ final class FlowTests: XCTestCase {
     }
 
     /// Security's forms open in sheets: changing the lock password, and resetting it.
-    func testLockPasswordSheetsOpenFromSecurity() throws {
-        try signIn()
+    func testLockPasswordSheetsOpenFromSecurity() async throws {
+        try await signIn()
         writeNewNote("Secret plans\nMeet at noon")
         tap(app.buttons["More"], until: app.buttons["Lock note"])
         app.buttons["Lock note"].tap()
         try enterLockPassword()
-        XCTAssertTrue(app.buttons["Lock now"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["Lock now"].appears(within: 15))
         app.navigationBars.buttons.element(boundBy: 0).tap()
-        app.buttons["Tags"].tap()
+        openSidebar()
         app.buttons["Settings"].tap()
         let security = app.buttons["Security"]
-        XCTAssertTrue(security.waitForExistence(timeout: 5))
+        XCTAssertTrue(security.appears(within: 5))
         security.tap()
 
         let change = app.buttons["Change lock password"]
-        XCTAssertTrue(change.waitForExistence(timeout: 5))
+        XCTAssertTrue(change.appears(within: 5))
         change.tap()
-        XCTAssertTrue(app.secureTextFields["Current lock password"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.secureTextFields["Current lock password"].appears(within: 5), app.debugDescription)
         app.buttons["Cancel"].tap()
 
         let forgot = app.buttons["Forgot the lock password?"]
-        XCTAssertTrue(forgot.waitForExistence(timeout: 5))
+        XCTAssertTrue(forgot.appears(within: 5))
         forgot.tap()
-        XCTAssertTrue(app.secureTextFields["Account password"].waitForExistence(timeout: 5), app.debugDescription)
+        XCTAssertTrue(app.secureTextFields["Account password"].appears(within: 5), app.debugDescription)
         app.buttons["Cancel"].tap()
     }
 
@@ -1251,17 +1275,17 @@ final class FlowTests: XCTestCase {
             ])
             _ = try await api("POST", "api/v1/notes", body: body)
         }
-        try signIn()
+        try await signIn()
         let first = app.staticTexts["Perfect World adventure"]
-        XCTAssertTrue(first.waitForExistence(timeout: 15))
+        XCTAssertTrue(first.appears(within: 15))
         sleep(2)
         screenshot("01 list")
 
-        app.buttons["Tags"].tap()
+        openSidebar()
         sleep(1)
         screenshot("02 tags")
         let rpg = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "rpg")).firstMatch
-        if rpg.waitForExistence(timeout: 3) {
+        if rpg.appears(within: 3) {
             rpg.tap()
             sleep(1)
             screenshot("03 filtered")
@@ -1273,14 +1297,14 @@ final class FlowTests: XCTestCase {
             app.buttons["Close sidebar"].tap()
             sleep(1)
             XCTAssertFalse(app.buttons["Settings"].exists, "tapping the list closed it")
-            app.buttons["Tags"].tap()
+            openSidebar()
             let all = app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "All notes")).firstMatch
-            if all.waitForExistence(timeout: 3) { all.tap() }
+            if all.appears(within: 3) { all.tap() }
             sleep(1)
         }
 
         first.tap()
-        XCTAssertTrue(app.textViews.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textViews.firstMatch.appears(within: 5))
         sleep(1)
         screenshot("04 note")
         app.textViews.firstMatch.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).tap()
@@ -1295,7 +1319,7 @@ final class FlowTests: XCTestCase {
         sleep(1)
 
         let search = app.textFields["Search notes"]
-        if search.waitForExistence(timeout: 5) {
+        if search.appears(within: 5) {
             search.tap()
             search.typeText("players")
             sleep(1)
@@ -1306,7 +1330,7 @@ final class FlowTests: XCTestCase {
             print("TREE", app.debugDescription)
         }
 
-        app.buttons["Tags"].tap()
+        openSidebar()
         app.buttons["Settings"].tap()
         sleep(1)
         screenshot("08 settings")
