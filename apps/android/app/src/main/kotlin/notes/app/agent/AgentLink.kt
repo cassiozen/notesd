@@ -1,5 +1,6 @@
 package notes.app.agent
 
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -15,7 +16,9 @@ import notes.app.notes.OpenNotes
 import notes.core.agent.AgentSocket
 import notes.core.agent.DroppedRun
 import notes.core.agent.EditorReply
+import notes.core.agent.Fields
 import notes.core.agent.Overlay
+import notes.core.agent.Prepared
 import notes.core.api.ApiClient
 import notes.core.api.ApiResult
 
@@ -40,15 +43,43 @@ class AgentLink(
 
     private enum class Want { Open, Closed, Background }
 
+    /** New notes that opened with a result done ahead, until their editor asks for their run. */
+    private val openedAhead = ConcurrentHashMap<String, Prepared>()
+
+    /** New notes, by id, that opened with a result done ahead the server no longer had. */
+    val missed: Flow<String> = socket.missed
+
+    /**
+     * What a new note opens with: its space's "new note opened" run, done ahead (docs/contributing/agent-clients.md:
+     * Done ahead), when it's ready. Null opens it empty, and the run starts once it's open.
+     */
+    fun openNewNote(noteId: String, spaceId: String): Fields? {
+        if (!acts(NOTE_CREATED, spaceId)) return null
+        val p = socket.takePrepared(spaceId) ?: return null
+        openedAhead[noteId] = p
+        return Fields(p.title, p.content)
+    }
+
     /**
      * Asks for an editor trigger's run on a note open here (docs/contributing/agent-clients.md: Editor triggers),
      * if the note's space has its agent on with a prompt for [trigger]. Not otherwise: the server would drop it.
+     * A new note that opened with its run done ahead says so instead, and nothing runs.
      */
     fun requestRun(trigger: String, noteId: String, spaceId: String): Boolean {
+        if (trigger == NOTE_CREATED) {
+            openedAhead.remove(noteId)?.let {
+                socket.usePrepared(it, noteId)
+                return true
+            }
+        }
+        if (!acts(trigger, spaceId)) return false
+        return socket.requestRun(trigger, noteId, spaceId)
+    }
+
+    private fun acts(trigger: String, spaceId: String): Boolean {
         if (ai.cache.value.value?.configured != true) return false
         val config = agents.cache.value.value?.get(spaceId)
-        if (config?.enabled != true || config.triggers[trigger].isNullOrBlank()) return false
-        return socket.requestRun(trigger, noteId, spaceId)
+        return config?.enabled == true && !config.triggers[trigger].isNullOrBlank()
     }
 
     /**
@@ -101,6 +132,16 @@ class AgentLink(
                 launch { agents.cache.refresh() }
             }
         }
+        // The space shown, while it has its new notes done ahead. Not in the background: nobody can make a note.
+        scope.launch {
+            combine(signedIn, foreground, ai.cache.value, agents.cache.value, space) { a, f, settings, configs, s ->
+                val config = configs?.get(s)
+                s.takeIf {
+                    a && f && settings?.configured == true && config?.enabled == true &&
+                        !config.triggers[NOTE_CREATED].isNullOrBlank()
+                }
+            }.distinctUntilChanged().collect { socket.wantAhead(it) }
+        }
         scope.launch {
             combine(signedIn, foreground, ai.cache.value, agents.cache.value, space) { a, f, settings, configs, s ->
                 when {
@@ -123,6 +164,7 @@ class AgentLink(
 
     companion object {
         const val MENU = "menu"
+        const val NOTE_CREATED = "noteCreated"
 
         /** Why a run asked for by hand didn't go, as the web app says it. */
         fun whyNot(why: DroppedRun.Why, online: Boolean): String = when {

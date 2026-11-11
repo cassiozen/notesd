@@ -197,6 +197,30 @@ class AgentSocketServerTest {
     }
 
     @Test
+    fun `a new note's run done ahead opens the note with it, and becomes its run`() = runBlocking {
+        agentOn("noteCreated", "Start the entry.")
+        model.script += Step.Tool("set_title", """{"title":"Monday","done":"Titled it."}""")
+        model.script += Step.Tool("show_card", """{"body":"What went well?","done":"Asked."}""")
+        val s = socket(Editor(null))
+        s.wantAhead("default")
+        s.start()
+        var p: Prepared? = null
+        until { s.takePrepared("default").also { p = it } != null }
+        val ahead = p!!
+        assertEquals("Monday", ahead.title)
+        assertEquals(listOf("What went well?"), ahead.overlays.map { it.body })
+        // Nothing in Activity until a note opens with it.
+        assertEquals(emptyList(), runs())
+
+        s.opened("j1", "default")
+        s.usePrepared(ahead, "j1")
+        assertEquals(listOf("What went well?"), s.overlays.value["j1"]?.map { it.body })
+        until { runs().map { Triple(it.trigger, it.noteId, it.status) } == listOf(Triple("noteCreated", "j1", "done")) }
+        // And the next one is done in turn.
+        until { s.takePrepared("default") != null }
+    }
+
+    @Test
     fun `a run's card and suggestion show beside the note, and answering them is recorded`() = runBlocking {
         agentOn("menu", "Look it over.")
         note("plan", "Plan", "Step one\n")

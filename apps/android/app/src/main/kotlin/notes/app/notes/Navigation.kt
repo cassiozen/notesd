@@ -445,7 +445,9 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                             push = { graph.push() },
                                             requestRun = { trigger, note, space ->
                                                 graph.agentLink.requestRun(trigger, note, space)
-                                            }
+                                            },
+                                            openWith = graph.agentLink::openNewNote,
+                                            missed = graph.agentLink.missed
                                         )
                                     },
                                     locks = graph.locks,

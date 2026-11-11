@@ -296,6 +296,12 @@ fun EditorScreen(
     LaunchedEffect(vm) {
         vm.incoming.collect { doc -> if (editor?.applyOutside(byAgent = false) { doc } == true) changes++ }
     }
+    LaunchedEffect(vm) {
+        vm.restart.collect { doc ->
+            editor?.setDocument(doc)
+            changes++
+        }
+    }
     LaunchedEffect(edits) {
         if (edits == 0) return@LaunchedEffect
         delay(SAVE_DELAY_MS)

@@ -25,6 +25,7 @@ import notes.app.TestNotesApp
 import notes.app.editor.NoteEditText
 import notes.app.notes.editIdleMs
 import notes.app.shutDown
+import notes.core.agent.Fields
 import notes.core.api.AgentConfig
 import notes.core.api.RemoteNote
 import notes.core.crypto.Keyring
@@ -152,6 +153,68 @@ class AgentTriggersTest {
         editorOf(id).text!!.append("Plans")
         idleFor(300)
         assertEquals(listOf("noteCreated"), triggers())
+    }
+
+    /** The default space's new note run, done ahead, as the server sends it once asked. */
+    private fun prepared(id: String) {
+        until { conn.got("prepare").any { "\"spaceId\":\"${Spaces.DEFAULT}\"" in it } }
+        conn.send(
+            """{"type":"prepared","id":"$id","spaceId":"${Spaces.DEFAULT}","title":"Monday",""" +
+                """"content":"## Today\n","expiresAt":${System.currentTimeMillis() + 30 * 60_000},""" +
+                """"overlays":[{"id":"ov1","runId":"$id","noteId":"","kind":"card","place":{"at":"top"},""" +
+                """"body":"What went well?"}]}"""
+        )
+        idleFor(100)
+    }
+
+    @Test
+    fun `a new note opens with its run done ahead, with its card, and says so rather than asking`() {
+        launch(mapOf("noteCreated" to "Start it."))
+        prepared("run_1")
+        compose.onNode(hasContentDescription("New note")).performClick()
+        until { requests().isNotEmpty() }
+        val asked = requests().single()
+        val id = asked["noteId"]!!.jsonPrimitive.content
+        assertEquals("run_1", asked["prepared"]!!.jsonPrimitive.content)
+        assertEquals(null, asked["note"])
+        val editor = editorOf(id)
+        assertEquals(Fields("Monday", "## Today\n"), editor.readForAgent().fields)
+        until { editor.agentCards.placed.map { it.first } == listOf("ov1") }
+        // Saved as the agent's change is: at once.
+        until { onMain { graph.store.get(id) }?.title == "Monday" }
+        // The next new note's.
+        until { conn.got("prepare").size == 2 }
+    }
+
+    @Test
+    fun `a new note whose run done ahead the server no longer had starts over empty, and asks for it live`() {
+        launch(mapOf("noteCreated" to "Start it."))
+        prepared("run_1")
+        compose.onNode(hasContentDescription("New note")).performClick()
+        until { requests().isNotEmpty() }
+        val id = requests().single()["noteId"]!!.jsonPrimitive.content
+        val editor = editorOf(id)
+        conn.send("""{"type":"prepared.missed","noteId":"$id","id":"run_1"}""")
+        until { requests().size == 2 }
+        assertEquals(null, requests()[1]["prepared"])
+        assertEquals("noteCreated", requests()[1]["trigger"]!!.jsonPrimitive.content)
+        assertEquals(Fields("", ""), editor.readForAgent().fields)
+        assertEquals(emptyList(), editor.agentCards.placed)
+    }
+
+    @Test
+    fun `a new note the user typed in keeps its text when its run done ahead is missed`() {
+        launch(mapOf("noteCreated" to "Start it."))
+        prepared("run_1")
+        compose.onNode(hasContentDescription("New note")).performClick()
+        until { requests().isNotEmpty() }
+        val id = requests().single()["noteId"]!!.jsonPrimitive.content
+        val editor = editorOf(id)
+        editor.text!!.append("Mine")
+        conn.send("""{"type":"prepared.missed","noteId":"$id","id":"run_1"}""")
+        idleFor(300)
+        assertEquals(1, requests().size)
+        assertTrue("Mine" in editor.readForAgent().fields.content)
     }
 
     @Test

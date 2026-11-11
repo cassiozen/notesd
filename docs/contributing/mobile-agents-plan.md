@@ -94,6 +94,7 @@ Status: ✓ done, – not needed, ☐ to do.
 | N11 | Overlay answers: × / ✓ / ✗; accept checks the quote, makes the `op`, lands as the agent's change; stale when it can't; answers queued while disconnected | ✓ | ✓ | ☐ |
 | N12 | Stale check for suggested replaces when typing pauses and when the list changes | ✓ | ✓ | ☐ |
 | N13 | No overlays on a locked note; forgotten on close or drop | ✓ | ✓ | ☐ |
+| N14 | New note opened, done ahead: `prepare` while the space shows in the foreground; keep the latest `prepared`, dropped on `prepared.void`, near `expiresAt` and on a new connection; a new note (not one started with a tag) opens with it and its cards, saved at once, then `run.request` with `prepared`; on `prepared.missed`, an untouched note starts over empty and runs live | ✓ | ✓ | ☐ |
 
 ## How it maps onto each app
 
