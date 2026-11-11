@@ -1,5 +1,6 @@
 package notes.app.agent
 
+import androidx.compose.ui.test.ComposeTimeoutException
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
@@ -101,8 +102,20 @@ class ActivityTest {
         }
         scenario = ActivityScenario.launch(MainActivity::class.java)
         compose.waitUntilAtLeastOneExists(hasText(until), 5_000)
-        if (socket) compose.waitUntil(5_000) { graph.agentLink.socket.connected.value }
+        if (socket) {
+            try {
+                compose.waitUntil(5_000) { graph.agentLink.socket.connected.value }
+            } catch (e: ComposeTimeoutException) {
+                // Seen only on CI: says which precondition of the socket opening was missing.
+                throw AssertionError("agent socket never connected: ${socketState()}", e)
+            }
+        }
     }
+
+    private fun socketState() = "foreground=${graph.foreground.value}, " +
+        "aiConfigured=${graph.ai.cache.value.value?.configured}, " +
+        "agentOn=${graph.agents.cache.value.value?.get(Spaces.DEFAULT)?.enabled}, " +
+        "socketRequests=${notesd.requests.count { it.endsWith("/agent/socket") }}, sockets=${notesd.sockets.size}"
 
     /** The server telling every socket of the account of a run. */
     private fun update(run: String, note: String, status: String, failure: String = "") = notesd.sockets.last().send(
@@ -135,7 +148,8 @@ class ActivityTest {
         openActivity()
 
         compose.waitUntilExactlyOneExists(hasText("Groceries", substring = true))
-        compose.onNodeWithText("Today in this space: 4,321 of 1,000,000 tokens").assertExists()
+        // Usage is its own request: it can land after the runs.
+        compose.waitUntilExactlyOneExists(hasText("Today in this space: 4,321 of 1,000,000 tokens"))
         // Narrowed to the space: the other's run isn't in it.
         compose.onNodeWithText("Trip", substring = true).assertDoesNotExist()
         compose.onNodeWithText("Changed the note", substring = true).assertExists()
