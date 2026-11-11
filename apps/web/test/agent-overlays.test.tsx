@@ -26,11 +26,15 @@ async function fixTypos(user: Awaited<ReturnType<typeof signedIn>>['user']) {
 describe('what a run shows beside the note', () => {
   it('a card to read, beside the new note and not in it, goes with ×', async () => {
     const llm = await startFakeLLM()
+    // Done ahead, as the space opens.
+    llm.script.push({ tool: 'show_card', args: { body: 'What **made** you smile today?', done: 'Asked.' } })
     const { server, user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
     await connected()
-    llm.script.push({ tool: 'show_card', args: { body: 'What **made** you smile today?', done: 'Asked.' } })
+    const { agentSocket } = await import('../src/agent/socket')
+    await waitFor(() => expect(agentSocket['prepared'].has('default')).toBe(true), { timeout: 5000 })
     await user.click(newNoteButton())
-    const card = await screen.findByRole('note', { name: /agent: a note$/ }, { timeout: 5000 })
+    // With the note, not after it.
+    const card = screen.getByRole('note', { name: /agent: a note$/ })
     expect(card.textContent).toContain('What made you smile today?')
     expect(bodyText()).toBe('')
 

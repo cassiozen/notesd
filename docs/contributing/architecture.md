@@ -644,6 +644,20 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   in its first call, the event also carries the cursor (in an editor), the space's tags, the space's
   reference notes, and which of the note's lines the agent wrote itself (`yourText`, from its recorded
   edits), so it doesn't take its own question for the user's writing.
+- **Done ahead.** *New note opened* runs on an empty note, so the runner does it before the note
+  exists, while an editor shows the space (`prepare`), and a new note opens with the result at once
+  (`prepare.go`). It's an ordinary run against an in-memory editor whose note doesn't exist yet
+  (`new-note`), except that `done` doesn't end it (nobody waits for the call it saves), with nothing
+  written to the database but its tokens: its change and overlays stay in
+  memory until the new note's editor says it opened with them, and only then become the note's run,
+  its edit and its overlays, in one transaction; the note's first save then links to the edit as for
+  any change in an editor. Results are per space and account, in memory: lost with a restart, kept 30
+  minutes and never past midnight. A store hook (`agent.Store.OnChange`) throws one away when what it
+  went by changes: the parts of its space's setup it goes by (`aheadInputs`), a note changing the
+  space's tags, a reference note, a note it read, or any note in the space once it searched or
+  listed. It hears of a note write once the write commits (`notes.Store.OnCommitted`), so a run
+  reading the note after that reads the new one. A rule that changes another note can't be done
+  ahead, and runs live until what of the setup it goes by changes.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
   `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a

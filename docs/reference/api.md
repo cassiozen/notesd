@@ -579,6 +579,22 @@ the note fails it as `editor_disconnected`, since the change may or may not have
 per note; asked again before it starts, it's the same run. A request the space's agent doesn't act
 on, for a note that's gone or locked, or one the server hasn't got with no `spaceId`, is dropped.
 
+**Done ahead.** A `noteCreated` run needs nothing of its note, which is empty, so while an editor
+shows a space it asks for one in advance (`prepare`), and a new note opens with its result
+(`prepared`), at once. It runs as any `noteCreated` run would, on an empty note with no cursor,
+except that `done` doesn't end it: nobody waits for the call it saves, and a model that gives it too
+soon still does the rest. Its
+tokens count as they're spent, used or not, and it shows in the activity log only once used, as
+the new note's run. It's held in memory, one per space and account, for 30 minutes and never past
+midnight in the account's time zone. It's thrown away (`prepared.void`) when what it went by
+changes: the parts of the space's agent setup it goes by (whether it's on, the space's prompt, the
+rule, its reference notes), a note changing the space's tags, one of its reference
+notes, a note it read, or, if it searched or listed notes, any note in the space; and when the AI
+provider changes. One thrown away or expired is still taken for 10 seconds, for a new note that
+opened with it as it went; an editor never sends one it knows is gone. A rule that changes another
+note, or makes one, can't wait in memory: it isn't done ahead, and runs live, until what of the
+setup it goes by changes (whether it's on, the space's prompt, the rule, its reference notes).
+
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one
 account is `429 rate_limited`. Messages are JSON text with a `type`; a type a side doesn't know is
@@ -589,7 +605,11 @@ ignored, so either may add some, except that an editor answers a request it can'
 | --- | --- | --- |
 | Server | `{type: "hello", connectionId, protocol: 1}` | Sent first |
 | Editor | `{type: "editor.opened", noteId, spaceId?}` | The editor shows the note. Again after reconnecting. `spaceId` finds a new note the server hasn't got yet |
-| Editor | `{type: "run.request", trigger, noteId, spaceId, note?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking |
+| Editor | `{type: "run.request", trigger, noteId, spaceId, note?, prepared?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking. For `noteCreated`, `prepared` is the id of the result done ahead the new note opened with: it becomes the note's run, finished, and nothing runs |
+| Editor | `{type: "prepare", spaceId}` | The editor shows the space: its `noteCreated` run is done ahead, for the next new note, unless one is going or ready. A ready one is sent again |
+| Server | `{type: "prepared", id, spaceId, title, content, overlays, expiresAt}` | A `noteCreated` run done ahead, to every editor of the account it's for: the title and content a new note opens with, and the overlays it shows (their `noteId` empty). Not to be used from `expiresAt` (Unix milliseconds) |
+| Server | `{type: "prepared.void", spaceId, id}` | Don't use result `id`, or wait for it if it's still going: something it went by changed, or it was used. Ask again to have the next one |
+| Server | `{type: "prepared.missed", noteId, id}` | A new note opened with result `id`, which the server no longer has: if nobody typed in it yet, the editor empties it and asks for its run live |
 | Editor | `{type: "editor.closed", noteId, revision, spaceId?}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Editor | `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered overlay `id`: `dismiss` for a card; `accept`, `reject` or `stale` (it no longer fits) for a suggestion. An accepted one's change was made in the editor as for an `apply`, and `before`, `revision` and `shows` are as its result's |
 | Server | `{type: "overlays", noteId, overlays}` | What runs show on the note now, all of it: on `editor.opened` when there's any, and to every editor of the account (in a shared space, of every member) when a run shows more, one is answered, or the note's last editor closes it |

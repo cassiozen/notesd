@@ -80,6 +80,7 @@ type Store struct {
 	now         func() time.Time
 	tz          tzCache
 	onScheduled func()
+	onChange    func(Change)
 	snapshots   snapshots
 	// overlays orders changes to overlays with the messages telling editors about them.
 	overlays sync.Mutex
@@ -176,21 +177,23 @@ func (s *Store) Put(ctx context.Context, c Config) (Config, error) {
 		return Config{}, err
 	}
 	c.UpdatedAt = s.now().UnixMilli()
+	var ahead bool
 	err = s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if err := spaceExists(ctx, tx, c.SpaceID); err != nil {
 			return err
 		}
+		old, err := readConfigs(ctx, tx, c.SpaceID)
+		if err != nil {
+			return err
+		}
 		if c.ReferenceNotes == nil {
 			// From a client that doesn't know them.
-			old, err := readConfigs(ctx, tx, c.SpaceID)
-			if err != nil {
-				return err
-			}
 			c.ReferenceNotes = []string{}
 			if len(old) > 0 {
 				c.ReferenceNotes = old[0].ReferenceNotes
 			}
 		}
+		ahead = len(old) == 0 || old[0].aheadInputs() != c.aheadInputs()
 		refs, err := json.Marshal(c.ReferenceNotes)
 		if err != nil {
 			return err
@@ -213,19 +216,27 @@ func (s *Store) Put(ctx context.Context, c Config) (Config, error) {
 		}
 		return nil
 	})
+	// A run done ahead goes by part of the setup only: another rule's prompt changing leaves it be.
+	if err == nil && ahead {
+		s.changed(Change{ConfigOf: c.SpaceID})
+	}
 	return c, err
 }
 
 // Delete removes a space's agent and everything written for it.
 // ErrSpaceNotFound for a space that doesn't exist.
 func (s *Store) Delete(ctx context.Context, spaceID string) error {
-	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if err := spaceExists(ctx, tx, spaceID); err != nil {
 			return err
 		}
 		_, err := tx.ExecContext(ctx, `DELETE FROM agent_spaces WHERE space_id = ?`, spaceID)
 		return err
 	})
+	if err == nil {
+		s.changed(Change{ConfigOf: spaceID})
+	}
+	return err
 }
 
 func clean(c Config) (Config, error) {

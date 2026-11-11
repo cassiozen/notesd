@@ -186,17 +186,32 @@ func (s *Store) addUsage(ctx context.Context, id, spaceID, day, model string, pr
 			return err
 		}
 		// The run's first tokens count it as one of the day's runs.
-		first := 0
-		if total == prompt+completion {
-			first = 1
-		}
-		_, err := tx.ExecContext(ctx, `INSERT INTO agent_usage (space_id, day, prompt_tokens, completion_tokens, runs)
-			VALUES (?, ?, ?, ?, ?)
-			ON CONFLICT(space_id, day) DO UPDATE SET prompt_tokens = prompt_tokens + excluded.prompt_tokens,
-				completion_tokens = completion_tokens + excluded.completion_tokens, runs = runs + excluded.runs`,
-			spaceID, day, prompt, completion, first)
-		return err
+		return spaceUsageTx(ctx, tx, spaceID, day, prompt, completion, total == prompt+completion)
 	})
+}
+
+// addSpaceUsage counts a model call's tokens for a space's day alone: a run done ahead has no row
+// until it's used, and its tokens are spent whether it is or not.
+func (s *Store) addSpaceUsage(ctx context.Context, spaceID, day string, prompt, completion int64, first bool) error {
+	if prompt+completion == 0 {
+		return nil
+	}
+	return s.db.WriteTx(ctx, func(tx *sql.Tx) error {
+		return spaceUsageTx(ctx, tx, spaceID, day, prompt, completion, first)
+	})
+}
+
+func spaceUsageTx(ctx context.Context, tx *sql.Tx, spaceID, day string, prompt, completion int64, first bool) error {
+	runs := 0
+	if first {
+		runs = 1
+	}
+	_, err := tx.ExecContext(ctx, `INSERT INTO agent_usage (space_id, day, prompt_tokens, completion_tokens, runs)
+		VALUES (?, ?, ?, ?, ?)
+		ON CONFLICT(space_id, day) DO UPDATE SET prompt_tokens = prompt_tokens + excluded.prompt_tokens,
+			completion_tokens = completion_tokens + excluded.completion_tokens, runs = runs + excluded.runs`,
+		spaceID, day, prompt, completion, runs)
+	return err
 }
 
 // truncate cuts s to at most n bytes, on a character boundary.

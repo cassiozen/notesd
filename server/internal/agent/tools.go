@@ -21,7 +21,7 @@ func tool(name, description, params string) llm.Tool {
 const noteIDParam = `"id": {"type": "string", "description": "The note's id. Leave it out for the note this run is about."}`
 
 // doneParam ends the run with a change, saving a model call just to say so.
-const doneParam = `"done": {"type": "string", "description": "Only with your last change: one short line saying what you did. The run ends with it."}`
+const doneParam = `"done": {"type": "string", "description": "Only on the call that does the last thing the prompts ask: when they ask for several, not on the first. One short line saying what you did; the run ends with it."}`
 
 // tools are what the agent can do. Nothing here deletes, moves or locks a
 // note, or reaches outside its space.
@@ -159,6 +159,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		}
 		return jsonString(noteView(n)), nil
 	case "search_notes":
+		rs.ahead.broaden()
 		if strings.TrimSpace(args.Query) == "" {
 			return "", refuse("query is required")
 		}
@@ -172,6 +173,7 @@ func (rs *runState) call(ctx context.Context, tc llm.ToolCall) (string, error) {
 		}
 		return jsonString(out), nil
 	case "list_notes":
+		rs.ahead.broaden()
 		limit := args.Limit
 		if limit <= 0 || limit > 50 {
 			limit = 20
@@ -326,6 +328,9 @@ func insertAt(content string, at int, text string) string {
 // is read from there, unsaved typing included. The run's own note deleted,
 // moved or locked since stops the run, unless its trigger was that.
 func (rs *runState) read(ctx context.Context, id string) (notes.Note, error) {
+	if id != rs.run.NoteID {
+		rs.ahead.noteRead(id)
+	}
 	if n, ok := rs.reads[id]; ok {
 		return n, nil
 	}
@@ -452,6 +457,9 @@ var errChanged = errors.New("note changed since it was read")
 // through the store, based on what the run read; changed since, to the note
 // as it is now.
 func (rs *runState) write(ctx context.Context, id string, e edit) (string, error) {
+	if rs.ahead != nil && id != rs.run.NoteID {
+		return "", errNotAhead
+	}
 	for try := 1; ; try++ {
 		cur, err := rs.read(ctx, id)
 		if err != nil {
@@ -547,8 +555,11 @@ func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead
 	if rev == nil && applied.Before == before {
 		rev = er.revision // an editor that doesn't say
 	}
-	if err := rs.acct.Agent.recordEditorEdit(ctx, rs.run.ID, id, rev, applied.Before, applied.Shows); err != nil {
-		return err
+	// Ahead, the note is only in memory: the edit is recorded once it's used.
+	if rs.ahead == nil {
+		if err := rs.acct.Agent.recordEditorEdit(ctx, rs.run.ID, id, rev, applied.Before, applied.Shows); err != nil {
+			return err
+		}
 	}
 	next.Title, next.Content = applied.Shows.Title, applied.Shows.Content
 	rs.reads[id] = next
@@ -559,6 +570,9 @@ func (rs *runState) writeInEditor(ctx context.Context, id string, er *editorRead
 }
 
 func (rs *runState) create(ctx context.Context, title, content string) (string, error) {
+	if rs.ahead != nil {
+		return "", errNotAhead
+	}
 	if locks.IsLocked(content) {
 		return "", errNoLocking
 	}

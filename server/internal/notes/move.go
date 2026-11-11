@@ -153,6 +153,7 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 		return Result{}, err
 	}
 	var out Result
+	var fired Event
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		if got, err := spaces.Resolve(ctx, tx, space); err != nil {
 			return err
@@ -193,7 +194,8 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 		if c.Note.UpdatedBy != nil {
 			by = *c.Note.UpdatedBy
 		}
-		if err := s.hooks(ctx, tx, Event{Kind: EventUpdated, NoteID: c.Note.ID, By: by, Before: &before, After: after, Origin: c.Origin}); err != nil {
+		fired = Event{Kind: EventUpdated, NoteID: c.Note.ID, By: by, Before: &before, After: after, Origin: c.Origin}
+		if err := s.hooks(ctx, tx, fired); err != nil {
 			return err
 		}
 		out = Result{ID: c.Note.ID, Status: StatusUpdated, Revision: rev, ChangeSeq: seq,
@@ -202,6 +204,7 @@ func (s *Store) MoveIn(ctx context.Context, c Carried, space string) (Result, er
 	})
 	if err == nil && out.Status == StatusUpdated {
 		s.committed()
+		s.eventCommitted(fired)
 	}
 	return out, err
 }

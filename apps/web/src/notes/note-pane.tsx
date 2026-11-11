@@ -20,7 +20,7 @@ import { openOver } from '../router'
 import { StatusPill } from '../ui/status-pill'
 import { failureText } from './activity'
 import { agentSocket, useAgentOverlays, useAgentWriting } from '../agent/socket'
-import { requestRun, triggerTiming } from '../agent/triggers'
+import { requestRun, runNewNoteLive, triggerTiming } from '../agent/triggers'
 import { applyForAgent, composed, madeTo, opMadeTo, pointAt, readForAgent } from '../editor/agent-edit'
 import { setAgentOverlays, stillQuoted, type Overlay } from '../editor/agent-overlays'
 import { setAgentWaiting } from '../editor/agent-presence'
@@ -393,6 +393,21 @@ function NoteEditor({ saver, isDraft, mobile, onBack, onNew, onCreated, onDelete
       detach()
     }
   }, [saver, editor, touch])
+
+  // Opened with the agent's run done ahead, which the server no longer had: untouched, the note starts
+  // over empty and the run goes live. Once the user has typed, what's there is theirs.
+  useEffect(() => {
+    if (!openedNew) return
+    const opened = noteFields(editor.state.doc)
+    return agentSocket.onMissed((noteId) => {
+      if (noteId !== saver.id || editor.isDestroyed) return
+      const now = noteFields(editor.state.doc)
+      if (now.title !== opened.title || now.content !== opened.content) return
+      replaceNote(editor, { title: '', content: '' })
+      saver.edit()
+      runNewNoteLive(saver.id, saver.spaceId())
+    })
+  }, [openedNew, editor, saver])
 
   // Agents' runs read and change the note here, where the user sees it and can undo it.
   useEffect(

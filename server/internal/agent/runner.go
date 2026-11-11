@@ -35,6 +35,8 @@ type RunnerConfig struct {
 	Log      *slog.Logger
 	// Now is the clock; time.Now when nil.
 	Now func() time.Time
+	// Tell sends a message to every editor of an account, for results done ahead. Must not block.
+	Tell func(userID int64, msg any)
 }
 
 // MaxConcurrentCalls bounds calls to the provider across accounts.
@@ -62,13 +64,17 @@ type Runner struct {
 	ctx     context.Context // set by Run
 	workers map[Home]*worker
 	wg      sync.WaitGroup
+
+	ahead  ahead
+	tellFn func(userID int64, msg any)
 }
 
 // NewRunner returns a runner; Run starts it.
 func NewRunner(c RunnerConfig) *Runner {
 	r := &Runner{
 		homes: c.Homes, exists: c.Exists, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
-		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[Home]*worker{},
+		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[Home]*worker{}, tellFn: c.Tell,
+		ahead: ahead{slots: map[string]*aheadSlot{}, current: map[aheadKey]*aheadSlot{}, cannot: map[aheadKey]string{}},
 	}
 	if r.now == nil {
 		r.now = time.Now

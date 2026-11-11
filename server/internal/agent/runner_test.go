@@ -82,6 +82,9 @@ type harness struct {
 	onRun    func(agent.RunUpdate)
 	// shown is what editors were last told shows on each note.
 	shown map[string][]agent.Overlay
+	// told is what the runner sent the account's editors itself.
+	toldMu sync.Mutex
+	told   []any
 }
 
 func newHarness(t *testing.T) *harness {
@@ -115,6 +118,11 @@ func newHarness(t *testing.T) *harness {
 		Provider: h.model,
 		Log:      slog.New(slog.NewTextHandler(io.Discard, nil)),
 		Now:      func() time.Time { f.mu.Lock(); defer f.mu.Unlock(); return f.clock },
+		Tell: func(_ int64, msg any) {
+			h.toldMu.Lock()
+			defer h.toldMu.Unlock()
+			h.told = append(h.told, msg)
+		},
 	})
 	return h
 }
