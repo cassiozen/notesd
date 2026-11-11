@@ -85,10 +85,10 @@ class AgentCardsTest {
         return graph.openNotes.note(id)!!.view.value!!
     }
 
-    private fun until(condition: () -> Boolean) {
+    private fun until(state: () -> String = { "" }, condition: () -> Boolean) {
         val deadline = System.currentTimeMillis() + 5_000
         while (!condition()) {
-            check(System.currentTimeMillis() < deadline) { "never came true" }
+            check(System.currentTimeMillis() < deadline) { "never came true ${state()}".trim() }
             compose.waitForIdle()
             looper.idle()
             Thread.sleep(5)
@@ -100,6 +100,13 @@ class AgentCardsTest {
 
     private fun card(id: String, place: String, body: String = id) =
         """{"id":"$id","runId":"r1","noteId":"n1","kind":"card","place":$place,"body":"$body"}"""
+
+    /**
+     * Why cards might never be laid out: seen only on CI, where the editor in hand may not be the one on screen.
+     */
+    private fun NoteEditText.layoutState(id: String) = "(attached=$isAttachedToWindow, " +
+        "current=${graph.openNotes.note(id)?.view?.value === this}, layoutRequested=$isLayoutRequested, " +
+        "size=${width}x$height, placed=${agentCards.placed})"
 
     private fun views(v: View): List<View> = listOf(v) +
         ((v as? ViewGroup)?.let { g -> (0 until g.childCount).flatMap { views(g.getChildAt(it)) } }.orEmpty())
@@ -130,7 +137,7 @@ class AgentCardsTest {
 
         // Between the lines: under Bread, above Eggs.
         val quote = editor.agentCards.cardFor("quote")!!
-        until { quote.height > 0 && quote.translationY > 0 }
+        until({ editor.layoutState("n1") }) { quote.height > 0 && quote.translationY > 0 }
         val layout = editor.layout
         val breadLine = layout.getLineForOffset(bread)
         val eggsLine = layout.getLineForOffset(t.indexOf("Eggs"))
@@ -159,6 +166,8 @@ class AgentCardsTest {
         )
         until { editor.agentCards.placed.size == 2 }
         val c1 = editor.agentCards.cardFor("c1")!!
+        // A card says where it is only once laid out under its line, a pass after it's added.
+        until({ editor.layoutState("n1") }) { c1.height > 0 && c1.translationY > 0 }
         val shown = texts(c1).last() as Spanned
         // A link the editor doesn't allow is never one: it shows as its source, as in a note.
         assertEquals("See docs and [this](javascript:void)", shown.toString().trim())
