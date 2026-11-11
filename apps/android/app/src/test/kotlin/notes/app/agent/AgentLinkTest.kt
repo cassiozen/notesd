@@ -97,6 +97,27 @@ class AgentLinkTest {
     }
 
     @Test
+    fun `a space's new notes are done ahead only while it's shown with a rule for them`() {
+        notesd.agents[Spaces.DEFAULT] = AgentConfig(Spaces.DEFAULT, true, "p", "", mapOf("noteCreated" to "Start it."))
+        notesd.agents["work"] = AgentConfig("work", true, "p", "", mapOf("editDone" to "Tidy."))
+        notesd.start()
+        notesd.signIn(graph)
+        graph.agentLink.start()
+        graph.foreground.value = true
+        until { socket.connected.value }
+        val conn = notesd.sockets.single()
+        until { conn.got("prepare") == listOf("""{"type":"prepare","spaceId":"${Spaces.DEFAULT}"}""") }
+
+        // Both have their agent on: the same socket, but work has no rule for new notes.
+        graph.switchSpace("work")
+        idleFor(300)
+        assertEquals(1, conn.got("prepare").size)
+        graph.switchSpace(Spaces.DEFAULT)
+        until { conn.got("prepare").size == 2 }
+        assertEquals(1, notesd.sockets.size)
+    }
+
+    @Test
     fun `AI set up while away opens it on coming back`() {
         notesd.aiConfigured = false
         signedIn()

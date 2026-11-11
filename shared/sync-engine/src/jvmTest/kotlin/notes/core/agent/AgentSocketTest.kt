@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.currentTime
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
@@ -71,8 +72,18 @@ class AgentSocketTest {
         open = { listener -> ApiResult.Ok(FakeSocket(listener).also { sockets += it }) },
         editors = editors,
         scope = backgroundScope,
-        jitter = { 1.0 }
+        jitter = { 1.0 },
+        now = { currentTime }
     )
+
+    /** A result done ahead for work, as the server sends it, expiring 30 minutes from now. */
+    private fun TestScope.prepared(id: String, card: Boolean = false): String {
+        val overlay = """{"id":"ov1","runId":"$id","noteId":"","kind":"card","place":{"at":"top"},"body":"Why?"}"""
+        return """{"type":"prepared","id":"$id","spaceId":"work","title":"Monday","content":"## Today\n",""" +
+            """"expiresAt":${currentTime + 30 * 60_000},"overlays":[${if (card) overlay else ""}]}"""
+    }
+
+    private fun FakeSocket.prepares() = sent.count { it["type"].toString() == "\"prepare\"" }
 
     @Test
     fun `nothing goes before hello, which hears again what's open, and opens and closes count per note`() = runTest {
@@ -487,5 +498,156 @@ class AgentSocketTest {
         assertEquals(0, sockets.size)
         advanceTimeBy(1_001)
         assertEquals(1, sockets.size)
+    }
+
+    @Test
+    fun `a space's new note run is asked for ahead once connected, and a new note opens with it`() = runTest {
+        val s = socket()
+        s.wantAhead("work")
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        assertEquals(emptyList(), ws.sent)
+        ws.hello()
+        assertEquals("""{"type":"prepare","spaceId":"work"}""", ws.sent.single().toString())
+        // Asked again for the same space: nothing new.
+        s.wantAhead("work")
+        assertEquals(1, ws.prepares())
+
+        ws.hear(prepared("run_1", card = true))
+        val p = s.takePrepared("work")!!
+        assertEquals(Fields("Monday", "## Today\n"), Fields(p.title, p.content))
+        assertEquals(null, s.takePrepared("work"))
+
+        s.usePrepared(p, "n1")
+        assertEquals(listOf("ov1"), s.overlays.value["n1"]?.map { it.id })
+        assertEquals("n1", s.overlays.value["n1"]?.single()?.noteId)
+        assertEquals(
+            """{"type":"run.request","trigger":"noteCreated","noteId":"n1","spaceId":"work","prepared":"run_1"}""",
+            ws.sent[1].toString()
+        )
+        // The next new note's.
+        assertEquals("prepare", ws.types().last())
+        assertEquals(2, ws.prepares())
+    }
+
+    @Test
+    fun `a result thrown away is asked for again, also one still going, but not for an older one`() = runTest {
+        val s = socket()
+        s.wantAhead("work")
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        ws.hear(prepared("run_1"))
+
+        ws.hear("""{"type":"prepared.void","spaceId":"work","id":"run_0"}""")
+        advanceTimeBy(10_000)
+        assertEquals(1, ws.prepares())
+
+        ws.hear("""{"type":"prepared.void","spaceId":"work","id":"run_1"}""")
+        assertEquals(null, s.takePrepared("work"))
+        advanceTimeBy(1_999)
+        assertEquals(1, ws.prepares())
+        advanceTimeBy(2)
+        assertEquals(2, ws.prepares())
+
+        // One still going, which this app holds nothing of yet.
+        ws.hear("""{"type":"prepared.void","spaceId":"work","id":"run_2"}""")
+        advanceTimeBy(2_001)
+        assertEquals(3, ws.prepares())
+    }
+
+    @Test
+    fun `a result isn't used near its expiry, and the next is asked for once the server let it go`() = runTest {
+        val s = socket()
+        s.wantAhead("work")
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        val first = prepared("run_1")
+        ws.hear(first)
+        advanceTimeBy(30 * 60_000L - 5_000)
+        runCurrent()
+        assertEquals(null, s.takePrepared("work"))
+        assertEquals(1, ws.prepares())
+        // The server still holds it, and hands it back: kept out, and nothing asked meanwhile.
+        ws.hear(first)
+        assertEquals(null, s.takePrepared("work"))
+        advanceTimeBy(5_000 + 2_000 - 1)
+        assertEquals(1, ws.prepares())
+        advanceTimeBy(2)
+        assertEquals(2, ws.prepares())
+    }
+
+    @Test
+    fun `an ask the server never answers is made again, waiting longer each time, until a result comes`() = runTest {
+        val s = socket()
+        s.wantAhead("work")
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        assertEquals(1, ws.prepares())
+        advanceTimeBy(60_000 - 1)
+        assertEquals(1, ws.prepares())
+        advanceTimeBy(2)
+        assertEquals(2, ws.prepares())
+        advanceTimeBy(120_000 - 2)
+        assertEquals(2, ws.prepares())
+        advanceTimeBy(2)
+        assertEquals(3, ws.prepares())
+
+        ws.hear(prepared("run_1"))
+        advanceTimeBy(10 * 60_000L)
+        assertEquals(3, ws.prepares())
+    }
+
+    @Test
+    fun `a result the server no longer had is a miss, and so is one used while not connected`() = runTest {
+        val s = socket()
+        val missed = ArrayList<String>()
+        backgroundScope.launch { s.missed.collect { missed += it } }
+        s.opened("n1", "work")
+        s.start()
+        runCurrent()
+        val ws = sockets.single()
+        ws.hello()
+        ws.hear(prepared("run_1", card = true))
+        s.usePrepared(s.takePrepared("work")!!, "n1")
+        ws.hear("""{"type":"prepared.missed","noteId":"n1","id":"run_1"}""")
+        runCurrent()
+        assertEquals(listOf("n1"), missed)
+        assertEquals(null, s.overlays.value["n1"])
+
+        ws.hear(prepared("run_2"))
+        val p = s.takePrepared("work")!!
+        ws.drop()
+        s.usePrepared(p, "n2")
+        runCurrent()
+        assertEquals(listOf("n1", "n2"), missed)
+    }
+
+    @Test
+    fun `a new connection forgets what the last one had done ahead, and asks again`() = runTest {
+        val s = socket()
+        s.wantAhead("work")
+        s.start()
+        runCurrent()
+        sockets.single().hello()
+        sockets.single().hear(prepared("run_1"))
+        sockets.single().drop()
+        assertEquals(null, s.takePrepared("work"))
+        advanceTimeBy(1_001)
+        sockets.last().hello()
+        assertEquals(1, sockets.last().prepares())
+
+        // No longer wanted: never asked.
+        s.wantAhead(null)
+        sockets.last().drop()
+        advanceTimeBy(2_001)
+        sockets.last().hello()
+        assertEquals(0, sockets.last().prepares())
     }
 }

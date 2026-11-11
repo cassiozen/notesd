@@ -6,10 +6,12 @@ description: "What an app does to take part in a space's agent: the socket, edit
 # Agent clients
 
 What an app has to do to take part in a space's agent, and what it gets without doing anything. The
-web app does all of it. Android is at level 3: it sets up AI and a space's agent, shows Activity with
+web app does all of it, and so does Android: it sets up AI and a space's agent, shows Activity with
 Undo, opens the socket, says which notes are open, answers `read` and `apply`, asks for editor
 triggers' runs (the menu command included), shows the agent at work and its change landing, shows
-overlays and answers them, and keeps a note's failed run and Activity current from `run` updates.
+overlays and answers them, keeps a note's failed run and Activity current from `run` updates, and
+opens a new note with its run done ahead (the shared engine's `AgentSocket` keeps the results; the
+app asks only while it's in the foreground, since the socket closes in the background).
 iOS does none of it yet. Read this before adding agent support to an app.
 
 The server is the authority: it decides when an agent acts, runs the model with the AI key only it

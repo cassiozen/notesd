@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
 import kotlinx.serialization.Serializable
@@ -79,6 +80,21 @@ data class Overlay(
     val change: AgentOp? = null
 )
 
+/**
+ * A space's "new note opened" run, done ahead by the server (docs/contributing/agent-clients.md: Done ahead): a new
+ * note opens with its [title] and [content] and shows its [overlays], at once. Not to be used from [expiresAt], in
+ * Unix milliseconds. Its overlays' noteId is empty until then.
+ */
+@Serializable
+data class Prepared(
+    val id: String,
+    val spaceId: String,
+    val title: String = "",
+    val content: String = "",
+    val overlays: List<Overlay> = emptyList(),
+    val expiresAt: Long
+)
+
 /** An editor trigger's run (docs/contributing/agent-clients.md: Editor triggers) that was never asked for. */
 data class DroppedRun(val trigger: String, val noteId: String, val spaceId: String, val why: Why) {
     enum class Why {
@@ -100,17 +116,26 @@ class AgentSocket(
     private val editors: AgentEditors,
     private val scope: CoroutineScope,
     private val timing: Timing = Timing(),
-    private val jitter: () -> Double = Random::nextDouble
+    private val jitter: () -> Double = Random::nextDouble,
+    /** Wall-clock milliseconds, for when a result done ahead expires. */
+    private val now: () -> Long = System::currentTimeMillis
 ) {
     /**
      * Reconnect backoff; how long a socket no longer wanted waits for the open notes to say they closed; how long
-     * a run asked for while connecting is held.
+     * a run asked for while connecting is held. How soon a result done ahead the server threw away is asked for
+     * again (what made it stale often changes again within seconds), and how long before it expires one is no
+     * longer used, so the server still has it when the new note asks for it. And how long an ask can go
+     * unanswered before it's made again, doubling: the server says nothing of a run done ahead that failed.
      */
     data class Timing(
         val retryBaseMs: Long = 1_000,
         val retryMaxMs: Long = 30_000,
         val closeWaitMs: Long = 5_000,
-        val heldMs: Long = 10_000
+        val heldMs: Long = 10_000,
+        val aheadAgainMs: Long = 2_000,
+        val aheadMarginMs: Long = 5_000,
+        val aheadUnansweredMs: Long = 60_000,
+        val aheadUnansweredMaxMs: Long = 10 * 60_000
     )
 
     private val lock = Any()
@@ -136,6 +161,21 @@ class AgentSocket(
 
     /** Overlay answers made while not connected, by overlay: sent first after hello. */
     private val answers = LinkedHashMap<String, JsonObject>()
+
+    /** The space whose new notes are done ahead while it's shown; results by space, each with its expiry. */
+    private var aheadSpace: String? = null
+    private val prepared = HashMap<String, Pair<Prepared, Job>>()
+    private var askAgain: Job? = null
+    private var unanswered: Job? = null
+    private var unansweredWait = timing.aheadUnansweredMs
+
+    /** Each space's last result too near its end to use, which the server may hand back until it lets it go. */
+    private val retired = HashMap<String, String>()
+
+    private val _missed = MutableSharedFlow<String>(extraBufferCapacity = 16)
+
+    /** New notes, by id, that opened with a result done ahead the server no longer had. */
+    val missed: SharedFlow<String> = _missed
 
     private val _connected = MutableStateFlow(false)
 
@@ -202,6 +242,110 @@ class AgentSocket(
         answers.clear()
         openCount.clear()
         openIn.clear()
+        aheadSpace = null
+    }
+
+    /**
+     * Has the server do [spaceId]'s "new note opened" run ahead while it's shown (null: none), and keep one done:
+     * again once it expires or the server throws it away, and on each new connection.
+     */
+    fun wantAhead(spaceId: String?) = synchronized(lock) {
+        if (aheadSpace == spaceId) return
+        aheadSpace = spaceId
+        askAhead()
+    }
+
+    /**
+     * The result done ahead for a new note in [spaceId], taken: the note opens with it, then [usePrepared] tells the
+     * server. Null with none, or none the server surely still has.
+     */
+    fun takePrepared(spaceId: String): Prepared? = synchronized(lock) {
+        val (p, expires) = prepared[spaceId] ?: return null
+        if (!_connected.value || now() >= p.expiresAt - timing.aheadMarginMs) return null
+        expires.cancel()
+        prepared.remove(spaceId)
+        p
+    }
+
+    /** The new note [noteId] opened with [p], which becomes its run; its overlays show at once. */
+    fun usePrepared(p: Prepared, noteId: String) = synchronized(lock) {
+        if (!_connected.value) {
+            _missed.tryEmit(noteId)
+            return
+        }
+        if (p.overlays.isNotEmpty()) setOverlays(noteId, p.overlays.map { it.copy(noteId = noteId) })
+        send(
+            buildJsonObject {
+                put("type", "run.request")
+                put("trigger", "noteCreated")
+                put("noteId", noteId)
+                put("spaceId", p.spaceId)
+                put("prepared", p.id)
+            }
+        )
+        // After it on the same socket, so the server has let the used one go: the next new note's.
+        askAhead()
+    }
+
+    private fun askAhead() {
+        askAgain?.cancel()
+        val space = aheadSpace ?: return
+        if (space in prepared || !_connected.value) return
+        send(
+            buildJsonObject {
+                put("type", "prepare")
+                put("spaceId", space)
+            }
+        )
+        // Asked again while it runs, the server carries on with the same run.
+        unanswered?.cancel()
+        val wait = unansweredWait
+        unansweredWait = min(wait * 2, timing.aheadUnansweredMaxMs)
+        unanswered = later(wait) { askAhead() }
+    }
+
+    private fun heardPrepared(p: Prepared) {
+        unanswered?.cancel()
+        unansweredWait = timing.aheadUnansweredMs
+        prepared.remove(p.spaceId)?.second?.cancel()
+        // Too near its end to use: the server, which hands back one it still holds, is asked once it let it go.
+        val usable = p.expiresAt - timing.aheadMarginMs - now()
+        if (p.id == retired[p.spaceId] || usable <= 0) {
+            retire(p)
+            return
+        }
+        val expires = later(usable) {
+            if (prepared[p.spaceId]?.first?.id != p.id) return@later
+            prepared.remove(p.spaceId)
+            retire(p)
+        }
+        prepared[p.spaceId] = p to expires
+    }
+
+    /**
+     * Asks for the next once the server has let [p] go, at its expiresAt by the server's clock; at least
+     * [Timing.aheadAgainMs] later, so a clock behind the server's can't have it ask, and be handed [p] back, over
+     * and over.
+     */
+    private fun retire(p: Prepared) {
+        retired[p.spaceId] = p.id
+        askAgain?.cancel()
+        askAgain = later((p.expiresAt - now()).coerceAtLeast(0) + timing.aheadAgainMs) { askAhead() }
+    }
+
+    /** Runs [block] under the lock after [ms], unless cancelled first. */
+    private fun later(ms: Long, block: () -> Unit): Job = scope.launch {
+        delay(ms)
+        synchronized(lock) { if (isActive) block() }
+    }
+
+    private fun dropPrepared() {
+        askAgain?.cancel()
+        unanswered?.cancel()
+        unansweredWait = timing.aheadUnansweredMs
+        for ((_, expires) in prepared.values) expires.cancel()
+        prepared.clear()
+        retired.clear()
     }
 
     /** Doesn't connect while offline; back online, connects at once. */
@@ -393,12 +537,13 @@ class AgentSocket(
         }
     }
 
-    /** What's still going, or showing, is unknown until the server says again. */
+    /** What's still going, or showing, is unknown until the server says again; a new one may have restarted. */
     private fun forgetRuns() {
         running.clear()
         landed.clear()
         showWriting()
         _overlays.value = emptyMap()
+        dropPrepared()
     }
 
     private fun showWriting() {
@@ -430,6 +575,28 @@ class AgentSocket(
                     }
                 }
                 held.clear()
+                askAhead()
+            }
+
+            type == "prepared" -> runCatching { json.decodeFromJsonElement<Prepared>(m) }.getOrNull()
+                ?.takeIf { p -> p.overlays.all { it.kind == "card" || (it.kind == "suggestion" && it.change != null) } }
+                ?.let { heardPrepared(it) }
+
+            type == "prepared.void" -> {
+                val space = m.string("spaceId") ?: return
+                // Also for one still going, which this app may be waiting for: it asks again.
+                val held = prepared[space]
+                if (held != null && held.first.id != m.string("id")) return
+                held?.second?.cancel()
+                prepared.remove(space)
+                askAgain?.cancel()
+                askAgain = later(timing.aheadAgainMs) { askAhead() }
+            }
+
+            type == "prepared.missed" -> {
+                val noteId = m.string("noteId") ?: return
+                setOverlays(noteId, emptyList())
+                _missed.tryEmit(noteId)
             }
 
             type == "overlays" -> {

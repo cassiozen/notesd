@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -17,6 +18,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.conflate
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.onSubscription
 import kotlinx.coroutines.flow.stateIn
@@ -89,7 +92,11 @@ class EditorViewModel(
     /** Syncs now and returns once that cycle ended. */
     private val push: suspend () -> Unit = {},
     /** Asks for an editor trigger's run on the note: trigger, note, space. */
-    private val requestRun: (String, String, String) -> Unit = { _, _, _ -> }
+    private val requestRun: (String, String, String) -> Unit = { _, _, _ -> },
+    /** What a new note opens with: its space's agent's run done ahead, if one is ready (note, space). */
+    private val openWith: (String, String) -> Fields? = { _, _ -> null },
+    /** New notes, by id, that opened with a run done ahead the server no longer had. */
+    private val missed: Flow<String> = emptyFlow()
 ) : ViewModel() {
     private val _view = MutableStateFlow<NoteEditText?>(null)
 
@@ -114,6 +121,12 @@ class EditorViewModel(
 
     /** Text that changed underneath the editor (sync, or a merge on save): show it, keeping the cursor. */
     val incoming: SharedFlow<Document> = _incoming
+
+    private val _restart =
+        MutableSharedFlow<Document>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+
+    /** The note starts over with this text, nobody having typed in it: show it, as if just opened. */
+    val restart: SharedFlow<Document> = _restart
 
     private val _status = MutableStateFlow(SaveStatus.Blank)
     val status: StateFlow<SaveStatus> = _status
@@ -271,12 +284,24 @@ class EditorViewModel(
             _locked.value = note != null && LockedNotes.isLocked(note.content)
             _unsupported.value = note != null && LockedEnvelope.isUnsupported(note.content)
             _title.value = note?.title.orEmpty()
+            // The agent's run done ahead was for an empty note: not one that starts with a tag.
+            val ahead = if (note == null && blankContent.isEmpty()) openWith(id, noteSpace) else null
             _document.value = when {
                 note != null -> parse(note)
+                ahead != null -> Document.forNote(ahead.title, Markdown.parse(ahead.content))
                 blankContent.isEmpty() -> Document.forNote("", Document.EMPTY)
                 else -> Document.forNote("", Markdown.parse(blankContent))
             }
             if (note != null) show(note)
+            if (ahead != null) {
+                launch { missed.filter { it == id }.collect { missedAhead() } }
+                // Saved and synced at once, as the agent's change in the editor is, so the server links it to its run.
+                if (ahead.title.isNotEmpty() || ahead.content.isNotEmpty()) {
+                    _title.value = ahead.title
+                    edited()
+                    saveNow(_document.value!!)
+                }
+            }
             // Once: this outlives the screen being shown again.
             if (isNew) requestRun(NOTE_CREATED, id, noteSpace)
             launch { locks.state.collect { lockChanged(it) } }
@@ -326,6 +351,19 @@ class EditorViewModel(
     fun edited() {
         edits++
         _status.value = SaveStatus.Unsaved
+    }
+
+    /**
+     * The note opened with a run done ahead that the server no longer had: untouched, it starts over empty and the
+     * run goes live. Once the user has typed, what's there is theirs.
+     */
+    private fun missedAhead() {
+        if (lastTyped != null) return
+        val blank = Document.forNote("", Document.EMPTY)
+        _restart.tryEmit(blank)
+        edited()
+        save(blank)
+        requestRun(NOTE_CREATED, id, noteSpace)
     }
 
     /** When the user last changed the note, on the uptime clock; null before the first change. */
