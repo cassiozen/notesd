@@ -653,9 +653,11 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
   its edit and its overlays, in one transaction; the note's first save then links to the edit as for
   any change in an editor. Results are per space and account, in memory: lost with a restart, kept 30
   minutes and never past midnight. A store hook (`agent.Store.OnChange`) throws one away when what it
-  went by changes: its space's setup, a note changing the space's tags, a reference note, a note it
-  read, or any note in the space once it searched or listed. A rule that changes another note can't
-  be done ahead, and runs live until it's set up again.
+  went by changes: the parts of its space's setup it goes by (`aheadInputs`), a note changing the
+  space's tags, a reference note, a note it read, or any note in the space once it searched or
+  listed. It hears of a note write once the write commits (`notes.Store.OnCommitted`), so a run
+  reading the note after that reads the new one. A rule that changes another note can't be done
+  ahead, and runs live until what of the setup it goes by changes.
 - **Tools.** Read: `get_note`, `search_notes`, `list_notes`, `list_tags`, `get_cursor`. Write:
   `set_title`, `edit_note` (find must match exactly once), `insert` (start, end or the cursor),
   `set_content` (a note's whole content, for one the agent keeps, like a digest; not made again to a

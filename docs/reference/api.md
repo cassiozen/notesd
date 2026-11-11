@@ -587,10 +587,13 @@ soon still does the rest. Its
 tokens count as they're spent, used or not, and it shows in the activity log only once used, as
 the new note's run. It's held in memory, one per space and account, for 30 minutes and never past
 midnight in the account's time zone. It's thrown away (`prepared.void`) when what it went by
-changes: the space's agent set up again, a note changing the space's tags, one of its reference
+changes: the parts of the space's agent setup it goes by (whether it's on, the space's prompt, the
+rule, its reference notes), a note changing the space's tags, one of its reference
 notes, a note it read, or, if it searched or listed notes, any note in the space; and when the AI
-provider changes. A rule that changes another note, or makes one, can't wait in memory: it isn't
-done ahead, and runs live, until the space's agent is set up again.
+provider changes. One thrown away or expired is still taken for 10 seconds, for a new note that
+opened with it as it went; an editor never sends one it knows is gone. A rule that changes another
+note, or makes one, can't wait in memory: it isn't done ahead, and runs live, until what of the
+setup it goes by changes (whether it's on, the space's prompt, the rule, its reference notes).
 
 **The socket** is a WebSocket at `/agent/socket` for note editors, signed in as any request. A
 browser must send its own `Origin`; anything else is `403 csrf_failed`. More than 50 open for one

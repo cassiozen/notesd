@@ -63,12 +63,15 @@ func (s *Store) scheduled() {
 	}
 }
 
+// NoteCommitted is the notes store's hook after a write commits (notes.Store.OnCommitted): any write,
+// whoever made it, as what a run done ahead read may be what changed. After the commit, so a run
+// reading the note once it's told reads the new one.
+func (s *Store) NoteCommitted(ev notes.Event) { s.changed(Change{Note: &ev}) }
+
 // OnWrite is the notes store's write hook (notes.Store.OnWrite): inside the
 // write's transaction it keeps writing sessions up to date and queues the
 // triggers a write fires, so neither is lost to a crash.
 func (s *Store) OnWrite(ctx context.Context, tx *sql.Tx, ev notes.Event) error {
-	// Any write, whoever made it: what a run done ahead read may be what changed.
-	s.changed(Change{Note: &ev})
 	if err := removeText(ctx, tx, ev, s.now().UnixMilli()); err != nil {
 		return err
 	}
