@@ -340,6 +340,7 @@ function TraitItem({ row }: { row: TraitRow }) {
   const Glyph = row.kind === 'unknown' ? UnknownGlyph : row.entry.Glyph
   if (row.kind === 'off') return <SectionRow Glyph={Glyph} label={row.entry.label} status="Off" />
   const { label, problem, summary } = row.trait
-  const status = problem ?? (row.kind === 'unknown' ? `${summary} · Update the app to change this.` : summary)
+  // One this app doesn't know says to update the app after its problem too, with no separator when there's nothing before it.
+  const status = [problem ?? summary, row.kind === 'unknown' && 'Update the app to change this.'].filter(Boolean).join(' · ')
   return <SectionRow Glyph={Glyph} label={label} status={status} problem={problem !== undefined} on />
 }
