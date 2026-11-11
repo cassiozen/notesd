@@ -1,0 +1,23 @@
+apps/web/src/notes/activity.module.css
+  s_507526b3de9e15::t_7f0214a5b65c62 119
+apps/web/src/editor/editor.module.css
+  s_507526b3de9e15::t_f326ef6e3dc1bd 682
+apps/web/src/styles/base.css
+  s_507526b3de9e15::t_fa2d3240f33e80 51-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "0151e9dce32c9cdaecff4ef4a4d0f817c96837ad",
+  "prompts": {},
+  "sessions": {
+    "s_507526b3de9e15": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ca7c5bc7-9851-4a9a-8e06-7417da59fb43",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
