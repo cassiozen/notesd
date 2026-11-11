@@ -235,7 +235,10 @@ server do it while it shows a space, and a new note opens with its result, with 
 1. While the app shows a space whose agent acts on new notes, send `{type: "prepare", spaceId}`
    after `hello`, on showing the space, when the app is seen again, and when the result it holds
    expires or is thrown away (`prepared.void` for its space, also one it doesn't hold yet, which was
-   still going; wait about 2 seconds, as what made it stale often changes again). Not while it's in the background: nobody can use the result.
+   still going; wait about 2 seconds, as what made it stale often changes again). Not while it's in
+   the background: nobody can use the result. Unanswered after a minute, ask again, doubling the wait
+   up to 10 minutes: the server says nothing of one that failed, and asked again while one runs, it
+   carries on with that one.
 2. Keep the latest `prepared` per space; drop it on `prepared.void` with its `id`, on its
    `expiresAt` (a few seconds early, so the server still has it), and on any new connection. Once
    dropped near its end, ask again only after `expiresAt` (by the server's clock, so a little later):
