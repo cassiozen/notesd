@@ -60,6 +60,7 @@ import notes.app.settings.SettingsScreen
 import notes.app.settings.SettingsSection
 import notes.app.settings.SettingsSectionScreen
 import notes.app.settings.SpaceInfoScreen
+import notes.app.settings.TraitPageScreen
 import notes.app.sharing.Shared
 import notes.app.ui.KeyboardBar
 import notes.app.ui.KeyboardBarSlot
@@ -95,6 +96,10 @@ data class SettingsSectionKey(val section: SettingsSection) : NavKey
 /** A space's Space info (§7.8). */
 @Serializable
 data class SpaceInfoKey(val id: String) : NavKey
+
+/** A trait's page for a space (§7.8), opened from its row in Space info: People, Website or Agent, by [trait] key. */
+@Serializable
+data class TraitPageKey(val id: String, val trait: String) : NavKey
 
 /** What spaces' agents did (§7.11), narrowed to [space] ("" for all). */
 @Serializable
@@ -515,6 +520,24 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                         else -> "Notes"
                                     },
                                     onBack = { pop() },
+                                    onOpen = { trait ->
+                                        view.hideKeyboard()
+                                        backStack += TraitPageKey(key.id, trait)
+                                    },
+                                    onActivity = { activity(it) }
+                                )
+                            }
+                            entry<TraitPageKey> { key ->
+                                TraitPageScreen(
+                                    graph,
+                                    key.id,
+                                    key.trait,
+                                    onBack = { pop() },
+                                    // Gone (deleted, or left from this page): Space info goes too.
+                                    onGone = {
+                                        view.hideKeyboard()
+                                        backStack.removeAll { it == key || it == SpaceInfoKey(key.id) }
+                                    },
                                     onActivity = { activity(it) }
                                 )
                             }
@@ -525,6 +548,7 @@ fun NotesNavigation(graph: AppGraph, newNote: Flow<Unit> = emptyFlow(), emailNot
                                     key.space,
                                     backLabel = when (from) {
                                         is SpaceInfoKey -> spaces.firstOrNull { it.id == from.id }?.name
+                                        is TraitPageKey -> "Agent"
                                         else -> null
                                     },
                                     onBack = { pop() },

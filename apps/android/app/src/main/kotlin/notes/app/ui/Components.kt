@@ -543,6 +543,14 @@ fun BackLink(label: String?, onClick: () -> Unit, modifier: Modifier = Modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(Icons.Back, null, Modifier.size(22.dp), tint = t.ink2)
-        if (label != null) Text(label, style = Type.body.copy(fontSize = 16.sp), color = t.ink2)
+        if (label != null) {
+            Text(
+                label,
+                style = Type.body.copy(fontSize = 16.sp),
+                color = t.ink2,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

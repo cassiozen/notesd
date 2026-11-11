@@ -77,17 +77,21 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
 import notes.app.account.Account
-import notes.app.agent.AgentSection
+import notes.app.agent.AgentPage
+import notes.app.agent.agentLine
 import notes.app.notes.SpaceIconGrid
 import notes.app.notes.SpaceIconImage
 import notes.app.notes.SpaceTraits
 import notes.app.notes.TraitEntry
+import notes.app.notes.TraitLine
 import notes.app.notes.TraitRow
 import notes.app.notes.describeTraits
 import notes.app.notes.name
 import notes.app.notes.traitRows
-import notes.app.sharing.PeopleSection
-import notes.app.sharing.PublishedSection
+import notes.app.sharing.PeoplePage
+import notes.app.sharing.WebsitePage
+import notes.app.sharing.peopleLine
+import notes.app.sharing.websiteLine
 import notes.app.ui.Icons
 import notes.app.ui.InlineConfirm
 import notes.app.ui.LocalReduceMotion
@@ -102,8 +106,8 @@ import notes.core.db.Space
 import notes.core.db.Spaces
 
 /**
- * A space's Space info (§7.8): its one page of space-level settings, everything changed in place. Goes back by
- * itself once the space is gone, deleted here or elsewhere, or left.
+ * A space's Space info (§7.8): its space-level settings, a row per trait opening its page ([onOpen], by the
+ * trait's key). Goes back by itself once the space is gone, deleted here or elsewhere, or left.
  */
 @Composable
 fun SpaceInfoScreen(
@@ -111,31 +115,12 @@ fun SpaceInfoScreen(
     id: String,
     backLabel: String?,
     onBack: () -> Unit,
-    /** A space's Activity, from its agent's section. */
+    onOpen: (String) -> Unit = {},
+    /** A space's Activity, from its agent's page. */
     onActivity: (String) -> Unit = {}
 ) {
     val spaces by graph.spaces.collectAsStateWithLifecycle()
-    val account by graph.accounts.account.collectAsStateWithLifecycle()
-    val agents by graph.agents.cache.value.collectAsStateWithLifecycle()
-    val agentsFailed by graph.agents.cache.failed.collectAsStateWithLifecycle()
-    val ai by graph.ai.cache.value.collectAsStateWithLifecycle()
-    val aiFailed by graph.ai.cache.failed.collectAsStateWithLifecycle()
-    // Fresh as the page opens: another device may have set one up, or an admin connected AI.
-    LaunchedEffect(account) {
-        if (account !is Account.SignedIn) return@LaunchedEffect
-        launch { graph.ai.cache.refresh() }
-        graph.agents.cache.refresh()
-    }
-    val registry = remember(graph, account, agents, ai, agentsFailed, aiFailed) {
-        spaceInfoRegistry(graph, onActivity) { space ->
-            // Signed in but couldn't tell: the section says so, with Try again, rather than hiding.
-            val unsure = (agents == null && agentsFailed) || (ai == null && aiFailed)
-            if (unsure && account is Account.SignedIn) return@spaceInfoRegistry true
-            val configs = agents ?: return@spaceInfoRegistry false
-            val provider = ai ?: return@spaceInfoRegistry false
-            provider.configured || space.id in configs
-        }
-    }
+    val registry = rememberSpaceInfoRegistry(graph, onActivity)
     val space = spaces.firstOrNull { it.id == id }
     // The list starts empty while it loads: only a space seen here and then missing is gone.
     var seen by remember { mutableStateOf(false) }
@@ -156,6 +141,7 @@ fun SpaceInfoScreen(
         backLabel,
         onBack,
         registry = registry,
+        onOpen = onOpen,
         // The app's scope: a name typed and then left by going back is still saved.
         work = graph.scope,
         onSave = { name, icon ->
@@ -191,7 +177,36 @@ fun SpaceInfoScreen(
 }
 
 /**
- * The app's traits with their sections: People (§7.9), where inviting someone shares a space, and Published
+ * The app's traits, each with its row and page, for Space info and the pages it opens. Read fresh as either
+ * opens: another device may have set an agent up, or an admin connected AI.
+ */
+@Composable
+internal fun rememberSpaceInfoRegistry(graph: AppGraph, onActivity: (String) -> Unit): List<TraitEntry> {
+    val account by graph.accounts.account.collectAsStateWithLifecycle()
+    val agents by graph.agents.cache.value.collectAsStateWithLifecycle()
+    val agentsFailed by graph.agents.cache.failed.collectAsStateWithLifecycle()
+    val ai by graph.ai.cache.value.collectAsStateWithLifecycle()
+    val aiFailed by graph.ai.cache.failed.collectAsStateWithLifecycle()
+    LaunchedEffect(account) {
+        if (account !is Account.SignedIn) return@LaunchedEffect
+        launch { graph.ai.cache.refresh() }
+        graph.agents.cache.refresh()
+    }
+    val activity by rememberUpdatedState(onActivity)
+    return remember(graph, account, agents, ai, agentsFailed, aiFailed) {
+        spaceInfoRegistry(graph, { activity(it) }) { space ->
+            // Signed in but couldn't tell: the page says so, with Try again, rather than hiding.
+            val unsure = (agents == null && agentsFailed) || (ai == null && aiFailed)
+            if (unsure && account is Account.SignedIn) return@spaceInfoRegistry true
+            val configs = agents ?: return@spaceInfoRegistry false
+            val provider = ai ?: return@spaceInfoRegistry false
+            provider.configured || space.id in configs
+        }
+    }
+}
+
+/**
+ * The app's traits with their rows and pages: People (§7.9), where inviting someone shares a space, and Website
  * (§7.10), where its owner publishes it. Both are there for the account's own spaces but the default, and for a
  * shared space its owner's. The agent's sets it up (§7.11).
  */
@@ -201,12 +216,24 @@ internal fun spaceInfoRegistry(
     agentOffered: (Space) -> Boolean
 ): List<TraitEntry> = SpaceTraits.entries.map {
     when (it.key) {
-        "shared" -> it.with(section = { space -> PeopleSection(graph, space) }, canTurnOn = ::canExpose)
+        "shared" -> it.with(
+            row = { space -> peopleLine(graph, space) },
+            page = { space, back -> PeoplePage(graph, space, back) },
+            canTurnOn = ::canExpose
+        )
 
-        "published" -> it.with(section = { space -> PublishedSection(graph, space) }, canTurnOn = ::canExpose)
+        "published" -> it.with(
+            row = { space -> websiteLine(space) },
+            page = { space, back -> WebsitePage(graph, space, back) },
+            canTurnOn = ::canExpose
+        )
 
         // Any space, shared or not, by any member (§7.11); offered once AI is set up, or to resume one paused.
-        "agent" -> it.with(section = { space -> AgentSection(graph, space, onActivity) }, canTurnOn = agentOffered)
+        "agent" -> it.with(
+            row = { space -> agentLine(graph, space) },
+            page = { space, back -> AgentPage(graph, space, back, onActivity) },
+            canTurnOn = agentOffered
+        )
 
         else -> it
     }
@@ -219,9 +246,9 @@ internal fun spaceInfoRegistry(
 private fun canExpose(space: Space) = space.id != Spaces.DEFAULT && space.shared?.isOwner != false
 
 /**
- * The page itself: icon, name and note count with the trait glyphs (the owner changes the name and icon right
- * there), a section per trait, then Delete. [onSave] saves a name and icon, [onDelete] deletes the space; each
- * comes back with why it couldn't, or null. They run on [work].
+ * The page itself: icon, name and note count (the owner changes the name and icon right there), one list with a
+ * row per trait, each opening its page ([onOpen], by key), then Delete. [onSave] saves a name and icon,
+ * [onDelete] deletes the space; each comes back with why it couldn't, or null. They run on [work].
  */
 @Composable
 internal fun SpaceInfoPage(
@@ -231,6 +258,7 @@ internal fun SpaceInfoPage(
     onSave: suspend (name: String, icon: String) -> String?,
     onDelete: suspend () -> String?,
     registry: List<TraitEntry> = SpaceTraits.entries,
+    onOpen: (String) -> Unit = {},
     work: CoroutineScope = rememberCoroutineScope()
 ) {
     val t = LocalTokens.current
@@ -246,8 +274,6 @@ internal fun SpaceInfoPage(
     LaunchedEffect(space.name) { if (space.name == name) name = null }
     LaunchedEffect(space.icon) { if (space.icon == icon) icon = null }
     var error by remember { mutableStateOf<String?>(null) }
-    // Glyphs there when the page opened; one that turns on later arrives with a little movement.
-    val initialTraits = remember { space.traits.mapTo(HashSet()) { it.key } }
 
     fun save(newName: String, newIcon: String) {
         error = null
@@ -262,67 +288,40 @@ internal fun SpaceInfoPage(
         }
     }
 
-    val unsaved = remember { UnsavedSections() }
-    var discarding by remember { mutableStateOf(false) }
-    val changed = unsaved.unsaved
-    val leave = { if (changed.isEmpty()) onBack() else discarding = true }
-    BackHandler(enabled = changed.isNotEmpty() && !discarding) { discarding = true }
-
     // The page takes the theme of the icon shown, a pick's before the list has it.
     SpaceTheme(SpaceThemes.key(shownIcon)) {
-        SettingsFrame(
-            backLabel,
-            leave,
-            null,
-            top = {
-                InlineConfirm(
-                    visible = discarding && changed.isNotEmpty(),
-                    title = "Discard your changes?",
-                    text = "Your changes to ${changed.joinToString(" and ")} aren't saved.",
-                    action = "Discard",
-                    onConfirm = {
-                        discarding = false
-                        onBack()
-                    },
-                    onCancel = { discarding = false },
-                    modifier = Modifier.padding(horizontal = 16.dp).padding(bottom = 8.dp)
+        SettingsFrame(backLabel, onBack, null) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    // A tap off the name ends editing it, as leaving the field does on the web.
+                    .pointerInput(Unit) { detectTapGestures(onTap = { focus.clearFocus() }) }
+            ) {
+                Header(
+                    space,
+                    shownName,
+                    shownIcon,
+                    own,
+                    picking,
+                    onIcon = { picking = !picking },
+                    onRename = { save(it, shownIcon) }
                 )
-            }
-        ) {
-            CompositionLocalProvider(LocalUnsaved provides unsaved) {
-                Column(
-                    Modifier
-                        .fillMaxWidth()
-                        // A tap off the name ends editing it, as leaving the field does on the web.
-                        .pointerInput(Unit) { detectTapGestures(onTap = { focus.clearFocus() }) }
-                ) {
-                    Header(
-                        space,
-                        shownName,
-                        shownIcon,
-                        own,
-                        picking,
-                        initialTraits,
-                        onIcon = { picking = !picking },
-                        onRename = { save(it, shownIcon) }
-                    )
-                    Reveal(own && picking) {
-                        Box(
-                            Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 8.dp)
-                                .clip(RoundedCornerShape(20.dp))
-                                .background(t.field)
-                                .border(1.dp, t.hair, RoundedCornerShape(20.dp))
-                                .padding(6.dp)
-                        ) {
-                            SpaceIconGrid(shownIcon, onSelect = { save(shownName, it) })
-                        }
+                Reveal(own && picking) {
+                    Box(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(t.field)
+                            .border(1.dp, t.hair, RoundedCornerShape(20.dp))
+                            .padding(6.dp)
+                    ) {
+                        SpaceIconGrid(shownIcon, onSelect = { save(shownName, it) })
                     }
-                    error?.let { PageError(it, Modifier.padding(bottom = 8.dp)) }
-                    Traits(space, registry)
-                    if (own) DeleteSpace(space, onDelete, work)
                 }
+                error?.let { PageError(it, Modifier.padding(bottom = 8.dp)) }
+                Traits(space, registry, onOpen)
+                if (own) DeleteSpace(space, onDelete, work)
             }
         }
     }
@@ -338,7 +337,10 @@ private fun PageError(text: String, modifier: Modifier = Modifier) {
     )
 }
 
-/** Icon, name, note count and glyphs; the owner's icon opens the picker under it and the name is a field. */
+/**
+ * Icon, name and note count; the owner's icon opens the picker under it and the name is a field. No trait glyphs:
+ * the list under it says the same, in words.
+ */
 @Composable
 private fun Header(
     space: Space,
@@ -346,17 +348,16 @@ private fun Header(
     icon: String,
     own: Boolean,
     picking: Boolean,
-    initialTraits: Set<String>,
     onIcon: () -> Unit,
     onRename: (String) -> Unit
 ) {
     val t = LocalTokens.current
     Column(
-        Modifier.fillMaxWidth().padding(top = 4.dp, bottom = 20.dp),
+        Modifier.fillMaxWidth().padding(bottom = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        if (own) IconButton(icon, picking, onIcon) else SpaceIconImage(icon, 72.dp, Modifier.padding(8.dp))
-        Spacer(Modifier.height(6.dp))
+        if (own) IconButton(icon, picking, onIcon) else SpaceIconImage(icon, ICON, Modifier.padding(8.dp))
+        Spacer(Modifier.height(4.dp))
         if (own) {
             NameField(name, onRename)
         } else {
@@ -369,12 +370,12 @@ private fun Header(
             )
         }
         Spacer(Modifier.height(2.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(noteCount(space), style = Type.rowMeta, color = t.ink3)
-            HeadGlyphs(space.traits, initialTraits)
-        }
+        Text(noteCount(space), style = Type.rowMeta, color = t.ink3)
     }
 }
+
+/** Smaller than a page's hero: the list under it should start on the first screen. */
+private val ICON = 64.dp
 
 /** The owner's icon: pressed, the picker opens under the header. A pencil says it can be. */
 @Composable
@@ -384,7 +385,7 @@ private fun IconButton(icon: String, picking: Boolean, onClick: () -> Unit) {
     val shape = RoundedCornerShape(24.dp)
     Box(
         Modifier
-            .size(88.dp)
+            .size(ICON + 16.dp)
             .pressScale(interaction)
             .clip(shape)
             .background(if (picking) t.hover else Color.Transparent)
@@ -400,7 +401,7 @@ private fun IconButton(icon: String, picking: Boolean, onClick: () -> Unit) {
             },
         contentAlignment = Alignment.Center
     ) {
-        SpaceIconImage(icon, 72.dp)
+        SpaceIconImage(icon, ICON)
         Box(
             Modifier
                 .align(Alignment.BottomEnd)
@@ -499,117 +500,43 @@ private fun NameField(name: String, onRename: (String) -> Unit) {
 
 private val PENCIL = 24.dp
 
-/** The space's trait glyphs after its count, one not in [initial] arriving with a little movement. */
+/** Every trait in one list, a row each, those with a page opening it. */
 @Composable
-private fun HeadGlyphs(traits: List<SpaceTrait>, initial: Set<String>) {
-    if (traits.isEmpty()) return
-    val description = describeTraits(traits)
-    Row(
-        Modifier.padding(start = 10.dp).semantics { contentDescription = description },
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        for (trait in traits) key(trait.key) { HeadGlyph(trait, arriving = trait.key !in initial) }
-    }
-}
+private fun Traits(space: Space, registry: List<TraitEntry>, onOpen: (String) -> Unit) {
+    val rows = traitRows(space, registry)
+    if (rows.isEmpty()) return
+    Card {
+        for ((i, row) in rows.withIndex()) {
+            if (i > 0) TraitDivider()
+            when (row) {
+                is TraitRow.Unknown -> TraitLineRow(
+                    SpaceTraits.unknownGlyph,
+                    serverLine(row.trait, unknown = true),
+                    null
+                )
 
-@Composable
-private fun HeadGlyph(trait: SpaceTrait, arriving: Boolean) {
-    val t = LocalTokens.current
-    val reduce = LocalReduceMotion.current
-    val shown = remember { Animatable(if (arriving && !reduce) 0f else 1f) }
-    LaunchedEffect(Unit) { shown.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 260f)) }
-    Icon(
-        painterResource(SpaceTraits.glyph(trait.key)),
-        null,
-        Modifier.size(16.dp).graphicsLayer {
-            val p = shown.value
-            scaleX = 0.4f + 0.6f * p
-            scaleY = 0.4f + 0.6f * p
-            alpha = p.coerceIn(0f, 1f)
-            rotationZ = (1f - p) * -40f
-        },
-        tint = if (trait.problem != null) t.danger else t.ink3
-    )
-}
-
-/** A trait with a section of its own gets it; the others, a row each, share a card between sections. */
-@Composable
-private fun Traits(space: Space, registry: List<TraitEntry>) {
-    val blocks = ArrayList<List<TraitRow>>()
-    for (row in traitRows(space, registry)) {
-        val last = blocks.lastOrNull()
-        if (row.section() == null && last != null && last.last().section() == null) {
-            blocks[blocks.lastIndex] = last + row
-        } else {
-            blocks += listOf(row)
-        }
-    }
-    for (block in blocks) {
-        Spacer(Modifier.height(if (block === blocks.first()) 4.dp else 24.dp))
-        val section = block.first().section()
-        if (section != null) {
-            key(block.first().key()) { section(space) }
-        } else {
-            Card {
-                for ((i, row) in block.withIndex()) {
-                    if (i > 0) Divider()
-                    TraitLine(row)
+                is TraitRow.On, is TraitRow.Off -> {
+                    val entry = row.entry() ?: continue
+                    key(entry.key) {
+                        val line = entry.row?.invoke(space)
+                            ?: (row as? TraitRow.On)?.let { serverLine(it.trait) }
+                            ?: TraitLine(entry.label, "Off", on = false, opens = false)
+                        TraitLineRow(entry.glyph, line, entry.page?.let { { onOpen(entry.key) } })
+                    }
                 }
             }
         }
     }
 }
 
-private fun TraitRow.section(): (@Composable (Space) -> Unit)? = when (this) {
-    is TraitRow.On -> entry.section
-    is TraitRow.Off -> entry.section
-    is TraitRow.Unknown -> null
-}
-
-private fun TraitRow.key(): String = when (this) {
-    is TraitRow.On -> trait.key
-    is TraitRow.Off -> entry.key
-    is TraitRow.Unknown -> trait.key
-}
-
-/** A trait without a section: glyph, label, and its summary or problem; dimmed while off. */
-@Composable
-private fun TraitLine(row: TraitRow) {
-    val t = LocalTokens.current
-    val off = row is TraitRow.Off
-    val (glyph, label) = when (row) {
-        is TraitRow.On -> row.entry.glyph to row.trait.name()
-        is TraitRow.Off -> row.entry.glyph to row.entry.label
-        is TraitRow.Unknown -> SpaceTraits.unknownGlyph to row.trait.name()
-    }
-    val trait = (row as? TraitRow.On)?.trait ?: (row as? TraitRow.Unknown)?.trait
-    val problem = trait?.problem
-    val summary = problem ?: trait?.summary ?: "Off"
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 64.dp)
-            .semantics(mergeDescendants = true) {}
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        // Off: the glyph dims; the words stay at a readable contrast.
-        Icon(
-            painterResource(glyph),
-            null,
-            Modifier.size(22.dp).alpha(if (off) 0.5f else 1f),
-            tint = if (problem != null) t.danger else t.ink3
-        )
-        Spacer(Modifier.width(14.dp))
-        Column {
-            Text(label, style = Type.rowTitle, color = if (off) t.ink2 else t.ink)
-            if (summary.isNotEmpty()) {
-                Text(summary, style = Type.rowMeta, color = if (problem != null) t.danger else t.ink2)
-            }
-            if (row is TraitRow.Unknown) Text("Update the app to change this.", style = Type.small, color = t.ink3)
-        }
-    }
+/**
+ * A trait this app has no row for: the server's words, or its problem. One this app doesn't know ([unknown]) says
+ * to update the app after either.
+ */
+private fun serverLine(trait: SpaceTrait, unknown: Boolean = false): TraitLine {
+    val said = (trait.problem ?: trait.summary).ifBlank { null }
+    val status = listOfNotNull(said, "Update the app to change this.".takeIf { unknown }).joinToString(" · ")
+    return TraitLine(trait.name(), status, on = true, problem = trait.problem != null, opens = false)
 }
 
 /** Delete, confirmed under it; off, with why, for the default space or one with notes. */
@@ -624,7 +551,7 @@ private fun DeleteSpace(space: Space, onDelete: suspend () -> String?, work: Cor
         space.noteCount > 0 -> "Move or delete its notes to delete it."
         else -> null
     }
-    Spacer(Modifier.height(32.dp))
+    Spacer(Modifier.height(24.dp))
     Card {
         Column(Modifier.animateContentSize()) {
             Action("Delete space…", t.danger, enabled = why == null && !asking) {

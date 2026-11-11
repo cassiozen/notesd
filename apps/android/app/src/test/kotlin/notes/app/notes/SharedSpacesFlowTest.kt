@@ -125,7 +125,8 @@ class SharedSpacesFlowTest {
         compose.waitUntilExactlyOneExists(hasText("New space…"))
     }
 
-    private fun openSpaceInfo(name: String, until: String = "People") {
+    /** [name]'s Space info, until [until] shows; then, with [page], its People row pressed, on its page. */
+    private fun openSpaceInfo(name: String, until: String = "People", page: Boolean = true) {
         compose.onNodeWithContentDescription("Sidebar").performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Settings"))
         compose.onNodeWithContentDescription("Settings").performClick()
@@ -134,6 +135,13 @@ class SharedSpacesFlowTest {
         compose.waitUntilExactlyOneExists(hasText(name) and hasClickAction())
         compose.onNode(hasText(name) and hasClickAction()).performClick()
         compose.waitUntilExactlyOneExists(hasText(until))
+        if (page) openPeople(name)
+    }
+
+    /** From [name]'s Space info, its People row pressed: its page. */
+    private fun openPeople(name: String) {
+        compose.onNode(hasText("People") and hasClickAction()).performScrollTo().performClick()
+        compose.waitUntilExactlyOneExists(hasContentDescription("Back") and hasText(name), 5_000)
     }
 
     /** A page's button, scrolled to. */
@@ -201,7 +209,9 @@ class SharedSpacesFlowTest {
     fun `one tap on someone in People shares a space of your own with them`() {
         runBlocking { graph.sync.spaces.create("Family") }
         launch("All Notes")
-        openSpaceInfo("Family")
+        openSpaceInfo("Family", page = false)
+        compose.onNodeWithText("Only you").assertExists()
+        openPeople("Family")
         compose.onNodeWithText("Invite people to read and edit every note in Family, and add their own.").assertExists()
         // Everyone on the server, read as the page opened; not you.
         compose.waitUntilExactlyOneExists(hasContentDescription("Invite ana"))
@@ -229,7 +239,7 @@ class SharedSpacesFlowTest {
     @Test
     fun `the default space can't be shared`() {
         launch("All Notes")
-        openSpaceInfo("Notes", until = "Delete space…")
+        openSpaceInfo("Notes", until = "Delete space…", page = false)
         compose.onNodeWithText("People").assertDoesNotExist()
         compose.onNodeWithContentDescription("Invite ana").assertDoesNotExist()
     }
@@ -245,8 +255,9 @@ class SharedSpacesFlowTest {
             hasText("Try again") and hasClickAction() and
                 hasAnySibling(hasText("This needs a connection. Try again when you're online."))
         ).assertExists()
-        // The agent's section can't tell either, and says so rather than hiding.
-        compose.onNodeWithText("Couldn't load the agent.", substring = true).assertExists()
+        // The agent's row can't tell either, and says so rather than hiding.
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntilExactlyOneExists(hasText("Couldn't load the agent.", substring = true))
     }
 
     @Test
@@ -343,17 +354,19 @@ class SharedSpacesFlowTest {
         notesd.feeds["fam"] = listOf(note("f1", "Picnic", "fam", by = 2, ago = hour))
         launch("All Notes")
         offMain { graph.store.save("f1", "Picnic", "Picnic and games\n") }
-        openSpaceInfo("Family")
+        openSpaceInfo("Family", page = false)
         // Its name, icon and existence are ana's.
         compose.onNode(hasSetTextAction()).assertDoesNotExist()
         compose.onNodeWithContentDescription("Change icon").assertDoesNotExist()
         compose.onNodeWithText("Delete space…").assertDoesNotExist()
+        compose.onNodeWithText("You and ana").assertExists()
+        openPeople("Family")
         compose.onNodeWithText("Owner").assertExists()
         compose.onNodeWithText("You").assertExists()
         button("Leave space…").performClick()
         compose.waitUntilExactlyOneExists(hasText("1 note in Family has changes that haven't synced", substring = true))
         confirm("Leave Family?", "Leave")
-        // The space is gone: back past its page.
+        // The space is gone: back past People and Space info both.
         compose.waitUntilDoesNotExist(hasText("People"))
         until { graph.store.get("f1") == null }
         assertTrue("DELETE /api/v1/spaces/fam/members/1" in notesd.requests)

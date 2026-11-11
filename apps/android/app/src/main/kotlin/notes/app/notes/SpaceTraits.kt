@@ -15,17 +15,41 @@ class TraitEntry(
     @DrawableRes val glyph: Int,
     val label: String,
     /**
-     * Its part of Space info, on or off: everything it changes, turning it on included, in place. Null: Space
-     * info shows the server's label and summary, and there's nothing to change.
+     * Its row in Space info: how it's set now, in a line. Null: Space info shows the server's label and summary,
+     * and there's nothing to change.
      */
-    val section: (@Composable (space: Space) -> Unit)? = null,
-    /** Off, whether Space info offers it for [Space]. Set only with a [section]: that section is what turns it on. */
+    val row: (@Composable (space: Space) -> TraitLine)? = null,
+    /**
+     * Its page, opened from its row: everything it changes, turning it on included, in a [notes.app.settings.TraitPage]
+     * frame. [back] goes back to Space info, as the back gesture does.
+     */
+    val page: (@Composable (space: Space, back: () -> Unit) -> Unit)? = null,
+    /** Off, whether Space info offers it for [Space]. Set only with a [page]: that page is what turns it on. */
     val canTurnOn: (Space) -> Boolean = { false }
 ) {
     /** The same trait with this app's way to change it. */
-    fun with(section: @Composable (space: Space) -> Unit, canTurnOn: (Space) -> Boolean) =
-        TraitEntry(key, glyph, label, section, canTurnOn)
+    fun with(
+        row: @Composable (space: Space) -> TraitLine,
+        page: @Composable (space: Space, back: () -> Unit) -> Unit,
+        canTurnOn: (Space) -> Boolean
+    ) = TraitEntry(key, glyph, label, row, page, canTurnOn)
 }
+
+/**
+ * A trait's row in Space info. [label] is this app's name for it; [status], how it's set or its problem. Without
+ * [opens], it's only said: there's nothing for this account to change ([TraitEntry.page] isn't offered).
+ */
+class TraitLine(
+    val label: String,
+    val status: String,
+    val on: Boolean,
+    val problem: Boolean = false,
+    /** Reachable by anyone now (a site that's up): a dot before the status. */
+    val live: Boolean = false,
+    val opens: Boolean = true,
+    /** Before the chevron: who's in it, say. */
+    val end: (@Composable () -> Unit)? = null
+)
 
 /** Every trait this app knows, in the fixed order; a key is reserved here before its feature ships. */
 object SpaceTraits {

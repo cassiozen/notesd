@@ -94,6 +94,18 @@ class ScreenshotTest {
         error("The note never loaded")
     }
 
+    /** Space info's row for a trait, pressed: its page. */
+    private fun openRow(label: String) {
+        compose.onNode(hasText(label) and hasClickAction()).performScrollTo().performClick()
+        compose.waitForIdle()
+    }
+
+    /** The system's back, as the gesture gives it. */
+    private fun back() {
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitForIdle()
+    }
+
     private fun shoot(name: String) {
         compose.mainClock.advanceTimeBy(2_000)
         compose.waitForIdle()
@@ -482,6 +494,9 @@ class ScreenshotTest {
             compose.onNode(hasText("Spaces")).performClick()
             compose.waitUntilExactlyOneExists(hasText("Notes") and hasClickAction())
             compose.onNode(hasText("Notes") and hasClickAction()).performClick()
+            compose.waitUntilExactlyOneExists(hasText("On · 2 rules"), 5_000)
+            shoot("space-info-agent-row")
+            openRow("Agent")
             compose.waitUntilExactlyOneExists(hasText("When you finish a new note"), 5_000)
             shoot("space-info-agent")
         } finally {
@@ -544,8 +559,10 @@ class ScreenshotTest {
             compose.onNode(hasText("Spaces")).performClick()
             compose.waitUntilExactlyOneExists(hasText("Notes") and hasClickAction())
             compose.onNode(hasText("Notes") and hasClickAction()).performClick()
-            compose.waitUntilExactlyOneExists(hasText("Activity…") and hasClickAction(), 5_000)
-            compose.onNode(hasText("Activity…") and hasClickAction()).performClick()
+            compose.waitUntilExactlyOneExists(hasText("Agent") and hasClickAction(), 5_000)
+            openRow("Agent")
+            compose.waitUntilExactlyOneExists(hasText("Activity") and hasClickAction(), 5_000)
+            compose.onNode(hasText("Activity") and hasClickAction()).performClick()
             compose.waitUntilExactlyOneExists(hasText("Groceries", substring = true) and hasClickAction(), 5_000)
             shoot("activity")
             compose.onNode(hasText("Groceries", substring = true) and hasClickAction()).performClick()
@@ -759,8 +776,11 @@ class ScreenshotTest {
         graph.switchSpace("work")
         compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared"))
         compose.onNode(hasContentDescription("Space info: Shared")).performClick()
-        compose.waitUntilExactlyOneExists(hasContentDescription("Invite dee"))
+        compose.waitUntilAtLeastOneExists(hasText("People") and hasClickAction())
         shoot("shared-info-$suffix")
+        openRow("People")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Invite dee"))
+        shoot("shared-people-$suffix")
         compose.onNode(hasContentDescription("Remove ben")).performClick()
         compose.waitUntilExactlyOneExists(hasText("Remove ben?", substring = true))
         shoot("shared-confirm-$suffix")
@@ -783,8 +803,11 @@ class ScreenshotTest {
         graph.switchSpace("fam")
         compose.waitUntilExactlyOneExists(hasContentDescription("Space info: Shared"))
         compose.onNode(hasContentDescription("Space info: Shared")).performClick()
-        compose.waitUntilExactlyOneExists(hasText("Leave space…"))
+        compose.waitUntilAtLeastOneExists(hasText("People") and hasClickAction())
         shoot("shared-member-info")
+        openRow("People")
+        compose.waitUntilExactlyOneExists(hasText("Leave space…"))
+        shoot("shared-member-people")
     }
 
     /** A space not shared yet: People invites with a tap; the icon opens its picker in place. */
@@ -798,20 +821,29 @@ class ScreenshotTest {
         compose.onNode(hasContentDescription("Space: Travel")).performClick()
         compose.waitUntilExactlyOneExists(hasText("New space…"))
         compose.onNode(hasContentDescription("Space info")).performClick()
-        compose.waitUntilExactlyOneExists(hasContentDescription("Invite dee"))
+        compose.waitUntilExactlyOneExists(hasText("Only you"))
         shoot("space-info-$suffix")
         compose.onNode(hasContentDescription("Change icon")).performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Dragon"))
         shoot("space-info-icons-$suffix")
         compose.onNode(hasContentDescription("Change icon")).performClick()
+        openRow("People")
+        compose.waitUntilExactlyOneExists(hasContentDescription("Invite dee"))
+        shoot("space-info-people-$suffix")
         compose.onNode(hasContentDescription("Invite dee")).performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Cancel dee's invitation"), 10_000)
         compose.waitUntilExactlyOneExists(hasText("Stop sharing…") and isEnabled(), 10_000)
         shoot("space-info-invited-$suffix")
-        compose.onNode(hasText("Publish") and hasClickAction()).performScrollTo().performClick()
+        back()
+        openRow("Website")
+        compose.waitUntilExactlyOneExists(hasText("Publish") and hasClickAction())
+        shoot("space-info-website-$suffix")
+        compose.onNode(hasText("Publish") and hasClickAction()).performClick()
         compose.waitUntilExactlyOneExists(hasText("Change address") and isEnabled(), 10_000)
-        compose.onNode(hasText("Stop publishing…")).performScrollTo()
         shoot("space-info-published-$suffix")
+        back()
+        compose.waitUntilExactlyOneExists(hasText("Only you · 1 invited"))
+        shoot("space-info-set-up-$suffix")
     }
 
     @Test fun spaceInfoLight() = spaceInfo("light", null)

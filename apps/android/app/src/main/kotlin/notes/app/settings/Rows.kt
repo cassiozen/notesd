@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -27,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import notes.app.ui.ButtonKind
+import notes.app.ui.Icons
 import notes.app.ui.LocalTokens
 import notes.app.ui.NotesButton
 import notes.app.ui.Type
@@ -83,6 +87,29 @@ internal fun Action(label: String, color: Color, enabled: Boolean, onClick: () -
             .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 17.dp)
     )
+}
+
+/** A row that opens another screen: its label, and a chevron saying so. */
+@Composable
+internal fun NavAction(label: String, enabled: Boolean = true, onClick: () -> Unit) {
+    val t = LocalTokens.current
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+            .semantics(mergeDescendants = true) {}
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            label,
+            style = Type.body.copy(fontSize = 16.sp, fontWeight = FontWeight.Medium),
+            color = if (enabled) t.ink else t.ink3,
+            modifier = Modifier.weight(1f)
+        )
+        Icon(Icons.Chevron, null, Modifier.size(16.dp), tint = t.ink3)
+    }
 }
 
 /** A dialog form's error, under its fields; read out when it appears. */

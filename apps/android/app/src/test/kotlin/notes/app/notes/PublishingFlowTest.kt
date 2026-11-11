@@ -19,6 +19,7 @@ import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -88,7 +89,8 @@ class PublishingFlowTest {
         notesd.spaces[id] = notesd.withPublished(notesd.spaces.getValue(id), settings)
     }
 
-    private fun openSpaceInfo(name: String, until: String = "Published") {
+    /** [name]'s Space info, until [until] shows; then, with [page], its Website row pressed, on its page. */
+    private fun openSpaceInfo(name: String, until: String = "Website", page: Boolean = true) {
         compose.onNodeWithContentDescription("Sidebar").performClick()
         compose.waitUntilExactlyOneExists(hasContentDescription("Settings"))
         compose.onNodeWithContentDescription("Settings").performClick()
@@ -97,7 +99,14 @@ class PublishingFlowTest {
         compose.waitUntilExactlyOneExists(hasText(name) and hasClickAction())
         compose.onNode(hasText(name) and hasClickAction()).performClick()
         compose.waitUntilExactlyOneExists(hasText(until))
+        if (page) {
+            compose.onNode(hasText("Website") and hasClickAction()).performScrollTo().performClick()
+            compose.waitUntilExactlyOneExists(hasContentDescription("Back") and hasText(name), 5_000)
+        }
     }
+
+    /** Whether Family shows published, as the space list has it: what every screen's glyphs and rows read. */
+    private fun shownPublished() = graph.spaces.value.first { it.id == "fam" }.traits.any { it.key == "published" }
 
     /** A button, once it can be pressed, scrolled to and pressed. */
     private fun press(label: String) {
@@ -124,6 +133,7 @@ class PublishingFlowTest {
         launch()
         openSpaceInfo("Family")
         compose.onNodeWithText("Publish Family as a website anyone can read", substring = true).assertExists()
+        compose.onNodeWithText("Custom CSS", substring = true).assertDoesNotExist()
         press("Publish")
         compose.waitUntilExactlyOneExists(hasContentDescription("Address: $host/@family"), 10_000)
         assertEquals(PublishSettings("family", "$origin/@family/", origin, published = true), notesd.published["fam"])
@@ -132,44 +142,44 @@ class PublishingFlowTest {
     }
 
     @Test
-    fun `the glyph shows at once, before the server answers, and the address once it has`() {
+    fun `it shows published at once, before the server answers, and the address once it has`() {
         family()
         notesd.held += "PUT /api/v1/spaces/fam/publish"
         launch()
         openSpaceInfo("Family")
         press("Publish")
         // The server hasn't answered: the space shows published, its address to come.
-        compose.waitUntilExactlyOneExists(hasContentDescription("Published"), 2_000)
-        compose.onNodeWithText("Publishing…").assertExists()
+        compose.waitUntilExactlyOneExists(hasText("Publishing…"), 2_000)
+        assertTrue(shownPublished())
         notesd.release()
         compose.waitUntilExactlyOneExists(hasContentDescription("Address: $host/@family"), 10_000)
         compose.waitUntilDoesNotExist(hasText("Publishing…"), 10_000)
     }
 
     @Test
-    fun `stopping hides the glyph at once`() {
+    fun `stopping shows it unpublished at once`() {
         family(handle = "family")
         notesd.held += "DELETE /api/v1/spaces/fam/publish"
         launch()
         openSpaceInfo("Family")
-        compose.waitUntilExactlyOneExists(hasContentDescription("Published"))
         press("Stop publishing…")
         confirm("Stop publishing Family?", "Stop publishing")
-        compose.waitUntilDoesNotExist(hasContentDescription("Published"), 2_000)
+        compose.waitUntilExactlyOneExists(hasText("Publish") and hasClickAction(), 2_000)
+        assertFalse(shownPublished())
         notesd.release()
         until { notesd.published.getValue("fam").published.not() }
-        compose.onNode(hasContentDescription("Published")).assertDoesNotExist()
+        compose.onNode(hasText("Publish") and hasClickAction()).assertExists()
     }
 
     @Test
-    fun `a refusal puts the glyph back`() {
+    fun `a refusal shows it unpublished again`() {
         family()
         notesd.lockedIn += "fam"
         launch()
         openSpaceInfo("Family")
         press("Publish")
         compose.waitUntilExactlyOneExists(hasText("Unlock its locked notes to publish it."), 10_000)
-        compose.onNode(hasContentDescription("Published")).assertDoesNotExist()
+        assertFalse(shownPublished())
         compose.onNode(hasText("Publish") and hasClickAction()).assertExists()
     }
 
@@ -222,8 +232,8 @@ class PublishingFlowTest {
     @Test
     fun `the default space can't be published`() {
         launch()
-        openSpaceInfo("Notes", until = "Delete space…")
-        compose.onNodeWithText("Published").assertDoesNotExist()
+        openSpaceInfo("Notes", until = "Delete space…", page = false)
+        compose.onNodeWithText("Website").assertDoesNotExist()
     }
 
     @Test
@@ -255,6 +265,23 @@ class PublishingFlowTest {
     }
 
     @Test
+    fun `a new address typed and not yet moved to is asked about on Back`() {
+        family(handle = "family")
+        launch()
+        openSpaceInfo("Family")
+        press("Change address")
+        compose.onNode(addressField).performTextReplacement("our-days")
+        // The page asks from the frame after the typing, as it would by the time a person's Back arrives.
+        compose.waitForIdle()
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntilExactlyOneExists(hasText("Your changes to the address aren't saved.", substring = true))
+        // Above the page, not in its scroll.
+        compose.onNode(hasText("Discard") and hasClickAction()).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Website") and hasClickAction())
+        assertEquals("family", notesd.published.getValue("fam").handle)
+    }
+
+    @Test
     fun `stops publishing once asked, the address staying the space's`() {
         family(handle = "family")
         launch()
@@ -271,8 +298,10 @@ class PublishingFlowTest {
         notesd.memberOf("fam", "Family", Member(2, "ana"))
         publishOnServer("fam", "family")
         launch()
-        openSpaceInfo("Family")
+        openSpaceInfo("Family", page = false)
         compose.waitUntilExactlyOneExists(hasText("At $host/@family"))
+        // Its row says where; there's no page to open.
+        compose.onNode(hasText("Website") and hasClickAction()).assertDoesNotExist()
         compose.onNodeWithText("Stop publishing…").assertDoesNotExist()
         compose.onNodeWithText("Change address").assertDoesNotExist()
     }

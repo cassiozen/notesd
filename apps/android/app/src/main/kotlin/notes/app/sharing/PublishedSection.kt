@@ -38,9 +38,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import notes.app.AppGraph
+import notes.app.notes.TraitLine
 import notes.app.settings.Action
 import notes.app.settings.Card
 import notes.app.settings.Divider
+import notes.app.settings.Footnote
+import notes.app.settings.TraitPage
+import notes.app.settings.Unsaved
 import notes.app.ui.ButtonKind
 import notes.app.ui.InlineConfirm
 import notes.app.ui.Kicker
@@ -57,12 +61,29 @@ import notes.core.db.Space
 internal fun shownAddress(s: PublishSettings): String = "${s.origin.substringAfter("://")}/@${s.handle}"
 
 /**
- * Space info's section for publishing (§7.10): off, its owner publishes the space; on, its address (opened, shared,
- * or moved to another handle, asked first) and Stop publishing. A member sees where it is. Its custom CSS is the
- * web app's to change.
+ * Publishing's row in Space info (§7.10): "Not published", or where the site is, after a dot; its problem
+ * instead, when it has one. It opens the page for the owner only: a member has nothing there to change.
  */
 @Composable
-fun PublishedSection(graph: AppGraph, space: Space) {
+fun websiteLine(space: Space): TraitLine {
+    val trait = space.traits.firstOrNull { it.key == "published" }
+    return TraitLine(
+        "Website",
+        trait?.problem ?: trait?.summary ?: "Not published",
+        on = trait != null,
+        problem = trait?.problem != null,
+        live = trait != null,
+        opens = space.shared?.isOwner != false
+    )
+}
+
+/**
+ * Publishing's page (§7.10), its owner's: off, what publishing does and Publish; on, its address (opened, shared,
+ * or moved to another handle, asked first) and Stop publishing. Its custom CSS and own domain are the web app's to
+ * change.
+ */
+@Composable
+fun WebsitePage(graph: AppGraph, space: Space, back: () -> Unit) {
     val t = LocalTokens.current
     val scope = rememberCoroutineScope()
     val trait = space.traits.firstOrNull { it.key == "published" }
@@ -101,109 +122,123 @@ fun PublishedSection(graph: AppGraph, space: Space) {
         }
     }
 
-    Kicker("Published", Modifier.padding(start = 8.dp, bottom = 8.dp).semantics { heading() })
-    Card {
-        Column(Modifier.animateContentSize(if (LocalReduceMotion.current) snap() else springPop())) {
-            trait?.problem?.let {
-                Text(it, style = Type.small, color = t.danger, modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 0.dp))
-            }
-            val current = settings
-            when {
-                trait == null -> Column(
-                    Modifier.fillMaxWidth().padding(16.dp, 14.dp, 16.dp, 14.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                        "Publish ${space.name} as a website anyone can read: each note with a title and some text " +
-                            "is a post, with pages for its tags and a search. Its address comes from the space's " +
-                            "name, and you can change it after.",
-                        style = Type.body,
-                        color = t.ink2
-                    )
-                    NotesButton(
-                        "Publish",
-                        { act("publish", { publish(space) }) { settings = it } },
-                        kind = ButtonKind.Accent,
-                        enabled = busy == null,
-                        busy = busy == "publish",
-                        small = true
-                    )
-                }
-
-                !owner || current == null -> Text(
-                    trait.summary,
-                    style = Type.body,
-                    color = t.ink2,
-                    modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 14.dp)
+    TraitPage(
+        space.name,
+        space.icon,
+        "Website",
+        back,
+        lead = if (trait == null) {
+            "Publish ${space.name} as a website anyone can read: each note with a title and some text is a post, " +
+                "with pages for its tags and a search. Its address comes from the space's name, and you can " +
+                "change it after."
+        } else {
+            "Anyone with its address can read ${space.name}."
+        }
+    ) {
+        // Inside the page's frame, which asks about it on Back: a new address typed but not yet moved to.
+        Unsaved("the address", draft.let { it != null && it.trim() != settings?.handle })
+        Column {
+            if (trait == null) {
+                NotesButton(
+                    "Publish",
+                    { act("publish", { publish(space) }) { settings = it } },
+                    Modifier.fillMaxWidth(),
+                    kind = ButtonKind.Accent,
+                    enabled = busy == null,
+                    busy = busy == "publish"
                 )
+            } else {
+                Card {
+                    Column(Modifier.animateContentSize(if (LocalReduceMotion.current) snap() else springPop())) {
+                        trait.problem?.let {
+                            Text(
+                                it,
+                                style = Type.small,
+                                color = t.danger,
+                                modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 0.dp)
+                            )
+                        }
+                        val current = settings
+                        when {
+                            !owner || current == null -> Text(
+                                trait.summary,
+                                style = Type.body,
+                                color = t.ink2,
+                                modifier = Modifier.padding(16.dp, 14.dp, 16.dp, 14.dp)
+                            )
 
-                draft != null -> HandleEditor(
-                    current,
-                    draft.orEmpty(),
-                    asking,
-                    working = busy == "handle",
-                    onType = {
-                        draft = it.lowercase()
-                        error = null
-                    },
-                    onSave = { typed ->
-                        val handle = typed.trim()
-                        if (handle.isEmpty() || handle == current.handle) draft = null else asking = handle
-                    },
-                    onCancel = {
-                        draft = null
-                        asking = null
-                    },
-                    // Only the question: the handle stays as typed, to change or save again.
-                    onKeep = { asking = null },
-                    onConfirm = { handle ->
-                        act("handle", { changeHandle(space.id, handle) }, settled = { asking = null }) {
-                            settings = it
-                            draft = null
+                            draft != null -> HandleEditor(
+                                current,
+                                draft.orEmpty(),
+                                asking,
+                                working = busy == "handle",
+                                onType = {
+                                    draft = it.lowercase()
+                                    error = null
+                                },
+                                onSave = { typed ->
+                                    val handle = typed.trim()
+                                    if (handle.isEmpty() || handle == current.handle) draft = null else asking = handle
+                                },
+                                onCancel = {
+                                    draft = null
+                                    asking = null
+                                },
+                                // Only the question: the handle stays as typed, to change or save again.
+                                onKeep = { asking = null },
+                                onConfirm = { handle ->
+                                    act("handle", { changeHandle(space.id, handle) }, settled = { asking = null }) {
+                                        settings = it
+                                        draft = null
+                                    }
+                                }
+                            )
+
+                            else -> Address(current, space.name, enabled = busy == null) {
+                                error = null
+                                draft = current.handle
+                            }
                         }
                     }
+                }
+            }
+            error?.let {
+                Text(
+                    it,
+                    style = Type.small,
+                    color = t.danger,
+                    modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp).semantics {
+                        liveRegion = LiveRegionMode.Polite
+                    }
                 )
-
-                else -> Address(current, space.name, enabled = busy == null) {
-                    error = null
-                    draft = current.handle
-                }
             }
-        }
-    }
-    error?.let {
-        Text(
-            it,
-            style = Type.small,
-            color = t.danger,
-            modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp).semantics {
-                liveRegion = LiveRegionMode.Polite
-            }
-        )
-    }
-    if (trait != null && owner) {
-        Spacer(Modifier.height(12.dp))
-        Card {
-            Column(Modifier.animateContentSize()) {
-                Action("Stop publishing…", t.danger, enabled = busy == null) {
-                    error = null
-                    stopping = true
-                }
-                InlineConfirm(
-                    visible = stopping,
-                    title = "Stop publishing ${space.name}?",
-                    text = "The site goes offline. Its address stays this space's, for when you publish it again.",
-                    action = "Stop publishing",
-                    busy = busy == "stop",
-                    onConfirm = {
-                        act("stop", { stop(space.id) }) {
-                            stopping = false
-                            settings = null
+            if (trait != null && owner) {
+                Footnote("Custom CSS and your own domain are set in the web app.")
+                Spacer(Modifier.height(16.dp))
+                Card {
+                    Column(Modifier.animateContentSize()) {
+                        Action("Stop publishing…", t.danger, enabled = busy == null) {
+                            error = null
+                            stopping = true
                         }
-                    },
-                    onCancel = { stopping = false },
-                    modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
-                )
+                        InlineConfirm(
+                            visible = stopping,
+                            title = "Stop publishing ${space.name}?",
+                            text = "The site goes offline. Its address stays this space's, for when you publish it " +
+                                "again.",
+                            action = "Stop publishing",
+                            busy = busy == "stop",
+                            onConfirm = {
+                                act("stop", { stop(space.id) }) {
+                                    stopping = false
+                                    settings = null
+                                }
+                            },
+                            onCancel = { stopping = false },
+                            modifier = Modifier.padding(start = 12.dp, end = 12.dp, bottom = 12.dp)
+                        )
+                    }
+                }
             }
         }
     }
