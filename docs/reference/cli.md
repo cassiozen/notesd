@@ -68,6 +68,7 @@ and use `-p` and `-v` rather than changing `PORT` or `NOTESD_DATA_DIR`.
 | `--log-level` | `NOTESD_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
 | `--log-format` | `NOTESD_LOG_FORMAT` | `text` | `text` or `json` |
 | `--mirror-dir` | `NOTESD_MIRROR_DIR` | Unset | Also keep every account's unlocked notes in this folder as Markdown files ([details](../guides/self-hosting/markdown-mirror-and-export.md#markdown-mirror)) |
+| `--client-ip-header` | `NOTESD_CLIENT_IP_HEADER` | Unset: `X-Forwarded-For` | The header your proxy sets to the visitor's address, for proxies that put something else last in `X-Forwarded-For`, such as `X-Real-IP`, `CF-Connecting-IP` or `Fly-Client-IP`. Use one the proxy always replaces, never passes on from the visitor ([details](../guides/self-hosting/https.md#good-to-know)) |
 | `--self-update` | `NOTESD_SELF_UPDATE` | `false` | `true` lets admins update from Settings. systemd installs only, and it also needs the `notesd-update` units ([setup](../guides/self-hosting/upgrading.md#updating-from-settings)) |
 | `--resend-url` | `NOTESD_RESEND_URL` | `https://api.resend.com` | Where to send email. Only for tests, which point it at a fake |
 

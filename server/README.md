@@ -119,8 +119,9 @@ migrations         numbered SQL files, tracked with PRAGMA user_version (system/
 - **Plain-text extraction rules** are pinned by
   `shared/markdown-fixtures/plaintext.json`, which the iOS and Android
   extractors should also be tested against.
-- **Login rate limiting keys on the TCP peer address** (`clientKey` in
-  `internal/api`). `X-Forwarded-For` is ignored because there's no trusted
-  proxy setting yet, so behind a reverse proxy all clients share one limit.
+- **Login rate limiting keys on the client's address** (`internal/clientip`):
+  from a loopback or private peer, the last `X-Forwarded-For` entry, or the
+  header `--client-ip-header` names; otherwise the TCP peer. Behind a proxy
+  on a public address, all clients share one limit.
 - **Not yet built:** `backup` (step 6), and the OpenAPI document in
   `shared/api/`. Configuration is flags and environment variables only.

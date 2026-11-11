@@ -469,6 +469,43 @@ func TestLoginRateLimit(t *testing.T) {
 	}
 }
 
+func TestLoginRateLimitPerVisitorBehindAProxy(t *testing.T) {
+	login := func(c *client, pw, from string) int {
+		return c.do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": pw}, "X-Forwarded-For", from).status
+	}
+	// The test server's connections come from loopback, as from a proxy on this machine.
+	e := newEnv(t)
+	e.setupOwner()
+	for i := 0; i < 11; i++ {
+		login(e.client(), "wrong guess", "203.0.113.9")
+	}
+	if s := login(e.client(), password, "203.0.113.9"); s != 429 {
+		t.Fatalf("the guesser: %d", s)
+	}
+	if s := login(e.client(), password, "198.51.100.4"); s != 200 {
+		t.Fatalf("someone else: %d", s)
+	}
+}
+
+func TestLoginRateLimitByClientIPHeader(t *testing.T) {
+	// A proxy that ends X-Forwarded-For with its own public address, the same for everyone.
+	login := func(c *client, pw, from string) int {
+		return c.do("POST", "/api/v1/auth/login", map[string]string{"username": owner, "password": pw},
+			"X-Forwarded-For", from+", 192.0.2.80", "X-Real-IP", from).status
+	}
+	e := newEnvWith(t, api.Config{ClientIPHeader: "X-Real-IP"})
+	e.setupOwner()
+	for i := 0; i < 11; i++ {
+		login(e.client(), "wrong guess", "203.0.113.9")
+	}
+	if s := login(e.client(), password, "203.0.113.9"); s != 429 {
+		t.Fatalf("the guesser: %d", s)
+	}
+	if s := login(e.client(), password, "198.51.100.4"); s != 200 {
+		t.Fatalf("someone else: %d", s)
+	}
+}
+
 func TestNotesOverHTTP(t *testing.T) {
 	e := newEnv(t)
 	e.setupOwner()

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"notes/server/internal/auth"
+	"notes/server/internal/clientip"
 )
 
 // GET /api/v1/users — every account, for an admin managing who uses the server.
@@ -154,7 +155,7 @@ func (s *Server) useSetupLink(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) decodeLink(w http.ResponseWriter, r *http.Request, v any) bool {
-	if !s.allow(w, "link:"+clientKey(r)) {
+	if !s.allow(w, "link:"+clientip.Of(r)) {
 		return false
 	}
 	if err := decode(w, r, v); err != nil {
@@ -166,7 +167,7 @@ func (s *Server) decodeLink(w http.ResponseWriter, r *http.Request, v any) bool 
 
 func (s *Server) linkFailed(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, auth.ErrLinkInvalid) {
-		s.limiter.Fail("link:" + clientKey(r))
+		s.limiter.Fail("link:" + clientip.Of(r))
 	}
 	s.writeErr(w, r, err)
 }

@@ -29,7 +29,8 @@
 // reset-password, export and import, which need it once there is more than one.
 //
 // Flags may also be set through environment variables: NOTESD_DATA_DIR,
-// NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT, NOTESD_RESEND_URL, NOTESD_MIRROR_DIR.
+// NOTESD_LOG_LEVEL, NOTESD_LOG_FORMAT, NOTESD_RESEND_URL, NOTESD_MIRROR_DIR,
+// NOTESD_CLIENT_IP_HEADER.
 // Without --listen, serve listens on every interface at $PORT when it is set,
 // else on 127.0.0.1:8080. serve creates the owner account from
 // NOTESD_OWNER_USERNAME and NOTESD_OWNER_PASSWORD when there is none yet;
@@ -103,6 +104,7 @@ type options struct {
 	dryRun     bool
 	selfUpdate bool
 	mirrorDir  string
+	ipHeader   string
 }
 
 func run(args []string) error {
@@ -122,6 +124,7 @@ func run(args []string) error {
 		fs.StringVar(&o.logFormat, "log-format", env("NOTESD_LOG_FORMAT", "text"), "text or json")
 		fs.StringVar(&o.resendURL, "resend-url", env("NOTESD_RESEND_URL", ""), "Resend API base URL for emailing notes (default https://api.resend.com)")
 		fs.StringVar(&o.mirrorDir, "mirror-dir", env("NOTESD_MIRROR_DIR", ""), "also keep every user's notes in this directory as Markdown files, one folder per user")
+		fs.StringVar(&o.ipHeader, "client-ip-header", env("NOTESD_CLIENT_IP_HEADER", ""), "header a proxy sets to the client's address, such as X-Real-IP (default X-Forwarded-For)")
 		fs.BoolVar(&o.selfUpdate, "self-update", env("NOTESD_SELF_UPDATE", "") == "true", "let admins update from Settings; needs the notesd-update service (docs/guides/self-hosting/upgrading.md)")
 	case "create-owner", "remove-user":
 		usernameFlag("username")
@@ -712,7 +715,8 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 		runner.DropAhead()
 		runner.WakeAll()
 	}
-	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: aiChanged, Editors: hub, Ahead: runner}
+	cfg := api.Config{ResendURL: o.resendURL, Version: version, DataDir: o.dataDir, OnAIChanged: aiChanged, Editors: hub, Ahead: runner,
+		ClientIPHeader: o.ipHeader}
 	if o.selfUpdate {
 		cfg.UpdateRequest = filepath.Join(o.dataDir, "update-request")
 	}
@@ -787,7 +791,8 @@ func serve(ctx context.Context, system *database.DB, users *userdata.Registry, a
 	case <-ctx.Done():
 	}
 	log.Info("shutting down")
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	// Under docker stop's 10 seconds, after which the process is killed mid-close.
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 8*time.Second)
 	defer cancel()
 	// In-flight requests finish (and their transactions commit or roll back)
 	// before the database is closed by the caller.

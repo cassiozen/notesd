@@ -68,6 +68,7 @@ server {
         proxy_pass http://127.0.0.1:8080;
         proxy_set_header Host $host;
         proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         # Agents' connection to the editor is a WebSocket.
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
@@ -91,7 +92,7 @@ ngrok and Tailscale Funnel work too.
 
 - Use a dedicated hostname (`notes.example.com`), not a path (`example.com/notes`).
 - If saving fails with HTTP 403, your proxy rewrites the `Host` header: forward it unchanged, or send the original as `X-Forwarded-Host`.
-- After 10 failed sign-ins in 15 minutes from one IP, notesd blocks sign-ins from that IP for a while. Behind a proxy, all clients may share one IP. People who are already signed in aren't affected.
+- After 10 failed sign-ins in 15 minutes from one IP, notesd blocks sign-ins from that IP for a while. People who are already signed in aren't affected. Behind a proxy, notesd learns the visitor's IP from the proxy's `X-Forwarded-For` header, believed only from a proxy on this machine or a private network (LAN, Docker, or a VPN such as Tailscale). Behind a proxy on a public address, every visitor shares one limit. On a network you expose notesd to directly, a device there could fake the header to get around the limit.
 - Pictures can be up to 10 MiB. If your proxy limits request size, allow at least that.
 
 ## Limiting who can reach notesd

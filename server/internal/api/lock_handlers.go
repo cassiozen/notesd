@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"notes/server/internal/auth"
+	"notes/server/internal/clientip"
 	"notes/server/internal/locks"
 )
 
@@ -65,7 +66,7 @@ func (s *Server) deleteLockKey(w http.ResponseWriter, r *http.Request) {
 // a password change.
 func (s *Server) resetLocks(w http.ResponseWriter, r *http.Request) {
 	u := userFrom(r.Context())
-	key := "password:" + clientKey(r)
+	key := "password:" + clientip.Of(r)
 	if !s.allow(w, key) {
 		return
 	}

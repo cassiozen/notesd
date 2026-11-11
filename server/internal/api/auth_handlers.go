@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"notes/server/internal/auth"
+	"notes/server/internal/clientip"
 )
 
 type sessionResponse struct {
@@ -69,7 +70,7 @@ func (s *Server) setup(w http.ResponseWriter, r *http.Request) {
 // Web clients receive the session cookie and a CSRF token; devices receive
 // access and refresh tokens.
 func (s *Server) login(w http.ResponseWriter, r *http.Request) {
-	key := "login:" + clientKey(r)
+	key := "login:" + clientip.Of(r)
 	if !s.allow(w, key) {
 		return
 	}
@@ -94,7 +95,7 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if errors.Is(err, auth.ErrInvalidCredentials) {
 			s.limiter.Fail(key)
-			s.log.Warn("failed login", "remote", clientKey(r))
+			s.log.Warn("failed login", "remote", clientip.Of(r))
 		}
 		s.writeErr(w, r, err)
 		return
@@ -166,7 +167,7 @@ func (s *Server) currentSession(w http.ResponseWriter, r *http.Request) {
 // POST /api/v1/auth/password {"currentPassword": "...", "newPassword": "..."}
 // Signs out every other session.
 func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
-	key := "password:" + clientKey(r)
+	key := "password:" + clientip.Of(r)
 	if !s.allow(w, key) {
 		return
 	}

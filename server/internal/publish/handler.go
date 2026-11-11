@@ -3,7 +3,6 @@ package publish
 import (
 	"bytes"
 	"context"
-	"net"
 	"net/http"
 	"os"
 	"path"
@@ -16,6 +15,7 @@ import (
 	"time"
 
 	"notes/server/internal/auth"
+	"notes/server/internal/clientip"
 	"notes/server/internal/search"
 )
 
@@ -250,7 +250,7 @@ func (s *Service) search(w http.ResponseWriter, r *http.Request, site Site, m *m
 	if len(q) > maxQuery {
 		q = strings.ToValidUTF8(q[:maxQuery], "")
 	}
-	if ok, wait := s.limits.visitor.Take(visitorKey(r)); !ok {
+	if ok, wait := s.limits.visitor.Take(clientip.Of(r)); !ok {
 		h.Set("Retry-After", strconv.Itoa(int(wait.Seconds())+1))
 		http.Error(w, "too many searches; try again in a minute", http.StatusTooManyRequests)
 		return
@@ -346,25 +346,4 @@ func (l *limits) put(key string, page []byte, now time.Time) {
 		}
 	}
 	l.cache[key] = cached{page: page, at: now}
-}
-
-// visitorKey is who's searching: the connection's address, or the address a proxy on this machine or
-// network forwarded for (Caddy, a tunnel), which is every visitor's connection otherwise.
-func visitorKey(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		host = r.RemoteAddr
-	}
-	ip := net.ParseIP(host)
-	if ip == nil || !(ip.IsLoopback() || ip.IsPrivate()) {
-		return host
-	}
-	fwd := r.Header.Get("X-Forwarded-For")
-	if i := strings.LastIndexByte(fwd, ','); i >= 0 {
-		fwd = fwd[i+1:]
-	}
-	if fwd = strings.TrimSpace(fwd); fwd != "" {
-		return fwd
-	}
-	return host
 }

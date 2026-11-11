@@ -9,7 +9,6 @@ import (
 	"database/sql"
 	"errors"
 	"log/slog"
-	"net"
 	"net/http"
 	"net/url"
 	"runtime/debug"
@@ -20,6 +19,7 @@ import (
 
 	"notes/server/internal/agent"
 	"notes/server/internal/auth"
+	"notes/server/internal/clientip"
 	"notes/server/internal/database"
 	"notes/server/internal/editors"
 	"notes/server/internal/llm"
@@ -63,6 +63,9 @@ type Config struct {
 	DataDir string
 	// Publish paces re-rendering published sites; zero values are the defaults.
 	Publish publish.Config
+	// ClientIPHeader is the header a proxy sets to the client's address;
+	// empty reads X-Forwarded-For.
+	ClientIPHeader string
 	// MinClient is the oldest app version, X.Y.Z, this server syncs with,
 	// by platform (android, ios, web). Raised only when a server change
 	// would break older apps; empty means every version is accepted.
@@ -240,7 +243,8 @@ func (s *Server) Handler() http.Handler {
 		app.ServeHTTP(w, r)
 	}))
 
-	return s.serverHeader(s.recoverer(s.logRequests(s.checkClient(mux))))
+	return clientip.Middleware(s.cfg.ClientIPHeader,
+		s.serverHeader(s.recoverer(s.logRequests(s.checkClient(mux)))))
 }
 
 // serverHeader names this server's version on every response, so the web
@@ -502,14 +506,6 @@ func sessionCookies(r *http.Request) []string {
 		}
 	}
 	return tokens
-}
-
-func clientKey(r *http.Request) string {
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err != nil {
-		return r.RemoteAddr
-	}
-	return host
 }
 
 // ---- logging and recovery ----
