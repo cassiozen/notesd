@@ -12,7 +12,7 @@ permissions:
   packages: write # the Docker image on ghcr.io
 
 jobs:
-  # CI's checks already ran on the tagged commit when it reached main: require they passed instead of re-running them.
+  # CI already ran on the tagged commit when it was pushed to main: require it passed instead of re-running the checks.
   # Fails rather than waits when CI is still running: re-run the release once it's green.
   ci:
     # Run by hand, nothing is published: a Mac build dry run shouldn't need green CI.
@@ -26,9 +26,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
         run: |
-          passed=$(gh run list --workflow ci.yml --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
+          passed=$(gh run list --workflow ci.yml --branch main --event push --commit "$GITHUB_SHA" --status success --json databaseId --jq length)
           if [ "$passed" = 0 ]; then
-            echo "::error::CI hasn't passed on $GITHUB_SHA: wait for it or fix it, then re-run this workflow"
+            echo "::error::CI hasn't passed on $GITHUB_SHA on main: wait for it or fix it, then re-run this workflow"
             exit 1
           fi
 

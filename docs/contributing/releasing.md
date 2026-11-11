@@ -31,9 +31,9 @@ git push origin v0.3.0
 
 The workflow:
 
-1. Checks that CI passed on the tagged commit, rather than running the tests
-   again. If it hasn't, or is still running, nothing is built: re-run the
-   workflow once CI is green.
+1. Checks that CI passed on the tagged commit when it was pushed to `main`,
+   rather than running the tests again. If it hasn't, or is still running,
+   nothing is built: re-run the workflow once CI is green.
 2. On a macOS runner, builds the Mac app (`mise run release:macos`): signed,
    notarized by Apple, in a DMG that's signed and notarized too. It refuses to
    build one that isn't. The rest waits for it, so a failure here publishes
