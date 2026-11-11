@@ -1,0 +1,82 @@
+apps/android/app/src/main/kotlin/notes/app/settings/TraitPage.kt
+  s_c3b38fb2a663e4::t_5926e7ac45a447 1-189,195-201,203,205-215
+  s_c3b38fb2a663e4::t_011c36cb175d73 190-194
+  s_c3b38fb2a663e4::t_57958d12aef231 202,204
+docs/contributing/architecture.md
+  s_c3b38fb2a663e4::t_1ca39a292553ea 537-540,597,717-718
+apps/android/app/src/test/kotlin/notes/app/agent/AgentSectionTest.kt
+  s_c3b38fb2a663e4::t_230c1db329cf63 57-61,74-77,80-82,100,109,114,140,163,195,203,207,257,261
+apps/android/app/src/test/kotlin/notes/app/agent/ActivityTest.kt
+  s_c3b38fb2a663e4::t_05bf3b8db8e0d4 132-135
+apps/android/app/src/main/kotlin/notes/app/settings/Rows.kt
+  s_c3b38fb2a663e4::t_bdcca331b0368d 16,18,21,33,92-112
+  s_c3b38fb2a663e4::t_aad54e0c46ec75 113-114
+docs/guides/apps/android.md
+  s_c3b38fb2a663e4::t_1ca39a292553ea 74-75
+apps/android/app/src/test/kotlin/notes/app/notes/SharedSpacesFlowTest.kt
+  s_c3b38fb2a663e4::t_385184a3588a03 128-129,138-144,212-214,242,258-260,357,362-363,369
+apps/android/app/src/main/kotlin/notes/app/sharing/PublishedSection.kt
+  s_c3b38fb2a663e4::t_aa880adf707328 63-64,67-85
+  s_c3b38fb2a663e4::t_2f3f53b833a52a 124-145,147-192,194-197,202-210,212-219,221-238
+  s_c3b38fb2a663e4::t_2f7bc79bc6c6ec 41,45-46
+docs/guides/using/publishing.md
+  s_c3b38fb2a663e4::t_1ca39a292553ea 29,35
+apps/android/app/src/main/kotlin/notes/app/agent/AgentSection.kt
+  s_c3b38fb2a663e4::t_37ff4625a22722 225-236,240-253,255-263
+  s_c3b38fb2a663e4::t_bdcca331b0368d 287,289-291
+  s_c3b38fb2a663e4::t_2f7bc79bc6c6ec 60,65-66
+  s_c3b38fb2a663e4::t_011c36cb175d73 104,106,108,110-116
+  s_c3b38fb2a663e4::t_9786a083fbb1ca 218-219
+  s_c3b38fb2a663e4::t_014b9a1646a15c 90-91,94-103,105,107,109,117-131,199-204,208-214,217,220-224
+apps/android/app/src/test/kotlin/notes/app/agent/AgentAccessibilityTest.kt
+  s_c3b38fb2a663e4::t_05bf3b8db8e0d4 170,172-175,177
+apps/android/app/src/test/kotlin/notes/app/ScreenshotTest.kt
+  s_c3b38fb2a663e4::t_bd30e0a01ae7c3 97-108,497-499,777,779-781,804,806-808,822,828-830,835-839,842-844
+apps/android/app/src/main/kotlin/notes/app/notes/SpaceTraits.kt
+  s_c3b38fb2a663e4::t_6ecd37ae1f7003 23-27,31-33
+  s_c3b38fb2a663e4::t_a60f16c9111fe0 18-19,21-22,34-35,38-53
+apps/android/app/src/main/kotlin/notes/app/notes/Navigation.kt
+  s_c3b38fb2a663e4::t_32f3f01ac4efce 100-103,523-540,551
+  s_c3b38fb2a663e4::t_e15ec943cbd716 63
+apps/android/app/src/test/kotlin/notes/app/notes/SpacesFlowTest.kt
+  s_c3b38fb2a663e4::t_23b2902338c8e0 184-185,221-222,224-227
+apps/android/app/src/test/kotlin/notes/app/notes/SpaceTraitsTest.kt
+  s_c3b38fb2a663e4::t_fdb0a7f2abc425 103-105
+  s_c3b38fb2a663e4::t_bb5f6d14500a3e 25-26
+docs/guides/using/agents.md
+  s_c3b38fb2a663e4::t_1ca39a292553ea 20-21,103
+apps/android/app/src/test/kotlin/notes/app/notes/PublishingFlowTest.kt
+  s_c3b38fb2a663e4::t_6f1e7b7bfce846 22,92-93,102-105,108-110,136,145,152-153,160,167-168,171,175,182,235-236,284,286-287
+docs/guides/using/sharing.md
+  s_c3b38fb2a663e4::t_1ca39a292553ea 25
+apps/android/app/src/main/kotlin/notes/app/settings/SettingsScreen.kt
+  s_c3b38fb2a663e4::t_2f7bc79bc6c6ec 9
+  s_c3b38fb2a663e4::t_83bb3ae1bf9dc9 15,306-307,317-323
+apps/android/app/src/main/kotlin/notes/app/settings/SpaceInfo.kt
+  s_c3b38fb2a663e4::t_c2e04c1a8ead19 109-110,118-119,123,144,180-209,219-223,225-229,232-236,249-251,261,293,340-343,356,359-360,373,377-379,388,404,503,505-516,518-525,532-534,548
+  s_c3b38fb2a663e4::t_8599caae7ff136 294-307,309-319,322-324
+  s_c3b38fb2a663e4::t_2f7bc79bc6c6ec 80-81,86,91-94
+apps/android/app/src/main/kotlin/notes/app/sharing/PeopleSection.kt
+  s_c3b38fb2a663e4::t_c440423f1500f8 233-276,278-283,288-295,298-337
+  s_c3b38fb2a663e4::t_011c36cb175d73 489-494
+  s_c3b38fb2a663e4::t_aa109ac638eb18 113-114,117-142,147-159,223-232
+  s_c3b38fb2a663e4::t_e30b2f40116866 143-146,603-610,633
+  s_c3b38fb2a663e4::t_aa880adf707328 488
+  s_c3b38fb2a663e4::t_2f7bc79bc6c6ec 54,70-71,75
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "833fe62af1521fe0f13bf8ca47fa16f73196526a",
+  "prompts": {},
+  "sessions": {
+    "s_c3b38fb2a663e4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "b1d1944a-c107-4c4f-9779-0dc027b08b05",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
