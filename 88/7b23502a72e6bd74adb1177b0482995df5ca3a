@@ -1,0 +1,22 @@
+.github/workflows/release.yml
+  s_c52d9a78acea01::t_3adf4cd7b54474 18
+  s_c52d9a78acea01::t_d21986207e9ef6 15-17,19-34,36-39
+docs/contributing/releasing.md
+  s_c52d9a78acea01::t_5472ec0db0dc4c 24-26,34-37
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "887b23502a72e6bd74adb1177b0482995df5ca3a",
+  "prompts": {},
+  "sessions": {
+    "s_c52d9a78acea01": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "890d52eb-6f3f-4fd6-80cd-decfdb87d91d",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
