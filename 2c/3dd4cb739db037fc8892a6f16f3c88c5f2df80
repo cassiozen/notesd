@@ -1,0 +1,19 @@
+docs/contributing/architecture.md
+  s_23cbd010f69272::t_752d5c9d8ce710 895
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "2c3dd4cb739db037fc8892a6f16f3c88c5f2df80",
+  "prompts": {},
+  "sessions": {
+    "s_23cbd010f69272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8441754d-7eb1-482c-bdcf-428fb10eaae1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
