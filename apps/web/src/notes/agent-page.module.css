@@ -1,12 +1,3 @@
-/* The section's caption, with its Save or Activity at the end of the line. */
-.head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  min-height: 28px;
-}
-
 .actions {
   display: flex;
   gap: 8px;

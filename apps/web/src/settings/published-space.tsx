@@ -5,15 +5,18 @@ import { publishing, type PublishSettings } from '../api/spaces'
 import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { catchUpSpaces, expectPublished, unexpectPublished } from '../notes/spaces'
+import { PublishedGlyph } from '../notes/trait-glyphs'
 import type { TraitPage } from '../notes/traits'
 import { Button } from '../ui/button'
 import { useCopy } from '../ui/copy'
 import { InlineConfirm } from '../ui/inline-confirm'
+import { PageHead, SectionRow } from './section-row'
+import settingsStyles from './settings.module.css'
 import info from './space-info.module.css'
 import styles from './published-space.module.css'
 
-// Publishing a space (architecture §7.10), as Space info's Published section: its address and turning it on and
-// off, in place; its custom CSS and own domain on the section's page, Customize site.
+// Publishing a space (architecture §7.10), as Space info's Website section: a row saying where it is, and its page
+// with turning it on and off, its address, its custom CSS and its own domain.
 
 type Failure = { field?: 'handle' | 'css' | 'domain'; message: string }
 
@@ -46,36 +49,27 @@ const prefix = (s: PublishSettings) => `${s.origin.replace(/^https?:\/\//, '')}/
 
 const DOMAIN_DOCS = 'https://notesd.app/docs/guides/using/publishing.html#use-your-own-domain'
 
-/** What Customize site has set, for the row that opens it. */
-function customized(s: PublishSettings) {
-  if (s.css && s.domain) return `Custom CSS · ${s.domain}`
-  if (s.css) return 'Custom CSS'
-  return s.domain || 'Custom CSS or your own domain'
-}
-
 /**
- * Whether the space is a website anyone can read. Off, its owner publishes it; on, the address (its handle edited
- * in place), Customize site, and Stop publishing. A member sees where it is.
+ * Whether the space is a website anyone can read. Off, its owner publishes it from the page; on, the page has the
+ * address (its handle edited in place), its custom CSS and own domain, and Stop publishing. A member sees where it
+ * is, in the row: there's nothing for them to change.
  */
 export function PublishedSection({ space, page }: { space: Space; page: TraitPage }) {
-  const headingId = useId()
   const trait = space.traits.find((t) => t.key === 'published')
   const owner = space.shared?.role !== 'member'
   const [settings, setSettings] = useState<PublishSettings | null>(null)
   const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'domain' | 'stop' | null>(null)
   const [failure, setFailure] = useState<Failure>()
   const [stopping, setStopping] = useState(false)
-  const summaryId = useId()
   // Turned on or off here, the list shows it at once (expectPublished): the trait is the section's state.
   const on = trait !== undefined
-  const customizable = on && owner && settings !== null
 
-  // Taken down, here or elsewhere, with its page open: nothing left on it to change.
+  // Handed on with its page open: nothing left on it for a member to change.
   const { open, back } = page
   useEffect(() => {
     // After the commit: going back swaps pages synchronously, which React can't do from inside an effect.
-    if (open && !customizable) queueMicrotask(back)
-  }, [open, customizable, back])
+    if (open && !owner) queueMicrotask(back)
+  }, [open, owner, back])
 
   // Read again when the trait changes: published, moved or taken down here or on another device.
   const summary = trait?.summary
@@ -120,107 +114,102 @@ export function PublishedSection({ space, page }: { space: Space; page: TraitPag
       </p>
     )
 
+  const action = on ? (
+    <Button size="md" variant="danger-text" className={`${settingsStyles.leading} ${info.delete}`} disabled={busy !== null} aria-expanded={stopping} onClick={() => setStopping(true)}>
+      Stop publishing…
+    </Button>
+  ) : (
+    <Button
+      size="md"
+      variant="accent"
+      className={info.primary}
+      busy={busy === 'publish'}
+      disabled={busy !== null}
+      onClick={() => void run('publish', () => publishing.put(space.id, { origin: location.origin }), true)}
+    >
+      Publish
+    </Button>
+  )
+
   return (
-    <section className={info.section} aria-labelledby={headingId}>
-      <h3 id={headingId} className={info.caption}>
-        Published
-      </h3>
-      <div className={info.group}>
-        {trait?.problem && <p className={styles.problem}>{trait.problem}</p>}
-        {!on ? (
-          <div className={styles.off}>
-            <p className={styles.lead}>
-              Publish {space.name} as a website anyone can read: each note with a title and some text is a post, with pages for its tags and a search.
-              Its address comes from the space’s name, and you can change it after.
-            </p>
-            <Button size="sm" variant="accent" busy={busy === 'publish'} disabled={busy !== null} onClick={() => void run('publish', () => publishing.put(space.id, { origin: location.origin }), true)}>
-              Publish
-            </Button>
-          </div>
-        ) : !owner ? (
-          <p className={styles.lead}>{trait?.summary}</p>
-        ) : !settings ? (
-          <p className={styles.lead} aria-busy="true">
-            {trait?.summary}
-          </p>
-        ) : (
-          <>
-            <Address
-              settings={settings}
-              busy={busy}
-              onChange={(handle) => run('handle', () => publishing.put(space.id, { handle }))}
-              onEdit={() => failure?.field === 'handle' && setFailure(undefined)}
-            />
-            {error('handle')}
-            <button type="button" className={info.pageRow} aria-describedby={summaryId} onClick={page.show}>
-              <span className={info.pageRowText}>
-                <span className={info.pageRowLabel}>Customize site</span>
-                <span id={summaryId} className={info.pageRowSummary}>
-                  {customized(settings)}
-                </span>
-              </span>
-              <span className={info.pageRowChevron} aria-hidden="true" />
-            </button>
-          </>
-        )}
-      </div>
-      {!page.open && error()}
-      {customizable &&
+    <>
+      <SectionRow
+        Glyph={PublishedGlyph}
+        label="Website"
+        status={trait?.problem ?? trait?.summary ?? 'Not published'}
+        on={on}
+        problem={trait?.problem !== undefined}
+        live={on}
+        onOpen={owner ? page.show : undefined}
+      />
+      {owner &&
         page.slot &&
         createPortal(
           <div className={info.traitPage} hidden={!page.open}>
-            <div className={info.pageHead}>
-              <h2 id={page.headingId} tabIndex={-1} className={info.pageTitle}>
-                Customize site
-              </h2>
-              <span className={styles.pageAddress}>{settings.url.replace(/^https?:\/\//, '').replace(/\/$/, '')}</span>
-            </div>
-            <Stylesheet
-              key={`css:${settings.css}`}
-              css={settings.css}
-              busy={busy}
-              onSave={(css) => run('css', () => publishing.put(space.id, { css }))}
-              error={error('css')}
-            />
-            <OwnDomain
-              key={`domain:${settings.domain}`}
-              settings={settings}
-              busy={busy}
-              onSave={(domain) => run('domain', () => publishing.put(space.id, { domain }))}
-              error={error('domain')}
-            />
-            {page.open && error()}
+            <PageHead id={page.headingId} title="Website">
+              {on
+                ? `Anyone with its address can read ${space.name}.`
+                : `Anyone with the link can read ${space.name}: each note with a title and some text is a post, with pages for its tags and a search. Its address comes from the space’s name, and you can change it after.`}
+            </PageHead>
+            {trait?.problem && <p className={info.error}>{trait.problem}</p>}
+            {on &&
+              (!settings ? (
+                <p className={info.pageLead} aria-busy="true">
+                  {trait?.summary}
+                </p>
+              ) : (
+                <>
+                  <div className={info.group}>
+                    <Address
+                      settings={settings}
+                      busy={busy}
+                      onChange={(handle) => run('handle', () => publishing.put(space.id, { handle }))}
+                      onEdit={() => failure?.field === 'handle' && setFailure(undefined)}
+                    />
+                  </div>
+                  {error('handle')}
+                  <Stylesheet
+                    key={`css:${settings.css}`}
+                    css={settings.css}
+                    busy={busy}
+                    onSave={(css) => run('css', () => publishing.put(space.id, { css }))}
+                    error={error('css')}
+                  />
+                  <OwnDomain
+                    key={`domain:${settings.domain}`}
+                    settings={settings}
+                    busy={busy}
+                    onSave={(domain) => run('domain', () => publishing.put(space.id, { domain }))}
+                    error={error('domain')}
+                  />
+                </>
+              ))}
+            {error()}
+            {on && stopping && (
+              <InlineConfirm
+                title={`Stop publishing ${space.name}?`}
+                action="Stop publishing"
+                busy={busy === 'stop'}
+                onConfirm={() =>
+                  void run(
+                    'stop',
+                    async () => {
+                      await publishing.remove(space.id)
+                      return undefined
+                    },
+                    false,
+                  ).then((ok) => ok && setStopping(false))
+                }
+                onCancel={() => setStopping(false)}
+              >
+                The site goes offline. Its address stays this space’s, for when you publish it again.
+              </InlineConfirm>
+            )}
           </div>,
           page.slot,
         )}
-      {on && owner && (
-        <div className={info.footer}>
-          <Button size="sm" variant="danger-text" disabled={busy !== null} aria-expanded={stopping} onClick={() => setStopping(true)}>
-            Stop publishing…
-          </Button>
-          {stopping && (
-            <InlineConfirm
-              title={`Stop publishing ${space.name}?`}
-              action="Stop publishing"
-              busy={busy === 'stop'}
-              onConfirm={() =>
-                void run(
-                  'stop',
-                  async () => {
-                    await publishing.remove(space.id)
-                    return undefined
-                  },
-                  false,
-                ).then((ok) => ok && setStopping(false))
-              }
-              onCancel={() => setStopping(false)}
-            >
-              The site goes offline. Its address stays this space’s, for when you publish it again.
-            </InlineConfirm>
-          )}
-        </div>
-      )}
-    </section>
+      {owner && page.open && page.actions && createPortal(action, page.actions)}
+    </>
   )
 }
 

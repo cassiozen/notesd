@@ -42,6 +42,15 @@ async function spaceInfo(user: User, name: string) {
   return screen.findByRole('dialog', { name })
 }
 
+/** Space info's People page, for the space shown: its row, pressed. */
+async function peoplePage(user: User, name: string) {
+  await user.click(within(await spaceInfo(user, name)).getByRole('button', { name: 'People' }))
+  return screen.findByRole('dialog', { name: 'People' })
+}
+
+/** What a row of Space info's list says: its description. */
+const status = (row: HTMLElement) => document.getElementById(row.getAttribute('aria-describedby') ?? '')?.textContent
+
 async function noteIn(server: Client, space: string, title: string, content = '', id: string = crypto.randomUUID()) {
   const res = await server.api('POST', '/notes', { operationId: op(), id, title, content, spaceId: space })
   expect(res.status).toBe(201)
@@ -83,7 +92,9 @@ describe('sharing a space', () => {
     await switchTo(user, 'Work')
     await waitFor(() => expect(rowTitles()).toEqual(['Standup']))
 
-    const info = await spaceInfo(user, 'Work')
+    expect(status(within(await spaceInfo(user, 'Work')).getByRole('button', { name: 'People' }))).toBe('Only you')
+    await user.click(screen.getByRole('button', { name: 'People' }))
+    const info = await screen.findByRole('dialog', { name: 'People' })
     expect(within(info).getByText('Invite people to read and edit every note in Work, and add their own.')).toBeTruthy()
     // Everyone but the account itself.
     const people = await within(info).findByRole('list', { name: 'People to invite' })
@@ -94,8 +105,10 @@ describe('sharing a space', () => {
     const inSpace = await within(info).findByRole('list', { name: 'People in this space' })
     expect(within(inSpace).getAllByRole('listitem').map((li) => li.textContent)).toEqual(['MmeOwner · You', 'AanaInvitedCancel'])
     expect(screen.getAllByRole('dialog')).toHaveLength(1)
-    expect(within(info).getByRole('img', { name: 'Shared' })).toBeTruthy()
     expect(within(info).queryByRole('list', { name: 'People to invite' })).toBeNull()
+    expect(within(info).getByRole('button', { name: 'Stop sharing…' })).toBeTruthy()
+    await user.click(within(info).getByRole('button', { name: 'Back to Work' }))
+    expect(status(within(info).getByRole('button', { name: 'People' }))).toBe('Only you · 1 invited')
     const work = (await remoteSpaces(server)).find((s) => s.id === 'work')
     expect(work?.shared?.invites?.map((i) => i.userId)).toEqual([ana?.id])
     // Its notes moved to the space's own file, where the list now reads them.
@@ -116,7 +129,7 @@ describe('sharing a space', () => {
     })
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     await user.click(await within(info).findByRole('button', { name: 'Invite ana' }))
     expect((await within(info).findByRole('alert')).textContent).toBe('Unlock its locked note to share it.')
   })
@@ -132,7 +145,7 @@ describe('sharing a space', () => {
     })
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     const people = within(info).getByRole('list', { name: 'People in this space' })
     expect(within(people).getAllByRole('listitem').map((li) => li.textContent)).toEqual([
       'MmeOwner · You',
@@ -177,7 +190,7 @@ describe('sharing a space', () => {
     })
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     // Cancelled on another device, after this page listed it.
     const [invite] = (await remoteSpaces(server)).find((s) => s.id === 'work')?.shared?.invites ?? []
     expect((await server.api('DELETE', `/spaces/work/invites/${invite?.id}`)).status).toBe(204)
@@ -193,7 +206,7 @@ describe('sharing a space', () => {
     const { server, user } = await signedIn({ seed: async (s) => void ({ ana } = await seedWork(s, { share: true })) })
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     await user.click(within(info).getByRole('button', { name: 'Make owner: ana' }))
     const confirm = within(info).getByRole('group', { name: 'Make ana the owner?' })
     await user.click(within(confirm).getByRole('button', { name: 'Make owner' }))
@@ -202,6 +215,7 @@ describe('sharing a space', () => {
     expect((await remoteSpaces(server)).find((s) => s.id === 'work')?.shared?.role).toBe('member')
     expect((await remoteSpaces(ana as Ana)).find((s) => s.id === 'work')?.shared?.role).toBe('owner')
     // A member doesn't rename or delete it.
+    await user.click(within(info).getByRole('button', { name: 'Back to Work' }))
     expect(within(info).queryByRole('textbox', { name: 'Name' })).toBeNull()
     expect(within(info).queryByRole('button', { name: 'Change icon' })).toBeNull()
     expect(within(info).queryByRole('button', { name: 'Delete space…' })).toBeNull()
@@ -239,7 +253,7 @@ describe('as a member', () => {
     await act(() => reloadSpaces())
     await switchTo(user, 'Work')
     await waitFor(() => expect(rowTitles()).toEqual(['Standup']))
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     expect(within(info).queryByRole('list', { name: 'People to invite' })).toBeNull()
     expect(within(info).queryByRole('button', { name: /^Remove / })).toBeNull()
     await user.click(within(info).getByRole('button', { name: 'Leave space…' }))
@@ -275,7 +289,7 @@ describe('who changed what', () => {
     await openNote(user, 'Standup')
     expect(await screen.findByText(/^Edited by Ana Lima · (now|\d+m)$/)).toBeTruthy()
 
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     const [, row] = within(within(info).getByRole('list', { name: 'People in this space' })).getAllByRole('listitem')
     // The username beside the role, since the name may not be unique.
     expect(row?.textContent).toBe('Ana LimaanaMake ownerRemove')
@@ -490,7 +504,7 @@ describe('on this device', () => {
     await user.click(spaceRow('Work'))
     await waitFor(() => expect(within(list()).getByRole('link', { name: /^Standup/ }).textContent).toMatch(/ana · /))
 
-    const info = await spaceInfo(user, 'Work')
+    const info = await peoplePage(user, 'Work')
     await user.click(within(info).getByRole('button', { name: 'Leave space…' }))
     await user.click(within(await within(info).findByRole('group', { name: 'Leave Work?' })).getByRole('button', { name: 'Leave' }))
 

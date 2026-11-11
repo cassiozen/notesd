@@ -61,14 +61,15 @@ test('a space shared with someone: they join, edit, and leave', async ({ page, b
   expect(created.status).toBe(201)
   await page.reload()
 
-  // The owner shares it from Space info, pressing the member's name; they're listed there as invited.
+  // The owner shares it from Space info's People page, pressing the member's name; they're listed there as invited.
   await switchTo(page, space.name)
   await switcher(page).click()
   await spaces(page).getByRole('button', { name: 'Space info', exact: true }).click()
-  const info = page.getByRole('dialog', { name: space.name })
-  await info.getByRole('button', { name: `Invite ${member.username}` }).click()
-  await expect(info.getByRole('list', { name: 'People in this space' })).toContainText(`${member.username}Invited`)
-  await info.getByRole('button', { name: 'Done' }).click()
+  await page.getByRole('dialog', { name: space.name }).getByRole('button', { name: 'People', exact: true }).click()
+  const people = page.getByRole('dialog', { name: 'People' })
+  await people.getByRole('button', { name: `Invite ${member.username}` }).click()
+  await expect(people.getByRole('list', { name: 'People in this space' })).toContainText(`${member.username}Invited`)
+  await people.getByRole('button', { name: 'Done' }).click()
 
   // The member, in a browser of their own, joins from the switcher.
   const theirs = await browser.newContext()
@@ -107,7 +108,8 @@ test('a space shared with someone: they join, edit, and leave', async ({ page, b
   // The member leaves; the space goes from their switcher.
   await switcher(them).click()
   await spaces(them).getByRole('button', { name: 'Space info', exact: true }).click()
-  const theirInfo = them.getByRole('dialog', { name: space.name })
+  await them.getByRole('dialog', { name: space.name }).getByRole('button', { name: 'People', exact: true }).click()
+  const theirInfo = them.getByRole('dialog', { name: 'People' })
   await theirInfo.getByRole('button', { name: 'Leave space…' }).click()
   await theirInfo.getByRole('group', { name: `Leave ${space.name}?` }).getByRole('button', { name: 'Leave' }).click()
   await expect(switcher(them)).toHaveAccessibleName('Space: Notes')

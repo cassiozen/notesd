@@ -31,17 +31,17 @@ async function withDigestAgent(server: TestServer, llm: FakeLLM) {
 
 type User = Awaited<ReturnType<typeof signedIn>>['user']
 
-/** The agent's section of Space info, for the space shown. */
-/** The agent's section of Space info, where Activity… is. */
-async function agentSection(user: User) {
+/** The agent's page in Space info, for the space shown: where Activity… is. */
+async function agentPage(user: User) {
   await user.click(await screen.findByRole('button', { name: /^Space:/ }))
   await user.click(within(screen.getByRole('dialog', { name: 'Spaces' })).getByRole('button', { name: 'Space info' }))
   const info = await screen.findByRole('dialog', { name: 'Notes' })
-  return within(info).findByRole('region', { name: 'Agent' })
+  await user.click(await within(info).findByRole('button', { name: 'Agent' }))
+  return screen.findByRole('dialog', { name: 'Agent' })
 }
 
 async function openActivity(user: User) {
-  await user.click(await within(await agentSection(user)).findByRole('button', { name: 'Activity…' }))
+  await user.click(await within(await agentPage(user)).findByRole('button', { name: 'Activity…' }))
   return screen.findByRole('dialog', { name: 'Activity' })
 }
 
@@ -171,12 +171,13 @@ describe('Activity', () => {
   it('opens over Space info, which it comes back to', async () => {
     const llm = await startFakeLLM()
     const { user } = await signedIn({ seed: (s) => withDigestAgent(s, llm) })
-    const page = await agentSection(user)
+    const page = await agentPage(user)
     await user.click(await within(page).findByRole('button', { name: 'Activity…' }))
     const sheet = await screen.findByRole('dialog', { name: 'Activity' })
     await user.click(within(sheet).getByRole('button', { name: 'Done' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Activity' })).toBeNull())
-    expect(within(screen.getByRole('dialog', { name: 'Notes' })).getByRole('region', { name: 'Agent' })).toBe(page)
+    // Back where it was opened: the agent's page, not the rest of Space info.
+    expect(screen.getByRole('dialog', { name: 'Agent' })).toBe(page)
   })
 
   it('isn’t offered for a space without an agent', async () => {
@@ -186,9 +187,9 @@ describe('Activity', () => {
         await s.api('PUT', '/settings/ai', { baseUrl: llm.url, apiKey: 'sk-test-1234', model: 'm' })
       },
     })
-    const section = await agentSection(user)
-    await within(section).findByRole('button', { name: 'Agent Set up' })
-    expect(within(section).queryByRole('button', { name: 'Activity…' })).toBeNull()
+    const page = await agentPage(user)
+    await within(page).findByRole('checkbox', { name: 'Agent' })
+    expect(within(page).queryByRole('button', { name: 'Activity…' })).toBeNull()
   })
 })
 

@@ -238,10 +238,12 @@ describe('Space info', () => {
 
     const info = await screen.findByRole('dialog', { name: 'Work' })
     expect(within(info).getByText('2 notes')).toBeTruthy()
-    // Without traits, sharing is its People section, to invite from: not a feature turned off.
-    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
-    expect(within(info).queryByRole('list', { name: 'Features' })).toBeNull()
+    // Without traits, sharing is its People row, to invite from: not a feature turned off.
+    const people = within(info).getByRole('button', { name: 'People' })
+    expect(people.textContent).toBe('PeopleOnly you')
     expect(within(info).queryByText('Off')).toBeNull()
+    // Focus starts on the dialog, not its first control.
+    expect(document.activeElement).toBe(info)
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Work' })).toBeNull())
   })
@@ -298,11 +300,12 @@ describe('traits', () => {
     const glyphs = await within(panel()).findByRole('button', { name: 'Space info: Shared, Published (Publishing failed), Calendar' })
     await user.click(glyphs)
     const info = await screen.findByRole('dialog', { name: 'Work' })
-    // Sharing and publishing are sections of their own, a problem said in its section; the rest are rows.
-    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
-    expect(within(within(info).getByRole('region', { name: 'Published' })).getByText('Publishing failed')).toBeTruthy()
-    const rows = within(within(info).getByRole('list', { name: 'Features' })).getAllByRole('listitem')
-    expect(rows.map((r) => r.textContent)).toEqual(['CalendarSynced with iCloudUpdate the app to change this.'])
+    // A row each: sharing and publishing open their pages, a problem said in its row; one this app doesn't know
+    // has nothing to open.
+    const rows = within(within(info).getByRole('list', { name: 'Work’s settings' })).getAllByRole('listitem')
+    expect(rows.map((r) => r.querySelector('button') !== null)).toEqual([true, true, false])
+    expect(rows[1]?.textContent).toBe('WebsitePublishing failed')
+    expect(rows[2]?.textContent).toBe('CalendarSynced with iCloud · Update the app to change this.')
   })
 
   it('asks before moving a note where more people see it', async () => {

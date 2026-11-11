@@ -36,26 +36,21 @@ test('a published space: on from Space info, its site readable, then off', async
   }).toPass({ timeout: 15_000 })
   await switcher.click()
   await spaces.getByRole('button', { name: 'Space info', exact: true }).click()
-  const info = page.getByRole('dialog', { name })
-  const published = info.getByRole('region', { name: 'Published' })
-  await published.getByRole('button', { name: 'Publish', exact: true }).click()
-  const open = published.getByRole('link', { name: 'Open' })
+  // Its page, in the same dialog: published there, and what's typed there kept across Escape back to the rest.
+  const row = page.getByRole('dialog', { name }).getByRole('button', { name: 'Website', exact: true })
+  await row.click()
+  const website = page.getByRole('dialog', { name: 'Website' })
+  await expect(website.getByRole('heading', { name: 'Website' })).toBeFocused()
+  await website.getByRole('button', { name: 'Publish', exact: true }).click()
+  const open = website.getByRole('link', { name: 'Open' })
   await expect(open).toBeVisible()
   const url = await open.getAttribute('href')
   expect(url).toBe(`${new URL(page.url()).origin}/@garden-${tag}/`)
-
-  // Customize site: its page in the same dialog, what's typed there kept across Escape back to the rest.
-  const row = published.getByRole('button', { name: /^Customize site/ })
-  await row.click()
-  const customize = page.getByRole('dialog', { name: 'Customize site' })
-  await expect(customize.getByRole('heading', { name: 'Customize site' })).toBeFocused()
-  await customize.getByRole('textbox', { name: 'Custom CSS' }).fill(':root { --accent: teal }')
+  await website.getByRole('textbox', { name: 'Custom CSS' }).fill(':root { --accent: teal }')
   await page.keyboard.press('Escape')
   await expect(row).toBeFocused()
   await row.click()
-  await expect(customize.getByRole('textbox', { name: 'Custom CSS' })).toHaveValue(':root { --accent: teal }')
-  await customize.getByRole('button', { name: `Back to ${name}` }).click()
-  await expect(published).toBeVisible()
+  await expect(website.getByRole('textbox', { name: 'Custom CSS' })).toHaveValue(':root { --accent: teal }')
 
   // Anyone: a browser with no session.
   const visitor = await (await browser.newContext()).newPage()
@@ -67,9 +62,9 @@ test('a published space: on from Space info, its site readable, then off', async
   await expect(visitor.getByRole('heading', { name: 'Tomatoes', level: 1 })).toBeVisible()
   await expect(visitor.getByRole('link', { name: '#veg', exact: true }).first()).toBeVisible()
 
-  await info.getByRole('button', { name: 'Stop publishing…' }).click()
-  await info.getByRole('group', { name: `Stop publishing ${name}?` }).getByRole('button', { name: 'Stop publishing' }).click()
-  await expect(published.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
+  await website.getByRole('button', { name: 'Stop publishing…' }).click()
+  await website.getByRole('group', { name: `Stop publishing ${name}?` }).getByRole('button', { name: 'Stop publishing' }).click()
+  await expect(website.getByRole('button', { name: 'Publish', exact: true })).toBeVisible()
   // Not the visitor's page: browsers may keep it a minute (max-age=60).
   expect((await visitor.request.get(url ?? '')).status()).toBe(404)
 })

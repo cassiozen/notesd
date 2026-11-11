@@ -1,13 +1,13 @@
 .page {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .head {
   display: flex;
   align-items: center;
-  gap: 18px;
+  gap: 16px;
 }
 
 /* Pressed, the picker opens under the header. A ring on hover says it can be. */
@@ -74,36 +74,8 @@
 }
 
 .meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
   font-size: 13px;
   color: var(--ink-3);
-}
-
-.glyphs {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.glyphs > span {
-  display: grid;
-}
-
-.glyphs > [data-problem] {
-  color: var(--danger);
-}
-
-.glyphs > [data-new] {
-  animation: glyph-in 0.6s var(--spring);
-}
-
-@keyframes glyph-in {
-  from {
-    opacity: 0;
-    transform: scale(0.4);
-  }
 }
 
 .picker {
@@ -118,7 +90,7 @@
   }
 }
 
-/* A trait's part of the page: a caption, its group, then what it does to the whole space. */
+/* A part of a section's page: a caption, then its group. */
 .section {
   display: flex;
   flex-direction: column;
@@ -143,27 +115,47 @@
   border: 1px solid var(--hair);
 }
 
-/* Under a section's group: its one action on the whole space, and that action's confirmation. */
-.footer {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
+/* Every section of the space, one row each: what it is and how it's set, its page a press away. */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-radius: 14px;
+  background: var(--field);
+  border: 1px solid var(--hair);
+  overflow: hidden;
 }
 
-.footer > [role='group'] {
-  align-self: stretch;
+.item + .item {
+  border-top: 1px solid var(--hair);
 }
 
-.trait {
+.row {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 10px 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 10px 14px;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
 }
 
-.trait + .trait {
-  border-top: 1px solid var(--hair);
+button.row {
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+button.row:hover {
+  background: var(--hover);
+}
+
+:global(:where(:root[data-keyboard])) button.row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--focus);
 }
 
 .tile {
@@ -174,10 +166,16 @@
   place-items: center;
   border-radius: 8px;
   background: var(--hover);
-  color: var(--ink-2);
+  color: var(--ink-3);
 }
 
-.traitText {
+/* On: the tile lights up, so what's set reads at a glance down the list. */
+.item[data-on] .tile {
+  background: var(--on);
+  color: var(--ink);
+}
+
+.rowText {
   flex: 1;
   min-width: 0;
   display: flex;
@@ -185,29 +183,50 @@
   gap: 2px;
 }
 
-.traitLabel {
+.rowLabel {
   font-size: 14.5px;
   font-weight: 600;
 }
 
-.summary {
+.rowStatus {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
+  color: var(--ink-3);
+}
+
+.item[data-on] .rowStatus {
   color: var(--ink-2);
 }
 
-.problem {
-  font-size: 13px;
+.rowStatus[data-problem] {
   color: var(--danger);
 }
 
-/* Off, but it could be on: there to be found, not to compete with what's on. Only the tile
-   dims: the words stay at a readable contrast. */
-.trait[data-off] .tile {
-  opacity: 0.45;
+.rowStatusText {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.trait[data-off] .traitLabel {
-  color: var(--ink-2);
+.live {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--good);
+}
+
+.chevron {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  margin-right: 4px;
+  border-right: 1.5px solid var(--ink-3);
+  border-bottom: 1.5px solid var(--ink-3);
+  transform: rotate(-45deg);
 }
 
 .error {
@@ -219,18 +238,32 @@
 .end {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  margin-top: 4px;
+  gap: 12px;
 }
 
+/* Delete's text lines up with the list's edge: its padding hangs out past it, as Back's does on a page. */
+.delete {
+  margin-left: -16px;
+}
+
+/* Why Delete is off, said beside it rather than under the dialog's buttons. */
 .why {
-  margin: -4px 0 0;
+  align-self: center;
+  min-width: 0;
   font-size: 12.5px;
   color: var(--ink-3);
 }
 
+.done {
+  margin-left: auto;
+}
+
+/* A page's own action, after Done: the one the page is for. */
+.primary {
+  order: 1;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .glyphs > [data-new],
   .picker {
     animation: none;
   }
@@ -263,79 +296,16 @@
   transform: rotate(45deg);
 }
 
-.slot {
+.slot,
+.actions {
   display: contents;
 }
 
-/* Opens the section's page: a row of the group, its summary saying what's set there. */
-.pageRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  width: 100%;
-  padding: 10px 12px;
-  border: 0;
-  border-top: 1px solid var(--hair);
-  border-radius: 0 0 13px 13px;
-  background: transparent;
-  color: var(--ink);
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-/* The group's only row: nothing above it to divide from. */
-.pageRow:only-child {
-  border-top: 0;
-  border-radius: 13px;
-}
-
-.pageRow:hover {
-  background: var(--hover);
-}
-
-:global(:where(:root[data-keyboard])) .pageRow:focus-visible {
-  outline: none;
-  box-shadow: inset 0 0 0 2px var(--focus);
-}
-
-.pageRowText {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.pageRowLabel {
-  font-size: 14.5px;
-  font-weight: 600;
-}
-
-.pageRowSummary {
-  font-size: 13px;
-  color: var(--ink-2);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.pageRowChevron {
-  flex: none;
-  width: 7px;
-  height: 7px;
-  margin-right: 4px;
-  border-right: 1.5px solid var(--ink-3);
-  border-bottom: 1.5px solid var(--ink-3);
-  transform: rotate(-45deg);
-}
-
-/* A section's page (TraitPage), in Space info's page column: its sections as the main page's. */
+/* A section's page (TraitPage), in Space info's page column, on the main page's rhythm. */
 .traitPage {
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 24px;
 }
 
 .traitPage[hidden] {
@@ -345,7 +315,14 @@
 .pageHead {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 8px;
+}
+
+.pageTitleLine {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
 }
 
 .pageTitle {
@@ -356,6 +333,14 @@
 /* Focused when the page opens, so a screen reader starts there; not something to press. */
 .pageTitle:focus {
   outline: none;
+}
+
+.pageLead {
+  margin: 0;
+  max-width: 46ch;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--ink-2);
 }
 
 @media (max-width: 600px) {

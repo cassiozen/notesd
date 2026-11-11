@@ -1,4 +1,5 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { nameOf } from '../api/profile'
 import { sharing } from '../api/spaces'
 import type { Account, Space } from '../api/types'
@@ -6,14 +7,18 @@ import { useAuth } from '../auth/auth-context'
 import { notesSource } from '../notes/source'
 import { cancelInvite, invite, makeOwner, names, removeMember, sharingError, stopSharing } from '../notes/sharing'
 import { useNotes } from '../notes/store'
+import { SharedGlyph } from '../notes/trait-glyphs'
+import type { TraitPage } from '../notes/traits'
 import { Avatar } from '../ui/avatar'
 import { Button } from '../ui/button'
 import { InlineConfirm } from '../ui/inline-confirm'
+import { PageHead, SectionRow } from './section-row'
+import settingsStyles from './settings.module.css'
 import info from './space-info.module.css'
 import styles from './shared-space.module.css'
 
-// Sharing a space (architecture §7.9), as Space info's People section: who's in it, who's invited, and everyone
-// else on the server to invite with one press, all changed in place.
+// Sharing a space (architecture §7.9), as Space info's People section: a row saying who's in it, and its page with
+// who's in it, who's invited, and everyone else on the server to invite with one press, all changed in place.
 
 function useSelf(): number | undefined {
   const { state } = useAuth()
@@ -44,11 +49,11 @@ function usePeople(wanted: boolean, onError: (message: string) => void): Account
 type Confirm = { kind: 'remove'; who: Account } | { kind: 'owner'; who: Account } | { kind: 'stop' } | { kind: 'leave'; unsynced: number }
 
 /**
- * Who's in a space. Its owner invites by pressing a name (the first invitation shares it), cancels invitations,
- * removes people, hands it on and stops sharing; a member leaves. Each confirmation opens under what asked for it.
+ * Who's in a space. On its page, its owner invites by pressing a name (the first invitation shares it), cancels
+ * invitations, removes people, hands it on and stops sharing; a member leaves. Each confirmation opens under what
+ * asked for it.
  */
-export function PeopleSection({ space }: { space: Space }) {
-  const headingId = useId()
+export function PeopleSection({ space, page }: { space: Space; page: TraitPage }) {
   const self = useSelf()
   const { refresh, unsavedIn, flushAll } = useNotes()
   const [confirm, setConfirm] = useState<Confirm | null>(null)
@@ -64,6 +69,11 @@ export function PeopleSection({ space }: { space: Space }) {
   const people = usePeople(owner, setError)
   const taken = new Set([...members.map((m) => m.id), ...invites.map((i) => i.userId)])
   const candidates = people?.filter((p) => p.id !== self && !taken.has(p.id)) ?? []
+  const inviting = owner && people !== null && (candidates.length > 0 || !shared)
+  const problem = space.traits.find((t) => t.key === 'shared')?.problem
+  const status = problem ?? [others.length > 0 ? names(['You', ...others.map(nameOf)]) : 'Only you', invites.length > 0 && `${invites.length} invited`]
+    .filter(Boolean)
+    .join(' · ')
 
   async function run(key: string, work: () => Promise<unknown>): Promise<boolean> {
     setBusy(key)
@@ -127,134 +137,161 @@ export function PeopleSection({ space }: { space: Space }) {
   const asking = (kind: Confirm['kind'], who?: Account) =>
     confirm?.kind === kind && (who === undefined || ('who' in confirm && confirm.who.id === who.id))
 
+  const leave = owner ? (
+    <Button size="md" variant="danger-text" className={`${settingsStyles.leading} ${info.delete}`} disabled={busy !== null} aria-expanded={asking('stop')} onClick={() => setConfirm({ kind: 'stop' })}>
+      Stop sharing…
+    </Button>
+  ) : (
+    <Button
+      size="md"
+      variant="danger-text"
+      className={`${settingsStyles.leading} ${info.delete}`}
+      disabled={busy !== null}
+      busy={busy === 'leave'}
+      aria-expanded={asking('leave')}
+      onClick={() => void askToLeave()}
+    >
+      Leave space…
+    </Button>
+  )
+
   return (
-    <section className={info.section} aria-labelledby={headingId}>
-      <h3 id={headingId} className={info.caption}>
-        People
-      </h3>
-      <div className={info.group}>
-        {shared ? (
-          <ul className={styles.people} aria-label="People in this space">
-            {members.map((m, i) => (
-              <li key={m.id} className={styles.person}>
-                <div className={styles.line}>
-                  <Who person={m} role={[i === 0 && 'Owner', m.id === self && 'You'].filter(Boolean).join(' · ')} />
-                  {owner && m.id !== self && (
-                    <span className={styles.actions}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        disabled={busy !== null}
-                        aria-expanded={asking('owner', m)}
-                        aria-label={`Make owner: ${nameOf(m)}`}
-                        onClick={() => setConfirm({ kind: 'owner', who: m })}
-                      >
-                        Make owner
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="danger-text"
-                        disabled={busy !== null}
-                        aria-expanded={asking('remove', m)}
-                        aria-label={`Remove ${nameOf(m)}`}
-                        onClick={() => setConfirm({ kind: 'remove', who: m })}
-                      >
-                        Remove
-                      </Button>
-                    </span>
-                  )}
-                </div>
-                {confirm && 'who' in confirm && confirm.who.id === m.id && strip(confirm)}
-              </li>
-            ))}
-            {invites.map((inv) => (
-              <li key={inv.id} className={styles.person} data-fresh={inv.userId === fresh ? '' : undefined}>
-                <div className={styles.line}>
-                  <Who person={{ ...inv, id: inv.userId }} role="Invited" pending />
-                  {owner && (
-                    <span className={styles.actions}>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        busy={busy === `cancel:${inv.id}`}
-                        disabled={busy !== null}
-                        aria-label={`Cancel ${nameOf(inv)}’s invitation`}
-                        onClick={() => void run(`cancel:${inv.id}`, () => cancelInvite(space.id, inv.id))}
-                      >
-                        Cancel
-                      </Button>
-                    </span>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={styles.lead}>Invite people to read and edit every note in {space.name}, and add their own.</p>
-        )}
-        {owner && people !== null && (candidates.length > 0 || !shared) && (
-          <div className={styles.invite}>
-            {candidates.length > 0 ? (
-              <ul className={styles.chips} aria-label="People to invite">
-                {/* With people listed above, what these do needs saying; alone, the sentence above says it. */}
+    <>
+      <SectionRow
+        Glyph={SharedGlyph}
+        label="People"
+        status={status}
+        on={shared}
+        problem={problem !== undefined}
+        end={others.length > 0 && <Faces people={[...members.filter((m) => m.id === self), ...others]} />}
+        onOpen={page.show}
+      />
+      {page.slot &&
+        createPortal(
+          <div className={info.traitPage} hidden={!page.open}>
+            <PageHead id={page.headingId} title="People">
+              {shared
+                ? `Everyone here can read and edit every note in ${space.name}, and add their own.`
+                : `Invite people to read and edit every note in ${space.name}, and add their own.`}
+            </PageHead>
+            {(shared || inviting) && (
+              <div className={info.group}>
                 {shared && (
-                  <li className={styles.inviteLabel} aria-hidden="true">
-                    Invite
-                  </li>
+                  <ul className={styles.people} aria-label="People in this space">
+                    {members.map((m, i) => (
+                      <li key={m.id} className={styles.person}>
+                        <div className={styles.line}>
+                          <Who person={m} role={[i === 0 && 'Owner', m.id === self && 'You'].filter(Boolean).join(' · ')} />
+                          {owner && m.id !== self && (
+                            <span className={styles.actions}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                disabled={busy !== null}
+                                aria-expanded={asking('owner', m)}
+                                aria-label={`Make owner: ${nameOf(m)}`}
+                                onClick={() => setConfirm({ kind: 'owner', who: m })}
+                              >
+                                Make owner
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="danger-text"
+                                disabled={busy !== null}
+                                aria-expanded={asking('remove', m)}
+                                aria-label={`Remove ${nameOf(m)}`}
+                                onClick={() => setConfirm({ kind: 'remove', who: m })}
+                              >
+                                Remove
+                              </Button>
+                            </span>
+                          )}
+                        </div>
+                        {confirm && 'who' in confirm && confirm.who.id === m.id && strip(confirm)}
+                      </li>
+                    ))}
+                    {invites.map((inv) => (
+                      <li key={inv.id} className={styles.person} data-fresh={inv.userId === fresh ? '' : undefined}>
+                        <div className={styles.line}>
+                          <Who person={{ ...inv, id: inv.userId }} role="Invited" pending />
+                          {owner && (
+                            <span className={styles.actions}>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                busy={busy === `cancel:${inv.id}`}
+                                disabled={busy !== null}
+                                aria-label={`Cancel ${nameOf(inv)}’s invitation`}
+                                onClick={() => void run(`cancel:${inv.id}`, () => cancelInvite(space.id, inv.id))}
+                              >
+                                Cancel
+                              </Button>
+                            </span>
+                          )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
                 )}
-                {candidates.map((p) => (
-                  <li key={p.id}>
-                    <button
-                      type="button"
-                      className={styles.chip}
-                      disabled={busy !== null}
-                      aria-busy={busy === `invite:${p.id}` || undefined}
-                      aria-label={`Invite ${nameOf(p)}`}
-                      title={p.displayName ? p.username : undefined}
-                      onClick={() => void pick(p)}
-                    >
-                      <Avatar userId={p.id} version={p.avatar} name={nameOf(p)} className={[styles.avatar, styles.small].join(' ')} />
-                      {nameOf(p)}
-                      <span className={styles.plus} aria-hidden="true">
-                        +
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              !error && <p className={styles.none}>There’s no one else on this server yet. An admin adds people in Settings › Server › People.</p>
+                {inviting && (
+                  <div className={styles.invite}>
+                    {candidates.length > 0 ? (
+                      <ul className={styles.chips} aria-label="People to invite">
+                        {/* With people listed above, what these do needs saying; alone, the sentence above says it. */}
+                        {shared && (
+                          <li className={styles.inviteLabel} aria-hidden="true">
+                            Invite
+                          </li>
+                        )}
+                        {candidates.map((p) => (
+                          <li key={p.id}>
+                            <button
+                              type="button"
+                              className={styles.chip}
+                              disabled={busy !== null}
+                              aria-busy={busy === `invite:${p.id}` || undefined}
+                              aria-label={`Invite ${nameOf(p)}`}
+                              title={p.displayName ? p.username : undefined}
+                              onClick={() => void pick(p)}
+                            >
+                              <Avatar userId={p.id} version={p.avatar} name={nameOf(p)} className={[styles.avatar, styles.small].join(' ')} />
+                              {nameOf(p)}
+                              <span className={styles.plus} aria-hidden="true">
+                                +
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      !error && <p className={styles.none}>There’s no one else on this server yet. An admin adds people in Settings › Server › People.</p>
+                    )}
+                  </div>
+                )}
+              </div>
             )}
-          </div>
+            {error && (
+              <p role="alert" className={info.error}>
+                {error}
+              </p>
+            )}
+            {confirm && (confirm.kind === 'stop' || confirm.kind === 'leave') && strip(confirm)}
+          </div>,
+          page.slot,
         )}
-      </div>
-      {error && (
-        <p role="alert" className={info.error}>
-          {error}
-        </p>
-      )}
-      {(owner ? shared : true) && (
-        <div className={info.footer}>
-          {owner ? (
-            <Button size="sm" variant="danger-text" disabled={busy !== null} aria-expanded={asking('stop')} onClick={() => setConfirm({ kind: 'stop' })}>
-              Stop sharing…
-            </Button>
-          ) : (
-            <Button
-              size="sm"
-              variant="danger-text"
-              disabled={busy !== null}
-              busy={busy === 'leave'}
-              aria-expanded={asking('leave')}
-              onClick={() => void askToLeave()}
-            >
-              Leave space…
-            </Button>
-          )}
-          {confirm && (confirm.kind === 'stop' || confirm.kind === 'leave') && strip(confirm)}
-        </div>
-      )}
-    </section>
+      {page.open && page.actions && (owner ? shared : true) && createPortal(leave, page.actions)}
+    </>
+  )
+}
+
+/** The first few in the space, overlapping: who's there at a glance, before the page names them. */
+function Faces({ people }: { people: Account[] }) {
+  return (
+    <span className={styles.faces} aria-hidden="true">
+      {people.slice(0, 3).map((p) => (
+        <Avatar key={p.id} userId={p.id} version={p.avatar} name={nameOf(p)} className={[styles.avatar, styles.small, styles.face].join(' ')} />
+      ))}
+    </span>
   )
 }
 
