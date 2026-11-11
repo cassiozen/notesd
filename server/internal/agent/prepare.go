@@ -59,7 +59,7 @@ func PreparedMessage(p Prepared) any {
 	}{"prepared", p}
 }
 
-// PreparedVoidMessage tells editors a result done ahead is no longer to be used ("prepared.void").
+// PreparedVoidMessage tells editors a result done ahead, or one going, is no longer to be used ("prepared.void").
 func PreparedVoidMessage(spaceID, id string) any {
 	return map[string]string{"type": "prepared.void", "spaceId": spaceID, "id": id}
 }
@@ -434,12 +434,13 @@ func (rn *Runner) Changed(home Home, c Change) {
 		}
 		delete(a.current, k)
 		s.cancel()
+		// Going, it's told too: the editor that asked waits for it, and asks again.
+		void = append(void, s)
 		if s.ready == nil {
 			delete(a.slots, s.id)
 			continue
 		}
 		s.usableUntil = rn.now().Add(aheadGrace)
-		void = append(void, s)
 	}
 	if c.ConfigOf != "" {
 		for k := range a.cannot {
@@ -467,9 +468,7 @@ func (rn *Runner) DropAhead() {
 	for k, s := range a.current {
 		delete(a.current, k)
 		s.cancel()
-		if s.ready != nil {
-			void = append(void, s)
-		}
+		void = append(void, s)
 	}
 	clear(a.slots)
 	a.mu.Unlock()

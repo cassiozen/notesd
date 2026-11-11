@@ -360,9 +360,10 @@ class AgentSocket {
       } else if (m?.type === 'prepared' && isPrepared(m)) {
         this.heardPrepared(m)
       } else if (m?.type === 'prepared.void' && typeof m.spaceId === 'string') {
+        // Also for one still going, which this tab may be waiting for: it asks again.
         const p = this.prepared.get(m.spaceId)
-        if (!p || p.id !== m.id) return
-        clearTimeout(p.expires)
+        if (p && p.id !== m.id) return
+        if (p) clearTimeout(p.expires)
         this.prepared.delete(m.spaceId)
         clearTimeout(this.askAgain)
         this.askAgain = setTimeout(this.askAhead, aheadTiming.againMs)

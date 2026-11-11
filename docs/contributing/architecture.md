@@ -647,7 +647,8 @@ The user guide is [agents](../guides/using/agents.md); what an app does to take 
 - **Done ahead.** *New note opened* runs on an empty note, so the runner does it before the note
   exists, while an editor shows the space (`prepare`), and a new note opens with the result at once
   (`prepare.go`). It's an ordinary run against an in-memory editor whose note doesn't exist yet
-  (`new-note`), with nothing written to the database but its tokens: its change and overlays stay in
+  (`new-note`), except that `done` doesn't end it (nobody waits for the call it saves), with nothing
+  written to the database but its tokens: its change and overlays stay in
   memory until the new note's editor says it opened with them, and only then become the note's run,
   its edit and its overlays, in one transaction; the note's first save then links to the edit as for
   any change in an editor. Results are per space and account, in memory: lost with a restart, kept 30

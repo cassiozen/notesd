@@ -62,8 +62,9 @@ func TestNewNoteRunDoneAhead(t *testing.T) {
 	if ev := h.model.requests[0].Messages[1].Content; !strings.Contains(ev, `"content": ""`) {
 		t.Fatalf("the run wasn't told of an empty note: %s", ev)
 	}
-	// Nothing written down until it's used; its tokens count at once.
-	if runs := h.allRuns(); len(runs) != 0 || h.usage() != 110 {
+	// Nothing written down until it's used; its tokens count at once. Ahead, done doesn't save the
+	// model call after it: nobody waits for it.
+	if runs := h.allRuns(); len(runs) != 0 || h.usage() != 220 || h.model.calls() != 2 {
 		t.Fatalf("runs %+v, usage %d", runs, h.usage())
 	}
 	if len(h.told) != 1 {
@@ -75,10 +76,10 @@ func TestNewNoteRunDoneAhead(t *testing.T) {
 	}
 	r := h.only()
 	if r.Status != agent.StatusDone || r.Trigger != string(agent.NoteCreated) || r.Note != "n1" || r.outcome != agent.OutcomeEdited ||
-		r.message != "Added a heading." || r.promptTokens+r.completion != 110 || r.model != "fake" || h.runs()[0].Event.By != 1 {
+		r.message != "Added a heading." || r.promptTokens+r.completion != 220 || r.model != "fake" || h.runs()[0].Event.By != 1 {
 		t.Fatalf("run %+v", r)
 	}
-	if h.ready() || h.usage() != 110 {
+	if h.ready() || h.usage() != 220 {
 		t.Fatal("still ready, or counted twice")
 	}
 	if err := h.runner.UsePrepared(ctx, home, p.ID, "n2", "work", 1); !errors.Is(err, agent.ErrPreparedGone) {
@@ -100,6 +101,52 @@ func TestNewNoteRunDoneAhead(t *testing.T) {
 	}
 	if got := h.content("n1"); got != "" {
 		t.Fatalf("undo left %q", got)
+	}
+}
+
+func TestAheadGoesOnPastADoneGivenTooSoon(t *testing.T) {
+	h := aheadHarness(t)
+	p, _ := h.prepare(
+		call("set_title", `{"title": "Wednesday", "done": "Titled it."}`),
+		call("show_card", `{"body": "- What went well?", "done": "Asked."}`),
+		final("Titled it and asked."),
+	)
+	if p.Title != "Wednesday" || len(p.Overlays) != 1 {
+		t.Fatalf("prepared %+v", p)
+	}
+	if err := h.runner.UsePrepared(ctx, home, p.ID, "n1", "work", 1); err != nil {
+		t.Fatal(err)
+	}
+	// What it said with its last change, which came after nothing else.
+	if r := h.only(); r.message != "Asked." || r.toolCalls != 2 {
+		t.Fatalf("run %+v", r)
+	}
+}
+
+func TestAheadGoingIsToldWhenThrownAway(t *testing.T) {
+	h := aheadHarness(t)
+	h.prepare(func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		h.agent("work", agent.NoteCreated) // set up again while it runs
+		return say("No change."), nil
+	})
+	if h.ready() {
+		t.Fatal("kept")
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		h.toldMu.Lock()
+		told := len(h.told)
+		h.toldMu.Unlock()
+		if told == 1 {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("the editor that asked wasn't told")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	if m, ok := h.told[0].(map[string]string); !ok || m["type"] != "prepared.void" || m["spaceId"] != "work" {
+		t.Fatalf("told %+v", h.told)
 	}
 }
 

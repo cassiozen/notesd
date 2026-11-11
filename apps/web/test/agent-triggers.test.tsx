@@ -85,7 +85,7 @@ describe('editor triggers', () => {
     // Done as the space opens, before any note.
     llm.script.push({ tool: 'insert', args: { at: 'start', text: '## What went well today?', done: 'Asked.' } })
     const { server, user } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
-    await aheadReady()
+    const first = (await aheadReady()).id
     expect(await runs(server)).toEqual([])
     await user.click(newNoteButton())
     // At once: nothing to wait for.
@@ -99,8 +99,7 @@ describe('editor triggers', () => {
       expect(detail.body.edits.map((e) => e.blocked ?? '')).toEqual([''])
     }, { timeout: 5000 })
     // The next new note's is done in turn.
-    llm.script.push({ tool: 'insert', args: { at: 'start', text: '## And tomorrow?', done: 'Asked.' } })
-    await waitFor(() => expect(llm.requests.filter((r) => (r.tools?.length ?? 0) > 1)).toHaveLength(2), { timeout: 5000 })
+    await waitFor(async () => expect((await aheadReady()).id).not.toBe(first), { timeout: 5000 })
   })
 
   it('a result done ahead the server no longer has: the new note starts over empty, and the run goes live', async () => {
@@ -132,6 +131,26 @@ describe('editor triggers', () => {
     expect((await aheadReady()).id).toBe(first)
     await createNote(server, 'Digest', 'So far')
     await waitFor(async () => expect((await aheadReady()).id).not.toBe(first), { timeout: 5000 })
+  })
+
+  it('a result done ahead thrown away while still going is asked for again', async () => {
+    const { aheadTiming } = await import('../src/agent/socket')
+    const again = aheadTiming.againMs
+    aheadTiming.againMs = 50
+    onTestFinished(() => {
+      aheadTiming.againMs = again
+    })
+    const llm = await startFakeLLM()
+    const finished: { resolve?: () => void } = {}
+    const wait = new Promise<void>((resolve) => (finished.resolve = resolve))
+    llm.script.push({ text: 'No change.', hold: wait })
+    const { server } = await signedIn({ seed: (s) => withAgent(s, llm, { triggers: { noteCreated: 'Ask a question.' } }) })
+    await waitFor(() => expect(llm.requests).toHaveLength(1), { timeout: 5000 })
+    // Set up again while it runs: that one's thrown away, and the tab hears of it.
+    await server.api('PUT', '/agent/spaces/default', { enabled: true, prompt: 'A diary.', triggers: { noteCreated: 'Ask a question.' } })
+    finished.resolve?.()
+    expect((await aheadReady()).id).toBeTruthy()
+    expect(llm.requests.length).toBeGreaterThanOrEqual(2)
   })
 
   it('started editing fires once, on the first change', async () => {

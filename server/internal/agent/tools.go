@@ -21,7 +21,7 @@ func tool(name, description, params string) llm.Tool {
 const noteIDParam = `"id": {"type": "string", "description": "The note's id. Leave it out for the note this run is about."}`
 
 // doneParam ends the run with a change, saving a model call just to say so.
-const doneParam = `"done": {"type": "string", "description": "Only with your last change: one short line saying what you did. The run ends with it."}`
+const doneParam = `"done": {"type": "string", "description": "Only on the call that does the last thing the prompts ask: when they ask for several, not on the first. One short line saying what you did; the run ends with it."}`
 
 // tools are what the agent can do. Nothing here deletes, moves or locks a
 // note, or reaches outside its space.

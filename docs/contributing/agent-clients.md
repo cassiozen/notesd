@@ -232,8 +232,8 @@ server do it while it shows a space, and a new note opens with its result, with 
 
 1. While the app shows a space whose agent acts on new notes, send `{type: "prepare", spaceId}`
    after `hello`, on showing the space, when the app is seen again, and when the result it holds
-   expires or is thrown away (`prepared.void`, waiting about 2 seconds, as what made it stale often
-   changes again). Not while it's in the background: nobody can use the result.
+   expires or is thrown away (`prepared.void` for its space, also one it doesn't hold yet, which was
+   still going; wait about 2 seconds, as what made it stale often changes again). Not while it's in the background: nobody can use the result.
 2. Keep the latest `prepared` per space; drop it on `prepared.void` with its `id`, on its
    `expiresAt` (a few seconds early, so the server still has it), and on any new connection.
 3. On a new note, if the space has one and the note would start empty (a note started with a tag

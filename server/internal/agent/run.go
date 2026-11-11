@@ -283,6 +283,8 @@ func unusable(n notes.Note, err error, spaceID string, started bool) finished {
 
 // converse talks to the model until it stops calling tools, filling in f.
 func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, messages []llm.Message, f *finished) {
+	// The summary the model gave with its latest calls, if nothing came after it.
+	lastDone := ""
 	for {
 		// Locked since the run began (its event may carry a copy of the
 		// note): nothing more of it is sent. Deleted or moved, for a run
@@ -348,6 +350,9 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		}
 		if len(res.Message.ToolCalls) == 0 {
 			f.Status, f.Message = StatusDone, strings.TrimSpace(res.Message.Content)
+			if lastDone != "" {
+				f.Message = lastDone
+			}
 			return
 		}
 		// At the budget, not only past it: the tools would lead to another call.
@@ -394,10 +399,15 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			messages = append(messages, llm.Message{Role: "tool", ToolCallID: tc.ID, Content: out})
 		}
 		// Saves a model call just to say so. A refused call needs the model
-		// to hear why, so the run goes on.
-		if summary != "" && !refused {
+		// to hear why, so the run goes on. Ahead, nobody waits for that call, and
+		// a model that said done too soon gets to do the rest.
+		if summary != "" && !refused && rs.ahead == nil {
 			f.Status, f.Message = StatusDone, summary
 			return
+		}
+		lastDone = ""
+		if !refused {
+			lastDone = summary
 		}
 	}
 }

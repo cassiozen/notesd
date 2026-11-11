@@ -581,7 +581,9 @@ on, for a note that's gone or locked, or one the server hasn't got with no `spac
 
 **Done ahead.** A `noteCreated` run needs nothing of its note, which is empty, so while an editor
 shows a space it asks for one in advance (`prepare`), and a new note opens with its result
-(`prepared`), at once. It runs as any `noteCreated` run would, on an empty note with no cursor; its
+(`prepared`), at once. It runs as any `noteCreated` run would, on an empty note with no cursor,
+except that `done` doesn't end it: nobody waits for the call it saves, and a model that gives it too
+soon still does the rest. Its
 tokens count as they're spent, used or not, and it shows in the activity log only once used, as
 the new note's run. It's held in memory, one per space and account, for 30 minutes and never past
 midnight in the account's time zone. It's thrown away (`prepared.void`) when what it went by
@@ -603,7 +605,7 @@ ignored, so either may add some, except that an editor answers a request it can'
 | Editor | `{type: "run.request", trigger, noteId, spaceId, note?, prepared?}` | Asks for a run on a note it has open. `spaceId` is the note's space as it shows it, which the server may not have yet; `note`, what it shows (`{spaceId, title, content, cursor, revision}`, as it answers a `read`), so the run starts without asking. For `noteCreated`, `prepared` is the id of the result done ahead the new note opened with: it becomes the note's run, finished, and nothing runs |
 | Editor | `{type: "prepare", spaceId}` | The editor shows the space: its `noteCreated` run is done ahead, for the next new note, unless one is going or ready. A ready one is sent again |
 | Server | `{type: "prepared", id, spaceId, title, content, overlays, expiresAt}` | A `noteCreated` run done ahead, to every editor of the account it's for: the title and content a new note opens with, and the overlays it shows (their `noteId` empty). Not to be used from `expiresAt` (Unix milliseconds) |
-| Server | `{type: "prepared.void", spaceId, id}` | Don't use result `id`: something it went by changed, or it was used. Ask again to have the next one |
+| Server | `{type: "prepared.void", spaceId, id}` | Don't use result `id`, or wait for it if it's still going: something it went by changed, or it was used. Ask again to have the next one |
 | Server | `{type: "prepared.missed", noteId, id}` | A new note opened with result `id`, which the server no longer has: if nobody typed in it yet, the editor empties it and asks for its run live |
 | Editor | `{type: "editor.closed", noteId, revision, spaceId?}` | It closed it. `revision` is the server's revision of what it last showed, or `null`; when the server has it and no other editor has the note open, the note's writing session ends now instead of after 2 idle minutes |
 | Editor | `{type: "overlay.answer", noteId, id, answer, before?, revision?, shows?}` | The user answered overlay `id`: `dismiss` for a card; `accept`, `reject` or `stale` (it no longer fits) for a suggestion. An accepted one's change was made in the editor as for an `apply`, and `before`, `revision` and `shows` are as its result's |
