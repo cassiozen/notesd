@@ -511,7 +511,7 @@ private fun Traits(space: Space, registry: List<TraitEntry>, onOpen: (String) ->
             when (row) {
                 is TraitRow.Unknown -> TraitLineRow(
                     SpaceTraits.unknownGlyph,
-                    serverLine(row.trait, "${row.trait.summary} · Update the app to change this."),
+                    serverLine(row.trait, unknown = true),
                     null
                 )
 
@@ -519,7 +519,7 @@ private fun Traits(space: Space, registry: List<TraitEntry>, onOpen: (String) ->
                     val entry = row.entry() ?: continue
                     key(entry.key) {
                         val line = entry.row?.invoke(space)
-                            ?: (row as? TraitRow.On)?.let { serverLine(it.trait, it.trait.summary) }
+                            ?: (row as? TraitRow.On)?.let { serverLine(it.trait) }
                             ?: TraitLine(entry.label, "Off", on = false, opens = false)
                         TraitLineRow(entry.glyph, line, entry.page?.let { { onOpen(entry.key) } })
                     }
@@ -529,9 +529,15 @@ private fun Traits(space: Space, registry: List<TraitEntry>, onOpen: (String) ->
     }
 }
 
-/** A trait this app has no row for: the server's words, or its problem. */
-private fun serverLine(trait: SpaceTrait, summary: String) =
-    TraitLine(trait.name(), trait.problem ?: summary, on = true, problem = trait.problem != null, opens = false)
+/**
+ * A trait this app has no row for: the server's words, or its problem. One this app doesn't know ([unknown]) says
+ * to update the app after either.
+ */
+private fun serverLine(trait: SpaceTrait, unknown: Boolean = false): TraitLine {
+    val said = (trait.problem ?: trait.summary).ifBlank { null }
+    val status = listOfNotNull(said, "Update the app to change this.".takeIf { unknown }).joinToString(" · ")
+    return TraitLine(trait.name(), status, on = true, problem = trait.problem != null, opens = false)
+}
 
 /** Delete, confirmed under it; off, with why, for the default space or one with notes. */
 @Composable

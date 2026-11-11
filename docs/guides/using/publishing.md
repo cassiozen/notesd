@@ -32,7 +32,8 @@ Publish with notesd open at the address people should use, not `localhost`: the 
 made from it.
 
 The address comes from the space's name. To change it, edit it where it's shown under
-**Published** (**Website** in the web and Android apps) and press Enter. Links to the old address stop working.
+**Published** (**Website** in the web and Android apps), save it (Enter on the web), then confirm with
+**Change address**. Links to the old address stop working.
 
 To take the site down, choose **Stop publishing**. The address stays the space's, for when you
 publish it again.

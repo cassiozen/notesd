@@ -265,6 +265,23 @@ class PublishingFlowTest {
     }
 
     @Test
+    fun `a new address typed and not yet moved to is asked about on Back`() {
+        family(handle = "family")
+        launch()
+        openSpaceInfo("Family")
+        press("Change address")
+        compose.onNode(addressField).performTextReplacement("our-days")
+        // The page asks from the frame after the typing, as it would by the time a person's Back arrives.
+        compose.waitForIdle()
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
+        compose.waitUntilExactlyOneExists(hasText("Your changes to the address aren't saved.", substring = true))
+        // Above the page, not in its scroll.
+        compose.onNode(hasText("Discard") and hasClickAction()).performClick()
+        compose.waitUntilExactlyOneExists(hasText("Website") and hasClickAction())
+        assertEquals("family", notesd.published.getValue("fam").handle)
+    }
+
+    @Test
     fun `stops publishing once asked, the address staying the space's`() {
         family(handle = "family")
         launch()

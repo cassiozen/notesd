@@ -288,7 +288,7 @@ private fun OnOff(draft: AgentDraft, provider: String?, onChange: (Boolean) -> U
                     when {
                         provider == null -> "Paused: AI isn't set up on this server."
                         draft.enabled -> "Notes go to $provider; locked notes never do."
-                        else -> "Acts on this space's notes as your rules say."
+                        else -> "Turn it on to act on this space's notes as your rules say."
                     },
                     style = Type.rowMeta,
                     color = t.ink2

@@ -311,10 +311,11 @@ internal fun SettingsFrame(
     Column(Modifier.fillMaxSize().background(t.bg).statusBarsPadding()) {
         Row(
             Modifier.fillMaxWidth().height(56.dp).padding(horizontal = 4.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            BackLink(backLabel, onBack)
-            Spacer(Modifier.weight(1f))
+            // Weighted, so the actions are measured first: a long name to go back to shortens, Save stays whole.
+            BackLink(backLabel, onBack, Modifier.weight(1f, fill = false))
             Row(
                 Modifier.padding(end = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),

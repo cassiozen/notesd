@@ -68,7 +68,9 @@ internal fun TraitPage(
     var discarding by remember { mutableStateOf(false) }
     val changed = unsaved.unsaved
     val leave = { if (changed.isEmpty()) back() else discarding = true }
-    BackHandler(enabled = changed.isNotEmpty() && !discarding) { discarding = true }
+    // Composed only once there's something to ask about, not when the page opens: a handler added later wins, and
+    // the back stack's own is added again as the page arrives, after one that was always there.
+    if (changed.isNotEmpty() && !discarding) BackHandler { discarding = true }
     val t = LocalTokens.current
     SpaceTheme(SpaceThemes.key(spaceIcon)) {
         SettingsFrame(

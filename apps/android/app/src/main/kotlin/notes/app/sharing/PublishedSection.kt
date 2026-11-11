@@ -44,6 +44,7 @@ import notes.app.settings.Card
 import notes.app.settings.Divider
 import notes.app.settings.Footnote
 import notes.app.settings.TraitPage
+import notes.app.settings.Unsaved
 import notes.app.ui.ButtonKind
 import notes.app.ui.InlineConfirm
 import notes.app.ui.Kicker
@@ -134,6 +135,8 @@ fun WebsitePage(graph: AppGraph, space: Space, back: () -> Unit) {
             "Anyone with its address can read ${space.name}."
         }
     ) {
+        // Inside the page's frame, which asks about it on Back: a new address typed but not yet moved to.
+        Unsaved("the address", draft.let { it != null && it.trim() != settings?.handle })
         Column {
             if (trait == null) {
                 NotesButton(

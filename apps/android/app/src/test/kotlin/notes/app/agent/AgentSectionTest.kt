@@ -97,7 +97,7 @@ class AgentSectionTest {
     @Test
     fun `it's turned on with a rule, which can't be left empty`() {
         open()
-        compose.onNodeWithText("Acts on this space's notes", substring = true).assertExists()
+        compose.onNodeWithText("Turn it on to act on this space's notes", substring = true).assertExists()
         toggle().performClick()
         compose.waitUntilExactlyOneExists(hasText("No rules yet. Without one, the agent does nothing."))
         compose.onNodeWithText("Notes go to ai.example.com", substring = true).assertExists()
@@ -182,7 +182,8 @@ class AgentSectionTest {
         compose.onNode(hasText("Cancel") and hasClickAction() and hasAnySibling(hasText("Discard"))).performClick()
         compose.waitUntilDoesNotExist(hasText("Discard your changes?", substring = true))
 
-        compose.onNode(hasContentDescription("Back")).performClick()
+        // The system's back too, not only the page's own.
+        scenario!!.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         compose.waitUntilExactlyOneExists(hasText("Discard") and hasClickAction())
         compose.onNode(hasText("Discard") and hasClickAction()).performClick()
         compose.waitUntilDoesNotExist(hasText("What this space is for"))
@@ -204,7 +205,7 @@ class AgentSectionTest {
         open(until = "Couldn't load the agent.")
         synchronized(notesd) { notesd.failing.clear() }
         button("Try again").performClick()
-        compose.waitUntilExactlyOneExists(hasText("Acts on this space's notes", substring = true), 5_000)
+        compose.waitUntilExactlyOneExists(hasText("Turn it on to act on this space's notes", substring = true), 5_000)
     }
 
     @Test
