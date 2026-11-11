@@ -34,22 +34,24 @@ function gate() {
   return { held, release }
 }
 
-const section = (info: HTMLElement) => within(info).getByRole('region', { name: 'Published' })
-
 /** Journal as the space list shows it now. */
 async function journal() {
   return (await loadedSpaces())?.find((sp) => sp.name === 'Journal')
 }
 
-const customizeRow = (info: HTMLElement) => within(section(info)).getByRole('button', { name: /^Customize site/ })
+/** The Website row of Space info's list, which opens its page. */
+const websiteRow = (info: HTMLElement) => within(info).getByRole('button', { name: 'Website' })
 
-/** The Published section's page, Customize site, opened in Space info's own dialog. */
-async function customize(user: User, info: HTMLElement) {
-  await user.click(customizeRow(info))
-  return screen.findByRole('dialog', { name: 'Customize site' })
+/** What a row of Space info's list says: its description. */
+const status = (row: HTMLElement) => document.getElementById(row.getAttribute('aria-describedby') ?? '')?.textContent
+
+/** The Website section's page, opened in Space info's own dialog. */
+async function website(user: User, info: HTMLElement) {
+  await user.click(websiteRow(info))
+  return screen.findByRole('dialog', { name: 'Website' })
 }
 
-/** One of Customize site's parts, by its caption: each has a Save of its own. */
+/** One of the Website page's parts, by its caption: each has a Save of its own. */
 const part = (page: HTMLElement, name: string) => within(page).getByRole('region', { name })
 
 async function seedJournal(server: TestServer) {
@@ -72,43 +74,50 @@ async function publishedInfo(seed?: (server: TestServer) => Promise<void>) {
   })
   await act(() => reloadSpaces())
   const info = await spaceInfo(env.user, 'Journal')
-  await within(section(info)).findByRole('textbox', { name: 'Address' })
-  return { ...env, info }
+  const page = await website(env.user, info)
+  await within(page).findByRole('textbox', { name: 'Address' })
+  return { ...env, info: page }
 }
 
 describe('publishing a space', () => {
-  it('publishes from Space info, in place, from this app’s own address', async () => {
+  it('publishes from Space info, on its page, from this app’s own address', async () => {
     const { server, user } = await signedIn({ seed: seedJournal })
     await act(() => reloadSpaces())
     const info = await spaceInfo(user, 'Journal')
-    const published = section(info)
-    expect(within(published).getByText(/^Publish Journal as a website anyone can read/)).toBeTruthy()
-    await user.click(within(published).getByRole('button', { name: 'Publish' }))
+    expect(status(websiteRow(info))).toBe('Not published')
+    const page = await website(user, info)
+    expect(page).toBe(info)
+    expect(document.activeElement).toBe(within(page).getByRole('heading', { name: 'Website' }))
+    expect(within(page).getByText(/^Anyone with the link can read Journal/)).toBeTruthy()
+    await user.click(within(page).getByRole('button', { name: 'Publish' }))
 
-    const address = await within(published).findByRole('textbox', { name: 'Address' })
+    const address = await within(page).findByRole('textbox', { name: 'Address' })
     expect((address as HTMLInputElement).value).toBe('journal')
     const s = await settings(server)
     expect(s).toMatchObject({ published: true, handle: 'journal', origin: location.origin })
-    expect(within(published).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe(s.url)
-    // The trait came with the list: its glyph in the header, and Stop publishing under the section.
-    expect(within(info).getByRole('img', { name: 'Published' })).toBeTruthy()
-    expect(within(info).getByRole('button', { name: 'Stop publishing…' })).toBeTruthy()
+    expect(within(page).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe(s.url)
+    // Publish gives way to Stop publishing, beside Done.
+    expect(within(page).queryByRole('button', { name: 'Publish' })).toBeNull()
+    expect(within(page).getByRole('button', { name: 'Stop publishing…' })).toBeTruthy()
+    // The trait came with the list: the row says where it is.
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
+    await waitFor(() => expect(status(websiteRow(info))).toMatch(/^At .*@journal$/))
   })
 
   it('shows what the server answered when the space list can’t be read again', async () => {
     const { user } = await signedIn({ seed: seedJournal })
     await act(() => reloadSpaces())
-    const info = await spaceInfo(user, 'Journal')
+    const page = await website(user, await spaceInfo(user, 'Journal'))
     const failing = vi.spyOn(spacesApi, 'list').mockRejectedValue(new TypeError('Failed to fetch'))
     onTestFinished(() => failing.mockRestore())
-    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
-    // Published on the server: the section says so, though the list (and the header's glyph) can't yet.
-    expect(await within(section(info)).findByRole('textbox', { name: 'Address' })).toBeTruthy()
-    expect(within(info).getByRole('button', { name: 'Stop publishing…' })).toBeTruthy()
+    await user.click(within(page).getByRole('button', { name: 'Publish' }))
+    // Published on the server: the page says so, though the list can't yet.
+    expect(await within(page).findByRole('textbox', { name: 'Address' })).toBeTruthy()
+    expect(within(page).getByRole('button', { name: 'Stop publishing…' })).toBeTruthy()
 
-    await user.click(within(info).getByRole('button', { name: 'Stop publishing…' }))
-    await user.click(within(await within(info).findByRole('group', { name: 'Stop publishing Journal?' })).getByRole('button', { name: 'Stop publishing' }))
-    expect(await within(section(info)).findByRole('button', { name: 'Publish' })).toBeTruthy()
+    await user.click(within(page).getByRole('button', { name: 'Stop publishing…' }))
+    await user.click(within(await within(page).findByRole('group', { name: 'Stop publishing Journal?' })).getByRole('button', { name: 'Stop publishing' }))
+    expect(await within(page).findByRole('button', { name: 'Publish' })).toBeTruthy()
   })
 
   it('keeps Stop publishing open to try again when it fails', async () => {
@@ -120,7 +129,7 @@ describe('publishing a space', () => {
     expect(await within(info).findByRole('alert')).toBeTruthy()
     // Shown unpublished while the call was out, then put back: the confirmation is there again, to retry.
     const again = within(info).getByRole('group', { name: 'Stop publishing Journal?' })
-    expect(within(info).getByRole('img', { name: 'Published' })).toBeTruthy()
+    expect((await journal())?.traits.map((t) => t.key)).toEqual(['published'])
     server.setOffline(false)
     await user.click(within(again).getByRole('button', { name: 'Stop publishing' }))
     await waitFor(() => expect(within(info).queryByRole('group', { name: 'Stop publishing Journal?' })).toBeNull())
@@ -128,11 +137,12 @@ describe('publishing a space', () => {
     await waitFor(async () => expect(await settings(server)).toMatchObject({ published: false }))
   })
 
-  it('shows the space published, and not, at once: the glyph doesn’t wait for the server', async () => {
+  it('shows the space published, and not, at once: the row doesn’t wait for the server', async () => {
     const { server, user } = await signedIn({ seed: seedJournal })
     await act(() => reloadSpaces())
     const info = await spaceInfo(user, 'Journal')
-    // The server holds the answer until the glyph has been looked for.
+    const page = await website(user, info)
+    // The server holds the answer until the row has been looked at.
     const { held, release } = gate()
     const put = publishingApi.put
     const slow = vi.spyOn(publishingApi, 'put').mockImplementation(async (...args) => {
@@ -140,20 +150,20 @@ describe('publishing a space', () => {
       return put(...args)
     })
     onTestFinished(() => slow.mockRestore())
-    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
-    expect(within(info).getByRole('img', { name: 'Published' })).toBeTruthy()
-    expect(within(section(info)).getByText('Publishing…')).toBeTruthy()
+    await user.click(within(page).getByRole('button', { name: 'Publish' }))
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
+    expect(status(websiteRow(info))).toBe('Publishing…')
     release()
-    await within(section(info)).findByRole('textbox', { name: 'Address' })
+    await waitFor(() => expect(status(websiteRow(info))).toMatch(/@journal$/))
     expect((await settings(server)).published).toBe(true)
   })
 
   it('with notes kept on this device, the real trait arrives with the sync that follows, not the next one', async () => {
     const { user } = await signedIn({ seed: seedJournal, onDevice: true })
     await act(() => reloadSpaces())
-    const info = await spaceInfo(user, 'Journal')
-    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
-    await within(section(info)).findByRole('textbox', { name: 'Address' })
+    const page = await website(user, await spaceInfo(user, 'Journal'))
+    await user.click(within(page).getByRole('button', { name: 'Publish' }))
+    await within(page).findByRole('textbox', { name: 'Address' })
     // The device's own copy of the list has the server's trait, address and all.
     await waitFor(async () => {
       expect((await journal())?.traits.find((t) => t.key === 'published')?.summary).toMatch(/^At .*@journal$/)
@@ -176,16 +186,18 @@ describe('publishing a space', () => {
     expect((await journal())?.traits).toEqual([])
   })
 
-  it('puts the glyph back when publishing fails', async () => {
+  it('puts the row back when publishing fails', async () => {
     const { user } = await signedIn({ seed: seedJournal })
     await act(() => reloadSpaces())
     const info = await spaceInfo(user, 'Journal')
+    const page = await website(user, info)
     const failing = vi.spyOn(publishingApi, 'put').mockRejectedValue(new TypeError('Failed to fetch'))
     onTestFinished(() => failing.mockRestore())
-    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
-    expect(await within(info).findByRole('alert')).toBeTruthy()
-    expect(within(info).queryByRole('img', { name: 'Published' })).toBeNull()
-    expect(within(section(info)).getByRole('button', { name: 'Publish' })).toBeTruthy()
+    await user.click(within(page).getByRole('button', { name: 'Publish' }))
+    expect(await within(page).findByRole('alert')).toBeTruthy()
+    expect(within(page).getByRole('button', { name: 'Publish' })).toBeTruthy()
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
+    expect(status(websiteRow(info))).toBe('Not published')
   })
 
   it('says why a space with locked notes can’t be published', async () => {
@@ -198,9 +210,9 @@ describe('publishing a space', () => {
       },
     })
     await act(() => reloadSpaces())
-    const info = await spaceInfo(user, 'Journal')
-    await user.click(within(section(info)).getByRole('button', { name: 'Publish' }))
-    expect((await within(info).findByRole('alert')).textContent).toBe('Unlock its locked note to publish it.')
+    const page = await website(user, await spaceInfo(user, 'Journal'))
+    await user.click(within(page).getByRole('button', { name: 'Publish' }))
+    expect((await within(page).findByRole('alert')).textContent).toBe('Unlock its locked note to publish it.')
   })
 
   it('isn’t offered for the default space', async () => {
@@ -209,12 +221,12 @@ describe('publishing a space', () => {
     await user.click(await waitFor(() => switcher()))
     await user.click(within(popover()).getByRole('button', { name: 'Space info' }))
     const info = await screen.findByRole('dialog')
-    expect(within(info).queryByRole('region', { name: 'Published' })).toBeNull()
+    expect(within(info).queryByRole('button', { name: 'Website' })).toBeNull()
   })
 
   it('changes the address where it’s shown, once asked: links to the old one stop working', async () => {
     const { server, user, info } = await publishedInfo()
-    const address = within(section(info)).getByRole('textbox', { name: 'Address' })
+    const address = within(info).getByRole('textbox', { name: 'Address' })
     await user.clear(address)
     await user.type(address, 'My-Days{Enter}')
     const confirm = await within(info).findByRole('group', { name: 'Move the site to notes.example/@my-days?' })
@@ -229,11 +241,12 @@ describe('publishing a space', () => {
       await s.api('PUT', '/spaces/taken', { name: 'Taken' })
       await s.api('PUT', '/spaces/taken/publish', { origin: 'https://notes.example', handle: 'taken' })
     })
-    const address = within(section(info)).getByRole('textbox', { name: 'Address' }) as HTMLInputElement
+    const address = within(info).getByRole('textbox', { name: 'Address' }) as HTMLInputElement
     await user.clear(address)
     await user.type(address, 'nope{Escape}')
     expect(address.value).toBe('journal')
-    expect(screen.getByRole('dialog', { name: 'Journal' })).toBeTruthy()
+    // That Escape was the field's: the page is still open.
+    expect(screen.getByRole('dialog', { name: 'Website' })).toBeTruthy()
 
     await user.clear(address)
     await user.type(address, 'taken{Enter}')
@@ -242,22 +255,18 @@ describe('publishing a space', () => {
     expect((await within(info).findByRole('alert')).textContent).toBe('Another space has that address. Try another.')
   })
 
-  it('opens Customize site in the same dialog, and Escape goes back to the rest', async () => {
+  it('opens its page in the same dialog, and Escape goes back to the rest', async () => {
     const { user, info } = await publishedInfo()
-    expect(customizeRow(info).textContent).toContain('Custom CSS or your own domain')
-    const page = await customize(user, info)
-    expect(page).toBe(info)
-    expect(document.activeElement).toBe(within(page).getByRole('heading', { name: 'Customize site' }))
-    expect(within(page).queryByRole('region', { name: 'Published' })).toBeNull()
+    expect(within(info).queryByRole('button', { name: 'Website' })).toBeNull()
 
     await user.keyboard('{Escape}')
     expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
-    expect(document.activeElement).toBe(customizeRow(info))
-    expect(within(info).queryByRole('heading', { name: 'Customize site' })).toBeNull()
+    expect(document.activeElement).toBe(websiteRow(info))
+    expect(within(info).queryByRole('heading', { name: 'Website' })).toBeNull()
 
-    await customize(user, info)
+    await website(user, info)
     await user.click(within(info).getByRole('button', { name: 'Back to Journal' }))
-    expect(document.activeElement).toBe(customizeRow(info))
+    expect(document.activeElement).toBe(websiteRow(info))
     // Escape from Space info itself still closes it.
     await user.keyboard('{Escape}')
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Journal' })).toBeNull())
@@ -265,26 +274,23 @@ describe('publishing a space', () => {
 
   it('saves custom CSS when Save is pressed, keeping what’s typed across Back', async () => {
     const { server, user, info } = await publishedInfo()
-    let page = await customize(user, info)
+    let page = info
     const save = within(part(page, 'Custom CSS')).getByRole('button', { name: 'Save' })
     expect(save).toHaveProperty('disabled', true)
     await user.click(within(page).getByRole('textbox', { name: 'Custom CSS' }))
     await user.paste(':root { --accent: teal }')
 
     await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
-    page = await customize(user, info)
+    page = await website(user, info)
     expect((within(page).getByRole('textbox', { name: 'Custom CSS' }) as HTMLTextAreaElement).value).toBe(':root { --accent: teal }')
 
     await user.click(within(part(page, 'Custom CSS')).getByRole('button', { name: 'Save' }))
     await waitFor(async () => expect((await settings(server)).css).toBe(':root { --accent: teal }'))
     await waitFor(() => expect(within(part(page, 'Custom CSS')).getByRole('button', { name: 'Save' })).toHaveProperty('disabled', true))
-    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
-    expect(customizeRow(info).textContent).toContain('Custom CSS')
   })
 
   it('discards what’s typed in the custom CSS', async () => {
-    const { user, info } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { css: 'a { color: red }' }).then(() => undefined))
-    const page = await customize(user, info)
+    const { user, info: page } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { css: 'a { color: red }' }).then(() => undefined))
     const field = within(page).getByRole('textbox', { name: 'Custom CSS' }) as HTMLTextAreaElement
     expect(field.value).toBe('a { color: red }')
     expect(within(part(page, 'Custom CSS')).queryByRole('button', { name: 'Discard' })).toBeNull()
@@ -294,8 +300,7 @@ describe('publishing a space', () => {
   })
 
   it('puts the site on a domain of its own, saying what the proxy maps it onto', async () => {
-    const { server, user, info } = await publishedInfo()
-    const page = await customize(user, info)
+    const { server, user, info: page } = await publishedInfo()
     const domain = part(page, 'Your own domain')
     const field = within(domain).getByRole('textbox', { name: 'Domain' })
     await user.type(field, 'not a domain{Enter}')
@@ -311,17 +316,11 @@ describe('publishing a space', () => {
     expect(within(saved).getByRole('link', { name: 'How to set it up' }).getAttribute('href')).toBe(
       'https://notesd.app/docs/guides/using/publishing.html#use-your-own-domain',
     )
-    // The page's own address, under its title, is the domain now.
-    expect(within(page).getByRole('heading', { name: 'Customize site' }).nextElementSibling?.textContent).toBe('blog.example.com')
-
-    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
-    expect(within(section(info)).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('https://blog.example.com/')
-    expect(customizeRow(info).textContent).toContain('blog.example.com')
+    expect(within(page).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('https://blog.example.com/')
   })
 
   it('asks before the site stops using its own domain', async () => {
-    const { server, user, info } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { domain: 'blog.example.com' }).then(() => undefined))
-    const page = await customize(user, info)
+    const { server, user, info: page } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { domain: 'blog.example.com' }).then(() => undefined))
     const domain = part(page, 'Your own domain')
     await user.clear(within(domain).getByRole('textbox', { name: 'Domain' }))
     await user.click(within(domain).getByRole('button', { name: 'Save' }))
@@ -335,42 +334,42 @@ describe('publishing a space', () => {
     await waitFor(() => expect(within(part(page, 'Your own domain')).getByText(/^Serve the site at a domain of its own/)).toBeTruthy())
   })
 
-  it('goes back from Customize site when the space stops being published elsewhere', async () => {
-    const { server, user, info } = await publishedInfo()
-    await customize(user, info)
+  it('stays on its page when the space stops being published elsewhere, to publish it again', async () => {
+    const { server, info: page } = await publishedInfo()
     expect((await server.api('DELETE', '/spaces/journal/publish')).status).toBe(204)
     await act(() => reloadSpaces())
-    expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
-    expect(await within(section(info)).findByRole('button', { name: 'Publish' })).toBeTruthy()
+    expect(await screen.findByRole('dialog', { name: 'Website' })).toBe(page)
+    expect(await within(page).findByRole('button', { name: 'Publish' })).toBeTruthy()
+    expect(within(page).queryByRole('textbox', { name: 'Address' })).toBeNull()
   })
 
   it('stops publishing once asked; the address stays the space’s', async () => {
-    const { server, user, info } = await publishedInfo()
-    await user.click(within(info).getByRole('button', { name: 'Stop publishing…' }))
-    const confirm = await within(info).findByRole('group', { name: 'Stop publishing Journal?' })
+    const { server, user, info: page } = await publishedInfo()
+    await user.click(within(page).getByRole('button', { name: 'Stop publishing…' }))
+    const confirm = await within(page).findByRole('group', { name: 'Stop publishing Journal?' })
     await user.click(within(confirm).getByRole('button', { name: 'Stop publishing' }))
     // Shown at once, before the server has it.
-    await within(section(info)).findByRole('button', { name: 'Publish' })
+    await within(page).findByRole('button', { name: 'Publish' })
     await waitFor(async () => expect(await settings(server)).toMatchObject({ published: false, handle: 'journal' }))
-    expect(within(info).queryByRole('img', { name: 'Published' })).toBeNull()
+    await user.click(within(page).getByRole('button', { name: 'Back to Journal' }))
+    expect(status(websiteRow(page))).toBe('Not published')
   })
 
-  it('goes back from Customize site when the section itself goes: handed on, then taken down by its new owner', async () => {
+  it('goes back from its page when the section itself goes: handed on, then taken down by its new owner', async () => {
     let ana: (Client & { id: number }) | undefined
-    const { server, user, info } = await publishedInfo(async (s) => {
+    const { server, info } = await publishedInfo(async (s) => {
       ana = await s.addAccount('ana')
       expect((await s.api('POST', '/spaces/journal/invites', { userId: ana.id })).status).toBe(201)
       const [invite] = (await ana.api<{ invites: { id: string }[] }>('GET', '/invites')).body.invites
       expect((await ana.api('POST', `/invites/${invite?.id}/accept`)).status).toBe(200)
     })
-    await customize(user, info)
     expect((await server.api('PUT', '/spaces/journal/owner', { userId: ana?.id })).status).toBe(204)
     expect((await ana?.api('DELETE', '/spaces/journal/publish'))?.status).toBe(204)
     await act(() => reloadSpaces())
-    // A member of a space that isn't published has no Published section: the rest of Space info, not a blank page.
+    // A member of a space that isn't published has no Website row: the rest of Space info, not a blank page.
     expect(await screen.findByRole('dialog', { name: 'Journal' })).toBe(info)
-    await waitFor(() => expect(within(info).queryByRole('region', { name: 'Published' })).toBeNull())
-    expect(within(info).getByRole('region', { name: 'People' })).toBeTruthy()
+    await waitFor(() => expect(within(info).queryByText('Website')).toBeNull())
+    expect(within(info).getByRole('button', { name: 'People' })).toBeTruthy()
   })
 
   it('shows a member where the space is, and nothing to change', async () => {
@@ -387,9 +386,9 @@ describe('publishing a space', () => {
     })
     await act(() => reloadSpaces())
     const info = await spaceInfo(user, 'Journal')
-    const published = section(info)
-    expect(within(published).getByText('At notes.example/@journal')).toBeTruthy()
-    expect(within(published).queryByRole('textbox')).toBeNull()
-    expect(within(info).queryByRole('button', { name: 'Stop publishing…' })).toBeNull()
+    // A row, not a button: there's no page to open.
+    expect(within(info).getByText('At notes.example/@journal')).toBeTruthy()
+    expect(within(info).getByText('Website').closest('button')).toBeNull()
+    expect(within(info).queryByRole('textbox', { name: 'Address' })).toBeNull()
   })
 })

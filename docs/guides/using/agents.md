@@ -99,8 +99,8 @@ showed, and how many of its suggestions you accepted.
 
 ## See what it did, and undo it
 
-Everything an agent does is in **Activity**: pick **Activity…** beside **Agent** in Space info. On
-the web and in the Android app.
+Everything an agent does is in **Activity**: pick **Activity…** on the agent's page in Space info
+on the web, or beside **Agent** in Space info in the Android app.
 
 Each run shows the note it was about, the trigger, when, and how it went: what it changed, that it
 changed nothing, or why it failed or was skipped. Open one for its details: the model, the tokens it

@@ -36,3 +36,8 @@
     padding: 26px 20px 22px;
   }
 }
+
+/* Focused on open (focusSelf) only so the keyboard starts inside it: not a control, so no ring. */
+.dialog:focus {
+  outline: none;
+}

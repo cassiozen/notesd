@@ -22,7 +22,7 @@ won't work for them. More in [Accounts](../self-hosting/users.md#adding-people).
 ## Share a space
 
 1. Choose the space's name at the top of the sidebar, then **Info**.
-2. Under **People**, choose who to invite.
+2. Under **People** (in the web app, choose **People** first), choose who to invite.
 3. They choose **Join** in their space switcher.
 
 notesd sends no emails or notifications, so let them know.

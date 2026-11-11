@@ -26,13 +26,13 @@ setting.
 In any of the apps:
 
 1. Choose the space's name at the top of the sidebar, then **Info**.
-2. Under **Published**, choose **Publish**.
+2. Under **Published** (in the web app, choose **Website**), choose **Publish**.
 
 Publish with notesd open at the address people should use, not `localhost`: the feed's links are
 made from it.
 
 The address comes from the space's name. To change it, edit it where it's shown under
-**Published** and press Enter. Links to the old address stop working.
+**Published** (**Website** in the web app) and press Enter. Links to the old address stop working.
 
 To take the site down, choose **Stop publishing**. The address stays the space's, for when you
 publish it again.
@@ -43,7 +43,7 @@ A site can have a domain of its own, such as `blog.example.com`. notesd can't se
 itself, so the reverse proxy in front of it does, the same one that serves the app's address. It
 sends every request for the domain to notesd with `/@<handle>` put before the path.
 
-1. In the web app, under **Published → Customize site → Your own domain**, enter the domain and
+1. In the web app, under **Website → Your own domain**, enter the domain and
    choose **Save**. The site's feed, sitemap and links now use it.
 2. Set up your proxy, below. The examples use the handle `garden` and the domain
    `blog.example.com`, and notesd at `127.0.0.1:8080`: put in your own, with notesd's address as in
@@ -119,7 +119,7 @@ everyone shares one limit.
   Your first space, "Notes", can't be published.
 - **Sharing and publishing are separate.** A shared space can be published too, by its owner, and
   then every member's notes in it are public.
-- **Custom CSS.** Under **Published → Customize site → Custom CSS** in the web app, add CSS of
+- **Custom CSS.** Under **Website → Custom CSS** in the web app, add CSS of
   your own. It's added after the site's styles, so it wins without `!important`, and most changes are a
   variable, such as `:root { --accent: teal }`. The variables are `--bg`, `--surface`, `--text`, `--muted`,
   `--border`, `--accent`, `--link`, `--font-body`, `--font-heading`, `--font-mono`,

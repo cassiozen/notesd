@@ -90,6 +90,23 @@
   font-size: 11px;
 }
 
+/* The row's faces: overlapping, each ringed in the list's colour so the edges read. */
+.faces {
+  flex: none;
+  display: flex;
+  margin-right: 4px;
+}
+
+.face {
+  /* Opaque, or the one under would show through where they overlap. */
+  background: color-mix(in oklab, var(--paper), var(--ink) 14%);
+  box-shadow: 0 0 0 2px var(--paper);
+}
+
+.face + .face {
+  margin-left: -6px;
+}
+
 /* Not in yet: an outline, not a fill. */
 .pending {
   background: transparent;
@@ -103,17 +120,9 @@
   margin-right: -6px;
 }
 
-.lead {
-  margin: 0;
-  padding: 12px 12px 4px;
-  font-size: 14px;
-  line-height: 1.45;
-  color: var(--ink-2);
-}
-
 /* Everyone else on the server, one press each: few enough on a home server to show them all. */
 .invite {
-  padding: 10px 12px 12px;
+  padding: 12px;
 }
 
 .people + .invite {

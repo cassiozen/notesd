@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useId, useRef, useState, type ComponentType } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { flushSync } from 'react-dom'
 import { ApiError } from '../api/client'
-import type { Space, SpaceTrait } from '../api/types'
+import type { Space } from '../api/types'
 import { genericMessage } from '../auth/errors'
 import { SpaceIcon, SpaceIconPicker } from '../notes/space-icon'
 import { themeKey } from '../notes/space-theme'
 import { DEFAULT_SPACE, deleteSpace, putSpace, reloadSpaces, useSpaces } from '../notes/spaces'
-import { traitGlyph, traitRows, traitsLabel, UnknownGlyph, useOffered, type TraitPage, type TraitRow } from '../notes/traits'
+import { traitRows, UnknownGlyph, useOffered, type TraitPage, type TraitRow } from '../notes/traits'
 import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { InlineConfirm } from '../ui/inline-confirm'
+import { SectionRow } from './section-row'
 import settings from './settings.module.css'
 import styles from './space-info.module.css'
 import { UnsavedProvider, useUnsavedSections } from './unsaved'
@@ -17,9 +18,9 @@ import { UnsavedProvider, useUnsavedSections } from './unsaved'
 export const noteCount = (n: number) => `${n} ${n === 1 ? 'note' : 'notes'}`
 
 /**
- * Space info (§7.8): a space's one page of space-level settings, changed in place with nothing opened over it.
- * Its icon (pressed, the picker opens under it) and name (edited where it's shown) with its note count; a section
- * per trait; then Delete. A section may have one page of its own, shown in this dialog in place of the rest.
+ * Space info (§7.8): a space's space-level settings. Its icon (pressed, the picker opens under it) and name (edited
+ * where it's shown) with its note count; one list, a row per trait saying how it's set; then Delete. A row opens its
+ * section's page, shown in this dialog in place of the rest.
  */
 export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) {
   const spaces = useSpaces()
@@ -39,6 +40,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   // The trait whose page is shown instead of the rest.
   const [page, setPage] = useState<string | null>(null)
   const [slot, setSlot] = useState<HTMLDivElement | null>(null)
+  const [actions, setActions] = useState<HTMLDivElement | null>(null)
   const pageHeadingId = useId()
   const frame = useRef<HTMLDivElement>(null)
   // What had focus when a page opened, to take it again on Back.
@@ -67,7 +69,8 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   }, [swap])
 
   // The open page's section gone (its trait off and no longer offered, say): back to the rest, not a blank page.
-  const pageGone = page !== null && space !== undefined && !blocks(traitRows(space, offered)).some((b) => b.kind === 'section' && b.key === page)
+  const rows = space ? traitRows(space, offered) : []
+  const pageGone = page !== null && !rows.some((r) => r.kind !== 'unknown' && r.entry.Section && r.entry.key === page)
   useEffect(() => {
     // After the commit: going back swaps pages synchronously, which React can't do from inside an effect.
     if (pageGone) queueMicrotask(back)
@@ -88,10 +91,12 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   function showPage(key: string) {
     opener.current = document.activeElement instanceof HTMLElement ? document.activeElement : null
     swap(key)
-    document.getElementById(pageHeadingId)?.focus()
+    document.getElementById(headingFor(key))?.focus()
   }
 
-  const pageFor = (key: string): TraitPage => ({ slot, open: page === key, headingId: pageHeadingId, show: () => showPage(key), back })
+  // One per page: every section's page stays mounted, so they can't share one.
+  const headingFor = (key: string) => `${pageHeadingId}-${key}`
+  const pageFor = (key: string): TraitPage => ({ slot, actions, open: page === key, headingId: headingFor(key), show: () => showPage(key), back })
 
   async function pickIcon(key: string) {
     const n = ++picks.current
@@ -144,7 +149,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
   )
 
   return (
-    <Dialog labelledBy={page ? pageHeadingId : titleId} onClose={page ? back : close} space={themeKey(shownIcon)} wide>
+    <Dialog labelledBy={page ? headingFor(page) : titleId} onClose={page ? back : close} space={themeKey(shownIcon)} wide focusSelf>
       <UnsavedProvider value={sections}>
       <div ref={frame}>
         <div className={styles.page} hidden={page !== null}>
@@ -168,10 +173,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
                 {space.name}
               </h2>
               {own && <NameField space={space} onError={setError} />}
-              <span className={styles.meta}>
-                {noteCount(space.noteCount)}
-                <HeadGlyphs traits={space.traits} />
-              </span>
+              <span className={styles.meta}>{noteCount(space.noteCount)}</span>
             </div>
           </div>
           {own && picking && (
@@ -185,16 +187,14 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
             </p>
           )}
 
-          {blocks(traitRows(space, offered)).map((block) =>
-            block.kind === 'section' ? (
-              <block.Section key={block.key} space={space} page={pageFor(block.key)} />
-            ) : (
-              <ul key={block.key} className={styles.group} aria-label="Features">
-                {block.rows.map((row) => (
-                  <TraitItem key={row.kind === 'off' ? row.entry.key : row.trait.key} row={row} />
-                ))}
-              </ul>
-            ),
+          {rows.length > 0 && (
+            <ul className={styles.list} aria-label={`${space.name}’s settings`}>
+              {rows.map((row) => {
+                const key = row.kind === 'off' ? row.entry.key : row.trait.key
+                const Section = row.kind === 'unknown' ? undefined : row.entry.Section
+                return Section ? <Section key={key} space={space} page={pageFor(key)} /> : <TraitItem key={key} row={row} />
+              })}
+            </ul>
           )}
 
           <div className={styles.end}>
@@ -212,27 +212,29 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
             )}
             <div className={settings.dialogActions}>
               {own && (
-                <Button
-                  size="md"
-                  variant="danger-text"
-                  className={settings.leading}
-                  disabled={why !== null || deleting !== null}
-                  aria-describedby={why ? deleteWhyId : undefined}
-                  aria-expanded={deleting !== null}
-                  onClick={() => setDeleting('asking')}
-                >
-                  Delete space…
-                </Button>
+                <>
+                  <Button
+                    size="md"
+                    variant="danger-text"
+                    className={styles.delete}
+                    disabled={why !== null || deleting !== null}
+                    aria-describedby={why ? deleteWhyId : undefined}
+                    aria-expanded={deleting !== null}
+                    onClick={() => setDeleting('asking')}
+                  >
+                    Delete space…
+                  </Button>
+                  {why && (
+                    <span id={deleteWhyId} className={styles.why}>
+                      {why}
+                    </span>
+                  )}
+                </>
               )}
-              <Button size="md" aria-expanded={discarding !== null} onClick={close}>
+              <Button size="md" className={styles.done} aria-expanded={discarding !== null} onClick={close}>
                 Done
               </Button>
             </div>
-            {own && why && (
-              <p id={deleteWhyId} className={styles.why}>
-                {why}
-              </p>
-            )}
           </div>
         </div>
         <div className={styles.page} hidden={page === null}>
@@ -243,6 +245,7 @@ export function SpaceInfo({ id, onClose }: { id: string; onClose: () => void }) 
           <div ref={setSlot} className={styles.slot} />
           {page !== null && discardAsk}
           <div className={settings.dialogActions}>
+            <div ref={setActions} className={styles.actions} />
             <Button size="md" onClick={close}>
               Done
             </Button>
@@ -332,64 +335,12 @@ function NameField({ space, onError }: { space: Space; onError: (message: string
   )
 }
 
-/**
- * The space's trait glyphs after its count. One that turns on while the page is open arrives with a little
- * movement: seen as it starts to mean something (sharing it here, say), it's read later.
- */
-function HeadGlyphs({ traits }: { traits: readonly SpaceTrait[] }) {
-  const [initial] = useState(() => new Set(traits.map((t) => t.key)))
-  if (traits.length === 0) return null
-  return (
-    <span role="img" aria-label={traitsLabel(traits)} className={styles.glyphs}>
-      {traits.map((t) => {
-        const Glyph = traitGlyph(t.key)
-        return (
-          <span key={t.key} data-trait={t.key} data-new={initial.has(t.key) ? undefined : ''} data-problem={t.problem ? '' : undefined}>
-            <Glyph size={14} />
-          </span>
-        )
-      })}
-    </span>
-  )
-}
-
-type Block =
-  | { kind: 'section'; key: string; Section: ComponentType<{ space: Space; page: TraitPage }> }
-  | { kind: 'rows'; key: string; rows: TraitRow[] }
-
-/** A trait with a section of its own gets it; the others, in a row each, share a group between sections. */
-function blocks(rows: TraitRow[]): Block[] {
-  const out: Block[] = []
-  for (const row of rows) {
-    const Section = row.kind === 'unknown' ? undefined : row.entry.Section
-    const key = row.kind === 'off' ? row.entry.key : row.trait.key
-    const last = out.at(-1)
-    if (Section) out.push({ kind: 'section', key, Section })
-    else if (last?.kind === 'rows') last.rows.push(row)
-    else out.push({ kind: 'rows', key, rows: [row] })
-  }
-  return out
-}
-
 /** A trait without settings here: the server's label and summary, or its problem. */
 function TraitItem({ row }: { row: TraitRow }) {
   const Glyph = row.kind === 'unknown' ? UnknownGlyph : row.entry.Glyph
-  const label = row.kind === 'off' ? row.entry.label : row.trait.label
-  const problem = row.kind === 'off' ? undefined : row.trait.problem
-  return (
-    <li className={styles.trait} data-off={row.kind === 'off' ? '' : undefined} data-trait={row.kind === 'off' ? row.entry.key : row.trait.key}>
-      <span className={styles.tile} aria-hidden="true">
-        <Glyph size={16} />
-      </span>
-      <span className={styles.traitText}>
-        <span className={styles.traitLabel}>{label}</span>
-        {problem ? (
-          <span className={styles.problem}>{problem}</span>
-        ) : (
-          <span className={styles.summary}>{row.kind === 'off' ? 'Off' : row.trait.summary}</span>
-        )}
-        {row.kind === 'unknown' && <span className={styles.summary}>Update the app to change this.</span>}
-      </span>
-    </li>
-  )
+  if (row.kind === 'off') return <SectionRow Glyph={Glyph} label={row.entry.label} status="Off" />
+  const { label, problem, summary } = row.trait
+  // One this app doesn't know says to update the app after its problem too, with no separator when there's nothing before it.
+  const status = [problem ?? summary, row.kind === 'unknown' && 'Update the app to change this.'].filter(Boolean).join(' · ')
+  return <SectionRow Glyph={Glyph} label={label} status={status} problem={problem !== undefined} on />
 }
