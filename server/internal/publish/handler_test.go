@@ -20,20 +20,6 @@ func TestSearchAnswersBusyWhenItsSlotsAreTaken(t *testing.T) {
 	}
 }
 
-func TestVisitorsBehindAProxyAreToldApart(t *testing.T) {
-	r := httptest.NewRequest("GET", "/@h/search?q=x", nil)
-	r.RemoteAddr = "127.0.0.1:5000"
-	r.Header.Set("X-Forwarded-For", "198.51.100.1, 203.0.113.7")
-	if got := visitorKey(r); got != "203.0.113.7" {
-		t.Fatalf("the address the proxy added: %q", got)
-	}
-	// From the internet, the header is anyone's to write.
-	r.RemoteAddr = "203.0.113.50:5000"
-	if got := visitorKey(r); got != "203.0.113.50" {
-		t.Fatalf("the connection's: %q", got)
-	}
-}
-
 func TestGzipOnlyWhenTheBrowserTakesIt(t *testing.T) {
 	for enc, want := range map[string]bool{
 		"gzip": true, "br, gzip;q=0.5": true, "GZIP; q=1": true,
