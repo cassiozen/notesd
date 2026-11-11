@@ -1,0 +1,24 @@
+apps/web/src/agent/socket.ts
+  s_70f1f8e1b11029::t_d95044a09f8dd3 21-22,24,92-93,167,169-172,214-215,243-244
+apps/web/src/agent/socket-ahead.test.ts
+  s_70f1f8e1b11029::t_ba07257dba69e5 6
+  s_70f1f8e1b11029::t_5d0f75e6002c9e 80-99
+docs/contributing/agent-clients.md
+  s_70f1f8e1b11029::t_54ddef190d530a 236-239
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "7b39bbf724a69e33c8325a79784e1a75ed0a1150",
+  "prompts": {},
+  "sessions": {
+    "s_70f1f8e1b11029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec45a082-151f-4929-9e4d-994d52eca516",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
