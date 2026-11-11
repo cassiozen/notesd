@@ -21,6 +21,9 @@ checks, builds and publishes everything:
 
 ## Cutting a release
 
+Tag a commit on `main` once [CI](../../.github/workflows/ci.yml) has passed on
+it:
+
 ```bash
 git tag v0.3.0
 git push origin v0.3.0
@@ -28,12 +31,13 @@ git push origin v0.3.0
 
 The workflow:
 
-1. On a macOS runner, builds the Mac app (`mise run release:macos`): signed,
+1. Checks that CI passed on the tagged commit, rather than running the tests
+   again. If it hasn't, or is still running, nothing is built: re-run the
+   workflow once CI is green.
+2. On a macOS runner, builds the Mac app (`mise run release:macos`): signed,
    notarized by Apple, in a DMG that's signed and notarized too. It refuses to
    build one that isn't. The rest waits for it, so a failure here publishes
    nothing.
-2. Runs `mise run check` and `mise run test:android`. A failure stops the
-   release before anything is published.
 3. Builds the server binaries (`mise run release`), with the web app
    embedded and the version from `git describe`.
 4. Builds the signed APK and app bundle (`mise run release:android`). It
