@@ -3,7 +3,7 @@ import { aheadTiming, agentSocket, socketFactory } from './socket'
 
 /** Stands in for the server's end of the socket. */
 class FakeSocket extends EventTarget {
-  readyState = WebSocket.OPEN
+  readyState: number = WebSocket.OPEN
   sent: Record<string, unknown>[] = []
   send(data: string) {
     this.sent.push(JSON.parse(data) as Record<string, unknown>)
@@ -75,5 +75,25 @@ describe('a result done ahead near its end', () => {
     expect(ws.prepares()).toBe(1)
     vi.advanceTimersByTime(aheadTiming.marginMs + aheadTiming.againMs)
     expect(ws.prepares()).toBe(2)
+  })
+})
+
+describe('an ask the server never answers', () => {
+  it('is made again, waiting longer each time, until a result comes', () => {
+    vi.useFakeTimers()
+    const ws = connect()
+    expect(ws.prepares()).toBe(1)
+    vi.advanceTimersByTime(aheadTiming.unansweredMs - 1)
+    expect(ws.prepares()).toBe(1)
+    vi.advanceTimersByTime(1)
+    expect(ws.prepares()).toBe(2)
+    vi.advanceTimersByTime(aheadTiming.unansweredMs * 2 - 1)
+    expect(ws.prepares()).toBe(2)
+    vi.advanceTimersByTime(1)
+    expect(ws.prepares()).toBe(3)
+
+    ws.hear(prepared('run_1', Date.now() + 30 * 60_000))
+    vi.advanceTimersByTime(10 * 60_000)
+    expect(ws.prepares()).toBe(3)
   })
 })

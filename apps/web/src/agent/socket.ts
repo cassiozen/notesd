@@ -18,9 +18,10 @@ export const socketTiming = { retryBaseMs: 1000, retryMaxMs: 30_000, closeWaitMs
 /**
  * How soon a result done ahead that the server threw away is asked for again: what made it stale (a
  * reference note, say) often changes again within seconds. And how long before it expires one is no
- * longer used, so its run is still on the server when the new note asks for it.
+ * longer used, so its run is still on the server when the new note asks for it. And how long an ask can go
+ * unanswered before it's made again, doubling: the server says nothing of a run done ahead that failed.
  */
-export const aheadTiming = { againMs: 2000, marginMs: 5000 }
+export const aheadTiming = { againMs: 2000, marginMs: 5000, unansweredMs: 60_000, unansweredMaxMs: 10 * 60_000 }
 
 /**
  * A space's "new note opened" run, done ahead by the server (§7.11): a new note opens with it, at once.
@@ -88,6 +89,8 @@ class AgentSocket {
   /** Results done ahead, by space, as the server last said. */
   private readonly prepared = new Map<string, Prepared & { expires: ReturnType<typeof setTimeout> }>()
   private askAgain: ReturnType<typeof setTimeout> | undefined
+  private unanswered: ReturnType<typeof setTimeout> | undefined
+  private unansweredWait = aheadTiming.unansweredMs
   /** Each space's last result too near its end to use, which the server may hand back until it lets it go. */
   private readonly retired = new Map<string, string>()
   /** Hears of a new note that opened with a result the server no longer had. */
@@ -161,8 +164,12 @@ class AgentSocket {
     clearTimeout(this.askAgain)
     const space = this.aheadSpace
     // A hidden tab can't open a note: asking would spend tokens nobody may use.
-    if (!space || this.prepared.has(space) || document.visibilityState === 'hidden') return
+    if (!space || this.prepared.has(space) || document.visibilityState === 'hidden' || !this.connected()) return
     this.send({ type: 'prepare', spaceId: space })
+    // Asked again while it runs, the server carries on with the same run.
+    clearTimeout(this.unanswered)
+    this.unanswered = setTimeout(this.askAhead, this.unansweredWait)
+    this.unansweredWait = Math.min(this.unansweredWait * 2, aheadTiming.unansweredMaxMs)
   }
 
   /**
@@ -204,6 +211,8 @@ class AgentSocket {
   }
 
   private heardPrepared(p: Prepared) {
+    clearTimeout(this.unanswered)
+    this.unansweredWait = aheadTiming.unansweredMs
     clearTimeout(this.prepared.get(p.spaceId)?.expires)
     this.prepared.delete(p.spaceId)
     // Too near its end to use: the server, which hands back one it still holds, is asked once it let it go.
@@ -231,6 +240,8 @@ class AgentSocket {
 
   private dropPrepared() {
     clearTimeout(this.askAgain)
+    clearTimeout(this.unanswered)
+    this.unansweredWait = aheadTiming.unansweredMs
     for (const p of this.prepared.values()) clearTimeout(p.expires)
     this.prepared.clear()
     this.retired.clear()
