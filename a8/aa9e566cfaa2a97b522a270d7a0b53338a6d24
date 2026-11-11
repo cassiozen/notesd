@@ -1,0 +1,49 @@
+server/internal/agent/run.go
+  s_70f1f8e1b11029::t_b56359b000881e 369-370,384-386,414
+server/internal/notes/notes.go
+  s_70f1f8e1b11029::t_b56359b000881e 301,388-398,865,894,899,916-918
+server/internal/notes/move.go
+  s_70f1f8e1b11029::t_b56359b000881e 156,197-198,207
+server/internal/agent/runner.go
+  s_70f1f8e1b11029::t_b56359b000881e 77
+docs/contributing/agent-clients.md
+  s_70f1f8e1b11029::t_b56359b000881e 65,240-242,247-249
+apps/web/src/agent/socket.ts
+  s_70f1f8e1b11029::t_b56359b000881e 91-92,208-218,222-231,236
+server/internal/agent/config.go
+  s_70f1f8e1b11029::t_b56359b000881e 180,185-188,196,219-220,229,236-239
+server/internal/agent/export_test.go
+  s_70f1f8e1b11029::t_b56359b000881e 48
+server/internal/agent/prepare_test.go
+  s_70f1f8e1b11029::t_b56359b000881e 242,248-289,330,332-341
+docs/reference/api.md
+  s_70f1f8e1b11029::t_b56359b000881e 590-591,593-596
+docs/contributing/architecture.md
+  s_70f1f8e1b11029::t_b56359b000881e 656-660
+server/internal/agent/prepare.go
+  s_70f1f8e1b11029::t_b56359b000881e 24,35-40,81-82,215-216,317,372,374
+server/internal/agent/triggers.go
+  s_70f1f8e1b11029::t_b56359b000881e 66-70
+server/internal/userdata/userdata.go
+  s_70f1f8e1b11029::t_b56359b000881e 43
+apps/web/src/agent/socket-ahead.test.ts
+  s_70f1f8e1b11029::t_b56359b000881e 1-79
+docs/guides/using/agents.md
+  s_70f1f8e1b11029::t_4748b96071b146 65-67
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "a8aa9e566cfaa2a97b522a270d7a0b53338a6d24",
+  "prompts": {},
+  "sessions": {
+    "s_70f1f8e1b11029": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ec45a082-151f-4929-9e4d-994d52eca516",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
