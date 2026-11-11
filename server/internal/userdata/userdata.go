@@ -40,6 +40,7 @@ func New(db *database.DB) *Data {
 		Spaces: spaces.NewStore(db), Agent: agent.NewStore(db)}
 	d.Notes.SetExposed(d.Spaces.Exposed)
 	d.Notes.OnWrite(d.Agent.OnWrite)
+	d.Notes.OnCommitted(d.Agent.NoteCommitted)
 	d.Notes.OnSpaceLeft(d.Agent.SpaceLeft)
 	return d
 }

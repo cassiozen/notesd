@@ -239,9 +239,51 @@ func TestAheadStillUsableJustAfterItsThrownAway(t *testing.T) {
 
 	p, _ = h.prepare(final("No change."))
 	h.createTitled("d2", "Digest", "")
-	h.advance(2 * time.Minute)
+	h.advance(11 * time.Second)
 	if err := h.runner.UsePrepared(ctx, home, p.ID, "n2", "work", 1); !errors.Is(err, agent.ErrPreparedGone) {
 		t.Fatalf("used long after: %v", err)
+	}
+}
+
+func TestAheadSummaryIsItsLastChanges(t *testing.T) {
+	h := aheadHarness(t)
+	// One reply: a change with done, then one without it, then the model's last words.
+	h.model.steps = append(h.model.steps, func(llm.ChatRequest) (*llm.ChatResponse, error) {
+		r := toolReply("set_title", `{"title": "Monday", "done": "Titled it."}`)
+		r.Message.ToolCalls = append(r.Message.ToolCalls, llm.ToolCall{ID: "c2", Type: "function",
+			Function: llm.ToolCallFunction{Name: "show_card", Arguments: `{"body": "Why?"}`}})
+		return r, nil
+	}, final("Titled it and asked."))
+	h.runner.PrepareNow(ctx, home, "work", 1)
+	p, _ := h.runner.PreparedFor(home, "work", 1)
+	if err := h.runner.UsePrepared(ctx, home, p.ID, "n1", "work", 1); err != nil {
+		t.Fatal(err)
+	}
+	if r := h.only(); r.message != "Titled it and asked." {
+		t.Fatalf("run %+v", r)
+	}
+}
+
+func TestAheadKeptWhenAnotherRuleChanges(t *testing.T) {
+	h := aheadHarness(t)
+	h.prepare(final("No change."))
+	c, err := h.d.Agent.Config(ctx, "work")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c.Triggers[agent.EditDone] = "Tidy."
+	if _, err := h.d.Agent.Put(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	if !h.ready() {
+		t.Fatal("thrown away by another rule")
+	}
+	c.Triggers[agent.NoteCreated] = "Start it differently."
+	if _, err := h.d.Agent.Put(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	if h.ready() {
+		t.Fatal("kept past its own rule")
 	}
 }
 
@@ -285,8 +327,18 @@ func TestARuleThatChangesOtherNotesRunsLive(t *testing.T) {
 	if h.content("x") != "" || len(h.allRuns()) != 0 || h.model.calls() != 2 {
 		t.Fatalf("x %q, runs %+v, calls %d", h.content("x"), h.allRuns(), h.model.calls())
 	}
-	// Set up again, it's tried again.
+	// Set up the same again: still live.
 	h.agent("work", agent.NoteCreated)
+	if _, ok := h.prepare(); ok || h.model.calls() != 2 {
+		t.Fatal("tried again with the same rule")
+	}
+	// Its rule changed, it's tried again.
+	h.agent("work", agent.NoteCreated, agent.EditDone)
+	c, _ := h.d.Agent.Config(ctx, "work")
+	c.Triggers[agent.NoteCreated] = "Only ask a question."
+	if _, err := h.d.Agent.Put(ctx, c); err != nil {
+		t.Fatal(err)
+	}
 	h.prepare(final("No change."))
 	if !h.ready() {
 		t.Fatal("not tried again")

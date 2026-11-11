@@ -21,7 +21,7 @@ import (
 // thrown away or expired can still be used, for a new note already asked for as it went.
 var (
 	AheadFor   = 30 * time.Minute
-	aheadGrace = time.Minute
+	aheadGrace = 10 * time.Second
 )
 
 // aheadNoteID stands for the note a run done ahead is about, which doesn't exist yet.
@@ -31,6 +31,12 @@ const aheadNoteID = "new-note"
 const failNotAhead = "not_ahead"
 
 var errNotAhead = &stopError{finished{Status: StatusSkipped, Failure: failNotAhead}}
+
+// aheadInputs is what of a space's setup a "new note opened" run goes by.
+func (c Config) aheadInputs() string {
+	b, _ := json.Marshal([]any{c.Enabled, c.Prompt, c.Triggers[NoteCreated], c.ReferenceNotes})
+	return string(b)
+}
 
 // ErrPreparedGone refuses a result done ahead that's no longer there to use: the editor makes the run live instead.
 var ErrPreparedGone = errors.New("no such result done ahead")
@@ -72,8 +78,8 @@ type Change struct {
 	Note *notes.Event
 }
 
-// OnChange has fn hear of agent setups saved and notes written, for results done ahead. It's
-// called inside a note write's transaction: fn must not block.
+// OnChange has fn hear of agent setups saved and notes written, once each commits, for results done
+// ahead. fn must not block.
 func (s *Store) OnChange(fn func(Change)) { s.onChange = fn }
 
 func (s *Store) changed(c Change) {
@@ -206,8 +212,8 @@ type ahead struct {
 	mu      sync.Mutex
 	slots   map[string]*aheadSlot // by id, the thrown away ones too while usable
 	current map[aheadKey]*aheadSlot
-	// cannot: rules found to change other notes, by their setup's time. Live until set up again.
-	cannot map[aheadKey]int64
+	// cannot: rules found to change other notes, by what of the setup they went by. Live until that changes.
+	cannot map[aheadKey]string
 }
 
 // Prepare has a space's "new note opened" run done ahead for userID, unless one is going or ready;
@@ -308,7 +314,7 @@ func (rn *Runner) runAhead(ctx context.Context, s *aheadSlot) {
 	if f.Status != StatusDone {
 		if f.Failure == failNotAhead {
 			rn.ahead.mu.Lock()
-			rn.ahead.cannot[k] = c.UpdatedAt
+			rn.ahead.cannot[k] = c.aheadInputs()
 			rn.ahead.mu.Unlock()
 		}
 		if ctx.Err() == nil {
@@ -363,9 +369,9 @@ func (rn *Runner) aheadReady(ctx context.Context, k aheadKey) (Account, llm.Sett
 		return Account{}, none, Config{}, nil, false
 	}
 	rn.ahead.mu.Lock()
-	at, cannot := rn.ahead.cannot[k]
+	inputs, cannot := rn.ahead.cannot[k]
 	rn.ahead.mu.Unlock()
-	if cannot && at == c.UpdatedAt {
+	if cannot && inputs == c.aheadInputs() {
 		return Account{}, none, Config{}, nil, false
 	}
 	loc, err := acct.Zone(ctx, k.user)

@@ -63,7 +63,8 @@ one, such as a note a rule has the agent make.
 A space whose agent acts on new notes has the next new note's run done ahead, on the web, while you're
 in the space: a new note opens with what the agent wrote already in it, rather than it arriving a few
 seconds later, and with any card it shows. It's done again when something it went by changes, such as
-the space's tags or a note it always reads, and every 30 minutes. Its tokens count whether or not you
+the space's tags or a note it always reads, and again when it expires: up to 30 minutes later, or at
+midnight in your time zone. Its tokens count whether or not you
 make a note, and Activity shows it once you do. Undo it there: it was in the note as it opened.
 
 A new note opened, editing started and the menu command happen in the editor, and need a connection to

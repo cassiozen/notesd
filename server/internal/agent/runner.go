@@ -74,7 +74,7 @@ func NewRunner(c RunnerConfig) *Runner {
 	r := &Runner{
 		homes: c.Homes, exists: c.Exists, open: c.Open, settings: c.Settings, provider: c.Provider, log: c.Log, now: c.Now,
 		calls: make(chan struct{}, MaxConcurrentCalls), workers: map[Home]*worker{}, tellFn: c.Tell,
-		ahead: ahead{slots: map[string]*aheadSlot{}, current: map[aheadKey]*aheadSlot{}, cannot: map[aheadKey]int64{}},
+		ahead: ahead{slots: map[string]*aheadSlot{}, current: map[aheadKey]*aheadSlot{}, cannot: map[aheadKey]string{}},
 	}
 	if r.now == nil {
 		r.now = time.Now

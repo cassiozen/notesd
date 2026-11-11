@@ -366,7 +366,8 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		}
 		messages = append(messages, llm.Message{Role: "assistant", Content: res.Message.Content, ToolCalls: res.Message.ToolCalls})
 		// The model's summary, when it said this reply holds its last change.
-		summary, refused := "", false
+		// last is the done of the reply's last change, "" when that change gave none.
+		summary, last, refused := "", "", false
 		for _, tc := range res.Message.ToolCalls {
 			f.ToolCalls++
 			if f.ToolCalls > MaxToolCalls-rs.run.PriorToolCalls {
@@ -379,6 +380,9 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 			f.timing.tools += time.Since(ran)
 			if d := doneWith(tc); d != "" {
 				summary = d
+			}
+			if writeTools[tc.Function.Name] {
+				last = doneWith(tc)
 			}
 			var te *toolError
 			var stop *stopError
@@ -407,7 +411,7 @@ func (rn *Runner) converse(ctx context.Context, rs *runState, st llm.Settings, m
 		}
 		lastDone = ""
 		if !refused {
-			lastDone = summary
+			lastDone = last
 		}
 	}
 }

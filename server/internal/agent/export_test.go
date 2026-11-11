@@ -45,6 +45,7 @@ func (rn *Runner) PrepareNow(ctx context.Context, home Home, spaceID string, use
 func (rn *Runner) PreparedFor(home Home, spaceID string, userID int64) (Prepared, bool) {
 	rn.ahead.mu.Lock()
 	defer rn.ahead.mu.Unlock()
+	rn.sweepAhead(rn.now())
 	s := rn.ahead.current[aheadKey{home, spaceID, userID}]
 	if s == nil || s.ready == nil {
 		return Prepared{}, false

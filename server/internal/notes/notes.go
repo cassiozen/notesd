@@ -298,6 +298,7 @@ type Store struct {
 	// file userID reaches.
 	elsewhere   func(ctx context.Context, userID int64, spaceID string) (bool, error)
 	onWrite     []func(context.Context, *sql.Tx, Event) error
+	onCommitted []func(Event)
 	onSpaceLeft []func(context.Context, *sql.Tx, string) error
 }
 
@@ -381,6 +382,17 @@ func (s *Store) OnCommit(fn func()) { s.onCommit = fn }
 func (s *Store) committed() {
 	if s.onCommit != nil {
 		s.onCommit()
+	}
+}
+
+// OnCommitted adds fn, called with each write's event once it commits: for what must see the write
+// done, where a hook inside the transaction would run before readers can. fn must not block. Add
+// hooks before the store is used.
+func (s *Store) OnCommitted(fn func(Event)) { s.onCommitted = append(s.onCommitted, fn) }
+
+func (s *Store) eventCommitted(ev Event) {
+	for _, fn := range s.onCommitted {
+		fn(ev)
 	}
 }
 
@@ -850,6 +862,7 @@ type storedResponse struct {
 // in one transaction, and the commit hook after it commits.
 func (s *Store) apply(ctx context.Context, opID, reqHash string, ev *Event, fn func(*sql.Tx) (Result, error)) (Result, error) {
 	var out Result
+	var fired *Event
 	err := s.db.WriteTx(ctx, func(tx *sql.Tx) error {
 		var storedHash, storedJSON string
 		var hashVersion int
@@ -878,10 +891,12 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, ev *Event, fn f
 		if err != nil {
 			return err
 		}
+		fired = nil
 		if ev != nil {
 			if err := s.hooks(ctx, tx, *ev); err != nil {
 				return err
 			}
+			fired = ev
 		}
 		body, err := json.Marshal(storedResponse{Status: res.HTTPStatus, Body: res})
 		if err != nil {
@@ -898,6 +913,9 @@ func (s *Store) apply(ctx context.Context, opID, reqHash string, ev *Event, fn f
 	})
 	if err == nil && !out.Replayed {
 		s.committed()
+		if fired != nil {
+			s.eventCommitted(*fired)
+		}
 	}
 	return out, err
 }

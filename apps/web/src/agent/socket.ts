@@ -88,6 +88,8 @@ class AgentSocket {
   /** Results done ahead, by space, as the server last said. */
   private readonly prepared = new Map<string, Prepared & { expires: ReturnType<typeof setTimeout> }>()
   private askAgain: ReturnType<typeof setTimeout> | undefined
+  /** Each space's last result too near its end to use, which the server may hand back until it lets it go. */
+  private readonly retired = new Map<string, string>()
   /** Hears of a new note that opened with a result the server no longer had. */
   private readonly missedListeners = new Set<(noteId: string) => void>()
   /** The server's id for this connection, once it said hello. */
@@ -203,21 +205,35 @@ class AgentSocket {
 
   private heardPrepared(p: Prepared) {
     clearTimeout(this.prepared.get(p.spaceId)?.expires)
-    const expires = setTimeout(
-      () => {
-        if (this.prepared.get(p.spaceId)?.id !== p.id) return
-        this.prepared.delete(p.spaceId)
-        this.askAhead()
-      },
-      Math.max(0, p.expiresAt - aheadTiming.marginMs - Date.now()),
-    )
+    this.prepared.delete(p.spaceId)
+    // Too near its end to use: the server, which hands back one it still holds, is asked once it let it go.
+    if (p.id === this.retired.get(p.spaceId) || p.expiresAt - aheadTiming.marginMs <= Date.now()) {
+      this.retire(p)
+      return
+    }
+    const expires = setTimeout(() => {
+      if (this.prepared.get(p.spaceId)?.id !== p.id) return
+      this.prepared.delete(p.spaceId)
+      this.retire(p)
+    }, p.expiresAt - aheadTiming.marginMs - Date.now())
     this.prepared.set(p.spaceId, { ...p, expires })
+  }
+
+  /**
+   * Asks for the next once the server has let p go, at its expiresAt by the server's clock; at least againMs
+   * later, so a clock behind the server's can't have it ask, and be handed p back, over and over.
+   */
+  private retire(p: Prepared) {
+    this.retired.set(p.spaceId, p.id)
+    clearTimeout(this.askAgain)
+    this.askAgain = setTimeout(this.askAhead, Math.max(p.expiresAt - Date.now(), 0) + aheadTiming.againMs)
   }
 
   private dropPrepared() {
     clearTimeout(this.askAgain)
     for (const p of this.prepared.values()) clearTimeout(p.expires)
     this.prepared.clear()
+    this.retired.clear()
   }
 
   noteOpened(noteId: string, spaceId: string) {
