@@ -92,7 +92,7 @@ ngrok and Tailscale Funnel work too.
 
 - Use a dedicated hostname (`notes.example.com`), not a path (`example.com/notes`).
 - If saving fails with HTTP 403, your proxy rewrites the `Host` header: forward it unchanged, or send the original as `X-Forwarded-Host`.
-- After 10 failed sign-ins in 15 minutes from one IP, notesd blocks sign-ins from that IP for a while. People who are already signed in aren't affected. Behind a proxy, notesd learns the visitor's IP from the proxy's `X-Forwarded-For` header, believed only from a proxy on this machine or a private network (LAN, Docker, VPN). Behind a proxy on a public address, every visitor shares one limit. On a network you expose notesd to directly, a device there could fake the header to get around the limit.
+- After 10 failed sign-ins in 15 minutes from one IP, notesd blocks sign-ins from that IP for a while. People who are already signed in aren't affected. Behind a proxy, notesd learns the visitor's IP from the proxy's `X-Forwarded-For` header, believed only from a proxy on this machine or a private network (LAN, Docker, or a VPN such as Tailscale). Behind a proxy on a public address, every visitor shares one limit. On a network you expose notesd to directly, a device there could fake the header to get around the limit.
 - Pictures can be up to 10 MiB. If your proxy limits request size, allow at least that.
 
 ## Limiting who can reach notesd

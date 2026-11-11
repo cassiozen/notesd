@@ -5,8 +5,8 @@ import (
 	"time"
 )
 
-// Limiter throttles failed login and setup attempts per client key, the
-// client's address (clientip: behind a proxy on a public address, everyone's is one).
+// Limiter throttles failed login and setup attempts per client key: the
+// client's resolved IP address. Behind a public proxy, all clients share one key.
 type Limiter struct {
 	mu     sync.Mutex
 	now    func() time.Time

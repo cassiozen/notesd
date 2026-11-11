@@ -18,6 +18,7 @@ var trusted = []netip.Prefix{
 	netip.MustParsePrefix("10.0.0.0/8"),
 	netip.MustParsePrefix("172.16.0.0/12"),
 	netip.MustParsePrefix("192.168.0.0/16"),
+	netip.MustParsePrefix("100.64.0.0/10"), // Tailscale and other CGNAT-range VPNs
 	netip.MustParsePrefix("169.254.0.0/16"),
 	netip.MustParsePrefix("fc00::/7"),
 	netip.MustParsePrefix("fe80::/10"),
@@ -47,21 +48,13 @@ func Resolve(r *http.Request, header string) string {
 			return a.String()
 		}
 	}
-	// Each trusted hop appended who it got the request from, so the rightmost
-	// untrusted entry is the client; anything left of it the client wrote.
+	// Only the last entry, the one the proxy in front added: walking further
+	// left past private ones would trust a LAN visitor's own made-up entries.
 	hops := strings.Split(strings.Join(r.Header.Values("X-Forwarded-For"), ","), ",")
-	client := peer.String()
-	for i := len(hops) - 1; i >= 0; i-- {
-		a, ok := addrOf(strings.TrimSpace(hops[i]))
-		if !ok {
-			break
-		}
-		client = a.String()
-		if !isTrusted(a) {
-			break
-		}
+	if a, ok := addrOf(strings.TrimSpace(hops[len(hops)-1])); ok {
+		return a.String()
 	}
-	return client
+	return peer.String()
 }
 
 // addrOf parses an address with or without a port, as X-Forwarded-For
