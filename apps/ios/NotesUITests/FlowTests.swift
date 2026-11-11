@@ -203,6 +203,10 @@ final class FlowTests: XCTestCase {
         newSpace.tap()
         let name = app.textFields["Name"]
         XCTAssertTrue(name.waitForExistence(timeout: 5))
+        // The sheet focuses the field on appear, a moment after it exists: typing sooner goes nowhere.
+        let focused = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "hasKeyboardFocus == true"), object: name)
+        XCTAssertEqual(XCTWaiter().wait(for: [focused], timeout: 5), .completed, "the name field has the keyboard")
         app.typeText("Work")
         // An icon is required too.
         app.buttons["Create"].tap()
