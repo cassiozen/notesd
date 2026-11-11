@@ -1,0 +1,29 @@
+docs/guides/self-hosting/https.md
+  s_23cbd010f69272::t_abd0e935e09124 95
+server/internal/clientip/clientip.go
+  s_23cbd010f69272::t_abd0e935e09124 21,51-52,54-55,57
+server/internal/auth/limiter.go
+  s_23cbd010f69272::t_abd0e935e09124 8-9
+server/internal/clientip/clientip_test.go
+  s_23cbd010f69272::t_abd0e935e09124 29-32,36
+docs/contributing/architecture.md
+  s_23cbd010f69272::t_abd0e935e09124 910
+server/README.md
+  s_23cbd010f69272::t_abd0e935e09124 122-125
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "b9fa90da72d3124e3079a1c0e17489330c12a70f",
+  "prompts": {},
+  "sessions": {
+    "s_23cbd010f69272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8441754d-7eb1-482c-bdcf-428fb10eaae1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
