@@ -200,7 +200,8 @@ button.row:hover {
   color: var(--ink-2);
 }
 
-.rowStatus[data-problem] {
+/* As specific as an on row's colour, and after it: a feature that's on can still have a problem to show. */
+.item .rowStatus[data-problem] {
   color: var(--danger);
 }
 
