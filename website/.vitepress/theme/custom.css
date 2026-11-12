@@ -42,3 +42,42 @@
 .VPNavBarTitle .title {
   font-weight: 600;
 }
+
+/* Get started: once a kind of server is picked (WherePicker), other kinds' parts are hidden. */
+html.where-home [data-where]:not([data-where~="home"]),
+html.where-vps [data-where]:not([data-where~="vps"]),
+html.where-fly [data-where]:not([data-where~="fly"]) {
+  display: none;
+}
+
+.where-picker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 16px 0 24px;
+  font-size: 14px;
+}
+.where-picker-label {
+  color: var(--vp-c-text-2);
+}
+.where-picker button {
+  padding: 4px 14px;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 999px;
+  color: var(--vp-c-text-1);
+  font-weight: 500;
+  transition: border-color 0.15s;
+}
+.where-picker button:hover {
+  border-color: var(--vp-c-brand-2);
+}
+.where-picker button[aria-pressed="true"] {
+  border-color: var(--vp-c-brand-1);
+  background: var(--vp-c-brand-soft);
+  color: var(--vp-c-brand-1);
+}
+.where-picker button.where-picker-all {
+  border-color: transparent;
+  color: var(--vp-c-text-2);
+}

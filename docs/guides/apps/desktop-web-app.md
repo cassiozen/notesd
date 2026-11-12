@@ -16,7 +16,7 @@ writing, search and tags work with no connection, and it syncs with your server 
 ## Install it
 
 Open your server's address in a browser and sign in. Installing needs notesd served over HTTPS (or
-from `localhost`), as set up in [Get started](../../get-started/03-set-up-https.md). On a plain-HTTP LAN address like
+from `localhost`), as set up in [Get started](../../get-started/01-run-the-server.md). On a plain-HTTP LAN address like
 `http://192.168.1.20:8080`, Chrome won't show its install offer, and no browser keeps notes on the
 computer.
 

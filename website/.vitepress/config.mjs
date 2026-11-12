@@ -3,6 +3,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitepress";
+import { whereScript } from "./theme/where.js";
 
 const repoDir = fileURLToPath(new URL("../..", import.meta.url));
 const docsDir = path.join(repoDir, "docs");
@@ -38,6 +39,10 @@ function rewriteLinks(md) {
 // from this repo, so old URLs get a static page that forwards to the new one (keeping the #hash).
 const redirects = {
   "guides/apps/web": "guides/apps/desktop-web-app",
+  "get-started/create-your-account": "get-started/account-and-first-note",
+  "get-started/set-up-https": "get-started/run-the-server",
+  "get-started/write-your-first-note": "get-started/account-and-first-note",
+  "get-started/add-your-phone": "get-started/install-the-apps",
 };
 
 async function writeRedirects(outDir, base) {
@@ -69,6 +74,7 @@ export default defineConfig({
   ignoreDeadLinks: "localhostLinks",
   buildEnd: (siteConfig) => writeRedirects(siteConfig.outDir, siteConfig.site.base),
   head: [
+    ["script", {}, whereScript],
     ["link", { rel: "icon", href: "/docs/icon.png" }],
     ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
     ["link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" }],
@@ -112,10 +118,8 @@ export default defineConfig({
         items: [
           { text: "Introduction", link: "/get-started/introduction" },
           { text: "1. Run the server", link: "/get-started/run-the-server" },
-          { text: "2. Create your account", link: "/get-started/create-your-account" },
-          { text: "3. Set up HTTPS", link: "/get-started/set-up-https" },
-          { text: "4. Write your first note", link: "/get-started/write-your-first-note" },
-          { text: "5. Add your phone", link: "/get-started/add-your-phone" },
+          { text: "2. Account and your first note", link: "/get-started/account-and-first-note" },
+          { text: "3. Install the apps", link: "/get-started/install-the-apps" },
         ],
       },
       {
