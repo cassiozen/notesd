@@ -27,9 +27,9 @@ docker run -d --name notesd --restart unless-stopped \
 docker exec -it notesd notesd create-owner --username YOUR_USERNAME
 ```
 
-Then put HTTPS in front of `127.0.0.1:8080` with Caddy or Tailscale. The
+Then put HTTPS in front of `127.0.0.1:8080` with Caddy or Cloudflare Tunnel. The
 [Get started guide](docs/get-started/00-introduction.md) walks through it, then writing a note
-and connecting your phone. To run it without Docker, see
+and installing the apps. To run it without Docker, see
 [Run the binary with systemd](docs/guides/self-hosting/binary-systemd.md); to host it on Fly.io,
 [Run on Fly.io](docs/guides/self-hosting/fly-io.md).
 
