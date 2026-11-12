@@ -1,0 +1,21 @@
+docs/contributing/architecture.md
+  s_23cbd010f69272::t_337dee5ed5c5ee 587
+server/internal/publish/publish.go
+  s_23cbd010f69272::t_337dee5ed5c5ee 160,546-551
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "199c9609c6137a4c1168477a7d093f31f22fe2cc",
+  "prompts": {},
+  "sessions": {
+    "s_23cbd010f69272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8441754d-7eb1-482c-bdcf-428fb10eaae1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
