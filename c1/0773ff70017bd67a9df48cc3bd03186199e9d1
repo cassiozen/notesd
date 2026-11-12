@@ -1,0 +1,49 @@
+server/internal/publish/handler.go
+  s_23cbd010f69272::t_ebefe5832e3ae3 64-94
+server/internal/api/respond.go
+  s_23cbd010f69272::t_e2e399a6c24b13 127-132
+server/internal/api/publish_test.go
+  s_23cbd010f69272::t_186eaad7061763 418-515
+apps/web/test/publishing.test.tsx
+  s_23cbd010f69272::t_3eda5fd7c4dd80 302,314,322-343
+  s_23cbd010f69272::t_d91dba9eed8389 344
+apps/web/src/settings/published-space.tsx
+  s_23cbd010f69272::t_543b17414b81a7 6,37-43,68-69,191,319-321,325,331,348-370,395,405,422
+server/internal/publish/publish.go
+  s_23cbd010f69272::t_de59e2c3f7d435 13,39-43,62-63,104,107-111,137-138,161,328-332,414,416-418,422-470,547,571-596
+  s_23cbd010f69272::t_ebefe5832e3ae3 415,419-421
+  s_23cbd010f69272::t_13f4be8ec24fac 597
+docs/contributing/architecture.md
+  s_23cbd010f69272::t_2def4091dcaf05 587,597
+server/internal/api/publish_handlers.go
+  s_23cbd010f69272::t_e2e399a6c24b13 5,51-53,60-63
+  s_23cbd010f69272::t_2573aa8df38d6c 64
+server/internal/publish/publish_test.go
+  s_23cbd010f69272::t_c169e60c2f45da 131
+  s_23cbd010f69272::t_2b836e3d3bc897 4,6,9
+  s_23cbd010f69272::t_cc650b491f7eb9 125-130,132-149
+docs/guides/using/publishing.md
+  s_23cbd010f69272::t_2def4091dcaf05 43-45,47-51,53-66,80-84,96,104-108,113-115,119-125
+docs/guides/self-hosting/fly-io.md
+  s_23cbd010f69272::t_2def4091dcaf05 51-53
+docs/reference/api.md
+  s_23cbd010f69272::t_2def4091dcaf05 360,715-716
+server/internal/api/api.go
+  s_23cbd010f69272::t_e2e399a6c24b13 247
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "c10773ff70017bd67a9df48cc3bd03186199e9d1",
+  "prompts": {},
+  "sessions": {
+    "s_23cbd010f69272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8441754d-7eb1-482c-bdcf-428fb10eaae1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
