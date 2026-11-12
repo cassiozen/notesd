@@ -10,7 +10,7 @@ account, put HTTPS in front, write a note and sync your phone, in about fifteen 
 
 ## I want to…
 
-- **Run notesd:** [with Docker](guides/self-hosting/docker.md) or [as a binary with systemd](guides/self-hosting/binary-systemd.md)
+- **Run notesd:** [with Docker](guides/self-hosting/docker.md), [as a binary with systemd](guides/self-hosting/binary-systemd.md) or [on Fly.io](guides/self-hosting/fly-io.md)
 - **Reach it from my devices:** [Network access and HTTPS](guides/self-hosting/https.md)
 - **Install an app:** [all downloads](https://notesd.app/download/), or the guides for [Mac](guides/apps/mac.md), [desktop web app](guides/apps/desktop-web-app.md), [Android](guides/apps/android.md), [iPhone](guides/apps/iphone.md)
 - **Keep a note private, even from the server:** [Locked notes](guides/using/locked-notes.md)
@@ -57,6 +57,7 @@ Start with the [introduction](get-started/00-introduction.md): what notesd is, a
 
 - [Run with Docker](guides/self-hosting/docker.md)
 - [Run the binary with systemd](guides/self-hosting/binary-systemd.md)
+- [Run on Fly.io](guides/self-hosting/fly-io.md)
 - [Network access and HTTPS](guides/self-hosting/https.md)
 - [Accounts](guides/self-hosting/users.md)
 - [Backups](guides/self-hosting/backups.md)
