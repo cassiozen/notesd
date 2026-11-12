@@ -156,7 +156,7 @@ To get started, you'll need a Fly.io account and [`flyctl`](https://fly.io/docs/
    mkdir my-notes && cd my-notes
    fly apps create my-notes
    ```
-   
+
    Keep this folder: the `fly` commands for your server, such as upgrading it, run from here.
 
 2. **Get the config.** This downloads notesd's `fly.toml` with your app's name added at the top:
@@ -168,7 +168,7 @@ To get started, you'll need a Fly.io account and [`flyctl`](https://fly.io/docs/
 3. **Choose your account.** Pick a username and a password of at least 8 characters:
 
    ```bash
-   fly secrets set --stage NOTESD_OWNER_USERNAME='your_user_name' NOTESD_OWNER_PASSWORD='a long password'
+   fly secrets set --stage NOTESD_OWNER_USERNAME='YOUR_USERNAME' NOTESD_OWNER_PASSWORD='a long password'
    ```
 
    notesd creates your account from these the first time it starts, so no one else can claim the
