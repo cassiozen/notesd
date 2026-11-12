@@ -1,12 +1,9 @@
 package publish
 
 import (
-	"bytes"
 	"context"
-	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -120,30 +117,5 @@ func TestAReloadThatReadBeforeAForgetDoesNotBringTheSiteBack(t *testing.T) {
 	defer s.mu.RUnlock()
 	if _, ok := s.sites["family"]; ok {
 		t.Fatal("a deleted space's site is served again")
-	}
-}
-
-func TestADomainTwoSitesClaimOrTheAppsIsNotServed(t *testing.T) {
-	var logged bytes.Buffer
-	s := &Service{log: slog.New(slog.NewTextHandler(&logged, nil)), unserved: map[string]bool{}}
-	// Saved before either was refused.
-	sites := map[string]Site{
-		"garden":  {Handle: "garden", Origin: "https://notes.example.com", Domain: "blog.example.com"},
-		"recipes": {Handle: "recipes", Origin: "https://notes.example.com", Domain: "blog.example.com"},
-		"work":    {Handle: "work", Origin: "https://notes.example.com", Domain: "notes.example.com"},
-		"trips":   {Handle: "trips", Origin: "https://notes.example.com:8443", Domain: "trips.example.com"},
-	}
-	served, unserved := s.servedDomains(sites)
-	if len(served) != 1 || served["trips.example.com"] != "trips" {
-		t.Fatalf("served: %v", served)
-	}
-	if !unserved["blog.example.com"] || !unserved["notes.example.com"] || strings.Count(logged.String(), "not served") != 2 {
-		t.Fatalf("left out: %v, logged %s", unserved, logged.String())
-	}
-	s.unserved = unserved
-	logged.Reset()
-	s.servedDomains(sites)
-	if logged.Len() != 0 {
-		t.Fatalf("logged again: %s", logged.String())
 	}
 }

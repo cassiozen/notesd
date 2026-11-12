@@ -135,7 +135,6 @@ type Service struct {
 	mu        sync.RWMutex
 	sites     map[string]Site      // published ones, by handle
 	domains   map[string]string    // handle by domain, of the published sites ServeDomain serves
-	unserved  map[string]bool      // domains left out of domains, as last logged
 	manifests map[string]*manifest // by handle, as last written
 	failed    map[string]bool      // by handle: the last render failed
 	readers   map[string]*database.DB
@@ -158,7 +157,7 @@ func New(system *database.DB, files *userdata.Registry, share *sharing.Service, 
 	s := &Service{
 		system: system, files: files, share: share, dataDir: cfg.DataDir, dir: filepath.Join(cfg.DataDir, "public"),
 		quiet: cfg.Quiet, maxWait: cfg.MaxWait, log: cfg.Log, now: time.Now,
-		sites: map[string]Site{}, domains: map[string]string{}, unserved: map[string]bool{}, manifests: map[string]*manifest{}, failed: map[string]bool{},
+		sites: map[string]Site{}, domains: map[string]string{}, manifests: map[string]*manifest{}, failed: map[string]bool{},
 		readers: map[string]*database.DB{}, pending: map[string]bool{}, wake: make(chan struct{}, 1),
 		limits: newLimits(),
 	}
@@ -544,7 +543,12 @@ func (s *Service) reload(ctx context.Context) {
 		}
 	}
 	s.sites = sites
-	s.domains, s.unserved = s.servedDomains(sites)
+	s.domains = map[string]string{}
+	for _, site := range sites {
+		if site.Domain != "" {
+			s.domains[site.Domain] = site.Handle
+		}
+	}
 	inUse := map[string]bool{}
 	for _, site := range sites {
 		inUse[site.File] = true
@@ -566,33 +570,6 @@ func (s *Service) reload(ctx context.Context) {
 	for _, h := range gone {
 		s.takeDown(h)
 	}
-}
-
-// servedDomains is which site each domain is, leaving out any two sites claim or that's an app's own
-// address (saved before either was refused): serving one would take the other, or the app, away.
-// Logged once, when it's first left out. Called with mu held.
-func (s *Service) servedDomains(sites map[string]Site) (map[string]string, map[string]bool) {
-	apps := map[string]bool{}
-	claims := map[string][]string{}
-	for _, site := range sites {
-		apps[originHost(site.Origin)] = true
-		if site.Domain != "" {
-			claims[site.Domain] = append(claims[site.Domain], site.Handle)
-		}
-	}
-	served, unserved := map[string]string{}, map[string]bool{}
-	for domain, handles := range claims {
-		if len(handles) == 1 && !apps[domain] {
-			served[domain] = handles[0]
-			continue
-		}
-		unserved[domain] = true
-		if !s.unserved[domain] {
-			s.log.Warn("site domain not served: it's another site's too, or the app's own address",
-				"domain", domain, "sites", handles)
-		}
-	}
-	return served, unserved
 }
 
 // takeDown removes a site's files.
