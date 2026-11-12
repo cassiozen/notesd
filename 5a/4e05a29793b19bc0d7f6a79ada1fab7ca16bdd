@@ -1,0 +1,34 @@
+docs/guides/self-hosting/upgrading.md
+  s_23cbd010f69272::t_0563100aa56dc1 27
+docs/README.md
+  s_23cbd010f69272::t_0563100aa56dc1 13,60
+website/.vitepress/config.mjs
+  s_23cbd010f69272::t_43e50abb6f364f 149
+deploy/fly/fly.toml
+  s_23cbd010f69272::t_d60017bba9d5cf 1-5,7-39
+  s_23cbd010f69272::t_e2df8402e871ed 6
+README.md
+  s_23cbd010f69272::t_0563100aa56dc1 33-34
+docs/guides/self-hosting/fly-io.md
+  s_23cbd010f69272::t_bd15da4f53ecf1 1-24,28-69,71-76,78-80,82,85-88,91-102,104-117
+  s_23cbd010f69272::t_e2df8402e871ed 25-27,89-90,103
+  s_23cbd010f69272::t_09e3c9305ae922 70,77,81,83-84
+docs/guides/self-hosting/backups.md
+  s_23cbd010f69272::t_d66472e9c4c15b 25-26
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.5",
+  "base_commit_sha": "5a4e05a29793b19bc0d7f6a79ada1fab7ca16bdd",
+  "prompts": {},
+  "sessions": {
+    "s_23cbd010f69272": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "8441754d-7eb1-482c-bdcf-428fb10eaae1",
+        "model": "claude-opus-5-5"
+      },
+      "human_author": "Cassio Zen <cassiozen@gmail.com>"
+    }
+  }
+}
