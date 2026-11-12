@@ -5,8 +5,8 @@ description: Guides and reference for running and using notesd.
 
 # notesd documentation
 
-New to notesd? **[Get started](get-started/00-introduction.md)**: run the server, create your
-account, put HTTPS in front, write a note and sync your phone, in about fifteen minutes.
+New to notesd? **[Get started](get-started/00-introduction.md)**: run the server on a home server,
+a VPS or Fly.io, write your first note and install the apps, in about ten minutes.
 
 ## I want to…
 
@@ -29,10 +29,8 @@ account, put HTTPS in front, write a note and sync your phone, in about fifteen 
 Start with the [introduction](get-started/00-introduction.md): what notesd is, and what you need.
 
 1. [Run the server](get-started/01-run-the-server.md)
-2. [Create your account](get-started/02-create-your-account.md)
-3. [Set up HTTPS](get-started/03-set-up-https.md)
-4. [Write your first note](get-started/04-write-your-first-note.md)
-5. [Add your phone](get-started/05-add-your-phone.md)
+2. [Account and your first note](get-started/02-account-and-first-note.md)
+3. [Install the apps](get-started/03-install-the-apps.md)
 
 ## Using notesd
 

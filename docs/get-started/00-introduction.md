@@ -5,29 +5,25 @@ description: What notesd is, and what you need to set it up.
 
 # Introduction
 
-notesd is a notes app you host yourself. The server is a single binary with SQLite inside, and
-nothing else to set up. You use it from the web app it serves, or from the Android, iPhone and Mac
-apps, which keep a full copy of your notes, work offline and sync when they can reach the server.
+notesd is a notes app you host yourself: your notes live on a server you control.
+It's one single binary to deploy with everything built in, and no stack of services to look after.
+
+You use it from the browser or the Android, iPhone and Mac apps that work fully offline and sync when they can reach the server.
 
 ## What you need
 
-- **A server:** a 64-bit Linux machine (x86-64 or ARM64) that stays on and that you can SSH into,
-  such as a VPS, a home server or a Raspberry Pi 4 or 5. The binary also runs on Apple silicon
-  Macs.
-- **[Docker](https://docs.docker.com/get-docker/)** on it, or the
-  [notesd binary](../guides/self-hosting/binary-systemd.md) instead.
-- **For HTTPS:** a domain you can point at the server, or [Tailscale](https://tailscale.com) on
-  the server and your devices.
-- **For your phone** (optional): Android 9 or later, or an iPhone on iOS 26 or later.
+**A server:** a 64-bit Linux machine (x86-64 or ARM64) or an Apple silicon Mac. Any of these works:
+
+- **A machine you own**, such as a Raspberry Pi or a mini PC.
+- **A VPS** like Hetzner or DigitalOcean, usually $4–6 a month.
+- **A VM platform** like Fly.io, the cheapest and least work: about $2–3 a month, with HTTPS included.
 
 ## What you'll do
 
-In about fifteen minutes:
+In about ten minutes:
 
 1. [Run the server](01-run-the-server.md)
-2. [Create your account](02-create-your-account.md)
-3. [Set up HTTPS](03-set-up-https.md)
-4. [Write your first note](04-write-your-first-note.md)
-5. [Add your phone](05-add-your-phone.md)
+2. [Account and your first note](02-account-and-first-note.md)
+3. [Install the apps](03-install-the-apps.md)
 
 **Next:** [1. Run the server](01-run-the-server.md)

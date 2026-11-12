@@ -26,7 +26,7 @@ release of the same version.
 
 On first launch, the app asks for your server: the address you open notesd at in a browser, such as
 `notes.example.com`. It needs **HTTPS**, as set up in
-[Get started](../../get-started/03-set-up-https.md); plain HTTP works only for a server on the same
+[Get started](../../get-started/01-run-the-server.md); plain HTTP works only for a server on the same
 Mac (`http://localhost:8080`). Then sign in. Create your account on the server before you connect
 anything to it: until it exists, anyone who can reach the server can create it (see
 [Create your account](../self-hosting/users.md#create-your-account)).
