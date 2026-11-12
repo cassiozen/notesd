@@ -148,22 +148,41 @@ name.
 
 To get started, you'll need a Fly.io account and [`flyctl`](https://fly.io/docs/flyctl/install/) installed on your computer. Once installed, sign in with `fly auth login`.
 
-Pick an app name, which is also your address: `my-notes` becomes `https://my-notes.fly.dev`. Then,
-in a new, empty folder:
+1. **Create the app.** Pick a name, which is also your address: `my-notes` becomes
+   `https://my-notes.fly.dev`. Names are shared by everyone on Fly.io, so if yours is taken, try
+   another. Make a folder for it and create the app:
 
-```bash
-fly apps create my-notes
-{ echo 'app = "my-notes"'; curl -fsSL https://raw.githubusercontent.com/cassiozen/notesd/main/deploy/fly/fly.toml; } > fly.toml
-fly secrets set --stage NOTESD_OWNER_USERNAME=YOUR_USERNAME NOTESD_OWNER_PASSWORD='a long password'
-fly deploy
-```
+   ```bash
+   mkdir my-notes && cd my-notes
+   fly apps create my-notes
+   ```
+   
+   Keep this folder: the `fly` commands for your server, such as upgrading it, run from here.
 
-Start the `fly secrets` line with a space to keep the password out of your shell history (zsh needs
-`setopt histignorespace`).
+2. **Get the config.** This downloads notesd's `fly.toml` with your app's name added at the top:
 
-`fly deploy` creates the server, the volume your notes are stored on, and HTTPS. notesd creates
-your account from the two secrets when it first starts, so no one else can claim the server. Keep
-`fly.toml`: the Fly commands run from its folder.
+   ```bash
+   { echo 'app = "my-notes"'; curl -fsSL https://raw.githubusercontent.com/cassiozen/notesd/main/deploy/fly/fly.toml; } > fly.toml
+   ```
+
+3. **Choose your account.** Pick a username and a password of at least 8 characters:
+
+   ```bash
+   fly secrets set --stage NOTESD_OWNER_USERNAME='your_user_name' NOTESD_OWNER_PASSWORD='a long password'
+   ```
+
+   notesd creates your account from these the first time it starts, so no one else can claim the
+   server.
+
+4. **Deploy:**
+
+   ```bash
+   fly deploy
+   ```
+
+   This creates the server, the volume your notes are stored on, and HTTPS, in a minute or two.
+   Check that it's running: `curl https://my-notes.fly.dev/healthz` should print
+   `{"status":"ok"}`.
 
 Your address is `https://my-notes.fly.dev`. To use your own domain, upgrade, or restore a backup,
 see [Run on Fly.io](../guides/self-hosting/fly-io.md).
