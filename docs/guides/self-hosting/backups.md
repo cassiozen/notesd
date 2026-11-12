@@ -22,6 +22,8 @@ database and folds them in over time, so a copy taken while it runs can catch th
 and be inconsistent. A `notesd backup` command that copies safely while the server runs is
 planned, but not built yet.
 
+On Fly.io, the volume is snapshotted every day instead: see [Backups](fly-io.md#backups).
+
 **systemd**, with the directory in `/var/lib/notesd`:
 
 ```bash

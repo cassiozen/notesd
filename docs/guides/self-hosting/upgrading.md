@@ -24,7 +24,7 @@ sudo systemctl start notesd
 notesd version
 ```
 
-With Docker, see [Docker](#docker). A new version updates the database
+With Docker, see [Docker](#docker); on Fly.io, [Upgrade](fly-io.md#upgrade). A new version updates the database
 when it starts. An older binary can't open a database a newer one has
 updated, so to go back, restore the backup too.
 

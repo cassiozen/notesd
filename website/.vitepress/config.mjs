@@ -146,6 +146,7 @@ export default defineConfig({
         items: [
           { text: "Run with Docker", link: "/guides/self-hosting/docker" },
           { text: "Run the binary with systemd", link: "/guides/self-hosting/binary-systemd" },
+          { text: "Run on Fly.io", link: "/guides/self-hosting/fly-io" },
           { text: "Network access and HTTPS", link: "/guides/self-hosting/https" },
           { text: "Accounts", link: "/guides/self-hosting/users" },
           { text: "Backups", link: "/guides/self-hosting/backups" },
