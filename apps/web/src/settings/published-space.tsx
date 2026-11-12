@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { ApiError } from '../api/client'
 import { publishing, type PublishSettings } from '../api/spaces'
 import type { Space } from '../api/types'
+import { useAuth } from '../auth/auth-context'
 import { genericMessage } from '../auth/errors'
 import { catchUpSpaces, expectPublished, unexpectPublished } from '../notes/spaces'
 import { PublishedGlyph } from '../notes/trait-glyphs'
@@ -33,6 +34,13 @@ export function publishError(err: unknown): Failure {
         return { field: 'handle', message: 'Another space has that address. Try another.' }
       case 'not_space_owner':
         return { message: 'Only the space’s owner can do that.' }
+      case 'domain_taken':
+        return { field: 'domain', message: 'Another site uses that domain.' }
+      case 'domain_is_app':
+        return { field: 'domain', message: 'That’s this server’s own address. Use another domain.' }
+      case 'admin_only':
+        if (err.field === 'domain') return { field: 'domain', message: 'Only an admin can set the domain.' }
+        break
       case 'invalid_request':
         if (err.field === 'handle') {
           return { field: 'handle', message: 'Use 1–64 lowercase letters, digits and hyphens, not starting or ending with a hyphen.' }
@@ -57,6 +65,8 @@ const DOMAIN_DOCS = 'https://notesd.app/docs/guides/using/publishing.html#use-yo
 export function PublishedSection({ space, page }: { space: Space; page: TraitPage }) {
   const trait = space.traits.find((t) => t.key === 'published')
   const owner = space.shared?.role !== 'member'
+  const { state } = useAuth()
+  const admin = state.status === 'signed-in' && state.isAdmin === true
   const [settings, setSettings] = useState<PublishSettings | null>(null)
   const [busy, setBusy] = useState<'publish' | 'handle' | 'css' | 'domain' | 'stop' | null>(null)
   const [failure, setFailure] = useState<Failure>()
@@ -178,6 +188,7 @@ export function PublishedSection({ space, page }: { space: Space; page: TraitPag
                   <OwnDomain
                     key={`domain:${settings.domain}`}
                     settings={settings}
+                    admin={admin}
                     busy={busy}
                     onSave={(domain) => run('domain', () => publishing.put(space.id, { domain }))}
                     error={error('domain')}
@@ -305,17 +316,19 @@ function Address({
 }
 
 /**
- * The site on a domain of its own. The owner's proxy serves it, mapping the domain onto the site's path; notesd only
- * builds the site's absolute links from it. How to set up each proxy is the docs': here, only the one thing to map.
- * Emptied and saved, it asks first: the site's links go back to the app's address.
+ * The site on a domain of its own: notesd serves it there once DNS and HTTPS reach this server, which is the docs' to
+ * explain. Set by an admin only: it takes effect at once, and could take an address that isn't the site's. Emptied and
+ * saved, it asks first: the site's links go back to the app's address.
  */
 function OwnDomain({
   settings,
+  admin,
   busy,
   onSave,
   error,
 }: {
   settings: PublishSettings
+  admin: boolean
   busy: string | null
   onSave: (domain: string) => Promise<boolean>
   error: ReactNode
@@ -324,14 +337,35 @@ function OwnDomain({
   const hintId = useId()
   const [draft, setDraft] = useState(settings.domain)
   const [asking, setAsking] = useState(false)
-  const [copied, copy] = useCopy()
-  const path = `/@${settings.handle}`
   const changed = draft.trim() !== settings.domain
 
   function submit() {
     if (busy !== null || !changed) return
     if (draft.trim() === '') setAsking(true)
     else void onSave(draft.trim())
+  }
+
+  if (!admin) {
+    return (
+      <section className={info.section} aria-labelledby={headingId}>
+        <h3 id={headingId} className={info.caption}>
+          Your own domain
+        </h3>
+        <div className={info.group}>
+          <div className={`${styles.row} ${styles.field}`}>
+            <p className={styles.hint}>
+              {settings.domain ? (
+                <>
+                  The site is at <code>{settings.domain}</code>. Only an admin of this server can change its domain.
+                </>
+              ) : (
+                'An admin of this server can give the site a domain of its own, such as blog.example.com.'
+              )}
+            </p>
+          </div>
+        </div>
+      </section>
+    )
   }
 
   return (
@@ -358,14 +392,9 @@ function OwnDomain({
           {settings.domain ? (
             <>
               <p id={hintId} className={styles.hint}>
-                Point {settings.domain} at this server, then have your proxy send its requests to notesd with <code>{path}</code> before
-                the path.
+                Point {settings.domain} at this server and give it HTTPS, as you did for this app’s address.
               </p>
               <div className={styles.line}>
-                <code className={styles.path}>{path}</code>
-                <Button size="sm" variant="ghost" onClick={() => void copy(path)}>
-                  {copied ? 'Copied' : 'Copy'}
-                </Button>
                 <a className={styles.docs} href={DOMAIN_DOCS} target="_blank" rel="noopener noreferrer">
                   How to set it up
                 </a>
@@ -373,7 +402,7 @@ function OwnDomain({
             </>
           ) : (
             <p id={hintId} className={styles.hint}>
-              Serve the site at a domain of its own, such as blog.example.com. Your proxy serves it: notesd can’t by itself.
+              Serve the site at a domain of its own, such as blog.example.com.
             </p>
           )}
           {error}
@@ -390,7 +419,7 @@ function OwnDomain({
               onConfirm={() => void onSave('')}
               onCancel={() => setAsking(false)}
             >
-              The site’s links go back to its address here. Remove its block from your proxy too.
+              The site’s links go back to its address here, and the domain stops serving it.
             </InlineConfirm>
           )}
         </div>

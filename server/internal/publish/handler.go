@@ -61,6 +61,37 @@ var publicCSP = "default-src 'none'; script-src 'self'; style-src 'self' https:;
 // IsPublic reports whether a request is for a published space.
 func IsPublic(r *http.Request) bool { return strings.HasPrefix(r.URL.Path, "/@") }
 
+// ServeDomain serves a request for a site's own domain as the site: its path is put under /@<handle>/,
+// unless a proxy already did, so nothing else (the app, another site) is reachable there. Host and
+// X-Forwarded-Host both count: either naming a site's domain only ever gets the public site.
+func (s *Service) ServeDomain(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		fwd, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Host"), ",")
+		s.mu.RLock()
+		handle, ok := s.domains[hostname(r.Host)]
+		if !ok && fwd != "" {
+			handle, ok = s.domains[hostname(fwd)]
+		}
+		s.mu.RUnlock()
+		if !ok {
+			next.ServeHTTP(w, r)
+			return
+		}
+		root := "/@" + handle
+		if r.URL.Path != root && !strings.HasPrefix(r.URL.Path, root+"/") {
+			u := *r.URL
+			u.Path = root + u.Path
+			if u.RawPath != "" {
+				u.RawPath = root + u.RawPath
+			}
+			r2 := *r
+			r2.URL = &u
+			r = &r2
+		}
+		s.ServeHTTP(w, r)
+	})
+}
+
 // ServeHTTP serves /@<handle>/…: files a site's manifest names, and its search. Nothing here reads a
 // cookie or sets one, so any cache between may keep what it answers.
 func (s *Service) ServeHTTP(w http.ResponseWriter, r *http.Request) {

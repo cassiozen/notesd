@@ -124,6 +124,12 @@ func (s *Server) writeErr(w http.ResponseWriter, r *http.Request, err error) {
 		writeError(w, http.StatusNotFound, "not_published", err.Error())
 	case errors.Is(err, publish.ErrHandleTaken):
 		writeJSON(w, http.StatusConflict, errorBody{Error: "handle_taken", Message: err.Error(), Field: "handle"})
+	case errors.Is(err, publish.ErrDomainTaken):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "domain_taken", Message: err.Error(), Field: "domain"})
+	case errors.Is(err, publish.ErrDomainIsApp):
+		writeJSON(w, http.StatusConflict, errorBody{Error: "domain_is_app", Message: err.Error(), Field: "domain"})
+	case errors.Is(err, publish.ErrDomainAdminOnly):
+		writeJSON(w, http.StatusForbidden, errorBody{Error: "admin_only", Message: err.Error(), Field: "domain"})
 	case errors.Is(err, publish.ErrDefault):
 		writeError(w, http.StatusConflict, "space_default", err.Error())
 	case errors.Is(err, spaces.ErrNotFound):

@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"strings"
 
 	"notes/server/internal/publish"
 	"notes/server/internal/sharing"
@@ -47,13 +48,19 @@ func (s *Server) getPublish(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, set)
 }
 
-// PUT /api/v1/spaces/{id}/publish  {"handle"?, "origin"?, "css"?} — publishes a space, or changes how;
-// a field left out keeps what's stored. The first time, origin is required.
+// PUT /api/v1/spaces/{id}/publish  {"handle"?, "origin"?, "domain"?, "css"?} — publishes a space, or
+// changes how; a field left out keeps what's stored. The first time, origin is required. Setting a
+// domain is an admin's.
 func (s *Server) putPublish(w http.ResponseWriter, r *http.Request) {
 	var in publish.Input
 	if err := decode(w, r, &in); err != nil {
 		s.writeErr(w, r, err)
 		return
+	}
+	in.Admin = sessionFrom(r.Context()).IsAdmin
+	in.AppHosts = []string{r.Host}
+	if fwd, _, _ := strings.Cut(r.Header.Get("X-Forwarded-Host"), ","); fwd != "" {
+		in.AppHosts = append(in.AppHosts, fwd)
 	}
 	file, d, release, err := s.publishTarget(r)
 	if err != nil {

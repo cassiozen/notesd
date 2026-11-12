@@ -48,6 +48,9 @@ fly certs add notes.example.com
 It prints the DNS records to add at your domain's provider. Once they're in, Fly gets the
 certificate; `fly certs show notes.example.com` says when. notesd works at both addresses.
 
+A published space can have a domain of its own the same way: see
+[Publishing a space](../using/publishing.md#fly-io).
+
 ## Upgrade
 
 `fly deploy` pulls the newest image. Snapshot the volume first, as a newer notesd updates the

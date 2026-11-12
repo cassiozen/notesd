@@ -142,14 +142,6 @@
   padding: 12px;
 }
 
-.path {
-  /* A handle runs to 64 characters: wraps rather than pushing Copy and the link out of a narrow row. */
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font: 500 13px var(--font-mono);
-  color: var(--ink);
-}
-
 .docs {
   margin-left: auto;
   font-size: 13px;

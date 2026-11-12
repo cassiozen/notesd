@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -35,6 +36,11 @@ const MaxCSS = 64 << 10
 var (
 	ErrNotPublished = errors.New("the space isn't published")
 	ErrHandleTaken  = errors.New("another space has that address")
+	ErrDomainTaken  = errors.New("another site uses that domain")
+	// ErrDomainIsApp: notesd serves a site's domain as the site alone, so the app's own would be lost.
+	ErrDomainIsApp = errors.New("that's this server's own address")
+	// ErrDomainAdminOnly: a domain takes effect once saved, so it's for whoever runs the server.
+	ErrDomainAdminOnly = errors.New("only an admin can set a site's domain")
 	// ErrDefault: every account keeps one space no trait exposes, where a locked note refused elsewhere
 	// is kept (§7.8).
 	ErrDefault = errors.New("the default space can't be published")
@@ -53,8 +59,8 @@ type Site struct {
 	SpaceID string
 	Handle  string
 	Origin  string
-	// Domain is the site's own (blog.example.com), '' for none: the owner's proxy maps it onto
-	// /@<handle>/, so its absolute links are built from it.
+	// Domain is the site's own (blog.example.com), '' for none: requests for it are the site's
+	// (ServeDomain), and its absolute links are built from it.
 	Domain    string
 	Published bool
 }
@@ -95,9 +101,14 @@ type Input struct {
 	// Origin is the app's own address (scheme://host), which the server can't know (§10): the site's
 	// absolute URLs (the feed) are built from it.
 	Origin *string `json:"origin"`
-	// Domain is the site's own, "" to drop it.
+	// Domain is the site's own, "" to drop it. Changing it needs Admin.
 	Domain *string `json:"domain"`
 	CSS    *string `json:"css"`
+
+	// Admin and AppHosts are the caller's, from the request: whether they're an admin, and the hosts
+	// they reached the app at, which a domain mustn't be.
+	Admin    bool     `json:"-"`
+	AppHosts []string `json:"-"`
 }
 
 // Config sets up a Service.
@@ -123,6 +134,8 @@ type Service struct {
 
 	mu        sync.RWMutex
 	sites     map[string]Site      // published ones, by handle
+	domains   map[string]string    // handle by domain, of the published sites ServeDomain serves
+	unserved  map[string]bool      // domains left out of domains, as last logged
 	manifests map[string]*manifest // by handle, as last written
 	failed    map[string]bool      // by handle: the last render failed
 	readers   map[string]*database.DB
@@ -145,7 +158,7 @@ func New(system *database.DB, files *userdata.Registry, share *sharing.Service, 
 	s := &Service{
 		system: system, files: files, share: share, dataDir: cfg.DataDir, dir: filepath.Join(cfg.DataDir, "public"),
 		quiet: cfg.Quiet, maxWait: cfg.MaxWait, log: cfg.Log, now: time.Now,
-		sites: map[string]Site{}, manifests: map[string]*manifest{}, failed: map[string]bool{},
+		sites: map[string]Site{}, domains: map[string]string{}, unserved: map[string]bool{}, manifests: map[string]*manifest{}, failed: map[string]bool{},
 		readers: map[string]*database.DB{}, pending: map[string]bool{}, wake: make(chan struct{}, 1),
 		limits: newLimits(),
 	}
@@ -312,6 +325,11 @@ func (s *Service) Publish(ctx context.Context, file string, d *userdata.Data, sp
 			if site.Origin == "" {
 				return &InputError{"origin", "is required: the app's address, such as https://notes.example.com"}
 			}
+			if site.Domain != old.Domain {
+				if err := s.checkDomain(ctx, stx, site, in); err != nil {
+					return err
+				}
+			}
 			switch {
 			case in.Handle != nil && *in.Handle != old.Handle:
 				if taken, err := handleTaken(ctx, stx, *in.Handle); err != nil {
@@ -393,6 +411,63 @@ func cleanDomain(raw string) (string, error) {
 	return d, nil
 }
 
+// checkDomain refuses a site's new domain unless an admin sets it, and it's no other site's and not the
+// app's: notesd serves whatever is asked of it as the site. Dropping one is anyone's.
+func (s *Service) checkDomain(ctx context.Context, tx *sql.Tx, site Site, in Input) error {
+	if site.Domain == "" {
+		return nil
+	}
+	if !in.Admin {
+		return ErrDomainAdminOnly
+	}
+	for _, h := range in.AppHosts {
+		if hostname(h) == site.Domain {
+			return ErrDomainIsApp
+		}
+	}
+	rows, err := tx.QueryContext(ctx, `SELECT file, space_id, origin, domain FROM published_spaces`)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+	taken, isApp := false, originHost(site.Origin) == site.Domain
+	for rows.Next() {
+		var other Site
+		if err := rows.Scan(&other.File, &other.SpaceID, &other.Origin, &other.Domain); err != nil {
+			return err
+		}
+		isApp = isApp || originHost(other.Origin) == site.Domain
+		taken = taken || (other.Domain == site.Domain && (other.File != site.File || other.SpaceID != site.SpaceID))
+	}
+	if err := rows.Err(); err != nil {
+		return err
+	}
+	switch {
+	case isApp:
+		return ErrDomainIsApp
+	case taken:
+		return ErrDomainTaken
+	}
+	return nil
+}
+
+// originHost is an app address's host name, without its port.
+func originHost(origin string) string {
+	u, err := url.Parse(origin)
+	if err != nil {
+		return ""
+	}
+	return hostname(u.Host)
+}
+
+// hostname is a Host header's name, without its port, as cleanDomain has a domain.
+func hostname(host string) string {
+	if h, _, err := net.SplitHostPort(host); err == nil {
+		host = h
+	}
+	return strings.TrimSuffix(strings.ToLower(strings.TrimSpace(host)), ".")
+}
+
 // cleanOrigin is an app's address as scheme://host[:port].
 func cleanOrigin(raw string) (string, error) {
 	u, err := url.Parse(strings.TrimSpace(raw))
@@ -469,6 +544,7 @@ func (s *Service) reload(ctx context.Context) {
 		}
 	}
 	s.sites = sites
+	s.domains, s.unserved = s.servedDomains(sites)
 	inUse := map[string]bool{}
 	for _, site := range sites {
 		inUse[site.File] = true
@@ -490,6 +566,33 @@ func (s *Service) reload(ctx context.Context) {
 	for _, h := range gone {
 		s.takeDown(h)
 	}
+}
+
+// servedDomains is which site each domain is, leaving out any two sites claim or that's an app's own
+// address (saved before either was refused): serving one would take the other, or the app, away.
+// Logged once, when it's first left out. Called with mu held.
+func (s *Service) servedDomains(sites map[string]Site) (map[string]string, map[string]bool) {
+	apps := map[string]bool{}
+	claims := map[string][]string{}
+	for _, site := range sites {
+		apps[originHost(site.Origin)] = true
+		if site.Domain != "" {
+			claims[site.Domain] = append(claims[site.Domain], site.Handle)
+		}
+	}
+	served, unserved := map[string]string{}, map[string]bool{}
+	for domain, handles := range claims {
+		if len(handles) == 1 && !apps[domain] {
+			served[domain] = handles[0]
+			continue
+		}
+		unserved[domain] = true
+		if !s.unserved[domain] {
+			s.log.Warn("site domain not served: it's another site's too, or the app's own address",
+				"domain", domain, "sites", handles)
+		}
+	}
+	return served, unserved
 }
 
 // takeDown removes a site's files.
