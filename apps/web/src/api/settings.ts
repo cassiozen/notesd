@@ -1,5 +1,5 @@
 import { request } from './client'
-import type { AiSettings, AiSettingsInput, AiTestResult, EmailSettings, UpdateStatus } from './types'
+import type { AiModels, AiModelsInput, AiSettings, AiSettingsInput, AiTestResult, EmailSettings, UpdateStatus } from './types'
 
 export const settings = {
   email: () => request<EmailSettings>('GET', '/settings/email'),
@@ -12,6 +12,7 @@ export const settings = {
   removeAi: () => request<undefined>('DELETE', '/settings/ai'),
   /** Tests input before it's saved, or the saved settings without it. */
   testAi: (input?: AiSettingsInput) => request<AiTestResult>('POST', '/settings/ai/test', input),
+  aiModels: (input: AiModelsInput) => request<AiModels>('POST', '/settings/ai/models', input),
   update: () => request<UpdateStatus>('GET', '/update'),
   requestUpdate: () => request<undefined>('POST', '/update'),
 }

@@ -343,6 +343,24 @@
   cursor: pointer;
 }
 
+/* As many per row as fit, so a long name wraps a row instead of overflowing. */
+.providers {
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+}
+
+.fieldGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* A group's label, as a field's. */
+.groupLabel {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--ink-2);
+}
+
 .segment[aria-checked='true'] {
   background: var(--glass-hi);
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.12);

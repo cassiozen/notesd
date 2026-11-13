@@ -142,14 +142,16 @@ or a model you run yourself with Ollama or LM Studio. The model must support too
 how an agent reads and changes notes.
 
 1. Open **Settings → Integrations**, and click **Connect** beside **AI**.
-2. Enter:
+2. On the web, pick **OpenAI**, **OpenRouter** or **Ollama** to fill in the address, or **Other**
+   for any other provider. Then enter:
    - **API address**: the address requests go to, ending before `/chat/completions`, such as
      `https://api.openai.com/v1` or `http://localhost:11434/v1` for Ollama. Plain `http://` is
      only accepted for a provider on your own network: a private address, a `.local` name, or a
      name with no dot, like a Docker Compose service.
    - **API key**: the provider's key. A local model that doesn't check keys still needs something
      here; any word will do.
-   - **Model**: the model's name as the provider spells it.
+   - **Model**: the model's name as the provider spells it. Once the address and key are in, the
+     web app lists the provider's models to pick from; on OpenRouter, only those that call tools.
    - **Daily tokens per space**: how many tokens each space's agent may use in a day.
      1,000,000 unless you change it.
 3. Click **Test**. notesd asks the model to call a tool and says whether it did. A model that

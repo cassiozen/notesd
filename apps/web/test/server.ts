@@ -179,16 +179,29 @@ export type FakeLLM = {
    * hold: the turn's answer waits for it, as a slow model would.
    */
   script: (({ tool: string; args: unknown } | { text: string }) & { hold?: Promise<unknown> })[]
+  /** GET /v1/models: the ids listed, or the provider refusing. Authorization headers it came with, in order. */
+  models: string[] | { refuse: string }
+  modelsAuth: string[]
 }
 
-/** Stands in for an OpenAI-compatible API: POST /v1/chat/completions, answering with a call to the first tool. */
+/** Stands in for an OpenAI-compatible API: POST /v1/chat/completions, answering with a call to the first tool, and GET /v1/models. */
 export async function startFakeLLM(): Promise<FakeLLM> {
-  const fake: FakeLLM = { url: '', requests: [], textOnly: false, script: [] }
+  const fake: FakeLLM = { url: '', requests: [], textOnly: false, script: [], models: ['fake-model'], modelsAuth: [] }
   const srv = createServer((req, res) => {
     let raw = ''
     req.on('data', (c: Buffer) => (raw += c.toString()))
     req.on('end', () => {
       res.setHeader('Content-Type', 'application/json')
+      if (req.method === 'GET' && req.url === '/v1/models') {
+        fake.modelsAuth.push(req.headers.authorization ?? '')
+        if (Array.isArray(fake.models)) {
+          res.end(JSON.stringify({ object: 'list', data: fake.models.map((id) => ({ id, object: 'model' })) }))
+        } else {
+          res.statusCode = 401
+          res.end(JSON.stringify({ error: { message: fake.models.refuse } }))
+        }
+        return
+      }
       if (req.method !== 'POST' || req.url !== '/v1/chat/completions') {
         res.statusCode = 404
         res.end(JSON.stringify({ error: { message: 'not found' } }))

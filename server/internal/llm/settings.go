@@ -117,16 +117,31 @@ func Resolve(ctx context.Context, db *database.DB, in Input) (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
-	if s.APIKey == "" {
-		saved, err := load(ctx, db.R)
-		if err != nil {
-			return Settings{}, err
-		}
-		if saved.APIKey == "" {
-			return Settings{}, &InputError{Field: "apiKey", Message: "enter the provider's API key"}
-		}
-		s.APIKey = saved.APIKey
+	return withSavedKey(ctx, db, s)
+}
+
+// ResolveProvider is Resolve for the address and key alone, with no model
+// chosen yet: what listing models needs.
+func ResolveProvider(ctx context.Context, db *database.DB, in Input) (Settings, error) {
+	s, err := validateProvider(in)
+	if err != nil {
+		return Settings{}, err
 	}
+	return withSavedKey(ctx, db, s)
+}
+
+func withSavedKey(ctx context.Context, db *database.DB, s Settings) (Settings, error) {
+	if s.APIKey != "" {
+		return s, nil
+	}
+	saved, err := load(ctx, db.R)
+	if err != nil {
+		return Settings{}, err
+	}
+	if saved.APIKey == "" {
+		return Settings{}, &InputError{Field: "apiKey", Message: "enter the provider's API key"}
+	}
+	s.APIKey = saved.APIKey
 	return s, nil
 }
 
@@ -167,11 +182,29 @@ func Clear(ctx context.Context, db *database.DB) error {
 }
 
 func validate(in Input) (Settings, error) {
+	s, err := validateProvider(in)
+	if err != nil {
+		return s, err
+	}
+	s.Model = strings.TrimSpace(in.Model)
+	s.DailyTokenCap = in.DailyTokenCap
+	if s.Model == "" || len(s.Model) > 200 || strings.ContainsAny(s.Model, "\r\n") {
+		return s, &InputError{Field: "model", Message: "enter the model's name, like gpt-4.1-mini"}
+	}
+	switch {
+	case s.DailyTokenCap == 0:
+		s.DailyTokenCap = DefaultDailyTokenCap
+	case s.DailyTokenCap < 0 || s.DailyTokenCap > maxDailyTokenCap:
+		return s, &InputError{Field: "dailyTokenCap", Message: "enter a number of tokens up to 10 billion"}
+	}
+	return s, nil
+}
+
+// validateProvider checks the address and key; the key may be empty, for the saved one.
+func validateProvider(in Input) (Settings, error) {
 	s := Settings{
-		BaseURL:       strings.TrimRight(strings.TrimSpace(in.BaseURL), "/"),
-		APIKey:        strings.TrimSpace(in.APIKey),
-		Model:         strings.TrimSpace(in.Model),
-		DailyTokenCap: in.DailyTokenCap,
+		BaseURL: strings.TrimRight(strings.TrimSpace(in.BaseURL), "/"),
+		APIKey:  strings.TrimSpace(in.APIKey),
 	}
 	u, err := url.Parse(s.BaseURL)
 	// /chat/completions is appended, so even an empty query or fragment ("v1?") would swallow it.
@@ -186,15 +219,6 @@ func validate(in Input) (Settings, error) {
 	s.BaseURL = strings.TrimSuffix(s.BaseURL, "/chat/completions")
 	if strings.ContainsAny(s.APIKey, " \t\r\n") {
 		return s, &InputError{Field: "apiKey", Message: "an API key has no spaces"}
-	}
-	if s.Model == "" || len(s.Model) > 200 || strings.ContainsAny(s.Model, "\r\n") {
-		return s, &InputError{Field: "model", Message: "enter the model's name, like gpt-4.1-mini"}
-	}
-	switch {
-	case s.DailyTokenCap == 0:
-		s.DailyTokenCap = DefaultDailyTokenCap
-	case s.DailyTokenCap < 0 || s.DailyTokenCap > maxDailyTokenCap:
-		return s, &InputError{Field: "dailyTokenCap", Message: "enter a number of tokens up to 10 billion"}
 	}
 	return s, nil
 }

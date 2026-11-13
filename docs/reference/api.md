@@ -642,6 +642,7 @@ connection drops, and hears them again on `editor.opened`.
 | `PUT` | `/settings/ai` | `{baseUrl, apiKey?, model, dailyTokenCap?}` → the same as `GET`. Admins only |
 | `DELETE` | `/settings/ai` | → `204`. Admins only |
 | `POST` | `/settings/ai/test` | `{baseUrl, apiKey?, model}`, or no body → `{ok, model, latencyMs}`. Admins only |
+| `POST` | `/settings/ai/models` | `{baseUrl, apiKey?}` → `{models: [{id}]}`. Admins only |
 
 **Settings** are server-wide: one OpenAI-compatible provider for every account's
 [agents](../guides/using/agents.md). `baseUrl` is where requests go, without `/chat/completions`
@@ -657,6 +658,13 @@ is no body. `model` in the answer is the model as the provider names it. The tes
 `502 ai_test_failed` and a `message` for the admin when the provider can't be reached, refuses the
 request, or the model answers without calling the tool. With no body and nothing saved, it's
 `409 ai_not_configured`.
+
+**Listing models** asks the provider's `GET /models` with the address and key in the body (`apiKey`
+left out uses the saved key), so a model can be picked before anything is saved. `baseUrl` is
+checked as when saving. `models` is sorted by `id`; where the provider says which parameters a
+model supports (OpenRouter), models without tool calls are left out. The provider refusing, not
+answering within 30 seconds, or answering with something other than a model list is
+`502 ai_failed` with a `message` for the admin.
 
 ### Updates
 

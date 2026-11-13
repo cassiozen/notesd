@@ -202,6 +202,12 @@ export type AiSettings = {
 /** PUT /settings/ai and POST /settings/ai/test. Omit apiKey to use the saved one. */
 export type AiSettingsInput = { baseUrl: string; model: string; apiKey?: string; dailyTokenCap?: number }
 
+/** POST /settings/ai/models: the address and a key, or none for the saved one. */
+export type AiModelsInput = { baseUrl: string; apiKey?: string }
+
+/** The provider's models, sorted; on OpenRouter only those that call tools. */
+export type AiModels = { models: { id: string }[] }
+
 /** A passed POST /settings/ai/test. model is as the provider named it. */
 export type AiTestResult = { ok: true; model: string; latencyMs: number }
 
