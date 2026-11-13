@@ -117,31 +117,37 @@ func Resolve(ctx context.Context, db *database.DB, in Input) (Settings, error) {
 	if err != nil {
 		return Settings{}, err
 	}
-	return withSavedKey(ctx, db, s)
+	if s.APIKey == "" {
+		saved, err := load(ctx, db.R)
+		if err != nil {
+			return Settings{}, err
+		}
+		if saved.APIKey == "" {
+			return Settings{}, &InputError{Field: "apiKey", Message: "enter the provider's API key"}
+		}
+		s.APIKey = saved.APIKey
+	}
+	return s, nil
 }
 
 // ResolveProvider is Resolve for the address and key alone, with no model
-// chosen yet: what listing models needs.
+// chosen yet: what listing models needs. The saved key only goes to the saved
+// address, since the dialog lists models unasked, as an address is typed.
 func ResolveProvider(ctx context.Context, db *database.DB, in Input) (Settings, error) {
 	s, err := validateProvider(in)
 	if err != nil {
 		return Settings{}, err
 	}
-	return withSavedKey(ctx, db, s)
-}
-
-func withSavedKey(ctx context.Context, db *database.DB, s Settings) (Settings, error) {
-	if s.APIKey != "" {
-		return s, nil
+	if s.APIKey == "" {
+		saved, err := load(ctx, db.R)
+		if err != nil {
+			return Settings{}, err
+		}
+		if saved.APIKey == "" || saved.BaseURL != s.BaseURL {
+			return Settings{}, &InputError{Field: "apiKey", Message: "enter the provider's API key"}
+		}
+		s.APIKey = saved.APIKey
 	}
-	saved, err := load(ctx, db.R)
-	if err != nil {
-		return Settings{}, err
-	}
-	if saved.APIKey == "" {
-		return Settings{}, &InputError{Field: "apiKey", Message: "enter the provider's API key"}
-	}
-	s.APIKey = saved.APIKey
 	return s, nil
 }
 

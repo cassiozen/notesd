@@ -166,6 +166,6 @@ or testing it. Every account on the server uses this provider, but only admins c
 it. The first account is an admin; [`notesd add-user --admin`](../../reference/cli.md#add-user)
 makes more.
 
-Nothing is sent to the provider until someone turns on an agent for a space, except the test
-itself, which sends no notes. With a rule for new notes, the space's tags and the notes it always
+Nothing is sent to the provider until someone turns on an agent for a space, except while an admin
+sets it up: the test, and the request that lists its models, both of which send the key but no notes. With a rule for new notes, the space's tags and the notes it always
 reads are sent as soon as someone is in the space, for the next new note.

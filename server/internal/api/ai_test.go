@@ -266,6 +266,12 @@ func TestAIModels(t *testing.T) {
 		t.Fatalf("saved key: %d %s %v", r.status, r.raw, f.auth)
 	}
 
+	// The saved key never goes to an address it wasn't saved with.
+	other := newFakeLLM(t)
+	if r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": other.baseURL()}); r.status != 400 || r.body["field"] != "apiKey" || len(other.auth) != 0 {
+		t.Fatalf("saved key elsewhere: %d %s %v", r.status, r.raw, other.auth)
+	}
+
 	// The address is checked as when saving.
 	if r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": "http://api.example.com/v1", "apiKey": "k"}); r.status != 400 || r.body["field"] != "baseUrl" {
 		t.Fatalf("plain http outside: %d %s", r.status, r.raw)

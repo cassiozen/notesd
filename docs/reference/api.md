@@ -660,7 +660,7 @@ request, or the model answers without calling the tool. With no body and nothing
 `409 ai_not_configured`.
 
 **Listing models** asks the provider's `GET /models` with the address and key in the body (`apiKey`
-left out uses the saved key), so a model can be picked before anything is saved. `baseUrl` is
+left out uses the saved key, only for the saved `baseUrl`), so a model can be picked before anything is saved. `baseUrl` is
 checked as when saving. `models` is sorted by `id`; where the provider says which parameters a
 model supports (OpenRouter), models without tool calls are left out. The provider refusing, not
 answering within 30 seconds, or answering with something other than a model list is
