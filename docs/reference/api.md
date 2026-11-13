@@ -357,7 +357,7 @@ title and a body, a list of posts, tags, a feed and a search.
 | Method | Path | Body → response |
 | --- | --- | --- |
 | `GET` | `/spaces/{id}/publish` | → `{handle, url, origin, domain, published, css}`; `404 not_published` if it never was. `url` is on `domain` when it's set |
-| `PUT` | `/spaces/{id}/publish` | `{handle?, origin?, domain?, css?}` → the same. Publishes the space, or changes how; a field left out stays as it is. `domain`: the site's own (`blog.example.com`), `""` to drop it |
+| `PUT` | `/spaces/{id}/publish` | `{handle?, origin?, domain?, css?}` → the same. Publishes the space, or changes how; a field left out stays as it is. `domain`: the site's own (`blog.example.com`), `""` to drop it. Requests for it are the site's. Setting it is an admin's (`403 admin_only`); it can't be another site's (`409 domain_taken`) or the app's own address (`409 domain_is_app`) |
 | `DELETE` | `/spaces/{id}/publish` | → `204`. Takes the site down; the handle stays the space's. `404 not_published` if it never was |
 
 - Your own spaces, and shared ones you own (`403 not_space_owner` for members). Never `default`
@@ -712,6 +712,8 @@ Outside `/api/v1`, need no session, and expose no data:
 | `space_not_empty` | 409 | The space still holds notes; see `count` |
 | `space_default` | 409 | The default space can't be deleted, shared or published |
 | `handle_taken` | 409 | Another published space has that address |
+| `domain_taken` | 409 | Another published space has that domain |
+| `domain_is_app` | 409 | That domain is the app's own address |
 | `no_lock_password` | 409 | The keyring's first entry must be the password |
 | `password_key_required` | 409 | The password entry can't be deleted |
 | `stale_revision` | 409 | The note changed since the revision you sent; sync first |

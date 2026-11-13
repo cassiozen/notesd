@@ -299,7 +299,7 @@ describe('publishing a space', () => {
     expect(field.value).toBe('a { color: red }')
   })
 
-  it('puts the site on a domain of its own, saying what the proxy maps it onto', async () => {
+  it('puts the site on a domain of its own, linking to how to set it up', async () => {
     const { server, user, info: page } = await publishedInfo()
     const domain = part(page, 'Your own domain')
     const field = within(domain).getByRole('textbox', { name: 'Domain' })
@@ -311,12 +311,56 @@ describe('publishing a space', () => {
     await waitFor(async () => expect(await settings(server)).toMatchObject({ domain: 'blog.example.com', url: 'https://blog.example.com/' }))
 
     // Saved, the part is put back with the server's settings: looked for again, not kept from before.
-    await waitFor(() => expect(within(part(page, 'Your own domain')).getByText('/@journal', { selector: 'code:not(p code)' })).toBeTruthy())
+    await waitFor(() => expect(within(part(page, 'Your own domain')).getByText(/^Point blog\.example\.com at this server/)).toBeTruthy())
     const saved = part(page, 'Your own domain')
     expect(within(saved).getByRole('link', { name: 'How to set it up' }).getAttribute('href')).toBe(
       'https://notesd.app/docs/guides/using/publishing.html#use-your-own-domain',
     )
     expect(within(page).getByRole('link', { name: 'Open' }).getAttribute('href')).toBe('https://blog.example.com/')
+  })
+
+  it('says when the domain is this server’s own address', async () => {
+    const { user, info: page } = await publishedInfo()
+    const domain = part(page, 'Your own domain')
+    await user.type(within(domain).getByRole('textbox', { name: 'Domain' }), 'notes.example{Enter}')
+    expect((await within(domain).findByRole('alert')).textContent).toBe('That’s this server’s own address. Use another domain.')
+  })
+
+  it('leaves the domain to an admin', async () => {
+    const { user } = await signedIn({
+      as: 'ana',
+      seed: async (s) => {
+        const ana = await s.addAccount('ana')
+        expect((await ana.api('PUT', '/spaces/garden', { name: 'Garden' })).status).toBe(200)
+        expect((await ana.api('PUT', '/spaces/garden/publish', { origin: 'https://notes.example' })).status).toBe(200)
+      },
+    })
+    await act(() => reloadSpaces())
+    const page = await website(user, await spaceInfo(user, 'Garden'))
+    const domain = await waitFor(() => part(page, 'Your own domain'))
+    expect(within(domain).getByText(/^An admin of this server can give the site a domain/)).toBeTruthy()
+    expect(within(domain).queryByRole('textbox', { name: 'Domain' })).toBeNull()
+  })
+
+  it('lets an owner who isn’t an admin stop using the domain an admin gave the site', async () => {
+    const { user } = await signedIn({
+      as: 'ana',
+      seed: async (s) => {
+        const ana = await s.addAccount('ana')
+        expect((await s.api('PATCH', `/users/${ana.id}`, { isAdmin: true })).status).toBe(200)
+        expect((await ana.api('PUT', '/spaces/garden', { name: 'Garden' })).status).toBe(200)
+        expect((await ana.api('PUT', '/spaces/garden/publish', { origin: 'https://notes.example', domain: 'blog.example.com' })).status).toBe(200)
+        expect((await s.api('PATCH', `/users/${ana.id}`, { isAdmin: false })).status).toBe(200)
+      },
+    })
+    await act(() => reloadSpaces())
+    const page = await website(user, await spaceInfo(user, 'Garden'))
+    const domain = await waitFor(() => part(page, 'Your own domain'))
+    expect(within(domain).getByText(/Only an admin of this server can set another\.$/)).toBeTruthy()
+    expect(within(domain).queryByRole('textbox', { name: 'Domain' })).toBeNull()
+    await user.click(within(domain).getByRole('button', { name: 'Stop using it' }))
+    await user.click(within(await within(domain).findByRole('group', { name: 'Stop using blog.example.com?' })).getByRole('button', { name: 'Stop using it' }))
+    await waitFor(() => expect(within(part(page, 'Your own domain')).getByText(/^An admin of this server can give the site a domain/)).toBeTruthy())
   })
 
   it('asks before the site stops using its own domain', async () => {

@@ -40,20 +40,30 @@ publish it again.
 
 ## Use your own domain
 
-A site can have a domain of its own, such as `blog.example.com`. notesd can't serve a domain by
-itself, so the reverse proxy in front of it does, the same one that serves the app's address. It
-sends every request for the domain to notesd with `/@<handle>` put before the path.
+A site can have a domain of its own, such as `blog.example.com`. notesd serves the site there: every
+request for the domain gets the site, never the app. Only an admin of the server can set a site's
+domain.
 
-1. In the web app, under **Website → Your own domain**, enter the domain and
-   choose **Save**. The site's feed, sitemap and links now use it.
-2. Set up your proxy, below. The examples use the handle `garden` and the domain
-   `blog.example.com`, and notesd at `127.0.0.1:8080`: put in your own, with notesd's address as in
-   your app's own block.
+1. In the web or Mac app, under **Website → Your own domain**, enter the domain and choose
+   **Save**. The site's feed, sitemap and links now use it.
+2. Point the domain at your server and give it HTTPS, the same way as the app's address. The steps
+   for each setup are below. The examples use the domain `blog.example.com`, and notesd at
+   `127.0.0.1:8080`: put in your own.
 
-Only the site is reachable on its domain, never the app. The site still answers at its address on
-the app's domain too; search engines are told the domain is the real one. To stop using the domain,
-empty the field and save, then remove what you added to the proxy. With Tailscale alone, a site
-can't have a domain of its own.
+The site still answers at its address on the app's domain too; search engines are told the domain is
+the real one. To stop using the domain, empty the field and save, then remove what you added for it.
+With Tailscale alone, a site can't have a domain of its own.
+
+### Fly.io
+
+1. From the folder with `fly.toml`, add a certificate for the domain:
+
+   ```bash
+   fly certs add blog.example.com
+   ```
+
+2. It prints the DNS records to add at your domain's provider. Once they're in, Fly gets the
+   certificate; `fly certs show blog.example.com` says when.
 
 ### Caddy
 
@@ -63,12 +73,15 @@ can't have a domain of its own.
 
    ```caddyfile
    blog.example.com {
-       rewrite * /@garden{uri}
        reverse_proxy 127.0.0.1:8080
    }
    ```
 
-3. `sudo systemctl reload caddy`. Caddy gets the domain's certificate by itself.
+3. Reload Caddy, which gets the domain's certificate by itself:
+
+   ```bash
+   sudo systemctl reload caddy
+   ```
 
 ### nginx
 
@@ -80,7 +93,7 @@ can't have a domain of its own.
        listen 80;
        server_name blog.example.com;
        location / {
-           proxy_pass http://127.0.0.1:8080/@garden/;
+           proxy_pass http://127.0.0.1:8080;
            proxy_set_header Host $host;
            proxy_set_header X-Forwarded-Proto $scheme;
            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -88,28 +101,25 @@ can't have a domain of its own.
    }
    ```
 
-3. `sudo certbot --nginx -d blog.example.com`. It gets the certificate and adds HTTPS to that
-   server.
+3. Get its certificate, which also adds HTTPS to that server:
+
+   ```bash
+   sudo certbot --nginx -d blog.example.com
+   ```
 
 ### Cloudflare Tunnel
 
 1. The domain must be on Cloudflare. There's no DNS record to add: the tunnel makes it.
-2. In the [Zero Trust dashboard](https://one.dash.cloudflare.com), under **Networks → Tunnels**, add a
-   public hostname to your tunnel, `blog.example.com`, pointing to `http://127.0.0.1:8080`.
-3. In the domain's dashboard, under **Rules**, add a URL rewrite rule for requests whose hostname is
-   `blog.example.com`, rewriting the path dynamically to:
-
-   ```text
-   concat("/@garden", http.request.uri.path)
-   ```
+2. In the Cloudflare dashboard, go to **Networking → Tunnels**, open your tunnel, then
+   **Routes → Add route → Published application**.
+3. Set **Hostname** to `blog.example.com` and **Service URL** to `http://127.0.0.1:8080`.
 
 ### Other proxies
 
-Point the domain's DNS at your server, then have the proxy send every request for the domain to
-notesd, adding `/@garden` before the path: `blog.example.com/tags/` goes to
-`127.0.0.1:8080/@garden/tags/`. Any proxy that can rewrite a path can do it. Have it pass the
-visitor's address in `X-Forwarded-For` too: the site's search is limited per visitor, and without it
-everyone shares one limit.
+Point the domain's DNS at your server, then have the proxy send its requests to notesd with the
+`Host` header unchanged, or the domain in `X-Forwarded-Host`. Have it pass the visitor's address in
+`X-Forwarded-For` too: the site's search is limited per visitor, and without it everyone shares one
+limit.
 
 ## Good to know
 

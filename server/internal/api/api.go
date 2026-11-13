@@ -244,7 +244,7 @@ func (s *Server) Handler() http.Handler {
 	}))
 
 	return clientip.Middleware(s.cfg.ClientIPHeader,
-		s.serverHeader(s.recoverer(s.logRequests(s.checkClient(mux)))))
+		s.serverHeader(s.recoverer(s.logRequests(s.publish.ServeDomain(s.checkClient(mux))))))
 }
 
 // serverHeader names this server's version on every response, so the web

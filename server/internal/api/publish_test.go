@@ -415,6 +415,100 @@ func TestASiteOnItsOwnDomain(t *testing.T) {
 	}
 }
 
+// onDomain fetches path as asked for at host, without following redirects.
+func (e *env) onDomain(host, path string, hdr ...string) page {
+	e.t.Helper()
+	req, _ := http.NewRequest("GET", e.srv.URL+path, nil)
+	req.Host = host
+	for i := 0; i+1 < len(hdr); i += 2 {
+		req.Header.Set(hdr[i], hdr[i+1])
+	}
+	hc := &http.Client{CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }}
+	res, err := hc.Do(req)
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	defer res.Body.Close()
+	b, _ := io.ReadAll(res.Body)
+	return page{status: res.StatusCode, header: res.Header, body: string(b)}
+}
+
+func TestNotesdServesASiteOnItsOwnDomain(t *testing.T) {
+	s := newSharedEnv(t)
+	if r := s.publish(s.owner, "fam", map[string]any{"domain": "blog.example.com"}); r.status != 200 {
+		t.Fatalf("domain: %d %s", r.status, r.raw)
+	}
+	s.eventually("/@family/", `<link rel="canonical" href="https://blog.example.com/">`)
+
+	// Asked for at its domain, with no proxy mapping it (as on Fly.io): the site, from its root.
+	home := s.onDomain("blog.example.com:443", "/")
+	if home.status != 200 || !strings.Contains(home.body, "Groceries") {
+		t.Fatalf("home on the domain: %d %s", home.status, home.body)
+	}
+	post := home.body[strings.Index(home.body, `href="./groceries-`)+8:]
+	post = post[:strings.Index(post, `"`)]
+	if r := s.onDomain("Blog.Example.com.", "/"+post); r.status != 200 || !strings.Contains(r.body, "Milk") {
+		t.Fatalf("a post on the domain: %d", r.status)
+	}
+	// Only the site: never the app, its API, or another site.
+	for _, path := range []string{"/api/v1/auth/status", "/@family/../api/v1/auth/status", "/@other/", "/login"} {
+		if r := s.onDomain("blog.example.com", path); r.status != 404 || strings.Contains(r.body, `"status"`) {
+			t.Fatalf("%s on the domain: %d %s", path, r.status, r.body)
+		}
+	}
+	// A proxy that sets its own Host names the domain in X-Forwarded-Host.
+	if r := s.visit("/"+post, "X-Forwarded-Host", "blog.example.com"); r.status != 200 {
+		t.Fatalf("by X-Forwarded-Host: %d", r.status)
+	}
+	// Any other host is the app's, as before.
+	if r := s.onDomain("notes.example", "/api/v1/auth/status"); r.status != 200 {
+		t.Fatalf("the app: %d", r.status)
+	}
+
+	// Dropped, the domain is the app's again.
+	s.publish(s.owner, "fam", map[string]any{"domain": ""})
+	if r := s.onDomain("blog.example.com", "/api/v1/auth/status"); r.status != 200 {
+		t.Fatalf("domain dropped: %d", r.status)
+	}
+}
+
+func TestOnlyAnAdminSetsASitesDomain(t *testing.T) {
+	s := newSharedEnv(t)
+	if r := s.kid.do("PUT", "/api/v1/spaces/kids", map[string]any{"name": "Kids", "icon": "dragon"}); r.status != 200 {
+		t.Fatalf("create space: %d %s", r.status, r.raw)
+	}
+	if r := s.publish(s.kid, "kids", map[string]any{"domain": "kids.example.com"}); r.status != 403 || r.body["error"] != "admin_only" {
+		t.Fatalf("a domain from someone else: %d %s", r.status, r.raw)
+	}
+	if r := s.publish(s.kid, "kids", nil); r.status != 200 {
+		t.Fatalf("publishing stays everyone's: %d %s", r.status, r.raw)
+	}
+}
+
+func TestASiteDomainIsOneSitesAndNeverTheApps(t *testing.T) {
+	s := newSharedEnv(t)
+	if r := s.owner.do("PUT", "/api/v1/spaces/work", map[string]any{"name": "Work", "icon": "dragon"}); r.status != 200 {
+		t.Fatalf("create space: %d %s", r.status, r.raw)
+	}
+	s.publish(s.owner, "fam", map[string]any{"domain": "blog.example.com"})
+	if r := s.publish(s.owner, "work", map[string]any{"domain": "blog.example.com"}); r.status != 409 || r.body["error"] != "domain_taken" {
+		t.Fatalf("another site's domain: %d %s", r.status, r.raw)
+	}
+	// The app's address as the site has it, or as this request reached it.
+	if r := s.publish(s.owner, "work", map[string]any{"domain": "notes.example"}); r.status != 409 || r.body["error"] != "domain_is_app" {
+		t.Fatalf("the app's address: %d %s", r.status, r.raw)
+	}
+	r := s.owner.do("PUT", "/api/v1/spaces/work/publish", map[string]any{"origin": origin, "domain": "my-notes.fly.dev"},
+		"X-Forwarded-Host", "my-notes.fly.dev")
+	if r.status != 409 || r.body["error"] != "domain_is_app" {
+		t.Fatalf("the address the app was reached at: %d %s", r.status, r.raw)
+	}
+	// Saving the site's other settings keeps its domain without asking again.
+	if r := s.publish(s.owner, "fam", map[string]any{"css": "a{}"}); r.status != 200 || r.body["domain"] != "blog.example.com" {
+		t.Fatalf("other settings: %d %s", r.status, r.raw)
+	}
+}
+
 func mustParse(t *testing.T, raw string) *url.URL {
 	t.Helper()
 	u, err := url.Parse(raw)
