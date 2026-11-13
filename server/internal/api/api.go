@@ -197,6 +197,7 @@ func (s *Server) Handler() http.Handler {
 	mux.Handle("PUT /api/v1/settings/ai", s.authed(adminOnly(s.saveAISettings)))
 	mux.Handle("DELETE /api/v1/settings/ai", s.authed(adminOnly(s.deleteAISettings)))
 	mux.Handle("POST /api/v1/settings/ai/test", s.authed(adminOnly(s.testAISettings)))
+	mux.Handle("POST /api/v1/settings/ai/models", s.authed(adminOnly(s.listAIModels)))
 
 	mux.Handle("GET /api/v1/locks", s.authed(s.listLockKeys))
 	mux.Handle("DELETE /api/v1/locks", s.authed(s.resetLocks))

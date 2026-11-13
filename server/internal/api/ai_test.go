@@ -19,6 +19,7 @@ type fakeLLM struct {
 	replies  []fakeReply
 	requests []map[string]any
 	auth     []string
+	models   fakeReply // GET /v1/models
 }
 
 type fakeReply struct {
@@ -53,8 +54,19 @@ func final(text string) fakeReply {
 }
 
 func newFakeLLM(t *testing.T, replies ...fakeReply) *fakeLLM {
-	f := &fakeLLM{replies: replies}
+	f := &fakeLLM{replies: replies, models: fakeReply{body: `{"object":"list","data":[{"id":"fake-model"}]}`}}
 	f.srv = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "GET" && r.URL.Path == "/v1/models" {
+			f.mu.Lock()
+			f.auth = append(f.auth, r.Header.Get("Authorization"))
+			reply := f.models
+			f.mu.Unlock()
+			if reply.status != 0 {
+				w.WriteHeader(reply.status)
+			}
+			_, _ = w.Write([]byte(reply.body))
+			return
+		}
 		if r.Method != "POST" || r.URL.Path != "/v1/chat/completions" {
 			http.NotFound(w, r)
 			return
@@ -227,6 +239,61 @@ func TestAITest(t *testing.T) {
 	}
 }
 
+func TestAIModels(t *testing.T) {
+	e := newEnv(t)
+	e.setupOwner()
+	c, _ := e.deviceClient()
+	f := newFakeLLM(t)
+	f.models = fakeReply{body: `{"data":[{"id":"b-model","supported_parameters":["tools"]},{"id":"a-model"},{"id":"no-tools","supported_parameters":[]}]}`}
+
+	// A model isn't needed to list them.
+	r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": f.baseURL(), "apiKey": "sk-unsaved-1111"})
+	if r.status != 200 || string(mustJSON(t, r.body["models"])) != `[{"id":"a-model"},{"id":"b-model"}]` {
+		t.Fatalf("list: %d %s", r.status, r.raw)
+	}
+	if f.auth[0] != "Bearer sk-unsaved-1111" || f.requestCount() != 0 {
+		t.Fatalf("auth %v, chat requests %d", f.auth, f.requestCount())
+	}
+
+	// Without a key it needs a saved one, and uses it.
+	if r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": f.baseURL()}); r.status != 400 || r.body["field"] != "apiKey" {
+		t.Fatalf("no key, none saved: %d %s", r.status, r.raw)
+	}
+	if r := c.do("PUT", "/api/v1/settings/ai", map[string]any{"baseUrl": f.baseURL(), "apiKey": "sk-saved-2222", "model": "a-model"}); r.status != 200 {
+		t.Fatalf("save: %d %s", r.status, r.raw)
+	}
+	if r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": f.baseURL()}); r.status != 200 || f.auth[len(f.auth)-1] != "Bearer sk-saved-2222" {
+		t.Fatalf("saved key: %d %s %v", r.status, r.raw, f.auth)
+	}
+
+	// The saved key never goes to an address it wasn't saved with.
+	other := newFakeLLM(t)
+	if r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": other.baseURL()}); r.status != 400 || r.body["field"] != "apiKey" || len(other.auth) != 0 {
+		t.Fatalf("saved key elsewhere: %d %s %v", r.status, r.raw, other.auth)
+	}
+
+	// The address is checked as when saving.
+	if r := c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": "http://api.example.com/v1", "apiKey": "k"}); r.status != 400 || r.body["field"] != "baseUrl" {
+		t.Fatalf("plain http outside: %d %s", r.status, r.raw)
+	}
+
+	// The provider's refusal is passed on.
+	f.models = fakeReply{status: 401, body: `{"error":{"message":"Incorrect API key provided"}}`}
+	r = c.do("POST", "/api/v1/settings/ai/models", map[string]any{"baseUrl": f.baseURL()})
+	if r.status != 502 || r.body["error"] != "ai_failed" || r.body["message"] != "Incorrect API key provided" {
+		t.Fatalf("refused: %d %s", r.status, r.raw)
+	}
+}
+
+func mustJSON(t *testing.T, v any) []byte {
+	t.Helper()
+	b, err := json.Marshal(v)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return b
+}
+
 func TestOnlyAdminsChangeAISettings(t *testing.T) {
 	f := newFakeLLM(t, toolCall("ping", `{"ok":true}`))
 	e := newEnv(t)
@@ -241,6 +308,9 @@ func TestOnlyAdminsChangeAISettings(t *testing.T) {
 	}
 	if r := b.do("POST", "/api/v1/settings/ai/test", settings); r.status != 403 || f.requestCount() != 0 {
 		t.Fatalf("non-admin test: %d %s", r.status, r.raw)
+	}
+	if r := b.do("POST", "/api/v1/settings/ai/models", settings); r.status != 403 || len(f.auth) != 0 {
+		t.Fatalf("non-admin models: %d %s", r.status, r.raw)
 	}
 	if r := a.do("PUT", "/api/v1/settings/ai", settings); r.status != 200 {
 		t.Fatalf("admin save: %d %s", r.status, r.raw)

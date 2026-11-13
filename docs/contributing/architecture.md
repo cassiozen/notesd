@@ -865,6 +865,7 @@ A versioned JSON API under `/api/v1` with standard HTTP status codes, authentica
 | `GET` `PUT` | `/api/v1/settings/account` | The account's time zone; devices send theirs as `X-Notesd-Time-Zone` |
 | `GET` `PUT` `DELETE` | `/api/v1/settings/ai` | The AI provider: address, key (write-only), model and daily token cap per space |
 | `POST` | `/api/v1/settings/ai/test` | Check the provider answers and the model calls tools |
+| `POST` | `/api/v1/settings/ai/models` | The provider's models, to pick one before saving |
 | `GET` | `/api/v1/sync` | Download changes |
 | `GET` | `/api/v1/search` | Search notes; same filters as listing, or `?exceptSpace=`; with `?space=` the first page counts `otherSpaces` |
 | `GET` | `/api/v1/filters` | What the list can filter by: tags in live notes with counts, and the locked notes' count; `?space=` for one space |

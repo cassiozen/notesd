@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"net/http"
 	"time"
@@ -97,6 +98,36 @@ func (s *Server) testAISettings(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true, "model": res.Model, "latencyMs": res.Latency.Milliseconds()})
+}
+
+const listModelsTimeout = 30 * time.Second
+
+// POST /api/v1/settings/ai/models  {"baseUrl", "apiKey"?}
+//
+// The provider's models, for picking one before anything is saved (apiKey
+// omitted uses the saved key). A POST because the body carries the key.
+func (s *Server) listAIModels(w http.ResponseWriter, r *http.Request) {
+	var in llm.Input
+	if err := decode(w, r, &in); err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	st, err := llm.ResolveProvider(r.Context(), s.system, in)
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), listModelsTimeout)
+	defer cancel()
+	models, err := s.ai.Models(ctx, st)
+	if errors.Is(err, context.DeadlineExceeded) && r.Context().Err() == nil {
+		err = &llm.ProviderError{Message: "the provider didn't answer in time"}
+	}
+	if err != nil {
+		s.writeErr(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"models": models})
 }
 
 func (s *Server) aiChanged() {

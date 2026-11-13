@@ -1,4 +1,4 @@
-import { useId, useState, type FormEvent } from 'react'
+import { useEffect, useId, useRef, useState, type FormEvent } from 'react'
 import { ApiError } from '../api/client'
 import { settings } from '../api/settings'
 import type { AiSettings, AiSettingsInput } from '../api/types'
@@ -15,6 +15,7 @@ import { Button } from '../ui/button'
 import { Dialog } from '../ui/dialog'
 import { Field } from '../ui/field'
 import { AgentIcon } from '../ui/icons'
+import { aiProviders, providerAt, type AiProvider } from './ai-providers'
 import { DisconnectDialog } from './disconnect-dialog'
 import type { Integration, IntegrationStatus } from './integrations'
 import styles from './settings.module.css'
@@ -70,6 +71,42 @@ function AiManage({ onClose }: { onClose: () => void }) {
   return <AiDialog saved={saved} onClose={onClose} onDisconnect={() => setDisconnecting(true)} />
 }
 
+const providerChoices: readonly (AiProvider | { id: 'other'; name: string })[] = [...aiProviders, { id: 'other', name: 'Other' }]
+
+type ModelList = { for: string } & ({ state: 'loading' } | { state: 'loaded'; ids: string[] } | { state: 'failed'; message: string })
+
+const listKey = (baseUrl: string, apiKey: string) => `${baseUrl.trim().replace(/\/+$/, '')}\n${apiKey.trim()}`
+
+function modelHint(list: ModelList | undefined): string | undefined {
+  switch (list?.state) {
+    case 'loading':
+      return 'Listing the provider’s models…'
+    case 'loaded':
+      return list.ids.length > 0 ? 'Pick one of the provider’s models, or type a name.' : undefined
+    case 'failed':
+      return `Couldn’t list the provider’s models: ${list.message}`
+    default:
+      return undefined
+  }
+}
+
+function keyHint(provider: AiProvider | undefined, configured: boolean) {
+  if (configured) return 'Paste a new key to replace the saved one.'
+  if (provider?.keyUrl) {
+    return (
+      <>
+        Make one at{' '}
+        <a href={provider.keyUrl} target="_blank" rel="noreferrer">
+          {new URL(provider.keyUrl).host}
+        </a>
+        .
+      </>
+    )
+  }
+  if (provider) return `${provider.name} doesn’t check keys: any word will do.`
+  return undefined
+}
+
 /** Address, key, model and cap; Test calls the model with them before anything's saved. */
 function AiDialog({
   saved,
@@ -89,6 +126,56 @@ function AiDialog({
   const [errors, setErrors] = useState<Errors>({})
   const [tested, setTested] = useState<string>()
   const [busy, setBusy] = useState<'save' | 'test'>()
+  const [otherPicked, setOtherPicked] = useState(false)
+  const [list, setList] = useState<ModelList>()
+  const listed = useRef(0)
+  const addressRef = useRef<HTMLInputElement>(null)
+  const providersId = useId()
+  const modelsId = useId()
+
+  const provider = providerAt(baseUrl)
+  const choice = provider?.id ?? (otherPicked || baseUrl.trim() ? 'other' : undefined)
+  // A list loaded for another address or key no longer applies.
+  const shown = list?.for === listKey(baseUrl, apiKey) ? list : undefined
+  const ids = shown?.state === 'loaded' ? shown.ids : []
+
+  /** Lists the provider's models, once the address and a key are in. */
+  async function listModels(address = baseUrl, key = apiKey) {
+    const savedAddress = !!saved?.configured && listKey(address, '') === listKey(saved.baseUrl, '')
+    // The saved key only goes to the address it was saved with, not to whatever's typed.
+    if (!address.trim() || (!key.trim() && !savedAddress)) return
+    const id = listKey(address, key)
+    if (list?.for === id && list.state !== 'failed') return
+    const n = ++listed.current
+    setList({ for: id, state: 'loading' })
+    try {
+      const res = await settings.aiModels({ baseUrl: address.trim(), ...(key.trim() && { apiKey: key.trim() }) })
+      if (n === listed.current) setList({ for: id, state: 'loaded', ids: res.models.map((m) => m.id) })
+    } catch (err) {
+      if (n !== listed.current) return
+      // A refused address or key shows on its field at Test or Save; here, only what the provider said.
+      if (err instanceof ApiError && err.code === 'ai_failed') setList({ for: id, state: 'failed', message: err.message })
+      else setList(undefined)
+    }
+  }
+
+  // Once, for the saved provider; afterwards leaving the address or key field lists again.
+  // oxlint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => void (saved?.configured && listModels(saved.baseUrl, '')), [])
+
+  function pick(p: AiProvider | 'other') {
+    setErrors({})
+    setTested(undefined)
+    if (p === 'other') {
+      setOtherPicked(true)
+      if (provider) setBaseUrl('')
+      addressRef.current?.focus()
+      return
+    }
+    setOtherPicked(false)
+    setBaseUrl(p.baseUrl)
+    void listModels(p.baseUrl, apiKey)
+  }
 
   function input(): AiSettingsInput | undefined {
     const found: Errors = {}
@@ -153,7 +240,28 @@ function AiDialog({
             Any OpenAI-compatible API works, with a model that supports tool calls. The key stays on this server.
           </p>
         )}
+        <div className={styles.fieldGroup}>
+          <span id={providersId} className={styles.groupLabel}>
+            Provider
+          </span>
+          <div className={`${styles.segmented} ${styles.providers}`} role="radiogroup" aria-labelledby={providersId}>
+            {providerChoices.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                role="radio"
+                aria-checked={choice === p.id}
+                className={styles.segment}
+                disabled={!!busy}
+                onClick={() => pick(p.id === 'other' ? 'other' : p)}
+              >
+                {p.name}
+              </button>
+            ))}
+          </div>
+        </div>
         <Field
+          ref={addressRef}
           label="API address"
           type="url"
           mono
@@ -162,7 +270,9 @@ function AiDialog({
           placeholder="https://api.openai.com/v1"
           value={baseUrl}
           onChange={(e) => edit(setBaseUrl, e.target.value)}
+          onBlur={() => void listModels()}
           error={errors.baseUrl}
+          hint={provider?.id === 'ollama' ? 'Change localhost if Ollama runs on another machine.' : undefined}
           readOnly={!!busy}
           autoFocus
         />
@@ -172,11 +282,12 @@ function AiDialog({
           mono
           autoComplete="off"
           spellCheck={false}
-          placeholder={configured ? `Saved · …${saved?.keyHint ?? ''}` : 'sk-…'}
+          placeholder={configured ? `Saved · …${saved?.keyHint ?? ''}` : (provider?.keyPlaceholder ?? 'sk-…')}
           value={apiKey}
           onChange={(e) => edit(setApiKey, e.target.value)}
+          onBlur={() => void listModels()}
           error={errors.apiKey}
-          hint={configured ? 'Paste a new key to replace the saved one.' : undefined}
+          hint={keyHint(provider, configured)}
           readOnly={!!busy}
         />
         <Field
@@ -189,8 +300,18 @@ function AiDialog({
           value={model}
           onChange={(e) => edit(setModel, e.target.value)}
           error={errors.model}
+          hint={modelHint(shown)}
+          list={ids.length > 0 ? modelsId : undefined}
           readOnly={!!busy}
-        />
+        >
+          {ids.length > 0 && (
+            <datalist id={modelsId}>
+              {ids.map((id) => (
+                <option key={id} value={id} />
+              ))}
+            </datalist>
+          )}
+        </Field>
         <Field
           label="Daily tokens per space"
           type="text"

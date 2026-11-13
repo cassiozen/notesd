@@ -114,33 +114,9 @@ func (c *Client) Chat(ctx context.Context, s Settings, req ChatRequest) (*ChatRe
 	if err != nil {
 		return nil, err
 	}
-	hr, err := http.NewRequestWithContext(ctx, http.MethodPost, s.BaseURL+"/chat/completions", bytes.NewReader(body))
+	raw, status, err := c.send(ctx, s, http.MethodPost, "/chat/completions", body, maxResponseBytes)
 	if err != nil {
-		return nil, &ProviderError{Message: "the address isn't usable: " + err.Error()}
-	}
-	hr.Header.Set("Authorization", "Bearer "+s.APIKey)
-	hr.Header.Set("Content-Type", "application/json")
-	hr.Header.Set("Accept", "application/json")
-	res, err := c.HTTP.Do(hr)
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, &ProviderError{Message: "couldn't reach " + hr.URL.Host + ": " + unwrapURLError(err)}
-	}
-	defer res.Body.Close()
-	raw, err := io.ReadAll(io.LimitReader(res.Body, maxResponseBytes))
-	if err != nil {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		return nil, &ProviderError{Status: res.StatusCode, Message: "reading the answer: " + err.Error()}
-	}
-	if res.StatusCode/100 == 3 {
-		return nil, &ProviderError{Status: res.StatusCode, Message: "the address redirects to " + res.Header.Get("Location") + "; use that address instead"}
-	}
-	if res.StatusCode/100 != 2 {
-		return nil, &ProviderError{Status: res.StatusCode, Message: errorMessage(res.StatusCode, raw)}
+		return nil, err
 	}
 	var out struct {
 		Model   string `json:"model"`
@@ -151,20 +127,60 @@ func (c *Client) Chat(ctx context.Context, s Settings, req ChatRequest) (*ChatRe
 		Error json.RawMessage `json:"error"`
 	}
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, &ProviderError{Status: res.StatusCode, Message: "the answer isn't a chat completion; check the address"}
+		return nil, &ProviderError{Status: status, Message: "the answer isn't a chat completion; check the address"}
 	}
 	if len(out.Choices) == 0 {
 		// Some proxies report a failure as a 200 carrying an error.
 		if len(out.Error) > 0 && string(out.Error) != "null" {
-			return nil, &ProviderError{Status: res.StatusCode, Message: errorMessage(res.StatusCode, raw)}
+			return nil, &ProviderError{Status: status, Message: errorMessage(status, raw)}
 		}
-		return nil, &ProviderError{Status: res.StatusCode, Message: "the answer has no choices"}
+		return nil, &ProviderError{Status: status, Message: "the answer has no choices"}
 	}
 	model := out.Model
 	if model == "" {
 		model = req.Model
 	}
 	return &ChatResponse{Model: model, Message: out.Choices[0].Message, Usage: out.Usage}, nil
+}
+
+// send calls path under s.BaseURL and returns a 2xx answer's body, read up
+// to limit bytes; anything else is a ProviderError, or ctx's error.
+func (c *Client) send(ctx context.Context, s Settings, method, path string, body []byte, limit int64) ([]byte, int, error) {
+	var rd io.Reader
+	if body != nil {
+		rd = bytes.NewReader(body)
+	}
+	hr, err := http.NewRequestWithContext(ctx, method, s.BaseURL+path, rd)
+	if err != nil {
+		return nil, 0, &ProviderError{Message: "the address isn't usable: " + err.Error()}
+	}
+	hr.Header.Set("Authorization", "Bearer "+s.APIKey)
+	if body != nil {
+		hr.Header.Set("Content-Type", "application/json")
+	}
+	hr.Header.Set("Accept", "application/json")
+	res, err := c.HTTP.Do(hr)
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, 0, ctx.Err()
+		}
+		return nil, 0, &ProviderError{Message: "couldn't reach " + hr.URL.Host + ": " + unwrapURLError(err)}
+	}
+	defer res.Body.Close()
+	raw, err := io.ReadAll(io.LimitReader(res.Body, limit))
+	if err != nil {
+		if ctx.Err() != nil {
+			return nil, 0, ctx.Err()
+		}
+		return nil, res.StatusCode, &ProviderError{Status: res.StatusCode, Message: "reading the answer: " + err.Error()}
+	}
+	if res.StatusCode/100 == 3 {
+		return nil, res.StatusCode, &ProviderError{Status: res.StatusCode, Message: "the address redirects to " + res.Header.Get("Location") + "; use that address instead"}
+	}
+	if res.StatusCode/100 != 2 {
+		return nil, res.StatusCode, &ProviderError{Status: res.StatusCode, Message: errorMessage(res.StatusCode, raw)}
+	}
+	return raw, res.StatusCode, nil
 }
 
 // errorMessage extracts the explanation from an error answer: OpenAI's
