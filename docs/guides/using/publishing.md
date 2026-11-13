@@ -121,9 +121,6 @@ Point the domain's DNS at your server, then have the proxy send its requests to 
 `X-Forwarded-For` too: the site's search is limited per visitor, and without it everyone shares one
 limit.
 
-A proxy set up for an earlier version of notesd, which adds `/@garden` before the path, keeps
-working.
-
 ## Good to know
 
 - **It's live.** A note you save shows on the site about 10 seconds after you stop editing, or

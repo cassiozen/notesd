@@ -342,6 +342,27 @@ describe('publishing a space', () => {
     expect(within(domain).queryByRole('textbox', { name: 'Domain' })).toBeNull()
   })
 
+  it('lets an owner who isn’t an admin stop using the domain an admin gave the site', async () => {
+    const { user } = await signedIn({
+      as: 'ana',
+      seed: async (s) => {
+        const ana = await s.addAccount('ana')
+        expect((await s.api('PATCH', `/users/${ana.id}`, { isAdmin: true })).status).toBe(200)
+        expect((await ana.api('PUT', '/spaces/garden', { name: 'Garden' })).status).toBe(200)
+        expect((await ana.api('PUT', '/spaces/garden/publish', { origin: 'https://notes.example', domain: 'blog.example.com' })).status).toBe(200)
+        expect((await s.api('PATCH', `/users/${ana.id}`, { isAdmin: false })).status).toBe(200)
+      },
+    })
+    await act(() => reloadSpaces())
+    const page = await website(user, await spaceInfo(user, 'Garden'))
+    const domain = await waitFor(() => part(page, 'Your own domain'))
+    expect(within(domain).getByText(/Only an admin of this server can set another\.$/)).toBeTruthy()
+    expect(within(domain).queryByRole('textbox', { name: 'Domain' })).toBeNull()
+    await user.click(within(domain).getByRole('button', { name: 'Stop using it' }))
+    await user.click(within(await within(domain).findByRole('group', { name: 'Stop using blog.example.com?' })).getByRole('button', { name: 'Stop using it' }))
+    await waitFor(() => expect(within(part(page, 'Your own domain')).getByText(/^An admin of this server can give the site a domain/)).toBeTruthy())
+  })
+
   it('asks before the site stops using its own domain', async () => {
     const { server, user, info: page } = await publishedInfo((s) => s.api('PUT', '/spaces/journal/publish', { domain: 'blog.example.com' }).then(() => undefined))
     const domain = part(page, 'Your own domain')

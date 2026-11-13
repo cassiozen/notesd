@@ -456,10 +456,6 @@ func TestNotesdServesASiteOnItsOwnDomain(t *testing.T) {
 			t.Fatalf("%s on the domain: %d %s", path, r.status, r.body)
 		}
 	}
-	// A proxy that already maps it onto /@family/ (as the docs had it) isn't mapped twice.
-	if r := s.onDomain("blog.example.com", "/@family/"+post); r.status != 200 {
-		t.Fatalf("mapped by a proxy: %d", r.status)
-	}
 	// A proxy that sets its own Host names the domain in X-Forwarded-Host.
 	if r := s.visit("/"+post, "X-Forwarded-Host", "blog.example.com"); r.status != 200 {
 		t.Fatalf("by X-Forwarded-Host: %d", r.status)

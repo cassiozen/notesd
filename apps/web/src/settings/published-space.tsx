@@ -345,6 +345,18 @@ function OwnDomain({
     else void onSave(draft.trim())
   }
 
+  const stop = asking && (
+    <InlineConfirm
+      title={`Stop using ${settings.domain}?`}
+      action="Stop using it"
+      busy={busy === 'domain'}
+      onConfirm={() => void onSave('')}
+      onCancel={() => setAsking(false)}
+    >
+      The site’s links go back to its address here, and the domain stops serving it.
+    </InlineConfirm>
+  )
+
   if (!admin) {
     return (
       <section className={info.section} aria-labelledby={headingId}>
@@ -356,12 +368,23 @@ function OwnDomain({
             <p className={styles.hint}>
               {settings.domain ? (
                 <>
-                  The site is at <code>{settings.domain}</code>. Only an admin of this server can change its domain.
+                  The site is at <code>{settings.domain}</code>. Only an admin of this server can set another.
                 </>
               ) : (
                 'An admin of this server can give the site a domain of its own, such as blog.example.com.'
               )}
             </p>
+            {settings.domain && (
+              <>
+                {error}
+                <div className={styles.save}>
+                  <Button size="sm" variant="ghost" disabled={busy !== null || asking} onClick={() => setAsking(true)}>
+                    Stop using it
+                  </Button>
+                </div>
+                {stop}
+              </>
+            )}
           </div>
         </div>
       </section>
@@ -411,17 +434,7 @@ function OwnDomain({
               Save
             </Button>
           </div>
-          {asking && (
-            <InlineConfirm
-              title={`Stop using ${settings.domain}?`}
-              action="Stop using it"
-              busy={busy === 'domain'}
-              onConfirm={() => void onSave('')}
-              onCancel={() => setAsking(false)}
-            >
-              The site’s links go back to its address here, and the domain stops serving it.
-            </InlineConfirm>
-          )}
+          {stop}
         </div>
       </div>
     </section>
