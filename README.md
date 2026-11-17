@@ -33,6 +33,10 @@ and connecting your phone. To run it without Docker, see
 [Run the binary with systemd](docs/guides/self-hosting/binary-systemd.md); to host it on Fly.io,
 [Run on Fly.io](docs/guides/self-hosting/fly-io.md).
 
+## One-Click Deploy
+
+[![Deploy on RepoCloud](https://d16t0pc4846x52.cloudfront.net/deploylobe.svg)](https://repocloud.io/details/Notesd/)
+
 ## Features
 
 - **Offline-first apps.** The Android and iPhone apps, and the web app if you choose, keep a full
